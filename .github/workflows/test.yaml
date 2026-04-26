@@ -86,7 +86,6 @@ jobs:
       CODECOV_FLAGS: ${{ matrix.os }}-${{ matrix.system }}
       CODECOV_NAME: codecov-dotfiles-${{ matrix.os }}-${{ matrix.system }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      HAS_CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN != '' }}
 
     steps:
       - name: Checkout repository
@@ -148,13 +147,8 @@ jobs:
           BASHCOV_COMMAND_NAME="unit-test-${OS}-${SYSTEM}" \
             bashcov "${bashcov_args[@]}" -- ./scripts/run_unit_test.sh
 
-      - name: Explain skipped Codecov upload
-        if: ${{ needs.changes.outputs.should_test == 'true' && env.HAS_CODECOV_TOKEN != 'true' }}
-        run: |
-          echo "Skipping Codecov upload because CODECOV_TOKEN is not configured."
-
       - name: Setup for codecov
-        if: ${{ needs.changes.outputs.should_test == 'true' && github.actor != 'dependabot[bot]' && env.HAS_CODECOV_TOKEN == 'true' }}
+        if: ${{ needs.changes.outputs.should_test == 'true' && github.actor != 'dependabot[bot]' }}
         run: |
           # codecov-action requires these tools for uploader validation/signing
           # in this repository setup.
@@ -170,7 +164,7 @@ jobs:
           fi
 
       - name: Upload coverage to Codecov
-        if: ${{ needs.changes.outputs.should_test == 'true' && github.actor != 'dependabot[bot]' && env.HAS_CODECOV_TOKEN == 'true' }}
+        if: ${{ needs.changes.outputs.should_test == 'true' && github.actor != 'dependabot[bot]' }}
         uses: codecov/codecov-action@v6
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

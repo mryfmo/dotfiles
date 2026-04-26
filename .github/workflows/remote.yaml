@@ -1,15 +1,16 @@
 name: Snippet install
 
 on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
   schedule:
     - cron: "0 0 * * 5"
 
 jobs:
   build:
-    # Snippet install also depends on private dotfiles repo credentials.
-    # Skip known secret-less contexts to avoid SSH key setup failures.
-    if: ${{ github.actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-14]
@@ -22,26 +23,46 @@ jobs:
     env:
       # DOTFILES_DEBUG: 1
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      OS: ${{ matrix.os }}
+      SYSTEM: ${{ matrix.system }}
+      HAS_EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS != '' }}
+      HAS_PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY: ${{ secrets.PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY != '' }}
 
     steps:
+      - name: Validate public setup snippet endpoints
+        run: |
+          set -euo pipefail
+          curl -fsLSI https://raw.githubusercontent.com/mryfmo/dotfiles/main/setup.sh > /dev/null
+          if [ "${OS}" == "ubuntu-latest" ]; then
+            wget --spider -q https://raw.githubusercontent.com/mryfmo/dotfiles/main/setup.sh
+          fi
+
       - name: Set up SSH agent and add the private deploy key for the private dotfiles repo
+        if: ${{ github.actor != 'dependabot[bot]' && env.HAS_PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY == 'true' }}
         uses: webfactory/ssh-agent@v0.10.0
         with:
           ssh-private-key: ${{ secrets.PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY }}
 
+      - name: Explain skipped full snippet install
+        if: ${{ env.HAS_EMAIL_ADDRESS != 'true' || env.HAS_PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY != 'true' || github.actor == 'dependabot[bot]' }}
+        run: |
+          echo "Skipping full snippet install because private install secrets are not available in this context."
+          echo "The public setup snippet URL was still validated above."
+
       - name: Setup dotfiles with snippet
+        if: ${{ github.actor != 'dependabot[bot]' && env.HAS_EMAIL_ADDRESS == 'true' && env.HAS_PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY == 'true' }}
         env:
           EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
           OS: ${{ matrix.os }}
           SYSTEM: ${{ matrix.system }}
         run: |
           if [ "${OS}" == "macos-14" ]; then
-            printf "${EMAIL_ADDRESS}\n" | bash -c "$(curl -fsLS https://mryfmo.me/dotfiles/setup.sh)"
+            printf "${EMAIL_ADDRESS}\n" | bash -c "$(curl -fsLS https://raw.githubusercontent.com/mryfmo/dotfiles/main/setup.sh)"
             #              │
             #              └─ Simulate inputting an email address into the chezmoi's config.
 
           elif [ "${OS}" == "ubuntu-latest" ]; then
-            printf "${EMAIL_ADDRESS}\n${SYSTEM}\n" | bash -c "$(wget -qO - https://mryfmo.me/dotfiles/setup.sh)"
+            printf "${EMAIL_ADDRESS}\n${SYSTEM}\n" | bash -c "$(wget -qO - https://raw.githubusercontent.com/mryfmo/dotfiles/main/setup.sh)"
             #              │               │
             #              │               └─ Simulate inputting an system arcitecture into the config.
             #              └─ Simulate inputting an email address into the config.

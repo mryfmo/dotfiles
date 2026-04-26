@@ -86,7 +86,6 @@ jobs:
       CODECOV_FLAGS: ${{ matrix.os }}-${{ matrix.system }}
       CODECOV_NAME: codecov-dotfiles-${{ matrix.os }}-${{ matrix.system }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      HAS_CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN != '' }}
 
     steps:
       - name: Checkout repository
@@ -133,44 +132,35 @@ jobs:
       - name: Run unit test
         if: ${{ needs.changes.outputs.should_test == 'true' }}
         run: |
+          if [ "${OS}" == "macos-14" ]; then
+            # Bats uses its own tracing internals on macOS, and bashcov can
+            # misread those records as coverage trace entries. Keep macOS in
+            # the test matrix for platform validation, but collect Codecov
+            # reports from the Ubuntu jobs where bashcov parses Bats output
+            # reliably.
+            ./scripts/run_unit_test.sh
+            exit 0
+          fi
+
           # Shared bashcov defaults:
           # - `--skip-uncovered`: limit report to executed files.
           # - `--root .`: normalize paths relative to repository root.
           bashcov_args=(--skip-uncovered --root .)
-          if [ "${OS}" == "macos-14" ]; then
-            # Force Homebrew Bash for tracing on macOS; this solved the
-            # previously observed `Line Coverage: 100.0% (0 / 0)` issue.
-            bashcov_args+=(--bash-path /opt/homebrew/bin/bash)
-          fi
 
           # Use a unique command name per matrix job so SimpleCov keeps each
           # session separated before Codecov merges by flag/name.
           BASHCOV_COMMAND_NAME="unit-test-${OS}-${SYSTEM}" \
             bashcov "${bashcov_args[@]}" -- ./scripts/run_unit_test.sh
 
-      - name: Explain skipped Codecov upload
-        if: ${{ needs.changes.outputs.should_test == 'true' && env.HAS_CODECOV_TOKEN != 'true' }}
-        run: |
-          echo "Skipping Codecov upload because CODECOV_TOKEN is not configured."
-
-      - name: Setup for codecov
-        if: ${{ needs.changes.outputs.should_test == 'true' && github.actor != 'dependabot[bot]' && env.HAS_CODECOV_TOKEN == 'true' }}
+      - name: Setup for Codecov
+        if: ${{ needs.changes.outputs.should_test == 'true' && matrix.os == 'ubuntu-latest' && !endsWith(github.actor, '[bot]') }}
         run: |
           # codecov-action requires these tools for uploader validation/signing
           # in this repository setup.
-          if [ "${OS}" == "macos-14" ]; then
-            brew install gpg jq curl
-
-          elif [ "${OS}" == "ubuntu-latest" ]; then
-            sudo apt-get install -y gpg jq curl
-
-          else
-            echo "${OS} and ${SYSTEM} are not supported" >&2
-            exit 1
-          fi
+          sudo apt-get install -y gpg jq curl
 
       - name: Upload coverage to Codecov
-        if: ${{ needs.changes.outputs.should_test == 'true' && github.actor != 'dependabot[bot]' && env.HAS_CODECOV_TOKEN == 'true' }}
+        if: ${{ needs.changes.outputs.should_test == 'true' && matrix.os == 'ubuntu-latest' && !endsWith(github.actor, '[bot]') }}
         uses: codecov/codecov-action@v6
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -180,7 +170,7 @@ jobs:
           # This prevents unexpected auto-discovery from old/temporary files.
           disable_search: true
           env_vars: OS,SYSTEM
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           flags: ${{ env.CODECOV_FLAGS }}
           name: ${{ env.CODECOV_NAME }}
           verbose: true

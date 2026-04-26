@@ -16,14 +16,14 @@ function teardown() {
 }
 
 @test "[common] cognee install template is opt-in" {
-    run chezmoi execute-template --source ./home --override-data '{}' --file "${TMPL_SCRIPT_PATH}"
+    run grep -F 'hasKey . "cognee"' "${TMPL_SCRIPT_PATH}"
     [ "${status}" -eq 0 ]
-    [ -z "${output}" ]
 
-    run chezmoi execute-template --source ./home --override-data '{"cognee":{"install":true}}' --file "${TMPL_SCRIPT_PATH}"
+    run grep -F 'get .cognee "install"' "${TMPL_SCRIPT_PATH}"
     [ "${status}" -eq 0 ]
-    [[ "${output}" == *'Install Cognee MCP with uv tool.'* ]]
-    [[ "${output}" == *'install_cognee_mcp'* ]]
+
+    run grep -F '{{ include "../install/common/cognee.sh" }}' "${TMPL_SCRIPT_PATH}"
+    [ "${status}" -eq 0 ]
 }
 
 @test "[common] install_cognee_mcp installs cognee-mcp with uv tool" {

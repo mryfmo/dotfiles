@@ -1,0 +1,257 @@
+# Canonical AI-agent configuration managed by chezmoi.
+#
+# This file is the single source of truth for Codex, Claude Code, and Hermes.
+# Agent-native files are generated from this manifest by scripts/generate-agent-configs.py.
+#
+# Best-practice rules encoded here:
+# - Define one shared capability catalog and render native adapters for every agent.
+# - Keep shared skills in ~/.agents/skills and expose the same skill set to every agent.
+# - Keep MCP servers disabled by default; enable only after checking scope and credentials.
+# - Store credentials as environment-variable references or inherited environment only.
+# - Use current maintained MCP servers; deprecated packages are rejected by validation.
+
+schema_version: 1
+
+target_agents:
+  - codex
+  - claude
+  - hermes
+
+skills:
+  canonical_dir: ~/.agents/skills
+  creation_nudge_interval: 15
+
+codex:
+  config_path: home/dot_codex/private_config.toml.tmpl
+  model: gpt-5.5
+  approval_policy: on-request
+  sandbox_mode: workspace-write
+  web_search: cached
+  project_doc_max_bytes: 65536
+  project_doc_fallback_filenames:
+    - CLAUDE.md
+  sandbox_workspace_write:
+    network_access: false
+  shell_environment_policy:
+    inherit: core
+  features:
+    codex_hooks: false
+
+claude:
+  settings_path: home/dot_claude/private_settings.json
+  mcp_config_path: home/dot_claude/private_mcp.json.tmpl
+  schema: https://json.schemastore.org/claude-code-settings.json
+  model: opusplan
+  alwaysThinkingEnabled: true
+  autoUpdatesChannel: stable
+  plansDirectory: ./.agents/worklog/claude
+  disableSkillShellExecution: true
+  includeGitInstructions: true
+  permissions:
+    defaultMode: plan
+    deny:
+      - Bash(sudo:*)
+      - Bash(rm -rf:*)
+      - Read(.env.*)
+      - Read(id_rsa*)
+      - Read(id_ed25519*)
+      - Write(.env*)
+      - Bash(curl * | sh)
+      - Bash(wget * | sh)
+      - Read(secrets/**)
+      - Read(config/credentials.json)
+    ask:
+      - Bash(git push:*)
+      - Bash(gh release:*)
+      - Bash(npm publish:*)
+      - Bash(uv publish:*)
+      - Bash(terraform apply:*)
+      - Bash(kubectl apply:*)
+  hooks:
+    enforce_uv_hook: ~/.claude/hooks/enforce-uv.sh
+    format_edited_files_hook: ~/.claude/hooks/format-edited-files.py
+    python_post_edit:
+      - uvx ruff format
+      - uvx ruff check --fix
+      - uvx ty check
+    markdown_post_edit:
+      - npx prettier@2 --write
+  statusLine:
+    type: command
+    command: npx ccstatusline@latest
+  # External Claude plugins are intentionally not enabled here. The shared local
+  # workflow pack is represented as the common skill tree, because settings alone
+  # cannot install third-party Claude plugins or marketplaces.
+  enabledPlugins: {}
+
+hermes:
+  config_path: home/dot_hermes/private_config.yaml.tmpl
+  base_config_path: home/dot_agents/hermes-config-base.yaml
+  terminal:
+    backend: local
+    timeout: 180
+    env_passthrough: []
+  plugins:
+    enabled: []
+    disabled: []
+
+plugins:
+  marketplace_path: home/dot_agents/plugins/marketplace.json
+  marketplace:
+    name: mryfmo-personal-plugins
+    displayName: mryfmo Personal Plugins
+  codex_plugins:
+    - name: mryfmo-dev-workflows
+      version: 0.1.0
+      description: Reusable personal development workflows backed by the shared ~/.agents/skills tree.
+      author: mryfmo
+      license: MIT
+      skills: ../../skills
+      source_path: ./plugins/mryfmo-dev-workflows
+      category: Productivity
+      authentication: ON_INSTALL
+      installation: AVAILABLE
+      interface:
+        displayName: mryfmo Dev Workflows
+        shortDescription: Shared workflows for GitHub, shell docs, uv, Japanese writing, transformers, and review tasks.
+        capabilities:
+          - Read
+          - Write
+
+mcp_servers:
+  context7:
+    description: Library documentation lookup through Upstash Context7.
+    enabled: false
+    required: false
+    transport: stdio
+    command: npx
+    args:
+      - -y
+      - '@upstash/context7-mcp'
+    timeout: 60
+    connect_timeout: 20
+    startup_timeout_sec: 20
+    tool_timeout_sec: 60
+    supports_parallel_tool_calls: true
+    prompts: false
+    resources: false
+    sampling: false
+    agents:
+      codex: true
+      claude: true
+      hermes: true
+
+  filesystem_dotfiles:
+    description: Scoped filesystem access to this chezmoi source tree for dotfiles maintenance.
+    enabled: false
+    required: false
+    transport: stdio
+    command: npx
+    args:
+      - -y
+      - '@modelcontextprotocol/server-filesystem'
+      - '{{ .chezmoi.sourceDir }}'
+    timeout: 30
+    connect_timeout: 30
+    startup_timeout_sec: 30
+    tool_timeout_sec: 30
+    prompts: false
+    resources: false
+    sampling: false
+    agents:
+      codex: true
+      claude: true
+      hermes: true
+
+  github:
+    description: Official GitHub MCP server using GITHUB_PERSONAL_ACCESS_TOKEN inherited by Docker.
+    enabled: false
+    required: false
+    transport: stdio
+    command: docker
+    args:
+      - run
+      - -i
+      - --rm
+      - -e
+      - GITHUB_PERSONAL_ACCESS_TOKEN
+      - ghcr.io/github/github-mcp-server
+    timeout: 60
+    connect_timeout: 60
+    startup_timeout_sec: 60
+    tool_timeout_sec: 60
+    include_tools:
+      - list_issues
+      - get_issue
+      - search_repositories
+      - search_code
+      - list_pull_requests
+      - get_pull_request
+    prompts: false
+    resources: false
+    sampling: false
+    agents:
+      codex: true
+      claude: true
+      hermes: true
+
+  time:
+    description: Local time MCP server.
+    enabled: false
+    required: false
+    transport: stdio
+    command: uvx
+    args:
+      - mcp-server-time
+    timeout: 30
+    connect_timeout: 30
+    startup_timeout_sec: 30
+    tool_timeout_sec: 30
+    prompts: false
+    resources: false
+    sampling: false
+    agents:
+      codex: true
+      claude: true
+      hermes: true
+
+  sequential_thinking:
+    description: Structured step-by-step reasoning scratchpad MCP server.
+    enabled: false
+    required: false
+    transport: stdio
+    command: npx
+    args:
+      - -y
+      - '@modelcontextprotocol/server-sequential-thinking'
+    timeout: 60
+    connect_timeout: 30
+    startup_timeout_sec: 30
+    tool_timeout_sec: 60
+    prompts: false
+    resources: false
+    sampling: false
+    agents:
+      codex: true
+      claude: true
+      hermes: true
+
+  playwright:
+    description: Browser automation MCP server for web QA and debugging.
+    enabled: false
+    required: false
+    transport: stdio
+    command: npx
+    args:
+      - '@playwright/mcp@latest'
+    timeout: 120
+    connect_timeout: 60
+    startup_timeout_sec: 60
+    tool_timeout_sec: 120
+    prompts: false
+    resources: false
+    sampling: false
+    agents:
+      codex: true
+      claude: true
+      hermes: true

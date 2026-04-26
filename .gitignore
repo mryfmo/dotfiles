@@ -1,0 +1,9 @@
+benchmarks/results
+coverage*
+docs/index.md
+docs/catalog.md
+docs/reference/
+site/
+
+.DS_Store
+.agents/worklog/

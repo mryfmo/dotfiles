@@ -1,0 +1,22 @@
+# Ghostty configuration
+# Reference: https://ghostty.org/docs/config
+
+# Keep terminal programs compatible on remote hosts while preserving Ghostty's
+# shell integration features locally.
+shell-integration = detect
+shell-integration-features = cursor,sudo,title,ssh-env
+
+# Use a comfortable cross-platform default while allowing runtime font resizing.
+font-size = 14
+
+# Add a small amount of padding around the terminal grid.
+window-padding-x = 8
+window-padding-y = 4
+
+{{ if eq .chezmoi.os "darwin" }}
+# Treat the macOS Option key as Alt for terminal keybindings.
+macos-option-as-alt = true
+{{ end }}
+
+# Do not prompt when shell integration can tell that only an idle prompt is open.
+confirm-close-surface = true

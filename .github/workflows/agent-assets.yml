@@ -1,0 +1,60 @@
+name: Agent assets
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+  workflow_dispatch:
+  schedule:
+    # Keep agent, MCP, plugin, and skill metadata from drifting silently.
+    - cron: "23 20 * * 0"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Validate agent assets
+        run: uv run --with pyyaml scripts/validate-agent-assets.py
+
+      - name: Check upstream documentation links
+        if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+        run: |
+          set -euo pipefail
+          urls=(
+            "https://developers.openai.com/codex/config-reference"
+            "https://developers.openai.com/codex/mcp"
+            "https://developers.openai.com/codex/skills"
+            "https://developers.openai.com/codex/plugins"
+            "https://code.claude.com/docs/en/settings"
+            "https://code.claude.com/docs/en/mcp"
+            "https://code.claude.com/docs/en/skills"
+            "https://code.claude.com/docs/en/plugins"
+            "https://docs.astral.sh/ty/"
+            "https://hermes-agent.nousresearch.com/docs/user-guide/configuration"
+            "https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp"
+            "https://hermes-agent.nousresearch.com/docs/user-guide/features/skills"
+            "https://agentskills.io/specification"
+          )
+          for url in "${urls[@]}"; do
+            echo "Checking ${url}"
+            curl --fail --location --silent --show-error --head "${url}" > /dev/null
+          done
+
+      - name: Check current package metadata
+        if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+        run: |
+          set -euo pipefail
+          npm view @openai/codex version
+          npm view @anthropic-ai/claude-code version
+          uvx --from ty ty --version

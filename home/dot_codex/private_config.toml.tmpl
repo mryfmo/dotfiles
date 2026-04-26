@@ -1,0 +1,70 @@
+#:schema https://developers.openai.com/codex/config-schema.json
+# Codex CLI user configuration managed by chezmoi.
+# Generated from home/dot_agents/agent-config.yaml by scripts/generate-agent-configs.py.
+# Keep secrets and OAuth state out of this file; use environment variables or
+# Codex-managed credential storage for MCP authentication.
+
+model = "gpt-5.5"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search = "cached"
+project_doc_max_bytes = 65536
+project_doc_fallback_filenames = ["CLAUDE.md"]
+
+[sandbox_workspace_write]
+network_access = false
+
+[shell_environment_policy]
+inherit = "core"
+
+[mcp_servers.context7]
+command = "npx"
+args = ["-y", "@upstash/context7-mcp"]
+enabled = false
+required = false
+startup_timeout_sec = 20
+tool_timeout_sec = 60
+supports_parallel_tool_calls = true
+
+[mcp_servers.filesystem_dotfiles]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-filesystem", "{{ .chezmoi.sourceDir }}"]
+enabled = false
+required = false
+startup_timeout_sec = 30
+tool_timeout_sec = 30
+
+[mcp_servers.github]
+command = "docker"
+args = ["run", "-i", "--rm", "-e", "GITHUB_PERSONAL_ACCESS_TOKEN", "ghcr.io/github/github-mcp-server"]
+enabled = false
+required = false
+startup_timeout_sec = 60
+tool_timeout_sec = 60
+
+[mcp_servers.time]
+command = "uvx"
+args = ["mcp-server-time"]
+enabled = false
+required = false
+startup_timeout_sec = 30
+tool_timeout_sec = 30
+
+[mcp_servers.sequential_thinking]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+enabled = false
+required = false
+startup_timeout_sec = 30
+tool_timeout_sec = 60
+
+[mcp_servers.playwright]
+command = "npx"
+args = ["@playwright/mcp@latest"]
+enabled = false
+required = false
+startup_timeout_sec = 60
+tool_timeout_sec = 120
+
+[features]
+codex_hooks = false

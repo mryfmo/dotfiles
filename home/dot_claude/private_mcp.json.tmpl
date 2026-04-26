@@ -1,0 +1,68 @@
+{{/* Generated from home/dot_agents/agent-config.yaml by scripts/generate-agent-configs.py. */}}
+{
+  "mcpServers": {
+    "context7": {
+      "disabled": true,
+      "timeout": 60,
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp"
+      ]
+    },
+    "filesystem_dotfiles": {
+      "disabled": true,
+      "timeout": 30,
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "{{ .chezmoi.sourceDir }}"
+      ]
+    },
+    "github": {
+      "disabled": true,
+      "timeout": 60,
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "ghcr.io/github/github-mcp-server"
+      ]
+    },
+    "time": {
+      "disabled": true,
+      "timeout": 30,
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "mcp-server-time"
+      ]
+    },
+    "sequential_thinking": {
+      "disabled": true,
+      "timeout": 60,
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    },
+    "playwright": {
+      "disabled": true,
+      "timeout": 120,
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest"
+      ]
+    }
+  }
+}

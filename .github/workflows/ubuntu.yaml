@@ -28,9 +28,6 @@ permissions:
 
 jobs:
   build:
-    # Dependabot PRs and forked PRs do not receive required repository secrets.
-    # Skip this job early instead of failing at the SSH key setup step.
-    if: ${{ github.actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     strategy:
       matrix:
         system: [server, client]
@@ -39,14 +36,23 @@ jobs:
     env:
       DOTFILES_DEBUG: 1
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      HAS_PRIVATE_DOTFILES_KEY: ${{ secrets.PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY != '' }}
+      HAS_EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS != '' }}
 
     steps:
+      - name: Explain skipped private integration
+        if: ${{ env.HAS_PRIVATE_DOTFILES_KEY != 'true' || env.HAS_EMAIL_ADDRESS != 'true' }}
+        run: |
+          echo "Skipping Ubuntu private dotfiles integration because required repository secrets are not configured."
+
       - name: Set up SSH agent and add the private deploy key for the private dotfiles repo
+        if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}
         uses: webfactory/ssh-agent@v0.10.0
         with:
           ssh-private-key: ${{ secrets.PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY }}
 
       - name: Setup dotfiles
+        if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}
         env:
           EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
           SYSTEM: ${{ matrix.system }}
@@ -69,6 +75,7 @@ jobs:
           #              └─ Simulate inputting an email address into the config.
 
       - uses: jdx/mise-action@v4
+        if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}
         with:
           install: true
           cache: true
@@ -82,6 +89,7 @@ jobs:
       #     rm -rf "${tmp_dir}"
 
       - name: Test file existence
+        if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}
         env:
           SYSTEM: ${{ matrix.system }}
         run: |

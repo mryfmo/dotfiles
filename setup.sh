@@ -68,7 +68,7 @@ function keepalive_sudo_linux() {
 }
 
 function keepalive_sudo_macos() {
-    # ref. https://github.com/reitermarkus/dotfiles/blob/main/.sh#L85-L116
+    # ref. https://github.com/reitermarkus/dotfiles/blob/master/.sh#L85-L116
     (
         builtin read -r -s -p "Password: " < /dev/tty
         builtin echo "add-generic-password -U -s 'dotfiles' -a '${USER}' -w '${REPLY}'"

@@ -23,21 +23,28 @@ on:
 
 jobs:
   build:
-    # This workflow requires private repository access and benchmark token.
-    # Skip known secret-less contexts to avoid failing at SSH setup.
-    if: ${{ github.actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: macos-14 # M1 Mac
     env:
       # DOTFILES_DEBUG: 1
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      HAS_PRIVATE_DOTFILES_KEY: ${{ secrets.PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY != '' }}
+      HAS_EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS != '' }}
+      HAS_BENCHMARK_TOKEN: ${{ secrets.MY_DOTFILES_BENCHMARK != '' }}
 
     steps:
+      - name: Explain skipped private integration
+        if: ${{ env.HAS_PRIVATE_DOTFILES_KEY != 'true' || env.HAS_EMAIL_ADDRESS != 'true' }}
+        run: |
+          echo "Skipping macOS private dotfiles integration because required repository secrets are not configured."
+
       - name: Set up SSH agent and add the private deploy key for the private dotfiles repo
+        if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}
         uses: webfactory/ssh-agent@v0.10.0
         with:
           ssh-private-key: ${{ secrets.PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY }}
 
       - name: Setup dotfiles
+        if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}
         env:
           EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
           EVENT_NAME: ${{ github.event_name }}
@@ -58,18 +65,22 @@ jobs:
           #              └─ Simulate inputting an email address into the chezmoi's config.
 
       - name: Unset gpg
+        if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}
         run: |
           git config --global commit.gpgsign false
 
       - name: Run benchmark
+        if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}
         run: |
           brew install gnu-time chezmoi
           $(chezmoi source-path)/../scripts/run_benchmark.sh > result.json
 
       - name: Dump result.json
+        if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}
         run: cat result.json
 
       - name: Set flag for auto-push in the benchmark action
+        if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}
         run: |
           if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
             echo "auto_push=true" >> $GITHUB_ENV
@@ -78,6 +89,7 @@ jobs:
           fi
 
       - name: Store benchmark result
+        if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' && env.HAS_BENCHMARK_TOKEN == 'true' }}
         uses: benchmark-action/github-action-benchmark@v1
         with:
           name: MacOS benchmark
@@ -93,11 +105,13 @@ jobs:
           benchmark-data-dir-path: "."
 
       - uses: jdx/mise-action@v4
+        if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}
         with:
           install: true
           cache: true
 
       - name: Test file existence
+        if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}
         run: |
           brew install bats-core
 

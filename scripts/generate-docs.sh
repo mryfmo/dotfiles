@@ -31,7 +31,7 @@ function main() {
 }
 
 #
-# @description Trust the local `mise.toml` and install the custom `shdoc` plugin.
+# @description Trust the local `mise.toml` and try to install the optional custom `shdoc` plugin.
 #
 function ensure_shdoc_plugin_installed() {
     mise trust --yes
@@ -40,7 +40,9 @@ function ensure_shdoc_plugin_installed() {
         return
     fi
 
-    mise plugins install "${SHDOC_PLUGIN_NAME}" "${SHDOC_PLUGIN_REPOSITORY}"
+    if ! mise plugins install "${SHDOC_PLUGIN_NAME}" "${SHDOC_PLUGIN_REPOSITORY}"; then
+        printf 'warning: optional shdoc plugin is unavailable; generated docs will use fallback rendering.\n' >&2
+    fi
 }
 
 #

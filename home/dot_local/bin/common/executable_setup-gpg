@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+# @file home/dot_local/bin/common/executable_setup-gpg
+# @brief Prepare the local GnuPG secret keyring when no private source restored it.
+# @description
+#   Checks whether a local GnuPG secret key already exists. If not, starts the
+#   standard interactive `gpg --full-generate-key` flow. Secret keys and trust
+#   databases are intentionally not stored in the public chezmoi source state.
+
+set -Eeuo pipefail
+
+# @description Return success when at least one GnuPG secret key exists.
+function has_gpg_secret_key() {
+    gpg --batch --list-secret-keys --with-colons 2>/dev/null | grep -q '^sec:'
+}
+
+# @description Create a GnuPG secret key through the standard interactive flow.
+function generate_gpg_secret_key() {
+    if [[ ! -t 0 ]]; then
+        printf 'No local GnuPG secret key was found.\n' >&2
+        printf 'Run `gpg --full-generate-key` interactively or restore keys from the private chezmoi source.\n' >&2
+        return 1
+    fi
+
+    printf 'No local GnuPG secret key was found. Starting interactive key generation.\n' >&2
+    gpg --full-generate-key
+}
+
+# @description Run the GnuPG setup flow.
+function main() {
+    if has_gpg_secret_key; then
+        printf 'GnuPG secret key already exists. Nothing to do.\n'
+        return 0
+    fi
+
+    generate_gpg_secret_key
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main
+fi

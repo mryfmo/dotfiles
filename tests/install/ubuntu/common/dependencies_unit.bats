@@ -125,7 +125,9 @@ readonly SCRIPT_PATH="./install/ubuntu/common/dependencies.sh"
 }
 
 @test "[ubuntu-common] script enables xtrace when DOTFILES_DEBUG is set" {
-    run env DOTFILES_DEBUG=1 bash -c '
+    run env DOTFILES_DEBUG=1 TRACE_PATH="${BATS_TEST_TMPDIR}/xtrace.log" bash -c '
+        exec 9>"${TRACE_PATH}"
+        BASH_XTRACEFD=9
         source "'"${SCRIPT_PATH}"'"
 
         case "$-" in

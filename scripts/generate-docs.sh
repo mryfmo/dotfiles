@@ -13,6 +13,7 @@ readonly DOCS_DIR="docs"
 readonly REFERENCE_DIR="${DOCS_DIR}/reference"
 readonly LANDING_PAGE="${DOCS_DIR}/index.md"
 readonly CATALOG_PAGE="${DOCS_DIR}/catalog.md"
+readonly CATALOG_HREF="catalog.md"
 readonly TEMPLATE_MAPPING_PAGE="${REFERENCE_DIR}/chezmoi-templates.md"
 readonly LANDING_PREVIEW_LIMIT=6
 readonly SHDOC_PLUGIN_NAME="shdoc"
@@ -69,7 +70,9 @@ function collect_source_files() {
             ":(glob)scripts/**/*.sh" \
             ":(glob)home/dot_local/bin/**" \
             ":(glob)home/dot_claude/hooks/**" \
-            ":(glob)home/dot_config/alias/*.sh"
+            ":(glob)home/dot_config/alias/*.sh" | while IFS= read -r source_path; do
+            [[ -f "${source_path}" ]] && printf '%s\n' "${source_path}"
+        done
         return
     fi
 
@@ -693,7 +696,7 @@ The site is rebuilt from tracked shell sources every time.
 
 - `mise exec shdoc -- shdoc` renders structured script references when annotations exist
 - fallback pages still expose aliases, functions, and raw source when `shdoc` is not enough
-- `mkdocs-toc-md` writes the full navigation tree to <a href="catalog.md">catalog.md</a>
+- `mkdocs-toc-md` writes the full navigation tree to <a href="${CATALOG_HREF}">${CATALOG_HREF}</a>
 - `uv run --with` keeps the MkDocs toolchain ephemeral
 
 </div>
@@ -718,7 +721,7 @@ function print_catalog_card() {
 
 The homepage stays curated, while the complete generated table of contents lives on its own page.
 
-- <a href="catalog.md">Open the full catalog</a>
+- <a href="${CATALOG_HREF}">Open the full catalog</a>
 - **${source_count}** source reference pages are generated from tracked shell assets
 - **${template_count}** chezmoi wrappers are mapped back to their source scripts
 
@@ -825,7 +828,7 @@ function print_category_card() {
     done < <(collect_source_files | LC_ALL=C sort)
 
     if [[ "${total_count}" -gt "${shown_count}" ]]; then
-        printf '\n<a href="catalog.md">%s more entries in the full catalog</a>\n' "$((total_count - shown_count))"
+        printf '\n<a href="%s">%s more entries in the full catalog</a>\n' "${CATALOG_HREF}" "$((total_count - shown_count))"
     fi
 
     printf '\n</div>\n'
@@ -857,7 +860,7 @@ function generate_landing_page() {
         printf '# Dotfiles Shell Automation Docs\n\n'
         printf 'Reference for installation flows, local commands, aliases, Claude hooks, and chezmoi wrappers maintained in this repository.\n\n'
         printf '<div class="landing-actions" markdown="1">\n\n'
-        printf '<a class="md-button md-button--primary" href="catalog.md">Browse Full Catalog</a>\n'
+        printf '<a class="md-button md-button--primary" href="%s">Browse Full Catalog</a>\n' "${CATALOG_HREF}"
         printf '[View Template Mapping](reference/chezmoi-templates.md){ .md-button }\n'
         printf '\n</div>\n\n'
         printf '</div>\n\n'

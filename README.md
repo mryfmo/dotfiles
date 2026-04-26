@@ -17,6 +17,7 @@
 
 [![anthropics/claude-code](https://img.shields.io/github/v/tag/anthropics/claude-code?color=D97757&display_name=release&label=claude-code&logo=claude&logoColor=D97757&sort=semver)](https://github.com/anthropics/claude-code)
 [![openai/codex](https://img.shields.io/github/v/tag/openai/codex?color=0081A5&display_name=release&label=codex&logo=openaigym&logoColor=0081A5&sort=semver)](https://github.com/openai/codex)
+[![NousResearch/hermes-agent](https://img.shields.io/github/v/tag/NousResearch/hermes-agent?color=6B46C1&display_name=release&label=hermes-agent&logo=sparkles&logoColor=6B46C1&sort=semver)](https://github.com/NousResearch/hermes-agent)
 
 </div>
 

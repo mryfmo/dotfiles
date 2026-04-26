@@ -13,7 +13,9 @@ readonly DOCS_DIR="docs"
 readonly REFERENCE_DIR="${DOCS_DIR}/reference"
 readonly LANDING_PAGE="${DOCS_DIR}/index.md"
 readonly CATALOG_PAGE="${DOCS_DIR}/catalog.md"
-readonly CATALOG_HREF="catalog.md"
+# CATALOG_HREF is emitted from docs/index.md. Use the rendered directory path
+# because MkDocs does not rewrite links inside raw HTML attributes.
+readonly CATALOG_HREF="catalog/"
 readonly TEMPLATE_MAPPING_PAGE="${REFERENCE_DIR}/chezmoi-templates.md"
 readonly LANDING_PREVIEW_LIMIT=6
 readonly SHDOC_PLUGIN_NAME="shdoc"
@@ -696,7 +698,7 @@ The site is rebuilt from tracked shell sources every time.
 
 - `mise exec shdoc -- shdoc` renders structured script references when annotations exist
 - fallback pages still expose aliases, functions, and raw source when `shdoc` is not enough
-- `mkdocs-toc-md` writes the full navigation tree to <a href="${CATALOG_HREF}">${CATALOG_HREF}</a>
+- `mkdocs-toc-md` writes the full navigation tree to [catalog/](catalog/)
 - `uv run --with` keeps the MkDocs toolchain ephemeral
 
 </div>
@@ -721,7 +723,7 @@ function print_catalog_card() {
 
 The homepage stays curated, while the complete generated table of contents lives on its own page.
 
-- <a href="${CATALOG_HREF}">Open the full catalog</a>
+- [Open the full catalog](${CATALOG_HREF})
 - **${source_count}** source reference pages are generated from tracked shell assets
 - **${template_count}** chezmoi wrappers are mapped back to their source scripts
 
@@ -828,7 +830,7 @@ function print_category_card() {
     done < <(collect_source_files | LC_ALL=C sort)
 
     if [[ "${total_count}" -gt "${shown_count}" ]]; then
-        printf '\n<a href="%s">%s more entries in the full catalog</a>\n' "${CATALOG_HREF}" "$((total_count - shown_count))"
+        printf '\n[%s more entries in the full catalog](%s)\n' "$((total_count - shown_count))" "${CATALOG_HREF}"
     fi
 
     printf '\n</div>\n'

@@ -3044,7 +3044,7 @@
 
 
 <h1 id="scriptsrun_unit_testsh">scripts/run_unit_test.sh<a class="headerlink" href="#scriptsrun_unit_testsh" title="Permanent link">&para;</a></h1>
-<p>Dispatches the common Bats suite and the OS-specific Bats suite selected by the <code>OS</code> environment variable.</p>
+<p>Dispatches the common Bats suite and the OS/system-specific Bats suite selected by the <code>OS</code> and <code>SYSTEM</code> environment variables.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>scripts/run_unit_test.sh</code></li>
@@ -3063,8 +3063,8 @@
 <span class="c1"># @file scripts/run_unit_test.sh</span>
 <span class="c1"># @brief Run the repository&#39;s shell unit tests.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Dispatches the common Bats suite and the OS-specific Bats suite selected by</span>
-<span class="c1">#   the `OS` environment variable.</span>
+<span class="c1">#   Dispatches the common Bats suite and the OS/system-specific Bats suite</span>
+<span class="c1">#   selected by the `OS` and `SYSTEM` environment variables.</span>
 
 <span class="c1"># Keep this wrapper minimal: CI invokes this script through `bashcov`.</span>
 <span class="c1"># `-u` is intentionally omitted because strict nounset can propagate through</span>
@@ -3088,8 +3088,16 @@
 <span class="w">        </span>bats<span class="w"> </span>-r<span class="w"> </span><span class="s2">&quot;tests/install/macos/common/&quot;</span>
 
 <span class="w">    </span><span class="k">elif</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">OS</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;ubuntu-latest&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="c1"># Ubuntu-only install tests.</span>
+<span class="w">        </span><span class="c1"># Ubuntu install tests shared by client and server targets.</span>
 <span class="w">        </span>bats<span class="w"> </span>-r<span class="w"> </span><span class="s2">&quot;tests/install/ubuntu/common/&quot;</span>
+
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SYSTEM</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;client&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SYSTEM</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;server&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="c1"># Ubuntu install tests for the selected system target.</span>
+<span class="w">            </span>bats<span class="w"> </span>-r<span class="w"> </span><span class="s2">&quot;tests/install/ubuntu/</span><span class="si">${</span><span class="nv">SYSTEM</span><span class="si">}</span><span class="s2">/&quot;</span>
+<span class="w">        </span><span class="k">else</span>
+<span class="w">            </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">OS</span><span class="si">}</span><span class="s2"> and </span><span class="si">${</span><span class="nv">SYSTEM</span><span class="si">}</span><span class="s2"> are not supported&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">else</span>
 <span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">OS</span><span class="si">}</span><span class="s2"> and </span><span class="si">${</span><span class="nv">SYSTEM</span><span class="si">}</span><span class="s2"> are not supported&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>

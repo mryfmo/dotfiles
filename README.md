@@ -170,6 +170,7 @@ wget -O ~/.vimrc https://raw.githubusercontent.com/mryfmo/dotfiles/main/home/dot
 
 Inspiration and code was taken from many sources, including:
 
+- Original repository: [shunk031/dotfiles](https://github.com/shunk031/dotfiles).
 - [twpayne/chezmoi](https://github.com/twpayne/chezmoi) from [twpayne](https://github.com/twpayne).
 - [alrra/dotfiles](https://github.com/alrra/dotfiles): macOS / Ubuntu dotfiles from [@alrra](https://github.com/alrra).
 - [b4b4r07/dotfiles](https://github.com/b4b4r07/dotfiles): A repository that gathered files starting with dot from [@b4b4r07](https://github.com/b4b4r07).

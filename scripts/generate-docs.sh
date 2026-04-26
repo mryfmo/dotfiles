@@ -34,6 +34,11 @@ function main() {
 # @description Trust the local `mise.toml` and try to install the optional custom `shdoc` plugin.
 #
 function ensure_shdoc_plugin_installed() {
+    if ! command -v mise > /dev/null 2>&1; then
+        printf 'warning: mise is unavailable; generated docs will use fallback rendering.\n' >&2
+        return
+    fi
+
     mise trust --yes
 
     if mise plugins ls | grep -qx "${SHDOC_PLUGIN_NAME}"; then
@@ -688,7 +693,7 @@ The site is rebuilt from tracked shell sources every time.
 
 - `mise exec shdoc -- shdoc` renders structured script references when annotations exist
 - fallback pages still expose aliases, functions, and raw source when `shdoc` is not enough
-- `mkdocs-toc-md` writes the full navigation tree to [catalog.md](catalog.md)
+- `mkdocs-toc-md` writes the full navigation tree to <a href="catalog.md">catalog.md</a>
 - `uv run --with` keeps the MkDocs toolchain ephemeral
 
 </div>
@@ -713,7 +718,7 @@ function print_catalog_card() {
 
 The homepage stays curated, while the complete generated table of contents lives on its own page.
 
-- [Open the full catalog](catalog.md)
+- <a href="catalog.md">Open the full catalog</a>
 - **${source_count}** source reference pages are generated from tracked shell assets
 - **${template_count}** chezmoi wrappers are mapped back to their source scripts
 
@@ -820,7 +825,7 @@ function print_category_card() {
     done < <(collect_source_files | LC_ALL=C sort)
 
     if [[ "${total_count}" -gt "${shown_count}" ]]; then
-        printf '\n[%s more entries in the full catalog](catalog.md)\n' "$((total_count - shown_count))"
+        printf '\n<a href="catalog.md">%s more entries in the full catalog</a>\n' "$((total_count - shown_count))"
     fi
 
     printf '\n</div>\n'
@@ -852,7 +857,7 @@ function generate_landing_page() {
         printf '# Dotfiles Shell Automation Docs\n\n'
         printf 'Reference for installation flows, local commands, aliases, Claude hooks, and chezmoi wrappers maintained in this repository.\n\n'
         printf '<div class="landing-actions" markdown="1">\n\n'
-        printf '[Browse Full Catalog](catalog.md){ .md-button .md-button--primary }\n'
+        printf '<a class="md-button md-button--primary" href="catalog.md">Browse Full Catalog</a>\n'
         printf '[View Template Mapping](reference/chezmoi-templates.md){ .md-button }\n'
         printf '\n</div>\n\n'
         printf '</div>\n\n'

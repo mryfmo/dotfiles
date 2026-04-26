@@ -7,8 +7,8 @@ on:
       - ".github/workflows/ubuntu.yaml"
       - "setup.sh"
       - "install/ubuntu/**"
-      - ".chezmoiscripts/ubuntu/**"
-      - "dot_tmux.conf.d/os/ubuntu.conf"
+      - "home/.chezmoiscripts/ubuntu/**"
+      - "home/dot_tmux.conf.d/os/ubuntu_*.conf"
       - "tests/install/ubuntu/**"
 
   pull_request:
@@ -17,8 +17,8 @@ on:
       - ".github/workflows/ubuntu.yaml"
       - "setup.sh"
       - "install/ubuntu/**"
-      - ".chezmoiscripts/ubuntu/**"
-      - "dot_tmux.conf.d/os/ubuntu.conf"
+      - "home/.chezmoiscripts/ubuntu/**"
+      - "home/dot_tmux.conf.d/os/ubuntu_*.conf"
       - "tests/install/ubuntu/**"
 
 permissions:

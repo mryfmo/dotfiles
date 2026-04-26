@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+
+# @file home/dot_local/bin/common/executable_start-cognee-mcp
+# @brief Run the local Cognee MCP server over Streamable HTTP.
+# @description
+#   Starts the optional shared Cognee memory service for Hermes, Codex, and
+#   Claude Code. Configure Cognee secrets and database/model settings through
+#   the target machine environment or private chezmoi source before starting.
+
+set -Eeuo pipefail
+
+if [ "${DOTFILES_DEBUG:-}" ]; then
+    set -x
+fi
+
+readonly COGNEE_MCP_HOST="${COGNEE_MCP_HOST:-127.0.0.1}"
+readonly COGNEE_MCP_PORT="${COGNEE_MCP_PORT:-8000}"
+readonly COGNEE_MCP_PATH="${COGNEE_MCP_PATH:-/mcp}"
+readonly COGNEE_MCP_TRANSPORT="${COGNEE_MCP_TRANSPORT:-http}"
+
+#
+# @description Resolve the cognee-mcp executable installed by uv tool.
+# @stdout Absolute or shell-resolved path to cognee-mcp.
+#
+function resolve_cognee_mcp() {
+    local uv_tool_bin="${HOME}/.local/bin/cognee-mcp"
+    if [ -x "${uv_tool_bin}" ]; then
+        printf '%s\n' "${uv_tool_bin}"
+        return 0
+    fi
+
+    if command -v cognee-mcp > /dev/null 2>&1; then
+        command -v cognee-mcp
+        return 0
+    fi
+
+    printf 'cognee-mcp is not installed. Enable cognee.install and re-run chezmoi apply, or run install/common/cognee.sh.\n' >&2
+    return 1
+}
+
+#
+# @description Start Cognee MCP with the endpoint used by generated agent configs.
+#
+function main() {
+    local cognee_mcp_bin
+    cognee_mcp_bin="$(resolve_cognee_mcp)"
+    exec "${cognee_mcp_bin}" \
+        --transport "${COGNEE_MCP_TRANSPORT}" \
+        --host "${COGNEE_MCP_HOST}" \
+        --port "${COGNEE_MCP_PORT}" \
+        --path "${COGNEE_MCP_PATH}"
+}
+
+main "$@"

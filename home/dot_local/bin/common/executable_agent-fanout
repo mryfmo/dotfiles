@@ -1,0 +1,156 @@
+#!/usr/bin/env bash
+# @file agent-fanout
+# @brief Run Codex and Claude Code in parallel for comparative agent work.
+# @description
+#   Runs Codex and Claude Code with the same prompt, stores each result under
+#   `.agents/runs/`, and prints the output directory. This helper is intended
+#   for read-only reviews, design comparisons, and isolated worktree tasks.
+#   Do not use it to let both agents edit the same worktree concurrently.
+
+set -euo pipefail
+
+# @description Print usage information.
+function usage() {
+    cat <<'USAGE'
+Usage: agent-fanout [--dry-run] [--no-codex] [--no-claude] [--output-dir DIR] [PROMPT...]
+
+Run Codex and Claude Code in parallel with the same prompt.
+If PROMPT is omitted, the prompt is read from stdin.
+
+Environment variables:
+  AGENT_FANOUT_CODEX_COMMAND   Codex command prefix. Default: codex exec --full-auto
+  AGENT_FANOUT_CLAUDE_COMMAND  Claude command prefix. Default: claude -p --max-turns 15
+
+Notes:
+  - Use this helper for read-only comparison in one worktree.
+  - For implementation, run it inside separate worktrees or disable one writer.
+  - Both agents should use the shared Cognee MCP configuration when enabled locally.
+USAGE
+}
+
+run_codex=true
+run_claude=true
+dry_run=false
+output_dir=""
+args=()
+
+while (($#)); do
+    case "$1" in
+        --help|-h)
+            usage
+            exit 0
+            ;;
+        --dry-run)
+            dry_run=true
+            shift
+            ;;
+        --no-codex)
+            run_codex=false
+            shift
+            ;;
+        --no-claude)
+            run_claude=false
+            shift
+            ;;
+        --output-dir)
+            output_dir="${2:?--output-dir requires a directory}"
+            shift 2
+            ;;
+        --)
+            shift
+            args+=("$@")
+            break
+            ;;
+        *)
+            args+=("$1")
+            shift
+            ;;
+    esac
+done
+
+if [[ ${#args[@]} -gt 0 ]]; then
+    prompt="${args[*]}"
+else
+    prompt="$(cat)"
+fi
+
+if [[ -z ${prompt//[[:space:]]/} ]]; then
+    usage >&2
+    exit 2
+fi
+
+if ! $run_codex && ! $run_claude; then
+    echo "At least one agent must be enabled." >&2
+    exit 2
+fi
+
+if [[ -z $output_dir ]]; then
+    timestamp="$(date +%Y%m%d-%H%M%S)"
+    output_dir=".agents/runs/${timestamp}-fanout"
+fi
+mkdir -p "$output_dir"
+printf '%s\n' "$prompt" >"$output_dir/prompt.txt"
+
+shared_prefix='Before repository-specific decisions, use Cognee recall/search when the Cognee MCP server is enabled. Do not save secrets, tokens, raw logs, temporary PR state, or transient todos. Do not delete, prune, or forget memory. Save only durable facts after completion.'
+full_prompt="${shared_prefix}
+
+Task:
+${prompt}"
+
+pids=()
+labels=()
+
+if $run_codex; then
+    if ! command -v codex >/dev/null 2>&1; then
+        echo "codex command not found" >"$output_dir/codex.log"
+    else
+        codex_command=${AGENT_FANOUT_CODEX_COMMAND:-codex exec --full-auto}
+        if $dry_run; then
+            printf 'DRY RUN: %s <prompt>\n' "$codex_command" >"$output_dir/codex.log"
+        else
+            bash -lc 'cmd=$1; prompt=$2; eval "$cmd" "\$prompt"' _ "$codex_command" "$full_prompt" >"$output_dir/codex.log" 2>&1 &
+            pids+=("$!")
+            labels+=("codex")
+        fi
+    fi
+fi
+
+if $run_claude; then
+    if ! command -v claude >/dev/null 2>&1; then
+        echo "claude command not found" >"$output_dir/claude.log"
+    else
+        claude_command=${AGENT_FANOUT_CLAUDE_COMMAND:-claude -p --max-turns 15}
+        if $dry_run; then
+            printf 'DRY RUN: %s <prompt>\n' "$claude_command" >"$output_dir/claude.log"
+        else
+            bash -lc 'cmd=$1; prompt=$2; eval "$cmd" "\$prompt"' _ "$claude_command" "$full_prompt" >"$output_dir/claude.log" 2>&1 &
+            pids+=("$!")
+            labels+=("claude")
+        fi
+    fi
+fi
+
+status=0
+for index in "${!pids[@]}"; do
+    if ! wait "${pids[$index]}"; then
+        echo "${labels[$index]} failed; see $output_dir/${labels[$index]}.log" >&2
+        status=1
+    fi
+done
+
+{
+    echo "Output directory: $output_dir"
+    echo
+    echo "Prompt:"
+    sed 's/^/  /' "$output_dir/prompt.txt"
+    echo
+    for log in "$output_dir"/*.log; do
+        [[ -e $log ]] || continue
+        echo "## $(basename "$log")"
+        tail -n 80 "$log" | sed 's/^/  /'
+        echo
+    done
+} >"$output_dir/summary.txt"
+
+cat "$output_dir/summary.txt"
+exit "$status"

@@ -1,0 +1,14 @@
+version: 1
+summary: Parallel Hermes orchestration of Codex and Claude Code with shared Cognee MCP memory.
+triggers:
+  - hermes orchestrates codex and claude code
+  - parallel agent review
+  - cognee shared memory
+instructions:
+  - Treat Hermes as the orchestrator and Codex/Claude Code as peer coding agents.
+  - Prefer Cognee MCP HTTP as the shared memory backend.
+  - Recall relevant Cognee memory before repository-specific decisions.
+  - Save only durable facts after task completion.
+  - Do not save secrets, raw logs, transient CI state, or temporary todo lists.
+  - Do not run Codex and Claude Code as writers in the same worktree.
+  - For implementation, use separate branches or worktrees, then compare outputs.

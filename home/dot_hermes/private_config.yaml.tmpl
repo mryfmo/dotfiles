@@ -362,6 +362,23 @@ plugins:
   enabled: []
   disabled: []
 mcp_servers:
+  cognee_memory:
+    enabled: false
+    url: http://127.0.0.1:8000/mcp
+    timeout: 180
+    connect_timeout: 60
+    tools:
+      include:
+      - recall
+      - search
+      - remember
+      - save_interaction
+      - cognify_status
+      - improve
+      prompts: false
+      resources: false
+    sampling:
+      enabled: false
   context7:
     enabled: false
     command: npx

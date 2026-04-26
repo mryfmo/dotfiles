@@ -1,0 +1,5 @@
+{{- if hasKey . "cognee" -}}
+{{- if get .cognee "install" -}}
+{{ include "../install/common/cognee.sh" }}
+{{- end -}}
+{{- end -}}

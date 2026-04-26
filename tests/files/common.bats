@@ -5,7 +5,6 @@
     files_exists=(
         "${HOME}/.config/git/ignore"
         "${HOME}/.config/git/config"
-        "${HOME}/.config/jupyter/lab/user-settings/@jupyterlab/terminal-extension/plugin.jupyterlab-settings.json"
         "${HOME}/.config/tango.yml"
         "${HOME}/.local/bin/common/dev"
         "${HOME}/.local/bin/common/setup-gh"
@@ -19,13 +18,5 @@
     for file in "${files_exists[@]}"; do
         echo "Checking ${file}"
         [ -f "${file}" ]
-    done
-
-    directories_exists=(
-        "${HOME}/.spacemacs.d"
-    )
-    for directory in "${directories_exists[@]}"; do
-        echo "Checking ${directory}"
-        [ -d "${directory}" ]
     done
 }

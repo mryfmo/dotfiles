@@ -14,7 +14,7 @@
         <link rel="prev" href="../executable_git-delete-merged-branches/">
       
       
-        <link rel="next" href="../executable_setup-python-env/">
+        <link rel="next" href="../executable_setup-gpg/">
       
       
         
@@ -1234,6 +1234,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_setup-gpg/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_setup-gpg
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -3024,7 +3052,7 @@
 
 
 <h1 id="homedot_localbincommonexecutable_setup-gh">home/dot_local/bin/common/executable_setup-gh<a class="headerlink" href="#homedot_localbincommonexecutable_setup-gh" title="Permanent link">&para;</a></h1>
-<p>Logs into GitHub through the GitHub CLI and registers the local public SSH key on the authenticated account.</p>
+<p>Logs into GitHub through the GitHub CLI, ensures the local SSH public key exists through an explicit interactive flow, and registers the public key on the authenticated account.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_setup-gh</code></li>
@@ -3034,8 +3062,10 @@
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>add_ssh_key_to_github</code></li>
+<li><code>ensure_default_ssh_key</code></li>
 <li><code>login_to_github</code></li>
 <li><code>main</code></li>
+<li><code>ssh_key_comment</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
@@ -3043,20 +3073,65 @@
 <span class="c1"># @file home/dot_local/bin/common/executable_setup-gh</span>
 <span class="c1"># @brief Authenticate `gh` and upload the local SSH key.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Logs into GitHub through the GitHub CLI and registers the local public SSH</span>
-<span class="c1">#   key on the authenticated account.</span>
+<span class="c1">#   Logs into GitHub through the GitHub CLI, ensures the local SSH public key</span>
+<span class="c1">#   exists through an explicit interactive flow, and registers the public key on</span>
+<span class="c1">#   the authenticated account.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
+
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">DEFAULT_SSH_KEY_PATH</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.ssh/id_ed25519&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">DEFAULT_SSH_PUBLIC_KEY_PATH</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_SSH_KEY_PATH</span><span class="si">}</span><span class="s2">.pub&quot;</span>
 
 <span class="c1"># @description Authenticate GitHub CLI against github.com over HTTPS.</span>
 <span class="k">function</span><span class="w"> </span>login_to_github<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span>gh<span class="w"> </span>auth<span class="w"> </span>login<span class="w"> </span>-h<span class="w"> </span>github.com<span class="w"> </span>-p<span class="w"> </span>https
 <span class="o">}</span>
 
+<span class="c1"># @description Return the email address used as the SSH key comment.</span>
+<span class="k">function</span><span class="w"> </span>ssh_key_comment<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>configured_email
+<span class="w">    </span><span class="nv">configured_email</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>--get<span class="w"> </span>user.email<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span><span class="s2">&quot;</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">configured_email</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">configured_email</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s@%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">USER</span><span class="k">:-</span><span class="nv">user</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>hostname<span class="w"> </span>-s<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span>hostname<span class="k">)</span><span class="s2">&quot;</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Create the default SSH key through ssh-keygen when it is missing.</span>
+<span class="k">function</span><span class="w"> </span>ensure_default_ssh_key<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-r<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_SSH_PUBLIC_KEY_PATH</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_SSH_KEY_PATH</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>!<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_SSH_PUBLIC_KEY_PATH</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>ssh-keygen<span class="w"> </span>-y<span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_SSH_KEY_PATH</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_SSH_PUBLIC_KEY_PATH</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span>chmod<span class="w"> </span><span class="m">0644</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_SSH_PUBLIC_KEY_PATH</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-t<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Public SSH key not found: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_SSH_PUBLIC_KEY_PATH</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Run `ssh-keygen -t ed25519 -f %s -C &quot;$(git config --global --get user.email)&quot;` or restore the key from private chezmoi state.\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_SSH_KEY_PATH</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.ssh&quot;</span>
+<span class="w">    </span>chmod<span class="w"> </span><span class="m">0700</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.ssh&quot;</span>
+
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Default SSH key not found. Creating %s interactively.\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_SSH_KEY_PATH</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span>ssh-keygen<span class="w"> </span>-t<span class="w"> </span>ed25519<span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_SSH_KEY_PATH</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>-C<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>ssh_key_comment<span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span>chmod<span class="w"> </span><span class="m">0600</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_SSH_KEY_PATH</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span>chmod<span class="w"> </span><span class="m">0644</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_SSH_PUBLIC_KEY_PATH</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="o">}</span>
+
 <span class="c1"># @description Upload the local public SSH key through GitHub CLI.</span>
 <span class="k">function</span><span class="w"> </span>add_ssh_key_to_github<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>ensure_default_ssh_key
 <span class="w">    </span>gh<span class="w"> </span>auth<span class="w"> </span>refresh<span class="w"> </span>-h<span class="w"> </span>github.com<span class="w"> </span>-s<span class="w"> </span>admin:public_key
-<span class="w">    </span>gh<span class="w"> </span>ssh-key<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.ssh/id_ed25519.pub&quot;</span>
+<span class="w">    </span>gh<span class="w"> </span>ssh-key<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_SSH_PUBLIC_KEY_PATH</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="o">}</span>
 
 <span class="c1"># @description Run the GitHub authentication and SSH key setup flow.</span>

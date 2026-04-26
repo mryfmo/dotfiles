@@ -11,25 +11,25 @@
       
       
       
-        <link rel="prev" href="../misc/">
+        <link rel="prev" href="../executable_setup-gh/">
       
       
-        <link rel="next" href="../setup_timezone/">
+        <link rel="next" href="../executable_setup-python-env/">
       
       
         
       
       
-      <link rel="icon" href="../../../../../assets/images/favicon.png">
+      <link rel="icon" href="../../../../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>install/ubuntu/server/setup_locale.sh - Dotfiles Docs</title>
+        <title>home/dot_local/bin/common/executable_setup-gpg - Dotfiles Docs</title>
       
     
     
-      <link rel="stylesheet" href="../../../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../../../../assets/stylesheets/main.484c7ddc.min.css">
       
       
 
@@ -48,9 +48,9 @@
       
     
     
-      <link rel="stylesheet" href="../../../../../assets/stylesheets/extra.css">
+      <link rel="stylesheet" href="../../../../../../assets/stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -68,7 +68,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#installubuntuserversetup_localesh" class="md-skip">
+        <a href="#homedot_localbincommonexecutable_setup-gpg" class="md-skip">
           Skip to content
         </a>
       
@@ -84,7 +84,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../../.." title="Dotfiles Docs" class="md-header__button md-logo" aria-label="Dotfiles Docs" data-md-component="logo">
+    <a href="../../../../../.." title="Dotfiles Docs" class="md-header__button md-logo" aria-label="Dotfiles Docs" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -104,7 +104,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              install/ubuntu/server/setup_locale.sh
+              home/dot_local/bin/common/executable_setup-gpg
             
           </span>
         </div>
@@ -182,7 +182,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../../.." title="Dotfiles Docs" class="md-nav__button md-logo" aria-label="Dotfiles Docs" data-md-component="logo">
+    <a href="../../../../../.." title="Dotfiles Docs" class="md-nav__button md-logo" aria-label="Dotfiles Docs" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -200,7 +200,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../.." class="md-nav__link">
+      <a href="../../../../../.." class="md-nav__link">
         
   
   
@@ -227,7 +227,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../catalog/" class="md-nav__link">
+      <a href="../../../../../../catalog/" class="md-nav__link">
         
   
   
@@ -303,7 +303,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../chezmoi-templates/" class="md-nav__link">
+      <a href="../../../../../chezmoi-templates/" class="md-nav__link">
         
   
   
@@ -328,18 +328,20 @@
                 
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" checked>
         
           
           <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
@@ -360,7 +362,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -472,7 +474,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_claude/hooks/executable_enforce-uv/" class="md-nav__link">
+      <a href="../../../../dot_claude/hooks/executable_enforce-uv/" class="md-nav__link">
         
   
   
@@ -500,7 +502,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_claude/hooks/executable_format-edited-files.py/" class="md-nav__link">
+      <a href="../../../../dot_claude/hooks/executable_format-edited-files.py/" class="md-nav__link">
         
   
   
@@ -638,7 +640,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_config/alias/client/" class="md-nav__link">
+      <a href="../../../../dot_config/alias/client/" class="md-nav__link">
         
   
   
@@ -666,7 +668,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_config/alias/common/" class="md-nav__link">
+      <a href="../../../../dot_config/alias/common/" class="md-nav__link">
         
   
   
@@ -694,7 +696,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_config/alias/server/" class="md-nav__link">
+      <a href="../../../../dot_config/alias/server/" class="md-nav__link">
         
   
   
@@ -735,18 +737,20 @@
                 
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2_3" checked>
         
           
           <label class="md-nav__link" for="__nav_3_2_3" id="__nav_3_2_3_label" tabindex="0">
@@ -767,7 +771,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_2_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_2_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_2_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -782,18 +786,20 @@
                 
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2_3_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2_3_1" checked>
         
           
           <label class="md-nav__link" for="__nav_3_2_3_1" id="__nav_3_2_3_1_label" tabindex="0">
@@ -814,7 +820,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_3_2_3_1_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_3_2_3_1_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_2_3_1">
             <span class="md-nav__icon md-icon"></span>
             
@@ -879,7 +885,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/client/executable_login-ghcr/" class="md-nav__link">
+      <a href="../../client/executable_login-ghcr/" class="md-nav__link">
         
   
   
@@ -912,18 +918,20 @@
                 
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2_3_1_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2_3_1_2" checked>
         
           
           <label class="md-nav__link" for="__nav_3_2_3_1_2" id="__nav_3_2_3_1_2_label" tabindex="0">
@@ -944,7 +952,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_3_2_3_1_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_3_2_3_1_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_2_3_1_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -962,7 +970,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_cdgwq/" class="md-nav__link">
+      <a href="../executable_cdgwq/" class="md-nav__link">
         
   
   
@@ -990,7 +998,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_cdw/" class="md-nav__link">
+      <a href="../executable_cdw/" class="md-nav__link">
         
   
   
@@ -1018,7 +1026,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_chezmoi-cd/" class="md-nav__link">
+      <a href="../executable_chezmoi-cd/" class="md-nav__link">
         
   
   
@@ -1046,7 +1054,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_dev/" class="md-nav__link">
+      <a href="../executable_dev/" class="md-nav__link">
         
   
   
@@ -1074,7 +1082,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_fgc/" class="md-nav__link">
+      <a href="../executable_fgc/" class="md-nav__link">
         
   
   
@@ -1102,7 +1110,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_git-delete-merged-branches/" class="md-nav__link">
+      <a href="../executable_git-delete-merged-branches/" class="md-nav__link">
         
   
   
@@ -1130,7 +1138,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_setup-gh/" class="md-nav__link">
+      <a href="../executable_setup-gh/" class="md-nav__link">
         
   
   
@@ -1155,10 +1163,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_setup-gpg/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_setup-gpg
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1174,6 +1209,59 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metadata
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1186,7 +1274,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_setup-python-env/" class="md-nav__link">
+      <a href="../executable_setup-python-env/" class="md-nav__link">
         
   
   
@@ -1214,7 +1302,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_uv-format/" class="md-nav__link">
+      <a href="../executable_uv-format/" class="md-nav__link">
         
   
   
@@ -1297,7 +1385,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/server/cache/" class="md-nav__link">
+      <a href="../../server/cache/" class="md-nav__link">
         
   
   
@@ -1325,7 +1413,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/server/cuda/" class="md-nav__link">
+      <a href="../../server/cuda/" class="md-nav__link">
         
   
   
@@ -1353,7 +1441,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/server/history/" class="md-nav__link">
+      <a href="../../server/history/" class="md-nav__link">
         
   
   
@@ -1381,7 +1469,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/server/secrets/" class="md-nav__link">
+      <a href="../../server/secrets/" class="md-nav__link">
         
   
   
@@ -1409,7 +1497,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/server/ssh_agent/" class="md-nav__link">
+      <a href="../../server/ssh_agent/" class="md-nav__link">
         
   
   
@@ -1466,20 +1554,18 @@
                 
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
         
           
           <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
@@ -1500,7 +1586,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1565,7 +1651,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../common/chezmoi_private/" class="md-nav__link">
+      <a href="../../../../../install/common/chezmoi_private/" class="md-nav__link">
         
   
   
@@ -1593,7 +1679,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../common/gh_extensions/" class="md-nav__link">
+      <a href="../../../../../install/common/gh_extensions/" class="md-nav__link">
         
   
   
@@ -1621,7 +1707,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../common/hermes/" class="md-nav__link">
+      <a href="../../../../../install/common/hermes/" class="md-nav__link">
         
   
   
@@ -1649,7 +1735,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../common/mise/" class="md-nav__link">
+      <a href="../../../../../install/common/mise/" class="md-nav__link">
         
   
   
@@ -1677,7 +1763,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../common/sheldon/" class="md-nav__link">
+      <a href="../../../../../install/common/sheldon/" class="md-nav__link">
         
   
   
@@ -1705,7 +1791,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../common/tpm/" class="md-nav__link">
+      <a href="../../../../../install/common/tpm/" class="md-nav__link">
         
   
   
@@ -1835,7 +1921,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/arm64/prepare_arm64_system/" class="md-nav__link">
+      <a href="../../../../../install/macos/arm64/prepare_arm64_system/" class="md-nav__link">
         
   
   
@@ -1863,7 +1949,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/arm64/run/" class="md-nav__link">
+      <a href="../../../../../install/macos/arm64/run/" class="md-nav__link">
         
   
   
@@ -1946,7 +2032,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/common/brew/" class="md-nav__link">
+      <a href="../../../../../install/macos/common/brew/" class="md-nav__link">
         
   
   
@@ -1974,7 +2060,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/common/command_line_tool/" class="md-nav__link">
+      <a href="../../../../../install/macos/common/command_line_tool/" class="md-nav__link">
         
   
   
@@ -2002,7 +2088,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/common/defaults/" class="md-nav__link">
+      <a href="../../../../../install/macos/common/defaults/" class="md-nav__link">
         
   
   
@@ -2030,7 +2116,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/common/dependencies/" class="md-nav__link">
+      <a href="../../../../../install/macos/common/dependencies/" class="md-nav__link">
         
   
   
@@ -2058,7 +2144,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/common/docker/" class="md-nav__link">
+      <a href="../../../../../install/macos/common/docker/" class="md-nav__link">
         
   
   
@@ -2086,7 +2172,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/common/ghostty/" class="md-nav__link">
+      <a href="../../../../../install/macos/common/ghostty/" class="md-nav__link">
         
   
   
@@ -2114,7 +2200,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/common/mac_app_store/" class="md-nav__link">
+      <a href="../../../../../install/macos/common/mac_app_store/" class="md-nav__link">
         
   
   
@@ -2142,7 +2228,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/common/misc/" class="md-nav__link">
+      <a href="../../../../../install/macos/common/misc/" class="md-nav__link">
         
   
   
@@ -2170,7 +2256,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/common/tmux/" class="md-nav__link">
+      <a href="../../../../../install/macos/common/tmux/" class="md-nav__link">
         
   
   
@@ -2211,20 +2297,18 @@
                 
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3_3" >
         
           
           <label class="md-nav__link" for="__nav_3_3_3" id="__nav_3_3_3_label" tabindex="0">
@@ -2245,7 +2329,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_3_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_3_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3_3_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2310,7 +2394,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../client/docker/" class="md-nav__link">
+      <a href="../../../../../install/ubuntu/client/docker/" class="md-nav__link">
         
   
   
@@ -2338,7 +2422,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../client/ghostty/" class="md-nav__link">
+      <a href="../../../../../install/ubuntu/client/ghostty/" class="md-nav__link">
         
   
   
@@ -2366,7 +2450,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../client/misc/" class="md-nav__link">
+      <a href="../../../../../install/ubuntu/client/misc/" class="md-nav__link">
         
   
   
@@ -2449,7 +2533,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/dependencies/" class="md-nav__link">
+      <a href="../../../../../install/ubuntu/common/dependencies/" class="md-nav__link">
         
   
   
@@ -2477,7 +2561,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/ssh/" class="md-nav__link">
+      <a href="../../../../../install/ubuntu/common/ssh/" class="md-nav__link">
         
   
   
@@ -2505,7 +2589,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/tmux/" class="md-nav__link">
+      <a href="../../../../../install/ubuntu/common/tmux/" class="md-nav__link">
         
   
   
@@ -2538,20 +2622,18 @@
                 
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3_3_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3_3_3" >
         
           
           <label class="md-nav__link" for="__nav_3_3_3_3" id="__nav_3_3_3_3_label" tabindex="0">
@@ -2572,7 +2654,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_3_3_3_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_3_3_3_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3_3_3_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2590,7 +2672,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../misc/" class="md-nav__link">
+      <a href="../../../../../install/ubuntu/server/misc/" class="md-nav__link">
         
   
   
@@ -2615,37 +2697,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    install/ubuntu/server/setup_locale.sh
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/server/setup_locale/" class="md-nav__link">
         
   
   
@@ -2661,59 +2716,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#metadata" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Metadata
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#functions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Functions
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#source" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Source
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2726,7 +2728,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../setup_timezone/" class="md-nav__link">
+      <a href="../../../../../install/ubuntu/server/setup_timezone/" class="md-nav__link">
         
   
   
@@ -2754,7 +2756,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ssh_server/" class="md-nav__link">
+      <a href="../../../../../install/ubuntu/server/ssh_server/" class="md-nav__link">
         
   
   
@@ -2782,7 +2784,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../starship/" class="md-nav__link">
+      <a href="../../../../../install/ubuntu/server/starship/" class="md-nav__link">
         
   
   
@@ -2881,7 +2883,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../scripts/generate-docs/" class="md-nav__link">
+      <a href="../../../../../scripts/generate-docs/" class="md-nav__link">
         
   
   
@@ -2909,7 +2911,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../scripts/run_benchmark/" class="md-nav__link">
+      <a href="../../../../../scripts/run_benchmark/" class="md-nav__link">
         
   
   
@@ -2937,7 +2939,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../scripts/run_unit_test/" class="md-nav__link">
+      <a href="../../../../../scripts/run_unit_test/" class="md-nav__link">
         
   
   
@@ -3049,50 +3051,57 @@
 
 
 
-<h1 id="installubuntuserversetup_localesh">install/ubuntu/server/setup_locale.sh<a class="headerlink" href="#installubuntuserversetup_localesh" title="Permanent link">&para;</a></h1>
-<p>Generates <code>en_US.UTF-8</code> when it is missing and updates the system locale configuration.</p>
+<h1 id="homedot_localbincommonexecutable_setup-gpg">home/dot_local/bin/common/executable_setup-gpg<a class="headerlink" href="#homedot_localbincommonexecutable_setup-gpg" title="Permanent link">&para;</a></h1>
+<p>Checks whether a local GnuPG secret key already exists. If not, starts the standard interactive <code>gpg --full-generate-key</code> flow. Secret keys and trust databases are intentionally not stored in the public chezmoi source state.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Source: <code>install/ubuntu/server/setup_locale.sh</code></li>
-<li>Category: install script</li>
+<li>Source: <code>home/dot_local/bin/common/executable_setup-gpg</code></li>
+<li>Category: shell executable</li>
 <li>Renderer: <code>shell-fallback</code></li>
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
+<li><code>generate_gpg_secret_key</code></li>
+<li><code>has_gpg_secret_key</code></li>
 <li><code>main</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
 
-<span class="c1"># @file install/ubuntu/server/setup_locale.sh</span>
-<span class="c1"># @brief Ensure the preferred locale exists on Ubuntu servers.</span>
+<span class="c1"># @file home/dot_local/bin/common/executable_setup-gpg</span>
+<span class="c1"># @brief Prepare the local GnuPG secret keyring when no private source restored it.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Generates `en_US.UTF-8` when it is missing and updates the system locale</span>
-<span class="c1">#   configuration.</span>
+<span class="c1">#   Checks whether a local GnuPG secret key already exists. If not, starts the</span>
+<span class="c1">#   standard interactive `gpg --full-generate-key` flow. Secret keys and trust</span>
+<span class="c1">#   databases are intentionally not stored in the public chezmoi source state.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
-<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span><span class="nb">set</span><span class="w"> </span>-x
-<span class="k">fi</span>
+<span class="c1"># @description Return success when at least one GnuPG secret key exists.</span>
+<span class="k">function</span><span class="w"> </span>has_gpg_secret_key<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>gpg<span class="w"> </span>--batch<span class="w"> </span>--list-secret-keys<span class="w"> </span>--with-colons<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-q<span class="w"> </span><span class="s1">&#39;^sec:&#39;</span>
+<span class="o">}</span>
 
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">TARGET</span><span class="o">=</span><span class="s2">&quot;en_US.UTF-8&quot;</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Generate the target locale when the server does not have it yet.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="c1"># `locale -a` often outputs in lowercase, so we convert to lowercase for comparison</span>
-<span class="w">    </span><span class="nv">TARGET_LOWER</span><span class="o">=</span><span class="k">$(</span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TARGET</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">&#39;[:upper:]&#39;</span><span class="w"> </span><span class="s1">&#39;[:lower:]&#39;</span><span class="k">)</span>
-
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>locale<span class="w"> </span>-a<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">&#39;[:upper:]&#39;</span><span class="w"> </span><span class="s1">&#39;[:lower:]&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-qx<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TARGET_LOWER</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Generating </span><span class="nv">$TARGET</span><span class="s2"> ...&quot;</span>
-
-<span class="w">        </span>sudo<span class="w"> </span>--preserve-env<span class="o">=</span>http_proxy,https_proxy,no_proxy<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>locales
-<span class="w">        </span>sudo<span class="w"> </span>locale-gen<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TARGET</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>sudo<span class="w"> </span>update-locale<span class="w"> </span><span class="nv">LANG</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$TARGET</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="k">else</span>
-<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TARGET</span><span class="s2"> already exists.&quot;</span>
+<span class="c1"># @description Create a GnuPG secret key through the standard interactive flow.</span>
+<span class="k">function</span><span class="w"> </span>generate_gpg_secret_key<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-t<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;No local GnuPG secret key was found.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Run `gpg --full-generate-key` interactively or restore keys from the private chezmoi source.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;No local GnuPG secret key was found. Starting interactive key generation.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span>gpg<span class="w"> </span>--full-generate-key
+<span class="o">}</span>
+
+<span class="c1"># @description Run the GnuPG setup flow.</span>
+<span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>has_gpg_secret_key<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;GnuPG secret key already exists. Nothing to do.\n&#39;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>generate_gpg_secret_key
 <span class="o">}</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
@@ -3154,10 +3163,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../..", "features": ["navigation.top", "content.code.copy"], "search": "../../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../../..", "features": ["navigation.top", "content.code.copy"], "search": "../../../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../../../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

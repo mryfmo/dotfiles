@@ -1164,6 +1164,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../common/executable_setup-gpg/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_setup-gpg
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../common/executable_setup-python-env/" class="md-nav__link">
         
   
@@ -3002,7 +3030,7 @@
 
 
 <h1 id="homedot_localbinserverssh_agentsh">home/dot_local/bin/server/ssh_agent.sh<a class="headerlink" href="#homedot_localbinserverssh_agentsh" title="Permanent link">&para;</a></h1>
-<p>Starts a new <code>ssh-agent</code> process and adds the default ed25519 private key for the current user.</p>
+<p>Starts a new <code>ssh-agent</code> process and adds the default ed25519 private key for the current user when the key exists. Private keys are intentionally not stored in the public chezmoi source state.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/server/ssh_agent.sh</code></li>
@@ -3013,13 +3041,24 @@
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
 
 <span class="c1"># @file home/dot_local/bin/server/ssh_agent.sh</span>
-<span class="c1"># @brief Start `ssh-agent` and load the default SSH key.</span>
+<span class="c1"># @brief Start `ssh-agent` and load the default SSH key when present.</span>
 <span class="c1"># @description</span>
 <span class="c1">#   Starts a new `ssh-agent` process and adds the default ed25519 private key</span>
-<span class="c1">#   for the current user.</span>
+<span class="c1">#   for the current user when the key exists. Private keys are intentionally not</span>
+<span class="c1">#   stored in the public chezmoi source state.</span>
+
+<span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
+
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">DEFAULT_SSH_KEY</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.ssh/id_ed25519&quot;</span>
 
 <span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>ssh-agent<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span>
-ssh-add<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.ssh/id_ed25519&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span>
+
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-r<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_SSH_KEY</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span>ssh-add<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_SSH_KEY</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span>
+<span class="k">else</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Default SSH key not found: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_SSH_KEY</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Skipping ssh-add; restore the key from private state or create one with ssh-keygen.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="k">fi</span>
 </code></pre></div>
 
 

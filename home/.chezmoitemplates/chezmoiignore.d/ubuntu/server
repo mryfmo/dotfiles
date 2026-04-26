@@ -3,7 +3,6 @@
 .zlogout
 .p10k.zsh
 
-.config/anyconnect
 .config/powerlevel10k
 .config/sheldon/plugin_sources/client.toml
 

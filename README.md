@@ -17,6 +17,7 @@
 
 [![anthropics/claude-code](https://img.shields.io/github/v/tag/anthropics/claude-code?color=D97757&display_name=release&label=claude-code&logo=claude&logoColor=D97757&sort=semver)](https://github.com/anthropics/claude-code)
 [![openai/codex](https://img.shields.io/github/v/tag/openai/codex?color=0081A5&display_name=release&label=codex&logo=openaigym&logoColor=0081A5&sort=semver)](https://github.com/openai/codex)
+[![NousResearch/hermes-agent](https://img.shields.io/github/v/tag/NousResearch/hermes-agent?color=6B46C1&display_name=release&label=hermes-agent&logo=sparkles&logoColor=6B46C1&sort=semver)](https://github.com/NousResearch/hermes-agent)
 
 </div>
 
@@ -170,6 +171,7 @@ wget -O ~/.vimrc https://raw.githubusercontent.com/mryfmo/dotfiles/main/home/dot
 
 Inspiration and code was taken from many sources, including:
 
+- Original repository: [shunk031/dotfiles](https://github.com/shunk031/dotfiles).
 - [twpayne/chezmoi](https://github.com/twpayne/chezmoi) from [twpayne](https://github.com/twpayne).
 - [alrra/dotfiles](https://github.com/alrra/dotfiles): macOS / Ubuntu dotfiles from [@alrra](https://github.com/alrra).
 - [b4b4r07/dotfiles](https://github.com/b4b4r07/dotfiles): A repository that gathered files starting with dot from [@b4b4r07](https://github.com/b4b4r07).

@@ -13,6 +13,9 @@ readonly DOCS_DIR="docs"
 readonly REFERENCE_DIR="${DOCS_DIR}/reference"
 readonly LANDING_PAGE="${DOCS_DIR}/index.md"
 readonly CATALOG_PAGE="${DOCS_DIR}/catalog.md"
+# CATALOG_HREF is emitted from docs/index.md. Use the rendered directory path
+# because MkDocs does not rewrite links inside raw HTML attributes.
+readonly CATALOG_HREF="catalog/"
 readonly TEMPLATE_MAPPING_PAGE="${REFERENCE_DIR}/chezmoi-templates.md"
 readonly LANDING_PREVIEW_LIMIT=6
 readonly SHDOC_PLUGIN_NAME="shdoc"
@@ -34,6 +37,11 @@ function main() {
 # @description Trust the local `mise.toml` and try to install the optional custom `shdoc` plugin.
 #
 function ensure_shdoc_plugin_installed() {
+    if ! command -v mise > /dev/null 2>&1; then
+        printf 'warning: mise is unavailable; generated docs will use fallback rendering.\n' >&2
+        return
+    fi
+
     mise trust --yes
 
     if mise plugins ls | grep -qx "${SHDOC_PLUGIN_NAME}"; then
@@ -64,7 +72,9 @@ function collect_source_files() {
             ":(glob)scripts/**/*.sh" \
             ":(glob)home/dot_local/bin/**" \
             ":(glob)home/dot_claude/hooks/**" \
-            ":(glob)home/dot_config/alias/*.sh"
+            ":(glob)home/dot_config/alias/*.sh" | while IFS= read -r source_path; do
+            [[ -f "${source_path}" ]] && printf '%s\n' "${source_path}"
+        done
         return
     fi
 
@@ -688,7 +698,7 @@ The site is rebuilt from tracked shell sources every time.
 
 - `mise exec shdoc -- shdoc` renders structured script references when annotations exist
 - fallback pages still expose aliases, functions, and raw source when `shdoc` is not enough
-- `mkdocs-toc-md` writes the full navigation tree to [catalog.md](catalog.md)
+- `mkdocs-toc-md` writes the full navigation tree to [catalog/](catalog/)
 - `uv run --with` keeps the MkDocs toolchain ephemeral
 
 </div>
@@ -713,7 +723,7 @@ function print_catalog_card() {
 
 The homepage stays curated, while the complete generated table of contents lives on its own page.
 
-- [Open the full catalog](catalog.md)
+- [Open the full catalog](${CATALOG_HREF})
 - **${source_count}** source reference pages are generated from tracked shell assets
 - **${template_count}** chezmoi wrappers are mapped back to their source scripts
 
@@ -820,7 +830,7 @@ function print_category_card() {
     done < <(collect_source_files | LC_ALL=C sort)
 
     if [[ "${total_count}" -gt "${shown_count}" ]]; then
-        printf '\n[%s more entries in the full catalog](catalog.md)\n' "$((total_count - shown_count))"
+        printf '\n[%s more entries in the full catalog](%s)\n' "$((total_count - shown_count))" "${CATALOG_HREF}"
     fi
 
     printf '\n</div>\n'
@@ -852,7 +862,7 @@ function generate_landing_page() {
         printf '# Dotfiles Shell Automation Docs\n\n'
         printf 'Reference for installation flows, local commands, aliases, Claude hooks, and chezmoi wrappers maintained in this repository.\n\n'
         printf '<div class="landing-actions" markdown="1">\n\n'
-        printf '[Browse Full Catalog](catalog.md){ .md-button .md-button--primary }\n'
+        printf '<a class="md-button md-button--primary" href="%s">Browse Full Catalog</a>\n' "${CATALOG_HREF}"
         printf '[View Template Mapping](reference/chezmoi-templates.md){ .md-button }\n'
         printf '\n</div>\n\n'
         printf '</div>\n\n'

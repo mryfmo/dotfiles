@@ -126,6 +126,7 @@ jobs:
         uses: reviewdog/action-shfmt@v1
         with:
           shfmt_flags: -i 4 -sr -d
+          shfmt_version: latest
 
       - name: Run unit test
         if: ${{ needs.changes.outputs.should_test == 'true' }}

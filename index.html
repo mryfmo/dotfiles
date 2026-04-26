@@ -1027,6 +1027,34 @@
   
   
     <li class="md-nav__item">
+      <a href="reference/home/dot_local/bin/common/executable_agent-fanout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_agent-fanout
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="reference/home/dot_local/bin/common/executable_cdgwq/" class="md-nav__link">
         
   
@@ -1259,6 +1287,34 @@
     
   
     home/dot_local/bin/common/executable_setup-python-env
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/home/dot_local/bin/common/executable_start-cognee-mcp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_start-cognee-mcp
   
 
     
@@ -1636,6 +1692,34 @@
     
   
     install/common/chezmoi_private.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/install/common/cognee/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/common/cognee.sh
   
 
     
@@ -3028,12 +3112,12 @@
 </div>
 <div class="landing-stats">
 <div class="landing-stat">
-  <span class="landing-stat__value">52</span>
+  <span class="landing-stat__value">55</span>
   <span class="landing-stat__label">source docs</span>
   <span class="landing-stat__note">tracked shell assets</span>
 </div>
 <div class="landing-stat">
-  <span class="landing-stat__value">28</span>
+  <span class="landing-stat__value">29</span>
   <span class="landing-stat__label">install scripts</span>
   <span class="landing-stat__note">bootstrap and app setup</span>
 </div>
@@ -3043,7 +3127,7 @@
   <span class="landing-stat__note">maintenance and checks</span>
 </div>
 <div class="landing-stat">
-  <span class="landing-stat__value">16</span>
+  <span class="landing-stat__value">18</span>
   <span class="landing-stat__label">local commands</span>
   <span class="landing-stat__note">helpers under home/dot_local/bin</span>
 </div>
@@ -3058,7 +3142,7 @@
   <span class="landing-stat__note">common, client, server</span>
 </div>
 <div class="landing-stat">
-  <span class="landing-stat__value">24</span>
+  <span class="landing-stat__value">25</span>
   <span class="landing-stat__label">template mappings</span>
   <span class="landing-stat__note">chezmoi wrappers</span>
 </div>
@@ -3103,8 +3187,8 @@ The site is rebuilt from tracked shell sources every time.
 The homepage stays curated, while the complete generated table of contents lives on its own page.
 
 - [Open the full catalog](catalog/)
-- **52** source reference pages are generated from tracked shell assets
-- **24** chezmoi wrappers are mapped back to their source scripts
+- **55** source reference pages are generated from tracked shell assets
+- **25** chezmoi wrappers are mapped back to their source scripts
 
 </div>
 <div class="landing-card" markdown="1">
@@ -3115,17 +3199,17 @@ The homepage stays curated, while the complete generated table of contents lives
 
 Wrapper templates under `home/.chezmoiscripts` are linked back to the source scripts they include.
 
-_24 mapped wrappers_
+_25 mapped wrappers_
 
 - [Open template mapping](reference/chezmoi-templates.md)
 - `home/.chezmoiscripts/common/run_once_after_01-setup-chezmoi-private.sh.tmpl` -> [`install/common/chezmoi_private.sh`](reference/install/common/chezmoi_private.md)
 - `home/.chezmoiscripts/common/run_once_after_02-install-mise.sh.tmpl` -> [`install/common/mise.sh`](reference/install/common/mise.md)
 - `home/.chezmoiscripts/common/run_once_after_03-install-sheldon.sh.tmpl` -> [`install/common/sheldon.sh`](reference/install/common/sheldon.md)
 - `home/.chezmoiscripts/common/run_once_after_04-install-hermes.sh.tmpl` -> [`install/common/hermes.sh`](reference/install/common/hermes.md)
+- `home/.chezmoiscripts/common/run_once_after_05-install-cognee.sh.tmpl` -> [`install/common/cognee.sh`](reference/install/common/cognee.md)
 - `home/.chezmoiscripts/common/run_once_after_99-install-gh-extensions.sh.tmpl` -> [`install/common/gh_extensions.sh`](reference/install/common/gh_extensions.md)
-- `home/.chezmoiscripts/macos/run_once_02-install-mac-app-store.sh.tmpl` -> [`install/macos/common/mac_app_store.sh`](reference/install/macos/common/mac_app_store.md)
 
-[18 more mappings](reference/chezmoi-templates.md)
+[19 more mappings](reference/chezmoi-templates.md)
 
 </div>
 </div>
@@ -3141,16 +3225,16 @@ _24 mapped wrappers_
 
 Bootstrap and application setup flows stored under `install/**`.
 
-_28 documented entries_
+_29 documented entries_
 
 - [`install/common/chezmoi_private.sh`](reference/install/common/chezmoi_private.md): Bootstraps `mryfmo/dotfiles-private` using the dedicated source and config paths under the current user's home direct...
+- [`install/common/cognee.sh`](reference/install/common/cognee.md): Installs the `cognee-mcp` command used by the optional shared Cognee MCP memory server. Runtime secrets, model provid...
 - [`install/common/gh_extensions.sh`](reference/install/common/gh_extensions.md): Activates `mise` when available, ensures GitHub authentication, and installs the configured `gh` extensions.
 - [`install/common/hermes.sh`](reference/install/common/hermes.md): Downloads the upstream Hermes Agent installer and runs it with `--skip-setup` so provider selection, OAuth, and API-k...
 - [`install/common/mise.sh`](reference/install/common/mise.md): Downloads a pinned standalone `mise` release and runs `mise install` against the repository tool definitions.
 - [`install/common/sheldon.sh`](reference/install/common/sheldon.md): Downloads the latest `sheldon` binary into the user's local bin directory.
-- [`install/common/tpm.sh`](reference/install/common/tpm.md): Clones TPM, installs tmux plugins, and builds `tmux-mem-cpu-load` into the user's local prefix.
 
-[22 more entries in the full catalog](catalog/)
+[23 more entries in the full catalog](catalog/)
 
 </div>
 <div class="landing-card" markdown="1">
@@ -3176,16 +3260,16 @@ _3 documented entries_
 
 Executable helpers published from `home/dot_local/bin/**`.
 
-_16 documented entries_
+_18 documented entries_
 
 - [`home/dot_local/bin/client/executable_login-ghcr`](reference/home/dot_local/bin/client/executable_login-ghcr.md): Fetches the GHCR username and personal access token from 1Password and authenticates Docker against `ghcr.io`.
+- [`home/dot_local/bin/common/executable_agent-fanout`](reference/home/dot_local/bin/common/executable_agent-fanout.md): Runs Codex and Claude Code with the same prompt, stores each result under `.agents/runs/`, and prints the output dire...
 - [`home/dot_local/bin/common/executable_cdgwq`](reference/home/dot_local/bin/common/executable_cdgwq.md): Uses `gwq list --json` and `fzf` to select a known repository path, then changes the current shell into that directory.
 - [`home/dot_local/bin/common/executable_cdw`](reference/home/dot_local/bin/common/executable_cdw.md): Selects the newest path returned by `gwq list --json` and changes the current shell into that repository.
 - [`home/dot_local/bin/common/executable_chezmoi-cd`](reference/home/dot_local/bin/common/executable_chezmoi-cd.md): Resolves `chezmoi source-path` and changes the current shell into that repository checkout.
 - [`home/dot_local/bin/common/executable_dev`](reference/home/dot_local/bin/common/executable_dev.md): Lets the user choose a repository path from `ghq`, changes into it, and renames the current tmux session to match the...
-- [`home/dot_local/bin/common/executable_fgc`](reference/home/dot_local/bin/common/executable_fgc.md): Lists local branches, selects one with `fzf`, and checks it out.
 
-[10 more entries in the full catalog](catalog/)
+[12 more entries in the full catalog](catalog/)
 
 </div>
 <div class="landing-card" markdown="1">

@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../executable_dev/">
+        <link rel="prev" href="../../client/executable_login-ghcr/">
       
       
-        <link rel="next" href="../executable_git-delete-merged-branches/">
+        <link rel="next" href="../executable_cdgwq/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>home/dot_local/bin/common/executable_fgc - Dotfiles Docs</title>
+        <title>home/dot_local/bin/common/executable_agent-fanout - Dotfiles Docs</title>
       
     
     
@@ -68,7 +68,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#homedot_localbincommonexecutable_fgc" class="md-skip">
+        <a href="#homedot_localbincommonexecutable_agent-fanout" class="md-skip">
           Skip to content
         </a>
       
@@ -104,7 +104,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              home/dot_local/bin/common/executable_fgc
+              home/dot_local/bin/common/executable_agent-fanout
             
           </span>
         </div>
@@ -967,10 +967,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../executable_agent-fanout/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_agent-fanout
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -986,6 +1013,59 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metadata
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1107,37 +1187,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_local/bin/common/executable_fgc
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../executable_fgc/" class="md-nav__link">
         
   
   
@@ -1153,59 +1206,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#metadata" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Metadata
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#functions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Functions
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#source" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Source
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -3135,34 +3135,179 @@
 
 
 
-<h1 id="homedot_localbincommonexecutable_fgc">home/dot_local/bin/common/executable_fgc<a class="headerlink" href="#homedot_localbincommonexecutable_fgc" title="Permanent link">&para;</a></h1>
-<p>Lists local branches, selects one with <code>fzf</code>, and checks it out.</p>
+<h1 id="homedot_localbincommonexecutable_agent-fanout">home/dot_local/bin/common/executable_agent-fanout<a class="headerlink" href="#homedot_localbincommonexecutable_agent-fanout" title="Permanent link">&para;</a></h1>
+<p>Runs Codex and Claude Code with the same prompt, stores each result under <code>.agents/runs/</code>, and prints the output directory. This helper is intended for read-only reviews, design comparisons, and isolated worktree tasks. Do not use it to let both agents edit the same worktree concurrently.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Source: <code>home/dot_local/bin/common/executable_fgc</code></li>
+<li>Source: <code>home/dot_local/bin/common/executable_agent-fanout</code></li>
 <li>Category: shell executable</li>
 <li>Renderer: <code>shell-fallback</code></li>
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>fgc</code></li>
+<li><code>usage</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
-
-<span class="c1"># @file home/dot_local/bin/common/executable_fgc</span>
-<span class="c1"># @brief Fuzzy-pick and checkout a local Git branch.</span>
+<span class="c1"># @file agent-fanout</span>
+<span class="c1"># @brief Run Codex and Claude Code in parallel for comparative agent work.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Lists local branches, selects one with `fzf`, and checks it out.</span>
+<span class="c1">#   Runs Codex and Claude Code with the same prompt, stores each result under</span>
+<span class="c1">#   `.agents/runs/`, and prints the output directory. This helper is intended</span>
+<span class="c1">#   for read-only reviews, design comparisons, and isolated worktree tasks.</span>
+<span class="c1">#   Do not use it to let both agents edit the same worktree concurrently.</span>
 
-<span class="c1"># @description Checkout a branch selected from the local branch list.</span>
-<span class="k">function</span><span class="w"> </span>fgc<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>git<span class="w"> </span>checkout<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>git<span class="w"> </span><span class="k">for</span>-each-ref<span class="w"> </span>refs/heads/<span class="w"> </span>--format<span class="o">=</span><span class="s1">&#39;%(refname:short)&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>fzf<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">set</span><span class="w"> </span>-euo<span class="w"> </span>pipefail
+
+<span class="c1"># @description Print usage information.</span>
+<span class="k">function</span><span class="w"> </span>usage<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>cat<span class="w"> </span><span class="s">&lt;&lt;&#39;USAGE&#39;</span>
+<span class="s">Usage: agent-fanout [--dry-run] [--no-codex] [--no-claude] [--output-dir DIR] [PROMPT...]</span>
+
+<span class="s">Run Codex and Claude Code in parallel with the same prompt.</span>
+<span class="s">If PROMPT is omitted, the prompt is read from stdin.</span>
+
+<span class="s">Environment variables:</span>
+<span class="s">  AGENT_FANOUT_CODEX_COMMAND   Codex command prefix. Default: codex exec --full-auto</span>
+<span class="s">  AGENT_FANOUT_CLAUDE_COMMAND  Claude command prefix. Default: claude -p --max-turns 15</span>
+
+<span class="s">Notes:</span>
+<span class="s">  - Use this helper for read-only comparison in one worktree.</span>
+<span class="s">  - For implementation, run it inside separate worktrees or disable one writer.</span>
+<span class="s">  - Both agents should use the shared Cognee MCP configuration when enabled locally.</span>
+<span class="s">USAGE</span>
 <span class="o">}</span>
 
-<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">$SHELL</span><span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;echo </span><span class="si">${</span><span class="nv">ZSH_VERSION</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span>fgc
+<span class="nv">run_codex</span><span class="o">=</span><span class="nb">true</span>
+<span class="nv">run_claude</span><span class="o">=</span><span class="nb">true</span>
+<span class="nv">dry_run</span><span class="o">=</span><span class="nb">false</span>
+<span class="nv">output_dir</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
+<span class="nv">args</span><span class="o">=()</span>
+
+<span class="k">while</span><span class="w"> </span><span class="o">((</span><span class="nv">$#</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span><span class="w"> </span><span class="k">in</span>
+<span class="w">        </span>--help<span class="p">|</span>-h<span class="o">)</span>
+<span class="w">            </span>usage
+<span class="w">            </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span>--dry-run<span class="o">)</span>
+<span class="w">            </span><span class="nv">dry_run</span><span class="o">=</span><span class="nb">true</span>
+<span class="w">            </span><span class="nb">shift</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span>--no-codex<span class="o">)</span>
+<span class="w">            </span><span class="nv">run_codex</span><span class="o">=</span><span class="nb">false</span>
+<span class="w">            </span><span class="nb">shift</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span>--no-claude<span class="o">)</span>
+<span class="w">            </span><span class="nv">run_claude</span><span class="o">=</span><span class="nb">false</span>
+<span class="w">            </span><span class="nb">shift</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span>--output-dir<span class="o">)</span>
+<span class="w">            </span><span class="nv">output_dir</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">2</span><span class="p">:?--output-dir requires a directory</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">            </span><span class="nb">shift</span><span class="w"> </span><span class="m">2</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span>--<span class="o">)</span>
+<span class="w">            </span><span class="nb">shift</span>
+<span class="w">            </span><span class="nv">args</span><span class="o">+=(</span><span class="s2">&quot;</span><span class="nv">$@</span><span class="s2">&quot;</span><span class="o">)</span>
+<span class="w">            </span><span class="k">break</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span>*<span class="o">)</span>
+<span class="w">            </span><span class="nv">args</span><span class="o">+=(</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span><span class="o">)</span>
+<span class="w">            </span><span class="nb">shift</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="k">done</span>
+
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${#</span><span class="nv">args</span><span class="p">[@]</span><span class="si">}</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nv">prompt</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">args</span><span class="p">[*]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="k">else</span>
+<span class="w">    </span><span class="nv">prompt</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>cat<span class="k">)</span><span class="s2">&quot;</span>
 <span class="k">fi</span>
+
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">prompt</span><span class="p">//[[:</span><span class="nv">space</span><span class="p">:]]/</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span>usage<span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="k">fi</span>
+
+<span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">$run_codex</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>!<span class="w"> </span><span class="nv">$run_claude</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;At least one agent must be enabled.&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="k">fi</span>
+
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="nv">$output_dir</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nv">timestamp</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>date<span class="w"> </span>+%Y%m%d-%H%M%S<span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">output_dir</span><span class="o">=</span><span class="s2">&quot;.agents/runs/</span><span class="si">${</span><span class="nv">timestamp</span><span class="si">}</span><span class="s2">-fanout&quot;</span>
+<span class="k">fi</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$output_dir</span><span class="s2">&quot;</span>
+<span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$prompt</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="s2">&quot;</span><span class="nv">$output_dir</span><span class="s2">/prompt.txt&quot;</span>
+
+<span class="nv">shared_prefix</span><span class="o">=</span><span class="s1">&#39;Before repository-specific decisions, use Cognee recall/search when the Cognee MCP server is enabled. Do not save secrets, tokens, raw logs, temporary PR state, or transient todos. Do not delete, prune, or forget memory. Save only durable facts after completion.&#39;</span>
+<span class="nv">full_prompt</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">shared_prefix</span><span class="si">}</span>
+
+<span class="s2">Task:</span>
+<span class="si">${</span><span class="nv">prompt</span><span class="si">}</span><span class="s2">&quot;</span>
+
+<span class="nv">pids</span><span class="o">=()</span>
+<span class="nv">labels</span><span class="o">=()</span>
+<span class="nv">status</span><span class="o">=</span><span class="m">0</span>
+
+<span class="k">if</span><span class="w"> </span><span class="nv">$run_codex</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>codex<span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;codex command not found&quot;</span><span class="w"> </span>&gt;<span class="s2">&quot;</span><span class="nv">$output_dir</span><span class="s2">/codex.log&quot;</span>
+<span class="w">        </span><span class="nv">status</span><span class="o">=</span><span class="m">1</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nv">codex_command</span><span class="o">=</span><span class="si">${</span><span class="nv">AGENT_FANOUT_CODEX_COMMAND</span><span class="k">:-</span><span class="nv">codex</span><span class="p"> exec --full-auto</span><span class="si">}</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nv">$dry_run</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;DRY RUN: %s &lt;prompt&gt;\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$codex_command</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="s2">&quot;</span><span class="nv">$output_dir</span><span class="s2">/codex.log&quot;</span>
+<span class="w">        </span><span class="k">else</span>
+<span class="w">            </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>-a<span class="w"> </span>codex_argv<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="s2">&quot;</span><span class="nv">$codex_command</span><span class="s2">&quot;</span>
+<span class="w">            </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_argv</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$full_prompt</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="s2">&quot;</span><span class="nv">$output_dir</span><span class="s2">/codex.log&quot;</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">&amp;</span>
+<span class="w">            </span><span class="nv">pids</span><span class="o">+=(</span><span class="s2">&quot;</span><span class="nv">$!</span><span class="s2">&quot;</span><span class="o">)</span>
+<span class="w">            </span><span class="nv">labels</span><span class="o">+=(</span><span class="s2">&quot;codex&quot;</span><span class="o">)</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="k">fi</span>
+
+<span class="k">if</span><span class="w"> </span><span class="nv">$run_claude</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>claude<span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;claude command not found&quot;</span><span class="w"> </span>&gt;<span class="s2">&quot;</span><span class="nv">$output_dir</span><span class="s2">/claude.log&quot;</span>
+<span class="w">        </span><span class="nv">status</span><span class="o">=</span><span class="m">1</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nv">claude_command</span><span class="o">=</span><span class="si">${</span><span class="nv">AGENT_FANOUT_CLAUDE_COMMAND</span><span class="k">:-</span><span class="nv">claude</span><span class="p"> -p --max-turns 15</span><span class="si">}</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nv">$dry_run</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;DRY RUN: %s &lt;prompt&gt;\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$claude_command</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="s2">&quot;</span><span class="nv">$output_dir</span><span class="s2">/claude.log&quot;</span>
+<span class="w">        </span><span class="k">else</span>
+<span class="w">            </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>-a<span class="w"> </span>claude_argv<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="s2">&quot;</span><span class="nv">$claude_command</span><span class="s2">&quot;</span>
+<span class="w">            </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_argv</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$full_prompt</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="s2">&quot;</span><span class="nv">$output_dir</span><span class="s2">/claude.log&quot;</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">&amp;</span>
+<span class="w">            </span><span class="nv">pids</span><span class="o">+=(</span><span class="s2">&quot;</span><span class="nv">$!</span><span class="s2">&quot;</span><span class="o">)</span>
+<span class="w">            </span><span class="nv">labels</span><span class="o">+=(</span><span class="s2">&quot;claude&quot;</span><span class="o">)</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="k">fi</span>
+
+<span class="k">for</span><span class="w"> </span>index<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="p">!pids[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">wait</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">pids</span><span class="p">[</span><span class="nv">$index</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">labels</span><span class="p">[</span><span class="nv">$index</span><span class="p">]</span><span class="si">}</span><span class="s2"> failed; see </span><span class="nv">$output_dir</span><span class="s2">/</span><span class="si">${</span><span class="nv">labels</span><span class="p">[</span><span class="nv">$index</span><span class="p">]</span><span class="si">}</span><span class="s2">.log&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nv">status</span><span class="o">=</span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="k">done</span>
+
+<span class="o">{</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Output directory: </span><span class="nv">$output_dir</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">echo</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Prompt:&quot;</span>
+<span class="w">    </span>sed<span class="w"> </span><span class="s1">&#39;s/^/  /&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$output_dir</span><span class="s2">/prompt.txt&quot;</span>
+<span class="w">    </span><span class="nb">echo</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>log<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$output_dir</span><span class="s2">&quot;</span>/*.log<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-e<span class="w"> </span><span class="nv">$log</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;## </span><span class="k">$(</span>basename<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$log</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">        </span>tail<span class="w"> </span>-n<span class="w"> </span><span class="m">80</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$log</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span><span class="s1">&#39;s/^/  /&#39;</span>
+<span class="w">        </span><span class="nb">echo</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="o">}</span><span class="w"> </span>&gt;<span class="s2">&quot;</span><span class="nv">$output_dir</span><span class="s2">/summary.txt&quot;</span>
+
+cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$output_dir</span><span class="s2">/summary.txt&quot;</span>
+<span class="nb">exit</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$status</span><span class="s2">&quot;</span>
 </code></pre></div>
 
 

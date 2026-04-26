@@ -3,20 +3,65 @@
 # @file home/dot_local/bin/common/executable_setup-gh
 # @brief Authenticate `gh` and upload the local SSH key.
 # @description
-#   Logs into GitHub through the GitHub CLI and registers the local public SSH
-#   key on the authenticated account.
+#   Logs into GitHub through the GitHub CLI, ensures the local SSH public key
+#   exists through an explicit interactive flow, and registers the public key on
+#   the authenticated account.
 
 set -Eeuo pipefail
+
+readonly DEFAULT_SSH_KEY_PATH="${HOME%/}/.ssh/id_ed25519"
+readonly DEFAULT_SSH_PUBLIC_KEY_PATH="${DEFAULT_SSH_KEY_PATH}.pub"
 
 # @description Authenticate GitHub CLI against github.com over HTTPS.
 function login_to_github() {
     gh auth login -h github.com -p https
 }
 
+# @description Return the email address used as the SSH key comment.
+function ssh_key_comment() {
+    local configured_email
+    configured_email="$(git config --global --get user.email || true)"
+
+    if [[ -n "${configured_email}" ]]; then
+        printf '%s\n' "${configured_email}"
+        return 0
+    fi
+
+    printf '%s@%s\n' "${USER:-user}" "$(hostname -s 2>/dev/null || hostname)"
+}
+
+# @description Create the default SSH key through ssh-keygen when it is missing.
+function ensure_default_ssh_key() {
+    if [[ -r "${DEFAULT_SSH_PUBLIC_KEY_PATH}" ]]; then
+        return 0
+    fi
+
+    if [[ -e "${DEFAULT_SSH_KEY_PATH}" && ! -e "${DEFAULT_SSH_PUBLIC_KEY_PATH}" ]]; then
+        ssh-keygen -y -f "${DEFAULT_SSH_KEY_PATH}" > "${DEFAULT_SSH_PUBLIC_KEY_PATH}"
+        chmod 0644 "${DEFAULT_SSH_PUBLIC_KEY_PATH}"
+        return 0
+    fi
+
+    if [[ ! -t 0 ]]; then
+        printf 'Public SSH key not found: %s\n' "${DEFAULT_SSH_PUBLIC_KEY_PATH}" >&2
+        printf 'Run `ssh-keygen -t ed25519 -f %s -C "$(git config --global --get user.email)"` or restore the key from private chezmoi state.\n' "${DEFAULT_SSH_KEY_PATH}" >&2
+        return 1
+    fi
+
+    mkdir -p "${HOME%/}/.ssh"
+    chmod 0700 "${HOME%/}/.ssh"
+
+    printf 'Default SSH key not found. Creating %s interactively.\n' "${DEFAULT_SSH_KEY_PATH}" >&2
+    ssh-keygen -t ed25519 -f "${DEFAULT_SSH_KEY_PATH}" -C "$(ssh_key_comment)"
+    chmod 0600 "${DEFAULT_SSH_KEY_PATH}"
+    chmod 0644 "${DEFAULT_SSH_PUBLIC_KEY_PATH}"
+}
+
 # @description Upload the local public SSH key through GitHub CLI.
 function add_ssh_key_to_github() {
+    ensure_default_ssh_key
     gh auth refresh -h github.com -s admin:public_key
-    gh ssh-key add "${HOME%/}/.ssh/id_ed25519.pub"
+    gh ssh-key add "${DEFAULT_SSH_PUBLIC_KEY_PATH}"
 }
 
 # @description Run the GitHub authentication and SSH key setup flow.

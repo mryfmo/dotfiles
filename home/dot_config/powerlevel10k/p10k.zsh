@@ -1669,8 +1669,8 @@
         if command -v chezmoi >/dev/null 2>&1; then
           chezmoi git -- fetch -q
 
-          # Get the count of new changes on the remote master branch.
-          local count=$(chezmoi git -- rev-list --count HEAD..origin/master 2>/dev/null)
+          # Get the count of new changes on the remote main branch.
+          local count=$(chezmoi git -- rev-list --count HEAD..origin/main 2>/dev/null)
           
           if [[ "$count" -gt 0 ]]; then
             echo "$count" >! "$status_file"

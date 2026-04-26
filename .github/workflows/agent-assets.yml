@@ -2,9 +2,9 @@ name: Agent assets
 
 on:
   pull_request:
-    branches: [master]
+    branches: [main]
   push:
-    branches: [master]
+    branches: [main]
   workflow_dispatch:
   schedule:
     # Keep agent, MCP, plugin, and skill metadata from drifting silently.

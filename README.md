@@ -25,7 +25,7 @@
 This [dotfiles](https://github.com/mryfmo/dotfiles) repository is managed with [`chezmoi🏠`](https://www.chezmoi.io/), a great dotfiles manager.
 The setup scripts are aimed for [MacOS](https://www.apple.com/jp/macos), [Ubuntu Desktop](https://ubuntu.com/desktop), and [Ubuntu Server](https://ubuntu.com/server). The first two (MacOS/Ubuntu Desktop) include settings for `client` machines and the latter one (Ubuntu Server) for `server` machines.
 
-The actual dotfiles exist under the [`home`](https://github.com/mryfmo/dotfiles/tree/master/home) directory specified in the [`.chezmoiroot`](https://github.com/mryfmo/dotfiles/blob/master/.chezmoiroot).
+The actual dotfiles exist under the [`home`](https://github.com/mryfmo/dotfiles/tree/main/home) directory specified in the [`.chezmoiroot`](https://github.com/mryfmo/dotfiles/blob/main/.chezmoiroot).
 See [.chezmoiroot - chezmoi](https://www.chezmoi.io/reference/special-files-and-directories/chezmoiroot/) more detail on the setting.
 
 ## 📥 Setup
@@ -67,7 +67,7 @@ The desired application can be installed as follows (e.g., docker installation o
 bash install/macos/common/docker.sh
 ```
 
-Each installation script can be found under the [`./install`](https://github.com/mryfmo/dotfiles/tree/master/install) directory.
+Each installation script can be found under the [`./install`](https://github.com/mryfmo/dotfiles/tree/main/install) directory.
 
 ## 📚 Documentation
 
@@ -93,13 +93,13 @@ To verify that the updated scripts work correctly, run the scripts on the actual
 
 ### 💡 Develop the Setup Scripts
 
-The setup scripts are stored as shellscripts in an appropriate location under the [`./install`](https://github.com/mryfmo/dotfiles/tree/master/install) directory.
-After verifying that the shellscript works, store the [chezmoi template](https://www.chezmoi.io/user-guide/templating/)-based file, which is based on the shellscript, in an appropriate location under the [`./home/.chezmoiscripts`](https://github.com/mryfmo/dotfiles/tree/master/home/.chezmoiscripts) directory.
+The setup scripts are stored as shellscripts in an appropriate location under the [`./install`](https://github.com/mryfmo/dotfiles/tree/main/install) directory.
+After verifying that the shellscript works, store the [chezmoi template](https://www.chezmoi.io/user-guide/templating/)-based file, which is based on the shellscript, in an appropriate location under the [`./home/.chezmoiscripts`](https://github.com/mryfmo/dotfiles/tree/main/home/.chezmoiscripts) directory.
 
 Below is the correspondence between shellscript and template for docker installation on MacOS.
 
-- The shellscript for docker: [`install/macos/common/docker.sh`](https://github.com/mryfmo/dotfiles/blob/master/install/macos/common/docker.sh)
-- The chezmoi template for docker: [`home/.chezmoiscripts/macos/run_once_10-install-docker.sh.tmpl`](https://github.com/mryfmo/dotfiles/blob/master/home/.chezmoiscripts/macos/run_once_10-install-docker.sh.tmpl)
+- The shellscript for docker: [`install/macos/common/docker.sh`](https://github.com/mryfmo/dotfiles/blob/main/install/macos/common/docker.sh)
+- The chezmoi template for docker: [`home/.chezmoiscripts/macos/run_once_10-install-docker.sh.tmpl`](https://github.com/mryfmo/dotfiles/blob/main/home/.chezmoiscripts/macos/run_once_10-install-docker.sh.tmpl)
 
 ### 💾 Test on the Local Machine
 
@@ -134,13 +134,13 @@ mryfmo@5f93d270cb51:~$ chezmoi init --apply
 ### 🦇 Unit Test with [Bats](https://github.com/bats-core/bats-core) [![Unit test](https://github.com/mryfmo/dotfiles/actions/workflows/test.yaml/badge.svg)](https://github.com/mryfmo/dotfiles/actions/workflows/test.yaml)
 
 Test the shellscript for setup with [Bash Automated Testing System (bats)](https://github.com/bats-core/bats-core).
-The scripts for the unit test can be found under [`./tests`](https://github.com/mryfmo/dotfiles/tree/master/tests/install) directory.
+The scripts for the unit test can be found under [`./tests`](https://github.com/mryfmo/dotfiles/tree/main/tests/install) directory.
 
-### 📦 Continuously monitor code coverage with Codecov [![codecov](https://codecov.io/gh/mryfmo/dotfiles/branch/master/graph/badge.svg?token=4VUJWKGAR7)](https://codecov.io/gh/mryfmo/dotfiles)
+### 📦 Continuously monitor code coverage with Codecov [![codecov](https://codecov.io/gh/mryfmo/dotfiles/branch/main/graph/badge.svg?token=4VUJWKGAR7)](https://codecov.io/gh/mryfmo/dotfiles)
 
-The code coverage of the [`./install`](https://github.com/mryfmo/dotfiles/tree/master/install) scripts are continuously monitored at [app.codecov.io/gh/mryfmo/dotfiles](https://app.codecov.io/gh/mryfmo/dotfiles). The following Icicle graph represents the code coverage of the scripts:
+The code coverage of the [`./install`](https://github.com/mryfmo/dotfiles/tree/main/install) scripts are continuously monitored at [app.codecov.io/gh/mryfmo/dotfiles](https://app.codecov.io/gh/mryfmo/dotfiles). The following Icicle graph represents the code coverage of the scripts:
 
-[![](https://codecov.io/gh/mryfmo/dotfiles/branch/master/graphs/icicle.svg?token=4VUJWKGAR7)](https://app.codecov.io/gh/mryfmo/dotfiles)
+[![](https://codecov.io/gh/mryfmo/dotfiles/branch/main/graphs/icicle.svg?token=4VUJWKGAR7)](https://app.codecov.io/gh/mryfmo/dotfiles)
 
 ## 📊 Measure the startup speed of the dotfiles
 
@@ -150,16 +150,16 @@ The startup speed of zsh on MacOS with this dotfile is continuously measured at 
 
 ### Minimum setup for server machine without chezmoi
 
-- Download [`.tmux.conf.d/system/server.conf`](https://github.com/mryfmo/dotfiles/blob/master/home/dot_tmux.conf.d/system/server.conf) and deploy as `~/.tmux.conf`
+- Download [`.tmux.conf.d/system/server.conf`](https://github.com/mryfmo/dotfiles/blob/main/home/dot_tmux.conf.d/system/server.conf) and deploy as `~/.tmux.conf`
 
 ```shell
-wget -O ~/.tmux.conf https://raw.githubusercontent.com/mryfmo/dotfiles/master/home/dot_tmux.conf.d/system/server.conf
+wget -O ~/.tmux.conf https://raw.githubusercontent.com/mryfmo/dotfiles/main/home/dot_tmux.conf.d/system/server.conf
 ```
 
-- Download [`.vimrc`](https://github.com/mryfmo/dotfiles/blob/master/home/dot_vimrc) and deploy to `~/.vimrc`
+- Download [`.vimrc`](https://github.com/mryfmo/dotfiles/blob/main/home/dot_vimrc) and deploy to `~/.vimrc`
 
 ```shell
-wget -O ~/.vimrc https://raw.githubusercontent.com/mryfmo/dotfiles/master/home/dot_vimrc
+wget -O ~/.vimrc https://raw.githubusercontent.com/mryfmo/dotfiles/main/home/dot_vimrc
 ```
 
 ## 📈 Stats
@@ -177,4 +177,4 @@ Inspiration and code was taken from many sources, including:
 
 ## 📝 License
 
-The code is available under the [MIT license](https://github.com/mryfmo/dotfiles/blob/master/LICENSE).
+The code is available under the [MIT license](https://github.com/mryfmo/dotfiles/blob/main/LICENSE).

@@ -7,3 +7,5 @@ site/
 
 .DS_Store
 .agents/worklog/
+__pycache__/
+*.pyc

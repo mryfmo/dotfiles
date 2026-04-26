@@ -24,8 +24,8 @@ function _check_chezmoi_update_async() {
             if command -v chezmoi > /dev/null 2>&1; then
                 chezmoi git -- fetch -q
 
-                # Count the differences with the remote master branch
-                local count=$(chezmoi git -- rev-list --count HEAD..origin/master 2> /dev/null)
+                # Count the differences with the remote main branch
+                local count=$(chezmoi git -- rev-list --count HEAD..origin/main 2> /dev/null)
 
                 if [[ "$count" -gt 0 ]]; then
                     echo "$count" >| "$status_file"

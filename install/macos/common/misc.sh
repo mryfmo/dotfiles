@@ -14,7 +14,6 @@ fi
 
 readonly BREW_PACKAGES=(
     htop
-    ghostty-notifier
     watchexec
 )
 

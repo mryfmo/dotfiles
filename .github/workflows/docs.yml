@@ -3,7 +3,7 @@ name: Docs
 on:
   workflow_dispatch:
   push:
-    branches: [master]
+    branches: [main]
     paths:
       - ".github/workflows/docs.yml"
       - "Makefile"
@@ -42,6 +42,7 @@ jobs:
         run: mise trust --yes
 
       - name: Install shdoc plugin
+        continue-on-error: true
         run: |
           if ! mise plugins ls | grep -qx shdoc; then
             mise plugins install shdoc https://github.com/mryfmo/mise-shdoc.git

@@ -99,16 +99,19 @@ ${prompt}"
 
 pids=()
 labels=()
+status=0
 
 if $run_codex; then
     if ! command -v codex >/dev/null 2>&1; then
         echo "codex command not found" >"$output_dir/codex.log"
+        status=1
     else
         codex_command=${AGENT_FANOUT_CODEX_COMMAND:-codex exec --full-auto}
         if $dry_run; then
             printf 'DRY RUN: %s <prompt>\n' "$codex_command" >"$output_dir/codex.log"
         else
-            bash -lc 'cmd=$1; prompt=$2; eval "$cmd" "\$prompt"' _ "$codex_command" "$full_prompt" >"$output_dir/codex.log" 2>&1 &
+            read -r -a codex_argv <<<"$codex_command"
+            "${codex_argv[@]}" "$full_prompt" >"$output_dir/codex.log" 2>&1 &
             pids+=("$!")
             labels+=("codex")
         fi
@@ -118,19 +121,20 @@ fi
 if $run_claude; then
     if ! command -v claude >/dev/null 2>&1; then
         echo "claude command not found" >"$output_dir/claude.log"
+        status=1
     else
         claude_command=${AGENT_FANOUT_CLAUDE_COMMAND:-claude -p --max-turns 15}
         if $dry_run; then
             printf 'DRY RUN: %s <prompt>\n' "$claude_command" >"$output_dir/claude.log"
         else
-            bash -lc 'cmd=$1; prompt=$2; eval "$cmd" "\$prompt"' _ "$claude_command" "$full_prompt" >"$output_dir/claude.log" 2>&1 &
+            read -r -a claude_argv <<<"$claude_command"
+            "${claude_argv[@]}" "$full_prompt" >"$output_dir/claude.log" 2>&1 &
             pids+=("$!")
             labels+=("claude")
         fi
     fi
 fi
 
-status=0
 for index in "${!pids[@]}"; do
     if ! wait "${pids[$index]}"; then
         echo "${labels[$index]} failed; see $output_dir/${labels[$index]}.log" >&2

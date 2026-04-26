@@ -7,7 +7,9 @@
 #   memory server. Runtime secrets, model provider settings, and database URLs
 #   must be supplied by the target machine environment or private chezmoi source.
 
-# set -Eeuo pipefail
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    set -Eeuo pipefail
+fi
 
 if [ "${DOTFILES_DEBUG:-}" ]; then
     set -x
@@ -42,7 +44,9 @@ function resolve_uv() {
 #
 function install_cognee_mcp() {
     local uv_bin
-    uv_bin="$(resolve_uv)"
+    if ! uv_bin="$(resolve_uv)"; then
+        return 1
+    fi
     export PATH="${HOME}/.local/share/mise/shims:${PATH}"
     "${uv_bin}" tool install --python "${COGNEE_MCP_PYTHON}" --force "${COGNEE_MCP_PACKAGE}"
 }

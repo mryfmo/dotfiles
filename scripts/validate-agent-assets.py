@@ -276,10 +276,11 @@ def validate_cognee_install_assets(manifest: dict[str, Any]) -> None:
     for token in ("cognee:", "install: false"):
         if token not in bootstrap:
             fail(f"home/.chezmoi.yaml.tmpl must define default Cognee data with {token!r}")
-    runner = (ROOT / "home/dot_local/bin/common/executable_start-cognee-mcp").read_text()
+    runner_path = ROOT / "home/dot_local/bin/common/executable_start-cognee-mcp"
+    runner = runner_path.read_text()
     for token in ("cognee-mcp", "--transport", "COGNEE_MCP_TRANSPORT", "COGNEE_MCP_HOST", "COGNEE_MCP_PORT", "COGNEE_MCP_PATH"):
         if token not in runner:
-            fail(f"executable_cognee-mcp must contain {token!r}")
+            fail(f"{runner_path.relative_to(ROOT)} must contain {token!r}")
 
 
 def validate_generated_agent_configs() -> None:

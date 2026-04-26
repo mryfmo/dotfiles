@@ -48,6 +48,11 @@ function ensure_shdoc_plugin_installed() {
         return
     fi
 
+    if [[ "${CI:-}" == "true" ]]; then
+        printf 'warning: optional shdoc plugin is not preinstalled in CI; generated docs will use fallback rendering.\n' >&2
+        return
+    fi
+
     if ! mise plugins install "${SHDOC_PLUGIN_NAME}" "${SHDOC_PLUGIN_REPOSITORY}"; then
         printf 'warning: optional shdoc plugin is unavailable; generated docs will use fallback rendering.\n' >&2
     fi

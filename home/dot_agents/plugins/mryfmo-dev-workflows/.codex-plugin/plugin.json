@@ -1,0 +1,19 @@
+{
+  "name": "mryfmo-dev-workflows",
+  "version": "0.1.0",
+  "description": "Reusable personal development workflows backed by the shared ~/.agents/skills tree.",
+  "author": {
+    "name": "mryfmo"
+  },
+  "license": "MIT",
+  "skills": "../../skills",
+  "interface": {
+    "displayName": "mryfmo Dev Workflows",
+    "shortDescription": "Shared workflows for GitHub, shell docs, uv, Japanese writing, transformers, and review tasks.",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ]
+  }
+}

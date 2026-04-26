@@ -1,0 +1,20 @@
+{
+  "name": "mryfmo-personal-plugins",
+  "interface": {
+    "displayName": "mryfmo Personal Plugins"
+  },
+  "plugins": [
+    {
+      "name": "mryfmo-dev-workflows",
+      "source": {
+        "source": "local",
+        "path": "./plugins/mryfmo-dev-workflows"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

@@ -105,11 +105,15 @@ jobs:
             # `bashcov` on macOS must use Homebrew Bash (>=5) to avoid the
             # system Bash 3.2 parser limitations that produced empty coverage.
             # `gawk` is available for shell tooling used by the test suite.
-            brew install bash bats-core gawk parallel shfmt
+            # `chezmoi` is installed so Bats can render chezmoi templates
+            # behaviorally instead of grepping template syntax.
+            brew install bash bats-core chezmoi gawk parallel shfmt
 
           elif [ "${OS}" == "ubuntu-latest" ]; then
-            # Ruby is required for bashcov/simplecov formatters.
-            sudo apt-get update && sudo apt-get install -y bats parallel ruby shfmt
+            # Ruby is required for bashcov/simplecov formatters. Install chezmoi
+            # explicitly so template tests can verify rendered behavior.
+            sudo apt-get update && sudo apt-get install -y bats curl parallel ruby shfmt
+            sudo sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /usr/local/bin
 
           else
             echo "${OS} and ${SYSTEM} are not supported" >&2

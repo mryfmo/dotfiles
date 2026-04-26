@@ -136,13 +136,6 @@ mcp_servers:
       - save_interaction
       - cognify_status
       - improve
-    enabled_tools:
-      - recall
-      - search
-      - remember
-      - save_interaction
-      - cognify_status
-      - improve
     disabled_tools:
       - prune
       - delete

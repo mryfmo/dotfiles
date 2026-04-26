@@ -86,9 +86,11 @@ fi
 
 if [[ -z $output_dir ]]; then
     timestamp="$(date +%Y%m%d-%H%M%S)"
-    output_dir=".agents/runs/${timestamp}-fanout"
+    mkdir -p .agents/runs
+    output_dir="$(mktemp -d ".agents/runs/${timestamp}-fanout.XXXXXX")"
+else
+    mkdir -p "$output_dir"
 fi
-mkdir -p "$output_dir"
 printf '%s\n' "$prompt" >"$output_dir/prompt.txt"
 
 shared_prefix='Before repository-specific decisions, use Cognee recall/search when the Cognee MCP server is enabled. Do not save secrets, tokens, raw logs, temporary PR state, or transient todos. Do not delete, prune, or forget memory. Save only durable facts after completion.'

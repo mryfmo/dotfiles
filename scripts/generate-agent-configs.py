@@ -115,11 +115,15 @@ def render_codex(manifest: dict[str, Any]) -> str:
             "tool_timeout_sec",
             "supports_parallel_tool_calls",
             "default_tools_approval_mode",
-            "enabled_tools",
-            "disabled_tools",
         ):
             if key in server:
                 lines.append(f"{key} = {quote_toml(server[key])}")
+        if "enabled_tools" in server:
+            lines.append(f"enabled_tools = {quote_toml(server['enabled_tools'])}")
+        elif "include_tools" in server:
+            lines.append(f"enabled_tools = {quote_toml(server['include_tools'])}")
+        if "disabled_tools" in server:
+            lines.append(f"disabled_tools = {quote_toml(server['disabled_tools'])}")
 
     lines.extend(["", "[features]"])
     for key, value in codex.get("features", {}).items():

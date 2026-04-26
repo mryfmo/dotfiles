@@ -3,8 +3,8 @@
 # @file scripts/run_unit_test.sh
 # @brief Run the repository's shell unit tests.
 # @description
-#   Dispatches the common Bats suite and the OS-specific Bats suite selected by
-#   the `OS` environment variable.
+#   Dispatches the common Bats suite and the OS/system-specific Bats suite
+#   selected by the `OS` and `SYSTEM` environment variables.
 
 # Keep this wrapper minimal: CI invokes this script through `bashcov`.
 # `-u` is intentionally omitted because strict nounset can propagate through
@@ -28,8 +28,16 @@ function run_os_specific_test() {
         bats -r "tests/install/macos/common/"
 
     elif [ "${OS}" == "ubuntu-latest" ]; then
-        # Ubuntu-only install tests.
+        # Ubuntu install tests shared by client and server targets.
         bats -r "tests/install/ubuntu/common/"
+
+        if [ "${SYSTEM}" == "client" ] || [ "${SYSTEM}" == "server" ]; then
+            # Ubuntu install tests for the selected system target.
+            bats -r "tests/install/ubuntu/${SYSTEM}/"
+        else
+            echo "${OS} and ${SYSTEM} are not supported" >&2
+            exit 1
+        fi
     else
         echo "${OS} and ${SYSTEM} are not supported" >&2
         exit 1

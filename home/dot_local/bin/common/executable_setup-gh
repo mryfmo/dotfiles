@@ -36,7 +36,7 @@ function ensure_default_ssh_key() {
         return 0
     fi
 
-    if [[ -e "${DEFAULT_SSH_KEY_PATH}" && ! -e "${DEFAULT_SSH_PUBLIC_KEY_PATH}" ]]; then
+    if [[ -e "${DEFAULT_SSH_KEY_PATH}" && ! -e "${DEFAULT_SSH_PUBLIC_KEY_PATH}" && -t 0 ]]; then
         ssh-keygen -y -f "${DEFAULT_SSH_KEY_PATH}" > "${DEFAULT_SSH_PUBLIC_KEY_PATH}"
         chmod 0644 "${DEFAULT_SSH_PUBLIC_KEY_PATH}"
         return 0

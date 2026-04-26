@@ -124,7 +124,7 @@ jobs:
       - name: Run `shfmt`
         if: ${{ needs.changes.outputs.should_test == 'true' }}
         run: |
-          shfmt -i 4 -sr -d .
+          git ls-files -- ':(glob)install/**/*.sh' ':(glob)scripts/**/*.sh' | xargs shfmt -i 4 -sr -d
 
       - name: Run unit test
         if: ${{ needs.changes.outputs.should_test == 'true' }}

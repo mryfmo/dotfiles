@@ -2,7 +2,7 @@ name: Ubuntu
 
 on:
   push:
-    branches: [master]
+    branches: [main]
     paths:
       - ".github/workflows/ubuntu.yaml"
       - "setup.sh"
@@ -12,7 +12,7 @@ on:
       - "tests/install/ubuntu/**"
 
   pull_request:
-    branches: [master]
+    branches: [main]
     paths:
       - ".github/workflows/ubuntu.yaml"
       - "setup.sh"

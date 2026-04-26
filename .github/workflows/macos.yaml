@@ -2,7 +2,7 @@ name: MacOS
 
 on:
   push:
-    branches: [master]
+    branches: [main]
     paths:
       - ".github/workflows/macos.yaml"
       - "setup.sh"
@@ -12,7 +12,7 @@ on:
       - "tests/install/macos/**"
 
   pull_request:
-    branches: [master]
+    branches: [main]
     paths:
       - ".github/workflows/macos.yaml"
       - "setup.sh"
@@ -71,7 +71,7 @@ jobs:
 
       - name: Set flag for auto-push in the benchmark action
         run: |
-          if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/master" ]; then
+          if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
             echo "auto_push=true" >> $GITHUB_ENV
           else
             echo "auto_push=false" >> $GITHUB_ENV

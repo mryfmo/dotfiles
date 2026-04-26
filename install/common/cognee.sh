@@ -15,8 +15,8 @@ if [ "${DOTFILES_DEBUG:-}" ]; then
     set -x
 fi
 
-readonly COGNEE_MCP_PACKAGE="${COGNEE_MCP_PACKAGE:-cognee-mcp}"
-readonly COGNEE_MCP_PYTHON="${COGNEE_MCP_PYTHON:-3.11}"
+COGNEE_MCP_PACKAGE="${COGNEE_MCP_PACKAGE:-cognee-mcp}"
+COGNEE_MCP_PYTHON="${COGNEE_MCP_PYTHON:-3.11}"
 
 #
 # @description Resolve the uv executable installed by mise or already available on PATH.

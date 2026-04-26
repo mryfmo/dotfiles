@@ -28,6 +28,8 @@ data:
     username: {{ $homeDirName | quote }}
     hermes:
         install: false
+    cognee:
+        install: false
 
 {{ if ne (env "CI") "true" -}}
 encryption: "age"

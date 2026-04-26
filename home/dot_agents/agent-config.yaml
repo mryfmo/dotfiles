@@ -119,6 +119,43 @@ plugins:
           - Write
 
 mcp_servers:
+  cognee_memory:
+    description: Shared Cognee memory MCP server for Hermes, Codex, and Claude Code orchestration.
+    enabled: false
+    required: false
+    transport: http
+    url: http://127.0.0.1:8000/mcp
+    timeout: 180
+    connect_timeout: 60
+    startup_timeout_sec: 60
+    tool_timeout_sec: 180
+    include_tools:
+      - recall
+      - search
+      - remember
+      - save_interaction
+      - cognify_status
+      - improve
+    enabled_tools:
+      - recall
+      - search
+      - remember
+      - save_interaction
+      - cognify_status
+      - improve
+    disabled_tools:
+      - prune
+      - delete
+      - delete_dataset
+      - forget_memory
+    prompts: false
+    resources: false
+    sampling: false
+    agents:
+      codex: true
+      claude: true
+      hermes: true
+
   context7:
     description: Library documentation lookup through Upstash Context7.
     enabled: false

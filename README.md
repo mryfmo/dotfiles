@@ -7,7 +7,6 @@
 
 [![Snippet install](https://github.com/mryfmo/dotfiles/actions/workflows/remote.yaml/badge.svg)](https://github.com/mryfmo/dotfiles/actions/workflows/remote.yaml)
 [![Unit test](https://github.com/mryfmo/dotfiles/actions/workflows/test.yaml/badge.svg)](https://github.com/mryfmo/dotfiles/actions/workflows/test.yaml)
-[![codecov](https://codecov.io/gh/mryfmo/dotfiles/graph/badge.svg?token=4VUJWKGAR7)](https://codecov.io/gh/mryfmo/dotfiles)
 
 [![zsh-users/zsh](https://img.shields.io/github/v/tag/zsh-users/zsh?color=2885F1&display_name=release&label=zsh&logo=zsh&logoColor=2885F1&sort=semver)](https://github.com/zsh-users/zsh)
 [![tmux/tmux](https://img.shields.io/github/v/tag/tmux/tmux?color=1BB91F&display_name=release&label=tmux&logo=tmux&logoColor=1BB91F&sort=semver)](https://github.com/tmux/tmux)
@@ -38,7 +37,7 @@ To set up the dotfiles run the appropriate snippet in the terminal.
 - Configuration snippet of the Apple Silicon MacOS environment for client macnine:
 
 ```console
-bash -c "$(curl -fsLS http://mryfmo.me/dotfiles/setup.sh)"
+bash -c "$(curl -fsLS https://raw.githubusercontent.com/mryfmo/dotfiles/main/setup.sh)"
 ```
 
 ![Screenshot of setup on MacOS Client machine](.github/screenshot-macos-client.png)
@@ -48,7 +47,7 @@ bash -c "$(curl -fsLS http://mryfmo.me/dotfiles/setup.sh)"
 - Configuration snippet of the Ubuntu environment for both client and server machine:
 
 ```console
-bash -c "$(wget -qO - http://mryfmo.me/dotfiles/setup.sh)"
+bash -c "$(wget -qO - https://raw.githubusercontent.com/mryfmo/dotfiles/main/setup.sh)"
 ```
 
 ![Screenshot of setup on Ubuntu Server machine](.github/screenshot-ubuntu-server.png)
@@ -150,11 +149,9 @@ mryfmo@5f93d270cb51:~$ chezmoi init --apply
 Test the shellscript for setup with [Bash Automated Testing System (bats)](https://github.com/bats-core/bats-core).
 The scripts for the unit test can be found under [`./tests`](https://github.com/mryfmo/dotfiles/tree/main/tests/install) directory.
 
-### 📦 Continuously monitor code coverage with Codecov [![codecov](https://codecov.io/gh/mryfmo/dotfiles/branch/main/graph/badge.svg?token=4VUJWKGAR7)](https://codecov.io/gh/mryfmo/dotfiles)
+### 📦 Code coverage
 
-The code coverage of the [`./install`](https://github.com/mryfmo/dotfiles/tree/main/install) scripts are continuously monitored at [app.codecov.io/gh/mryfmo/dotfiles](https://app.codecov.io/gh/mryfmo/dotfiles). The following Icicle graph represents the code coverage of the scripts:
-
-[![](https://codecov.io/gh/mryfmo/dotfiles/branch/main/graphs/icicle.svg?token=4VUJWKGAR7)](https://app.codecov.io/gh/mryfmo/dotfiles)
+The unit-test workflow generates shell-script coverage reports with `bashcov`. Uploading those reports to Codecov is optional and only runs when `CODECOV_TOKEN` is configured in GitHub Actions secrets. Until Codecov is configured for this fork, the README does not show Codecov badges or graphs because they would be misleading.
 
 ## 📊 Measure the startup speed of the dotfiles
 

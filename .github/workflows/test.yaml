@@ -105,11 +105,11 @@ jobs:
             # `bashcov` on macOS must use Homebrew Bash (>=5) to avoid the
             # system Bash 3.2 parser limitations that produced empty coverage.
             # `gawk` is available for shell tooling used by the test suite.
-            brew install bash bats-core gawk parallel
+            brew install bash bats-core gawk parallel shfmt
 
           elif [ "${OS}" == "ubuntu-latest" ]; then
             # Ruby is required for bashcov/simplecov formatters.
-            sudo apt-get update && sudo apt-get install -y bats parallel ruby
+            sudo apt-get update && sudo apt-get install -y bats parallel ruby shfmt
 
           else
             echo "${OS} and ${SYSTEM} are not supported" >&2
@@ -123,10 +123,8 @@ jobs:
 
       - name: Run `shfmt`
         if: ${{ needs.changes.outputs.should_test == 'true' }}
-        uses: reviewdog/action-shfmt@v1
-        with:
-          shfmt_flags: -i 4 -sr -d
-          shfmt_version: latest
+        run: |
+          shfmt -i 4 -sr -d .
 
       - name: Run unit test
         if: ${{ needs.changes.outputs.should_test == 'true' }}

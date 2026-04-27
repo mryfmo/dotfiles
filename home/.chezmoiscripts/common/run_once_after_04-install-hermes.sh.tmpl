@@ -1,6 +1,8 @@
 {{- $installHermes := true -}}
-{{- if and (hasKey . "hermes") (hasKey .hermes "install") -}}
-{{-   $installHermes = get .hermes "install" -}}
+{{- if hasKey . "hermes" -}}
+{{-   if hasKey .hermes "install" -}}
+{{-     $installHermes = get .hermes "install" -}}
+{{-   end -}}
 {{- end -}}
 {{- if $installHermes -}}
 {{ include "../install/common/hermes.sh" }}

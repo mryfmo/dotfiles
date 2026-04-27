@@ -4,6 +4,7 @@ readonly SCRIPT_PATH="./install/common/hermes.sh"
 readonly TMPL_SCRIPT_PATH="./home/.chezmoiscripts/common/run_once_after_04-install-hermes.sh.tmpl"
 
 function setup() {
+    ORIGINAL_PATH="${PATH}"
     export HOME="${BATS_TEST_TMPDIR}/home"
     export CHEZMOI_TEST_CONFIG="${BATS_TEST_TMPDIR}/chezmoi.yaml"
     mkdir -p "${HOME}/.local/bin" "${HOME}/.hermes"
@@ -11,8 +12,7 @@ function setup() {
 }
 
 function teardown() {
-    PATH=$(getconf PATH)
-    export PATH
+    export PATH="${ORIGINAL_PATH}"
 }
 
 @test "[common] hermes install template renders by default unless explicitly disabled" {

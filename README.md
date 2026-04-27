@@ -178,7 +178,7 @@ wget -O ~/.vimrc https://raw.githubusercontent.com/mryfmo/dotfiles/main/home/dot
 
 ## 📈 Stats
 
-![Alt](https://repobeats.axiom.co/api/embed/3243fb1d3b6ca001788079f0b888dde30d9d2df1.svg "Repobeats analytics image")
+[![mryfmo/dotfiles repository stats](https://github-readme-stats.vercel.app/api/pin/?username=mryfmo&repo=dotfiles&show_owner=true)](https://github.com/mryfmo/dotfiles)
 
 ## 👏 Acknowledgements
 

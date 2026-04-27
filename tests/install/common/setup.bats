@@ -45,6 +45,11 @@
     [ "$status" -eq 1 ]
 }
 
+@test "[common] setup.sh entrypoint still runs under bash -c snippets" {
+    grep -q -- '-z "${BASH_SOURCE\[0\]:-}"' setup.sh
+    grep -q '"${BASH_SOURCE\[0\]}" == "${0}"' setup.sh
+}
+
 @test "[common] setup.sh resolves Homebrew fallback prefixes behaviorally" {
     local tmpdir
     local prefix

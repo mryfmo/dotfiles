@@ -45,6 +45,10 @@
     [ "$status" -eq 1 ]
 }
 
+@test "[common] setup.sh forces apply so reruns do not stop on modified targets" {
+    grep -q '"${chezmoi_cmd}" apply --force' setup.sh
+}
+
 @test "[common] setup.sh entrypoint still runs under bash -c snippets" {
     local tmpdir
 

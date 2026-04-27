@@ -19,6 +19,9 @@ jobs:
       diff_range: ${{ steps.filter.outputs.diff_range }}
 
     steps:
+      - name: Configure Git defaults
+        run: git config --global init.defaultBranch main
+
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
@@ -88,6 +91,9 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
+      - name: Configure Git defaults
+        run: git config --global init.defaultBranch main
+
       - name: Checkout repository
         uses: actions/checkout@v6
 
@@ -176,4 +182,4 @@ jobs:
           fail_ci_if_error: false
           flags: ${{ env.CODECOV_FLAGS }}
           name: ${{ env.CODECOV_NAME }}
-          verbose: true
+          verbose: false

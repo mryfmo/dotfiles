@@ -98,24 +98,46 @@ function keepalive_sudo() {
 }
 
 function initialize_os_macos() {
+    local brew_prefix
+
     function is_homebrew_exists() {
         command -v brew &> /dev/null
     }
 
-    # Instal Homebrew if needed.
+    function get_homebrew_prefix() {
+        if is_homebrew_exists; then
+            brew --prefix
+            return
+        fi
+
+        if [[ -x /opt/homebrew/bin/brew ]]; then
+            printf '%s\n' /opt/homebrew
+            return
+        fi
+
+        if [[ -x /usr/local/bin/brew ]]; then
+            printf '%s\n' /usr/local
+            return
+        fi
+
+        return 1
+    }
+
+    # Install Homebrew without letting its interactive prompts consume the outer
+    # bootstrap session. The installer still prints its upstream "Next steps"
+    # block, so explicitly continue by loading brew from the installation prefix.
     if ! is_homebrew_exists; then
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL \
+            https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        hash -r
     fi
 
-    # Setup Homebrew envvars.
-    if [[ $(arch) == "arm64" ]]; then
-        eval "$(/opt/homebrew/bin/brew shellenv)"
-    elif [[ $(arch) == "i386" ]]; then
-        eval "$(/usr/local/bin/brew shellenv)"
-    else
-        echo "Invalid CPU arch: $(arch)" >&2
+    if ! brew_prefix="$(get_homebrew_prefix)"; then
+        echo "Homebrew was not found after installation; cannot continue bootstrap." >&2
         exit 1
     fi
+
+    eval "$("${brew_prefix}/bin/brew" shellenv)"
 }
 
 function initialize_os_linux() {

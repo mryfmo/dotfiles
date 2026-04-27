@@ -31,3 +31,16 @@
     grep -q -- '--apply=false' <<< "${update_block}"
     grep -q -- '--init' <<< "${update_block}"
 }
+
+@test "[common] setup.sh installs Homebrew non-interactively and continues from its prefix" {
+    grep -q 'NONINTERACTIVE=1 /bin/bash -c' setup.sh
+    grep -q 'https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh' setup.sh
+    grep -q 'hash -r' setup.sh
+    grep -q 'get_homebrew_prefix' setup.sh
+    grep -q '/opt/homebrew/bin/brew' setup.sh
+    grep -q '/usr/local/bin/brew' setup.sh
+    grep -q '"${brew_prefix}/bin/brew" shellenv' setup.sh
+
+    run grep -Eq 'arch\).*brew shellenv|Invalid CPU arch' setup.sh
+    [ "$status" -eq 1 ]
+}

@@ -119,10 +119,13 @@ jobs:
             exit 1
           fi
 
-          # Install coverage tooling as user gems and expose gem bin dir on PATH.
+          # Install coverage tooling as user gems and expose gem bin dir on PATH
+          # before installation so RubyGems does not warn about hidden executables.
           # `--no-document` keeps CI faster and deterministic.
+          gem_bin_dir="$(ruby -r rubygems -e 'puts Gem.user_dir')/bin"
+          echo "${gem_bin_dir}" >> "${GITHUB_PATH}"
+          export PATH="${gem_bin_dir}:${PATH}"
           gem install --user-install --no-document bashcov simplecov-cobertura
-          echo "$(ruby -r rubygems -e 'puts Gem.user_dir')/bin" >> "${GITHUB_PATH}"
 
       - name: Run `shfmt`
         if: ${{ needs.changes.outputs.should_test == 'true' }}

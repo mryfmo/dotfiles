@@ -46,8 +46,74 @@
 }
 
 @test "[common] setup.sh entrypoint still runs under bash -c snippets" {
-    grep -q -- '-z "${BASH_SOURCE\[0\]:-}"' setup.sh
-    grep -q '"${BASH_SOURCE\[0\]}" == "${0}"' setup.sh
+    local tmpdir
+
+    tmpdir="$(mktemp -d)"
+    mkdir -p "${tmpdir}/bin" "${tmpdir}/home"
+
+    cat > "${tmpdir}/bin/uname" <<'EOF'
+#!/usr/bin/env bash
+printf 'Darwin\n'
+EOF
+    chmod +x "${tmpdir}/bin/uname"
+
+    cat > "${tmpdir}/bin/curl" <<'EOF'
+#!/usr/bin/env bash
+case "${*: -1}" in
+    *Homebrew/install*)
+        cat <<'BREW'
+#!/usr/bin/env bash
+mkdir -p "${HOME}/fakebrew/bin"
+cat > "${HOME}/fakebrew/bin/brew" <<'BREW_BIN'
+#!/usr/bin/env bash
+case "${1:-}" in
+    --prefix)
+        printf '%s\n' "${HOME}/fakebrew"
+        ;;
+    shellenv)
+        printf 'export PATH="%s/bin:${PATH}"\n' "${HOME}/fakebrew"
+        ;;
+esac
+BREW_BIN
+chmod +x "${HOME}/fakebrew/bin/brew"
+BREW
+        ;;
+    *get.chezmoi.io*)
+        cat <<'CHEZMOI_INSTALL'
+#!/usr/bin/env bash
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        -b)
+            shift
+            bin_dir="$1"
+            ;;
+    esac
+    shift || true
+done
+mkdir -p "${bin_dir}"
+cat > "${bin_dir}/chezmoi" <<'CHEZMOI_BIN'
+#!/usr/bin/env bash
+echo "chezmoi $*" >> "${HOME}/log"
+case "${1:-}" in
+    source-path)
+        printf '%s\n' "${HOME}/source"
+        mkdir -p "${HOME}/source"
+        ;;
+esac
+CHEZMOI_BIN
+chmod +x "${bin_dir}/chezmoi"
+CHEZMOI_INSTALL
+        ;;
+esac
+EOF
+    chmod +x "${tmpdir}/bin/curl"
+
+    run env HOME="${tmpdir}/home" PATH="${tmpdir}/bin:/usr/bin:/bin" CI=true \
+        HOMEBREW_PREFIX_CANDIDATES="${tmpdir}/home/fakebrew" \
+        bash -c "$(cat setup.sh)"
+
+    [ "$status" -eq 0 ]
+    grep -q 'chezmoi apply' "${tmpdir}/home/log"
 }
 
 @test "[common] setup.sh resolves Homebrew fallback prefixes behaviorally" {

@@ -18,7 +18,7 @@ function render_decrypt_script() {
     touch "${source_dir}/.key.txt.age"
     render_decrypt_script "${source_dir}" "${script_path}"
 
-    run env HOME="${home_dir}" bash -lc "
+    run env CI=false HOME="${home_dir}" bash -lc "
         source '${script_path}'
         function chezmoi() { return 1; }
         decrypt_age_private_key
@@ -39,7 +39,7 @@ function render_decrypt_script() {
     touch "${source_dir}/.key.txt.age"
     render_decrypt_script "${source_dir}" "${script_path}"
 
-    run env HOME="${home_dir}" bash -lc "
+    run env CI=false HOME="${home_dir}" bash -lc "
         source '${script_path}'
         function chezmoi() {
             local output_path=''

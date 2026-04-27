@@ -49,7 +49,7 @@ function ensure_shdoc_plugin_installed() {
     fi
 
     if [[ "${CI:-}" == "true" ]]; then
-        printf 'warning: optional shdoc plugin is not preinstalled in CI; generated docs will use fallback rendering.\n' >&2
+        printf 'info: optional shdoc plugin is not preinstalled in CI; generated docs will use fallback rendering.\n' >&2
         return
     fi
 

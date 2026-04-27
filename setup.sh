@@ -85,6 +85,11 @@ function keepalive_sudo_macos() {
 function keepalive_sudo() {
 
     local ostype
+
+    if [ "${DOTFILES_SUDO_KEEPALIVE_STARTED:-}" ]; then
+        return
+    fi
+
     ostype="$(get_os_type)"
 
     if [ "${ostype}" == "Darwin" ]; then
@@ -95,27 +100,54 @@ function keepalive_sudo() {
         echo "Invalid OS type: ${ostype}" >&2
         exit 1
     fi
+
+    DOTFILES_SUDO_KEEPALIVE_STARTED=1
 }
 
 function initialize_os_macos() {
+    local brew_prefix
+
     function is_homebrew_exists() {
         command -v brew &> /dev/null
     }
 
-    # Instal Homebrew if needed.
+    function get_homebrew_prefix() {
+        local prefix
+
+        if is_homebrew_exists; then
+            brew --prefix
+            return
+        fi
+
+        for prefix in ${HOMEBREW_PREFIX_CANDIDATES:-/opt/homebrew /usr/local}; do
+            if [[ -x "${prefix}/bin/brew" ]]; then
+                printf '%s\n' "${prefix}"
+                return
+            fi
+        done
+
+        return 1
+    }
+
+    # Install Homebrew without letting its interactive prompts consume the outer
+    # bootstrap session. The installer still prints its upstream "Next steps"
+    # block, so explicitly continue by loading brew from the installation prefix.
     if ! is_homebrew_exists; then
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        if ! is_ci_or_not_tty; then
+            keepalive_sudo
+        fi
+
+        NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL \
+            https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        hash -r
     fi
 
-    # Setup Homebrew envvars.
-    if [[ $(arch) == "arm64" ]]; then
-        eval "$(/opt/homebrew/bin/brew shellenv)"
-    elif [[ $(arch) == "i386" ]]; then
-        eval "$(/usr/local/bin/brew shellenv)"
-    else
-        echo "Invalid CPU arch: $(arch)" >&2
+    if ! brew_prefix="$(get_homebrew_prefix)"; then
+        echo "Homebrew was not found after installation; cannot continue bootstrap." >&2
         exit 1
     fi
+
+    eval "$("${brew_prefix}/bin/brew" shellenv)"
 }
 
 function initialize_os_linux() {
@@ -241,4 +273,6 @@ function main() {
     # restart_shell # Disabled because the at_exit function does not work properly.
 }
 
-main
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main
+fi

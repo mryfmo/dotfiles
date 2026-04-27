@@ -164,9 +164,9 @@ jobs:
       - name: Setup for Codecov
         if: ${{ needs.changes.outputs.should_test == 'true' && matrix.os == 'ubuntu-latest' && !endsWith(github.actor, '[bot]') }}
         run: |
-          # codecov-action requires these tools for uploader validation/signing
-          # in this repository setup.
-          sudo apt-get install -y gpg jq curl
+          # codecov-action uses these tools while preparing and uploading the
+          # explicit Cobertura report in this repository setup.
+          sudo apt-get install -y jq curl
 
       - name: Upload coverage to Codecov
         if: ${{ needs.changes.outputs.should_test == 'true' && matrix.os == 'ubuntu-latest' && !endsWith(github.actor, '[bot]') }}
@@ -185,4 +185,7 @@ jobs:
           # Avoid language auto-discovery warnings for gcov/coverage.py in this
           # shell-only workflow; upload the explicit Cobertura report only.
           plugins: noop
+          # Use the PyPI-distributed CLI in CI to avoid non-actionable GPG trust
+          # warnings emitted by the standalone binary signature verifier.
+          use_pypi: true
           verbose: false

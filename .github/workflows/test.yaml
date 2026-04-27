@@ -19,6 +19,9 @@ jobs:
       diff_range: ${{ steps.filter.outputs.diff_range }}
 
     steps:
+      - name: Configure Git defaults
+        run: git config --global init.defaultBranch main
+
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
@@ -88,6 +91,9 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
+      - name: Configure Git defaults
+        run: git config --global init.defaultBranch main
+
       - name: Checkout repository
         uses: actions/checkout@v6
 
@@ -153,7 +159,7 @@ jobs:
           # Use a unique command name per matrix job so SimpleCov keeps each
           # session separated before Codecov merges by flag/name.
           BASHCOV_COMMAND_NAME="unit-test-${OS}-${SYSTEM}" \
-            bashcov "${bashcov_args[@]}" -- ./scripts/run_unit_test.sh
+            ruby ./scripts/run_bashcov_unit_test.rb "${bashcov_args[@]}" -- ./scripts/run_unit_test.sh
 
       - name: Setup for Codecov
         if: ${{ needs.changes.outputs.should_test == 'true' && matrix.os == 'ubuntu-latest' && !endsWith(github.actor, '[bot]') }}
@@ -176,4 +182,7 @@ jobs:
           fail_ci_if_error: false
           flags: ${{ env.CODECOV_FLAGS }}
           name: ${{ env.CODECOV_NAME }}
-          verbose: true
+          # Avoid language auto-discovery warnings for gcov/coverage.py in this
+          # shell-only workflow; upload the explicit Cobertura report only.
+          plugins: noop
+          verbose: false

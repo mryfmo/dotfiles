@@ -158,6 +158,15 @@ function run_chezmoi() {
         --use-builtin-git true \
         ${no_tty_option}
 
+    # Pull the latest source before applying so repeating the README snippet in
+    # the same terminal picks up fixes merged after a previous failed run.
+    "${chezmoi_cmd}" update \
+        --apply=false \
+        --init \
+        --force \
+        --use-builtin-git true \
+        ${no_tty_option}
+
     # the `age` command requires a tty, but there is no tty in the github actions.
     # Therefore, it is currnetly difficult to decrypt the files encrypted with `age` in this workflow.
     # I decided to temporarily remove the encrypted target files from chezmoi's control.

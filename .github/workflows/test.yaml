@@ -185,4 +185,7 @@ jobs:
           # Avoid language auto-discovery warnings for gcov/coverage.py in this
           # shell-only workflow; upload the explicit Cobertura report only.
           plugins: noop
+          # Use the PyPI-distributed CLI in CI to avoid non-actionable GPG trust
+          # warnings emitted by the standalone binary signature verifier.
+          use_pypi: true
           verbose: false

@@ -38,7 +38,7 @@ function main() {
 #
 function ensure_shdoc_plugin_installed() {
     if ! command -v mise > /dev/null 2>&1; then
-        printf 'warning: mise is unavailable; generated docs will use fallback rendering.\n' >&2
+        printf 'info: mise is unavailable; generated docs will use fallback rendering.\n' >&2
         return
     fi
 
@@ -54,7 +54,7 @@ function ensure_shdoc_plugin_installed() {
     fi
 
     if ! mise plugins install "${SHDOC_PLUGIN_NAME}" "${SHDOC_PLUGIN_REPOSITORY}"; then
-        printf 'warning: optional shdoc plugin is unavailable; generated docs will use fallback rendering.\n' >&2
+        printf 'info: optional shdoc plugin is unavailable; generated docs will use fallback rendering.\n' >&2
     fi
 }
 

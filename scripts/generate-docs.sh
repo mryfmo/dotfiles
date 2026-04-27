@@ -568,7 +568,6 @@ function generate_template_mapping_page() {
 
             target_path="$(resolve_template_target "${template_path}")"
             if [[ -z "${target_path}" ]]; then
-                printf "Warning: skipping unmapped template %s\n" "${template_path}" >&2
                 continue
             fi
 

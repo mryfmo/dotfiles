@@ -9,8 +9,15 @@
 }
 
 @test "[common] setup.sh updates an existing chezmoi source before applying" {
-    grep -q '"${chezmoi_cmd}" update' setup.sh
+    local update_line
+    local apply_line
+
+    update_line="$(grep -n '"${chezmoi_cmd}" update' setup.sh | cut -d: -f1)"
+    apply_line="$(grep -n '"${chezmoi_cmd}" apply' setup.sh | cut -d: -f1)"
+
+    [ -n "${update_line}" ]
+    [ -n "${apply_line}" ]
+    [ "${update_line}" -lt "${apply_line}" ]
     grep -q -- '--apply=false' setup.sh
     grep -q -- '--init' setup.sh
-    grep -q '"${chezmoi_cmd}" apply' setup.sh
 }

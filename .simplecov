@@ -25,13 +25,4 @@ SimpleCov.start do
   add_filter "/tests/"
   # Exclude generated coverage artifacts to avoid recursive self-counting.
   add_filter "/coverage/"
-  # Exclude transient Bats/bashcov implementation files and external helper
-  # scripts that can disappear before SimpleCov formats the final report.
-  add_filter %r{^/tmp/bats-run-}
-  add_filter %r{^/home/runner/\.tmux/plugins/tpm/}
-  add_filter %r{^/Users/runner/\.tmux/plugins/tpm/}
-  add_filter %r{^/etc/profile$}
-  add_filter %r{^\.$}
-  add_filter %r{^environment$}
-  add_filter %r{^main$}
 end

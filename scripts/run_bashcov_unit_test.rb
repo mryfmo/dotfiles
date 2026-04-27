@@ -35,8 +35,16 @@ module DotfilesBashcovRunnerFilter
 
   def convert_coverage
     @coverage.each_with_object({}) do |(filename, coverage), converted|
-      line_count = File.readlines(filename.to_s).length
-      converted[filename.to_s] = coverage.first(line_count)
+      path = filename.to_s
+      next unless File.file?(path)
+
+      lines = coverage.is_a?(Hash) ? coverage["lines"] : coverage
+      next unless lines.respond_to?(:first)
+
+      line_count = File.foreach(path).count
+      converted[path] = lines.first(line_count)
+    rescue Errno::ENOENT
+      next
     end
   end
 end

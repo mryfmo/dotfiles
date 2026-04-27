@@ -51,51 +51,38 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY }}
 
-      - name: Setup dotfiles
+      - name: Setup dotfiles and verify rerun
         if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}
         env:
           EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
           SYSTEM: ${{ matrix.system }}
           EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          HEAD_REF: ${{ github.head_ref }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # for avoiding rate limit of GitHub API
         run: |
           if [ "${EVENT_NAME}" == "push" ]; then
-            BRANCH_NAME="${{ github.ref_name }}"
+            BRANCH_NAME="${REF_NAME}"
           elif [ "${EVENT_NAME}" == "pull_request" ]; then
-            BRANCH_NAME="${{ github.head_ref }}"
+            BRANCH_NAME="${HEAD_REF}"
+          else
+            echo "${EVENT_NAME} is not supported" >&2
+            exit 1
           fi
           export BRANCH_NAME
 
           URL="https://raw.githubusercontent.com/mryfmo/dotfiles/${BRANCH_NAME}/setup.sh"
           echo "Download setup.sh from ${URL}"
 
-          printf "${EMAIL_ADDRESS}\n${SYSTEM}\n" | bash -c "$(wget -qO - $URL)"
+          printf "${EMAIL_ADDRESS}\n${SYSTEM}\n" | bash -c "$(wget -qO - "$URL")"
           #              │               │
           #              │               └─ Simulate inputting an system arcitecture into the config.
           #              └─ Simulate inputting an email address into the config.
 
-      - name: Re-run setup after modifying .zprofile
-        if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}
-        env:
-          EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
-          SYSTEM: ${{ matrix.system }}
-          EVENT_NAME: ${{ github.event_name }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # for avoiding rate limit of GitHub API
-        run: |
-          if [ "${EVENT_NAME}" == "push" ]; then
-            BRANCH_NAME="${{ github.ref_name }}"
-          elif [ "${EVENT_NAME}" == "pull_request" ]; then
-            BRANCH_NAME="${{ github.head_ref }}"
-          fi
-          export BRANCH_NAME
-
-          URL="https://raw.githubusercontent.com/mryfmo/dotfiles/${BRANCH_NAME}/setup.sh"
-          echo "Download setup.sh from ${URL}"
-
           # Simulate a target changed after chezmoi last wrote it. The bootstrap
           # must force apply and must not stop on an overwrite prompt.
           printf '\n# CI local change after chezmoi apply\n' >> "${HOME}/.zprofile"
-          printf "${EMAIL_ADDRESS}\n${SYSTEM}\n" | bash -c "$(wget -qO - $URL)"
+          printf "${EMAIL_ADDRESS}\n${SYSTEM}\n" | bash -c "$(wget -qO - "$URL")"
 
       - uses: jdx/mise-action@v4
         if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}

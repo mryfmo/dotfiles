@@ -210,8 +210,10 @@ function run_chezmoi() {
     export PATH="${PATH}:${HOME}/.local/bin"
 
     # run `chezmoi apply` to ensure that target... are in the target state,
-    # updating them if necessary. Use --force so repeated bootstrap runs do not
-    # stop on prompts for files changed since chezmoi last wrote them.
+    # updating them if necessary. Always use --force so repeated interactive and
+    # non-interactive bootstrap runs complete instead of stopping on prompts for
+    # files changed since chezmoi last wrote them. This intentionally overwrites
+    # locally modified chezmoi-managed targets during bootstrap reruns.
     "${chezmoi_cmd}" apply --force ${no_tty_option}
 
     # purge the binary of the chezmoi cmd

@@ -85,6 +85,11 @@ function keepalive_sudo_macos() {
 function keepalive_sudo() {
 
     local ostype
+
+    if [ "${DOTFILES_SUDO_KEEPALIVE_STARTED:-}" ]; then
+        return
+    fi
+
     ostype="$(get_os_type)"
 
     if [ "${ostype}" == "Darwin" ]; then
@@ -95,6 +100,8 @@ function keepalive_sudo() {
         echo "Invalid OS type: ${ostype}" >&2
         exit 1
     fi
+
+    DOTFILES_SUDO_KEEPALIVE_STARTED=1
 }
 
 function initialize_os_macos() {
@@ -105,20 +112,19 @@ function initialize_os_macos() {
     }
 
     function get_homebrew_prefix() {
+        local prefix
+
         if is_homebrew_exists; then
             brew --prefix
             return
         fi
 
-        if [[ -x /opt/homebrew/bin/brew ]]; then
-            printf '%s\n' /opt/homebrew
-            return
-        fi
-
-        if [[ -x /usr/local/bin/brew ]]; then
-            printf '%s\n' /usr/local
-            return
-        fi
+        for prefix in ${HOMEBREW_PREFIX_CANDIDATES:-/opt/homebrew /usr/local}; do
+            if [[ -x "${prefix}/bin/brew" ]]; then
+                printf '%s\n' "${prefix}"
+                return
+            fi
+        done
 
         return 1
     }
@@ -127,6 +133,10 @@ function initialize_os_macos() {
     # bootstrap session. The installer still prints its upstream "Next steps"
     # block, so explicitly continue by loading brew from the installation prefix.
     if ! is_homebrew_exists; then
+        if ! is_ci_or_not_tty; then
+            keepalive_sudo
+        fi
+
         NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL \
             https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
         hash -r
@@ -263,4 +273,6 @@ function main() {
     # restart_shell # Disabled because the at_exit function does not work properly.
 }
 
-main
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main
+fi

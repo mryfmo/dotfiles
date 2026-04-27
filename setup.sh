@@ -273,6 +273,6 @@ function main() {
     # restart_shell # Disabled because the at_exit function does not work properly.
 }
 
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+if [[ -z "${BASH_SOURCE[0]:-}" || "${BASH_SOURCE[0]}" == "${0}" ]]; then
     main
 fi

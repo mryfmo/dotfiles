@@ -4,11 +4,12 @@ DOCKER_NUM_CPU=4
 DOKCER_RAM_GB=4
 HOST ?= 127.0.0.1
 PORT ?= 8000
-MKDOCS = uv run \
+MKDOCS_UV = uv run \
 	--with mkdocs \
 	--with mkdocs-material \
-	--with mkdocs-toc-md \
-	mkdocs
+	--with mkdocs-toc-md
+MKDOCS = NO_MKDOCS_2_WARNING=true $(MKDOCS_UV) mkdocs
+MKDOCS_PYTHON = NO_MKDOCS_2_WARNING=true $(MKDOCS_UV) python
 
 #
 # Docker
@@ -65,7 +66,7 @@ docs:
 	@echo "==> Generating docs"
 	./scripts/generate-docs.sh
 	@echo "==> Refreshing TOC"
-	$(MKDOCS) build --clean
+	$(MKDOCS_PYTHON) scripts/refresh-mkdocs-toc.py
 	@echo "==> Building docs"
 	$(MKDOCS) build --clean --strict
 
@@ -77,7 +78,7 @@ serve: docs
 .PHONY: deploy
 deploy: docs
 	@echo "==> Deploying docs"
-	$(MKDOCS) gh-deploy --force
+	$(MKDOCS) gh-deploy --force --ignore-version
 
 .PHONY: clean
 clean:

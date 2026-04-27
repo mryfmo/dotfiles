@@ -31,7 +31,8 @@ See [.chezmoiroot - chezmoi](https://www.chezmoi.io/reference/special-files-and-
 
 ## 📥 Setup
 
-To set up the dotfiles run the appropriate snippet in the terminal.
+To set up the dotfiles run the appropriate snippet in the terminal. Public bootstrap installs Hermes Agent by default by downloading the official NousResearch installer with `--skip-setup`.
+Set chezmoi data `hermes.install: false` before applying if you need to skip that network installer.
 
 ### 💻 `MacOS` [![MacOS](https://github.com/mryfmo/dotfiles/actions/workflows/macos.yaml/badge.svg)](https://github.com/mryfmo/dotfiles/actions/workflows/macos.yaml)
 

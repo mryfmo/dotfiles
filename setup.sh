@@ -68,33 +68,18 @@ function keepalive_sudo_linux() {
 }
 
 function keepalive_sudo_macos() {
-    # ref. https://github.com/reitermarkus/dotfiles/blob/master/.sh#L85-L116
-    (
-        builtin read -r -s -p "Password: " < /dev/tty
-        builtin echo "add-generic-password -U -s 'dotfiles' -a '${USER}' -w '${REPLY}'"
-    ) | /usr/bin/security -i
-    printf "\n"
-    at_exit "
-                echo -e '\033[0;31mRemoving password from Keychain …\033[0m'
-                /usr/bin/security delete-generic-password -s 'dotfiles' -a '${USER}'
-            "
-    SUDO_ASKPASS="$(/usr/bin/mktemp)"
-    at_exit "
-                echo -e '\033[0;31mDeleting SUDO_ASKPASS script …\033[0m'
-                /bin/rm -f '${SUDO_ASKPASS}'
-            "
-    {
-        echo "#!/bin/sh"
-        echo "/usr/bin/security find-generic-password -s 'dotfiles' -a '${USER}' -w"
-    } > "${SUDO_ASKPASS}"
+    # Ask for sudo access up front and keep the sudo timestamp alive without
+    # storing the user's login password in Keychain. Keychain writes can fail in
+    # fresh macOS bootstrap sessions with Security error -25308.
+    echo "Checking for \`sudo\` access which may request your password."
+    /usr/bin/sudo -v
 
-    /bin/chmod +x "${SUDO_ASKPASS}"
-    export SUDO_ASKPASS
-
-    if ! /usr/bin/sudo -A -kv 2> /dev/null; then
-        echo -e '\033[0;31mIncorrect password.\033[0m' 1>&2
-        exit 1
-    fi
+    # Keep-alive: update existing sudo time stamp if set, otherwise do nothing.
+    while true; do
+        /usr/bin/sudo -n true
+        sleep 60
+        kill -0 "$$" || exit
+    done 2> /dev/null &
 }
 
 function keepalive_sudo() {

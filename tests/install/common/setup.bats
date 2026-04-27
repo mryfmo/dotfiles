@@ -9,15 +9,25 @@
 }
 
 @test "[common] setup.sh updates an existing chezmoi source before applying" {
+    local update_count
     local update_line
+    local apply_count
     local apply_line
+    local update_block
 
-    update_line="$(grep -n '"${chezmoi_cmd}" update' setup.sh | cut -d: -f1)"
-    apply_line="$(grep -n '"${chezmoi_cmd}" apply' setup.sh | cut -d: -f1)"
+    update_count="$(grep -c '"${chezmoi_cmd}" update' setup.sh)"
+    apply_count="$(grep -c '"${chezmoi_cmd}" apply' setup.sh)"
+    [ "${update_count}" -eq 1 ]
+    [ "${apply_count}" -eq 1 ]
+
+    update_line="$(grep -n '"${chezmoi_cmd}" update' setup.sh | head -n 1 | cut -d: -f1)"
+    apply_line="$(grep -n '"${chezmoi_cmd}" apply' setup.sh | head -n 1 | cut -d: -f1)"
 
     [ -n "${update_line}" ]
     [ -n "${apply_line}" ]
     [ "${update_line}" -lt "${apply_line}" ]
-    grep -q -- '--apply=false' setup.sh
-    grep -q -- '--init' setup.sh
+
+    update_block="$(sed -n "${update_line},${apply_line}p" setup.sh)"
+    grep -q -- '--apply=false' <<< "${update_block}"
+    grep -q -- '--init' <<< "${update_block}"
 }

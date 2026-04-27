@@ -120,7 +120,7 @@ jobs:
           fi
 
           # Install coverage tooling as user gems and expose gem bin dir on PATH
-          # before installation so RubyGems does not warn about hidden executables.
+          # before installation so RubyGems can expose executables immediately.
           # `--no-document` keeps CI faster and deterministic.
           gem_bin_dir="$(ruby -r rubygems -e 'puts Gem.user_dir')/bin"
           echo "${gem_bin_dir}" >> "${GITHUB_PATH}"

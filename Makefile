@@ -5,7 +5,7 @@ DOKCER_RAM_GB=4
 HOST ?= 127.0.0.1
 PORT ?= 8000
 MKDOCS_UV = uv run \
-	--with mkdocs \
+	--with 'mkdocs>=1.6,<2' \
 	--with mkdocs-material \
 	--with mkdocs-toc-md
 MKDOCS = NO_MKDOCS_2_WARNING=true $(MKDOCS_UV) mkdocs

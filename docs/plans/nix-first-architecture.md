@@ -67,7 +67,7 @@ The nix-darwin configuration enables Homebrew management, but `homebrew.enable` 
 
 ## Non-goals for the initial scaffold
 
-- Do not replace `setup.sh`.
-- Do not migrate existing files under `home/` into Home Manager.
-- Do not add private secrets, host-specific credentials, SSH keys, GnuPG secret keyrings, or VPN profiles.
-- Do not remove chezmoi as the default source of truth.
+- Keep `setup.sh` in place.
+- Avoid migrating existing files under `home/` into Home Manager.
+- Exclude private secrets, host-specific credentials, SSH keys, GnuPG secret keyrings, or VPN profiles.
+- Retain chezmoi as the default source of truth.

@@ -77,11 +77,11 @@
         in
         {
           default = pkgs.mkShell {
-            packages = with pkgs; [
-              home-manager
-              nil
-              nixfmt-rfc-style
-              statix
+            packages = [
+              home-manager.packages.${system}.home-manager
+              pkgs.nil
+              pkgs.nixfmt-rfc-style
+              pkgs.statix
             ];
           };
         });

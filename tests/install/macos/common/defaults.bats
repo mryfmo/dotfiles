@@ -42,6 +42,6 @@ function setup() {
 @test "[macos] test for dock" {
     defaults_dock
 
-    [ $(defaults read com.apple.dock autohide) -eq 1 ]
+    [ $(defaults read com.apple.dock autohide) -eq 0 ]
     [ $(defaults read com.apple.dock tilesize) -eq 30 ]
 }

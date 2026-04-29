@@ -65,8 +65,8 @@ function defaults_controlcenter() {
 # @description Customize Dock behavior and its pinned applications.
 #
 function defaults_dock() {
-    # Automatically hide and show the Dock
-    defaults write com.apple.dock autohide -bool true
+    # Keep the Dock visible.
+    defaults write com.apple.dock autohide -bool false
     # Set the icon size of Dock items to 30 pixels
     defaults write com.apple.dock tilesize -int 30
     # Disable rearrangement of Mission Control
@@ -109,9 +109,6 @@ function defaults_dock() {
 
     defaults write com.apple.dock persistent-apps -array \
         "$(dock_item /Applications/Google\ Chrome.app)" \
-        "$(dock_item /Applications/Visual\ Studio\ Code.app)" \
-        "$(dock_item /Applications/Slack.app)" \
-        "$(dock_item /Applications/iTerm.app)" \
         "$(dock_item "$(get_system_app_path)")"
 }
 

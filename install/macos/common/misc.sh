@@ -18,15 +18,11 @@ readonly BREW_PACKAGES=(
 )
 
 readonly CASK_PACKAGES=(
-    cyberduck
     google-chrome
     google-drive
     google-japanese-ime
-    ngrok
-    slack
     rectangle
     visual-studio-code
-    1password
 )
 
 # Additional brew packages installed only for user mryfmo.

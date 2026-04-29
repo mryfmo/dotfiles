@@ -46,7 +46,7 @@ function setup() {
     [ $(defaults read com.apple.dock tilesize) -eq 30 ]
 
     persistent_apps="$(defaults read com.apple.dock persistent-apps)"
-    [ "$(grep -c '_CFURLString' <<<"${persistent_apps}")" -eq 2 ]
+    [ "$(grep -o '_CFURLString' <<<"${persistent_apps}" | wc -l | tr -d ' ')" -eq 2 ]
     grep -q '/Applications/Google Chrome.app' <<<"${persistent_apps}"
     grep -Eq '/System/Applications/System (Settings|Preferences)\.app/' <<<"${persistent_apps}"
     ! grep -q '/Applications/Visual Studio Code.app' <<<"${persistent_apps}"

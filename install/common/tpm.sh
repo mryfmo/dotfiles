@@ -59,6 +59,8 @@ function install_tpm_plugins() {
 function install_tpm() {
     export TMUX_PLUGIN_MANAGER_PATH="${TMUX_PLUGINS_DIR}"
 
+    tmux start-server \; set-environment -g TMUX_PLUGIN_MANAGER_PATH "${TMUX_PLUGINS_DIR}"
+
     if [ ! "${DOTFILES_DEBUG:-}" ] || [ ! -d "${TPM_DIR}" ]; then
         clone_tpm "${TPM_DIR}"
         install_tpm_plugins "${TPM_DIR}"

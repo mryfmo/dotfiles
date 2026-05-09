@@ -22,8 +22,6 @@ readonly HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 function hermes_command_path() {
     if [ -n "${TERMUX_VERSION:-}" ] || [[ "${PREFIX:-}" == *"com.termux/files/usr"* ]]; then
         printf '%s\n' "${PREFIX}/bin/hermes"
-    elif [ "$(id -u)" -eq 0 ] && [ "$(uname -s)" = "Linux" ]; then
-        printf '%s\n' "/usr/local/bin/hermes"
     else
         printf '%s\n' "${HOME}/.local/bin/hermes"
     fi

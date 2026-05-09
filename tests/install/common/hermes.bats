@@ -77,7 +77,7 @@ EOF
     [ -e "${HOME}/.hermes/hermes-agent/venv/bin/hermes" ]
 }
 
-@test "[common] hermes_command_path matches upstream command link locations" {
+@test "[common] hermes_command_path matches explicit-install command link locations" {
     run bash -c 'source "$1"; hermes_command_path' _ "${SCRIPT_PATH}"
     [ "${status}" -eq 0 ]
     [ "${output}" = "${HOME}/.local/bin/hermes" ]
@@ -86,20 +86,4 @@ EOF
         bash -c 'source "$1"; hermes_command_path' _ "${SCRIPT_PATH}"
     [ "${status}" -eq 0 ]
     [ "${output}" = "${BATS_TEST_TMPDIR}/termux/bin/hermes" ]
-
-    mkdir -p "${BATS_TEST_TMPDIR}/root-bin"
-    cat > "${BATS_TEST_TMPDIR}/root-bin/id" <<'EOF'
-#!/usr/bin/env bash
-printf '0\n'
-EOF
-    cat > "${BATS_TEST_TMPDIR}/root-bin/uname" <<'EOF'
-#!/usr/bin/env bash
-printf 'Linux\n'
-EOF
-    chmod +x "${BATS_TEST_TMPDIR}/root-bin/id" "${BATS_TEST_TMPDIR}/root-bin/uname"
-
-    run env PATH="${BATS_TEST_TMPDIR}/root-bin:${PATH}" \
-        bash -c 'source "$1"; hermes_command_path' _ "${SCRIPT_PATH}"
-    [ "${status}" -eq 0 ]
-    [ "${output}" = "/usr/local/bin/hermes" ]
 }

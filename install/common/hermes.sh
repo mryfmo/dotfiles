@@ -31,7 +31,6 @@ function hermes_command_path() {
 
 #
 # @description Remove legacy Hermes command symlinks before the upstream installer writes a launcher.
-# @description
 #   The upstream installer writes a launcher with `cat > "$command_link_dir/hermes"`.
 #   If that path is an existing symlink to the venv entry point, shell redirection
 #   follows it and overwrites the real entry point with a self-referential shim.

@@ -58,3 +58,21 @@ EOF
     [ "${status}" -eq 0 ]
     [ "${output}" = "--skip-setup --hermes-home ${HOME}/.hermes --dir ${HOME}/.hermes/hermes-agent" ]
 }
+
+@test "[common] install_hermes removes legacy hermes command symlink before upstream writes launcher" {
+    mkdir -p "${BATS_TEST_TMPDIR}/bin" "${HOME}/.hermes/hermes-agent/venv/bin"
+    touch "${HOME}/.hermes/hermes-agent/venv/bin/hermes"
+    ln -s "${HOME}/.hermes/hermes-agent/venv/bin/hermes" "${HOME}/.local/bin/hermes"
+    cat > "${BATS_TEST_TMPDIR}/bin/curl" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' '#!/usr/bin/env bash'
+printf '%s\n' 'if [ -L "${HOME}/.local/bin/hermes" ]; then exit 42; fi'
+EOF
+    chmod +x "${BATS_TEST_TMPDIR}/bin/curl"
+    export PATH="${BATS_TEST_TMPDIR}/bin:${PATH}"
+
+    run bash -c 'source "$1"; install_hermes' _ "${SCRIPT_PATH}"
+    [ "${status}" -eq 0 ]
+    [ ! -e "${HOME}/.local/bin/hermes" ]
+    [ -e "${HOME}/.hermes/hermes-agent/venv/bin/hermes" ]
+}

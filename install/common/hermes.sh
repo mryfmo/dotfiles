@@ -17,9 +17,36 @@ readonly HERMES_INSTALL_DIR="${HERMES_INSTALL_DIR:-${HOME}/.hermes/hermes-agent}
 readonly HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 
 #
+# @description Print the user-facing Hermes command path used by the upstream installer.
+#
+function hermes_command_path() {
+    if [ -n "${TERMUX_VERSION:-}" ] || [[ "${PREFIX:-}" == *"com.termux/files/usr"* ]]; then
+        printf '%s\n' "${PREFIX}/bin/hermes"
+    else
+        printf '%s\n' "${HOME}/.local/bin/hermes"
+    fi
+}
+
+#
+# @description Remove legacy Hermes command symlinks before the upstream installer writes a launcher.
+#   The upstream installer writes a launcher with `cat > "$command_link_dir/hermes"`.
+#   If that path is an existing symlink to the venv entry point, shell redirection
+#   follows it and overwrites the real entry point with a self-referential shim.
+#
+function prepare_hermes_command_path() {
+    local command_path
+
+    command_path="$(hermes_command_path)"
+    if [ -L "${command_path}" ]; then
+        unlink "${command_path}"
+    fi
+}
+
+#
 # @description Install Hermes Agent without running the interactive setup flow.
 #
 function install_hermes() {
+    prepare_hermes_command_path
     curl -fsSL "${HERMES_INSTALL_SCRIPT_URL}" | bash -s -- \
         --skip-setup \
         --hermes-home "${HERMES_HOME}" \

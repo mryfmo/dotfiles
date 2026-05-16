@@ -114,8 +114,14 @@ The bootstrap path and the upgrade path are intentionally separate.
 Use the explicit lifecycle commands below instead:
 
 ```shell
-# Bootstrap a new machine.
-make setup
+# First-time remote bootstrap from any directory.
+bash -c "$(curl -fsLS https://raw.githubusercontent.com/mryfmo/dotfiles/main/setup.sh)"
+
+# After the first remote bootstrap, move to the cloned repository root before
+# running Makefile lifecycle commands. In a default install this is usually
+# ~/.local/share/chezmoi; if a custom source directory is configured, this
+# resolves to that cloned location instead.
+cd "$(git -C "$(chezmoi source-path)" rev-parse --show-toplevel)"
 
 # Update and apply managed dotfiles without upgrading tools.
 make update
@@ -136,12 +142,12 @@ tooling mode.
 
 `make update` applies the public chezmoi state and force-applies `~/.hermes`
 before the normal apply so Hermes runtime rewrites do not block updates.
+Because this repository sets `.chezmoiroot` to `home`, `chezmoi source-path`
+points at the managed source subtree such as `~/.local/share/chezmoi/home`, not
+at the directory that contains `Makefile`. Use the Git repository root from that
+path before running `make` commands.
 
-For remote first-run bootstrap, you can still use the public `setup.sh` snippet directly:
-
-```shell
-bash -c "$(curl -fsLS https://raw.githubusercontent.com/mryfmo/dotfiles/main/setup.sh)"
-```
+If you are already inside the cloned repository root, `make setup` remains available as a local wrapper around `./setup.sh`.
 
 `make apply` remains as a compatibility alias for `make update` because `apply` is the native chezmoi verb, while `update` is the public dotfiles workflow command.
 One-time chezmoi scripts under `home/.chezmoiscripts/**/run_once_*` are for initial installation.

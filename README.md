@@ -130,6 +130,13 @@ make upgrade
 make upgrade SYSTEM=1
 ```
 
+`SYSTEM=1`, `SYSTEM=true`, and `SYSTEM=yes` enable operating-system package
+upgrades. Other values, including `SYSTEM=0`, keep `make upgrade` in user-level
+tooling mode.
+
+`make update` applies the public chezmoi state and force-applies `~/.hermes`
+before the normal apply so Hermes runtime rewrites do not block updates.
+
 For remote first-run bootstrap, you can still use the public `setup.sh` snippet directly:
 
 ```shell

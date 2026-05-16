@@ -99,7 +99,6 @@ function check_gh_extensions() {
         return 0
     fi
 
-    gh --version | head -n 1
     gh extension list || true
 }
 

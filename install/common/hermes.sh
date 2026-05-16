@@ -6,6 +6,8 @@
 #   Downloads the upstream Hermes Agent installer and runs it with `--skip-setup`
 #   so provider selection, OAuth, and API-key setup remain an explicit user step.
 
+# This file is sourced from setup snippets and Bats tests, so it does not enable
+# `set -Eeuo pipefail` globally. Keep strict-mode ownership with the caller.
 # set -Eeuo pipefail
 
 if [ "${DOTFILES_DEBUG:-}" ]; then

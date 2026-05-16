@@ -21,6 +21,8 @@
 @test "[common] Makefile treats private chezmoi as optional during update" {
     run make -n update
     [ "$status" -eq 0 ]
+    # `make -n` prints the shell branch text without executing it; this asserts
+    # the optional-private guard is present in the generated recipe.
     [[ "$output" == *'$HOME/.local/share/chezmoi-private'* ]]
     [[ "$output" == *'$HOME/.config/chezmoi-private/chezmoi.yaml'* ]]
     [[ "$output" == *'--source "$HOME/.local/share/chezmoi-private"'* ]]
@@ -32,6 +34,20 @@
     run make -n upgrade SYSTEM=1
     [ "$status" -eq 0 ]
     [[ "$output" == *'./scripts/upgrade-tools.sh --system'* ]]
+}
+
+@test "[common] Makefile does not treat SYSTEM=0 as a system package upgrade request" {
+    run make -n upgrade SYSTEM=0
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'./scripts/upgrade-tools.sh '* ]]
+    [[ "$output" != *'--system'* ]]
+}
+
+@test "[common] Makefile skips private init when chezmoi-private is unavailable" {
+    run make -n init
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'command -v chezmoi-private'* ]]
+    [[ "$output" == *'Skipping private dotfiles init'* ]]
 }
 
 @test "[common] Makefile does not expose a separate upgrade-system target" {

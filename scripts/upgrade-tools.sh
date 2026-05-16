@@ -43,23 +43,6 @@ function has_command() {
 }
 
 #
-# @description Run a command only when it exists.
-# @arg $1 string Command name.
-# @arg $@ string Command arguments.
-#
-function run_if_available() {
-    local command_name="$1"
-    shift || true
-
-    if ! has_command "${command_name}"; then
-        printf 'Skipping %s; command not found.\n' "${command_name}"
-        return 0
-    fi
-
-    "${command_name}" "$@"
-}
-
-#
 # @description Upgrade Homebrew packages on macOS when Homebrew is installed.
 #
 function upgrade_homebrew() {

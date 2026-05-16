@@ -33,8 +33,12 @@ setup:
 .PHONY: init
 init:
 	chezmoi init --apply --verbose
-	@chezmoi-private init --apply --verbose --ssh mryfmo/dotfiles-private || \
-		echo "Warning: failed to initialize dotfiles-private. Continuing setup."
+	@if command -v chezmoi-private > /dev/null 2>&1; then \
+		chezmoi-private init --apply --verbose --ssh mryfmo/dotfiles-private || \
+			echo "Warning: failed to initialize dotfiles-private. Continuing setup."; \
+	else \
+		echo "Warning: chezmoi-private not found. Skipping private dotfiles init."; \
+	fi
 
 .PHONY: update
 update:
@@ -57,7 +61,7 @@ doctor:
 
 .PHONY: upgrade
 upgrade:
-	./scripts/upgrade-tools.sh $(if $(SYSTEM),--system,)
+	./scripts/upgrade-tools.sh $(if $(filter 1 true yes,$(SYSTEM)),--system,)
 
 .PHONY: watch
 watch:

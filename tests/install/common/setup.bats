@@ -49,6 +49,12 @@
     grep -q '"${chezmoi_cmd}" apply --force' setup.sh
 }
 
+@test "[common] setup.sh lets chezmoi choose sourceDir instead of cloning into cwd" {
+    grep -q '"${chezmoi_cmd}" init "${DOTFILES_REPO_URL}"' setup.sh
+    ! grep -q -- '--source' setup.sh
+    ! grep -q -- 'cd "${HOME}"' setup.sh
+}
+
 @test "[common] setup.sh entrypoint still runs under bash -c snippets" {
     local tmpdir
 

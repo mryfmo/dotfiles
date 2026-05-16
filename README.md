@@ -114,13 +114,17 @@ The bootstrap path and the upgrade path are intentionally separate.
 Use the explicit lifecycle commands below instead:
 
 ```shell
-# First-time remote bootstrap from any directory.
+# First-time remote bootstrap from any directory. On a clean machine this
+# clones the repository into chezmoi's sourceDir, usually ~/.local/share/chezmoi.
+# If ~/.config/chezmoi/chezmoi.yaml already defines sourceDir, setup.sh reuses
+# that configured source directory instead of creating ~/.local/share/chezmoi.
 bash -c "$(curl -fsLS https://raw.githubusercontent.com/mryfmo/dotfiles/main/setup.sh)"
 
-# After the first remote bootstrap, move to the cloned repository root before
-# running Makefile lifecycle commands. In a default install this is usually
-# ~/.local/share/chezmoi; if a custom source directory is configured, this
-# resolves to that cloned location instead.
+# Makefile lifecycle commands must run from the repository root, not from $HOME.
+# Because .chezmoiroot is "home", chezmoi source-path points at the managed
+# source subtree, for example ~/.local/share/chezmoi/home. Use git to move back
+# to the repository root that contains Makefile, regardless of the configured
+# sourceDir.
 cd "$(git -C "$(chezmoi source-path)" rev-parse --show-toplevel)"
 
 # Update and apply managed dotfiles without upgrading tools.
@@ -140,12 +144,21 @@ make upgrade SYSTEM=1
 upgrades. Other values, including `SYSTEM=0`, keep `make upgrade` in user-level
 tooling mode.
 
-`make update` applies the public chezmoi state and force-applies `~/.hermes`
-before the normal apply so Hermes runtime rewrites do not block updates.
-Because this repository sets `.chezmoiroot` to `home`, `chezmoi source-path`
-points at the managed source subtree such as `~/.local/share/chezmoi/home`, not
-at the directory that contains `Makefile`. Use the Git repository root from that
-path before running `make` commands.
+`make update` applies managed files only and excludes chezmoi scripts, so
+one-time installers do not run during routine updates. It force-applies
+`~/.hermes` before the normal apply so Hermes runtime rewrites do not block
+updates.
+
+`setup.sh` does not clone into the current directory. It runs `chezmoi init`
+without a fixed `--source`, so the clone/init location is chezmoi's `sourceDir`.
+On a clean installation this is normally `~/.local/share/chezmoi`. If an
+existing `~/.config/chezmoi/chezmoi.yaml` already sets `sourceDir`, setup reuses
+that location instead; for example a dotfiles development machine may resolve to
+`~/Workspace/dotfiles`, and `~/.local/share/chezmoi` may not exist. Because this
+repository sets `.chezmoiroot` to `home`, `chezmoi source-path` points at the
+managed source subtree such as `~/.local/share/chezmoi/home`, not at the
+directory that contains `Makefile`. Use the Git repository root from that path
+before running `make` commands.
 
 If you are already inside the cloned repository root, `make setup` remains available as a local wrapper around `./setup.sh`.
 

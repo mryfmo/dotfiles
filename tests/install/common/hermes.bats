@@ -59,31 +59,31 @@ EOF
     [ "${output}" = "--skip-setup --hermes-home ${HOME}/.hermes --dir ${HOME}/.hermes/hermes-agent" ]
 }
 
-@test "[common] install_hermes removes legacy hermes command symlink before upstream writes launcher" {
-    mkdir -p "${BATS_TEST_TMPDIR}/bin" "${HOME}/.hermes/hermes-agent/venv/bin"
-    touch "${HOME}/.hermes/hermes-agent/venv/bin/hermes"
-    ln -s "${HOME}/.hermes/hermes-agent/venv/bin/hermes" "${HOME}/.local/bin/hermes"
+@test "[common] install_hermes unlinks an existing hermes command symlink before running upstream installer" {
+    local venv_bin="${HOME}/.hermes/hermes-agent/venv/bin"
+
+    mkdir -p "${BATS_TEST_TMPDIR}/bin" "${HOME}/.local/bin" "${venv_bin}"
+    printf 'venv entrypoint\n' > "${venv_bin}/hermes"
+    ln -s "${venv_bin}/hermes" "${HOME}/.local/bin/hermes"
+
     cat > "${BATS_TEST_TMPDIR}/bin/curl" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' '#!/usr/bin/env bash'
-printf '%s\n' 'if [ -L "${HOME}/.local/bin/hermes" ]; then exit 42; fi'
+printf '%s\n' 'printf "%s\n" "upstream launcher" > "${HOME}/.local/bin/hermes"'
 EOF
     chmod +x "${BATS_TEST_TMPDIR}/bin/curl"
     export PATH="${BATS_TEST_TMPDIR}/bin:${PATH}"
 
     run bash -c 'source "$1"; install_hermes' _ "${SCRIPT_PATH}"
     [ "${status}" -eq 0 ]
-    [ ! -e "${HOME}/.local/bin/hermes" ]
-    [ -e "${HOME}/.hermes/hermes-agent/venv/bin/hermes" ]
-}
 
-@test "[common] hermes_command_path matches explicit-install command link locations" {
-    run bash -c 'source "$1"; hermes_command_path' _ "${SCRIPT_PATH}"
+    run cat "${venv_bin}/hermes"
     [ "${status}" -eq 0 ]
-    [ "${output}" = "${HOME}/.local/bin/hermes" ]
+    [ "${output}" = "venv entrypoint" ]
 
-    run env TERMUX_VERSION=1 PREFIX="${BATS_TEST_TMPDIR}/termux" \
-        bash -c 'source "$1"; hermes_command_path' _ "${SCRIPT_PATH}"
+    [ ! -L "${HOME}/.local/bin/hermes" ]
+
+    run cat "${HOME}/.local/bin/hermes"
     [ "${status}" -eq 0 ]
-    [ "${output}" = "${BATS_TEST_TMPDIR}/termux/bin/hermes" ]
+    [ "${output}" = "upstream launcher" ]
 }

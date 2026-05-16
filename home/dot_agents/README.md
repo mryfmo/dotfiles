@@ -18,7 +18,7 @@ Generated files include:
 - `home/dot_claude/private_settings.json`
 - `home/dot_claude/private_mcp.json.tmpl`
 - `home/dot_claude/skills/**/symlink_*.tmpl`
-- `home/dot_hermes/private_config.yaml.tmpl`
+- `home/private_dot_hermes/private_config.yaml.tmpl`
 - `home/dot_agents/plugins/marketplace.json`
 - `home/dot_agents/plugins/mryfmo-dev-workflows/.codex-plugin/plugin.json`
 

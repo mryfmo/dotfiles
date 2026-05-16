@@ -85,7 +85,7 @@ claude:
   enabledPlugins: {}
 
 hermes:
-  config_path: home/dot_hermes/private_config.yaml.tmpl
+  config_path: home/private_dot_hermes/private_config.yaml.tmpl
   base_config_path: home/dot_agents/hermes-config-base.yaml
   terminal:
     backend: local

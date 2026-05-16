@@ -117,7 +117,7 @@ def check() -> list[str]:
         (SOURCE_ROOT / "dot_codex/private_config.toml.tmpl", HOME / ".codex/config.toml", True, "Codex config"),
         (SOURCE_ROOT / "dot_claude/private_settings.json", HOME / ".claude/settings.json", False, "Claude settings"),
         (SOURCE_ROOT / "dot_claude/private_mcp.json.tmpl", HOME / ".claude/mcp.json", True, "Claude MCP config"),
-        (SOURCE_ROOT / "dot_hermes/private_config.yaml.tmpl", HOME / ".hermes/config.yaml", True, "Hermes config"),
+        (SOURCE_ROOT / "private_dot_hermes/private_config.yaml.tmpl", HOME / ".hermes/config.yaml", True, "Hermes config"),
     ]
     for source, target, template, label in checks:
         if not same_text(source, target, template=template):

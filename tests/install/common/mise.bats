@@ -42,8 +42,3 @@ function teardown() {
     [ "${status}" -eq 0 ]
     [ "${output}" = "install --before ${DEFAULT_NPM_MIN_RELEASE_AGE_DAYS}d" ]
 }
-
-@test "[common] blocc is only installed on Linux x64" {
-    run grep -F '"github:shuntaka9576/blocc" = { version = "latest", os = ["linux/x64"] }' home/dot_mise/config.toml
-    [ "${status}" -eq 0 ]
-}

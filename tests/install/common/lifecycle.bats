@@ -21,9 +21,9 @@
 @test "[common] Makefile treats private chezmoi as optional during update" {
     run make -n update
     [ "$status" -eq 0 ]
-    [[ "$output" == *'$$HOME/.local/share/chezmoi-private'* ]]
-    [[ "$output" == *'$$HOME/.config/chezmoi-private/chezmoi.yaml'* ]]
-    [[ "$output" == *'--source "$$HOME/.local/share/chezmoi-private"'* ]]
+    [[ "$output" == *'$HOME/.local/share/chezmoi-private'* ]]
+    [[ "$output" == *'$HOME/.config/chezmoi-private/chezmoi.yaml'* ]]
+    [[ "$output" == *'--source "$HOME/.local/share/chezmoi-private"'* ]]
     [[ "$output" == *'Skipping private dotfiles'* ]]
     [[ "$output" != *'chezmoi-private apply'* ]]
 }

@@ -106,6 +106,48 @@ make deploy
 Updating and testing the dotfiles follows [chezmoi's daily operations](https://www.chezmoi.io/user-guide/daily-operations/).
 To verify that the updated scripts work correctly, run the scripts on the actual local machine and on the docker container.
 
+### Lifecycle
+
+The public lifecycle has four entry points: `setup`, `update`, `doctor`, and `upgrade`.
+The bootstrap path and the upgrade path are intentionally separate.
+`setup.sh` prepares a machine for dotfiles management and runs `chezmoi apply`, but it must not upgrade already-installed tools just because the bootstrap command was re-run.
+Use the explicit lifecycle commands below instead:
+
+```shell
+# Bootstrap a new machine.
+make setup
+
+# Update and apply managed dotfiles without upgrading tools.
+make update
+
+# Inspect the current tool state without modifying it.
+make doctor
+
+# Explicitly upgrade user-level tools, mise itself, and Homebrew-managed packages.
+make upgrade
+
+# Include operating-system package upgrades such as apt when you want them.
+make upgrade SYSTEM=1
+```
+
+`SYSTEM=1`, `SYSTEM=true`, and `SYSTEM=yes` enable operating-system package
+upgrades. Other values, including `SYSTEM=0`, keep `make upgrade` in user-level
+tooling mode.
+
+`make update` applies the public chezmoi state and force-applies `~/.hermes`
+before the normal apply so Hermes runtime rewrites do not block updates.
+
+For remote first-run bootstrap, you can still use the public `setup.sh` snippet directly:
+
+```shell
+bash -c "$(curl -fsLS https://raw.githubusercontent.com/mryfmo/dotfiles/main/setup.sh)"
+```
+
+`make apply` remains as a compatibility alias for `make update` because `apply` is the native chezmoi verb, while `update` is the public dotfiles workflow command.
+One-time chezmoi scripts under `home/.chezmoiscripts/**/run_once_*` are for initial installation.
+Do not use `make reset` as the normal update path; it clears chezmoi's script state so one-time installers can run again intentionally.
+The `latest` entries in `home/dot_mise/config.toml` are rolling tool definitions and are refreshed by the explicit upgrade lifecycle, not by ordinary dotfile updates.
+
 ### 💡 Develop the Setup Scripts
 
 The setup scripts are stored as shellscripts in an appropriate location under the [`./install`](https://github.com/mryfmo/dotfiles/tree/main/install) directory.

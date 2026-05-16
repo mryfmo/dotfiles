@@ -187,7 +187,7 @@ def validate_claude_mcp_config() -> dict[str, Any]:
 
 
 def validate_hermes_config_template() -> dict[str, Any]:
-    hermes_path = ROOT / "home/dot_hermes/private_config.yaml.tmpl"
+    hermes_path = ROOT / "home/private_dot_hermes/private_config.yaml.tmpl"
     data = yaml.safe_load(render_template_text(hermes_path))
     if not isinstance(data, dict):
         fail(f"{hermes_path} must render to a mapping")

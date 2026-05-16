@@ -6,6 +6,8 @@
 #   Downloads the upstream Hermes Agent installer and runs it with `--skip-setup`
 #   so provider selection, OAuth, and API-key setup remain an explicit user step.
 
+# This file is sourced from setup snippets and Bats tests, so it does not enable
+# `set -Eeuo pipefail` globally. Keep strict-mode ownership with the caller.
 # set -Eeuo pipefail
 
 if [ "${DOTFILES_DEBUG:-}" ]; then
@@ -19,26 +21,25 @@ readonly HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 #
 # @description Print the user-facing Hermes command path used by the upstream installer.
 #
-function hermes_command_path() {
-    if [ -n "${TERMUX_VERSION:-}" ] || [[ "${PREFIX:-}" == *"com.termux/files/usr"* ]]; then
-        printf '%s\n' "${PREFIX}/bin/hermes"
+function hermes_command_link() {
+    if [ -n "${HERMES_COMMAND_LINK:-}" ]; then
+        printf '%s\n' "${HERMES_COMMAND_LINK}"
+    elif [ -n "${TERMUX_VERSION:-}" ] || [[ "${PREFIX:-}" == *"com.termux/files/usr"* ]]; then
+        printf '%s\n' "${PREFIX%/}/bin/hermes"
     else
-        printf '%s\n' "${HOME}/.local/bin/hermes"
+        printf '%s\n' "${HOME%/}/.local/bin/hermes"
     fi
 }
 
 #
-# @description Remove legacy Hermes command symlinks before the upstream installer writes a launcher.
-#   The upstream installer writes a launcher with `cat > "$command_link_dir/hermes"`.
-#   If that path is an existing symlink to the venv entry point, shell redirection
-#   follows it and overwrites the real entry point with a self-referential shim.
+# @description Remove the user-facing Hermes command symlink before installation.
 #
-function prepare_hermes_command_path() {
-    local command_path
+function prepare_hermes_command_link() {
+    local command_link
 
-    command_path="$(hermes_command_path)"
-    if [ -L "${command_path}" ]; then
-        unlink "${command_path}"
+    command_link="$(hermes_command_link)"
+    if [ -L "${command_link}" ]; then
+        rm -f "${command_link}"
     fi
 }
 
@@ -46,7 +47,8 @@ function prepare_hermes_command_path() {
 # @description Install Hermes Agent without running the interactive setup flow.
 #
 function install_hermes() {
-    prepare_hermes_command_path
+    prepare_hermes_command_link
+
     curl -fsSL "${HERMES_INSTALL_SCRIPT_URL}" | bash -s -- \
         --skip-setup \
         --hermes-home "${HERMES_HOME}" \

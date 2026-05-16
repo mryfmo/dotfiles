@@ -26,16 +26,42 @@ docker:
 # Chezmoi
 #
 
+.PHONY: setup
+setup:
+	./setup.sh
+
 .PHONY: init
 init:
 	chezmoi init --apply --verbose
-	@chezmoi-private init --apply --verbose --ssh mryfmo/dotfiles-private || \
-		echo "Warning: failed to initialize dotfiles-private. Continuing setup."
+	@if command -v chezmoi-private > /dev/null 2>&1; then \
+		chezmoi-private init --apply --verbose --ssh mryfmo/dotfiles-private || \
+			echo "Warning: failed to initialize dotfiles-private. Continuing setup."; \
+	else \
+		echo "Warning: chezmoi-private not found. Skipping private dotfiles init."; \
+	fi
 
 .PHONY: update
 update:
+	chezmoi apply --verbose --force ~/.hermes
 	chezmoi apply --verbose
-	chezmoi-private apply --verbose
+	@if [ -d "$$HOME/.local/share/chezmoi-private" ] && [ -f "$$HOME/.config/chezmoi-private/chezmoi.yaml" ]; then \
+		chezmoi --source "$$HOME/.local/share/chezmoi-private" \
+			--config "$$HOME/.config/chezmoi-private/chezmoi.yaml" \
+			apply --verbose; \
+	else \
+		echo "Warning: private chezmoi source/config not found. Skipping private dotfiles."; \
+	fi
+
+.PHONY: apply
+apply: update
+
+.PHONY: doctor
+doctor:
+	./scripts/check-tools.sh
+
+.PHONY: upgrade
+upgrade:
+	./scripts/upgrade-tools.sh $(if $(filter 1 true yes,$(SYSTEM)),--system,)
 
 .PHONY: watch
 watch:

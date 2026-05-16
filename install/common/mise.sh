@@ -23,7 +23,7 @@ function install_mise() {
     local version="v2026.5.9"
     local url="https://github.com/jdx/mise/releases/download/${version}/install.sh"
 
-    curl "${url}" | sh
+    curl -fsSL "${url}" | sh
 
     eval "$(~/.local/bin/mise activate bash)"
 }

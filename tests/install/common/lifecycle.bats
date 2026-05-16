@@ -11,11 +11,13 @@
     make -n apply
 }
 
-@test "[common] Makefile force-applies only Hermes runtime config before normal update" {
+@test "[common] Makefile force-applies only Hermes runtime config before normal file-only update" {
     run make -n update
     [ "$status" -eq 0 ]
-    [[ "$output" == *'chezmoi apply --verbose --force ~/.hermes'* ]]
-    grep -xF 'chezmoi apply --verbose' <<<"$output"
+    [[ "$output" == *'chezmoi apply --verbose --force --exclude=scripts ~/.hermes'* ]]
+    grep -xF 'chezmoi apply --verbose --exclude=scripts' <<<"$output"
+    [[ "$output" == *'apply --verbose --exclude=scripts'* ]]
+    [[ "$output" != *'apply --verbose;'* ]]
 }
 
 @test "[common] Makefile treats private chezmoi as optional during update" {
@@ -26,6 +28,7 @@
     [[ "$output" == *'$HOME/.local/share/chezmoi-private'* ]]
     [[ "$output" == *'$HOME/.config/chezmoi-private/chezmoi.yaml'* ]]
     [[ "$output" == *'--source "$HOME/.local/share/chezmoi-private"'* ]]
+    [[ "$output" == *'apply --verbose --exclude=scripts'* ]]
     [[ "$output" == *'Skipping private dotfiles'* ]]
     [[ "$output" != *'chezmoi-private apply'* ]]
 }
@@ -102,4 +105,13 @@
     grep -q 'make upgrade' README.md
     grep -q 'make upgrade SYSTEM=1' README.md
     grep -q 'setup.sh' README.md
+}
+
+@test "[common] README documents clean sourceDir bootstrap and repository-root handoff" {
+    grep -q "chezmoi's sourceDir" README.md
+    grep -q 'usually ~/.local/share/chezmoi' README.md
+    grep -q '`setup.sh` does not clone into the current directory' README.md
+    grep -q 'Makefile lifecycle commands must run from the repository root, not from $HOME' README.md
+    grep -q 'git -C "$(chezmoi source-path)" rev-parse --show-toplevel' README.md
+    grep -q 'existing `~/.config/chezmoi/chezmoi.yaml` already sets `sourceDir`' README.md
 }

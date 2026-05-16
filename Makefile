@@ -42,12 +42,12 @@ init:
 
 .PHONY: update
 update:
-	chezmoi apply --verbose --force ~/.hermes
-	chezmoi apply --verbose
+	chezmoi apply --verbose --force --exclude=scripts ~/.hermes
+	chezmoi apply --verbose --exclude=scripts
 	@if [ -d "$$HOME/.local/share/chezmoi-private" ] && [ -f "$$HOME/.config/chezmoi-private/chezmoi.yaml" ]; then \
 		chezmoi --source "$$HOME/.local/share/chezmoi-private" \
 			--config "$$HOME/.config/chezmoi-private/chezmoi.yaml" \
-			apply --verbose; \
+			apply --verbose --exclude=scripts; \
 	else \
 		echo "Warning: private chezmoi source/config not found. Skipping private dotfiles."; \
 	fi

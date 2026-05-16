@@ -157,11 +157,11 @@ function upgrade_apt_packages() {
 function parse_args() {
     while [ "$#" -gt 0 ]; do
         case "$1" in
-            --system)
-                include_system=true
-                ;;
-            -h|--help)
-                cat <<'USAGE'
+        --system)
+            include_system=true
+            ;;
+        -h | --help)
+            cat << 'USAGE'
 Usage: scripts/upgrade-tools.sh [--system]
 
 Upgrade tools intentionally, outside bootstrap and `chezmoi apply`.
@@ -169,12 +169,12 @@ Upgrade tools intentionally, outside bootstrap and `chezmoi apply`.
 Options:
   --system  Include operating-system package upgrades such as apt.
 USAGE
-                exit 0
-                ;;
-            *)
-                printf 'Unknown option: %s\n' "$1" >&2
-                exit 2
-                ;;
+            exit 0
+            ;;
+        *)
+            printf 'Unknown option: %s\n' "$1" >&2
+            exit 2
+            ;;
         esac
         shift
     done

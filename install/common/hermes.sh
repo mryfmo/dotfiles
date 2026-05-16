@@ -15,14 +15,29 @@ fi
 readonly HERMES_INSTALL_SCRIPT_URL="https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh"
 readonly HERMES_INSTALL_DIR="${HERMES_INSTALL_DIR:-${HOME}/.hermes/hermes-agent}"
 readonly HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
-readonly HERMES_COMMAND_LINK="${HERMES_COMMAND_LINK:-${HOME}/.local/bin/hermes}"
+
+#
+# @description Print the user-facing Hermes command path used by the upstream installer.
+#
+function hermes_command_link() {
+    if [ -n "${HERMES_COMMAND_LINK:-}" ]; then
+        printf '%s\n' "${HERMES_COMMAND_LINK}"
+    elif [ -n "${TERMUX_VERSION:-}" ] || [[ "${PREFIX:-}" == *"com.termux/files/usr"* ]]; then
+        printf '%s\n' "${PREFIX%/}/bin/hermes"
+    else
+        printf '%s\n' "${HOME%/}/.local/bin/hermes"
+    fi
+}
 
 #
 # @description Remove the user-facing Hermes command symlink before installation.
 #
 function prepare_hermes_command_link() {
-    if [ -L "${HERMES_COMMAND_LINK}" ]; then
-        rm -f "${HERMES_COMMAND_LINK}"
+    local command_link
+
+    command_link="$(hermes_command_link)"
+    if [ -L "${command_link}" ]; then
+        rm -f "${command_link}"
     fi
 }
 

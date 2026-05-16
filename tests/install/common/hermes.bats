@@ -87,3 +87,19 @@ EOF
     [ "${status}" -eq 0 ]
     [ "${output}" = "upstream launcher" ]
 }
+
+@test "[common] hermes command link follows upstream installer platform paths" {
+    run bash -c 'source "$1"; hermes_command_link' _ "${SCRIPT_PATH}"
+    [ "${status}" -eq 0 ]
+    [ "${output}" = "${HOME}/.local/bin/hermes" ]
+
+    run env TERMUX_VERSION=1 PREFIX="${BATS_TEST_TMPDIR}/termux/usr" \
+        bash -c 'source "$1"; hermes_command_link' _ "${SCRIPT_PATH}"
+    [ "${status}" -eq 0 ]
+    [ "${output}" = "${BATS_TEST_TMPDIR}/termux/usr/bin/hermes" ]
+
+    run env HERMES_COMMAND_LINK="${BATS_TEST_TMPDIR}/custom/hermes" \
+        bash -c 'source "$1"; hermes_command_link' _ "${SCRIPT_PATH}"
+    [ "${status}" -eq 0 ]
+    [ "${output}" = "${BATS_TEST_TMPDIR}/custom/hermes" ]
+}

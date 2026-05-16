@@ -15,7 +15,7 @@
     run make -n update
     [ "$status" -eq 0 ]
     [[ "$output" == *'chezmoi apply --verbose --force ~/.hermes'* ]]
-    [[ "$output" == *'chezmoi apply --verbose'* ]]
+    grep -xF 'chezmoi apply --verbose' <<<"$output"
 }
 
 @test "[common] Makefile treats private chezmoi as optional during update" {

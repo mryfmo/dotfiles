@@ -11,25 +11,23 @@
       
       
       
-        <link rel="prev" href="../sheldon/">
+        <link rel="prev" href="../run_unit_test/">
       
-      
-        <link rel="next" href="../../macos/arm64/prepare_arm64_system/">
       
       
         
       
       
-      <link rel="icon" href="../../../../assets/images/favicon.png">
+      <link rel="icon" href="../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>install/common/tpm.sh - Dotfiles Docs</title>
+        <title>scripts/upgrade-tools.sh - Dotfiles Docs</title>
       
     
     
-      <link rel="stylesheet" href="../../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
       
       
 
@@ -48,9 +46,9 @@
       
     
     
-      <link rel="stylesheet" href="../../../../assets/stylesheets/extra.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -68,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#installcommontpmsh" class="md-skip">
+        <a href="#scriptsupgrade-toolssh" class="md-skip">
           Skip to content
         </a>
       
@@ -84,7 +82,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../.." title="Dotfiles Docs" class="md-header__button md-logo" aria-label="Dotfiles Docs" data-md-component="logo">
+    <a href="../../.." title="Dotfiles Docs" class="md-header__button md-logo" aria-label="Dotfiles Docs" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -104,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              install/common/tpm.sh
+              scripts/upgrade-tools.sh
             
           </span>
         </div>
@@ -182,7 +180,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../.." title="Dotfiles Docs" class="md-nav__button md-logo" aria-label="Dotfiles Docs" data-md-component="logo">
+    <a href="../../.." title="Dotfiles Docs" class="md-nav__button md-logo" aria-label="Dotfiles Docs" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -200,7 +198,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../.." class="md-nav__link">
+      <a href="../../.." class="md-nav__link">
         
   
   
@@ -227,7 +225,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../catalog/" class="md-nav__link">
+      <a href="../../../catalog/" class="md-nav__link">
         
   
   
@@ -301,7 +299,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../plans/nix-first-architecture/" class="md-nav__link">
+      <a href="../../../plans/nix-first-architecture/" class="md-nav__link">
         
   
   
@@ -329,7 +327,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../plans/nix-migration/" class="md-nav__link">
+      <a href="../../../plans/nix-migration/" class="md-nav__link">
         
   
   
@@ -413,7 +411,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../chezmoi-templates/" class="md-nav__link">
+      <a href="../../chezmoi-templates/" class="md-nav__link">
         
   
   
@@ -582,7 +580,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../home/dot_claude/hooks/executable_enforce-uv/" class="md-nav__link">
+      <a href="../../home/dot_claude/hooks/executable_enforce-uv/" class="md-nav__link">
         
   
   
@@ -610,7 +608,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../home/dot_claude/hooks/executable_format-edited-files.py/" class="md-nav__link">
+      <a href="../../home/dot_claude/hooks/executable_format-edited-files.py/" class="md-nav__link">
         
   
   
@@ -748,7 +746,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../home/dot_config/alias/client/" class="md-nav__link">
+      <a href="../../home/dot_config/alias/client/" class="md-nav__link">
         
   
   
@@ -776,7 +774,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../home/dot_config/alias/common/" class="md-nav__link">
+      <a href="../../home/dot_config/alias/common/" class="md-nav__link">
         
   
   
@@ -804,7 +802,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../home/dot_config/alias/server/" class="md-nav__link">
+      <a href="../../home/dot_config/alias/server/" class="md-nav__link">
         
   
   
@@ -989,7 +987,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../home/dot_local/bin/common/executable_agent-fanout/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_agent-fanout/" class="md-nav__link">
         
   
   
@@ -1017,7 +1015,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../home/dot_local/bin/common/executable_cdgwq/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_cdgwq/" class="md-nav__link">
         
   
   
@@ -1045,7 +1043,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../home/dot_local/bin/common/executable_cdw/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_cdw/" class="md-nav__link">
         
   
   
@@ -1073,7 +1071,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../home/dot_local/bin/common/executable_chezmoi-cd/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_chezmoi-cd/" class="md-nav__link">
         
   
   
@@ -1101,7 +1099,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../home/dot_local/bin/common/executable_dev/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_dev/" class="md-nav__link">
         
   
   
@@ -1129,7 +1127,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../home/dot_local/bin/common/executable_fgc/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_fgc/" class="md-nav__link">
         
   
   
@@ -1157,7 +1155,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../home/dot_local/bin/common/executable_git-delete-merged-branches/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_git-delete-merged-branches/" class="md-nav__link">
         
   
   
@@ -1185,7 +1183,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../home/dot_local/bin/common/executable_setup-gh/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_setup-gh/" class="md-nav__link">
         
   
   
@@ -1213,7 +1211,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../home/dot_local/bin/common/executable_setup-gpg/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_setup-gpg/" class="md-nav__link">
         
   
   
@@ -1241,7 +1239,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../home/dot_local/bin/common/executable_setup-python-env/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_setup-python-env/" class="md-nav__link">
         
   
   
@@ -1269,7 +1267,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../home/dot_local/bin/common/executable_start-cognee-mcp/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_start-cognee-mcp/" class="md-nav__link">
         
   
   
@@ -1297,7 +1295,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../home/dot_local/bin/common/executable_uv-format/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/common/executable_uv-format/" class="md-nav__link">
         
   
   
@@ -1380,7 +1378,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../home/dot_local/bin/server/cache/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/server/cache/" class="md-nav__link">
         
   
   
@@ -1408,7 +1406,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../home/dot_local/bin/server/cuda/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/server/cuda/" class="md-nav__link">
         
   
   
@@ -1436,7 +1434,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../home/dot_local/bin/server/history/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/server/history/" class="md-nav__link">
         
   
   
@@ -1464,7 +1462,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../home/dot_local/bin/server/secrets/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/server/secrets/" class="md-nav__link">
         
   
   
@@ -1492,7 +1490,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../home/dot_local/bin/server/ssh_agent/" class="md-nav__link">
+      <a href="../../home/dot_local/bin/server/ssh_agent/" class="md-nav__link">
         
   
   
@@ -1549,20 +1547,18 @@
                 
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" >
         
           
           <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
@@ -1583,7 +1579,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1598,20 +1594,18 @@
                 
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3_1" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3_1" >
         
           
           <label class="md-nav__link" for="__nav_4_3_1" id="__nav_4_3_1_label" tabindex="0">
@@ -1632,7 +1626,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_3_1_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_3_1_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_3_1">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1650,7 +1644,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../chezmoi_private/" class="md-nav__link">
+      <a href="../../install/common/chezmoi_private/" class="md-nav__link">
         
   
   
@@ -1678,7 +1672,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cognee/" class="md-nav__link">
+      <a href="../../install/common/cognee/" class="md-nav__link">
         
   
   
@@ -1706,7 +1700,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../gh_extensions/" class="md-nav__link">
+      <a href="../../install/common/gh_extensions/" class="md-nav__link">
         
   
   
@@ -1734,7 +1728,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../hermes/" class="md-nav__link">
+      <a href="../../install/common/hermes/" class="md-nav__link">
         
   
   
@@ -1762,7 +1756,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../mise/" class="md-nav__link">
+      <a href="../../install/common/mise/" class="md-nav__link">
         
   
   
@@ -1790,7 +1784,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../sheldon/" class="md-nav__link">
+      <a href="../../install/common/sheldon/" class="md-nav__link">
         
   
   
@@ -1815,37 +1809,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    install/common/tpm.sh
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../install/common/tpm/" class="md-nav__link">
         
   
   
@@ -1861,59 +1828,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#metadata" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Metadata
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#functions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Functions
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#source" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Source
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2028,7 +1942,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../macos/arm64/prepare_arm64_system/" class="md-nav__link">
+      <a href="../../install/macos/arm64/prepare_arm64_system/" class="md-nav__link">
         
   
   
@@ -2056,7 +1970,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../macos/arm64/run/" class="md-nav__link">
+      <a href="../../install/macos/arm64/run/" class="md-nav__link">
         
   
   
@@ -2139,7 +2053,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../macos/common/brew/" class="md-nav__link">
+      <a href="../../install/macos/common/brew/" class="md-nav__link">
         
   
   
@@ -2167,7 +2081,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../macos/common/command_line_tool/" class="md-nav__link">
+      <a href="../../install/macos/common/command_line_tool/" class="md-nav__link">
         
   
   
@@ -2195,7 +2109,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../macos/common/defaults/" class="md-nav__link">
+      <a href="../../install/macos/common/defaults/" class="md-nav__link">
         
   
   
@@ -2223,7 +2137,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../macos/common/dependencies/" class="md-nav__link">
+      <a href="../../install/macos/common/dependencies/" class="md-nav__link">
         
   
   
@@ -2251,7 +2165,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../macos/common/docker/" class="md-nav__link">
+      <a href="../../install/macos/common/docker/" class="md-nav__link">
         
   
   
@@ -2279,7 +2193,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../macos/common/ghostty/" class="md-nav__link">
+      <a href="../../install/macos/common/ghostty/" class="md-nav__link">
         
   
   
@@ -2307,7 +2221,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../macos/common/misc/" class="md-nav__link">
+      <a href="../../install/macos/common/misc/" class="md-nav__link">
         
   
   
@@ -2335,7 +2249,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../macos/common/tmux/" class="md-nav__link">
+      <a href="../../install/macos/common/tmux/" class="md-nav__link">
         
   
   
@@ -2473,7 +2387,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ubuntu/client/docker/" class="md-nav__link">
+      <a href="../../install/ubuntu/client/docker/" class="md-nav__link">
         
   
   
@@ -2501,7 +2415,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ubuntu/client/ghostty/" class="md-nav__link">
+      <a href="../../install/ubuntu/client/ghostty/" class="md-nav__link">
         
   
   
@@ -2529,7 +2443,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ubuntu/client/misc/" class="md-nav__link">
+      <a href="../../install/ubuntu/client/misc/" class="md-nav__link">
         
   
   
@@ -2612,7 +2526,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ubuntu/common/dependencies/" class="md-nav__link">
+      <a href="../../install/ubuntu/common/dependencies/" class="md-nav__link">
         
   
   
@@ -2640,7 +2554,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ubuntu/common/ssh/" class="md-nav__link">
+      <a href="../../install/ubuntu/common/ssh/" class="md-nav__link">
         
   
   
@@ -2668,7 +2582,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ubuntu/common/tmux/" class="md-nav__link">
+      <a href="../../install/ubuntu/common/tmux/" class="md-nav__link">
         
   
   
@@ -2751,7 +2665,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ubuntu/server/misc/" class="md-nav__link">
+      <a href="../../install/ubuntu/server/misc/" class="md-nav__link">
         
   
   
@@ -2779,7 +2693,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ubuntu/server/setup_locale/" class="md-nav__link">
+      <a href="../../install/ubuntu/server/setup_locale/" class="md-nav__link">
         
   
   
@@ -2807,7 +2721,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ubuntu/server/setup_timezone/" class="md-nav__link">
+      <a href="../../install/ubuntu/server/setup_timezone/" class="md-nav__link">
         
   
   
@@ -2835,7 +2749,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ubuntu/server/ssh_server/" class="md-nav__link">
+      <a href="../../install/ubuntu/server/ssh_server/" class="md-nav__link">
         
   
   
@@ -2863,7 +2777,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ubuntu/server/starship/" class="md-nav__link">
+      <a href="../../install/ubuntu/server/starship/" class="md-nav__link">
         
   
   
@@ -2912,18 +2826,20 @@
                 
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" checked>
         
           
           <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
@@ -2944,7 +2860,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2962,7 +2878,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scripts/check-tools/" class="md-nav__link">
+      <a href="../check-tools/" class="md-nav__link">
         
   
   
@@ -2990,7 +2906,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scripts/generate-docs/" class="md-nav__link">
+      <a href="../generate-docs/" class="md-nav__link">
         
   
   
@@ -3018,7 +2934,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scripts/run_benchmark/" class="md-nav__link">
+      <a href="../run_benchmark/" class="md-nav__link">
         
   
   
@@ -3046,7 +2962,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../scripts/run_unit_test/" class="md-nav__link">
+      <a href="../run_unit_test/" class="md-nav__link">
         
   
   
@@ -3071,10 +2987,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../../scripts/upgrade-tools/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/upgrade-tools.sh
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -3090,6 +3033,59 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metadata
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -3186,139 +3182,215 @@
 
 
 
-<h1 id="installcommontpmsh">install/common/tpm.sh<a class="headerlink" href="#installcommontpmsh" title="Permanent link">&para;</a></h1>
-<p>Clones TPM, installs tmux plugins, and builds <code>tmux-mem-cpu-load</code> into the user's local prefix.</p>
+<h1 id="scriptsupgrade-toolssh">scripts/upgrade-tools.sh<a class="headerlink" href="#scriptsupgrade-toolssh" title="Permanent link">&para;</a></h1>
+<p>Keeps the bootstrap path stable by moving package-manager upgrades into an intentional lifecycle command. The default mode upgrades user-level tooling and Homebrew-managed packages when those managers are available. Pass <code>--system</code> to include operating-system package upgrades such as apt.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Source: <code>install/common/tpm.sh</code></li>
-<li>Category: install script</li>
+<li>Source: <code>scripts/upgrade-tools.sh</code></li>
+<li>Category: repository script</li>
 <li>Renderer: <code>shell-fallback</code></li>
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>clone_tpm</code></li>
-<li><code>install_tmux_mem_cpu_load</code></li>
-<li><code>install_tpm</code></li>
-<li><code>install_tpm_plugins</code></li>
-<li><code>is_tmux_mem_cpu_load_installed</code></li>
+<li><code>has_command</code></li>
+<li><code>is_linux</code></li>
+<li><code>is_macos</code></li>
 <li><code>main</code></li>
-<li><code>uninstall_tmux_mem_cpu_load</code></li>
-<li><code>uninstall_tpm</code></li>
+<li><code>parse_args</code></li>
+<li><code>section</code></li>
+<li><code>upgrade_apt_packages</code></li>
+<li><code>upgrade_gh_extensions</code></li>
+<li><code>upgrade_homebrew</code></li>
+<li><code>upgrade_mise_self</code></li>
+<li><code>upgrade_mise_tools</code></li>
+<li><code>upgrade_tmux_plugins</code></li>
+<li><code>upgrade_uv_tools</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
 
-<span class="c1"># @file install/common/tpm.sh</span>
-<span class="c1"># @brief Install tmux plugin tooling.</span>
+<span class="c1"># @file scripts/upgrade-tools.sh</span>
+<span class="c1"># @brief Explicitly upgrade tools managed outside normal `chezmoi apply`.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Clones TPM, installs tmux plugins, and builds `tmux-mem-cpu-load` into the</span>
-<span class="c1">#   user&#39;s local prefix.</span>
+<span class="c1">#   Keeps the bootstrap path stable by moving package-manager upgrades into an</span>
+<span class="c1">#   intentional lifecycle command. The default mode upgrades user-level tooling</span>
+<span class="c1">#   and Homebrew-managed packages when those managers are available. Pass</span>
+<span class="c1">#   `--system` to include operating-system package upgrades such as apt.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
-<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span><span class="nb">set</span><span class="w"> </span>-x
-<span class="k">fi</span>
-
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">TMUX_PLUGINS_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.tmux/plugins&quot;</span>
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">TPM_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">TMUX_PLUGINS_DIR</span><span class="si">}</span><span class="s2">/tpm&quot;</span>
+<span class="nv">include_system</span><span class="o">=</span><span class="nb">false</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Check whether `tmux-mem-cpu-load` is already installed.</span>
+<span class="c1"># @description Print a section heading.</span>
+<span class="c1"># @arg $1 string Heading text.</span>
 <span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>is_tmux_mem_cpu_load_installed<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">&quot;tmux-mem-cpu-load&quot;</span><span class="w"> </span><span class="p">&amp;</span>&gt;<span class="w"> </span>/dev/null
+<span class="k">function</span><span class="w"> </span>section<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;\n==&gt; %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Clone the TPM repository when it is not present.</span>
-<span class="c1"># @arg $1 path Target directory for the TPM checkout.</span>
+<span class="c1"># @description Return success when the current OS is macOS.</span>
 <span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>clone_tpm<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">dir</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">url</span><span class="o">=</span><span class="s2">&quot;https://github.com/tmux-plugins/tpm&quot;</span>
-
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>!<span class="w"> </span>-d<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>git<span class="w"> </span>clone<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">dir</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="k">fi</span>
+<span class="k">function</span><span class="w"> </span>is_macos<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uname<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Darwin&quot;</span><span class="w"> </span><span class="o">]</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Run TPM&#39;s plugin installer in a nounset-safe subshell.</span>
-<span class="c1"># @arg $1 path TPM installation directory.</span>
+<span class="c1"># @description Return success when the current OS is Linux.</span>
 <span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>install_tpm_plugins<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">dir</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">cmd</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">dir</span><span class="p">%/</span><span class="si">}</span><span class="s2">/scripts/install_plugins.sh&quot;</span>
-
-<span class="w">    </span><span class="o">(</span>
-<span class="w">        </span><span class="c1"># `bashcov` can affect shell option propagation while tracing scripts.</span>
-<span class="w">        </span><span class="c1"># TPM helper scripts reference positional parameters directly (`$1`)</span>
-<span class="w">        </span><span class="c1"># and fail under nounset; run installer in a subshell with `set +u`</span>
-<span class="w">        </span><span class="c1"># to keep parent strict mode while preserving TPM script compatibility.</span>
-<span class="w">        </span><span class="nb">set</span><span class="w"> </span>+u
-<span class="w">        </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">cmd</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="o">)</span>
+<span class="k">function</span><span class="w"> </span>is_linux<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uname<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Linux&quot;</span><span class="w"> </span><span class="o">]</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Install TPM and fetch tmux plugins.</span>
+<span class="c1"># @description Return success when a command is available.</span>
+<span class="c1"># @arg $1 string Command name.</span>
 <span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>install_tpm<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">export</span><span class="w"> </span><span class="nv">TMUX_PLUGIN_MANAGER_PATH</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">TMUX_PLUGINS_DIR</span><span class="si">}</span><span class="s2">&quot;</span>
-
-<span class="w">    </span>tmux<span class="w"> </span>start-server<span class="w"> </span><span class="se">\;</span><span class="w"> </span>set-environment<span class="w"> </span>-g<span class="w"> </span>TMUX_PLUGIN_MANAGER_PATH<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">TMUX_PLUGINS_DIR</span><span class="si">}</span><span class="s2">&quot;</span>
-
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>!<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>!<span class="w"> </span>-d<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">TPM_DIR</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>clone_tpm<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">TPM_DIR</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">        </span>install_tpm_plugins<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">TPM_DIR</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="k">fi</span>
+<span class="k">function</span><span class="w"> </span>has_command<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Build and install `tmux-mem-cpu-load` from source.</span>
+<span class="c1"># @description Upgrade Homebrew packages on macOS when Homebrew is installed.</span>
 <span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>install_tmux_mem_cpu_load<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>!<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>is_tmux_mem_cpu_load_installed<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="c1"># early return</span>
+<span class="k">function</span><span class="w"> </span>upgrade_homebrew<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>is_macos<span class="w"> </span><span class="o">||</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>brew<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">tmux_mem_cpu_load_url</span><span class="o">=</span><span class="s2">&quot;https://github.com/thewtex/tmux-mem-cpu-load.git&quot;</span>
-
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>tmp_dir
-<span class="w">    </span><span class="nv">tmp_dir</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="w"> </span>/tmp/tmux-mem-cpu-load-XXXXXXXXXX<span class="k">)</span><span class="s2">&quot;</span>
-
-<span class="w">    </span>git<span class="w"> </span>clone<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmux_mem_cpu_load_url</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmp_dir</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmp_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span>cmake<span class="w"> </span>.<span class="w"> </span>-DCMAKE_INSTALL_PREFIX<span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.local/&quot;</span>
-<span class="w">    </span>make
-<span class="w">    </span>make<span class="w"> </span>install
+<span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;Homebrew&quot;</span>
+<span class="w">    </span>brew<span class="w"> </span>update
+<span class="w">    </span>brew<span class="w"> </span>upgrade
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Remove the TPM checkout.</span>
+<span class="c1"># @description Upgrade the standalone mise binary when self-update is available.</span>
 <span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>uninstall_tpm<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>rm<span class="w"> </span>-rfv<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">TPM_DIR</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="k">function</span><span class="w"> </span>upgrade_mise_self<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>mise<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;mise self-update&quot;</span>
+<span class="w">    </span>mise<span class="w"> </span>self-update<span class="w"> </span>--yes<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Remove the installed `tmux-mem-cpu-load` binary.</span>
+<span class="c1"># @description Upgrade mise-managed tools declared in the repository config.</span>
 <span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>uninstall_tmux_mem_cpu_load<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>rm<span class="w"> </span>-fv<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.local/bin/tmux-mem-cpu-load&quot;</span>
+<span class="k">function</span><span class="w"> </span>upgrade_mise_tools<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>mise<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;mise tools&quot;</span>
+<span class="w">    </span>mise<span class="w"> </span>trust<span class="w"> </span>--yes
+<span class="w">    </span><span class="c1"># Keep the npm safety window used by the bootstrap installer so freshly</span>
+<span class="w">    </span><span class="c1"># published npm packages are not picked up immediately.</span>
+<span class="w">    </span>mise<span class="w"> </span>install<span class="w"> </span>--before<span class="w"> </span>7d
+<span class="w">    </span>mise<span class="w"> </span>upgrade<span class="w"> </span>--yes<span class="w"> </span>--before<span class="w"> </span>7d
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Install TPM and `tmux-mem-cpu-load`.</span>
+<span class="c1"># @description Upgrade uv tool installations when uv is available.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>upgrade_uv_tools<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>uv<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;uv tools&quot;</span>
+<span class="w">    </span>uv<span class="w"> </span>tool<span class="w"> </span>upgrade<span class="w"> </span>--all<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Upgrade GitHub CLI extensions when gh is available.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>upgrade_gh_extensions<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>gh<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;GitHub CLI extensions&quot;</span>
+<span class="w">    </span>gh<span class="w"> </span>extension<span class="w"> </span>upgrade<span class="w"> </span>--all<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Upgrade tmux plugins when TPM is installed.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>upgrade_tmux_plugins<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">tpm_update</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.tmux/plugins/tpm/bin/update_plugins&quot;</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>!<span class="w"> </span>-x<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tpm_update</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;tmux plugins&quot;</span>
+<span class="w">    </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tpm_update</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>all<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Upgrade apt packages only when system upgrades are requested.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>upgrade_apt_packages<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="si">${</span><span class="nv">include_system</span><span class="si">}</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>!<span class="w"> </span>is_linux<span class="w"> </span><span class="o">||</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>apt-get<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;apt&quot;</span>
+<span class="w">    </span>sudo<span class="w"> </span>--preserve-env<span class="o">=</span>http_proxy,https_proxy,no_proxy<span class="w"> </span>apt-get<span class="w"> </span>update
+<span class="w">    </span>sudo<span class="w"> </span>--preserve-env<span class="o">=</span>http_proxy,https_proxy,no_proxy<span class="w"> </span>apt-get<span class="w"> </span>upgrade<span class="w"> </span>-y
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Parse command-line options.</span>
+<span class="c1"># @arg $@ string Command-line arguments.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>parse_args<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$#</span><span class="s2">&quot;</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span><span class="w"> </span><span class="k">in</span>
+<span class="w">        </span>--system<span class="o">)</span>
+<span class="w">            </span><span class="nv">include_system</span><span class="o">=</span><span class="nb">true</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span>-h<span class="w"> </span><span class="p">|</span><span class="w"> </span>--help<span class="o">)</span>
+<span class="w">            </span>cat<span class="w"> </span><span class="s">&lt;&lt; &#39;USAGE&#39;</span>
+<span class="s">Usage: scripts/upgrade-tools.sh [--system]</span>
+
+<span class="s">Upgrade tools intentionally, outside bootstrap and `chezmoi apply`.</span>
+
+<span class="s">Options:</span>
+<span class="s">  --system  Include operating-system package upgrades such as apt.</span>
+<span class="s">USAGE</span>
+<span class="w">            </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span>*<span class="o">)</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Unknown option: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span><span class="k">esac</span>
+<span class="w">        </span><span class="nb">shift</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Run explicit upgrades for managed tooling.</span>
+<span class="c1"># @arg $@ string Command-line arguments.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>install_tpm
-<span class="w">    </span>install_tmux_mem_cpu_load
+<span class="w">    </span>parse_args<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$@</span><span class="s2">&quot;</span>
+
+<span class="w">    </span>upgrade_homebrew
+<span class="w">    </span>upgrade_mise_self
+<span class="w">    </span>upgrade_mise_tools
+<span class="w">    </span>upgrade_uv_tools
+<span class="w">    </span>upgrade_gh_extensions
+<span class="w">    </span>upgrade_tmux_plugins
+<span class="w">    </span>upgrade_apt_packages
 <span class="o">}</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span>main
+<span class="w">    </span>main<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$@</span><span class="s2">&quot;</span>
 <span class="k">fi</span>
 </code></pre></div>
 
@@ -3376,10 +3448,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../../..", "features": ["navigation.top", "content.code.copy"], "search": "../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.top", "content.code.copy"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

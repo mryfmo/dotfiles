@@ -2962,6 +2962,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../scripts/check-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/check-tools.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../scripts/generate-docs/" class="md-nav__link">
         
   
@@ -3026,6 +3054,34 @@
     
   
     scripts/run_unit_test.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../scripts/upgrade-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/upgrade-tools.sh
   
 
     
@@ -3169,12 +3225,10 @@
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>install_mise<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="c1"># https://mise.run</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">version</span><span class="o">=</span><span class="s2">&quot;v2026.3.7&quot;</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">url</span><span class="o">=</span><span class="s2">&quot;https://raw.githubusercontent.com/jdx/mise/refs/tags/</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">/packaging/standalone/install.envsubst&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">version</span><span class="o">=</span><span class="s2">&quot;v2026.5.9&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">url</span><span class="o">=</span><span class="s2">&quot;https://github.com/jdx/mise/releases/download/</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">/install.sh&quot;</span>
 
-<span class="w">    </span><span class="nb">export</span><span class="w"> </span><span class="nv">MISE_CURRENT_VERSION</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">    </span>curl<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sh
-<span class="w">    </span><span class="nb">unset</span><span class="w"> </span>MISE_CURRENT_VERSION
+<span class="w">    </span>curl<span class="w"> </span>-fsSL<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sh
 
 <span class="w">    </span><span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>~/.local/bin/mise<span class="w"> </span>activate<span class="w"> </span>bash<span class="k">)</span><span class="s2">&quot;</span>
 <span class="o">}</span>

@@ -2962,6 +2962,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../scripts/check-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/check-tools.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../scripts/generate-docs/" class="md-nav__link">
         
   
@@ -3026,6 +3054,34 @@
     
   
     scripts/run_unit_test.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../scripts/upgrade-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/upgrade-tools.sh
   
 
     
@@ -3140,10 +3196,10 @@
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>hermes_command_path</code></li>
+<li><code>hermes_command_link</code></li>
 <li><code>install_hermes</code></li>
 <li><code>main</code></li>
-<li><code>prepare_hermes_command_path</code></li>
+<li><code>prepare_hermes_command_link</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
@@ -3154,6 +3210,8 @@
 <span class="c1">#   Downloads the upstream Hermes Agent installer and runs it with `--skip-setup`</span>
 <span class="c1">#   so provider selection, OAuth, and API-key setup remain an explicit user step.</span>
 
+<span class="c1"># This file is sourced from setup snippets and Bats tests, so it does not enable</span>
+<span class="c1"># `set -Eeuo pipefail` globally. Keep strict-mode ownership with the caller.</span>
 <span class="c1"># set -Eeuo pipefail</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
@@ -3167,26 +3225,25 @@
 <span class="c1">#</span>
 <span class="c1"># @description Print the user-facing Hermes command path used by the upstream installer.</span>
 <span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>hermes_command_path<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">TERMUX_VERSION</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PREFIX</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>*<span class="s2">&quot;com.termux/files/usr&quot;</span>*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PREFIX</span><span class="si">}</span><span class="s2">/bin/hermes&quot;</span>
+<span class="k">function</span><span class="w"> </span>hermes_command_link<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HERMES_COMMAND_LINK</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HERMES_COMMAND_LINK</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">elif</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">TERMUX_VERSION</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PREFIX</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>*<span class="s2">&quot;com.termux/files/usr&quot;</span>*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PREFIX</span><span class="p">%/</span><span class="si">}</span><span class="s2">/bin/hermes&quot;</span>
 <span class="w">    </span><span class="k">else</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin/hermes&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.local/bin/hermes&quot;</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Remove legacy Hermes command symlinks before the upstream installer writes a launcher.</span>
-<span class="c1">#   The upstream installer writes a launcher with `cat &gt; &quot;$command_link_dir/hermes&quot;`.</span>
-<span class="c1">#   If that path is an existing symlink to the venv entry point, shell redirection</span>
-<span class="c1">#   follows it and overwrites the real entry point with a self-referential shim.</span>
+<span class="c1"># @description Remove the user-facing Hermes command symlink before installation.</span>
 <span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>prepare_hermes_command_path<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>command_path
+<span class="k">function</span><span class="w"> </span>prepare_hermes_command_link<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>command_link
 
-<span class="w">    </span><span class="nv">command_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>hermes_command_path<span class="k">)</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-L<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">command_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>unlink<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">command_path</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">command_link</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>hermes_command_link<span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-L<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">command_link</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>rm<span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">command_link</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
@@ -3194,7 +3251,8 @@
 <span class="c1"># @description Install Hermes Agent without running the interactive setup flow.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>install_hermes<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>prepare_hermes_command_path
+<span class="w">    </span>prepare_hermes_command_link
+
 <span class="w">    </span>curl<span class="w"> </span>-fsSL<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HERMES_INSTALL_SCRIPT_URL</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>bash<span class="w"> </span>-s<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
 <span class="w">        </span>--skip-setup<span class="w"> </span><span class="se">\</span>
 <span class="w">        </span>--hermes-home<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HERMES_HOME</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>

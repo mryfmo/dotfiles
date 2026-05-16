@@ -2943,6 +2943,34 @@
   
   
     <li class="md-nav__item">
+      <a href="reference/scripts/check-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/check-tools.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="reference/scripts/generate-docs/" class="md-nav__link">
         
   
@@ -3007,6 +3035,34 @@
     
   
     scripts/run_unit_test.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/scripts/upgrade-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/upgrade-tools.sh
   
 
     
@@ -3111,7 +3167,7 @@
 </div>
 <div class="landing-stats">
 <div class="landing-stat">
-  <span class="landing-stat__value">53</span>
+  <span class="landing-stat__value">55</span>
   <span class="landing-stat__label">source docs</span>
   <span class="landing-stat__note">tracked shell assets</span>
 </div>
@@ -3121,7 +3177,7 @@
   <span class="landing-stat__note">bootstrap and app setup</span>
 </div>
 <div class="landing-stat">
-  <span class="landing-stat__value">3</span>
+  <span class="landing-stat__value">5</span>
   <span class="landing-stat__label">repo scripts</span>
   <span class="landing-stat__note">maintenance and checks</span>
 </div>
@@ -3186,7 +3242,7 @@ The site is rebuilt from tracked shell sources every time.
 The homepage stays curated, while the complete generated table of contents lives on its own page.
 
 - [Open the full catalog](catalog/)
-- **53** source reference pages are generated from tracked shell assets
+- **55** source reference pages are generated from tracked shell assets
 - **24** chezmoi wrappers are mapped back to their source scripts
 
 </div>
@@ -3244,11 +3300,13 @@ _28 documented entries_
 
 Repository maintenance and verification helpers under `scripts/**`.
 
-_3 documented entries_
+_5 documented entries_
 
+- [`scripts/check-tools.sh`](reference/scripts/check-tools.md): Reports the availability and versions of the commands that participate in the dotfiles lifecycle. This script does no...
 - [`scripts/generate-docs.sh`](reference/scripts/generate-docs.md): Collects tracked shell sources, renders Markdown reference pages, creates a curated landing page, and writes a chezmo...
 - [`scripts/run_benchmark.sh`](reference/scripts/run_benchmark.md): Creates a temporary directory, records initial and average interactive zsh startup times, prints benchmark-action com...
 - [`scripts/run_unit_test.sh`](reference/scripts/run_unit_test.md): Dispatches the common Bats suite and the OS/system-specific Bats suite selected by the `OS` and `SYSTEM` environment ...
+- [`scripts/upgrade-tools.sh`](reference/scripts/upgrade-tools.md): Keeps the bootstrap path stable by moving package-manager upgrades into an intentional lifecycle command. The default...
 
 </div>
 <div class="landing-card" markdown="1">

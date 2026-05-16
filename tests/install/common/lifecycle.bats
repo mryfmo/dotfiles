@@ -73,13 +73,18 @@
 @test "[common] upgrade lifecycle refreshes mise itself before mise-managed tools" {
     local self_update_line
     local install_line
+    local upgrade_line
 
     grep -q 'mise self-update --yes' scripts/upgrade-tools.sh
+    grep -q 'mise install --before 7d' scripts/upgrade-tools.sh
+    grep -q 'mise upgrade --yes --before 7d' scripts/upgrade-tools.sh
     self_update_line="$(grep -n 'upgrade_mise_self' scripts/upgrade-tools.sh | tail -n 1 | cut -d: -f1)"
     install_line="$(grep -n 'upgrade_mise_tools' scripts/upgrade-tools.sh | tail -n 1 | cut -d: -f1)"
+    upgrade_line="$(grep -n 'mise upgrade --yes --before 7d' scripts/upgrade-tools.sh | cut -d: -f1)"
 
     [ -n "${self_update_line}" ]
     [ -n "${install_line}" ]
+    [ -n "${upgrade_line}" ]
     [ "${self_update_line}" -lt "${install_line}" ]
 }
 

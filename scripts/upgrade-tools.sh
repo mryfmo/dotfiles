@@ -80,6 +80,7 @@ function upgrade_mise_tools() {
     # Keep the npm safety window used by the bootstrap installer so freshly
     # published npm packages are not picked up immediately.
     mise install --before 7d
+    mise upgrade --yes --before 7d
 }
 
 #

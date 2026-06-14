@@ -3193,11 +3193,14 @@
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>has_command</code></li>
+<li><code>is_forbidden_homebrew_formula</code></li>
 <li><code>is_linux</code></li>
 <li><code>is_macos</code></li>
 <li><code>main</code></li>
 <li><code>parse_args</code></li>
+<li><code>repair_mise_npm_package</code></li>
 <li><code>section</code></li>
+<li><code>upgrade_agent_cli_tools</code></li>
 <li><code>upgrade_apt_packages</code></li>
 <li><code>upgrade_gh_extensions</code></li>
 <li><code>upgrade_homebrew</code></li>
@@ -3252,6 +3255,23 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Return success when the named Homebrew formula is forbidden.</span>
+<span class="c1"># @arg $1 string Formula name.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>is_forbidden_homebrew_formula<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">formula</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>forbidden_formula
+
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>forbidden_formula<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="si">${</span><span class="nv">HOMEBREW_FORBIDDEN_FORMULAE</span><span class="k">:-</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">formula</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">forbidden_formula</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span>
+
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Upgrade Homebrew packages on macOS when Homebrew is installed.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>upgrade_homebrew<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -3261,7 +3281,48 @@
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;Homebrew&quot;</span>
 <span class="w">    </span>brew<span class="w"> </span>update
-<span class="w">    </span>brew<span class="w"> </span>upgrade
+
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>outdated_formula
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>outdated_formulae_output
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">outdated_formulae</span><span class="o">=()</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">upgrade_formulae</span><span class="o">=()</span>
+<span class="w">    </span><span class="nv">outdated_formulae_output</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>brew<span class="w"> </span>outdated<span class="w"> </span>--formula<span class="w"> </span>--quiet<span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">outdated_formulae_output</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>outdated_formula<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">            </span><span class="nv">outdated_formulae</span><span class="o">+=(</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">outdated_formula</span><span class="si">}</span><span class="s2">&quot;</span><span class="o">)</span>
+<span class="w">        </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">outdated_formulae_output</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>outdated_formula<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">outdated_formulae</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>is_forbidden_homebrew_formula<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">outdated_formula</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Skipping forbidden Homebrew formula: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">outdated_formula</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">            </span><span class="k">continue</span>
+<span class="w">        </span><span class="k">fi</span>
+
+<span class="w">        </span><span class="nv">upgrade_formulae</span><span class="o">+=(</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">outdated_formula</span><span class="si">}</span><span class="s2">&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="k">done</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${#</span><span class="nv">upgrade_formulae</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>brew<span class="w"> </span>upgrade<span class="w"> </span>--formula<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">upgrade_formulae</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;No upgradeable Homebrew formulae after forbidden formula filtering.\n&#39;</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>outdated_cask
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>outdated_casks_output
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">outdated_casks</span><span class="o">=()</span>
+<span class="w">    </span><span class="nv">outdated_casks_output</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>brew<span class="w"> </span>outdated<span class="w"> </span>--cask<span class="w"> </span>--quiet<span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">outdated_casks_output</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>outdated_cask<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">            </span><span class="nv">outdated_casks</span><span class="o">+=(</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">outdated_cask</span><span class="si">}</span><span class="s2">&quot;</span><span class="o">)</span>
+<span class="w">        </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">outdated_casks_output</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${#</span><span class="nv">outdated_casks</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>brew<span class="w"> </span>upgrade<span class="w"> </span>--cask<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">outdated_casks</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;No outdated Homebrew casks.\n&#39;</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3290,6 +3351,43 @@
 <span class="w">    </span><span class="c1"># published npm packages are not picked up immediately.</span>
 <span class="w">    </span>mise<span class="w"> </span>install<span class="w"> </span>--before<span class="w"> </span>7d
 <span class="w">    </span>mise<span class="w"> </span>upgrade<span class="w"> </span>--yes<span class="w"> </span>--before<span class="w"> </span>7d
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Reinstall a mise-managed npm package with lifecycle scripts enabled.</span>
+<span class="c1"># @arg $1 string mise npm tool name, for example npm:@scope/package.</span>
+<span class="c1"># @arg $2 string npm package name, for example @scope/package.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>repair_mise_npm_package<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">mise_tool</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">npm_package</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>install_prefix
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>package_version
+
+<span class="w">    </span><span class="nv">package_version</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>mise<span class="w"> </span>current<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">install_prefix</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>mise<span class="w"> </span>where<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">npm_config_min_release_age</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>npm<span class="w"> </span>install<span class="w"> </span>-g<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>--prefix<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">install_prefix</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>--ignore-scripts<span class="o">=</span><span class="nb">false</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>--include<span class="o">=</span>optional<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">npm_package</span><span class="si">}</span><span class="s2">@</span><span class="si">${</span><span class="nv">package_version</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Upgrade fast-moving agent CLIs managed by mise to the latest npm release.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>upgrade_agent_cli_tools<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>mise<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;agent CLI tools&quot;</span>
+<span class="w">    </span><span class="nv">npm_config_min_release_age</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>mise<span class="w"> </span>upgrade<span class="w"> </span>--yes<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s2">&quot;npm:@openai/codex&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s2">&quot;npm:@anthropic-ai/claude-code&quot;</span>
+<span class="w">    </span>repair_mise_npm_package<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s2">&quot;npm:@anthropic-ai/claude-code&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s2">&quot;@anthropic-ai/claude-code&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3383,6 +3481,7 @@
 <span class="w">    </span>upgrade_homebrew
 <span class="w">    </span>upgrade_mise_self
 <span class="w">    </span>upgrade_mise_tools
+<span class="w">    </span>upgrade_agent_cli_tools
 <span class="w">    </span>upgrade_uv_tools
 <span class="w">    </span>upgrade_gh_extensions
 <span class="w">    </span>upgrade_tmux_plugins

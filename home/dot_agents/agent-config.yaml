@@ -43,6 +43,7 @@ claude:
   schema: https://json.schemastore.org/claude-code-settings.json
   model: opusplan
   alwaysThinkingEnabled: true
+  autoUpdates: false
   autoUpdatesChannel: stable
   plansDirectory: ./.agents/worklog/claude
   disableSkillShellExecution: true

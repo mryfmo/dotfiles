@@ -19,3 +19,22 @@ fpath=(
 # sheldon initialization
 #
 eval "$(sheldon source)"
+
+#
+# Claude Code updater
+#
+claude-update() {
+    local claude_prefix
+    local claude_version
+
+    # Update claude-code to the true latest via mise, bypassing the npm
+    # `min-release-age` cooldown for THIS install only.
+    npm_config_min_release_age=0 mise upgrade "npm:@anthropic-ai/claude-code"
+    claude_prefix="$(mise where "npm:@anthropic-ai/claude-code")"
+    claude_version="$(mise current "npm:@anthropic-ai/claude-code")"
+    npm_config_min_release_age=0 npm install -g \
+        --prefix "${claude_prefix}" \
+        --ignore-scripts=false \
+        --include=optional \
+        "@anthropic-ai/claude-code@${claude_version}"
+}

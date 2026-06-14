@@ -146,6 +146,7 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
         "$schema": claude["schema"],
         "model": claude["model"],
         "alwaysThinkingEnabled": claude["alwaysThinkingEnabled"],
+        "autoUpdates": claude["autoUpdates"],
         "autoUpdatesChannel": claude["autoUpdatesChannel"],
         "plansDirectory": claude["plansDirectory"],
         "permissions": {

@@ -43,6 +43,23 @@ function has_command() {
 }
 
 #
+# @description Return success when the named Homebrew formula is forbidden.
+# @arg $1 string Formula name.
+#
+function is_forbidden_homebrew_formula() {
+    local formula="$1"
+    local forbidden_formula
+
+    for forbidden_formula in ${HOMEBREW_FORBIDDEN_FORMULAE:-}; do
+        if [ "${formula}" = "${forbidden_formula}" ]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+#
 # @description Upgrade Homebrew packages on macOS when Homebrew is installed.
 #
 function upgrade_homebrew() {
@@ -52,7 +69,48 @@ function upgrade_homebrew() {
 
     section "Homebrew"
     brew update
-    brew upgrade
+
+    local outdated_formula
+    local outdated_formulae_output
+    local outdated_formulae=()
+    local upgrade_formulae=()
+    outdated_formulae_output="$(brew outdated --formula --quiet)"
+    if [ -n "${outdated_formulae_output}" ]; then
+        while IFS= read -r outdated_formula; do
+            outdated_formulae+=("${outdated_formula}")
+        done <<< "${outdated_formulae_output}"
+    fi
+
+    for outdated_formula in "${outdated_formulae[@]}"; do
+        if is_forbidden_homebrew_formula "${outdated_formula}"; then
+            printf 'Skipping forbidden Homebrew formula: %s\n' "${outdated_formula}"
+            continue
+        fi
+
+        upgrade_formulae+=("${outdated_formula}")
+    done
+
+    if [ "${#upgrade_formulae[@]}" -gt 0 ]; then
+        brew upgrade --formula "${upgrade_formulae[@]}"
+    else
+        printf 'No upgradeable Homebrew formulae after forbidden formula filtering.\n'
+    fi
+
+    local outdated_cask
+    local outdated_casks_output
+    local outdated_casks=()
+    outdated_casks_output="$(brew outdated --cask --quiet)"
+    if [ -n "${outdated_casks_output}" ]; then
+        while IFS= read -r outdated_cask; do
+            outdated_casks+=("${outdated_cask}")
+        done <<< "${outdated_casks_output}"
+    fi
+
+    if [ "${#outdated_casks[@]}" -gt 0 ]; then
+        brew upgrade --cask "${outdated_casks[@]}"
+    else
+        printf 'No outdated Homebrew casks.\n'
+    fi
 }
 
 #
@@ -81,6 +139,43 @@ function upgrade_mise_tools() {
     # published npm packages are not picked up immediately.
     mise install --before 7d
     mise upgrade --yes --before 7d
+}
+
+#
+# @description Reinstall a mise-managed npm package with lifecycle scripts enabled.
+# @arg $1 string mise npm tool name, for example npm:@scope/package.
+# @arg $2 string npm package name, for example @scope/package.
+#
+function repair_mise_npm_package() {
+    local mise_tool="$1"
+    local npm_package="$2"
+    local install_prefix
+    local package_version
+
+    package_version="$(mise current "${mise_tool}")"
+    install_prefix="$(mise where "${mise_tool}")"
+    npm_config_min_release_age=0 npm install -g \
+        --prefix "${install_prefix}" \
+        --ignore-scripts=false \
+        --include=optional \
+        "${npm_package}@${package_version}"
+}
+
+#
+# @description Upgrade fast-moving agent CLIs managed by mise to the latest npm release.
+#
+function upgrade_agent_cli_tools() {
+    if ! has_command mise; then
+        return 0
+    fi
+
+    section "agent CLI tools"
+    npm_config_min_release_age=0 mise upgrade --yes \
+        "npm:@openai/codex" \
+        "npm:@anthropic-ai/claude-code"
+    repair_mise_npm_package \
+        "npm:@anthropic-ai/claude-code" \
+        "@anthropic-ai/claude-code"
 }
 
 #
@@ -174,6 +269,7 @@ function main() {
     upgrade_homebrew
     upgrade_mise_self
     upgrade_mise_tools
+    upgrade_agent_cli_tools
     upgrade_uv_tools
     upgrade_gh_extensions
     upgrade_tmux_plugins

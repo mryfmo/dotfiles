@@ -1,8 +1,10 @@
 #!/usr/bin/env zsh
 
-# Disable Claude Code's built-in auto-updater so it does not reinstall the
-# package into the mise-managed node global prefix (which would shadow the
-# mise-managed install). claude is updated solely via mise (`claude-update`).
+# @file home/dot_zshenv
+# @brief Configure environment variables loaded before zsh startup.
+# @description
+#   Disables Claude Code's built-in auto-updater so Claude Code remains managed
+#   by the mise-controlled update flow.
 export DISABLE_AUTOUPDATER=1
 
 readonly ZSHENV_PRIVATE="${HOME}/.zshenv_private"

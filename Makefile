@@ -51,6 +51,8 @@ update:
 	else \
 		echo "Warning: private chezmoi source/config not found. Skipping private dotfiles."; \
 	fi
+	./scripts/update-agent-assets.sh
+	./scripts/update-codex-statusline-tools.sh
 
 .PHONY: apply
 apply: update

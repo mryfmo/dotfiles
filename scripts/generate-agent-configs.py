@@ -81,6 +81,10 @@ def render_codex(manifest: dict[str, Any]) -> str:
         "project_doc_fallback_filenames",
     ):
         lines.append(f"{key} = {quote_toml(codex[key])}")
+    if codex.get("tui"):
+        lines.extend(["", "[tui]"])
+        for key, value in codex["tui"].items():
+            lines.append(f"{key} = {quote_toml(value)}")
     lines.extend(["", "[sandbox_workspace_write]"])
     lines.append(f"network_access = {quote_toml(codex['sandbox_workspace_write']['network_access'])}")
     lines.extend(["", "[shell_environment_policy]"])

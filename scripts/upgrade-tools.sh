@@ -179,6 +179,16 @@ function upgrade_agent_cli_tools() {
 }
 
 #
+# @description Install or update CLI-managed Codex and Claude Code agent assets.
+#
+function upgrade_agent_assets() {
+    local repo_root
+    repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+    "${repo_root}/scripts/update-agent-assets.sh"
+}
+
+#
 # @description Upgrade uv tool installations when uv is available.
 #
 function upgrade_uv_tools() {
@@ -230,6 +240,16 @@ function upgrade_apt_packages() {
 }
 
 #
+# @description Install or update optional helpers used by the Codex tmux status segment.
+#
+function upgrade_codex_statusline_tools() {
+    local repo_root
+    repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+    "${repo_root}/scripts/update-codex-statusline-tools.sh"
+}
+
+#
 # @description Parse command-line options.
 # @arg $@ string Command-line arguments.
 #
@@ -270,6 +290,8 @@ function main() {
     upgrade_mise_self
     upgrade_mise_tools
     upgrade_agent_cli_tools
+    upgrade_agent_assets
+    upgrade_codex_statusline_tools
     upgrade_uv_tools
     upgrade_gh_extensions
     upgrade_tmux_plugins

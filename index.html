@@ -1166,6 +1166,34 @@
   
   
     <li class="md-nav__item">
+      <a href="reference/home/dot_local/bin/common/executable_codex-statusline-tmux/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_codex-statusline-tmux
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="reference/home/dot_local/bin/common/executable_dev/" class="md-nav__link">
         
   
@@ -3055,6 +3083,62 @@
   
   
     <li class="md-nav__item">
+      <a href="reference/scripts/update-agent-assets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/update-agent-assets.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/scripts/update-codex-statusline-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/update-codex-statusline-tools.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="reference/scripts/upgrade-tools/" class="md-nav__link">
         
   
@@ -3167,7 +3251,7 @@
 </div>
 <div class="landing-stats">
 <div class="landing-stat">
-  <span class="landing-stat__value">55</span>
+  <span class="landing-stat__value">58</span>
   <span class="landing-stat__label">source docs</span>
   <span class="landing-stat__note">tracked shell assets</span>
 </div>
@@ -3177,12 +3261,12 @@
   <span class="landing-stat__note">bootstrap and app setup</span>
 </div>
 <div class="landing-stat">
-  <span class="landing-stat__value">5</span>
+  <span class="landing-stat__value">7</span>
   <span class="landing-stat__label">repo scripts</span>
   <span class="landing-stat__note">maintenance and checks</span>
 </div>
 <div class="landing-stat">
-  <span class="landing-stat__value">17</span>
+  <span class="landing-stat__value">18</span>
   <span class="landing-stat__label">local commands</span>
   <span class="landing-stat__note">helpers under home/dot_local/bin</span>
 </div>
@@ -3242,7 +3326,7 @@ The site is rebuilt from tracked shell sources every time.
 The homepage stays curated, while the complete generated table of contents lives on its own page.
 
 - [Open the full catalog](catalog/)
-- **55** source reference pages are generated from tracked shell assets
+- **58** source reference pages are generated from tracked shell assets
 - **24** chezmoi wrappers are mapped back to their source scripts
 
 </div>
@@ -3300,13 +3384,16 @@ _28 documented entries_
 
 Repository maintenance and verification helpers under `scripts/**`.
 
-_5 documented entries_
+_7 documented entries_
 
 - [`scripts/check-tools.sh`](reference/scripts/check-tools.md): Reports the availability and versions of the commands that participate in the dotfiles lifecycle. This script does no...
 - [`scripts/generate-docs.sh`](reference/scripts/generate-docs.md): Collects tracked shell sources, renders Markdown reference pages, creates a curated landing page, and writes a chezmo...
 - [`scripts/run_benchmark.sh`](reference/scripts/run_benchmark.md): Creates a temporary directory, records initial and average interactive zsh startup times, prints benchmark-action com...
 - [`scripts/run_unit_test.sh`](reference/scripts/run_unit_test.md): Dispatches the common Bats suite and the OS/system-specific Bats suite selected by the `OS` and `SYSTEM` environment ...
-- [`scripts/upgrade-tools.sh`](reference/scripts/upgrade-tools.md): Keeps the bootstrap path stable by moving package-manager upgrades into an intentional lifecycle command. The default...
+- [`scripts/update-agent-assets.sh`](reference/scripts/update-agent-assets.md): Keeps Codex and Claude Code agent assets aligned with the dotfiles-managed skill tree. Skills are applied by chezmoi ...
+- [`scripts/update-codex-statusline-tools.sh`](reference/scripts/update-codex-statusline-tools.md): Keeps the tmux Codex status segment useful without making CodexBar a hard dependency. When CodexBar CLI is already in...
+
+[1 more entries in the full catalog](catalog/)
 
 </div>
 <div class="landing-card" markdown="1">
@@ -3317,16 +3404,16 @@ _5 documented entries_
 
 Executable helpers published from `home/dot_local/bin/**`.
 
-_17 documented entries_
+_18 documented entries_
 
 - [`home/dot_local/bin/common/executable_agent-fanout`](reference/home/dot_local/bin/common/executable_agent-fanout.md): Runs Codex and Claude Code with the same prompt, stores each result under `.agents/runs/`, and prints the output dire...
 - [`home/dot_local/bin/common/executable_cdgwq`](reference/home/dot_local/bin/common/executable_cdgwq.md): Uses `gwq list --json` and `fzf` to select a known repository path, then changes the current shell into that directory.
 - [`home/dot_local/bin/common/executable_cdw`](reference/home/dot_local/bin/common/executable_cdw.md): Selects the newest path returned by `gwq list --json` and changes the current shell into that repository.
 - [`home/dot_local/bin/common/executable_chezmoi-cd`](reference/home/dot_local/bin/common/executable_chezmoi-cd.md): Resolves `chezmoi source-path` and changes the current shell into that repository checkout.
+- [`home/dot_local/bin/common/executable_codex-statusline-tmux`](reference/home/dot_local/bin/common/executable_codex-statusline-tmux.md)
 - [`home/dot_local/bin/common/executable_dev`](reference/home/dot_local/bin/common/executable_dev.md): Lets the user choose a repository path from `ghq`, changes into it, and renames the current tmux session to match the...
-- [`home/dot_local/bin/common/executable_fgc`](reference/home/dot_local/bin/common/executable_fgc.md): Lists local branches, selects one with `fzf`, and checks it out.
 
-[11 more entries in the full catalog](catalog/)
+[12 more entries in the full catalog](catalog/)
 
 </div>
 <div class="landing-card" markdown="1">

@@ -11,7 +11,7 @@
       
       
       
-        <link rel="prev" href="../run_unit_test/">
+        <link rel="prev" href="../update-codex-statusline-tools/">
       
       
       
@@ -1079,6 +1079,34 @@
     
   
     home/dot_local/bin/common/executable_chezmoi-cd
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../home/dot_local/bin/common/executable_codex-statusline-tmux/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_codex-statusline-tmux
   
 
     
@@ -2987,6 +3015,62 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../update-agent-assets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/update-agent-assets.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../update-codex-statusline-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/update-codex-statusline-tools.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -3200,8 +3284,10 @@
 <li><code>parse_args</code></li>
 <li><code>repair_mise_npm_package</code></li>
 <li><code>section</code></li>
+<li><code>upgrade_agent_assets</code></li>
 <li><code>upgrade_agent_cli_tools</code></li>
 <li><code>upgrade_apt_packages</code></li>
+<li><code>upgrade_codex_statusline_tools</code></li>
 <li><code>upgrade_gh_extensions</code></li>
 <li><code>upgrade_homebrew</code></li>
 <li><code>upgrade_mise_self</code></li>
@@ -3391,6 +3477,16 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Install or update CLI-managed Codex and Claude Code agent assets.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>upgrade_agent_assets<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>repo_root
+<span class="w">    </span><span class="nv">repo_root</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">/..&quot;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="k">)</span><span class="s2">&quot;</span>
+
+<span class="w">    </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">/scripts/update-agent-assets.sh&quot;</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Upgrade uv tool installations when uv is available.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>upgrade_uv_tools<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -3442,6 +3538,16 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Install or update optional helpers used by the Codex tmux status segment.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>upgrade_codex_statusline_tools<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>repo_root
+<span class="w">    </span><span class="nv">repo_root</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">/..&quot;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="k">)</span><span class="s2">&quot;</span>
+
+<span class="w">    </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">/scripts/update-codex-statusline-tools.sh&quot;</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Parse command-line options.</span>
 <span class="c1"># @arg $@ string Command-line arguments.</span>
 <span class="c1">#</span>
@@ -3482,6 +3588,8 @@
 <span class="w">    </span>upgrade_mise_self
 <span class="w">    </span>upgrade_mise_tools
 <span class="w">    </span>upgrade_agent_cli_tools
+<span class="w">    </span>upgrade_agent_assets
+<span class="w">    </span>upgrade_codex_statusline_tools
 <span class="w">    </span>upgrade_uv_tools
 <span class="w">    </span>upgrade_gh_extensions
 <span class="w">    </span>upgrade_tmux_plugins

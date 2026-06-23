@@ -3282,6 +3282,7 @@
 <li><code>is_macos</code></li>
 <li><code>main</code></li>
 <li><code>parse_args</code></li>
+<li><code>remove_node_global_npm_package</code></li>
 <li><code>repair_mise_npm_package</code></li>
 <li><code>section</code></li>
 <li><code>upgrade_agent_assets</code></li>
@@ -3460,6 +3461,22 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Remove a node-global npm package so its dedicated mise npm tool is used.</span>
+<span class="c1"># @arg $1 string npm package name, for example @scope/package.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>remove_node_global_npm_package<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">npm_package</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>npm<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>npm<span class="w"> </span>list<span class="w"> </span>-g<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">npm_package</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--depth<span class="o">=</span><span class="m">0</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>npm<span class="w"> </span>uninstall<span class="w"> </span>-g<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">npm_package</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Upgrade fast-moving agent CLIs managed by mise to the latest npm release.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>upgrade_agent_cli_tools<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -3472,8 +3489,13 @@
 <span class="w">        </span><span class="s2">&quot;npm:@openai/codex&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">        </span><span class="s2">&quot;npm:@anthropic-ai/claude-code&quot;</span>
 <span class="w">    </span>repair_mise_npm_package<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s2">&quot;npm:@openai/codex&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s2">&quot;@openai/codex&quot;</span>
+<span class="w">    </span>repair_mise_npm_package<span class="w"> </span><span class="se">\</span>
 <span class="w">        </span><span class="s2">&quot;npm:@anthropic-ai/claude-code&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">        </span><span class="s2">&quot;@anthropic-ai/claude-code&quot;</span>
+<span class="w">    </span>remove_node_global_npm_package<span class="w"> </span><span class="s2">&quot;@openai/codex&quot;</span>
+<span class="w">    </span>remove_node_global_npm_package<span class="w"> </span><span class="s2">&quot;@anthropic-ai/claude-code&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>

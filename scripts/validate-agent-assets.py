@@ -138,6 +138,25 @@ def validate_codex_plugins() -> None:
                 fail(f"{manifest_path} must not use an absolute skills path")
 
 
+def validate_exact_keys(actual: dict[str, Any], expected: dict[str, Any], label: str) -> None:
+    actual_keys = set(actual)
+    expected_keys = set(expected)
+    if actual_keys != expected_keys:
+        fail(
+            f"{label} keys must match the shared manifest: "
+            f"missing={sorted(expected_keys - actual_keys)} extra={sorted(actual_keys - expected_keys)}"
+        )
+
+
+def validate_agmsg_script_modes() -> None:
+    scripts_root = ROOT / "home/dot_agents/skills/agmsg/scripts"
+    entrypoint_dirs = [scripts_root, scripts_root / "release"]
+    for entrypoint_dir in entrypoint_dirs:
+        for path in sorted(entrypoint_dir.glob("*.sh")):
+            if path.stat().st_mode & 0o111 == 0:
+                fail(f"{path.relative_to(ROOT)} must stay executable for direct invocation")
+
+
 def validate_claude_settings() -> None:
     settings_path = ROOT / "home/dot_claude/private_settings.json"
     settings = json.loads(settings_path.read_text())
@@ -154,16 +173,47 @@ def validate_claude_settings() -> None:
         fail(f"{settings_path} must not enable Claude plugins that are not installed by this repository")
 
 
-def validate_codex_config() -> dict[str, Any]:
+def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
     codex_path = ROOT / "home/dot_codex/private_config.toml.tmpl"
     text = render_template_text(codex_path)
     if not text.startswith("#:schema https://developers.openai.com/codex/config-schema.json"):
         fail(f"{codex_path} must declare the Codex config schema")
     data = tomllib.loads(text)
+    manifest_codex = manifest.get("codex", {})
+    for key in ("model", "model_reasoning_effort"):
+        if manifest_codex.get(key) != data.get(key):
+            fail(f"{codex_path} must render codex.{key} from the shared manifest")
     if data.get("sandbox_mode") != "workspace-write":
         fail(f"{codex_path} should default to workspace-write sandbox")
     if data.get("sandbox_workspace_write", {}).get("network_access") is not False:
         fail(f"{codex_path} should keep sandbox command network access disabled")
+    if data.get("shell_environment_policy") != manifest_codex.get("shell_environment_policy"):
+        fail(f"{codex_path} must render codex.shell_environment_policy from the shared manifest")
+    shell_path = data.get("shell_environment_policy", {}).get("set", {}).get("PATH", "")
+    if "/Users/mryfmo/" in shell_path:
+        fail(f"{codex_path} must not hard-code a macOS home directory in shell_environment_policy.set.PATH")
+    if "{{ .chezmoi.homeDir }}" not in shell_path:
+        fail(f"{codex_path} must derive shell_environment_policy.set.PATH from the target chezmoi homeDir")
+    for key, value in manifest_codex.get("tui", {}).items():
+        if data.get("tui", {}).get(key) != value:
+            fail(f"{codex_path} must render codex.tui.{key} from the shared manifest")
+    validate_exact_keys(data.get("tui", {}), manifest_codex.get("tui", {}), f"{codex_path} codex.tui")
+    for plugin_id, plugin_config in manifest_codex.get("plugins", {}).items():
+        if data.get("plugins", {}).get(plugin_id) != plugin_config:
+            fail(f"{codex_path} must render Codex plugin {plugin_id}")
+    validate_exact_keys(
+        data.get("plugins", {}),
+        manifest_codex.get("plugins", {}),
+        f"{codex_path} Codex plugins",
+    )
+    for project_path, project_config in manifest_codex.get("projects", {}).items():
+        if data.get("projects", {}).get(project_path) != project_config:
+            fail(f"{codex_path} must render Codex project trust for {project_path}")
+    validate_exact_keys(
+        data.get("projects", {}),
+        manifest_codex.get("projects", {}),
+        f"{codex_path} Codex projects",
+    )
     for name, server in data.get("mcp_servers", {}).items():
         if not isinstance(server, dict):
             fail(f"Codex MCP server {name} must be a table")
@@ -334,9 +384,10 @@ def main() -> None:
     validate_generated_agent_configs()
     validate_skills()
     validate_claude_skill_parity()
+    validate_agmsg_script_modes()
     validate_claude_settings()
     validate_codex_plugins()
-    codex = validate_codex_config()
+    codex = validate_codex_config(manifest)
     claude = validate_claude_mcp_config()
     hermes = validate_hermes_config_template()
     validate_mcp_parity(codex, claude, hermes, manifest)

@@ -43,6 +43,30 @@ function command_output_contains() {
 }
 
 #
+# @description Return success when a Codex marketplace is a configured Git marketplace.
+# @arg $1 string Marketplace name.
+#
+function codex_marketplace_is_configured_git_marketplace() {
+    local marketplace="$1"
+    local root
+
+    root="$(codex plugin marketplace list 2> /dev/null | awk -v name="${marketplace}" '$1 == name { print $2; exit }')"
+    # Built-in/default marketplaces can resolve under Codex's .tmp plugin cache.
+    # They may contain Git metadata, but `codex plugin marketplace upgrade` only
+    # accepts configured Git marketplaces.
+    case "${root}" in
+    */.codex/.tmp/plugins | */.codex/.tmp/plugins/*)
+        return 1
+        ;;
+    esac
+    if [ -z "${root}" ] || [ ! -d "${root}/.git" ]; then
+        return 1
+    fi
+
+    return 0
+}
+
+#
 # @description Ensure the official Claude Code plugin marketplace is configured.
 #
 function ensure_claude_superpowers_marketplace() {
@@ -84,7 +108,11 @@ function update_codex_superpowers() {
     fi
 
     section "Codex plugins"
-    codex plugin marketplace upgrade openai-curated || true
+    if codex_marketplace_is_configured_git_marketplace openai-curated; then
+        codex plugin marketplace upgrade openai-curated || true
+    else
+        printf 'Skipping Codex marketplace upgrade: openai-curated is not a configured Git marketplace.\n'
+    fi
 
     if command_output_contains "\"pluginId\":\"${CODEX_SUPERPOWERS_PLUGIN}\"" codex plugin list --json ||
         command_output_contains "\"pluginId\": \"${CODEX_SUPERPOWERS_PLUGIN}\"" codex plugin list --json; then

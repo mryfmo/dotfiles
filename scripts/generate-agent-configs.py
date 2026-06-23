@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -50,8 +51,14 @@ def quote_toml(value: Any) -> str:
     if isinstance(value, list):
         return "[" + ", ".join(quote_toml(item) for item in value) + "]"
     if isinstance(value, dict):
-        return "{ " + ", ".join(f"{key} = {quote_toml(item)}" for key, item in value.items()) + " }"
+        return "{ " + ", ".join(f"{quote_toml_key(str(key))} = {quote_toml(item)}" for key, item in value.items()) + " }"
     fail(f"unsupported TOML value: {value!r}")
+
+
+def quote_toml_key(key: str) -> str:
+    if re.match(r"^[A-Za-z0-9_-]+$", key):
+        return key
+    return json.dumps(key, ensure_ascii=False)
 
 
 def target_agents(manifest: dict[str, Any]) -> set[str]:
@@ -74,6 +81,7 @@ def render_codex(manifest: dict[str, Any]) -> str:
     ]
     for key in (
         "model",
+        "model_reasoning_effort",
         "approval_policy",
         "sandbox_mode",
         "web_search",
@@ -84,11 +92,20 @@ def render_codex(manifest: dict[str, Any]) -> str:
     if codex.get("tui"):
         lines.extend(["", "[tui]"])
         for key, value in codex["tui"].items():
+            if isinstance(value, dict):
+                continue
             lines.append(f"{key} = {quote_toml(value)}")
+        for key, value in codex["tui"].items():
+            if not isinstance(value, dict):
+                continue
+            lines.extend(["", f"[tui.{quote_toml_key(key)}]"])
+            for nested_key, nested_value in value.items():
+                lines.append(f"{quote_toml_key(str(nested_key))} = {quote_toml(nested_value)}")
     lines.extend(["", "[sandbox_workspace_write]"])
     lines.append(f"network_access = {quote_toml(codex['sandbox_workspace_write']['network_access'])}")
     lines.extend(["", "[shell_environment_policy]"])
-    lines.append(f"inherit = {quote_toml(codex['shell_environment_policy']['inherit'])}")
+    for key, value in codex["shell_environment_policy"].items():
+        lines.append(f"{quote_toml_key(str(key))} = {quote_toml(value)}")
 
     for name, server in manifest.get("mcp_servers", {}).items():
         if not enabled_for(server, "codex"):
@@ -132,6 +149,14 @@ def render_codex(manifest: dict[str, Any]) -> str:
     lines.extend(["", "[features]"])
     for key, value in codex.get("features", {}).items():
         lines.append(f"{key} = {quote_toml(value)}")
+    for plugin_id, plugin_config in codex.get("plugins", {}).items():
+        lines.extend(["", f"[plugins.{quote_toml_key(plugin_id)}]"])
+        for key, value in plugin_config.items():
+            lines.append(f"{quote_toml_key(str(key))} = {quote_toml(value)}")
+    for project_path, project_config in codex.get("projects", {}).items():
+        lines.extend(["", f"[projects.{quote_toml_key(project_path)}]"])
+        for key, value in project_config.items():
+            lines.append(f"{quote_toml_key(str(key))} = {quote_toml(value)}")
     return "\n".join(lines) + "\n"
 
 

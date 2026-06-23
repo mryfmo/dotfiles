@@ -162,6 +162,22 @@ function repair_mise_npm_package() {
 }
 
 #
+# @description Remove a node-global npm package so its dedicated mise npm tool is used.
+# @arg $1 string npm package name, for example @scope/package.
+#
+function remove_node_global_npm_package() {
+    local npm_package="$1"
+
+    if ! has_command npm; then
+        return 0
+    fi
+
+    if npm list -g "${npm_package}" --depth=0 > /dev/null 2>&1; then
+        npm uninstall -g "${npm_package}"
+    fi
+}
+
+#
 # @description Upgrade fast-moving agent CLIs managed by mise to the latest npm release.
 #
 function upgrade_agent_cli_tools() {
@@ -174,8 +190,13 @@ function upgrade_agent_cli_tools() {
         "npm:@openai/codex" \
         "npm:@anthropic-ai/claude-code"
     repair_mise_npm_package \
+        "npm:@openai/codex" \
+        "@openai/codex"
+    repair_mise_npm_package \
         "npm:@anthropic-ai/claude-code" \
         "@anthropic-ai/claude-code"
+    remove_node_global_npm_package "@openai/codex"
+    remove_node_global_npm_package "@anthropic-ai/claude-code"
 }
 
 #

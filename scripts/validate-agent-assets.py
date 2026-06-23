@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import configparser
 import json
 import re
 import subprocess
@@ -338,15 +339,20 @@ def validate_git_config() -> None:
     text = path.read_text()
     if "signingkey = D55D775A7951407C" in text:
         fail(f"{path.relative_to(ROOT)} must not reference the removed GPG signing key")
-    for token in (
-        "[gpg]",
-        "format = ssh",
-        "signingkey = {{ .chezmoi.homeDir }}/.ssh/id_ed25519.pub",
-        "[commit]",
-        "gpgsign = true",
-    ):
-        if token not in text:
-            fail(f"{path.relative_to(ROOT)} must configure SSH commit signing with {token!r}")
+    config = configparser.ConfigParser(strict=False)
+    config.read_string(text)
+    expected = {
+        ("user", "signingkey"): "{{ .chezmoi.homeDir }}/.ssh/id_ed25519.pub",
+        ("gpg", "format"): "ssh",
+        ("commit", "gpgsign"): "true",
+    }
+    for (section, key), expected_value in expected.items():
+        actual_value = config.get(section, key, fallback="").strip()
+        if actual_value != expected_value:
+            fail(
+                f"{path.relative_to(ROOT)} must configure SSH commit signing with "
+                f"[{section}] {key} = {expected_value}"
+            )
     setup_path = ROOT / "home/dot_local/bin/common/executable_setup-gh"
     setup_text = setup_path.read_text()
     for token in ("admin:ssh_signing_key", "--type signing"):

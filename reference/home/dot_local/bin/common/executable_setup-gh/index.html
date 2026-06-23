@@ -3275,7 +3275,7 @@
 
 
 <h1 id="homedot_localbincommonexecutable_setup-gh">home/dot_local/bin/common/executable_setup-gh<a class="headerlink" href="#homedot_localbincommonexecutable_setup-gh" title="Permanent link">&para;</a></h1>
-<p>Logs into GitHub through the GitHub CLI, ensures the local SSH public key exists through an explicit interactive flow, and registers the public key on the authenticated account.</p>
+<p>Logs into GitHub through the GitHub CLI, ensures the local SSH public key exists through an explicit interactive flow, and registers the public key as both an authentication key and a commit signing key on the authenticated account.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_setup-gh</code></li>
@@ -3297,8 +3297,9 @@
 <span class="c1"># @brief Authenticate `gh` and upload the local SSH key.</span>
 <span class="c1"># @description</span>
 <span class="c1">#   Logs into GitHub through the GitHub CLI, ensures the local SSH public key</span>
-<span class="c1">#   exists through an explicit interactive flow, and registers the public key on</span>
-<span class="c1">#   the authenticated account.</span>
+<span class="c1">#   exists through an explicit interactive flow, and registers the public key as</span>
+<span class="c1">#   both an authentication key and a commit signing key on the authenticated</span>
+<span class="c1">#   account.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
@@ -3354,7 +3355,9 @@
 <span class="k">function</span><span class="w"> </span>add_ssh_key_to_github<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span>ensure_default_ssh_key
 <span class="w">    </span>gh<span class="w"> </span>auth<span class="w"> </span>refresh<span class="w"> </span>-h<span class="w"> </span>github.com<span class="w"> </span>-s<span class="w"> </span>admin:public_key
-<span class="w">    </span>gh<span class="w"> </span>ssh-key<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_SSH_PUBLIC_KEY_PATH</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span>gh<span class="w"> </span>auth<span class="w"> </span>refresh<span class="w"> </span>-h<span class="w"> </span>github.com<span class="w"> </span>-s<span class="w"> </span>admin:ssh_signing_key
+<span class="w">    </span>gh<span class="w"> </span>ssh-key<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_SSH_PUBLIC_KEY_PATH</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--type<span class="w"> </span>authentication
+<span class="w">    </span>gh<span class="w"> </span>ssh-key<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_SSH_PUBLIC_KEY_PATH</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--type<span class="w"> </span>signing
 <span class="o">}</span>
 
 <span class="c1"># @description Run the GitHub authentication and SSH key setup flow.</span>

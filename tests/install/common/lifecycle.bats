@@ -92,7 +92,7 @@
 }
 
 @test "[common] mise tool lifecycle isolates Git config and continues after individual tool failures" {
-    grep -q 'mise ls --current --no-header' scripts/upgrade-tools.sh
+    grep -q 'GIT_CONFIG_GLOBAL=/dev/null mise ls --current --no-header' scripts/upgrade-tools.sh
     grep -q 'GIT_CONFIG_GLOBAL=/dev/null mise "${mise_command}" --yes --before 7d "${mise_tool}"' scripts/upgrade-tools.sh
     grep -q 'warning: mise %s failed for %s; continuing' scripts/upgrade-tools.sh
 }

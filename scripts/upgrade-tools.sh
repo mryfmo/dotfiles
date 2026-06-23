@@ -130,7 +130,7 @@ function upgrade_mise_self() {
 # @stdout One tool name per line.
 #
 function current_mise_tools() {
-    mise ls --current --no-header | awk '{print $1}'
+    GIT_CONFIG_GLOBAL=/dev/null mise ls --current --no-header | awk '{print $1}'
 }
 
 #

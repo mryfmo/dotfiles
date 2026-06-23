@@ -140,8 +140,14 @@ function current_mise_tools() {
 function run_mise_tool_command() {
     local mise_command="$1"
     local mise_tool
+    local mise_tools
 
-    current_mise_tools | while IFS= read -r mise_tool; do
+    if ! mise_tools="$(current_mise_tools)"; then
+        printf 'warning: unable to list current mise tools for %s; continuing\n' "${mise_command}" >&2
+        return 0
+    fi
+
+    while IFS= read -r mise_tool; do
         if [ -z "${mise_tool}" ]; then
             continue
         fi
@@ -151,7 +157,7 @@ function run_mise_tool_command() {
         if ! GIT_CONFIG_GLOBAL=/dev/null mise "${mise_command}" --yes --before 7d "${mise_tool}"; then
             printf 'warning: mise %s failed for %s; continuing\n' "${mise_command}" "${mise_tool}" >&2
         fi
-    done
+    done <<< "${mise_tools}"
 }
 
 #

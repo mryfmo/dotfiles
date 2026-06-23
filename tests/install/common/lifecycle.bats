@@ -15,7 +15,7 @@
     run make -n update
     [ "$status" -eq 0 ]
     [[ "$output" == *'chezmoi apply --verbose --force --exclude=scripts ~/.hermes'* ]]
-    grep -xF 'chezmoi apply --verbose --exclude=scripts' <<<"$output"
+    grep -xF 'chezmoi apply --verbose --exclude=scripts' <<< "$output"
     [[ "$output" == *'apply --verbose --exclude=scripts'* ]]
     [[ "$output" != *'apply --verbose;'* ]]
 }
@@ -89,6 +89,35 @@
     [ -n "${install_line}" ]
     [ -n "${upgrade_line}" ]
     [ "${self_update_line}" -lt "${install_line}" ]
+}
+
+@test "[common] agent CLI upgrade repairs mise npm packages and removes node-global shadow packages" {
+    local agent_upgrade_line
+    local codex_repair_line
+    local claude_repair_line
+    local codex_cleanup_line
+    local claude_cleanup_line
+
+    grep -q 'npm uninstall -g "${npm_package}"' scripts/upgrade-tools.sh
+    agent_upgrade_line="$(grep -n 'npm_config_min_release_age=0 mise upgrade --yes' scripts/upgrade-tools.sh | cut -d: -f1)"
+    codex_repair_line="$(grep -n '"npm:@openai/codex"' scripts/upgrade-tools.sh | tail -n 1 | cut -d: -f1)"
+    claude_repair_line="$(grep -n '"npm:@anthropic-ai/claude-code"' scripts/upgrade-tools.sh | tail -n 1 | cut -d: -f1)"
+    codex_cleanup_line="$(grep -n 'remove_node_global_npm_package "@openai/codex"' scripts/upgrade-tools.sh | cut -d: -f1)"
+    claude_cleanup_line="$(grep -n 'remove_node_global_npm_package "@anthropic-ai/claude-code"' scripts/upgrade-tools.sh | cut -d: -f1)"
+
+    [ -n "${agent_upgrade_line}" ]
+    [ -n "${codex_repair_line}" ]
+    [ -n "${claude_repair_line}" ]
+    [ -n "${codex_cleanup_line}" ]
+    [ -n "${claude_cleanup_line}" ]
+    [ "${agent_upgrade_line}" -lt "${codex_repair_line}" ]
+    [ "${agent_upgrade_line}" -lt "${claude_repair_line}" ]
+    [ "${agent_upgrade_line}" -lt "${codex_cleanup_line}" ]
+    [ "${agent_upgrade_line}" -lt "${claude_cleanup_line}" ]
+    [ "${codex_repair_line}" -lt "${codex_cleanup_line}" ]
+    [ "${claude_repair_line}" -lt "${claude_cleanup_line}" ]
+    grep -q 'remove_node_global_npm_package "@openai/codex"' scripts/upgrade-tools.sh
+    grep -q 'remove_node_global_npm_package "@anthropic-ai/claude-code"' scripts/upgrade-tools.sh
 }
 
 @test "[common] Hermes home is managed as a private directory" {

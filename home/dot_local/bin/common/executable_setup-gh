@@ -4,8 +4,9 @@
 # @brief Authenticate `gh` and upload the local SSH key.
 # @description
 #   Logs into GitHub through the GitHub CLI, ensures the local SSH public key
-#   exists through an explicit interactive flow, and registers the public key on
-#   the authenticated account.
+#   exists through an explicit interactive flow, and registers the public key as
+#   both an authentication key and a commit signing key on the authenticated
+#   account.
 
 set -Eeuo pipefail
 
@@ -61,7 +62,9 @@ function ensure_default_ssh_key() {
 function add_ssh_key_to_github() {
     ensure_default_ssh_key
     gh auth refresh -h github.com -s admin:public_key
-    gh ssh-key add "${DEFAULT_SSH_PUBLIC_KEY_PATH}"
+    gh auth refresh -h github.com -s admin:ssh_signing_key
+    gh ssh-key add "${DEFAULT_SSH_PUBLIC_KEY_PATH}" --type authentication
+    gh ssh-key add "${DEFAULT_SSH_PUBLIC_KEY_PATH}" --type signing
 }
 
 # @description Run the GitHub authentication and SSH key setup flow.

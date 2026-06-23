@@ -1,7 +1,7 @@
 [user]
 	name = Shunsuke KITADA
 	email = {{ .email | quote }}
-	signingkey = D55D775A7951407C
+	signingkey = {{ .chezmoi.homeDir }}/.ssh/id_ed25519.pub
 [color]
 	ui = auto
 [url "git@github.com:"]
@@ -14,6 +14,8 @@
 	root = ~/ghq
 [commit]
 	gpgsign = true
+[gpg]
+	format = ssh
 [pull]
 	rebase = true
 [core]

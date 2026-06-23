@@ -126,6 +126,35 @@ function upgrade_mise_self() {
 }
 
 #
+# @description Print mise tool names from the current configuration.
+# @stdout One tool name per line.
+#
+function current_mise_tools() {
+    mise ls --current --no-header | awk '{print $1}'
+}
+
+#
+# @description Run a mise lifecycle command for each current tool.
+# @arg $1 string Mise command name, such as install or upgrade.
+#
+function run_mise_tool_command() {
+    local mise_command="$1"
+    local mise_tool
+
+    current_mise_tools | while IFS= read -r mise_tool; do
+        if [ -z "${mise_tool}" ]; then
+            continue
+        fi
+
+        # Keep package-manager Git operations independent from user signing
+        # config; older parsers can reject gpg.format=ssh.
+        if ! GIT_CONFIG_GLOBAL=/dev/null mise "${mise_command}" --yes --before 7d "${mise_tool}"; then
+            printf 'warning: mise %s failed for %s; continuing\n' "${mise_command}" "${mise_tool}" >&2
+        fi
+    done
+}
+
+#
 # @description Upgrade mise-managed tools declared in the repository config.
 #
 function upgrade_mise_tools() {
@@ -137,8 +166,8 @@ function upgrade_mise_tools() {
     mise trust --yes
     # Keep the npm safety window used by the bootstrap installer so freshly
     # published npm packages are not picked up immediately.
-    mise install --before 7d
-    mise upgrade --yes --before 7d
+    run_mise_tool_command install
+    run_mise_tool_command upgrade
 }
 
 #

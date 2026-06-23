@@ -3276,6 +3276,7 @@
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
+<li><code>current_mise_tools</code></li>
 <li><code>has_command</code></li>
 <li><code>is_forbidden_homebrew_formula</code></li>
 <li><code>is_linux</code></li>
@@ -3284,6 +3285,7 @@
 <li><code>parse_args</code></li>
 <li><code>remove_node_global_npm_package</code></li>
 <li><code>repair_mise_npm_package</code></li>
+<li><code>run_mise_tool_command</code></li>
 <li><code>section</code></li>
 <li><code>upgrade_agent_assets</code></li>
 <li><code>upgrade_agent_cli_tools</code></li>
@@ -3425,6 +3427,41 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Print mise tool names from the current configuration.</span>
+<span class="c1"># @stdout One tool name per line.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>current_mise_tools<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nv">GIT_CONFIG_GLOBAL</span><span class="o">=</span>/dev/null<span class="w"> </span>mise<span class="w"> </span>ls<span class="w"> </span>--current<span class="w"> </span>--no-header<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;{print $1}&#39;</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Run a mise lifecycle command for each current tool.</span>
+<span class="c1"># @arg $1 string Mise command name, such as install or upgrade.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>run_mise_tool_command<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">mise_command</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>mise_tool
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>mise_tools
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">mise_tools</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>current_mise_tools<span class="k">)</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;warning: unable to list current mise tools for %s; continuing\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_command</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>mise_tool<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="k">continue</span>
+<span class="w">        </span><span class="k">fi</span>
+
+<span class="w">        </span><span class="c1"># Keep package-manager Git operations independent from user signing</span>
+<span class="w">        </span><span class="c1"># config; older parsers can reject gpg.format=ssh.</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">GIT_CONFIG_GLOBAL</span><span class="o">=</span>/dev/null<span class="w"> </span>mise<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_command</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--yes<span class="w"> </span>--before<span class="w"> </span>7d<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;warning: mise %s failed for %s; continuing\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_command</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_tools</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Upgrade mise-managed tools declared in the repository config.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>upgrade_mise_tools<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -3436,8 +3473,8 @@
 <span class="w">    </span>mise<span class="w"> </span>trust<span class="w"> </span>--yes
 <span class="w">    </span><span class="c1"># Keep the npm safety window used by the bootstrap installer so freshly</span>
 <span class="w">    </span><span class="c1"># published npm packages are not picked up immediately.</span>
-<span class="w">    </span>mise<span class="w"> </span>install<span class="w"> </span>--before<span class="w"> </span>7d
-<span class="w">    </span>mise<span class="w"> </span>upgrade<span class="w"> </span>--yes<span class="w"> </span>--before<span class="w"> </span>7d
+<span class="w">    </span>run_mise_tool_command<span class="w"> </span>install
+<span class="w">    </span>run_mise_tool_command<span class="w"> </span>upgrade
 <span class="o">}</span>
 
 <span class="c1">#</span>

@@ -347,6 +347,11 @@ def validate_git_config() -> None:
     ):
         if token not in text:
             fail(f"{path.relative_to(ROOT)} must configure SSH commit signing with {token!r}")
+    setup_path = ROOT / "home/dot_local/bin/common/executable_setup-gh"
+    setup_text = setup_path.read_text()
+    for token in ("admin:ssh_signing_key", "--type signing"):
+        if token not in setup_text:
+            fail(f"{setup_path.relative_to(ROOT)} must register the default SSH key for commit signing with {token!r}")
 
 
 def validate_generated_agent_configs() -> None:

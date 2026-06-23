@@ -333,6 +333,22 @@ def validate_cognee_install_assets(manifest: dict[str, Any]) -> None:
             fail(f"{runner_path.relative_to(ROOT)} must contain {token!r}")
 
 
+def validate_git_config() -> None:
+    path = ROOT / "home/dot_config/git/config.tmpl"
+    text = path.read_text()
+    if "signingkey = D55D775A7951407C" in text:
+        fail(f"{path.relative_to(ROOT)} must not reference the removed GPG signing key")
+    for token in (
+        "[gpg]",
+        "format = ssh",
+        "signingkey = {{ .chezmoi.homeDir }}/.ssh/id_ed25519.pub",
+        "[commit]",
+        "gpgsign = true",
+    ):
+        if token not in text:
+            fail(f"{path.relative_to(ROOT)} must configure SSH commit signing with {token!r}")
+
+
 def validate_generated_agent_configs() -> None:
     result = subprocess.run(
         [sys.executable, str(ROOT / "scripts/generate-agent-configs.py"), "--check"],
@@ -392,6 +408,7 @@ def main() -> None:
     hermes = validate_hermes_config_template()
     validate_mcp_parity(codex, claude, hermes, manifest)
     validate_cognee_install_assets(manifest)
+    validate_git_config()
     validate_no_removed_claude_skill()
     validate_no_obvious_secrets()
     print("agent asset validation ok")

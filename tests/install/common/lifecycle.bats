@@ -79,16 +79,23 @@
     local upgrade_line
 
     grep -q 'mise self-update --yes' scripts/upgrade-tools.sh
-    grep -q 'mise install --before 7d' scripts/upgrade-tools.sh
-    grep -q 'mise upgrade --yes --before 7d' scripts/upgrade-tools.sh
+    grep -q 'run_mise_tool_command install' scripts/upgrade-tools.sh
+    grep -q 'run_mise_tool_command upgrade' scripts/upgrade-tools.sh
     self_update_line="$(grep -n 'upgrade_mise_self' scripts/upgrade-tools.sh | tail -n 1 | cut -d: -f1)"
     install_line="$(grep -n 'upgrade_mise_tools' scripts/upgrade-tools.sh | tail -n 1 | cut -d: -f1)"
-    upgrade_line="$(grep -n 'mise upgrade --yes --before 7d' scripts/upgrade-tools.sh | cut -d: -f1)"
+    upgrade_line="$(grep -n 'run_mise_tool_command upgrade' scripts/upgrade-tools.sh | cut -d: -f1)"
 
     [ -n "${self_update_line}" ]
     [ -n "${install_line}" ]
     [ -n "${upgrade_line}" ]
     [ "${self_update_line}" -lt "${install_line}" ]
+}
+
+@test "[common] mise tool lifecycle isolates Git config and continues after individual tool failures" {
+    grep -q 'GIT_CONFIG_GLOBAL=/dev/null mise ls --current --no-header' scripts/upgrade-tools.sh
+    grep -q 'GIT_CONFIG_GLOBAL=/dev/null mise "${mise_command}" --yes --before 7d "${mise_tool}"' scripts/upgrade-tools.sh
+    grep -q 'warning: unable to list current mise tools for %s; continuing' scripts/upgrade-tools.sh
+    grep -q 'warning: mise %s failed for %s; continuing' scripts/upgrade-tools.sh
 }
 
 @test "[common] agent CLI upgrade repairs mise npm packages and removes node-global shadow packages" {

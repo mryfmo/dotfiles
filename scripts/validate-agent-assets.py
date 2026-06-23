@@ -335,6 +335,7 @@ def validate_cognee_install_assets(manifest: dict[str, Any]) -> None:
 
 
 def validate_git_config() -> None:
+    """Validate managed Git commit signing configuration."""
     path = ROOT / "home/dot_config/git/config.tmpl"
     text = path.read_text()
     if "signingkey = D55D775A7951407C" in text:

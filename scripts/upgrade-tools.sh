@@ -239,18 +239,21 @@ function upgrade_mise_npm_agent_tool() {
 
     if ! package_version="$(latest_npm_package_version "${npm_package}")"; then
         printf 'warning: unable to resolve latest npm version for %s; continuing\n' "${npm_package}" >&2
-        return 0
+        return 1
     fi
 
     versioned_mise_tool="${mise_tool}@${package_version}"
     if ! npm_config_min_release_age=0 GIT_CONFIG_GLOBAL=/dev/null mise install --yes "${versioned_mise_tool}"; then
         printf 'warning: mise install failed for %s; continuing\n' "${versioned_mise_tool}" >&2
-        return 0
+        return 1
     fi
 
     if ! repair_mise_npm_package "${versioned_mise_tool}" "${npm_package}" "${package_version}"; then
         printf 'warning: npm repair failed for %s@%s; continuing\n' "${npm_package}" "${package_version}" >&2
+        return 1
     fi
+
+    return 0
 }
 
 #
@@ -262,10 +265,12 @@ function upgrade_agent_cli_tools() {
     fi
 
     section "agent CLI tools"
-    upgrade_mise_npm_agent_tool "npm:@openai/codex" "@openai/codex"
-    upgrade_mise_npm_agent_tool "npm:@anthropic-ai/claude-code" "@anthropic-ai/claude-code"
-    remove_node_global_npm_package "@openai/codex"
-    remove_node_global_npm_package "@anthropic-ai/claude-code"
+    if upgrade_mise_npm_agent_tool "npm:@openai/codex" "@openai/codex"; then
+        remove_node_global_npm_package "@openai/codex"
+    fi
+    if upgrade_mise_npm_agent_tool "npm:@anthropic-ai/claude-code" "@anthropic-ai/claude-code"; then
+        remove_node_global_npm_package "@anthropic-ai/claude-code"
+    fi
 }
 
 #

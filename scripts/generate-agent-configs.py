@@ -470,8 +470,6 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
     for plugin in manifest["plugins"].get("codex_plugins", []):
         if not plugin.get("managed_manifest", True):
             continue
-        if not all(key in plugin for key in ("version", "description", "author", "license", "skills", "interface")):
-            continue
         source_path = plugin["source_path"].removeprefix("./")
         outputs[ROOT / "home/dot_agents" / source_path / ".codex-plugin/plugin.json"] = render_codex_plugin(plugin)
     outputs.update(claude_skill_symlink_outputs())

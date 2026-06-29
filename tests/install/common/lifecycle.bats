@@ -114,8 +114,7 @@
 @test "[common] agent CLI upgrade installs npm latest into mise packages and removes node-global shadows" {
     local latest_line
     local install_line
-    local codex_repair_line
-    local claude_repair_line
+    local repair_line
     local codex_cleanup_line
     local claude_cleanup_line
 
@@ -124,26 +123,23 @@
     grep -q 'versioned_mise_tool="${mise_tool}@${package_version}"' scripts/upgrade-tools.sh
     grep -q 'npm_config_min_release_age=0 GIT_CONFIG_GLOBAL=/dev/null mise install --yes "${versioned_mise_tool}"' scripts/upgrade-tools.sh
     grep -q 'repair_mise_npm_package "${versioned_mise_tool}" "${npm_package}" "${package_version}"' scripts/upgrade-tools.sh
+    grep -q 'if upgrade_mise_npm_agent_tool "npm:@openai/codex" "@openai/codex"; then' scripts/upgrade-tools.sh
+    grep -q 'if upgrade_mise_npm_agent_tool "npm:@anthropic-ai/claude-code" "@anthropic-ai/claude-code"; then' scripts/upgrade-tools.sh
     latest_line="$(grep -n 'latest_npm_package_version "${npm_package}"' scripts/upgrade-tools.sh | cut -d: -f1)"
     install_line="$(grep -n 'mise install --yes "${versioned_mise_tool}"' scripts/upgrade-tools.sh | cut -d: -f1)"
-    codex_repair_line="$(grep -n '"npm:@openai/codex"' scripts/upgrade-tools.sh | tail -n 1 | cut -d: -f1)"
-    claude_repair_line="$(grep -n '"npm:@anthropic-ai/claude-code"' scripts/upgrade-tools.sh | tail -n 1 | cut -d: -f1)"
+    repair_line="$(grep -n 'repair_mise_npm_package "${versioned_mise_tool}" "${npm_package}" "${package_version}"' scripts/upgrade-tools.sh | cut -d: -f1)"
     codex_cleanup_line="$(grep -n 'remove_node_global_npm_package "@openai/codex"' scripts/upgrade-tools.sh | cut -d: -f1)"
     claude_cleanup_line="$(grep -n 'remove_node_global_npm_package "@anthropic-ai/claude-code"' scripts/upgrade-tools.sh | cut -d: -f1)"
 
     [ -n "${latest_line}" ]
     [ -n "${install_line}" ]
-    [ -n "${codex_repair_line}" ]
-    [ -n "${claude_repair_line}" ]
+    [ -n "${repair_line}" ]
     [ -n "${codex_cleanup_line}" ]
     [ -n "${claude_cleanup_line}" ]
     [ "${latest_line}" -lt "${install_line}" ]
-    [ "${install_line}" -lt "${codex_repair_line}" ]
-    [ "${install_line}" -lt "${claude_repair_line}" ]
-    [ "${install_line}" -lt "${codex_cleanup_line}" ]
-    [ "${install_line}" -lt "${claude_cleanup_line}" ]
-    [ "${codex_repair_line}" -lt "${codex_cleanup_line}" ]
-    [ "${claude_repair_line}" -lt "${claude_cleanup_line}" ]
+    [ "${install_line}" -lt "${repair_line}" ]
+    [ "${repair_line}" -lt "${codex_cleanup_line}" ]
+    [ "${repair_line}" -lt "${claude_cleanup_line}" ]
     grep -q 'remove_node_global_npm_package "@openai/codex"' scripts/upgrade-tools.sh
     grep -q 'remove_node_global_npm_package "@anthropic-ai/claude-code"' scripts/upgrade-tools.sh
 }

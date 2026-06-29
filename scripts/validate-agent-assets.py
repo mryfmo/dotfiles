@@ -128,6 +128,7 @@ def validate_codex_plugins() -> None:
             if Path(path_value).is_absolute():
                 fail(f"{marketplace_path} must not use absolute local plugin paths")
             if plugin.get("name") == "crit" and path_value == "./.codex/plugins/crit":
+                # Crit is installed dynamically and does not ship a static plugin manifest.
                 continue
             manifest_path = ROOT / "home/dot_agents" / path_value.removeprefix("./") / ".codex-plugin/plugin.json"
             manifest = json.loads(manifest_path.read_text())

@@ -172,7 +172,9 @@ function update_claude_crit() {
     fi
 
     section "Claude Code Crit plugin"
-    ensure_crit_cli || true
+    if ! ensure_crit_cli; then
+        return 0
+    fi
     ensure_claude_crit_marketplace
     claude plugin marketplace update "${CLAUDE_CRIT_MARKETPLACE_NAME}" || true
 
@@ -242,7 +244,7 @@ function main() {
     update_claude_crit
     update_codex_superpowers
     update_codex_crit
-    ensure_ccgate_cli || true
+    ensure_ccgate_cli
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

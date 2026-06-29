@@ -150,6 +150,7 @@ plugins:
           - Write
     - name: crit
       source_path: ./.codex/plugins/crit
+      managed_manifest: false
       category: Developer Tools
       authentication: ON_INSTALL
       installation: INSTALLED_BY_DEFAULT

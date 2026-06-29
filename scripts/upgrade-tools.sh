@@ -11,7 +11,7 @@
 set -Eeuo pipefail
 
 include_system=false
-DEFAULT_FORBIDDEN_HOMEBREW_FORMULAE="node python python3 pip npm pnpm yarn claude"
+DEFAULT_FORBIDDEN_HOMEBREW_FORMULAE="node node@* python python@* python3 pip npm pnpm yarn claude"
 
 #
 # @description Print a section heading.
@@ -52,9 +52,11 @@ function is_forbidden_homebrew_formula() {
     local forbidden_formula
 
     for forbidden_formula in ${DEFAULT_FORBIDDEN_HOMEBREW_FORMULAE} ${HOMEBREW_FORBIDDEN_FORMULAE:-}; do
-        if [ "${formula}" = "${forbidden_formula}" ]; then
+        case "${formula}" in
+        ${forbidden_formula})
             return 0
-        fi
+            ;;
+        esac
     done
 
     return 1

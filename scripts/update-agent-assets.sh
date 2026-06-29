@@ -12,7 +12,11 @@ set -Eeuo pipefail
 
 readonly CLAUDE_SUPERPOWERS_PLUGIN="superpowers@claude-plugins-official"
 readonly CLAUDE_SUPERPOWERS_MARKETPLACE="anthropics/claude-plugins-official"
+readonly CLAUDE_CRIT_PLUGIN="crit@crit"
+readonly CLAUDE_CRIT_MARKETPLACE="tomasz-tomczyk/crit"
+readonly CLAUDE_CRIT_MARKETPLACE_NAME="crit"
 readonly CODEX_SUPERPOWERS_PLUGIN="superpowers@openai-curated"
+readonly CCGATE_MISE_TOOL="aqua:tak848/ccgate"
 
 #
 # @description Print a section heading.
@@ -28,6 +32,13 @@ function section() {
 #
 function has_command() {
     command -v "$1" > /dev/null 2>&1
+}
+
+#
+# @description Return success when the current OS is macOS.
+#
+function is_macos() {
+    [ "$(uname)" = "Darwin" ]
 }
 
 #
@@ -78,6 +89,59 @@ function ensure_claude_superpowers_marketplace() {
 }
 
 #
+# @description Ensure the Crit CLI is available for agent integrations.
+#
+function ensure_crit_cli() {
+    if has_command crit; then
+        return 0
+    fi
+
+    if is_macos && has_command brew; then
+        section "Crit CLI"
+        brew install crit || true
+    fi
+
+    if ! has_command crit; then
+        printf 'Skipping Crit integrations: crit command not found.\n'
+        return 1
+    fi
+}
+
+#
+# @description Ensure the Crit Claude Code plugin marketplace is configured.
+#
+function ensure_claude_crit_marketplace() {
+    if command_output_contains "${CLAUDE_CRIT_MARKETPLACE_NAME}" claude plugin marketplace list; then
+        return 0
+    fi
+
+    claude plugin marketplace add "${CLAUDE_CRIT_MARKETPLACE}"
+}
+
+#
+# @description Ensure ccgate is available for agent PermissionRequest hooks.
+#
+function ensure_ccgate_cli() {
+    if has_command ccgate; then
+        ccgate --version || true
+        return 0
+    fi
+
+    if has_command mise; then
+        section "ccgate"
+        mise install --yes "${CCGATE_MISE_TOOL}" || true
+    fi
+
+    if has_command ccgate; then
+        ccgate --version || true
+        return 0
+    fi
+
+    printf 'Skipping ccgate hook runtime verification: ccgate command not found.\n'
+    return 1
+}
+
+#
 # @description Install or update the Claude Code Superpowers plugin.
 #
 function update_claude_superpowers() {
@@ -96,6 +160,29 @@ function update_claude_superpowers() {
     else
         claude plugin install "${CLAUDE_SUPERPOWERS_PLUGIN}" || true
     fi
+}
+
+#
+# @description Install or update the Claude Code Crit plugin.
+#
+function update_claude_crit() {
+    if ! has_command claude; then
+        printf 'Skipping Claude Code Crit plugin: claude command not found.\n'
+        return 0
+    fi
+
+    section "Claude Code Crit plugin"
+    ensure_crit_cli || true
+    ensure_claude_crit_marketplace
+    claude plugin marketplace update "${CLAUDE_CRIT_MARKETPLACE_NAME}" || true
+
+    if command_output_contains "\"id\":\"${CLAUDE_CRIT_PLUGIN}\"" claude plugin list --json ||
+        command_output_contains "\"id\": \"${CLAUDE_CRIT_PLUGIN}\"" claude plugin list --json; then
+        claude plugin update "${CLAUDE_CRIT_PLUGIN}" || true
+    else
+        claude plugin install "${CLAUDE_CRIT_PLUGIN}" || true
+    fi
+    claude plugin enable "${CLAUDE_CRIT_PLUGIN}" || true
 }
 
 #
@@ -123,6 +210,25 @@ function update_codex_superpowers() {
 }
 
 #
+# @description Install or update the Codex Crit plugin and plan-review hook.
+#
+function update_codex_crit() {
+    if ! has_command codex; then
+        printf 'Skipping Codex Crit plugin: codex command not found.\n'
+        return 0
+    fi
+    if ! ensure_crit_cli; then
+        return 0
+    fi
+
+    section "Codex Crit plugin"
+    (
+        cd "${HOME}"
+        crit install codex-plugin --force
+    ) || true
+}
+
+#
 # @description Install and refresh managed agent plugin assets.
 # @arg $@ string Command-line arguments.
 #
@@ -133,7 +239,10 @@ function main() {
     fi
 
     update_claude_superpowers
+    update_claude_crit
     update_codex_superpowers
+    update_codex_crit
+    ensure_ccgate_cli || true
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

@@ -23,6 +23,7 @@ skills:
 
 codex:
   config_path: home/dot_codex/private_config.toml.tmpl
+  ccgate_config_path: home/dot_codex/ccgate.jsonnet
   model: gpt-5.5
   model_reasoning_effort: high
   approval_policy: on-request
@@ -50,10 +51,16 @@ codex:
     set:
       PATH: '{{ .chezmoi.homeDir }}/.local/share/mise/installs/node/lts/bin:{{ .chezmoi.homeDir }}/.local/share/mise/shims:{{ .chezmoi.homeDir }}/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'
   features:
+    plugins: true
     hooks: true
+    plugin_hooks: true
   plugins:
     superpowers@openai-curated:
       enabled: true
+    crit@mryfmo-personal-plugins:
+      enabled: true
+  hooks:
+    ccgate_permission_request_hook: ccgate codex
   projects:
     /Users/mryfmo/Workspace/dotfiles:
       trust_level: trusted
@@ -61,6 +68,7 @@ codex:
 claude:
   settings_path: home/dot_claude/private_settings.json
   mcp_config_path: home/dot_claude/private_mcp.json.tmpl
+  ccgate_config_path: home/dot_claude/ccgate.jsonnet
   schema: https://json.schemastore.org/claude-code-settings.json
   model: opusplan
   alwaysThinkingEnabled: true
@@ -90,6 +98,7 @@ claude:
       - Bash(terraform apply:*)
       - Bash(kubectl apply:*)
   hooks:
+    ccgate_permission_request_hook: ccgate claude
     enforce_uv_hook: ~/.claude/hooks/enforce-uv.sh
     format_edited_files_hook: ~/.claude/hooks/format-edited-files.py
     python_post_edit:
@@ -139,6 +148,11 @@ plugins:
         capabilities:
           - Read
           - Write
+    - name: crit
+      source_path: ./.codex/plugins/crit
+      category: Developer Tools
+      authentication: ON_INSTALL
+      installation: INSTALLED_BY_DEFAULT
 
 mcp_servers:
   cognee_memory:

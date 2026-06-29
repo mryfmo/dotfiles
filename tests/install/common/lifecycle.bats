@@ -98,33 +98,76 @@
     grep -q 'warning: mise %s failed for %s; continuing' scripts/upgrade-tools.sh
 }
 
-@test "[common] agent CLI upgrade repairs mise npm packages and removes node-global shadow packages" {
-    local agent_upgrade_line
+@test "[common] Homebrew upgrade filters forbidden formulae without installed-dependent side effects" {
+    grep -q 'DEFAULT_FORBIDDEN_HOMEBREW_FORMULAE="node python python3 pip npm pnpm yarn claude"' scripts/upgrade-tools.sh
+    grep -q 'for forbidden_formula in ${DEFAULT_FORBIDDEN_HOMEBREW_FORMULAE} ${HOMEBREW_FORBIDDEN_FORMULAE:-}' scripts/upgrade-tools.sh
+    grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --formula "${upgrade_formulae\[@\]}"' scripts/upgrade-tools.sh
+    grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --cask --skip-cask-deps "${outdated_casks\[@\]}"' scripts/upgrade-tools.sh
+    grep -q 'brew list --cask codexbar' scripts/update-codex-statusline-tools.sh
+    grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew install --cask --skip-cask-deps codexbar' scripts/update-codex-statusline-tools.sh
+    grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --cask --skip-cask-deps codexbar' scripts/update-codex-statusline-tools.sh
+    grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --formula codexbar' scripts/update-codex-statusline-tools.sh
+    grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --formula steipete/tap/codexbar' scripts/update-codex-statusline-tools.sh
+}
+
+@test "[common] agent CLI upgrade installs npm latest into mise packages and removes node-global shadows" {
+    local latest_line
+    local install_line
     local codex_repair_line
     local claude_repair_line
     local codex_cleanup_line
     local claude_cleanup_line
 
     grep -q 'npm uninstall -g "${npm_package}"' scripts/upgrade-tools.sh
-    agent_upgrade_line="$(grep -n 'npm_config_min_release_age=0 mise upgrade --yes' scripts/upgrade-tools.sh | cut -d: -f1)"
+    grep -q 'npm view "$1" version' scripts/upgrade-tools.sh
+    grep -q 'versioned_mise_tool="${mise_tool}@${package_version}"' scripts/upgrade-tools.sh
+    grep -q 'npm_config_min_release_age=0 GIT_CONFIG_GLOBAL=/dev/null mise install --yes "${versioned_mise_tool}"' scripts/upgrade-tools.sh
+    grep -q 'repair_mise_npm_package "${versioned_mise_tool}" "${npm_package}" "${package_version}"' scripts/upgrade-tools.sh
+    latest_line="$(grep -n 'latest_npm_package_version "${npm_package}"' scripts/upgrade-tools.sh | cut -d: -f1)"
+    install_line="$(grep -n 'mise install --yes "${versioned_mise_tool}"' scripts/upgrade-tools.sh | cut -d: -f1)"
     codex_repair_line="$(grep -n '"npm:@openai/codex"' scripts/upgrade-tools.sh | tail -n 1 | cut -d: -f1)"
     claude_repair_line="$(grep -n '"npm:@anthropic-ai/claude-code"' scripts/upgrade-tools.sh | tail -n 1 | cut -d: -f1)"
     codex_cleanup_line="$(grep -n 'remove_node_global_npm_package "@openai/codex"' scripts/upgrade-tools.sh | cut -d: -f1)"
     claude_cleanup_line="$(grep -n 'remove_node_global_npm_package "@anthropic-ai/claude-code"' scripts/upgrade-tools.sh | cut -d: -f1)"
 
-    [ -n "${agent_upgrade_line}" ]
+    [ -n "${latest_line}" ]
+    [ -n "${install_line}" ]
     [ -n "${codex_repair_line}" ]
     [ -n "${claude_repair_line}" ]
     [ -n "${codex_cleanup_line}" ]
     [ -n "${claude_cleanup_line}" ]
-    [ "${agent_upgrade_line}" -lt "${codex_repair_line}" ]
-    [ "${agent_upgrade_line}" -lt "${claude_repair_line}" ]
-    [ "${agent_upgrade_line}" -lt "${codex_cleanup_line}" ]
-    [ "${agent_upgrade_line}" -lt "${claude_cleanup_line}" ]
+    [ "${latest_line}" -lt "${install_line}" ]
+    [ "${install_line}" -lt "${codex_repair_line}" ]
+    [ "${install_line}" -lt "${claude_repair_line}" ]
+    [ "${install_line}" -lt "${codex_cleanup_line}" ]
+    [ "${install_line}" -lt "${claude_cleanup_line}" ]
     [ "${codex_repair_line}" -lt "${codex_cleanup_line}" ]
     [ "${claude_repair_line}" -lt "${claude_cleanup_line}" ]
     grep -q 'remove_node_global_npm_package "@openai/codex"' scripts/upgrade-tools.sh
     grep -q 'remove_node_global_npm_package "@anthropic-ai/claude-code"' scripts/upgrade-tools.sh
+}
+
+@test "[common] agent asset lifecycle installs Crit integrations for Claude Code and Codex" {
+    grep -q 'CLAUDE_CRIT_PLUGIN="crit@crit"' scripts/update-agent-assets.sh
+    grep -q 'CLAUDE_CRIT_MARKETPLACE="tomasz-tomczyk/crit"' scripts/update-agent-assets.sh
+    grep -q 'brew install crit' scripts/update-agent-assets.sh
+    grep -q 'claude plugin enable "${CLAUDE_CRIT_PLUGIN}"' scripts/update-agent-assets.sh
+    grep -q 'crit install codex-plugin --force' scripts/update-agent-assets.sh
+    grep -q 'update_claude_crit' scripts/update-agent-assets.sh
+    grep -q 'update_codex_crit' scripts/update-agent-assets.sh
+}
+
+@test "[common] agent asset lifecycle installs ccgate for Claude Code and Codex permission gates" {
+    grep -q 'aqua:tak848/ccgate' scripts/update-agent-assets.sh
+    grep -q '"aqua:tak848/ccgate" = "latest"' home/dot_mise/config.toml
+    grep -q 'ccgate --version' scripts/update-agent-assets.sh
+    grep -q 'ccgate claude' home/dot_claude/private_settings.json
+    grep -q 'ccgate codex' home/dot_codex/private_config.toml.tmpl
+    grep -q 'claude-haiku-4-5' home/dot_claude/ccgate.jsonnet
+    grep -q 'HookInput.model' home/dot_codex/ccgate.jsonnet
+    grep -q 'HookInput.model' home/dot_config/codex/AGENTS.md
+    grep -q 'provider.model' home/dot_config/claude/rules/model-selection.md
+    grep -q 'metrics --details 5' home/dot_config/claude/rules/model-selection.md
 }
 
 @test "[common] Hermes home is managed as a private directory" {

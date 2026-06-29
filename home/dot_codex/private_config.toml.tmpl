@@ -85,10 +85,23 @@ startup_timeout_sec = 60
 tool_timeout_sec = 120
 
 [features]
+plugins = true
 hooks = true
+plugin_hooks = true
 
 [plugins."superpowers@openai-curated"]
 enabled = true
+
+[plugins."crit@mryfmo-personal-plugins"]
+enabled = true
+
+[[hooks.PermissionRequest]]
+matcher = ""
+
+[[hooks.PermissionRequest.hooks]]
+type = "command"
+command = "ccgate codex"
+statusMessage = "ccgate evaluating request"
 
 [projects."/Users/mryfmo/Workspace/dotfiles"]
 trust_level = "trusted"

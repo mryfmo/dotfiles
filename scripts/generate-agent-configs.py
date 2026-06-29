@@ -153,6 +153,20 @@ def render_codex(manifest: dict[str, Any]) -> str:
         lines.extend(["", f"[plugins.{quote_toml_key(plugin_id)}]"])
         for key, value in plugin_config.items():
             lines.append(f"{quote_toml_key(str(key))} = {quote_toml(value)}")
+    hooks = codex.get("hooks", {})
+    if hooks.get("ccgate_permission_request_hook"):
+        lines.extend(
+            [
+                "",
+                "[[hooks.PermissionRequest]]",
+                'matcher = ""',
+                "",
+                "[[hooks.PermissionRequest.hooks]]",
+                'type = "command"',
+                f"command = {quote_toml(hooks['ccgate_permission_request_hook'])}",
+                'statusMessage = "ccgate evaluating request"',
+            ]
+        )
     for project_path, project_config in codex.get("projects", {}).items():
         lines.extend(["", f"[projects.{quote_toml_key(project_path)}]"])
         for key, value in project_config.items():
@@ -184,6 +198,17 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
             "ask": claude["permissions"]["ask"],
         },
         "hooks": {
+            "PermissionRequest": [
+                {
+                    "matcher": "",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": hooks["ccgate_permission_request_hook"],
+                        }
+                    ],
+                }
+            ],
             "PreToolUse": [
                 {
                     "matcher": "Bash",
@@ -208,6 +233,65 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
         "enabledPlugins": claude["enabledPlugins"],
     }
     return json_dumps(settings)
+
+
+def render_ccgate_config(target: str) -> str:
+    if target == "codex":
+        schema = "https://raw.githubusercontent.com/tak848/ccgate/main/schemas/codex.schema.json"
+        lines = [
+            "{",
+            f"  // {GENERATED_HEADER}",
+            f"  ['$schema']: {json.dumps(schema)},",
+            "  provider: {",
+            "    name: 'anthropic',",
+            "    model: 'claude-haiku-4-5',",
+            "  },",
+            "  fallthrough_strategy: 'ask',",
+            "  append_environment: [",
+            "    'ccgate codex is an LLM-backed PermissionRequest gate. Its purpose is to automate clear permission prompts while preserving safety, human review, and useful feedback to the agent.',",
+            "    'The provider model is the ccgate classifier model, not the active Codex task model. Keep permission classification on a small structured-output model and do not spend premium task models on gating.',",
+            "    'Codex HookInput.model is available. Use it as proportionality context, not as a deterministic block. Premium models such as gpt-5.5, gpt-5, and reasoning-tier models are appropriate for architecture, ambiguous debugging, multi-file design, security-sensitive review, and high-stakes decisions.',",
+            "    'Do not deny necessary read-only inspection, search, or small setup commands solely because a premium model is active. Those operations are often part of a larger task that legitimately needs the active model.',",
+            "    'Prefer fallthrough for ambiguous model-proportionality decisions in interactive TUI sessions. Use metrics later to tune repeated fallthrough or deny patterns.',",
+            "  ],",
+            "  append_allow: [",
+            "    'Allow focused read-only inspection, search, status, diff, and version checks when they support the current task and do not expose secrets, escalate privilege, modify files, or access the network.',",
+            "  ],",
+            "  append_deny: [",
+            "    'Deny only when the requested action is clearly unsafe, overbroad, destructive, privileged, network-executing without explicit need, or a repeated trivial operation under a premium active model that is unrelated to any complex user task. deny_message: Narrow the operation or switch to a smaller model before retrying; ccgate should guide model proportionality without blocking necessary task inspection.',",
+            "  ],",
+            "}",
+            "",
+        ]
+    elif target == "claude":
+        schema = "https://raw.githubusercontent.com/tak848/ccgate/main/schemas/claude.schema.json"
+        lines = [
+            "{",
+            f"  // {GENERATED_HEADER}",
+            f"  ['$schema']: {json.dumps(schema)},",
+            "  provider: {",
+            "    name: 'anthropic',",
+            "    model: 'claude-haiku-4-5',",
+            "  },",
+            "  fallthrough_strategy: 'ask',",
+            "  append_environment: [",
+            "    'ccgate claude is an LLM-backed PermissionRequest gate. Its purpose is to automate clear permission prompts while preserving safety, human review, and useful feedback to the agent.',",
+            "    'The provider model is the ccgate classifier model, not the active Claude Code task model. Keep permission classification on a small structured-output model and do not spend premium task models on gating.',",
+            "    'Claude Code PermissionRequest input does not expose the active task model. Model governance for Claude Code must come from settings and agent rules; ccgate can only judge the requested tool action and return allow, deny, or fallthrough.',",
+            "    'Prefer fallthrough for ambiguous model-proportionality decisions in interactive TUI sessions. Use metrics later to tune repeated fallthrough or deny patterns.',",
+            "  ],",
+            "  append_allow: [",
+            "    'Allow focused read-only inspection, search, status, diff, and version checks when they support the current task and do not expose secrets, escalate privilege, modify files, or access the network.',",
+            "  ],",
+            "  append_deny: [",
+            "    'Deny only when the requested action is clearly unsafe, overbroad, destructive, privileged, network-executing without explicit need, or too broad to be a permission-safe unit. deny_message: Narrow the operation and choose the smallest Claude Code model adequate for the task before retrying.',",
+            "  ],",
+            "}",
+            "",
+        ]
+    else:
+        fail(f"unsupported ccgate target: {target}")
+    return "\n".join(lines)
 
 
 def claude_mcp_entry(server: dict[str, Any]) -> dict[str, Any]:
@@ -333,6 +417,9 @@ def render_marketplace(manifest: dict[str, Any]) -> str:
 
 
 def render_codex_plugin(plugin: dict[str, Any]) -> str:
+    for key in ("version", "description", "author", "license", "skills", "interface"):
+        if key not in plugin:
+            fail(f"managed Codex plugin {plugin['name']} is missing {key}")
     data = {
         "name": plugin["name"],
         "version": plugin["version"],
@@ -373,12 +460,18 @@ def claude_skill_symlink_outputs() -> dict[Path, str]:
 def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
     outputs = {
         ROOT / manifest["codex"]["config_path"]: render_codex(manifest),
+        ROOT / manifest["codex"]["ccgate_config_path"]: render_ccgate_config("codex"),
         ROOT / manifest["claude"]["settings_path"]: render_claude_settings(manifest),
         ROOT / manifest["claude"]["mcp_config_path"]: render_claude_mcp(manifest),
+        ROOT / manifest["claude"]["ccgate_config_path"]: render_ccgate_config("claude"),
         ROOT / manifest["hermes"]["config_path"]: render_hermes(manifest),
         ROOT / manifest["plugins"]["marketplace_path"]: render_marketplace(manifest),
     }
     for plugin in manifest["plugins"].get("codex_plugins", []):
+        if not plugin.get("managed_manifest", True):
+            continue
+        if not all(key in plugin for key in ("version", "description", "author", "license", "skills", "interface")):
+            continue
         source_path = plugin["source_path"].removeprefix("./")
         outputs[ROOT / "home/dot_agents" / source_path / ".codex-plugin/plugin.json"] = render_codex_plugin(plugin)
     outputs.update(claude_skill_symlink_outputs())

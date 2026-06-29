@@ -4,7 +4,7 @@
 # @brief Install and refresh optional helpers for the Codex status display.
 # @description
 #   Keeps the tmux Codex status segment useful without making CodexBar a hard
-#   dependency. When CodexBar CLI is already installed, the script refreshes it
+#   dependency. When CodexBar is already installed, the script refreshes it
 #   through Homebrew if Homebrew owns it. When only CodexBar.app is installed,
 #   the bundled CLI helper is symlinked into the dotfiles-managed user bin path.
 
@@ -41,13 +41,19 @@ function upgrade_brew_codexbar() {
         return 1
     fi
 
+    if brew list --cask codexbar > /dev/null 2>&1; then
+        HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --cask --skip-cask-deps codexbar || true
+        link_codexbar_app_cli || true
+        return 0
+    fi
+
     if brew list --formula codexbar > /dev/null 2>&1; then
-        brew upgrade --formula codexbar || true
+        HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --formula codexbar || true
         return 0
     fi
 
     if brew list --formula steipete/tap/codexbar > /dev/null 2>&1; then
-        brew upgrade --formula steipete/tap/codexbar || true
+        HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --formula steipete/tap/codexbar || true
         return 0
     fi
 
@@ -71,6 +77,18 @@ function link_codexbar_app_cli() {
 }
 
 #
+# @description Install CodexBar through Homebrew when no CLI helper is available.
+#
+function install_brew_codexbar() {
+    if ! is_macos || ! has_command brew; then
+        return 1
+    fi
+
+    HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew install --cask --skip-cask-deps codexbar
+    link_codexbar_app_cli || true
+}
+
+#
 # @description Install or refresh optional Codex status display helpers.
 # @arg $@ string Command-line arguments.
 #
@@ -85,7 +103,7 @@ function main() {
     if has_command codexbar; then
         upgrade_brew_codexbar || codexbar --version || true
     else
-        link_codexbar_app_cli || printf 'CodexBar CLI not found; tmux status will use Codex app-server fallback.\n'
+        link_codexbar_app_cli || install_brew_codexbar || printf 'CodexBar CLI not found; tmux status will use Codex app-server fallback.\n'
     fi
 }
 

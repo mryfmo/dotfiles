@@ -127,6 +127,8 @@ def validate_codex_plugins() -> None:
             path_value = source.get("path", "")
             if Path(path_value).is_absolute():
                 fail(f"{marketplace_path} must not use absolute local plugin paths")
+            if plugin.get("name") == "crit" and path_value == "./.codex/plugins/crit":
+                continue
             manifest_path = ROOT / "home/dot_agents" / path_value.removeprefix("./") / ".codex-plugin/plugin.json"
             manifest = json.loads(manifest_path.read_text())
             for key in ("name", "version", "description"):
@@ -172,6 +174,9 @@ def validate_claude_settings() -> None:
     enabled_plugins = settings.get("enabledPlugins", {})
     if enabled_plugins:
         fail(f"{settings_path} must not enable Claude plugins that are not installed by this repository")
+    crit_rule = ROOT / "home/dot_config/claude/rules/crit-review.md"
+    if not crit_rule.exists() or "/crit" not in crit_rule.read_text():
+        fail("Claude Code Crit review rule must require /crit")
 
 
 def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
@@ -188,6 +193,10 @@ def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
         fail(f"{codex_path} should default to workspace-write sandbox")
     if data.get("sandbox_workspace_write", {}).get("network_access") is not False:
         fail(f"{codex_path} should keep sandbox command network access disabled")
+    features = data.get("features", {})
+    for feature in ("plugins", "hooks", "plugin_hooks"):
+        if features.get(feature) is not True:
+            fail(f"{codex_path} must enable Codex feature {feature} for Crit plugin hooks")
     if data.get("shell_environment_policy") != manifest_codex.get("shell_environment_policy"):
         fail(f"{codex_path} must render codex.shell_environment_policy from the shared manifest")
     shell_path = data.get("shell_environment_policy", {}).get("set", {}).get("PATH", "")
@@ -264,6 +273,9 @@ def validate_agent_manifest() -> dict[str, Any]:
     canonical_dir = manifest.get("skills", {}).get("canonical_dir")
     if canonical_dir != "~/.agents/skills":
         fail(f"{manifest_path} must keep ~/.agents/skills as the canonical skill directory")
+    codex_plugins = manifest.get("codex", {}).get("plugins", {})
+    if codex_plugins.get("crit@mryfmo-personal-plugins", {}).get("enabled") is not True:
+        fail(f"{manifest_path} must enable the Crit Codex plugin")
     for name, server in manifest.get("mcp_servers", {}).items():
         if server.get("enabled", False) is not False:
             fail(f"MCP server {name} must be disabled by default in the shared manifest")
@@ -332,6 +344,84 @@ def validate_cognee_install_assets(manifest: dict[str, Any]) -> None:
     for token in ("cognee-mcp", "--transport", "COGNEE_MCP_TRANSPORT", "COGNEE_MCP_HOST", "COGNEE_MCP_PORT", "COGNEE_MCP_PATH"):
         if token not in runner:
             fail(f"{runner_path.relative_to(ROOT)} must contain {token!r}")
+
+
+def validate_crit_install_assets() -> None:
+    updater = (ROOT / "scripts/update-agent-assets.sh").read_text()
+    for token in (
+        "brew install crit",
+        "crit@crit",
+        "claude plugin enable",
+        "crit install codex-plugin --force",
+        "tomasz-tomczyk/crit",
+    ):
+        if token not in updater:
+            fail(f"scripts/update-agent-assets.sh must manage Crit asset token {token!r}")
+    codex_agents = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
+    for token in ("$crit", "Crit plugin", "CRIT_PLAN_REVIEW=off", "TUI", "http://localhost"):
+        if token not in codex_agents:
+            fail(f"home/dot_config/codex/AGENTS.md must document Codex Crit rule token {token!r}")
+
+
+def validate_ccgate_assets() -> None:
+    updater = (ROOT / "scripts/update-agent-assets.sh").read_text()
+    for token in (
+        "aqua:tak848/ccgate",
+        "ccgate --version",
+    ):
+        if token not in updater:
+            fail(f"scripts/update-agent-assets.sh must manage ccgate asset token {token!r}")
+    mise_config = (ROOT / "home/dot_mise/config.toml").read_text()
+    if '"aqua:tak848/ccgate" = "latest"' not in mise_config:
+        fail("home/dot_mise/config.toml must activate aqua:tak848/ccgate")
+
+    codex_path = ROOT / "home/dot_codex/private_config.toml.tmpl"
+    codex_text = render_template_text(codex_path)
+    for token in ("[[hooks.PermissionRequest]]", "ccgate codex", "ccgate evaluating request"):
+        if token not in codex_text:
+            fail(f"{codex_path} must configure Codex ccgate hook token {token!r}")
+
+    claude_settings = json.loads((ROOT / "home/dot_claude/private_settings.json").read_text())
+    claude_hooks = json.dumps(claude_settings.get("hooks", {}), ensure_ascii=False)
+    for token in ("PermissionRequest", "ccgate claude"):
+        if token not in claude_hooks:
+            fail(f"home/dot_claude/private_settings.json must configure Claude ccgate hook token {token!r}")
+
+    ccgate_configs = {
+        ROOT / "home/dot_codex/ccgate.jsonnet": (
+            "ccgate codex",
+            "HookInput.model",
+            "proportionality context",
+            "Do not deny necessary read-only inspection",
+            "Use metrics later",
+        ),
+        ROOT / "home/dot_claude/ccgate.jsonnet": (
+            "ccgate claude",
+            "does not expose the active task model",
+            "claude-haiku-4-5",
+            "Use metrics later",
+        ),
+    }
+    for path, tokens in ccgate_configs.items():
+        if not path.exists():
+            fail(f"{path} is missing")
+        text = path.read_text()
+        for token in tokens:
+            if token not in text:
+                fail(f"{path} must contain ccgate policy token {token!r}")
+
+    codex_agents = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
+    for token in ("ccgate", "HookInput.model", "provider.model", "metrics --details 5", "最小限のモデル"):
+        if token not in codex_agents:
+            fail(f"home/dot_config/codex/AGENTS.md must document ccgate model token {token!r}")
+
+    claude_rule = ROOT / "home/dot_config/claude/rules/model-selection.md"
+    if not claude_rule.exists():
+        fail("Claude Code model-selection rule is missing")
+    claude_rule_text = claude_rule.read_text()
+    for token in ("ccgate", "PermissionRequest", "provider.model", "metrics --details 5", "smallest Claude Code model"):
+        if token not in claude_rule_text:
+            fail(f"{claude_rule} must document ccgate model token {token!r}")
 
 
 def validate_git_config() -> None:
@@ -420,6 +510,8 @@ def main() -> None:
     hermes = validate_hermes_config_template()
     validate_mcp_parity(codex, claude, hermes, manifest)
     validate_cognee_install_assets(manifest)
+    validate_crit_install_assets()
+    validate_ccgate_assets()
     validate_git_config()
     validate_no_removed_claude_skill()
     validate_no_obvious_secrets()

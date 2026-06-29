@@ -3269,7 +3269,7 @@
 
 
 <h1 id="scriptsupdate-codex-statusline-toolssh">scripts/update-codex-statusline-tools.sh<a class="headerlink" href="#scriptsupdate-codex-statusline-toolssh" title="Permanent link">&para;</a></h1>
-<p>Keeps the tmux Codex status segment useful without making CodexBar a hard dependency. When CodexBar CLI is already installed, the script refreshes it through Homebrew if Homebrew owns it. When only CodexBar.app is installed, the bundled CLI helper is symlinked into the dotfiles-managed user bin path.</p>
+<p>Keeps the tmux Codex status segment useful without making CodexBar a hard dependency. When CodexBar is already installed, the script refreshes it through Homebrew if Homebrew owns it. When only CodexBar.app is installed, the bundled CLI helper is symlinked into the dotfiles-managed user bin path.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>scripts/update-codex-statusline-tools.sh</code></li>
@@ -3279,6 +3279,7 @@
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>has_command</code></li>
+<li><code>install_brew_codexbar</code></li>
 <li><code>is_macos</code></li>
 <li><code>link_codexbar_app_cli</code></li>
 <li><code>main</code></li>
@@ -3292,7 +3293,7 @@
 <span class="c1"># @brief Install and refresh optional helpers for the Codex status display.</span>
 <span class="c1"># @description</span>
 <span class="c1">#   Keeps the tmux Codex status segment useful without making CodexBar a hard</span>
-<span class="c1">#   dependency. When CodexBar CLI is already installed, the script refreshes it</span>
+<span class="c1">#   dependency. When CodexBar is already installed, the script refreshes it</span>
 <span class="c1">#   through Homebrew if Homebrew owns it. When only CodexBar.app is installed,</span>
 <span class="c1">#   the bundled CLI helper is symlinked into the dotfiles-managed user bin path.</span>
 
@@ -3329,13 +3330,19 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">fi</span>
 
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>brew<span class="w"> </span>list<span class="w"> </span>--cask<span class="w"> </span>codexbar<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>brew<span class="w"> </span>upgrade<span class="w"> </span>--cask<span class="w"> </span>--skip-cask-deps<span class="w"> </span>codexbar<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">        </span>link_codexbar_app_cli<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>brew<span class="w"> </span>list<span class="w"> </span>--formula<span class="w"> </span>codexbar<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>brew<span class="w"> </span>upgrade<span class="w"> </span>--formula<span class="w"> </span>codexbar<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">        </span><span class="nv">HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>brew<span class="w"> </span>upgrade<span class="w"> </span>--formula<span class="w"> </span>codexbar<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>brew<span class="w"> </span>list<span class="w"> </span>--formula<span class="w"> </span>steipete/tap/codexbar<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>brew<span class="w"> </span>upgrade<span class="w"> </span>--formula<span class="w"> </span>steipete/tap/codexbar<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">        </span><span class="nv">HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>brew<span class="w"> </span>upgrade<span class="w"> </span>--formula<span class="w"> </span>steipete/tap/codexbar<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 
@@ -3359,6 +3366,18 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Install CodexBar through Homebrew when no CLI helper is available.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>install_brew_codexbar<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>is_macos<span class="w"> </span><span class="o">||</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>brew<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="nv">HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>brew<span class="w"> </span>install<span class="w"> </span>--cask<span class="w"> </span>--skip-cask-deps<span class="w"> </span>codexbar
+<span class="w">    </span>link_codexbar_app_cli<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Install or refresh optional Codex status display helpers.</span>
 <span class="c1"># @arg $@ string Command-line arguments.</span>
 <span class="c1">#</span>
@@ -3373,7 +3392,7 @@
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>has_command<span class="w"> </span>codexbar<span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span>upgrade_brew_codexbar<span class="w"> </span><span class="o">||</span><span class="w"> </span>codexbar<span class="w"> </span>--version<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 <span class="w">    </span><span class="k">else</span>
-<span class="w">        </span>link_codexbar_app_cli<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;CodexBar CLI not found; tmux status will use Codex app-server fallback.\n&#39;</span>
+<span class="w">        </span>link_codexbar_app_cli<span class="w"> </span><span class="o">||</span><span class="w"> </span>install_brew_codexbar<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;CodexBar CLI not found; tmux status will use Codex app-server fallback.\n&#39;</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 

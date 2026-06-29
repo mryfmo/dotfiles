@@ -3280,11 +3280,17 @@
 <ul>
 <li><code>codex_marketplace_is_configured_git_marketplace</code></li>
 <li><code>command_output_contains</code></li>
+<li><code>ensure_ccgate_cli</code></li>
+<li><code>ensure_claude_crit_marketplace</code></li>
 <li><code>ensure_claude_superpowers_marketplace</code></li>
+<li><code>ensure_crit_cli</code></li>
 <li><code>has_command</code></li>
+<li><code>is_macos</code></li>
 <li><code>main</code></li>
 <li><code>section</code></li>
+<li><code>update_claude_crit</code></li>
 <li><code>update_claude_superpowers</code></li>
+<li><code>update_codex_crit</code></li>
 <li><code>update_codex_superpowers</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
@@ -3302,7 +3308,11 @@
 
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CLAUDE_SUPERPOWERS_PLUGIN</span><span class="o">=</span><span class="s2">&quot;superpowers@claude-plugins-official&quot;</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CLAUDE_SUPERPOWERS_MARKETPLACE</span><span class="o">=</span><span class="s2">&quot;anthropics/claude-plugins-official&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">CLAUDE_CRIT_PLUGIN</span><span class="o">=</span><span class="s2">&quot;crit@crit&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">CLAUDE_CRIT_MARKETPLACE</span><span class="o">=</span><span class="s2">&quot;tomasz-tomczyk/crit&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">CLAUDE_CRIT_MARKETPLACE_NAME</span><span class="o">=</span><span class="s2">&quot;crit&quot;</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CODEX_SUPERPOWERS_PLUGIN</span><span class="o">=</span><span class="s2">&quot;superpowers@openai-curated&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">CCGATE_MISE_TOOL</span><span class="o">=</span><span class="s2">&quot;aqua:tak848/ccgate&quot;</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Print a section heading.</span>
@@ -3318,6 +3328,13 @@
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>has_command<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Return success when the current OS is macOS.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>is_macos<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uname<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Darwin&quot;</span><span class="w"> </span><span class="o">]</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3368,6 +3385,59 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Ensure the Crit CLI is available for agent integrations.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>ensure_crit_cli<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>has_command<span class="w"> </span>crit<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>is_macos<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>has_command<span class="w"> </span>brew<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>section<span class="w"> </span><span class="s2">&quot;Crit CLI&quot;</span>
+<span class="w">        </span>brew<span class="w"> </span>install<span class="w"> </span>crit<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>crit<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Skipping Crit integrations: crit command not found.\n&#39;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Ensure the Crit Claude Code plugin marketplace is configured.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>ensure_claude_crit_marketplace<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>command_output_contains<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_CRIT_MARKETPLACE_NAME</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>claude<span class="w"> </span>plugin<span class="w"> </span>marketplace<span class="w"> </span>list<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>claude<span class="w"> </span>plugin<span class="w"> </span>marketplace<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_CRIT_MARKETPLACE</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Ensure ccgate is available for agent PermissionRequest hooks.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>ensure_ccgate_cli<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>has_command<span class="w"> </span>ccgate<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>ccgate<span class="w"> </span>--version<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>has_command<span class="w"> </span>mise<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>section<span class="w"> </span><span class="s2">&quot;ccgate&quot;</span>
+<span class="w">        </span>mise<span class="w"> </span>install<span class="w"> </span>--yes<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CCGATE_MISE_TOOL</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>has_command<span class="w"> </span>ccgate<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>ccgate<span class="w"> </span>--version<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Skipping ccgate hook runtime verification: ccgate command not found.\n&#39;</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Install or update the Claude Code Superpowers plugin.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>update_claude_superpowers<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -3386,6 +3456,31 @@
 <span class="w">    </span><span class="k">else</span>
 <span class="w">        </span>claude<span class="w"> </span>plugin<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_SUPERPOWERS_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 <span class="w">    </span><span class="k">fi</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Install or update the Claude Code Crit plugin.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>update_claude_crit<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>claude<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Skipping Claude Code Crit plugin: claude command not found.\n&#39;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;Claude Code Crit plugin&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>ensure_crit_cli<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>ensure_claude_crit_marketplace
+<span class="w">    </span>claude<span class="w"> </span>plugin<span class="w"> </span>marketplace<span class="w"> </span>update<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_CRIT_MARKETPLACE_NAME</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>command_output_contains<span class="w"> </span><span class="s2">&quot;\&quot;id\&quot;:\&quot;</span><span class="si">${</span><span class="nv">CLAUDE_CRIT_PLUGIN</span><span class="si">}</span><span class="s2">\&quot;&quot;</span><span class="w"> </span>claude<span class="w"> </span>plugin<span class="w"> </span>list<span class="w"> </span>--json<span class="w"> </span><span class="o">||</span>
+<span class="w">        </span>command_output_contains<span class="w"> </span><span class="s2">&quot;\&quot;id\&quot;: \&quot;</span><span class="si">${</span><span class="nv">CLAUDE_CRIT_PLUGIN</span><span class="si">}</span><span class="s2">\&quot;&quot;</span><span class="w"> </span>claude<span class="w"> </span>plugin<span class="w"> </span>list<span class="w"> </span>--json<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>claude<span class="w"> </span>plugin<span class="w"> </span>update<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_CRIT_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span>claude<span class="w"> </span>plugin<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_CRIT_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>claude<span class="w"> </span>plugin<span class="w"> </span><span class="nb">enable</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_CRIT_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3413,6 +3508,25 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Install or update the Codex Crit plugin and plan-review hook.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>update_codex_crit<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>codex<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Skipping Codex Crit plugin: codex command not found.\n&#39;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>ensure_crit_cli<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;Codex Crit plugin&quot;</span>
+<span class="w">    </span><span class="o">(</span>
+<span class="w">        </span><span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span>crit<span class="w"> </span>install<span class="w"> </span>codex-plugin<span class="w"> </span>--force
+<span class="w">    </span><span class="o">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Install and refresh managed agent plugin assets.</span>
 <span class="c1"># @arg $@ string Command-line arguments.</span>
 <span class="c1">#</span>
@@ -3423,7 +3537,10 @@
 <span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span>update_claude_superpowers
+<span class="w">    </span>update_claude_crit
 <span class="w">    </span>update_codex_superpowers
+<span class="w">    </span>update_codex_crit
+<span class="w">    </span>ensure_ccgate_cli
 <span class="o">}</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>

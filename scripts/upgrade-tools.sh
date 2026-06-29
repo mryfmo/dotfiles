@@ -52,6 +52,7 @@ function is_forbidden_homebrew_formula() {
     local forbidden_formula
 
     for forbidden_formula in ${DEFAULT_FORBIDDEN_HOMEBREW_FORMULAE} ${HOMEBREW_FORBIDDEN_FORMULAE:-}; do
+        # shellcheck disable=SC2254 # Forbidden formula entries intentionally support glob patterns.
         case "${formula}" in
         ${forbidden_formula})
             return 0
@@ -131,11 +132,30 @@ function upgrade_mise_self() {
 }
 
 #
+# @description Run mise while hiding user-level Git config from package backend operations.
+# @arg $@ string Mise command and arguments.
+#
+function run_mise_with_isolated_git_config() {
+    local isolated_xdg_config_home
+    local status
+
+    isolated_xdg_config_home="$(mktemp -d "${TMPDIR:-/tmp}/mise-git-config.XXXXXX")"
+    GIT_CONFIG_NOSYSTEM=1 \
+        GIT_CONFIG_GLOBAL=/dev/null \
+        XDG_CONFIG_HOME="${isolated_xdg_config_home}" \
+        MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-${HOME%/}/.config/mise}" \
+        mise "$@"
+    status="$?"
+    rmdir "${isolated_xdg_config_home}" 2> /dev/null || true
+    return "${status}"
+}
+
+#
 # @description Print mise tool names from the current configuration.
 # @stdout One tool name per line.
 #
 function current_mise_tools() {
-    GIT_CONFIG_GLOBAL=/dev/null mise ls --current --no-header | awk '{print $1}'
+    run_mise_with_isolated_git_config ls --current --no-header | awk '{print $1}'
 }
 
 #
@@ -157,9 +177,7 @@ function run_mise_tool_command() {
             continue
         fi
 
-        # Keep package-manager Git operations independent from user signing
-        # config; older parsers can reject gpg.format=ssh.
-        if ! GIT_CONFIG_GLOBAL=/dev/null mise "${mise_command}" --yes --before 7d "${mise_tool}"; then
+        if ! run_mise_with_isolated_git_config "${mise_command}" --yes --before 7d "${mise_tool}"; then
             printf 'warning: mise %s failed for %s; continuing\n' "${mise_command}" "${mise_tool}" >&2
         fi
     done <<< "${mise_tools}"
@@ -243,7 +261,7 @@ function upgrade_mise_npm_agent_tool() {
     fi
 
     versioned_mise_tool="${mise_tool}@${package_version}"
-    if ! npm_config_min_release_age=0 GIT_CONFIG_GLOBAL=/dev/null mise install --yes "${versioned_mise_tool}"; then
+    if ! npm_config_min_release_age=0 run_mise_with_isolated_git_config install --yes "${versioned_mise_tool}"; then
         printf 'warning: mise install failed for %s; continuing\n' "${versioned_mise_tool}" >&2
         return 1
     fi

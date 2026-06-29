@@ -353,6 +353,7 @@ def validate_crit_install_assets() -> None:
         "brew install crit",
         "crit@crit",
         "claude plugin enable",
+        "claude_crit_plugin_is_enabled",
         "crit install codex-plugin --force",
         "tomasz-tomczyk/crit",
     ):

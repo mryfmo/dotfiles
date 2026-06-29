@@ -119,6 +119,27 @@ function ensure_claude_crit_marketplace() {
 }
 
 #
+# @description Return success when the Claude Code Crit plugin is already enabled.
+#
+function claude_crit_plugin_is_enabled() {
+    claude plugin list --json 2> /dev/null | awk -v plugin_id="${CLAUDE_CRIT_PLUGIN}" '
+        index($0, "\"id\": \"" plugin_id "\"") || index($0, "\"id\":\"" plugin_id "\"") {
+            in_plugin = 1
+        }
+        in_plugin && ($0 ~ /"enabled"[[:space:]]*:[[:space:]]*true/) {
+            found = 1
+            exit
+        }
+        in_plugin && $0 ~ /^[[:space:]]*}/ {
+            in_plugin = 0
+        }
+        END {
+            exit found ? 0 : 1
+        }
+    '
+}
+
+#
 # @description Ensure ccgate is available for agent PermissionRequest hooks.
 #
 function ensure_ccgate_cli() {
@@ -184,7 +205,11 @@ function update_claude_crit() {
     else
         claude plugin install "${CLAUDE_CRIT_PLUGIN}" || true
     fi
-    claude plugin enable "${CLAUDE_CRIT_PLUGIN}" || true
+    if claude_crit_plugin_is_enabled; then
+        printf 'Claude Code Crit plugin is already enabled.\n'
+    else
+        claude plugin enable "${CLAUDE_CRIT_PLUGIN}" || true
+    fi
 }
 
 #

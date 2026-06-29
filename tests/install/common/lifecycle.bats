@@ -92,8 +92,13 @@
 }
 
 @test "[common] mise tool lifecycle isolates Git config and continues after individual tool failures" {
-    grep -q 'GIT_CONFIG_GLOBAL=/dev/null mise ls --current --no-header' scripts/upgrade-tools.sh
-    grep -q 'GIT_CONFIG_GLOBAL=/dev/null mise "${mise_command}" --yes --before 7d "${mise_tool}"' scripts/upgrade-tools.sh
+    grep -q 'function run_mise_with_isolated_git_config()' scripts/upgrade-tools.sh
+    grep -q 'GIT_CONFIG_NOSYSTEM=1' scripts/upgrade-tools.sh
+    grep -q 'GIT_CONFIG_GLOBAL=/dev/null' scripts/upgrade-tools.sh
+    grep -q 'XDG_CONFIG_HOME="${isolated_xdg_config_home}"' scripts/upgrade-tools.sh
+    grep -q 'MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-${HOME%/}/.config/mise}"' scripts/upgrade-tools.sh
+    grep -q 'run_mise_with_isolated_git_config ls --current --no-header' scripts/upgrade-tools.sh
+    grep -q 'run_mise_with_isolated_git_config "${mise_command}" --yes --before 7d "${mise_tool}"' scripts/upgrade-tools.sh
     grep -q 'warning: unable to list current mise tools for %s; continuing' scripts/upgrade-tools.sh
     grep -q 'warning: mise %s failed for %s; continuing' scripts/upgrade-tools.sh
 }
@@ -121,7 +126,7 @@
     grep -q 'npm uninstall -g "${npm_package}"' scripts/upgrade-tools.sh
     grep -q 'npm view "$1" version' scripts/upgrade-tools.sh
     grep -q 'versioned_mise_tool="${mise_tool}@${package_version}"' scripts/upgrade-tools.sh
-    grep -q 'npm_config_min_release_age=0 GIT_CONFIG_GLOBAL=/dev/null mise install --yes "${versioned_mise_tool}"' scripts/upgrade-tools.sh
+    grep -q 'npm_config_min_release_age=0 run_mise_with_isolated_git_config install --yes "${versioned_mise_tool}"' scripts/upgrade-tools.sh
     grep -q 'repair_mise_npm_package "${versioned_mise_tool}" "${npm_package}" "${package_version}"' scripts/upgrade-tools.sh
     grep -q 'if upgrade_mise_npm_agent_tool "npm:@openai/codex" "@openai/codex"; then' scripts/upgrade-tools.sh
     grep -q 'if upgrade_mise_npm_agent_tool "npm:@anthropic-ai/claude-code" "@anthropic-ai/claude-code"; then' scripts/upgrade-tools.sh

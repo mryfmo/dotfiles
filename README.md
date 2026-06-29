@@ -149,6 +149,38 @@ one-time installers do not run during routine updates. It force-applies
 `~/.hermes` before the normal apply so Hermes runtime rewrites do not block
 updates.
 
+### Agent review and permission assets
+
+`make update` also refreshes agent-managed assets after `chezmoi apply`.
+This includes the Crit integrations for Codex and Claude Code, plus ccgate
+PermissionRequest hooks for both agents.
+
+ccgate is used as a permission gate, not as a model router. Its
+`provider.model` is the small classifier used for permission decisions, while
+the active Codex or Claude Code task model is selected by the agent itself.
+The managed Codex ccgate config can read `HookInput.model` and uses it as
+model-proportionality context. The managed Claude Code ccgate config cannot see
+the active task model, so Claude model choice is documented in the managed
+Claude rule files and ccgate only judges the requested tool action.
+
+The intended lifecycle is:
+
+```shell
+# Apply ~/.codex, ~/.claude, ~/.config/mise, and agent rule files.
+make update
+
+# Then upgrade installed tools using the applied mise and agent settings.
+make upgrade
+
+# Inspect ccgate decisions and tune rules from real fallthrough/deny patterns.
+ccgate codex metrics --details 5
+ccgate claude metrics --details 5
+```
+
+If ccgate is not available after the mise-managed install step,
+`scripts/update-agent-assets.sh` fails instead of leaving Codex or Claude Code
+with a configured PermissionRequest hook whose runtime is missing.
+
 `setup.sh` does not clone into the current directory. It runs `chezmoi init`
 without a fixed `--source`, so the clone/init location is chezmoi's `sourceDir`.
 On a clean installation this is normally `~/.local/share/chezmoi`. If an

@@ -183,6 +183,16 @@
     grep -q 'setup.sh' README.md
 }
 
+@test "[common] README documents agent permission asset lifecycle" {
+    grep -q '### Agent review and permission assets' README.md
+    grep -q 'ccgate is used as a permission gate, not as a model router' README.md
+    grep -q '`provider.model` is the small classifier used for permission decisions' README.md
+    grep -q 'HookInput.model' README.md
+    grep -q 'ccgate codex metrics --details 5' README.md
+    grep -q 'ccgate claude metrics --details 5' README.md
+    grep -q 'scripts/update-agent-assets.sh' README.md
+}
+
 @test "[common] README documents clean sourceDir bootstrap and repository-root handoff" {
     grep -q "chezmoi's sourceDir" README.md
     grep -q 'usually ~/.local/share/chezmoi' README.md

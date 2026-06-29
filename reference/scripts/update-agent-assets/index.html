@@ -3278,6 +3278,7 @@
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
+<li><code>claude_crit_plugin_is_enabled</code></li>
 <li><code>codex_marketplace_is_configured_git_marketplace</code></li>
 <li><code>command_output_contains</code></li>
 <li><code>ensure_ccgate_cli</code></li>
@@ -3415,6 +3416,35 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Return success when the Claude Code Crit plugin is already enabled.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>claude_crit_plugin_is_enabled<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>python3<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>claude<span class="w"> </span>plugin<span class="w"> </span>list<span class="w"> </span>--json<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">CLAUDE_CRIT_PLUGIN_ID</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_CRIT_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;</span>
+<span class="s1">import json</span>
+<span class="s1">import os</span>
+<span class="s1">import sys</span>
+
+<span class="s1">try:</span>
+<span class="s1">    plugins = json.load(sys.stdin)</span>
+<span class="s1">except json.JSONDecodeError:</span>
+<span class="s1">    sys.exit(1)</span>
+
+<span class="s1">plugin_id = os.environ[&quot;CLAUDE_CRIT_PLUGIN_ID&quot;]</span>
+<span class="s1">enabled = any(</span>
+<span class="s1">    isinstance(plugin, dict)</span>
+<span class="s1">    and plugin.get(&quot;id&quot;) == plugin_id</span>
+<span class="s1">    and plugin.get(&quot;enabled&quot;) is True</span>
+<span class="s1">    for plugin in plugins</span>
+<span class="s1">)</span>
+<span class="s1">sys.exit(0 if enabled else 1)</span>
+<span class="s1">&#39;</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Ensure ccgate is available for agent PermissionRequest hooks.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>ensure_ccgate_cli<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -3480,7 +3510,11 @@
 <span class="w">    </span><span class="k">else</span>
 <span class="w">        </span>claude<span class="w"> </span>plugin<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_CRIT_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 <span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span>claude<span class="w"> </span>plugin<span class="w"> </span><span class="nb">enable</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_CRIT_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>claude_crit_plugin_is_enabled<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Claude Code Crit plugin is already enabled.\n&#39;</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span>claude<span class="w"> </span>plugin<span class="w"> </span><span class="nb">enable</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_CRIT_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>

@@ -3287,6 +3287,7 @@
 <li><code>remove_node_global_npm_package</code></li>
 <li><code>repair_mise_npm_package</code></li>
 <li><code>run_mise_tool_command</code></li>
+<li><code>run_mise_with_isolated_git_config</code></li>
 <li><code>section</code></li>
 <li><code>upgrade_agent_assets</code></li>
 <li><code>upgrade_agent_cli_tools</code></li>
@@ -3355,6 +3356,7 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>forbidden_formula
 
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>forbidden_formula<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="si">${</span><span class="nv">DEFAULT_FORBIDDEN_HOMEBREW_FORMULAE</span><span class="si">}</span><span class="w"> </span><span class="si">${</span><span class="nv">HOMEBREW_FORBIDDEN_FORMULAE</span><span class="k">:-</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="c1"># shellcheck disable=SC2254 # Forbidden formula entries intentionally support glob patterns.</span>
 <span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">formula</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="k">in</span>
 <span class="w">        </span><span class="si">${</span><span class="nv">forbidden_formula</span><span class="si">}</span><span class="o">)</span>
 <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
@@ -3434,11 +3436,32 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Run mise while hiding user-level Git config from package backend operations.</span>
+<span class="c1"># @arg $@ string Mise command and arguments.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>run_mise_with_isolated_git_config<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>isolated_xdg_config_home
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>mise_config_dir
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>status
+
+<span class="w">    </span><span class="nv">mise_config_dir</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">MISE_CONFIG_DIR</span><span class="k">:-</span><span class="si">${</span><span class="nv">XDG_CONFIG_HOME</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="p">/.config</span><span class="si">}</span><span class="p">/mise</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">isolated_xdg_config_home</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">TMPDIR</span><span class="k">:-</span><span class="p">/tmp</span><span class="si">}</span><span class="s2">/mise-git-config.XXXXXX&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">GIT_CONFIG_NOSYSTEM</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="nv">GIT_CONFIG_GLOBAL</span><span class="o">=</span>/dev/null<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="nv">XDG_CONFIG_HOME</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">isolated_xdg_config_home</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="nv">MISE_CONFIG_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_config_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>mise<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$@</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">status</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$?</span><span class="s2">&quot;</span>
+<span class="w">    </span>rm<span class="w"> </span>-rf<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">isolated_xdg_config_home</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Print mise tool names from the current configuration.</span>
 <span class="c1"># @stdout One tool name per line.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>current_mise_tools<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nv">GIT_CONFIG_GLOBAL</span><span class="o">=</span>/dev/null<span class="w"> </span>mise<span class="w"> </span>ls<span class="w"> </span>--current<span class="w"> </span>--no-header<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;{print $1}&#39;</span>
+<span class="w">    </span>run_mise_with_isolated_git_config<span class="w"> </span>ls<span class="w"> </span>--current<span class="w"> </span>--no-header<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;{print $1}&#39;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3460,9 +3483,7 @@
 <span class="w">            </span><span class="k">continue</span>
 <span class="w">        </span><span class="k">fi</span>
 
-<span class="w">        </span><span class="c1"># Keep package-manager Git operations independent from user signing</span>
-<span class="w">        </span><span class="c1"># config; older parsers can reject gpg.format=ssh.</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">GIT_CONFIG_GLOBAL</span><span class="o">=</span>/dev/null<span class="w"> </span>mise<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_command</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--yes<span class="w"> </span>--before<span class="w"> </span>7d<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>run_mise_with_isolated_git_config<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_command</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--yes<span class="w"> </span>--before<span class="w"> </span>7d<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;warning: mise %s failed for %s; continuing\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_command</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_tools</span><span class="si">}</span><span class="s2">&quot;</span>
@@ -3546,7 +3567,7 @@
 <span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span><span class="nv">versioned_mise_tool</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">@</span><span class="si">${</span><span class="nv">package_version</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">npm_config_min_release_age</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="nv">GIT_CONFIG_GLOBAL</span><span class="o">=</span>/dev/null<span class="w"> </span>mise<span class="w"> </span>install<span class="w"> </span>--yes<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">versioned_mise_tool</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">npm_config_min_release_age</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>run_mise_with_isolated_git_config<span class="w"> </span>install<span class="w"> </span>--yes<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">versioned_mise_tool</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;warning: mise install failed for %s; continuing\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">versioned_mise_tool</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">fi</span>

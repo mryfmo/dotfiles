@@ -96,7 +96,9 @@
     grep -q 'GIT_CONFIG_NOSYSTEM=1' scripts/upgrade-tools.sh
     grep -q 'GIT_CONFIG_GLOBAL=/dev/null' scripts/upgrade-tools.sh
     grep -q 'XDG_CONFIG_HOME="${isolated_xdg_config_home}"' scripts/upgrade-tools.sh
-    grep -q 'MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-${HOME%/}/.config/mise}"' scripts/upgrade-tools.sh
+    grep -q 'mise_config_dir="${MISE_CONFIG_DIR:-${XDG_CONFIG_HOME:-${HOME%/}/.config}/mise}"' scripts/upgrade-tools.sh
+    grep -q 'MISE_CONFIG_DIR="${mise_config_dir}"' scripts/upgrade-tools.sh
+    grep -q 'rm -rf "${isolated_xdg_config_home}"' scripts/upgrade-tools.sh
     grep -q 'run_mise_with_isolated_git_config ls --current --no-header' scripts/upgrade-tools.sh
     grep -q 'run_mise_with_isolated_git_config "${mise_command}" --yes --before 7d "${mise_tool}"' scripts/upgrade-tools.sh
     grep -q 'warning: unable to list current mise tools for %s; continuing' scripts/upgrade-tools.sh
@@ -153,6 +155,9 @@
     grep -q 'CLAUDE_CRIT_PLUGIN="crit@crit"' scripts/update-agent-assets.sh
     grep -q 'CLAUDE_CRIT_MARKETPLACE="tomasz-tomczyk/crit"' scripts/update-agent-assets.sh
     grep -q 'brew install crit' scripts/update-agent-assets.sh
+    grep -q 'python3 -c' scripts/update-agent-assets.sh
+    grep -q 'plugin.get("id") == plugin_id' scripts/update-agent-assets.sh
+    grep -q 'if claude_crit_plugin_is_enabled; then' scripts/update-agent-assets.sh
     grep -q 'claude plugin enable "${CLAUDE_CRIT_PLUGIN}"' scripts/update-agent-assets.sh
     grep -q 'crit install codex-plugin --force' scripts/update-agent-assets.sh
     grep -q 'update_claude_crit' scripts/update-agent-assets.sh

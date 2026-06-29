@@ -122,21 +122,29 @@ function ensure_claude_crit_marketplace() {
 # @description Return success when the Claude Code Crit plugin is already enabled.
 #
 function claude_crit_plugin_is_enabled() {
-    claude plugin list --json 2> /dev/null | awk -v plugin_id="${CLAUDE_CRIT_PLUGIN}" '
-        index($0, "\"id\": \"" plugin_id "\"") || index($0, "\"id\":\"" plugin_id "\"") {
-            in_plugin = 1
-        }
-        in_plugin && ($0 ~ /"enabled"[[:space:]]*:[[:space:]]*true/) {
-            found = 1
-            exit
-        }
-        in_plugin && $0 ~ /^[[:space:]]*}/ {
-            in_plugin = 0
-        }
-        END {
-            exit found ? 0 : 1
-        }
-    '
+    if ! has_command python3; then
+        return 1
+    fi
+
+    claude plugin list --json 2> /dev/null | CLAUDE_CRIT_PLUGIN_ID="${CLAUDE_CRIT_PLUGIN}" python3 -c '
+import json
+import os
+import sys
+
+try:
+    plugins = json.load(sys.stdin)
+except json.JSONDecodeError:
+    sys.exit(1)
+
+plugin_id = os.environ["CLAUDE_CRIT_PLUGIN_ID"]
+enabled = any(
+    isinstance(plugin, dict)
+    and plugin.get("id") == plugin_id
+    and plugin.get("enabled") is True
+    for plugin in plugins
+)
+sys.exit(0 if enabled else 1)
+'
 }
 
 #

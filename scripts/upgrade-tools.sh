@@ -137,16 +137,18 @@ function upgrade_mise_self() {
 #
 function run_mise_with_isolated_git_config() {
     local isolated_xdg_config_home
+    local mise_config_dir
     local status
 
+    mise_config_dir="${MISE_CONFIG_DIR:-${XDG_CONFIG_HOME:-${HOME%/}/.config}/mise}"
     isolated_xdg_config_home="$(mktemp -d "${TMPDIR:-/tmp}/mise-git-config.XXXXXX")"
     GIT_CONFIG_NOSYSTEM=1 \
         GIT_CONFIG_GLOBAL=/dev/null \
         XDG_CONFIG_HOME="${isolated_xdg_config_home}" \
-        MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-${HOME%/}/.config/mise}" \
+        MISE_CONFIG_DIR="${mise_config_dir}" \
         mise "$@"
     status="$?"
-    rmdir "${isolated_xdg_config_home}" 2> /dev/null || true
+    rm -rf "${isolated_xdg_config_home}" 2> /dev/null || true
     return "${status}"
 }
 

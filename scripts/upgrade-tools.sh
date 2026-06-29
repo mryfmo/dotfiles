@@ -11,6 +11,7 @@
 set -Eeuo pipefail
 
 include_system=false
+DEFAULT_FORBIDDEN_HOMEBREW_FORMULAE="node node@* python python@* python3 pip npm pnpm yarn claude"
 
 #
 # @description Print a section heading.
@@ -50,10 +51,12 @@ function is_forbidden_homebrew_formula() {
     local formula="$1"
     local forbidden_formula
 
-    for forbidden_formula in ${HOMEBREW_FORBIDDEN_FORMULAE:-}; do
-        if [ "${formula}" = "${forbidden_formula}" ]; then
+    for forbidden_formula in ${DEFAULT_FORBIDDEN_HOMEBREW_FORMULAE} ${HOMEBREW_FORBIDDEN_FORMULAE:-}; do
+        case "${formula}" in
+        ${forbidden_formula})
             return 0
-        fi
+            ;;
+        esac
     done
 
     return 1
@@ -81,17 +84,19 @@ function upgrade_homebrew() {
         done <<< "${outdated_formulae_output}"
     fi
 
-    for outdated_formula in "${outdated_formulae[@]}"; do
-        if is_forbidden_homebrew_formula "${outdated_formula}"; then
-            printf 'Skipping forbidden Homebrew formula: %s\n' "${outdated_formula}"
-            continue
-        fi
+    if [ "${#outdated_formulae[@]}" -gt 0 ]; then
+        for outdated_formula in "${outdated_formulae[@]}"; do
+            if is_forbidden_homebrew_formula "${outdated_formula}"; then
+                printf 'Skipping forbidden Homebrew formula: %s\n' "${outdated_formula}"
+                continue
+            fi
 
-        upgrade_formulae+=("${outdated_formula}")
-    done
+            upgrade_formulae+=("${outdated_formula}")
+        done
+    fi
 
     if [ "${#upgrade_formulae[@]}" -gt 0 ]; then
-        brew upgrade --formula "${upgrade_formulae[@]}"
+        HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --formula "${upgrade_formulae[@]}"
     else
         printf 'No upgradeable Homebrew formulae after forbidden formula filtering.\n'
     fi
@@ -107,7 +112,7 @@ function upgrade_homebrew() {
     fi
 
     if [ "${#outdated_casks[@]}" -gt 0 ]; then
-        brew upgrade --cask "${outdated_casks[@]}"
+        HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --cask --skip-cask-deps "${outdated_casks[@]}"
     else
         printf 'No outdated Homebrew casks.\n'
     fi
@@ -177,17 +182,26 @@ function upgrade_mise_tools() {
 }
 
 #
-# @description Reinstall a mise-managed npm package with lifecycle scripts enabled.
+# @description Print the latest npm registry version for a package.
+# @arg $1 string npm package name, for example @scope/package.
+# @stdout npm package version.
+#
+function latest_npm_package_version() {
+    npm view "$1" version
+}
+
+#
+# @description Reinstall a mise-managed npm package version with lifecycle scripts enabled.
 # @arg $1 string mise npm tool name, for example npm:@scope/package.
 # @arg $2 string npm package name, for example @scope/package.
+# @arg $3 string npm package version.
 #
 function repair_mise_npm_package() {
     local mise_tool="$1"
     local npm_package="$2"
+    local package_version="$3"
     local install_prefix
-    local package_version
 
-    package_version="$(mise current "${mise_tool}")"
     install_prefix="$(mise where "${mise_tool}")"
     npm_config_min_release_age=0 npm install -g \
         --prefix "${install_prefix}" \
@@ -213,6 +227,36 @@ function remove_node_global_npm_package() {
 }
 
 #
+# @description Install the exact current npm release into a dedicated mise npm tool.
+# @arg $1 string mise npm tool name, for example npm:@scope/package.
+# @arg $2 string npm package name, for example @scope/package.
+#
+function upgrade_mise_npm_agent_tool() {
+    local mise_tool="$1"
+    local npm_package="$2"
+    local package_version
+    local versioned_mise_tool
+
+    if ! package_version="$(latest_npm_package_version "${npm_package}")"; then
+        printf 'warning: unable to resolve latest npm version for %s; continuing\n' "${npm_package}" >&2
+        return 1
+    fi
+
+    versioned_mise_tool="${mise_tool}@${package_version}"
+    if ! npm_config_min_release_age=0 GIT_CONFIG_GLOBAL=/dev/null mise install --yes "${versioned_mise_tool}"; then
+        printf 'warning: mise install failed for %s; continuing\n' "${versioned_mise_tool}" >&2
+        return 1
+    fi
+
+    if ! repair_mise_npm_package "${versioned_mise_tool}" "${npm_package}" "${package_version}"; then
+        printf 'warning: npm repair failed for %s@%s; continuing\n' "${npm_package}" "${package_version}" >&2
+        return 1
+    fi
+
+    return 0
+}
+
+#
 # @description Upgrade fast-moving agent CLIs managed by mise to the latest npm release.
 #
 function upgrade_agent_cli_tools() {
@@ -221,17 +265,12 @@ function upgrade_agent_cli_tools() {
     fi
 
     section "agent CLI tools"
-    npm_config_min_release_age=0 mise upgrade --yes \
-        "npm:@openai/codex" \
-        "npm:@anthropic-ai/claude-code"
-    repair_mise_npm_package \
-        "npm:@openai/codex" \
-        "@openai/codex"
-    repair_mise_npm_package \
-        "npm:@anthropic-ai/claude-code" \
-        "@anthropic-ai/claude-code"
-    remove_node_global_npm_package "@openai/codex"
-    remove_node_global_npm_package "@anthropic-ai/claude-code"
+    if upgrade_mise_npm_agent_tool "npm:@openai/codex" "@openai/codex"; then
+        remove_node_global_npm_package "@openai/codex"
+    fi
+    if upgrade_mise_npm_agent_tool "npm:@anthropic-ai/claude-code" "@anthropic-ai/claude-code"; then
+        remove_node_global_npm_package "@anthropic-ai/claude-code"
+    fi
 }
 
 #

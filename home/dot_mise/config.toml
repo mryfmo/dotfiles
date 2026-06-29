@@ -27,6 +27,8 @@ shfmt = "latest"
 "npm:pyright" = "latest"
 "npm:fast-cli" = "latest"
 
+"aqua:tak848/ccgate" = "latest"
+
 "github:x-motemen/ghq" = "latest"
 "github:d-kuro/gwq" = "latest"
 "github:cli/cli" = "latest"

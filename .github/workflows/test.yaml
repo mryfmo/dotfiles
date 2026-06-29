@@ -107,6 +107,11 @@ jobs:
         if: ${{ needs.changes.outputs.should_test == 'true' }}
         run: |
           if [ "${OS}" == "macos-14" ]; then
+            # GitHub macOS runners can include preconfigured taps that Homebrew
+            # warns about during install operations. Trust them explicitly so CI
+            # logs stay warning-clean as Homebrew tightens tap trust defaults.
+            brew trust aws/tap azure/bicep || true
+
             # `bashcov` on macOS must use Homebrew Bash (>=5) to avoid the
             # system Bash 3.2 parser limitations that produced empty coverage.
             # `gawk` is available for shell tooling used by the test suite.

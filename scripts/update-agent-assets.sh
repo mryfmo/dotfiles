@@ -119,6 +119,35 @@ function ensure_claude_crit_marketplace() {
 }
 
 #
+# @description Return success when the Claude Code Crit plugin is already enabled.
+#
+function claude_crit_plugin_is_enabled() {
+    if ! has_command python3; then
+        return 1
+    fi
+
+    claude plugin list --json 2> /dev/null | CLAUDE_CRIT_PLUGIN_ID="${CLAUDE_CRIT_PLUGIN}" python3 -c '
+import json
+import os
+import sys
+
+try:
+    plugins = json.load(sys.stdin)
+except json.JSONDecodeError:
+    sys.exit(1)
+
+plugin_id = os.environ["CLAUDE_CRIT_PLUGIN_ID"]
+enabled = any(
+    isinstance(plugin, dict)
+    and plugin.get("id") == plugin_id
+    and plugin.get("enabled") is True
+    for plugin in plugins
+)
+sys.exit(0 if enabled else 1)
+'
+}
+
+#
 # @description Ensure ccgate is available for agent PermissionRequest hooks.
 #
 function ensure_ccgate_cli() {
@@ -184,7 +213,11 @@ function update_claude_crit() {
     else
         claude plugin install "${CLAUDE_CRIT_PLUGIN}" || true
     fi
-    claude plugin enable "${CLAUDE_CRIT_PLUGIN}" || true
+    if claude_crit_plugin_is_enabled; then
+        printf 'Claude Code Crit plugin is already enabled.\n'
+    else
+        claude plugin enable "${CLAUDE_CRIT_PLUGIN}" || true
+    fi
 }
 
 #

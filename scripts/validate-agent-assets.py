@@ -217,6 +217,17 @@ def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
         manifest_codex.get("plugins", {}),
         f"{codex_path} Codex plugins",
     )
+    for marketplace_name, marketplace_config in manifest_codex.get("marketplaces", {}).items():
+        if data.get("marketplaces", {}).get(marketplace_name) != marketplace_config:
+            fail(f"{codex_path} must render Codex marketplace {marketplace_name}")
+    validate_exact_keys(
+        data.get("marketplaces", {}),
+        manifest_codex.get("marketplaces", {}),
+        f"{codex_path} Codex marketplaces",
+    )
+    manifest_hook_state = manifest_codex.get("hooks", {}).get("state", {})
+    if data.get("hooks", {}).get("state", {}) != manifest_hook_state:
+        fail(f"{codex_path} must render Codex hook trust state from the shared manifest")
     for project_path, project_config in manifest_codex.get("projects", {}).items():
         if data.get("projects", {}).get(project_path) != project_config:
             fail(f"{codex_path} must render Codex project trust for {project_path}")
@@ -364,6 +375,84 @@ def validate_crit_install_assets() -> None:
     for token in ("$crit", "Crit plugin", "CRIT_PLAN_REVIEW=off", "TUI", "http://localhost"):
         if token not in codex_agents:
             fail(f"home/dot_config/codex/AGENTS.md must document Codex Crit rule token {token!r}")
+    guard_path = ROOT / "scripts/require-crit-review.py"
+    if not guard_path.exists():
+        fail("scripts/require-crit-review.py must enforce meaningful review triggers")
+    guard_text = guard_path.read_text()
+    for token in (
+        "CRIT_REVIEWED",
+        "AGENT_REVIEWED",
+        "REVIEW_EVIDENCE",
+        "review_surface",
+        "reviewer",
+        "review_outcome",
+        "SELF_REVIEWER_TOKENS",
+        "CRIT_REVIEW=off",
+        "agent lifecycle",
+        "broad diff",
+        "native review surface",
+    ):
+        if token not in guard_text:
+            fail(f"scripts/require-crit-review.py must contain Crit guard token {token!r}")
+    readme = (ROOT / "README.md").read_text()
+    for token in ("scripts/require-crit-review.py", "AGENT_REVIEWED=1", "REVIEW_EVIDENCE", "human or external reviewer", "CRIT_REVIEW=off"):
+        if token not in readme:
+            fail(f"README.md must document Crit guard token {token!r}")
+
+
+def validate_ponytail_assets(manifest: dict[str, Any], codex: dict[str, Any]) -> None:
+    updater = (ROOT / "scripts/update-agent-assets.sh").read_text()
+    for token in (
+        "DietrichGebert/ponytail",
+        "ponytail@ponytail",
+        "CODEX_PONYTAIL_MARKETPLACE_SOURCE",
+        "codex_marketplace_has_source",
+        "codex plugin marketplace upgrade \"${CODEX_PONYTAIL_MARKETPLACE_NAME}\"",
+        "update_claude_ponytail",
+        "update_codex_ponytail",
+        "PONYTAIL_DEFAULT_MODE",
+    ):
+        if token not in updater:
+            fail(f"scripts/update-agent-assets.sh must manage Ponytail asset token {token!r}")
+
+    manifest_plugins = manifest.get("codex", {}).get("plugins", {})
+    if manifest_plugins.get("ponytail@ponytail", {}).get("enabled") is not True:
+        fail("home/dot_agents/agent-config.yaml must enable the Ponytail Codex plugin")
+    if codex.get("plugins", {}).get("ponytail@ponytail", {}).get("enabled") is not True:
+        fail("home/dot_codex/private_config.toml.tmpl must render the Ponytail Codex plugin")
+    if codex.get("marketplaces", {}).get("ponytail", {}).get("source") != "https://github.com/DietrichGebert/ponytail.git":
+        fail("home/dot_codex/private_config.toml.tmpl must render the Ponytail Codex marketplace source")
+    hook_state = codex.get("hooks", {}).get("state", {})
+    for key in (
+        "ponytail@ponytail:hooks/claude-codex-hooks.json:session_start:0:0",
+        "ponytail@ponytail:hooks/claude-codex-hooks.json:user_prompt_submit:0:0",
+        "ponytail@ponytail:hooks/claude-codex-hooks.json:subagent_start:0:0",
+    ):
+        if not hook_state.get(key, {}).get("trusted_hash", "").startswith("sha256:"):
+            fail(f"home/dot_codex/private_config.toml.tmpl must render trusted Ponytail hook state for {key}")
+
+    codex_agents = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
+    for token in ("Ponytail", "/hooks", "ponytail@ponytail", "YAGNI", "stdlib"):
+        if token not in codex_agents:
+            fail(f"home/dot_config/codex/AGENTS.md must document Ponytail token {token!r}")
+
+    claude_rule = ROOT / "home/dot_config/claude/rules/ponytail.md"
+    if not claude_rule.exists():
+        fail("Claude Code Ponytail rule is missing")
+    claude_rule_text = claude_rule.read_text()
+    for token in ("Ponytail", "ponytail@ponytail", "YAGNI", "standard library", "native platform"):
+        if token not in claude_rule_text:
+            fail(f"{claude_rule} must document Ponytail token {token!r}")
+
+    claude_symlink = ROOT / "home/dot_claude/rules/symlink_ponytail.md.tmpl"
+    expected_target = "{{ .chezmoi.sourceDir }}/home/dot_config/claude/rules/ponytail.md\n"
+    if not claude_symlink.exists() or claude_symlink.read_text() != expected_target:
+        fail(f"{claude_symlink} must point at the managed Ponytail Claude rule")
+
+    readme = (ROOT / "README.md").read_text()
+    for token in ("Ponytail", "DietrichGebert/ponytail", "ponytail@ponytail", "review and trust"):
+        if token not in readme:
+            fail(f"README.md must document Ponytail lifecycle token {token!r}")
 
 
 def validate_ccgate_assets() -> None:
@@ -514,6 +603,7 @@ def main() -> None:
     validate_mcp_parity(codex, claude, hermes, manifest)
     validate_cognee_install_assets(manifest)
     validate_crit_install_assets()
+    validate_ponytail_assets(manifest, codex)
     validate_ccgate_assets()
     validate_git_config()
     validate_no_removed_claude_skill()

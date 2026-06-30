@@ -90,10 +90,12 @@
 
 ## Crit レビュー運用
 
-- 計画レビュー、コードレビュー、diff レビュー、PR レビュー、または「レビュー」と明示された作業では、必ず `$crit` を使用してください。
-- Codex では Crit plugin の `Stop` hook による Plan Mode レビューを使用してください。`CRIT_PLAN_REVIEW=off` が明示されていない限り、計画レビュー hook を迂回しないでください。
-- `$crit` または `crit` コマンドを起動したら、`http://localhost` で始まるレビュー URL と「Finish Review をクリックする」旨をユーザ向けメッセージとして TUI 上に表示してください。ツール出力だけに残さないでください。
-- `$crit` を起動したら、Crit のレビューが完了するまで待ち、未解決コメントがあれば対応して次ラウンドを開始してください。
+- 計画レビュー、コードレビュー、diff レビュー、PR レビュー、または「レビュー」と明示された作業では、まず Codex 内の `/diff`、`/review`、または Codex app の Review pane を使ってください。ユーザが Crit web UI を明示した場合、または Codex 内レビュー surface が使えない場合のみ `$crit` / `crit` を使ってください。
+- Codex では Crit plugin の `Stop` hook による Plan Mode レビューが発火した場合は尊重してください。`CRIT_PLAN_REVIEW=off` が明示されていない限り、発火済みの計画レビュー hook を迂回しないでください。
+- 完了報告前に git diff がある場合は `make require-crit-review` を実行してください。agent lifecycle、hooks、plugins、permissions、scripts、広い diff など意味のある変更だけレビューを要求します。
+- `make require-crit-review` がレビューを要求したら、既定ではブラウザ版 Crit を起動せず、Codex 内の `/diff` または `/review`、Codex app の Review pane inline comments で確認し、指摘へ対応してください。その後 `review_surface:` `reviewer:` `review_outcome:` を含む receipt を作り、`AGENT_REVIEWED=1 REVIEW_EVIDENCE=<receipt> make require-crit-review` を通してください。`reviewer` は human/external reviewer を示す必要があり、同じ agent の自己レビューや `AGENT_REVIEWED=1` だけの自己申告は禁止です。
+- ユーザが明示的に Crit web UI を求めた場合、または Codex 内のレビュー surface が使えない場合だけ `crit --no-open` または `crit` を使ってください。その場合は `http://localhost` で始まるレビュー URL と「Finish Review をクリックする」旨をユーザ向けメッセージとして TUI 上に表示し、完了後に receipt を作り `CRIT_REVIEWED=1 REVIEW_EVIDENCE=<receipt> make require-crit-review` を通してください。
+- ユーザが明示的に Crit/review を無効化した場合のみ `CRIT_REVIEW=off` を使ってください。
 
 ## モデル選択と ccgate
 
@@ -102,3 +104,10 @@
 - Codex の PermissionRequest では ccgate が `HookInput.model` を参照できます。これは比例性の補助信号であり、必要な調査・検索・read 操作を大型モデルという理由だけで止めるためのものではありません。
 - ccgate に過剰・危険・広すぎる操作を止められた場合は、小さいモデルへ切り替えるか、タスクを大型モデルが必要な範囲に絞ってから再実行してください。
 - ccgate の判定傾向は `ccgate codex metrics --details 5` で確認し、fallthrough や deny が多い具体的な操作を見てルールを調整してください。
+
+## Ponytail
+
+- Ponytail (`ponytail@ponytail`) を利用できる場合は、コーディング作業で YAGNI、stdlib/native platform first、既存実装の再利用、最小の正しい差分を優先してください。
+- Ponytail は「短ければよい」ではありません。trust boundary の入力検証、データ損失防止、セキュリティ、アクセシビリティ、明示要求された要件は削らないでください。
+- Codex で初回導入または更新後は `/hooks` を開き、Ponytail lifecycle hooks を review and trust してから新しい thread を開始してください。
+- モードは上流の既定値 `full` を使います。必要な場合だけ `PONYTAIL_DEFAULT_MODE=lite|full|ultra|off` または Ponytail コマンドで変更してください。

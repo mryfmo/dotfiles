@@ -149,15 +149,15 @@ def high_risk_reason(path: str) -> str | None:
 
 
 def review_reasons(root: Path, paths: list[str]) -> list[str]:
-    if is_low_risk_docs_only(paths):
-        return []
-
     reasons: list[str] = []
     for path in paths:
         reason = high_risk_reason(path)
         if reason:
             reasons.append(reason)
             break
+
+    if not reasons and is_low_risk_docs_only(paths):
+        return []
 
     if len(paths) >= BROAD_DIFF_FILE_LIMIT:
         reasons.append(f"broad diff touches {len(paths)} files")
@@ -186,14 +186,15 @@ def evidence_errors(root: Path) -> list[str]:
     if not path.exists():
         return [f"{EVIDENCE_ENV} file does not exist: {path}"]
     text = path.read_text()
+    parsed_fields = {field: evidence_field(text, field) for field in REQUIRED_EVIDENCE_FIELDS}
     errors = [
-        f"{EVIDENCE_ENV} file must include `{field}: ...`"
-        for field in REQUIRED_EVIDENCE_FIELDS
-        if f"{field}:" not in text
+        f"{EVIDENCE_ENV} file must include non-empty `{field}: ...`"
+        for field, value in parsed_fields.items()
+        if not value
     ]
     if "agent_self_review: true" in text:
-        errors.append(f"{EVIDENCE_ENV} must not mark agent_self_review: true")
-    reviewer = evidence_field(text, "reviewer")
+        errors.append(f"{EVIDENCE_ENV} reviewer must identify a human or external reviewer, not agent self-review")
+    reviewer = parsed_fields["reviewer"]
     if reviewer and any(token in reviewer.lower() for token in SELF_REVIEWER_TOKENS):
         errors.append(f"{EVIDENCE_ENV} reviewer must identify a human or external reviewer, not agent self-review")
     return errors

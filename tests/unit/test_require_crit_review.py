@@ -129,6 +129,17 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn("reviewer", result.stdout)
 
+    def test_reviewed_with_blank_evidence_values_still_requires_review(self) -> None:
+        scripts_dir = self.temp_dir / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "update-agent-assets.sh").write_text("#!/usr/bin/env bash\n")
+        evidence = self.temp_dir / ".agents/worklog/review/blank.md"
+        evidence.parent.mkdir(parents=True)
+        evidence.write_text("review_surface:\nreviewer: user\nreview_outcome: approved\n")
+        result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("non-empty", result.stdout)
+
     def test_agent_self_reviewer_evidence_still_requires_review(self) -> None:
         scripts_dir = self.temp_dir / "scripts"
         scripts_dir.mkdir()
@@ -136,6 +147,19 @@ class ReviewGuardTest(unittest.TestCase):
         evidence = self.temp_dir / ".agents/worklog/review/self.md"
         evidence.parent.mkdir(parents=True)
         evidence.write_text("review_surface: codex-/review\nreviewer: codex\nreview_outcome: approved\n")
+        result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("must identify a human or external reviewer", result.stdout)
+
+    def test_agent_self_review_flag_evidence_still_requires_review(self) -> None:
+        scripts_dir = self.temp_dir / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "update-agent-assets.sh").write_text("#!/usr/bin/env bash\n")
+        evidence = self.temp_dir / ".agents/worklog/review/self-flag.md"
+        evidence.parent.mkdir(parents=True)
+        evidence.write_text(
+            "review_surface: codex-/review\nreviewer: user\nreview_outcome: approved\nagent_self_review: true\n"
+        )
         result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn("must identify a human or external reviewer", result.stdout)

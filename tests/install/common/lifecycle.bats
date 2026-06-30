@@ -180,6 +180,9 @@
     grep -q 'CLAUDE_PONYTAIL_MARKETPLACE="DietrichGebert/ponytail"' scripts/update-agent-assets.sh
     grep -q 'CODEX_PONYTAIL_PLUGIN="ponytail@ponytail"' scripts/update-agent-assets.sh
     grep -q 'CODEX_PONYTAIL_MARKETPLACE="DietrichGebert/ponytail"' scripts/update-agent-assets.sh
+    grep -q 'CODEX_PONYTAIL_MARKETPLACE_SOURCE="https://github.com/DietrichGebert/ponytail.git"' scripts/update-agent-assets.sh
+    grep -q 'codex_marketplace_has_source "${CODEX_PONYTAIL_MARKETPLACE_NAME}" "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}"' scripts/update-agent-assets.sh
+    grep -q 'codex plugin marketplace upgrade "${CODEX_PONYTAIL_MARKETPLACE_NAME}"' scripts/update-agent-assets.sh
     grep -q 'claude plugin enable "${CLAUDE_PONYTAIL_PLUGIN}"' scripts/update-agent-assets.sh
     grep -q 'codex plugin add "${CODEX_PONYTAIL_PLUGIN}"' scripts/update-agent-assets.sh
     grep -q 'update_claude_ponytail' scripts/update-agent-assets.sh

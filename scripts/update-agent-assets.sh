@@ -22,6 +22,7 @@ readonly CODEX_SUPERPOWERS_PLUGIN="superpowers@openai-curated"
 readonly CODEX_PONYTAIL_PLUGIN="ponytail@ponytail"
 readonly CODEX_PONYTAIL_MARKETPLACE="DietrichGebert/ponytail"
 readonly CODEX_PONYTAIL_MARKETPLACE_NAME="ponytail"
+readonly CODEX_PONYTAIL_MARKETPLACE_SOURCE="https://github.com/DietrichGebert/ponytail.git"
 readonly CCGATE_MISE_TOOL="aqua:tak848/ccgate"
 
 #
@@ -67,7 +68,7 @@ function codex_marketplace_is_configured_git_marketplace() {
     local marketplace="$1"
     local root
 
-    root="$(codex plugin marketplace list 2> /dev/null | awk -v name="${marketplace}" '$1 == name { print $2; exit }')"
+    root="$(codex_marketplace_root "${marketplace}")"
     # Built-in/default marketplaces can resolve under Codex's .tmp plugin cache.
     # They may contain Git metadata, but `codex plugin marketplace upgrade` only
     # accepts configured Git marketplaces.
@@ -81,6 +82,54 @@ function codex_marketplace_is_configured_git_marketplace() {
     fi
 
     return 0
+}
+
+#
+# @description Print the local root path for a configured Codex marketplace.
+# @arg $1 string Marketplace name.
+#
+function codex_marketplace_root() {
+    local marketplace="$1"
+
+    codex plugin marketplace list 2> /dev/null | awk -v name="${marketplace}" '$1 == name { print $2; exit }'
+}
+
+#
+# @description Return success when a Git root has the expected origin URL.
+# @arg $1 string Git working tree root.
+# @arg $2 string Expected HTTPS origin URL.
+#
+function git_remote_origin_matches() {
+    local root="$1"
+    local expected_source="$2"
+    local expected_ssh="git@github.com:${expected_source#https://github.com/}"
+    local remote
+
+    remote="$(git -C "${root}" config --get remote.origin.url 2> /dev/null || true)"
+    case "${remote}" in
+    "${expected_source}" | "${expected_source%.git}" | "${expected_ssh}" | "${expected_ssh%.git}")
+        return 0
+        ;;
+    esac
+    return 1
+}
+
+#
+# @description Return success when a configured Codex marketplace has a matching Git origin.
+# @arg $1 string Marketplace name.
+# @arg $2 string Expected HTTPS origin URL.
+#
+function codex_marketplace_has_source() {
+    local marketplace="$1"
+    local expected_source="$2"
+    local root
+
+    root="$(codex_marketplace_root "${marketplace}")"
+    if [ -z "${root}" ] || [ ! -d "${root}/.git" ]; then
+        return 1
+    fi
+
+    git_remote_origin_matches "${root}" "${expected_source}"
 }
 
 #
@@ -324,14 +373,20 @@ function ensure_codex_ponytail_marketplace() {
     local codex_home="${CODEX_HOME:-${HOME}/.codex}"
     local codex_config="${codex_home%/}/config.toml"
 
-    if [ -f "${codex_config}" ] &&
-        grep -Fq "[marketplaces.${CODEX_PONYTAIL_MARKETPLACE_NAME}]" "${codex_config}" &&
-        grep -Fq "source = \"https://github.com/DietrichGebert/ponytail.git\"" "${codex_config}"; then
-        return 0
+    if [ -f "${codex_config}" ] && grep -Fq "[marketplaces.${CODEX_PONYTAIL_MARKETPLACE_NAME}]" "${codex_config}"; then
+        if grep -Fq "source = \"${CODEX_PONYTAIL_MARKETPLACE_SOURCE}\"" "${codex_config}"; then
+            return 0
+        fi
+        printf 'Codex Ponytail marketplace exists with an unexpected source; expected %s.\n' "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}"
+        return 1
     fi
 
-    if command_output_contains "${CODEX_PONYTAIL_MARKETPLACE_NAME}" codex plugin marketplace list; then
+    if codex_marketplace_has_source "${CODEX_PONYTAIL_MARKETPLACE_NAME}" "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}"; then
         return 0
+    fi
+    if command_output_contains "${CODEX_PONYTAIL_MARKETPLACE_NAME}" codex plugin marketplace list; then
+        printf 'Codex Ponytail marketplace exists with an unexpected source; expected %s.\n' "${CODEX_PONYTAIL_MARKETPLACE_SOURCE}"
+        return 1
     fi
 
     codex plugin marketplace add "${CODEX_PONYTAIL_MARKETPLACE}"
@@ -348,6 +403,7 @@ function update_codex_ponytail() {
 
     section "Codex Ponytail plugin"
     ensure_codex_ponytail_marketplace
+    codex plugin marketplace upgrade "${CODEX_PONYTAIL_MARKETPLACE_NAME}" || true
 
     if command_output_contains "\"pluginId\":\"${CODEX_PONYTAIL_PLUGIN}\"" codex plugin list --json ||
         command_output_contains "\"pluginId\": \"${CODEX_PONYTAIL_PLUGIN}\"" codex plugin list --json; then

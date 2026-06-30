@@ -405,6 +405,9 @@ def validate_ponytail_assets(manifest: dict[str, Any], codex: dict[str, Any]) ->
     for token in (
         "DietrichGebert/ponytail",
         "ponytail@ponytail",
+        "CODEX_PONYTAIL_MARKETPLACE_SOURCE",
+        "codex_marketplace_has_source",
+        "codex plugin marketplace upgrade \"${CODEX_PONYTAIL_MARKETPLACE_NAME}\"",
         "update_claude_ponytail",
         "update_codex_ponytail",
         "PONYTAIL_DEFAULT_MODE",
@@ -442,7 +445,7 @@ def validate_ponytail_assets(manifest: dict[str, Any], codex: dict[str, Any]) ->
             fail(f"{claude_rule} must document Ponytail token {token!r}")
 
     claude_symlink = ROOT / "home/dot_claude/rules/symlink_ponytail.md.tmpl"
-    expected_target = "{{ .chezmoi.sourceDir }}/dot_config/claude/rules/ponytail.md\n"
+    expected_target = "{{ .chezmoi.sourceDir }}/home/dot_config/claude/rules/ponytail.md\n"
     if not claude_symlink.exists() or claude_symlink.read_text() != expected_target:
         fail(f"{claude_symlink} must point at the managed Ponytail Claude rule")
 

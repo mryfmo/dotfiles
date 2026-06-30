@@ -15,7 +15,13 @@ readonly CLAUDE_SUPERPOWERS_MARKETPLACE="anthropics/claude-plugins-official"
 readonly CLAUDE_CRIT_PLUGIN="crit@crit"
 readonly CLAUDE_CRIT_MARKETPLACE="tomasz-tomczyk/crit"
 readonly CLAUDE_CRIT_MARKETPLACE_NAME="crit"
+readonly CLAUDE_PONYTAIL_PLUGIN="ponytail@ponytail"
+readonly CLAUDE_PONYTAIL_MARKETPLACE="DietrichGebert/ponytail"
+readonly CLAUDE_PONYTAIL_MARKETPLACE_NAME="ponytail"
 readonly CODEX_SUPERPOWERS_PLUGIN="superpowers@openai-curated"
+readonly CODEX_PONYTAIL_PLUGIN="ponytail@ponytail"
+readonly CODEX_PONYTAIL_MARKETPLACE="DietrichGebert/ponytail"
+readonly CODEX_PONYTAIL_MARKETPLACE_NAME="ponytail"
 readonly CCGATE_MISE_TOOL="aqua:tak848/ccgate"
 
 #
@@ -119,6 +125,17 @@ function ensure_claude_crit_marketplace() {
 }
 
 #
+# @description Ensure the Ponytail Claude Code plugin marketplace is configured.
+#
+function ensure_claude_ponytail_marketplace() {
+    if command_output_contains "${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" claude plugin marketplace list; then
+        return 0
+    fi
+
+    claude plugin marketplace add "${CLAUDE_PONYTAIL_MARKETPLACE}"
+}
+
+#
 # @description Return success when the Claude Code Crit plugin is already enabled.
 #
 function claude_crit_plugin_is_enabled() {
@@ -137,6 +154,35 @@ except json.JSONDecodeError:
     sys.exit(1)
 
 plugin_id = os.environ["CLAUDE_CRIT_PLUGIN_ID"]
+enabled = any(
+    isinstance(plugin, dict)
+    and plugin.get("id") == plugin_id
+    and plugin.get("enabled") is True
+    for plugin in plugins
+)
+sys.exit(0 if enabled else 1)
+'
+}
+
+#
+# @description Return success when the Claude Code Ponytail plugin is already enabled.
+#
+function claude_ponytail_plugin_is_enabled() {
+    if ! has_command python3; then
+        return 1
+    fi
+
+    claude plugin list --json 2> /dev/null | CLAUDE_PONYTAIL_PLUGIN_ID="${CLAUDE_PONYTAIL_PLUGIN}" python3 -c '
+import json
+import os
+import sys
+
+try:
+    plugins = json.load(sys.stdin)
+except json.JSONDecodeError:
+    sys.exit(1)
+
+plugin_id = os.environ["CLAUDE_PONYTAIL_PLUGIN_ID"]
 enabled = any(
     isinstance(plugin, dict)
     and plugin.get("id") == plugin_id
@@ -221,6 +267,33 @@ function update_claude_crit() {
 }
 
 #
+# @description Install or update the Claude Code Ponytail plugin.
+#
+function update_claude_ponytail() {
+    if ! has_command claude; then
+        printf 'Skipping Claude Code Ponytail plugin: claude command not found.\n'
+        return 0
+    fi
+
+    section "Claude Code Ponytail plugin"
+    ensure_claude_ponytail_marketplace
+    claude plugin marketplace update "${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" || true
+
+    if command_output_contains "\"id\":\"${CLAUDE_PONYTAIL_PLUGIN}\"" claude plugin list --json ||
+        command_output_contains "\"id\": \"${CLAUDE_PONYTAIL_PLUGIN}\"" claude plugin list --json; then
+        claude plugin update "${CLAUDE_PONYTAIL_PLUGIN}" || true
+    else
+        claude plugin install "${CLAUDE_PONYTAIL_PLUGIN}" || true
+    fi
+    if claude_ponytail_plugin_is_enabled; then
+        printf 'Claude Code Ponytail plugin is already enabled.\n'
+    else
+        claude plugin enable "${CLAUDE_PONYTAIL_PLUGIN}" || true
+    fi
+    printf 'Ponytail default mode is %s. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.\n' "${PONYTAIL_DEFAULT_MODE:-full}"
+}
+
+#
 # @description Install or update the Codex Superpowers plugin from configured marketplaces.
 #
 function update_codex_superpowers() {
@@ -242,6 +315,48 @@ function update_codex_superpowers() {
     else
         codex plugin add "${CODEX_SUPERPOWERS_PLUGIN}" || true
     fi
+}
+
+#
+# @description Ensure the Ponytail Codex plugin marketplace is configured.
+#
+function ensure_codex_ponytail_marketplace() {
+    local codex_home="${CODEX_HOME:-${HOME}/.codex}"
+    local codex_config="${codex_home%/}/config.toml"
+
+    if [ -f "${codex_config}" ] &&
+        grep -Fq "[marketplaces.${CODEX_PONYTAIL_MARKETPLACE_NAME}]" "${codex_config}" &&
+        grep -Fq "source = \"https://github.com/DietrichGebert/ponytail.git\"" "${codex_config}"; then
+        return 0
+    fi
+
+    if command_output_contains "${CODEX_PONYTAIL_MARKETPLACE_NAME}" codex plugin marketplace list; then
+        return 0
+    fi
+
+    codex plugin marketplace add "${CODEX_PONYTAIL_MARKETPLACE}"
+}
+
+#
+# @description Install or update the Codex Ponytail plugin from its marketplace.
+#
+function update_codex_ponytail() {
+    if ! has_command codex; then
+        printf 'Skipping Codex Ponytail plugin: codex command not found.\n'
+        return 0
+    fi
+
+    section "Codex Ponytail plugin"
+    ensure_codex_ponytail_marketplace
+
+    if command_output_contains "\"pluginId\":\"${CODEX_PONYTAIL_PLUGIN}\"" codex plugin list --json ||
+        command_output_contains "\"pluginId\": \"${CODEX_PONYTAIL_PLUGIN}\"" codex plugin list --json; then
+        printf 'Codex Ponytail plugin is already installed.\n'
+    else
+        codex plugin add "${CODEX_PONYTAIL_PLUGIN}" || true
+    fi
+    printf 'Review and trust Ponytail lifecycle hooks in Codex with /hooks, then start a new thread.\n'
+    printf 'Ponytail default mode is %s. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.\n' "${PONYTAIL_DEFAULT_MODE:-full}"
 }
 
 #
@@ -275,8 +390,10 @@ function main() {
 
     update_claude_superpowers
     update_claude_crit
+    update_claude_ponytail
     update_codex_superpowers
     update_codex_crit
+    update_codex_ponytail
     ensure_ccgate_cli
 }
 

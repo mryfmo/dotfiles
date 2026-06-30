@@ -5,6 +5,7 @@
     make -n update
     make -n doctor
     make -n upgrade
+    make -n require-crit-review
 }
 
 @test "[common] Makefile keeps apply as a compatibility alias" {
@@ -162,6 +163,31 @@
     grep -q 'crit install codex-plugin --force' scripts/update-agent-assets.sh
     grep -q 'update_claude_crit' scripts/update-agent-assets.sh
     grep -q 'update_codex_crit' scripts/update-agent-assets.sh
+    grep -q 'require-crit-review' Makefile
+    grep -q 'CRIT_REVIEWED' scripts/require-crit-review.py
+    grep -q 'AGENT_REVIEWED' scripts/require-crit-review.py
+    grep -q 'REVIEW_EVIDENCE' scripts/require-crit-review.py
+    grep -q 'review_surface' scripts/require-crit-review.py
+    grep -q 'review_outcome' scripts/require-crit-review.py
+    grep -q 'SELF_REVIEWER_TOKENS' scripts/require-crit-review.py
+    grep -q 'CRIT_REVIEW=off' scripts/require-crit-review.py
+    grep -q 'make require-crit-review' home/dot_config/codex/AGENTS.md
+    grep -q 'make require-crit-review' home/dot_config/claude/rules/crit-review.md
+}
+
+@test "[common] agent asset lifecycle installs Ponytail integrations for Claude Code and Codex" {
+    grep -q 'CLAUDE_PONYTAIL_PLUGIN="ponytail@ponytail"' scripts/update-agent-assets.sh
+    grep -q 'CLAUDE_PONYTAIL_MARKETPLACE="DietrichGebert/ponytail"' scripts/update-agent-assets.sh
+    grep -q 'CODEX_PONYTAIL_PLUGIN="ponytail@ponytail"' scripts/update-agent-assets.sh
+    grep -q 'CODEX_PONYTAIL_MARKETPLACE="DietrichGebert/ponytail"' scripts/update-agent-assets.sh
+    grep -q 'claude plugin enable "${CLAUDE_PONYTAIL_PLUGIN}"' scripts/update-agent-assets.sh
+    grep -q 'codex plugin add "${CODEX_PONYTAIL_PLUGIN}"' scripts/update-agent-assets.sh
+    grep -q 'update_claude_ponytail' scripts/update-agent-assets.sh
+    grep -q 'update_codex_ponytail' scripts/update-agent-assets.sh
+    grep -q 'PONYTAIL_DEFAULT_MODE' scripts/update-agent-assets.sh
+    grep -q 'ponytail@ponytail' home/dot_codex/private_config.toml.tmpl
+    grep -q 'Ponytail' home/dot_config/codex/AGENTS.md
+    grep -q 'ponytail@ponytail' home/dot_config/claude/rules/ponytail.md
 }
 
 @test "[common] agent asset lifecycle installs ccgate for Claude Code and Codex permission gates" {
@@ -201,6 +227,11 @@
     grep -q 'ccgate codex metrics --details 5' README.md
     grep -q 'ccgate claude metrics --details 5' README.md
     grep -q 'scripts/update-agent-assets.sh' README.md
+    grep -q 'make require-crit-review' README.md
+    grep -q 'AGENT_REVIEWED=1' README.md
+    grep -q 'REVIEW_EVIDENCE' README.md
+    grep -q 'human or external reviewer' README.md
+    grep -q 'CRIT_REVIEW=off' README.md
 }
 
 @test "[common] README documents clean sourceDir bootstrap and repository-root handoff" {

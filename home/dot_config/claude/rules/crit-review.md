@@ -1,5 +1,8 @@
 ## Crit review workflow
 
-- For plan reviews, code reviews, diff reviews, PR reviews, or any task explicitly described as a review, always use Crit.
-- Rely on the Claude Code Crit plugin Plan Mode hook for plan review. Do not bypass the hook unless the user explicitly disables Crit for the current task.
-- When `/crit` starts a review, wait until Crit finishes, address unresolved comments, reply in Crit, and start the next round when Crit asks for it.
+- For plan reviews, code reviews, diff reviews, PR reviews, or any task explicitly described as a review, first use Claude Code's native IDE/desktop diff or plan review surface. Use Crit web UI only when the user explicitly asks for it or native review is unavailable.
+- If the Claude Code Crit plugin Plan Mode hook fires, respect it. Do not bypass an already-triggered hook unless the user explicitly disables Crit for the current task.
+- Before reporting completion with a dirty git diff, run `make require-crit-review` when the repository provides it. The guard should require review only for meaningful changes such as agent lifecycle scripts, hooks, plugins, permissions, shared rules/skills, or broad diffs.
+- If the guard requires review, prefer Claude Code's native IDE/desktop diff or plan review surface instead of opening a browser-based Crit review. Address feedback, write a receipt with `review_surface:`, `reviewer:`, and `review_outcome:`, then rerun the guard with `AGENT_REVIEWED=1 REVIEW_EVIDENCE=<receipt> make require-crit-review`. The `reviewer` must identify a human or external reviewer; do not use bare `AGENT_REVIEWED=1` or agent self-review as attestation.
+- Use `/crit` only when the user explicitly asks for Crit web UI or the native review surface is unavailable. When `/crit` starts a review, wait until Crit finishes, address unresolved comments, reply in Crit, write a receipt, and rerun the guard with `CRIT_REVIEWED=1 REVIEW_EVIDENCE=<receipt> make require-crit-review`.
+- Use `CRIT_REVIEW=off` only when the user explicitly disables Crit/review for the current task.

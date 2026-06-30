@@ -85,6 +85,10 @@ format:
 validate-agent-assets:
 	uv run --with pyyaml scripts/validate-agent-assets.py
 
+.PHONY: require-crit-review
+require-crit-review:
+	@AGENT_REVIEWED="$(AGENT_REVIEWED)" CRIT_REVIEWED="$(CRIT_REVIEWED)" CRIT_REVIEW="$(CRIT_REVIEW)" REVIEW_EVIDENCE="$(REVIEW_EVIDENCE)" ./scripts/require-crit-review.py
+
 #
 # Documentation
 #

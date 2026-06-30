@@ -152,8 +152,8 @@ updates.
 ### Agent review and permission assets
 
 `make update` also refreshes agent-managed assets after `chezmoi apply`.
-This includes the Crit integrations for Codex and Claude Code, plus ccgate
-PermissionRequest hooks for both agents.
+This includes the Crit integrations and Ponytail (`ponytail@ponytail`) plugin
+for Codex and Claude Code, plus ccgate PermissionRequest hooks for both agents.
 
 ccgate is used as a permission gate, not as a model router. Its
 `provider.model` is the small classifier used for permission decisions, while
@@ -169,6 +169,24 @@ The intended lifecycle is:
 # Apply ~/.codex, ~/.claude, ~/.config/mise, and agent rule files.
 make update
 
+# Ponytail is installed from the upstream marketplace.
+# Claude Code and Codex use DietrichGebert/ponytail as the marketplace source.
+# In Codex, open /hooks after install or update, then review and trust the
+# Ponytail lifecycle hooks before starting a new thread.
+
+# Before an agent reports completion with a dirty diff, run the review guard.
+# It only requires review for meaningful changes such as agent lifecycle,
+# hooks, plugins, permissions, scripts, or broad diffs.
+make require-crit-review
+# After reviewing in the active agent's native surface, write a receipt and
+# rerun with its path. The receipt must include review_surface, reviewer, and
+# review_outcome fields.
+AGENT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/review/<id>.md make require-crit-review
+# Use this only after an explicit Crit web review was requested and completed:
+CRIT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/review/<id>.md make require-crit-review
+# Only use this explicit escape hatch when the user disables review.
+CRIT_REVIEW=off make require-crit-review
+
 # Then upgrade installed tools using the applied mise and agent settings.
 make upgrade
 
@@ -180,6 +198,30 @@ ccgate claude metrics --details 5
 If ccgate is not available after the mise-managed install step,
 `scripts/update-agent-assets.sh` fails instead of leaving Codex or Claude Code
 with a configured PermissionRequest hook whose runtime is missing.
+
+`make require-crit-review` is the mechanical review gate for agents
+(`scripts/require-crit-review.py` is the underlying script).
+It keeps small documentation-only edits from opening unnecessary reviews, but
+requires review before completion for agent lifecycle scripts, hooks, plugins,
+permission gates, shared agent rules or skills, and broad multi-file diffs.
+When review is required, use the active agent's native review surface first:
+Codex CLI `/diff` or `/review`, the Codex app Review pane for inline comments,
+or Claude Code's IDE/desktop diff and plan review surfaces. After review,
+write a receipt file and set `REVIEW_EVIDENCE` to its path. The receipt must
+include `review_surface:`, `reviewer:`, and `review_outcome:`; `reviewer` must
+identify a human or external reviewer, not the same agent's self-review. Set
+`AGENT_REVIEWED=1` only after that in-agent review has finished, feedback has
+been addressed, and evidence exists. Use Crit's browser review only when the
+user explicitly asks for Crit web UI or a native surface is unavailable; then
+set `CRIT_REVIEWED=1` with the same `REVIEW_EVIDENCE` requirement after
+finishing the Crit round. Set `CRIT_REVIEW=off` only when Crit/review is
+explicitly disabled for the task.
+
+Ponytail keeps coding tasks biased toward YAGNI, existing code, standard
+library and native platform features, and the smallest correct diff. The
+managed default follows upstream (`full`); set
+`PONYTAIL_DEFAULT_MODE=lite|full|ultra|off` only when a session needs a
+different intensity.
 
 `setup.sh` does not clone into the current directory. It runs `chezmoi init`
 without a fixed `--source`, so the clone/init location is chezmoi's `sourceDir`.

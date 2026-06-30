@@ -153,6 +153,10 @@ def render_codex(manifest: dict[str, Any]) -> str:
         lines.extend(["", f"[plugins.{quote_toml_key(plugin_id)}]"])
         for key, value in plugin_config.items():
             lines.append(f"{quote_toml_key(str(key))} = {quote_toml(value)}")
+    for marketplace_name, marketplace_config in codex.get("marketplaces", {}).items():
+        lines.extend(["", f"[marketplaces.{quote_toml_key(marketplace_name)}]"])
+        for key, value in marketplace_config.items():
+            lines.append(f"{quote_toml_key(str(key))} = {quote_toml(value)}")
     hooks = codex.get("hooks", {})
     if hooks.get("ccgate_permission_request_hook"):
         lines.extend(
@@ -167,6 +171,12 @@ def render_codex(manifest: dict[str, Any]) -> str:
                 'statusMessage = "ccgate evaluating request"',
             ]
         )
+    if hooks.get("state"):
+        lines.extend(["", "[hooks.state]"])
+        for hook_key, hook_config in hooks["state"].items():
+            lines.extend(["", f"[hooks.state.{quote_toml_key(hook_key)}]"])
+            for key, value in hook_config.items():
+                lines.append(f"{quote_toml_key(str(key))} = {quote_toml(value)}")
     for project_path, project_config in codex.get("projects", {}).items():
         lines.extend(["", f"[projects.{quote_toml_key(project_path)}]"])
         for key, value in project_config.items():
@@ -398,17 +408,17 @@ def render_hermes(manifest: dict[str, Any]) -> str:
 def render_marketplace(manifest: dict[str, Any]) -> str:
     plugins = manifest["plugins"]
     data = {
-        "name": plugins["marketplace"]["name"],
         "interface": {"displayName": plugins["marketplace"]["displayName"]},
+        "name": plugins["marketplace"]["name"],
         "plugins": [
             {
-                "name": plugin["name"],
-                "source": {"source": "local", "path": plugin["source_path"]},
-                "policy": {
-                    "installation": plugin["installation"],
-                    "authentication": plugin["authentication"],
-                },
                 "category": plugin["category"],
+                "name": plugin["name"],
+                "policy": {
+                    "authentication": plugin["authentication"],
+                    "installation": plugin["installation"],
+                },
+                "source": {"path": plugin["source_path"], "source": "local"},
             }
             for plugin in plugins.get("codex_plugins", [])
         ],

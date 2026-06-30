@@ -1,32 +1,32 @@
 {
-  "name": "mryfmo-personal-plugins",
   "interface": {
     "displayName": "mryfmo Personal Plugins"
   },
+  "name": "mryfmo-personal-plugins",
   "plugins": [
     {
+      "category": "Productivity",
       "name": "mryfmo-dev-workflows",
-      "source": {
-        "source": "local",
-        "path": "./plugins/mryfmo-dev-workflows"
-      },
       "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
       },
-      "category": "Productivity"
+      "source": {
+        "path": "./plugins/mryfmo-dev-workflows",
+        "source": "local"
+      }
     },
     {
+      "category": "Developer Tools",
       "name": "crit",
-      "source": {
-        "source": "local",
-        "path": "./.codex/plugins/crit"
-      },
       "policy": {
-        "installation": "INSTALLED_BY_DEFAULT",
-        "authentication": "ON_INSTALL"
+        "authentication": "ON_INSTALL",
+        "installation": "INSTALLED_BY_DEFAULT"
       },
-      "category": "Developer Tools"
+      "source": {
+        "path": "./.codex/plugins/crit",
+        "source": "local"
+      }
     }
   ]
 }

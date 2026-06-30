@@ -34,7 +34,6 @@ HIGH_RISK_PREFIXES = (
 
 HIGH_RISK_FILES = {
     "AGENTS.md",
-    "README.md",
     "home/dot_agents/agent-config.yaml",
     "home/dot_agents/hermes-config-base.yaml",
     "tests/install/common/lifecycle.bats",
@@ -116,13 +115,25 @@ def numstat_line_count(root: Path) -> int:
             for count in fields[:2]:
                 if count.isdigit():
                     total += int(count)
+    untracked = run_git(["ls-files", "--others", "--exclude-standard"], root)
+    if untracked.returncode == 0:
+        for path in untracked.stdout.splitlines():
+            if path.startswith(IGNORED_PREFIXES):
+                continue
+            file_path = root / path
+            if file_path.is_file():
+                total += len(file_path.read_bytes().splitlines())
     return total
 
 
 def is_low_risk_docs_only(paths: list[str]) -> bool:
     if not paths:
         return True
-    return all(path.endswith(LOW_RISK_SUFFIXES) for path in paths) and len(paths) < BROAD_DIFF_FILE_LIMIT
+    return (
+        all(path.endswith(LOW_RISK_SUFFIXES) for path in paths)
+        and len(paths) < BROAD_DIFF_FILE_LIMIT
+        and not any(high_risk_reason(path) for path in paths)
+    )
 
 
 def high_risk_reason(path: str) -> str | None:

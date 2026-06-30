@@ -57,6 +57,14 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("not required", result.stdout)
 
+    def test_high_risk_markdown_change_requires_review(self) -> None:
+        codex_rules = self.temp_dir / "home/dot_config/codex"
+        codex_rules.mkdir(parents=True)
+        (codex_rules / "AGENTS.md").write_text("# Agent policy\n")
+        result = self.guard()
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("agent lifecycle", result.stdout)
+
     def test_agent_lifecycle_script_change_requires_review(self) -> None:
         scripts_dir = self.temp_dir / "scripts"
         scripts_dir.mkdir()
@@ -73,6 +81,12 @@ class ReviewGuardTest(unittest.TestCase):
         result = self.guard()
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn("broad diff", result.stdout)
+
+    def test_large_untracked_file_requires_broad_diff_review(self) -> None:
+        (self.temp_dir / "generated.py").write_text("print('x')\n" * 201)
+        result = self.guard()
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("broad diff changes", result.stdout)
 
     def test_reviewed_environment_satisfies_required_review(self) -> None:
         scripts_dir = self.temp_dir / "scripts"

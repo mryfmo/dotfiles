@@ -3279,19 +3279,27 @@
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>claude_crit_plugin_is_enabled</code></li>
+<li><code>claude_ponytail_plugin_is_enabled</code></li>
+<li><code>codex_marketplace_has_source</code></li>
 <li><code>codex_marketplace_is_configured_git_marketplace</code></li>
+<li><code>codex_marketplace_root</code></li>
 <li><code>command_output_contains</code></li>
 <li><code>ensure_ccgate_cli</code></li>
 <li><code>ensure_claude_crit_marketplace</code></li>
+<li><code>ensure_claude_ponytail_marketplace</code></li>
 <li><code>ensure_claude_superpowers_marketplace</code></li>
+<li><code>ensure_codex_ponytail_marketplace</code></li>
 <li><code>ensure_crit_cli</code></li>
+<li><code>git_remote_origin_matches</code></li>
 <li><code>has_command</code></li>
 <li><code>is_macos</code></li>
 <li><code>main</code></li>
 <li><code>section</code></li>
 <li><code>update_claude_crit</code></li>
+<li><code>update_claude_ponytail</code></li>
 <li><code>update_claude_superpowers</code></li>
 <li><code>update_codex_crit</code></li>
+<li><code>update_codex_ponytail</code></li>
 <li><code>update_codex_superpowers</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
@@ -3312,7 +3320,14 @@
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CLAUDE_CRIT_PLUGIN</span><span class="o">=</span><span class="s2">&quot;crit@crit&quot;</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CLAUDE_CRIT_MARKETPLACE</span><span class="o">=</span><span class="s2">&quot;tomasz-tomczyk/crit&quot;</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CLAUDE_CRIT_MARKETPLACE_NAME</span><span class="o">=</span><span class="s2">&quot;crit&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">CLAUDE_PONYTAIL_PLUGIN</span><span class="o">=</span><span class="s2">&quot;ponytail@ponytail&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">CLAUDE_PONYTAIL_MARKETPLACE</span><span class="o">=</span><span class="s2">&quot;DietrichGebert/ponytail&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">CLAUDE_PONYTAIL_MARKETPLACE_NAME</span><span class="o">=</span><span class="s2">&quot;ponytail&quot;</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CODEX_SUPERPOWERS_PLUGIN</span><span class="o">=</span><span class="s2">&quot;superpowers@openai-curated&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">CODEX_PONYTAIL_PLUGIN</span><span class="o">=</span><span class="s2">&quot;ponytail@ponytail&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">CODEX_PONYTAIL_MARKETPLACE</span><span class="o">=</span><span class="s2">&quot;DietrichGebert/ponytail&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">CODEX_PONYTAIL_MARKETPLACE_NAME</span><span class="o">=</span><span class="s2">&quot;ponytail&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">CODEX_PONYTAIL_MARKETPLACE_SOURCE</span><span class="o">=</span><span class="s2">&quot;https://github.com/DietrichGebert/ponytail.git&quot;</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CCGATE_MISE_TOOL</span><span class="o">=</span><span class="s2">&quot;aqua:tak848/ccgate&quot;</span>
 
 <span class="c1">#</span>
@@ -3358,7 +3373,7 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">marketplace</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>root
 
-<span class="w">    </span><span class="nv">root</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>codex<span class="w"> </span>plugin<span class="w"> </span>marketplace<span class="w"> </span>list<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span>-v<span class="w"> </span><span class="nv">name</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">marketplace</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s1">&#39;$1 == name { print $2; exit }&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">root</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>codex_marketplace_root<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">marketplace</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
 <span class="w">    </span><span class="c1"># Built-in/default marketplaces can resolve under Codex&#39;s .tmp plugin cache.</span>
 <span class="w">    </span><span class="c1"># They may contain Git metadata, but `codex plugin marketplace upgrade` only</span>
 <span class="w">    </span><span class="c1"># accepts configured Git marketplaces.</span>
@@ -3372,6 +3387,54 @@
 <span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Print the local root path for a configured Codex marketplace.</span>
+<span class="c1"># @arg $1 string Marketplace name.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>codex_marketplace_root<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">marketplace</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+
+<span class="w">    </span>codex<span class="w"> </span>plugin<span class="w"> </span>marketplace<span class="w"> </span>list<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span>-v<span class="w"> </span><span class="nv">name</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">marketplace</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s1">&#39;$1 == name { print $2; exit }&#39;</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Return success when a Git root has the expected origin URL.</span>
+<span class="c1"># @arg $1 string Git working tree root.</span>
+<span class="c1"># @arg $2 string Expected HTTPS origin URL.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>git_remote_origin_matches<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">root</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">expected_source</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">expected_ssh</span><span class="o">=</span><span class="s2">&quot;git@github.com:</span><span class="si">${</span><span class="nv">expected_source</span><span class="p">#https://github.com/</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>remote
+
+<span class="w">    </span><span class="nv">remote</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>config<span class="w"> </span>--get<span class="w"> </span>remote.origin.url<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">remote</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">expected_source</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">expected_source</span><span class="p">%.git</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">expected_ssh</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">expected_ssh</span><span class="p">%.git</span><span class="si">}</span><span class="s2">&quot;</span><span class="o">)</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Return success when a configured Codex marketplace has a matching Git origin.</span>
+<span class="c1"># @arg $1 string Marketplace name.</span>
+<span class="c1"># @arg $2 string Expected HTTPS origin URL.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>codex_marketplace_has_source<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">marketplace</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">expected_source</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>root
+
+<span class="w">    </span><span class="nv">root</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>codex_marketplace_root<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">marketplace</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>!<span class="w"> </span>-d<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">/.git&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>git_remote_origin_matches<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">expected_source</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3416,6 +3479,17 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Ensure the Ponytail Claude Code plugin marketplace is configured.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>ensure_claude_ponytail_marketplace<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>command_output_contains<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_PONYTAIL_MARKETPLACE_NAME</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>claude<span class="w"> </span>plugin<span class="w"> </span>marketplace<span class="w"> </span>list<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>claude<span class="w"> </span>plugin<span class="w"> </span>marketplace<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_PONYTAIL_MARKETPLACE</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Return success when the Claude Code Crit plugin is already enabled.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>claude_crit_plugin_is_enabled<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -3434,6 +3508,35 @@
 <span class="s1">    sys.exit(1)</span>
 
 <span class="s1">plugin_id = os.environ[&quot;CLAUDE_CRIT_PLUGIN_ID&quot;]</span>
+<span class="s1">enabled = any(</span>
+<span class="s1">    isinstance(plugin, dict)</span>
+<span class="s1">    and plugin.get(&quot;id&quot;) == plugin_id</span>
+<span class="s1">    and plugin.get(&quot;enabled&quot;) is True</span>
+<span class="s1">    for plugin in plugins</span>
+<span class="s1">)</span>
+<span class="s1">sys.exit(0 if enabled else 1)</span>
+<span class="s1">&#39;</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Return success when the Claude Code Ponytail plugin is already enabled.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>claude_ponytail_plugin_is_enabled<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>python3<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>claude<span class="w"> </span>plugin<span class="w"> </span>list<span class="w"> </span>--json<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">CLAUDE_PONYTAIL_PLUGIN_ID</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_PONYTAIL_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;</span>
+<span class="s1">import json</span>
+<span class="s1">import os</span>
+<span class="s1">import sys</span>
+
+<span class="s1">try:</span>
+<span class="s1">    plugins = json.load(sys.stdin)</span>
+<span class="s1">except json.JSONDecodeError:</span>
+<span class="s1">    sys.exit(1)</span>
+
+<span class="s1">plugin_id = os.environ[&quot;CLAUDE_PONYTAIL_PLUGIN_ID&quot;]</span>
 <span class="s1">enabled = any(</span>
 <span class="s1">    isinstance(plugin, dict)</span>
 <span class="s1">    and plugin.get(&quot;id&quot;) == plugin_id</span>
@@ -3518,6 +3621,33 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Install or update the Claude Code Ponytail plugin.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>update_claude_ponytail<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>claude<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Skipping Claude Code Ponytail plugin: claude command not found.\n&#39;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;Claude Code Ponytail plugin&quot;</span>
+<span class="w">    </span>ensure_claude_ponytail_marketplace
+<span class="w">    </span>claude<span class="w"> </span>plugin<span class="w"> </span>marketplace<span class="w"> </span>update<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_PONYTAIL_MARKETPLACE_NAME</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>command_output_contains<span class="w"> </span><span class="s2">&quot;\&quot;id\&quot;:\&quot;</span><span class="si">${</span><span class="nv">CLAUDE_PONYTAIL_PLUGIN</span><span class="si">}</span><span class="s2">\&quot;&quot;</span><span class="w"> </span>claude<span class="w"> </span>plugin<span class="w"> </span>list<span class="w"> </span>--json<span class="w"> </span><span class="o">||</span>
+<span class="w">        </span>command_output_contains<span class="w"> </span><span class="s2">&quot;\&quot;id\&quot;: \&quot;</span><span class="si">${</span><span class="nv">CLAUDE_PONYTAIL_PLUGIN</span><span class="si">}</span><span class="s2">\&quot;&quot;</span><span class="w"> </span>claude<span class="w"> </span>plugin<span class="w"> </span>list<span class="w"> </span>--json<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>claude<span class="w"> </span>plugin<span class="w"> </span>update<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_PONYTAIL_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span>claude<span class="w"> </span>plugin<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_PONYTAIL_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>claude_ponytail_plugin_is_enabled<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Claude Code Ponytail plugin is already enabled.\n&#39;</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span>claude<span class="w"> </span>plugin<span class="w"> </span><span class="nb">enable</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_PONYTAIL_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Ponytail default mode is %s. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PONYTAIL_DEFAULT_MODE</span><span class="k">:-</span><span class="nv">full</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Install or update the Codex Superpowers plugin from configured marketplaces.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>update_codex_superpowers<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -3539,6 +3669,55 @@
 <span class="w">    </span><span class="k">else</span>
 <span class="w">        </span>codex<span class="w"> </span>plugin<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CODEX_SUPERPOWERS_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 <span class="w">    </span><span class="k">fi</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Ensure the Ponytail Codex plugin marketplace is configured.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>ensure_codex_ponytail_marketplace<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">codex_home</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CODEX_HOME</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/.codex</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">codex_config</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_home</span><span class="p">%/</span><span class="si">}</span><span class="s2">/config.toml&quot;</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_config</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>grep<span class="w"> </span>-Fq<span class="w"> </span><span class="s2">&quot;[marketplaces.</span><span class="si">${</span><span class="nv">CODEX_PONYTAIL_MARKETPLACE_NAME</span><span class="si">}</span><span class="s2">]&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_config</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>grep<span class="w"> </span>-Fq<span class="w"> </span><span class="s2">&quot;source = \&quot;</span><span class="si">${</span><span class="nv">CODEX_PONYTAIL_MARKETPLACE_SOURCE</span><span class="si">}</span><span class="s2">\&quot;&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_config</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Codex Ponytail marketplace exists with an unexpected source; expected %s.\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CODEX_PONYTAIL_MARKETPLACE_SOURCE</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>codex_marketplace_has_source<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CODEX_PONYTAIL_MARKETPLACE_NAME</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CODEX_PONYTAIL_MARKETPLACE_SOURCE</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>command_output_contains<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CODEX_PONYTAIL_MARKETPLACE_NAME</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>codex<span class="w"> </span>plugin<span class="w"> </span>marketplace<span class="w"> </span>list<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Codex Ponytail marketplace exists with an unexpected source; expected %s.\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CODEX_PONYTAIL_MARKETPLACE_SOURCE</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>codex<span class="w"> </span>plugin<span class="w"> </span>marketplace<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CODEX_PONYTAIL_MARKETPLACE</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Install or update the Codex Ponytail plugin from its marketplace.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>update_codex_ponytail<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>codex<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Skipping Codex Ponytail plugin: codex command not found.\n&#39;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;Codex Ponytail plugin&quot;</span>
+<span class="w">    </span>ensure_codex_ponytail_marketplace
+<span class="w">    </span>codex<span class="w"> </span>plugin<span class="w"> </span>marketplace<span class="w"> </span>upgrade<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CODEX_PONYTAIL_MARKETPLACE_NAME</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>command_output_contains<span class="w"> </span><span class="s2">&quot;\&quot;pluginId\&quot;:\&quot;</span><span class="si">${</span><span class="nv">CODEX_PONYTAIL_PLUGIN</span><span class="si">}</span><span class="s2">\&quot;&quot;</span><span class="w"> </span>codex<span class="w"> </span>plugin<span class="w"> </span>list<span class="w"> </span>--json<span class="w"> </span><span class="o">||</span>
+<span class="w">        </span>command_output_contains<span class="w"> </span><span class="s2">&quot;\&quot;pluginId\&quot;: \&quot;</span><span class="si">${</span><span class="nv">CODEX_PONYTAIL_PLUGIN</span><span class="si">}</span><span class="s2">\&quot;&quot;</span><span class="w"> </span>codex<span class="w"> </span>plugin<span class="w"> </span>list<span class="w"> </span>--json<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Codex Ponytail plugin is already installed.\n&#39;</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span>codex<span class="w"> </span>plugin<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CODEX_PONYTAIL_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Review and trust Ponytail lifecycle hooks in Codex with /hooks, then start a new thread.\n&#39;</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Ponytail default mode is %s. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PONYTAIL_DEFAULT_MODE</span><span class="k">:-</span><span class="nv">full</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3572,8 +3751,10 @@
 
 <span class="w">    </span>update_claude_superpowers
 <span class="w">    </span>update_claude_crit
+<span class="w">    </span>update_claude_ponytail
 <span class="w">    </span>update_codex_superpowers
 <span class="w">    </span>update_codex_crit
+<span class="w">    </span>update_codex_ponytail
 <span class="w">    </span>ensure_ccgate_cli
 <span class="o">}</span>
 

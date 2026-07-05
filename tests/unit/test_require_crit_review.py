@@ -6,6 +6,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -44,7 +45,7 @@ class ReviewGuardTest(unittest.TestCase):
         shutil.rmtree(self.temp_dir)
 
     def guard(self, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
-        return run(["python3", str(GUARD)], self.temp_dir, env)
+        return run([sys.executable, str(GUARD)], self.temp_dir, env)
 
     def test_no_diff_does_not_require_review(self) -> None:
         result = self.guard()
@@ -149,7 +150,96 @@ class ReviewGuardTest(unittest.TestCase):
         evidence.write_text("review_surface: codex-/review\nreviewer: codex\nreview_outcome: approved\n")
         result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
-        self.assertIn("must identify a human or external reviewer", result.stdout)
+        self.assertIn("review_surface: crit-data", result.stdout)
+
+    def test_agent_reviewer_with_crit_data_satisfies_required_review(self) -> None:
+        scripts_dir = self.temp_dir / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "update-agent-assets.sh").write_text("#!/usr/bin/env bash\n")
+        crit_data = self.temp_dir / ".agents/worklog/review/crit-comments.json"
+        crit_data.parent.mkdir(parents=True)
+        crit_data.write_text("null\n")
+        evidence = self.temp_dir / ".agents/worklog/review/agent-crit-data.md"
+        evidence.write_text(
+            "review_surface: crit-data\n"
+            "reviewer: codex\n"
+            "review_source: .agents/worklog/review/crit-comments.json\n"
+            "review_outcome: approved\n"
+        )
+        result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("AGENT_REVIEWED=1", result.stdout)
+
+    def test_agent_reviewer_with_command_string_source_still_requires_review(self) -> None:
+        scripts_dir = self.temp_dir / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "update-agent-assets.sh").write_text("#!/usr/bin/env bash\n")
+        evidence = self.temp_dir / ".agents/worklog/review/agent-command-source.md"
+        evidence.parent.mkdir(parents=True)
+        evidence.write_text(
+            "review_surface: crit-data\n"
+            "reviewer: codex\n"
+            "review_source: crit comments --json\n"
+            "review_outcome: approved\n"
+        )
+        result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("JSON evidence file", result.stdout)
+
+    def test_agent_reviewer_with_unresolved_crit_json_still_requires_review(self) -> None:
+        scripts_dir = self.temp_dir / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "update-agent-assets.sh").write_text("#!/usr/bin/env bash\n")
+        crit_data = self.temp_dir / ".agents/worklog/review/crit-comments.json"
+        crit_data.parent.mkdir(parents=True)
+        crit_data.write_text('[{"id":"c_1","body":"fix this","resolved":false}]\n')
+        evidence = self.temp_dir / ".agents/worklog/review/agent-unresolved.md"
+        evidence.write_text(
+            "review_surface: crit-data\n"
+            "reviewer: claude-code\n"
+            "review_source: .agents/worklog/review/crit-comments.json\n"
+            "review_outcome: approved\n"
+        )
+        result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("unresolved Crit comments", result.stdout)
+
+    def test_agent_reviewer_with_external_crit_json_still_requires_review(self) -> None:
+        scripts_dir = self.temp_dir / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "update-agent-assets.sh").write_text("#!/usr/bin/env bash\n")
+        external = Path(tempfile.mkdtemp(prefix="crit-external-")) / "comments.json"
+        self.addCleanup(lambda: shutil.rmtree(external.parent, ignore_errors=True))
+        external.write_text("null\n")
+        evidence = self.temp_dir / ".agents/worklog/review/agent-external.md"
+        evidence.parent.mkdir(parents=True)
+        evidence.write_text(
+            "review_surface: crit-data\n"
+            "reviewer: codex\n"
+            f"review_source: {external}\n"
+            "review_outcome: approved\n"
+        )
+        result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("repo-local", result.stdout)
+
+    def test_agent_reviewer_with_crit_reviewed_marker_still_requires_review(self) -> None:
+        scripts_dir = self.temp_dir / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "update-agent-assets.sh").write_text("#!/usr/bin/env bash\n")
+        crit_data = self.temp_dir / ".agents/worklog/review/crit-comments.json"
+        crit_data.parent.mkdir(parents=True)
+        crit_data.write_text("null\n")
+        evidence = self.temp_dir / ".agents/worklog/review/agent-wrong-marker.md"
+        evidence.write_text(
+            "review_surface: crit-data\n"
+            "reviewer: claude-code\n"
+            "review_source: .agents/worklog/review/crit-comments.json\n"
+            "review_outcome: approved\n"
+        )
+        result = self.guard({"CRIT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("AGENT_REVIEWED=1", result.stdout)
 
     def test_agent_self_review_flag_evidence_still_requires_review(self) -> None:
         scripts_dir = self.temp_dir / "scripts"
@@ -162,7 +252,7 @@ class ReviewGuardTest(unittest.TestCase):
         )
         result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
-        self.assertIn("must identify a human or external reviewer", result.stdout)
+        self.assertIn("bare agent self-attestation", result.stdout)
 
     def test_explicit_disable_skips_guard(self) -> None:
         scripts_dir = self.temp_dir / "scripts"

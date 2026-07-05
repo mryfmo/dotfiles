@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -67,6 +68,13 @@ SELF_REVIEWER_TOKENS = (
     "gpt",
     "self",
 )
+AGENT_REVIEWERS = {
+    "claude",
+    "claude-code",
+    "codex",
+}
+CRIT_DATA_REVIEW_SURFACE = "crit-data"
+CRIT_DATA_SOURCE_FIELD = "review_source"
 
 
 def run_git(args: list[str], root: Path | None = None) -> subprocess.CompletedProcess[str]:
@@ -179,7 +187,7 @@ def resolve_evidence_path(root: Path) -> Path | None:
     return path
 
 
-def evidence_errors(root: Path) -> list[str]:
+def evidence_errors(root: Path, marker: str) -> list[str]:
     path = resolve_evidence_path(root)
     if path is None:
         return [f"{EVIDENCE_ENV} must point to a review receipt file"]
@@ -193,11 +201,84 @@ def evidence_errors(root: Path) -> list[str]:
         if not value
     ]
     if "agent_self_review: true" in text:
-        errors.append(f"{EVIDENCE_ENV} reviewer must identify a human or external reviewer, not agent self-review")
+        errors.append(f"{EVIDENCE_ENV} reviewer must not be bare agent self-attestation")
     reviewer = parsed_fields["reviewer"]
-    if reviewer and any(token in reviewer.lower() for token in SELF_REVIEWER_TOKENS):
-        errors.append(f"{EVIDENCE_ENV} reviewer must identify a human or external reviewer, not agent self-review")
+    if reviewer and is_agent_reviewer(reviewer):
+        errors.extend(agent_review_errors(root, text, parsed_fields, marker))
+    elif reviewer and any(token in reviewer.lower() for token in SELF_REVIEWER_TOKENS):
+        errors.append(f"{EVIDENCE_ENV} reviewer must not be bare agent self-attestation")
     return errors
+
+
+def is_agent_reviewer(reviewer: str) -> bool:
+    return reviewer.strip().lower() in AGENT_REVIEWERS
+
+
+def agent_review_errors(root: Path, text: str, parsed_fields: dict[str, str | None], marker: str) -> list[str]:
+    if marker != f"{NATIVE_REVIEWED_ENV}=1":
+        return [f"{EVIDENCE_ENV} agent reviewer is only valid with {NATIVE_REVIEWED_ENV}=1"]
+
+    errors: list[str] = []
+    if parsed_fields["review_surface"] != CRIT_DATA_REVIEW_SURFACE:
+        errors.append(f"{EVIDENCE_ENV} agent reviewer requires `review_surface: {CRIT_DATA_REVIEW_SURFACE}`")
+    source = evidence_field(text, CRIT_DATA_SOURCE_FIELD)
+    if not source:
+        errors.append(f"{EVIDENCE_ENV} agent reviewer requires non-empty `{CRIT_DATA_SOURCE_FIELD}: ...`")
+    else:
+        errors.extend(crit_data_errors(root, source))
+    return errors
+
+
+def crit_data_errors(root: Path, source: str) -> list[str]:
+    path = Path(source)
+    if not path.is_absolute():
+        path = root / path
+
+    try:
+        path.resolve().relative_to(root.resolve())
+    except ValueError:
+        return [f"{CRIT_DATA_SOURCE_FIELD} must point to a repo-local JSON evidence file"]
+
+    if not path.is_file():
+        return [f"{CRIT_DATA_SOURCE_FIELD} JSON evidence file does not exist: {path}"]
+
+    try:
+        data = json.loads(path.read_text())
+    except json.JSONDecodeError as error:
+        return [f"{CRIT_DATA_SOURCE_FIELD} must be valid JSON: {error}"]
+
+    comments = unresolved_crit_comments(data)
+    if comments is None:
+        return [f"{CRIT_DATA_SOURCE_FIELD} JSON must be null, a comment list, or a Crit review object"]
+    if comments:
+        return [f"{CRIT_DATA_SOURCE_FIELD} contains {len(comments)} unresolved Crit comments"]
+    return []
+
+
+def unresolved_crit_comments(data: object) -> list[object] | None:
+    if data is None:
+        return []
+    if isinstance(data, list):
+        return [comment for comment in data if comment_is_unresolved(comment)]
+    if isinstance(data, dict):
+        comments: list[object] = []
+        if isinstance(data.get("comments"), list):
+            comments.extend(data["comments"])
+        if isinstance(data.get("review_comments"), list):
+            comments.extend(data["review_comments"])
+        files = data.get("files")
+        if isinstance(files, dict):
+            for file_review in files.values():
+                if isinstance(file_review, dict) and isinstance(file_review.get("comments"), list):
+                    comments.extend(file_review["comments"])
+        return [comment for comment in comments if comment_is_unresolved(comment)]
+    return None
+
+
+def comment_is_unresolved(comment: object) -> bool:
+    if not isinstance(comment, dict):
+        return True
+    return comment.get("resolved") is not True
 
 
 def evidence_field(text: str, field: str) -> str | None:
@@ -230,7 +311,7 @@ def main() -> None:
 
     marker = review_marker()
     if marker:
-        errors = evidence_errors(root)
+        errors = evidence_errors(root, marker)
         if not errors:
             print(f"Review requirement satisfied by {marker} with {EVIDENCE_ENV}.")
             return
@@ -242,12 +323,13 @@ def main() -> None:
     print("Native agent review required before completion.")
     for reason in reasons:
         print(f"- {reason}")
-    print("Use the active agent's native review surface, not a browser by default:")
-    print("- Codex: use `/diff` or `/review`; in the Codex app, use the Review pane with inline comments.")
-    print("- Claude Code: use the IDE/desktop inline diff or plan review surface; in terminal mode, show the diff in the conversation.")
-    print("Use Crit's browser review only when the user explicitly asks for Crit web UI or native review is unavailable.")
+    print("Use the active agent's review path, not a browser by default:")
+    print("- Codex: retrieve Crit comments/status data, review it inside the task, then address findings.")
+    print("- Claude Code: retrieve Crit comments/status data, review it inside the task, then address findings.")
+    print("- Use browser Crit review only when the user explicitly asks for Crit web UI or Crit data is unavailable.")
     print("Record a receipt with `review_surface:`, `reviewer:`, and `review_outcome:`.")
-    print("The reviewer must be a human or external reviewer, not this agent's self-review.")
+    print("For agent judgment from Crit data, save `crit comments --json` to a repo-local JSON file.")
+    print("Then use `review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`, and `review_source: <json path>`.")
     print("After addressing review feedback, rerun with AGENT_REVIEWED=1 or CRIT_REVIEWED=1 plus REVIEW_EVIDENCE=<path>.")
     raise SystemExit(1)
 

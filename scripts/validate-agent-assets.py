@@ -390,12 +390,13 @@ def validate_crit_install_assets() -> None:
         "CRIT_REVIEW=off",
         "agent lifecycle",
         "broad diff",
-        "native review surface",
+        "Crit data",
+        "review_source",
     ):
         if token not in guard_text:
             fail(f"scripts/require-crit-review.py must contain Crit guard token {token!r}")
     readme = (ROOT / "README.md").read_text()
-    for token in ("scripts/require-crit-review.py", "AGENT_REVIEWED=1", "REVIEW_EVIDENCE", "human or external reviewer", "CRIT_REVIEW=off"):
+    for token in ("scripts/require-crit-review.py", "AGENT_REVIEWED=1", "REVIEW_EVIDENCE", "review_source", "crit-data", "CRIT_REVIEW=off"):
         if token not in readme:
             fail(f"README.md must document Crit guard token {token!r}")
 

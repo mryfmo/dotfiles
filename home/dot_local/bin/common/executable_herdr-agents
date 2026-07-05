@@ -10,7 +10,7 @@ set -euo pipefail
 
 # @description Print usage information.
 function usage() {
-	cat <<'USAGE'
+    cat << 'USAGE'
 Usage: herdr-agents [DIR]
 
 Create a Herdr workspace for DIR, start Claude Code above Codex, and open DIR
@@ -19,29 +19,34 @@ USAGE
 }
 
 # @description Extract a Herdr workspace id from JSON on stdin.
-function json_id() {
-	jq -r '.id // .workspace.id // empty' 2>/dev/null || true
+function json_workspace_id() {
+    jq -r '.result.workspace.workspace_id // .workspace.workspace_id // .workspace_id // empty' 2> /dev/null || true
+}
+
+# @description Extract the initial Herdr pane id from workspace JSON on stdin.
+function json_root_pane_id() {
+    jq -r '.result.root_pane.pane_id // .root_pane.pane_id // .pane_id // empty' 2> /dev/null || true
 }
 
 # @description Require a command before starting a partial layout.
 # @arg $1 string Command name.
 function require_command() {
-	local command_name="$1"
+    local command_name="$1"
 
-	if ! command -v "${command_name}" >/dev/null 2>&1; then
-		printf '%s command not found\n' "${command_name}" >&2
-		exit 127
-	fi
+    if ! command -v "${command_name}" > /dev/null 2>&1; then
+        printf '%s command not found\n' "${command_name}" >&2
+        exit 127
+    fi
 }
 
 if [[ ${1:-} == "--help" || ${1:-} == "-h" ]]; then
-	usage
-	exit 0
+    usage
+    exit 0
 fi
 
 if [[ $# -gt 1 ]]; then
-	usage >&2
-	exit 2
+    usage >&2
+    exit 2
 fi
 
 require_command herdr
@@ -55,18 +60,24 @@ workdir="$PWD"
 workspace_label="$(basename "${workdir}") agents"
 
 workspace_json="$(herdr workspace create --cwd "${workdir}" --label "${workspace_label}" --focus)"
-workspace_id="$(printf '%s\n' "${workspace_json}" | json_id)"
+workspace_id="$(printf '%s\n' "${workspace_json}" | json_workspace_id)"
+root_pane_id="$(printf '%s\n' "${workspace_json}" | json_root_pane_id)"
 
 if [[ -z ${workspace_id} ]]; then
-	printf 'Unable to read Herdr workspace id from: %s\n' "${workspace_json}" >&2
-	exit 1
+    printf 'Unable to read Herdr workspace id from: %s\n' "${workspace_json}" >&2
+    exit 1
 fi
 
-herdr agent start claude --cwd "${workdir}" --workspace "${workspace_id}" --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --focus -- claude
+if [[ -z ${root_pane_id} ]]; then
+    printf 'Unable to read Herdr root pane id from: %s\n' "${workspace_json}" >&2
+    exit 1
+fi
+
+herdr pane run "${root_pane_id}" "CLICOLOR_FORCE=1 FORCE_COLOR=1 claude"
 herdr agent start codex --cwd "${workdir}" --workspace "${workspace_id}" --split down --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex
 
-if command -v zed >/dev/null 2>&1; then
-	zed "${workdir}" >/dev/null 2>&1 &
+if command -v zed > /dev/null 2>&1; then
+    zed "${workdir}" > /dev/null 2>&1 &
 fi
 
 printf 'Herdr agents workspace: %s\n' "${workspace_id}"

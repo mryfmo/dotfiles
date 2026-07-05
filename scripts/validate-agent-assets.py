@@ -194,6 +194,8 @@ def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
         fail(f"{codex_path} should default to workspace-write sandbox")
     if data.get("sandbox_workspace_write", {}).get("network_access") is not False:
         fail(f"{codex_path} should keep sandbox command network access disabled")
+    if data.get("sandbox_workspace_write") != manifest_codex.get("sandbox_workspace_write"):
+        fail(f"{codex_path} must render codex.sandbox_workspace_write from the shared manifest")
     features = data.get("features", {})
     for feature in ("plugins", "hooks", "plugin_hooks"):
         if features.get(feature) is not True:

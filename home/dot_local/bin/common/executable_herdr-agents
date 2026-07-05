@@ -18,7 +18,7 @@ in Zed when available. DIR defaults to the current directory.
 USAGE
 }
 
-# @description Extract a Herdr workspace id from JSON on stdin.
+# @description Extract a Herdr workspace id from workspace JSON on stdin.
 function json_workspace_id() {
     jq -r '.result.workspace.workspace_id // .workspace.workspace_id // .workspace_id // empty' 2> /dev/null || true
 }

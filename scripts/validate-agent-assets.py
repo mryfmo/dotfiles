@@ -157,6 +157,8 @@ def validate_agmsg_script_modes() -> None:
     entrypoint_dirs = [scripts_root, scripts_root / "release"]
     for entrypoint_dir in entrypoint_dirs:
         for path in sorted(entrypoint_dir.glob("*.sh")):
+            if not path.name.startswith("executable_"):
+                fail(f"{path.relative_to(ROOT)} must use chezmoi executable_ prefix")
             if path.stat().st_mode & 0o111 == 0:
                 fail(f"{path.relative_to(ROOT)} must stay executable for direct invocation")
 

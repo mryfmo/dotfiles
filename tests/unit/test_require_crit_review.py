@@ -6,6 +6,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -44,7 +45,18 @@ class ReviewGuardTest(unittest.TestCase):
         shutil.rmtree(self.temp_dir)
 
     def guard(self, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
-        return run(["python3", str(GUARD)], self.temp_dir, env)
+        return run([sys.executable, str(GUARD)], self.temp_dir, env)
+
+    def touch_lifecycle_script(self) -> None:
+        scripts_dir = self.temp_dir / "scripts"
+        scripts_dir.mkdir(exist_ok=True)
+        (scripts_dir / "update-agent-assets.sh").write_text("#!/usr/bin/env bash\n")
+
+    def write_review_file(self, relative_path: str, content: str) -> Path:
+        path = self.temp_dir / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+        return path
 
     def test_no_diff_does_not_require_review(self) -> None:
         result = self.guard()
@@ -66,9 +78,7 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertIn("agent lifecycle", result.stdout)
 
     def test_agent_lifecycle_script_change_requires_review(self) -> None:
-        scripts_dir = self.temp_dir / "scripts"
-        scripts_dir.mkdir()
-        (scripts_dir / "update-agent-assets.sh").write_text("#!/usr/bin/env bash\n")
+        self.touch_lifecycle_script()
         result = self.guard()
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn("Native agent review required", result.stdout)
@@ -89,85 +99,158 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertIn("broad diff changes", result.stdout)
 
     def test_reviewed_environment_satisfies_required_review(self) -> None:
-        scripts_dir = self.temp_dir / "scripts"
-        scripts_dir.mkdir()
-        (scripts_dir / "update-agent-assets.sh").write_text("#!/usr/bin/env bash\n")
-        evidence = self.temp_dir / ".agents/worklog/review/crit.md"
-        evidence.parent.mkdir(parents=True)
-        evidence.write_text("review_surface: crit-web\nreviewer: user\nreview_outcome: approved\n")
+        self.touch_lifecycle_script()
+        evidence = self.write_review_file(
+            ".agents/worklog/review/crit.md",
+            "review_surface: crit-web\nreviewer: user\nreview_outcome: approved\n",
+        )
         result = self.guard({"CRIT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("CRIT_REVIEWED=1", result.stdout)
 
     def test_native_reviewed_environment_satisfies_required_review(self) -> None:
-        scripts_dir = self.temp_dir / "scripts"
-        scripts_dir.mkdir()
-        (scripts_dir / "update-agent-assets.sh").write_text("#!/usr/bin/env bash\n")
-        evidence = self.temp_dir / ".agents/worklog/review/native.md"
-        evidence.parent.mkdir(parents=True)
-        evidence.write_text("review_surface: codex-/review\nreviewer: user\nreview_outcome: addressed\n")
+        self.touch_lifecycle_script()
+        evidence = self.write_review_file(
+            ".agents/worklog/review/native.md",
+            "review_surface: codex-/review\nreviewer: user\nreview_outcome: addressed\n",
+        )
         result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("AGENT_REVIEWED=1", result.stdout)
 
     def test_native_reviewed_without_evidence_still_requires_review(self) -> None:
-        scripts_dir = self.temp_dir / "scripts"
-        scripts_dir.mkdir()
-        (scripts_dir / "update-agent-assets.sh").write_text("#!/usr/bin/env bash\n")
+        self.touch_lifecycle_script()
         result = self.guard({"AGENT_REVIEWED": "1"})
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn("REVIEW_EVIDENCE", result.stdout)
 
     def test_reviewed_with_incomplete_evidence_still_requires_review(self) -> None:
-        scripts_dir = self.temp_dir / "scripts"
-        scripts_dir.mkdir()
-        (scripts_dir / "update-agent-assets.sh").write_text("#!/usr/bin/env bash\n")
-        evidence = self.temp_dir / ".agents/worklog/review/incomplete.md"
-        evidence.parent.mkdir(parents=True)
-        evidence.write_text("review_surface: codex-/review\n")
+        self.touch_lifecycle_script()
+        evidence = self.write_review_file(".agents/worklog/review/incomplete.md", "review_surface: codex-/review\n")
         result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn("reviewer", result.stdout)
 
     def test_reviewed_with_blank_evidence_values_still_requires_review(self) -> None:
-        scripts_dir = self.temp_dir / "scripts"
-        scripts_dir.mkdir()
-        (scripts_dir / "update-agent-assets.sh").write_text("#!/usr/bin/env bash\n")
-        evidence = self.temp_dir / ".agents/worklog/review/blank.md"
-        evidence.parent.mkdir(parents=True)
-        evidence.write_text("review_surface:\nreviewer: user\nreview_outcome: approved\n")
+        self.touch_lifecycle_script()
+        evidence = self.write_review_file(
+            ".agents/worklog/review/blank.md",
+            "review_surface:\nreviewer: user\nreview_outcome: approved\n",
+        )
         result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn("non-empty", result.stdout)
 
     def test_agent_self_reviewer_evidence_still_requires_review(self) -> None:
-        scripts_dir = self.temp_dir / "scripts"
-        scripts_dir.mkdir()
-        (scripts_dir / "update-agent-assets.sh").write_text("#!/usr/bin/env bash\n")
-        evidence = self.temp_dir / ".agents/worklog/review/self.md"
-        evidence.parent.mkdir(parents=True)
-        evidence.write_text("review_surface: codex-/review\nreviewer: codex\nreview_outcome: approved\n")
-        result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
-        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
-        self.assertIn("must identify a human or external reviewer", result.stdout)
-
-    def test_agent_self_review_flag_evidence_still_requires_review(self) -> None:
-        scripts_dir = self.temp_dir / "scripts"
-        scripts_dir.mkdir()
-        (scripts_dir / "update-agent-assets.sh").write_text("#!/usr/bin/env bash\n")
-        evidence = self.temp_dir / ".agents/worklog/review/self-flag.md"
-        evidence.parent.mkdir(parents=True)
-        evidence.write_text(
-            "review_surface: codex-/review\nreviewer: user\nreview_outcome: approved\nagent_self_review: true\n"
+        self.touch_lifecycle_script()
+        evidence = self.write_review_file(
+            ".agents/worklog/review/self.md",
+            "review_surface: codex-/review\nreviewer: codex\nreview_outcome: approved\n",
         )
         result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
-        self.assertIn("must identify a human or external reviewer", result.stdout)
+        self.assertIn("review_surface: crit-data", result.stdout)
+
+    def test_agent_reviewer_with_crit_data_satisfies_required_review(self) -> None:
+        self.touch_lifecycle_script()
+        self.write_review_file(".agents/worklog/review/crit-comments.json", "null\n")
+        evidence = self.write_review_file(
+            ".agents/worklog/review/agent-crit-data.md",
+            "review_surface: crit-data\n"
+            "reviewer: codex\n"
+            "review_source: .agents/worklog/review/crit-comments.json\n"
+            "review_outcome: approved\n",
+        )
+        result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("AGENT_REVIEWED=1", result.stdout)
+
+    def test_agent_reviewer_with_command_string_source_still_requires_review(self) -> None:
+        self.touch_lifecycle_script()
+        evidence = self.write_review_file(
+            ".agents/worklog/review/agent-command-source.md",
+            "review_surface: crit-data\n"
+            "reviewer: codex\n"
+            "review_source: crit comments --json\n"
+            "review_outcome: approved\n",
+        )
+        result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("JSON evidence file", result.stdout)
+
+    def test_agent_reviewer_with_unresolved_crit_json_still_requires_review(self) -> None:
+        self.touch_lifecycle_script()
+        self.write_review_file(
+            ".agents/worklog/review/crit-comments.json",
+            '[{"id":"c_1","body":"fix this","resolved":false}]\n',
+        )
+        evidence = self.write_review_file(
+            ".agents/worklog/review/agent-unresolved.md",
+            "review_surface: crit-data\n"
+            "reviewer: claude-code\n"
+            "review_source: .agents/worklog/review/crit-comments.json\n"
+            "review_outcome: approved\n",
+        )
+        result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("unresolved Crit comments", result.stdout)
+
+    def test_agent_reviewer_with_non_review_crit_json_object_still_requires_review(self) -> None:
+        self.touch_lifecycle_script()
+        self.write_review_file(".agents/worklog/review/crit-comments.json", "{}\n")
+        evidence = self.write_review_file(
+            ".agents/worklog/review/agent-empty-object.md",
+            "review_surface: crit-data\n"
+            "reviewer: codex\n"
+            "review_source: .agents/worklog/review/crit-comments.json\n"
+            "review_outcome: approved\n",
+        )
+        result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("Crit review object", result.stdout)
+
+    def test_agent_reviewer_with_external_crit_json_still_requires_review(self) -> None:
+        self.touch_lifecycle_script()
+        external = Path(tempfile.mkdtemp(prefix="crit-external-")) / "comments.json"
+        self.addCleanup(lambda: shutil.rmtree(external.parent, ignore_errors=True))
+        external.write_text("null\n")
+        evidence = self.write_review_file(
+            ".agents/worklog/review/agent-external.md",
+            "review_surface: crit-data\n"
+            "reviewer: codex\n"
+            f"review_source: {external}\n"
+            "review_outcome: approved\n",
+        )
+        result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("repo-local", result.stdout)
+
+    def test_agent_reviewer_with_crit_reviewed_marker_still_requires_review(self) -> None:
+        self.touch_lifecycle_script()
+        self.write_review_file(".agents/worklog/review/crit-comments.json", "null\n")
+        evidence = self.write_review_file(
+            ".agents/worklog/review/agent-wrong-marker.md",
+            "review_surface: crit-data\n"
+            "reviewer: claude-code\n"
+            "review_source: .agents/worklog/review/crit-comments.json\n"
+            "review_outcome: approved\n",
+        )
+        result = self.guard({"CRIT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("AGENT_REVIEWED=1", result.stdout)
+
+    def test_agent_self_review_flag_evidence_still_requires_review(self) -> None:
+        self.touch_lifecycle_script()
+        evidence = self.write_review_file(
+            ".agents/worklog/review/self-flag.md",
+            "review_surface: codex-/review\nreviewer: user\nreview_outcome: approved\nagent_self_review: true\n",
+        )
+        result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("bare agent self-attestation", result.stdout)
 
     def test_explicit_disable_skips_guard(self) -> None:
-        scripts_dir = self.temp_dir / "scripts"
-        scripts_dir.mkdir()
-        (scripts_dir / "update-agent-assets.sh").write_text("#!/usr/bin/env bash\n")
+        self.touch_lifecycle_script()
         result = self.guard({"CRIT_REVIEW": "off"})
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("CRIT_REVIEW=off", result.stdout)

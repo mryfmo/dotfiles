@@ -35,6 +35,11 @@ function setup() {
     # because of the time it takes to install the cask packages.
 }
 
+@test "[macos] misc includes Herdr and Zed official Homebrew packages" {
+    [[ " ${BREW_PACKAGES[*]} " == *" herdr "* ]]
+    [[ " ${CASK_PACKAGES[*]} " == *" zed "* ]]
+}
+
 @test "[macos] install_additional_brew_packages installs tailscale only for mryfmo" {
     local calls_path="${BATS_TEST_TMPDIR}/additional_brew_calls.txt"
     : > "${calls_path}"

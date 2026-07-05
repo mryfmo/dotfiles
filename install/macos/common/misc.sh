@@ -13,6 +13,7 @@ if [ "${DOTFILES_DEBUG:-}" ]; then
 fi
 
 readonly BREW_PACKAGES=(
+    herdr
     htop
     watchexec
 )
@@ -23,6 +24,7 @@ readonly CASK_PACKAGES=(
     google-japanese-ime
     rectangle
     visual-studio-code
+    zed
 )
 
 # Additional brew packages installed only for user mryfmo.

@@ -178,9 +178,9 @@ make update
 # It only requires review for meaningful changes such as agent lifecycle,
 # hooks, plugins, permissions, scripts, or broad diffs.
 make require-crit-review
-# After reviewing in the active agent's native surface, write a receipt and
-# rerun with its path. The receipt must include review_surface, reviewer, and
-# review_outcome fields.
+# After the active agent reads Crit data, save the JSON evidence in the repo,
+# write a receipt, and rerun with its path. The receipt must include
+# review_surface, reviewer, review_source, and review_outcome fields.
 AGENT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/review/<id>.md make require-crit-review
 # Use this only after an explicit Crit web review was requested and completed:
 CRIT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/review/<id>.md make require-crit-review
@@ -204,18 +204,20 @@ with a configured PermissionRequest hook whose runtime is missing.
 It keeps small documentation-only edits from opening unnecessary reviews, but
 requires review before completion for agent lifecycle scripts, hooks, plugins,
 permission gates, shared agent rules or skills, and broad multi-file diffs.
-When review is required, use the active agent's native review surface first:
-Codex CLI `/diff` or `/review`, the Codex app Review pane for inline comments,
-or Claude Code's IDE/desktop diff and plan review surfaces. After review,
-write a receipt file and set `REVIEW_EVIDENCE` to its path. The receipt must
-include `review_surface:`, `reviewer:`, and `review_outcome:`; `reviewer` must
-identify a human or external reviewer, not the same agent's self-review. Set
-`AGENT_REVIEWED=1` only after that in-agent review has finished, feedback has
-been addressed, and evidence exists. Use Crit's browser review only when the
-user explicitly asks for Crit web UI or a native surface is unavailable; then
-set `CRIT_REVIEWED=1` with the same `REVIEW_EVIDENCE` requirement after
-finishing the Crit round. Set `CRIT_REVIEW=off` only when Crit/review is
-explicitly disabled for the task.
+When review is required, the active agent should retrieve Crit data first,
+for example with `crit comments --json`, save that output to a repo-local JSON
+evidence file under `.agents/worklog/...`, judge the findings inside the
+current task, and address any feedback. Then write a receipt file and set
+`REVIEW_EVIDENCE` to its path. For agent judgment the receipt must include
+`review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`,
+`review_source:` pointing to that JSON file, and `review_outcome:`. The guard
+parses the JSON and rejects missing files, invalid JSON, external paths, and
+unresolved Crit comments. Set `AGENT_REVIEWED=1` only after the agent has read
+the Crit data, addressed feedback, and recorded evidence. Use Crit's browser
+review only when the user explicitly asks for Crit web UI or Crit data is
+unavailable; then set `CRIT_REVIEWED=1` with the same `REVIEW_EVIDENCE`
+requirement after finishing the Crit round. Set `CRIT_REVIEW=off` only when
+Crit/review is explicitly disabled for the task.
 
 Ponytail keeps coding tasks biased toward YAGNI, existing code, standard
 library and native platform features, and the smallest correct diff. The

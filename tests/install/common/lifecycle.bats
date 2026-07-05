@@ -233,7 +233,9 @@
     grep -q 'make require-crit-review' README.md
     grep -q 'AGENT_REVIEWED=1' README.md
     grep -q 'REVIEW_EVIDENCE' README.md
-    grep -q 'human or external reviewer' README.md
+    grep -q 'crit comments --json' README.md
+    grep -q 'review_surface: crit-data' README.md
+    grep -q 'review_source:' README.md
     grep -q 'CRIT_REVIEW=off' README.md
 }
 

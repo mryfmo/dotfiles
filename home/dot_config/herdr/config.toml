@@ -1,0 +1,41 @@
+onboarding = false
+
+[update]
+channel = "stable"
+version_check = true
+manifest_check = true
+
+[terminal]
+shell_mode = "auto"
+new_cwd = "follow"
+
+[theme]
+name = "terminal"
+
+[ui]
+agent_panel_sort = "priority"
+confirm_close = true
+
+[ui.toast]
+delivery = "off"
+delay_seconds = 1
+
+[ui.sound]
+enabled = false
+
+[[keys.command]]
+key = "prefix+alt+z"
+type = "shell"
+command = 'zed "${HERDR_ACTIVE_PANE_CWD:-$PWD}"'
+description = "open active pane in Zed"
+
+[[keys.command]]
+key = "prefix+alt+a"
+type = "shell"
+command = 'herdr-agents "${HERDR_ACTIVE_PANE_CWD:-$PWD}"'
+description = "open Claude Code and Codex workspace"
+
+[experimental]
+switch_ascii_input_source_in_prefix = true
+reveal_hidden_cursor_for_cjk_ime = true
+cjk_ime_agents = ["claude", "codex", "gemini", "cursor", "opencode", "hermes"]

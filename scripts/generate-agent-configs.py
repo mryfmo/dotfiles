@@ -103,7 +103,7 @@ def render_codex(manifest: dict[str, Any]) -> str:
                 lines.append(f"{quote_toml_key(str(nested_key))} = {quote_toml(nested_value)}")
     lines.extend(["", "[sandbox_workspace_write]"])
     lines.append(f"network_access = {quote_toml(codex['sandbox_workspace_write']['network_access'])}")
-    if codex["sandbox_workspace_write"].get("writable_roots"):
+    if codex["sandbox_workspace_write"].get("writable_roots") is not None:
         lines.append(f"writable_roots = {quote_toml(codex['sandbox_workspace_write']['writable_roots'])}")
     lines.extend(["", "[shell_environment_policy]"])
     for key, value in codex["shell_environment_policy"].items():

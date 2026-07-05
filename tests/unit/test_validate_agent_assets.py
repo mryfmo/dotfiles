@@ -8,7 +8,6 @@ import importlib.util
 import io
 import shutil
 import tempfile
-import textwrap
 import unittest
 from pathlib import Path
 
@@ -39,25 +38,26 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
     def write_codex_config(self, sandbox_workspace_write: str) -> None:
         (self.temp_dir / "home/dot_codex/private_config.toml.tmpl").write_text(
-            textwrap.dedent(
-                f"""\
-                #:schema https://developers.openai.com/codex/config-schema.json
-                model = "gpt-5.5"
-                model_reasoning_effort = "high"
-                sandbox_mode = "workspace-write"
-
-                [sandbox_workspace_write]
-                {sandbox_workspace_write}
-
-                [features]
-                plugins = true
-                hooks = true
-                plugin_hooks = true
-
-                [shell_environment_policy]
-                inherit = "core"
-                set = {{ PATH = "{{{{ .chezmoi.homeDir }}}}/.local/bin:/usr/bin:/bin" }}
-                """
+            "\n".join(
+                [
+                    "#:schema https://developers.openai.com/codex/config-schema.json",
+                    'model = "gpt-5.5"',
+                    'model_reasoning_effort = "high"',
+                    'sandbox_mode = "workspace-write"',
+                    "",
+                    "[sandbox_workspace_write]",
+                    sandbox_workspace_write,
+                    "",
+                    "[features]",
+                    "plugins = true",
+                    "hooks = true",
+                    "plugin_hooks = true",
+                    "",
+                    "[shell_environment_policy]",
+                    'inherit = "core"',
+                    'set = { PATH = "{{ .chezmoi.homeDir }}/.local/bin:/usr/bin:/bin" }',
+                    "",
+                ]
             )
         )
 
@@ -85,6 +85,32 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_codex_config(manifest)
+
+    def test_codex_sandbox_workspace_write_accepts_matching_manifest(self) -> None:
+        self.write_codex_config(
+            'network_access = false\nwritable_roots = ["{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db"]'
+        )
+        manifest = {
+            "codex": {
+                "model": "gpt-5.5",
+                "model_reasoning_effort": "high",
+                "sandbox_workspace_write": {
+                    "network_access": False,
+                    "writable_roots": ["{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db"],
+                },
+                "shell_environment_policy": {
+                    "inherit": "core",
+                    "set": {"PATH": "{{ .chezmoi.homeDir }}/.local/bin:/usr/bin:/bin"},
+                },
+                "tui": {},
+                "plugins": {},
+                "marketplaces": {},
+                "hooks": {},
+                "projects": {},
+            }
+        }
+
+        self.module.validate_codex_config(manifest)
 
 
 if __name__ == "__main__":

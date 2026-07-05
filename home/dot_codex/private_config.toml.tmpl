@@ -20,6 +20,7 @@ status_line = ["model-with-reasoning", "context-remaining", "used-tokens", "tota
 
 [sandbox_workspace_write]
 network_access = false
+writable_roots = ["{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db", "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/teams", "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/run"]
 
 [shell_environment_policy]
 inherit = "core"

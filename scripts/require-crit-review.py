@@ -262,15 +262,21 @@ def unresolved_crit_comments(data: object) -> list[object] | None:
         return [comment for comment in data if comment_is_unresolved(comment)]
     if isinstance(data, dict):
         comments: list[object] = []
+        has_comment_container = False
         if isinstance(data.get("comments"), list):
+            has_comment_container = True
             comments.extend(data["comments"])
         if isinstance(data.get("review_comments"), list):
+            has_comment_container = True
             comments.extend(data["review_comments"])
         files = data.get("files")
         if isinstance(files, dict):
+            has_comment_container = True
             for file_review in files.values():
                 if isinstance(file_review, dict) and isinstance(file_review.get("comments"), list):
                     comments.extend(file_review["comments"])
+        if not has_comment_container:
+            return None
         return [comment for comment in comments if comment_is_unresolved(comment)]
     return None
 

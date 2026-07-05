@@ -204,6 +204,24 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn("unresolved Crit comments", result.stdout)
 
+    def test_agent_reviewer_with_non_review_crit_json_object_still_requires_review(self) -> None:
+        scripts_dir = self.temp_dir / "scripts"
+        scripts_dir.mkdir()
+        (scripts_dir / "update-agent-assets.sh").write_text("#!/usr/bin/env bash\n")
+        crit_data = self.temp_dir / ".agents/worklog/review/crit-comments.json"
+        crit_data.parent.mkdir(parents=True)
+        crit_data.write_text("{}\n")
+        evidence = self.temp_dir / ".agents/worklog/review/agent-empty-object.md"
+        evidence.write_text(
+            "review_surface: crit-data\n"
+            "reviewer: codex\n"
+            "review_source: .agents/worklog/review/crit-comments.json\n"
+            "review_outcome: approved\n"
+        )
+        result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("Crit review object", result.stdout)
+
     def test_agent_reviewer_with_external_crit_json_still_requires_review(self) -> None:
         scripts_dir = self.temp_dir / "scripts"
         scripts_dir.mkdir()

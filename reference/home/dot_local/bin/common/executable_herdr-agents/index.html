@@ -3312,7 +3312,8 @@
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>json_id</code></li>
+<li><code>json_root_pane_id</code></li>
+<li><code>json_workspace_id</code></li>
 <li><code>require_command</code></li>
 <li><code>usage</code></li>
 </ul>
@@ -3329,7 +3330,7 @@
 
 <span class="c1"># @description Print usage information.</span>
 <span class="k">function</span><span class="w"> </span>usage<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>cat<span class="w"> </span><span class="s">&lt;&lt;&#39;USAGE&#39;</span>
+<span class="w">    </span>cat<span class="w"> </span><span class="s">&lt;&lt; &#39;USAGE&#39;</span>
 <span class="s">Usage: herdr-agents [DIR]</span>
 
 <span class="s">Create a Herdr workspace for DIR, start Claude Code above Codex, and open DIR</span>
@@ -3337,9 +3338,14 @@
 <span class="s">USAGE</span>
 <span class="o">}</span>
 
-<span class="c1"># @description Extract a Herdr workspace id from JSON on stdin.</span>
-<span class="k">function</span><span class="w"> </span>json_id<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">&#39;.id // .workspace.id // empty&#39;</span><span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="c1"># @description Extract a Herdr workspace id from workspace JSON on stdin.</span>
+<span class="k">function</span><span class="w"> </span>json_workspace_id<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">&#39;.result.workspace.workspace_id // .workspace.workspace_id // .workspace_id // empty&#39;</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Extract the initial Herdr pane id from workspace JSON on stdin.</span>
+<span class="k">function</span><span class="w"> </span>json_root_pane_id<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">&#39;.result.root_pane.pane_id // .root_pane.pane_id // .pane_id // empty&#39;</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 <span class="o">}</span>
 
 <span class="c1"># @description Require a command before starting a partial layout.</span>
@@ -3347,7 +3353,7 @@
 <span class="k">function</span><span class="w"> </span>require_command<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">command_name</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">command_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">command_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s command not found\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">command_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">127</span>
 <span class="w">    </span><span class="k">fi</span>
@@ -3374,18 +3380,24 @@ require_command<span class="w"> </span>codex
 <span class="nv">workspace_label</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>basename<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2"> agents&quot;</span>
 
 <span class="nv">workspace_json</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>herdr<span class="w"> </span>workspace<span class="w"> </span>create<span class="w"> </span>--cwd<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--label<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workspace_label</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--focus<span class="k">)</span><span class="s2">&quot;</span>
-<span class="nv">workspace_id</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workspace_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>json_id<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nv">workspace_id</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workspace_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>json_workspace_id<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nv">root_pane_id</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workspace_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>json_root_pane_id<span class="k">)</span><span class="s2">&quot;</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Unable to read Herdr workspace id from: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workspace_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
 <span class="k">fi</span>
 
-herdr<span class="w"> </span>agent<span class="w"> </span>start<span class="w"> </span>claude<span class="w"> </span>--cwd<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--workspace<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--env<span class="w"> </span><span class="nv">CLICOLOR_FORCE</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>--env<span class="w"> </span><span class="nv">FORCE_COLOR</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>--focus<span class="w"> </span>--<span class="w"> </span>claude
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">root_pane_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Unable to read Herdr root pane id from: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workspace_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="k">fi</span>
+
+herdr<span class="w"> </span>pane<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">root_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;CLICOLOR_FORCE=1 FORCE_COLOR=1 claude&quot;</span>
 herdr<span class="w"> </span>agent<span class="w"> </span>start<span class="w"> </span>codex<span class="w"> </span>--cwd<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--workspace<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--split<span class="w"> </span>down<span class="w"> </span>--env<span class="w"> </span><span class="nv">CLICOLOR_FORCE</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>--env<span class="w"> </span><span class="nv">FORCE_COLOR</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>--no-focus<span class="w"> </span>--<span class="w"> </span>codex
 
-<span class="k">if</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>zed<span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span>zed<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">&amp;</span>
+<span class="k">if</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>zed<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span>zed<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">&amp;</span>
 <span class="k">fi</span>
 
 <span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Herdr agents workspace: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">&quot;</span>

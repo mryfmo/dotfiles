@@ -6,6 +6,7 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import json
 import shutil
 import tempfile
 import unittest
@@ -14,6 +15,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 VALIDATOR = ROOT / "scripts/validate-agent-assets.py"
+REQUIRED_AGMSG_WRITABLE_ROOTS = [
+    "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db",
+    "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/teams",
+    "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/run",
+]
 
 
 def load_validator():
@@ -75,7 +81,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 "model_reasoning_effort": "high",
                 "sandbox_workspace_write": {
                     "network_access": False,
-                    "writable_roots": ["{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db"],
+                    "writable_roots": REQUIRED_AGMSG_WRITABLE_ROOTS,
                 },
                 "shell_environment_policy": {
                     "inherit": "core",
@@ -94,7 +100,8 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
     def test_codex_sandbox_workspace_write_accepts_matching_manifest(self) -> None:
         self.write_codex_config(
-            'network_access = false\nwritable_roots = ["{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db"]'
+            "network_access = false\nwritable_roots = "
+            f"{json.dumps(REQUIRED_AGMSG_WRITABLE_ROOTS)}"
         )
         manifest = {
             "codex": {
@@ -102,7 +109,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 "model_reasoning_effort": "high",
                 "sandbox_workspace_write": {
                     "network_access": False,
-                    "writable_roots": ["{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db"],
+                    "writable_roots": REQUIRED_AGMSG_WRITABLE_ROOTS,
                 },
                 "shell_environment_policy": {
                     "inherit": "core",
@@ -117,6 +124,32 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         }
 
         self.module.validate_codex_config(manifest)
+
+    def test_codex_sandbox_workspace_write_requires_all_agmsg_roots(self) -> None:
+        roots = ["{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db"]
+        self.write_codex_config("network_access = false\nwritable_roots = " + json.dumps(roots))
+        manifest = {
+            "codex": {
+                "model": "gpt-5.5",
+                "model_reasoning_effort": "high",
+                "sandbox_workspace_write": {
+                    "network_access": False,
+                    "writable_roots": roots,
+                },
+                "shell_environment_policy": {
+                    "inherit": "core",
+                    "set": {"PATH": "{{ .chezmoi.homeDir }}/.local/bin:/usr/bin:/bin"},
+                },
+                "tui": {},
+                "plugins": {},
+                "marketplaces": {},
+                "hooks": {},
+                "projects": {},
+            }
+        }
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_codex_config(manifest)
 
     def test_agmsg_script_modes_accept_prefixed_entrypoints_and_lib_helpers(self) -> None:
         self.write_agmsg_script("executable_send.sh")

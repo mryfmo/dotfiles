@@ -34,6 +34,11 @@ SECRET_PATTERN = re.compile(
 DEPRECATED_MCP_PACKAGES = {
     "@modelcontextprotocol/server-github": "Use the official ghcr.io/github/github-mcp-server container instead.",
 }
+REQUIRED_AGMSG_WRITABLE_ROOTS = {
+    "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db",
+    "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/teams",
+    "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/run",
+}
 
 
 def fail(message: str) -> None:
@@ -163,6 +168,13 @@ def validate_agmsg_script_modes() -> None:
                 fail(f"{path.relative_to(ROOT)} must stay executable for direct invocation")
 
 
+def validate_codex_agmsg_writable_roots(sandbox_workspace_write: dict[str, Any], label: str) -> None:
+    writable_roots = sandbox_workspace_write.get("writable_roots", [])
+    missing = REQUIRED_AGMSG_WRITABLE_ROOTS - set(writable_roots)
+    if missing:
+        fail(f"{label} must include agmsg writable roots: missing={sorted(missing)}")
+
+
 def validate_claude_settings() -> None:
     settings_path = ROOT / "home/dot_claude/private_settings.json"
     settings = json.loads(settings_path.read_text())
@@ -196,6 +208,7 @@ def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
         fail(f"{codex_path} should default to workspace-write sandbox")
     if data.get("sandbox_workspace_write", {}).get("network_access") is not False:
         fail(f"{codex_path} should keep sandbox command network access disabled")
+    validate_codex_agmsg_writable_roots(manifest_codex.get("sandbox_workspace_write", {}), "codex.sandbox_workspace_write")
     if data.get("sandbox_workspace_write") != manifest_codex.get("sandbox_workspace_write"):
         fail(f"{codex_path} must render codex.sandbox_workspace_write from the shared manifest")
     features = data.get("features", {})

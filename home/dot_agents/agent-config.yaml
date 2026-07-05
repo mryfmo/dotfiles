@@ -9,6 +9,8 @@
 # - Keep MCP servers disabled by default; enable only after checking scope and credentials.
 # - Store credentials as environment-variable references or inherited environment only.
 # - Use current maintained MCP servers; deprecated packages are rejected by validation.
+# - Keep Codex writable roots for shared agmsg state under codex.sandbox_workspace_write.
+# - Name direct agmsg entrypoint sources with chezmoi executable_ prefixes.
 
 schema_version: 1
 

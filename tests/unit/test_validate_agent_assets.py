@@ -61,6 +61,12 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             )
         )
 
+    def write_agmsg_script(self, relative_path: str, executable: bool = True) -> None:
+        path = self.temp_dir / "home/dot_agents/skills/agmsg/scripts" / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("#!/bin/sh\n")
+        path.chmod(0o755 if executable else 0o644)
+
     def test_codex_sandbox_workspace_write_must_match_manifest(self) -> None:
         self.write_codex_config("network_access = false")
         manifest = {
@@ -111,6 +117,25 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         }
 
         self.module.validate_codex_config(manifest)
+
+    def test_agmsg_script_modes_accept_prefixed_entrypoints_and_lib_helpers(self) -> None:
+        self.write_agmsg_script("executable_send.sh")
+        self.write_agmsg_script("release/executable_sync-version.sh")
+        self.write_agmsg_script("lib/storage.sh", executable=False)
+
+        self.module.validate_agmsg_script_modes()
+
+    def test_agmsg_script_modes_reject_unprefixed_direct_entrypoint(self) -> None:
+        self.write_agmsg_script("send.sh")
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_agmsg_script_modes()
+
+    def test_agmsg_script_modes_reject_non_executable_prefixed_entrypoint(self) -> None:
+        self.write_agmsg_script("executable_send.sh", executable=False)
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_agmsg_script_modes()
 
 
 if __name__ == "__main__":

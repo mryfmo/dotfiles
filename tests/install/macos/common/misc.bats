@@ -35,8 +35,8 @@ function setup() {
     # because of the time it takes to install the cask packages.
 }
 
-@test "[macos] misc includes Herdr and Zed official Homebrew packages" {
-    [[ " ${BREW_PACKAGES[*]} " == *" herdr "* ]]
+@test "[macos] misc leaves Herdr to mise and includes Zed cask" {
+    [[ " ${BREW_PACKAGES[*]} " != *" herdr "* ]]
     [[ " ${CASK_PACKAGES[*]} " == *" zed "* ]]
 }
 

@@ -13,7 +13,6 @@ if [ "${DOTFILES_DEBUG:-}" ]; then
 fi
 
 readonly BREW_PACKAGES=(
-    herdr
     htop
     watchexec
 )

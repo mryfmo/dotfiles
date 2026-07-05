@@ -49,6 +49,6 @@ function teardown() {
 }
 
 @test "[common] herdr is installed by mise on Linux and macOS" {
-    run grep -F 'herdr = "latest"' home/dot_mise/config.toml
+    run grep -F '"github:ogulcancelik/herdr" = "latest"' home/dot_mise/config.toml
     [ "${status}" -eq 0 ]
 }

@@ -32,6 +32,7 @@ shfmt = "latest"
 "github:x-motemen/ghq" = "latest"
 "github:d-kuro/gwq" = "latest"
 "github:cli/cli" = "latest"
+"github:ogulcancelik/herdr" = "latest"
 "github:shuntaka9576/blocc" = { version = "latest", os = ["linux/x64"] }
 
 "cargo:pueue" = "latest"

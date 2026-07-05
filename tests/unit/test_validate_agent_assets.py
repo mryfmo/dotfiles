@@ -6,6 +6,7 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import json
 import shutil
 import tempfile
 import unittest
@@ -30,6 +31,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.old_root = self.module.ROOT
         self.temp_dir = Path(tempfile.mkdtemp(prefix="validate-agent-assets-test-"))
         self.module.ROOT = self.temp_dir
+        self.required_agmsg_writable_roots = sorted(self.module.REQUIRED_AGMSG_WRITABLE_ROOTS)
         (self.temp_dir / "home/dot_codex").mkdir(parents=True)
 
     def tearDown(self) -> None:
@@ -75,7 +77,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 "model_reasoning_effort": "high",
                 "sandbox_workspace_write": {
                     "network_access": False,
-                    "writable_roots": ["{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db"],
+                    "writable_roots": self.required_agmsg_writable_roots,
                 },
                 "shell_environment_policy": {
                     "inherit": "core",
@@ -94,7 +96,8 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
     def test_codex_sandbox_workspace_write_accepts_matching_manifest(self) -> None:
         self.write_codex_config(
-            'network_access = false\nwritable_roots = ["{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db"]'
+            "network_access = false\nwritable_roots = "
+            f"{json.dumps(self.required_agmsg_writable_roots)}"
         )
         manifest = {
             "codex": {
@@ -102,7 +105,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 "model_reasoning_effort": "high",
                 "sandbox_workspace_write": {
                     "network_access": False,
-                    "writable_roots": ["{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db"],
+                    "writable_roots": self.required_agmsg_writable_roots,
                 },
                 "shell_environment_policy": {
                     "inherit": "core",
@@ -117,6 +120,32 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         }
 
         self.module.validate_codex_config(manifest)
+
+    def test_codex_sandbox_workspace_write_requires_all_agmsg_roots(self) -> None:
+        roots = ["{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db"]
+        self.write_codex_config("network_access = false\nwritable_roots = " + json.dumps(roots))
+        manifest = {
+            "codex": {
+                "model": "gpt-5.5",
+                "model_reasoning_effort": "high",
+                "sandbox_workspace_write": {
+                    "network_access": False,
+                    "writable_roots": roots,
+                },
+                "shell_environment_policy": {
+                    "inherit": "core",
+                    "set": {"PATH": "{{ .chezmoi.homeDir }}/.local/bin:/usr/bin:/bin"},
+                },
+                "tui": {},
+                "plugins": {},
+                "marketplaces": {},
+                "hooks": {},
+                "projects": {},
+            }
+        }
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_codex_config(manifest)
 
     def test_agmsg_script_modes_accept_prefixed_entrypoints_and_lib_helpers(self) -> None:
         self.write_agmsg_script("executable_send.sh")

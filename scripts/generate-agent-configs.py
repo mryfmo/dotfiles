@@ -454,6 +454,10 @@ def render_claude_skill_symlink(source_file: Path) -> str:
     return "{{ .chezmoi.sourceDir }}/" + str(rel) + "\n"
 
 
+def chezmoi_target_name(source_name: str) -> str:
+    return source_name.removeprefix("executable_")
+
+
 def claude_skill_symlink_outputs() -> dict[Path, str]:
     outputs: dict[Path, str] = {}
     skills_root = ROOT / "home/dot_agents/skills"
@@ -464,8 +468,9 @@ def claude_skill_symlink_outputs() -> dict[Path, str]:
         if source_file.name.startswith("."):
             continue
         rel = source_file.relative_to(skills_root)
-        target_dir = claude_root / rel.parent
-        outputs[target_dir / f"symlink_{rel.name}.tmpl"] = render_claude_skill_symlink(source_file)
+        target_path = rel.with_name(chezmoi_target_name(rel.name))
+        target_dir = claude_root / target_path.parent
+        outputs[target_dir / f"symlink_{target_path.name}.tmpl"] = render_claude_skill_symlink(source_file)
     return outputs
 
 

@@ -15,11 +15,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 VALIDATOR = ROOT / "scripts/validate-agent-assets.py"
-REQUIRED_AGMSG_WRITABLE_ROOTS = [
-    "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db",
-    "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/teams",
-    "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/run",
-]
 
 
 def load_validator():
@@ -36,6 +31,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.old_root = self.module.ROOT
         self.temp_dir = Path(tempfile.mkdtemp(prefix="validate-agent-assets-test-"))
         self.module.ROOT = self.temp_dir
+        self.required_agmsg_writable_roots = sorted(self.module.REQUIRED_AGMSG_WRITABLE_ROOTS)
         (self.temp_dir / "home/dot_codex").mkdir(parents=True)
 
     def tearDown(self) -> None:
@@ -81,7 +77,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 "model_reasoning_effort": "high",
                 "sandbox_workspace_write": {
                     "network_access": False,
-                    "writable_roots": REQUIRED_AGMSG_WRITABLE_ROOTS,
+                    "writable_roots": self.required_agmsg_writable_roots,
                 },
                 "shell_environment_policy": {
                     "inherit": "core",
@@ -101,7 +97,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
     def test_codex_sandbox_workspace_write_accepts_matching_manifest(self) -> None:
         self.write_codex_config(
             "network_access = false\nwritable_roots = "
-            f"{json.dumps(REQUIRED_AGMSG_WRITABLE_ROOTS)}"
+            f"{json.dumps(self.required_agmsg_writable_roots)}"
         )
         manifest = {
             "codex": {
@@ -109,7 +105,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 "model_reasoning_effort": "high",
                 "sandbox_workspace_write": {
                     "network_access": False,
-                    "writable_roots": REQUIRED_AGMSG_WRITABLE_ROOTS,
+                    "writable_roots": self.required_agmsg_writable_roots,
                 },
                 "shell_environment_policy": {
                     "inherit": "core",

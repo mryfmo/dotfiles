@@ -201,17 +201,19 @@ with a configured PermissionRequest hook whose runtime is missing.
 
 ### Herdr and Ghostty agent workspace
 
-Ghostty starts the Herdr agent workspace through the managed
-`~/.config/ghostty/config.ghostty` file. The first Ghostty terminal surface runs
-a chezmoi-rendered absolute `initial-command` pointing at
-`~/.local/bin/common/herdr-ghostty-agents`; that launcher calls `herdr-agents`
-to create the Claude Code over Codex layout, then `exec`s `herdr` so the
-terminal attaches to the Herdr UI. The layout itself stays centralized in
-`herdr-agents`, which is also bound inside Herdr at `prefix+alt+a`.
+Ghostty starts as a normal terminal; `~/.config/ghostty/config.ghostty` must not
+set a Herdr `initial-command`. In Ghostty zsh sessions, bare `herdr` calls
+`herdr-agents` to create the Claude Code over Codex layout. Argumented Herdr
+calls such as `herdr --remote` and `herdr server reload-config` still run the
+real Herdr CLI. Outside Ghostty, bare `herdr` also runs the real Herdr CLI.
+
+The layout itself stays centralized in `herdr-agents`, which is also bound
+inside Herdr at `prefix+alt+a`.
 
 Verification for this flow lives in `tests/unit/test_herdr_agents.py`: it checks
-the Ghostty `initial-command`, the launcher call order, and the Herdr
-`prefix+alt+a` command binding.
+the Ghostty config keeps normal shell startup, bare `herdr` routing in Ghostty,
+argumented `herdr` routing in Ghostty, bare `herdr` routing outside Ghostty, and
+the Herdr `prefix+alt+a` command binding.
 
 `make require-crit-review` is the mechanical review gate for agents
 (`scripts/require-crit-review.py` is the underlying script).

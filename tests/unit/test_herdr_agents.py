@@ -15,9 +15,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "home/dot_local/bin/common/executable_herdr-agents"
-GHOSTTY_SCRIPT = ROOT / "home/dot_local/bin/common/executable_herdr-ghostty-agents"
 HERDR_CONFIG = ROOT / "home/dot_config/herdr/config.toml"
 GHOSTTY_CONFIG = ROOT / "home/dot_config/ghostty/config.ghostty.tmpl"
+ZSHRC = ROOT / "home/dot_zshrc"
 
 
 class HerdrAgentsTest(unittest.TestCase):
@@ -84,13 +84,11 @@ fi
         self.assertEqual(command["type"], "shell")
         self.assertEqual(command["command"], 'herdr-agents "${HERDR_ACTIVE_PANE_CWD:-$PWD}"')
 
-    def test_ghostty_initial_command_uses_launcher(self) -> None:
-        self.assertIn(
-            "initial-command = {{ .chezmoi.homeDir }}/.local/bin/common/herdr-ghostty-agents",
-            GHOSTTY_CONFIG.read_text(),
+    def run_zshrc_herdr(self, command: str, *, ghostty: bool) -> subprocess.CompletedProcess[str]:
+        self.write_executable(
+            "sheldon",
+            "#!/usr/bin/env bash\nif [[ ${1:-} == source ]]; then exit 0; fi\n",
         )
-
-    def test_ghostty_launcher_matches_documented_autostart_flow(self) -> None:
         self.write_executable(
             "herdr-agents",
             f"""#!/usr/bin/env bash
@@ -106,8 +104,13 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         env = os.environ.copy()
         env["PATH"] = f"{self.bin_dir}{os.pathsep}{env['PATH']}"
-        result = subprocess.run(
-            ["bash", str(GHOSTTY_SCRIPT)],
+        if ghostty:
+            env["GHOSTTY_RESOURCES_DIR"] = str(self.temp_dir / "ghostty")
+        else:
+            env.pop("GHOSTTY_RESOURCES_DIR", None)
+
+        return subprocess.run(
+            ["zsh", "-fc", f"source {ZSHRC}; {command}"],
             cwd=self.workdir,
             env=env,
             check=False,
@@ -116,43 +119,31 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             stderr=subprocess.PIPE,
         )
 
+    def test_ghostty_config_keeps_normal_shell_startup(self) -> None:
+        self.assertNotIn("initial-command", GHOSTTY_CONFIG.read_text())
+
+    def test_bare_herdr_in_ghostty_starts_agent_layout(self) -> None:
+        result = self.run_zshrc_herdr("herdr", ghostty=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(
             self.calls_path.read_text().splitlines(),
-            [f"herdr-agents {self.workdir.resolve()}", "herdr "],
+            [f"herdr-agents {self.workdir.resolve()}"],
         )
 
-    def test_ghostty_launcher_attaches_when_agent_setup_fails(self) -> None:
-        self.write_executable(
-            "herdr-agents",
-            f"""#!/usr/bin/env bash
-printf 'herdr-agents %s\\n' "$1" >> {self.calls_path}
-exit 42
-""",
-        )
-        self.write_executable(
-            "herdr",
-            f"""#!/usr/bin/env bash
-printf 'herdr %s\\n' "$*" >> {self.calls_path}
-""",
-        )
-
-        env = os.environ.copy()
-        env["PATH"] = f"{self.bin_dir}{os.pathsep}{env['PATH']}"
-        result = subprocess.run(
-            ["bash", str(GHOSTTY_SCRIPT)],
-            cwd=self.workdir,
-            env=env,
-            check=False,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-
+    def test_herdr_with_args_in_ghostty_uses_real_cli(self) -> None:
+        result = self.run_zshrc_herdr("herdr server reload-config", ghostty=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(
             self.calls_path.read_text().splitlines(),
-            [f"herdr-agents {self.workdir.resolve()}", "herdr "],
+            ["herdr server reload-config"],
+        )
+
+    def test_bare_herdr_outside_ghostty_uses_real_cli(self) -> None:
+        result = self.run_zshrc_herdr("herdr", ghostty=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(
+            self.calls_path.read_text().splitlines(),
+            ["herdr "],
         )
 
 

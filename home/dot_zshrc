@@ -16,6 +16,19 @@ fpath=(
 )
 
 #
+# Herdr in Ghostty
+#
+# @description Start the managed Herdr agent layout for bare `herdr` in Ghostty.
+function herdr() {
+    if [[ $# -eq 0 && -n "${GHOSTTY_RESOURCES_DIR:-}" ]]; then
+        herdr-agents "${PWD}"
+        return
+    fi
+
+    command herdr "$@"
+}
+
+#
 # sheldon initialization
 #
 eval "$(sheldon source)"

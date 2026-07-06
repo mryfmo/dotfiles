@@ -10,7 +10,7 @@ shell-integration-features = cursor,sudo,title,ssh-env
 font-size = 14
 
 # Start the first Ghostty surface in the managed Herdr agent layout.
-initial-command = herdr-ghostty-agents
+initial-command = {{ .chezmoi.homeDir }}/.local/bin/common/herdr-ghostty-agents
 
 # Add a small amount of padding around the terminal grid.
 window-padding-x = 8

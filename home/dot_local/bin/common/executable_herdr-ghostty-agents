@@ -10,5 +10,5 @@ set -euo pipefail
 
 workdir="${1:-$PWD}"
 
-herdr-agents "${workdir}" > /dev/null
+herdr-agents "${workdir}" > /dev/null || true
 exec herdr

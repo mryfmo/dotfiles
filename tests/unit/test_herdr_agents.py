@@ -85,13 +85,49 @@ fi
         self.assertEqual(command["command"], 'herdr-agents "${HERDR_ACTIVE_PANE_CWD:-$PWD}"')
 
     def test_ghostty_initial_command_uses_launcher(self) -> None:
-        self.assertIn("initial-command = herdr-ghostty-agents", GHOSTTY_CONFIG.read_text())
+        self.assertIn(
+            "initial-command = {{ .chezmoi.homeDir }}/.local/bin/common/herdr-ghostty-agents",
+            GHOSTTY_CONFIG.read_text(),
+        )
 
     def test_ghostty_launcher_matches_documented_autostart_flow(self) -> None:
         self.write_executable(
             "herdr-agents",
             f"""#!/usr/bin/env bash
 printf 'herdr-agents %s\\n' "$1" >> {self.calls_path}
+""",
+        )
+        self.write_executable(
+            "herdr",
+            f"""#!/usr/bin/env bash
+printf 'herdr %s\\n' "$*" >> {self.calls_path}
+""",
+        )
+
+        env = os.environ.copy()
+        env["PATH"] = f"{self.bin_dir}{os.pathsep}{env['PATH']}"
+        result = subprocess.run(
+            ["bash", str(GHOSTTY_SCRIPT)],
+            cwd=self.workdir,
+            env=env,
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(
+            self.calls_path.read_text().splitlines(),
+            [f"herdr-agents {self.workdir.resolve()}", "herdr "],
+        )
+
+    def test_ghostty_launcher_attaches_when_agent_setup_fails(self) -> None:
+        self.write_executable(
+            "herdr-agents",
+            f"""#!/usr/bin/env bash
+printf 'herdr-agents %s\\n' "$1" >> {self.calls_path}
+exit 42
 """,
         )
         self.write_executable(

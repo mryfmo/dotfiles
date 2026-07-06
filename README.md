@@ -199,6 +199,20 @@ If ccgate is not available after the mise-managed install step,
 `scripts/update-agent-assets.sh` fails instead of leaving Codex or Claude Code
 with a configured PermissionRequest hook whose runtime is missing.
 
+### Herdr and Ghostty agent workspace
+
+Ghostty starts the Herdr agent workspace through the managed
+`~/.config/ghostty/config.ghostty` file. The first Ghostty terminal surface runs
+a chezmoi-rendered absolute `initial-command` pointing at
+`~/.local/bin/common/herdr-ghostty-agents`; that launcher calls `herdr-agents`
+to create the Claude Code over Codex layout, then `exec`s `herdr` so the
+terminal attaches to the Herdr UI. The layout itself stays centralized in
+`herdr-agents`, which is also bound inside Herdr at `prefix+alt+a`.
+
+Verification for this flow lives in `tests/unit/test_herdr_agents.py`: it checks
+the Ghostty `initial-command`, the launcher call order, and the Herdr
+`prefix+alt+a` command binding.
+
 `make require-crit-review` is the mechanical review gate for agents
 (`scripts/require-crit-review.py` is the underlying script).
 It keeps small documentation-only edits from opening unnecessary reviews, but

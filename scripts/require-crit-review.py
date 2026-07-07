@@ -38,7 +38,6 @@ HIGH_RISK_FILES = {
     "AGENTS.md",
     "home/.chezmoiscripts/common/run_once_after_06-install-agent-assets.sh.tmpl",
     "home/dot_agents/agent-config.yaml",
-    "home/dot_agents/hermes-config-base.yaml",
     "home/dot_local/bin/common/executable_agent-fanout",
     "home/dot_local/bin/common/executable_herdr-agents",
     "home/dot_local/bin/common/executable_start-cognee-mcp",

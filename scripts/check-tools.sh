@@ -112,8 +112,6 @@ function main() {
     check_command mise --version
     check_command uv --version
     check_command gh --version
-    check_command tmux -V
-    check_command hermes --version
 
     section "Chezmoi"
     run_optional_doctor chezmoi doctor

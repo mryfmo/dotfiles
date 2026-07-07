@@ -1,6 +1,6 @@
 # Canonical AI-agent configuration managed by chezmoi.
 #
-# This file is the single source of truth for Codex, Claude Code, and Hermes.
+# This file is the single source of truth for Codex and Claude Code.
 # Agent-native files are generated from this manifest by scripts/generate-agent-configs.py.
 #
 # Best-practice rules encoded here:
@@ -17,7 +17,6 @@ schema_version: 1
 target_agents:
   - codex
   - claude
-  - hermes
 
 skills:
   canonical_dir: ~/.agents/skills
@@ -140,17 +139,6 @@ claude:
   # cannot install third-party Claude plugins or marketplaces.
   enabledPlugins: {}
 
-hermes:
-  config_path: home/private_dot_hermes/private_config.yaml.tmpl
-  base_config_path: home/dot_agents/hermes-config-base.yaml
-  terminal:
-    backend: local
-    timeout: 180
-    env_passthrough: []
-  plugins:
-    enabled: []
-    disabled: []
-
 plugins:
   marketplace_path: home/dot_agents/plugins/marketplace.json
   marketplace:
@@ -182,7 +170,7 @@ plugins:
 
 mcp_servers:
   cognee_memory:
-    description: Shared Cognee memory MCP server for Hermes, Codex, and Claude Code orchestration.
+    description: Shared Cognee memory MCP server for Codex and Claude Code orchestration.
     enabled: false
     required: false
     transport: http
@@ -209,7 +197,6 @@ mcp_servers:
     agents:
       codex: true
       claude: true
-      hermes: true
 
   context7:
     description: Library documentation lookup through Upstash Context7.
@@ -231,7 +218,6 @@ mcp_servers:
     agents:
       codex: true
       claude: true
-      hermes: true
 
   filesystem_dotfiles:
     description: Scoped filesystem access to this chezmoi source tree for dotfiles maintenance.
@@ -253,7 +239,6 @@ mcp_servers:
     agents:
       codex: true
       claude: true
-      hermes: true
 
   github:
     description: Official GitHub MCP server using GITHUB_PERSONAL_ACCESS_TOKEN inherited by Docker.
@@ -285,7 +270,6 @@ mcp_servers:
     agents:
       codex: true
       claude: true
-      hermes: true
 
   time:
     description: Local time MCP server.
@@ -305,7 +289,6 @@ mcp_servers:
     agents:
       codex: true
       claude: true
-      hermes: true
 
   sequential_thinking:
     description: Structured step-by-step reasoning scratchpad MCP server.
@@ -326,7 +309,6 @@ mcp_servers:
     agents:
       codex: true
       claude: true
-      hermes: true
 
   playwright:
     description: Browser automation MCP server for web QA and debugging.
@@ -346,4 +328,3 @@ mcp_servers:
     agents:
       codex: true
       claude: true
-      hermes: true

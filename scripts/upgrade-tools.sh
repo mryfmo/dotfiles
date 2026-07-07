@@ -328,20 +328,6 @@ function upgrade_gh_extensions() {
 }
 
 #
-# @description Upgrade tmux plugins when TPM is installed.
-#
-function upgrade_tmux_plugins() {
-    local tpm_update="${HOME%/}/.tmux/plugins/tpm/bin/update_plugins"
-
-    if [ ! -x "${tpm_update}" ]; then
-        return 0
-    fi
-
-    section "tmux plugins"
-    "${tpm_update}" all || true
-}
-
-#
 # @description Upgrade apt packages only when system upgrades are requested.
 #
 function upgrade_apt_packages() {
@@ -352,16 +338,6 @@ function upgrade_apt_packages() {
     section "apt"
     sudo --preserve-env=http_proxy,https_proxy,no_proxy apt-get update
     sudo --preserve-env=http_proxy,https_proxy,no_proxy apt-get upgrade -y
-}
-
-#
-# @description Install or update optional helpers used by the Codex tmux status segment.
-#
-function upgrade_codex_statusline_tools() {
-    local repo_root
-    repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-
-    "${repo_root}/scripts/update-codex-statusline-tools.sh"
 }
 
 #
@@ -406,10 +382,8 @@ function main() {
     upgrade_mise_tools
     upgrade_agent_cli_tools
     upgrade_agent_assets
-    upgrade_codex_statusline_tools
     upgrade_uv_tools
     upgrade_gh_extensions
-    upgrade_tmux_plugins
     upgrade_apt_packages
 }
 

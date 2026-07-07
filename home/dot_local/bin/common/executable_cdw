@@ -5,6 +5,8 @@
 # @description
 #   Selects the newest path returned by `gwq list --json` and changes the
 #   current shell into that repository.
+# @example
+#   cdw
 
 # @description Jump to the newest `gwq` workspace path.
 function cdw() {

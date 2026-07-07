@@ -6,6 +6,8 @@
 #   Starts the optional shared Cognee memory service for Hermes, Codex, and
 #   Claude Code. Configure Cognee secrets and database/model settings through
 #   the target machine environment or private chezmoi source before starting.
+# @example
+#   start-cognee-mcp
 
 set -Eeuo pipefail
 
@@ -40,6 +42,8 @@ function resolve_cognee_mcp() {
 
 #
 # @description Start Cognee MCP with the endpoint used by generated agent configs.
+# @example
+#   main
 #
 function main() {
     local cognee_mcp_bin

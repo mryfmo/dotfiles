@@ -5,6 +5,8 @@
 # @description
 #   Detects the repository default branch, compares local branches against it,
 #   and removes branches whose tree has already been integrated upstream.
+# @example
+#   git-delete-merged-branches
 
 # @description Check whether the current directory is inside a Git repository.
 function is_inside_git_repository() {

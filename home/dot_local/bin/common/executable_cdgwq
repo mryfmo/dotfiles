@@ -5,6 +5,8 @@
 # @description
 #   Uses `gwq list --json` and `fzf` to select a known repository path, then
 #   changes the current shell into that directory.
+# @example
+#   cdgwq
 
 # @description Fuzzy-select a `gwq` workspace path and `cd` into it.
 function cdgwq() {

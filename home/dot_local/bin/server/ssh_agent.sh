@@ -7,7 +7,10 @@
 #   for the current user when the key exists. This file is sourced by sheldon,
 #   so it must not enable strict shell options in the parent interactive shell.
 #   Private keys are intentionally not stored in the public chezmoi source state.
+# @example
+#   source ~/.local/bin/server/ssh_agent.sh
 
+# @description Start ssh-agent and add the default ed25519 key when available.
 function _dotfiles_start_ssh_agent() {
     local default_ssh_key="${HOME}/.ssh/id_ed25519"
 

@@ -4,6 +4,8 @@
 # @brief Fuzzy-pick and checkout a local Git branch.
 # @description
 #   Lists local branches, selects one with `fzf`, and checks it out.
+# @example
+#   fgc
 
 # @description Checkout a branch selected from the local branch list.
 function fgc() {

@@ -5,6 +5,8 @@
 # @description
 #   Lets the user choose a repository path from `ghq`, changes into it, and
 #   renames the current tmux session to match the selected repository.
+# @example
+#   dev
 
 # @description Fuzzy-select a repository path from `ghq`.
 function ghq-path() {

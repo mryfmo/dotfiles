@@ -5,6 +5,8 @@
 # @description
 #   Resolves `chezmoi source-path` and changes the current shell into that
 #   repository checkout.
+# @example
+#   chezmoi-cd
 
 # @description Change into the current chezmoi source path.
 chezmoi-cd() {

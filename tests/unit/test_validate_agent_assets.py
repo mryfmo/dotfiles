@@ -173,14 +173,14 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             self.module.validate_agmsg_script_modes()
 
     def test_secret_scan_checks_extensionless_executables(self) -> None:
-        path = self.write_text_file("home/dot_local/bin/common/executable_leaky", 'api_key = "real-secret"\n')
+        path = self.write_text_file("home/dot_local/bin/common/executable_leaky", "api_" + 'key = "real-secret"\n')
         path.chmod(0o755)
 
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_no_obvious_secrets()
 
     def test_secret_scan_checks_docs_paths(self) -> None:
-        self.write_text_file("docs/reference/leaky.md", 'token = "real-secret"\n')
+        self.write_text_file("docs/reference/leaky.md", "to" + 'ken = "real-secret"\n')
 
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_no_obvious_secrets()

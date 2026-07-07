@@ -6,9 +6,12 @@ on:
     paths:
       - ".github/workflows/ubuntu.yaml"
       - "setup.sh"
+      - "install/common/**"
       - "install/ubuntu/**"
+      - "home/.chezmoiscripts/common/**"
       - "home/.chezmoiscripts/ubuntu/**"
       - "home/dot_tmux.conf.d/os/ubuntu_*.conf"
+      - "tests/install/common/**"
       - "tests/install/ubuntu/**"
 
   pull_request:
@@ -16,9 +19,12 @@ on:
     paths:
       - ".github/workflows/ubuntu.yaml"
       - "setup.sh"
+      - "install/common/**"
       - "install/ubuntu/**"
+      - "home/.chezmoiscripts/common/**"
       - "home/.chezmoiscripts/ubuntu/**"
       - "home/dot_tmux.conf.d/os/ubuntu_*.conf"
+      - "tests/install/common/**"
       - "tests/install/ubuntu/**"
 
 permissions:

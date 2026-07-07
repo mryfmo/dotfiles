@@ -6,9 +6,12 @@ on:
     paths:
       - ".github/workflows/macos.yaml"
       - "setup.sh"
+      - "install/common/**"
       - "install/macos/**"
+      - "home/.chezmoiscripts/common/**"
       - "home/.chezmoiscripts/macos/**"
       - "home/dot_tmux.conf.d/os/macos.conf"
+      - "tests/install/common/**"
       - "tests/install/macos/**"
 
   pull_request:
@@ -16,9 +19,12 @@ on:
     paths:
       - ".github/workflows/macos.yaml"
       - "setup.sh"
+      - "install/common/**"
       - "install/macos/**"
+      - "home/.chezmoiscripts/common/**"
       - "home/.chezmoiscripts/macos/**"
       - "home/dot_tmux.conf.d/os/macos.conf"
+      - "tests/install/common/**"
       - "tests/install/macos/**"
 
 jobs:

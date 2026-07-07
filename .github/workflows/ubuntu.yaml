@@ -10,7 +10,6 @@ on:
       - "install/ubuntu/**"
       - "home/.chezmoiscripts/common/**"
       - "home/.chezmoiscripts/ubuntu/**"
-      - "home/dot_tmux.conf.d/os/ubuntu_*.conf"
       - "tests/install/common/**"
       - "tests/install/ubuntu/**"
 
@@ -23,7 +22,6 @@ on:
       - "install/ubuntu/**"
       - "home/.chezmoiscripts/common/**"
       - "home/.chezmoiscripts/ubuntu/**"
-      - "home/dot_tmux.conf.d/os/ubuntu_*.conf"
       - "tests/install/common/**"
       - "tests/install/ubuntu/**"
 

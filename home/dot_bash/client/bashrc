@@ -126,7 +126,6 @@ fi
 # shellcheck source=../../dot_local/bin/server/prompt.sh
 source "${HOME%/}/.local/bin/server/prompt.sh"
 
-# for sharing history between panes/windiws in tmux session
 # shellcheck source=../../dot_local/bin/server/history.sh
 source "${HOME%/}/.local/bin/server/history.sh"
 

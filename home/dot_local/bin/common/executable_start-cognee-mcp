@@ -3,9 +3,9 @@
 # @file home/dot_local/bin/common/executable_start-cognee-mcp
 # @brief Run the local Cognee MCP server over Streamable HTTP.
 # @description
-#   Starts the optional shared Cognee memory service for Hermes, Codex, and
-#   Claude Code. Configure Cognee secrets and database/model settings through
-#   the target machine environment or private chezmoi source before starting.
+#   Starts the optional shared Cognee memory service for Codex and Claude Code.
+#   Configure Cognee secrets and database/model settings through the target
+#   machine environment or private chezmoi source before starting.
 # @example
 #   start-cognee-mcp
 

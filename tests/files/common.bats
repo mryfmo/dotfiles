@@ -12,7 +12,6 @@
         "${HOME}/.gnupg/gpg-agent.conf"
         "${HOME}/.ssh/config"
         "${HOME}/.vimrc"
-        "${HOME}/.tmux.conf"
         "${HOME}/.zshrc"
     )
     for file in "${files_exists[@]}"; do

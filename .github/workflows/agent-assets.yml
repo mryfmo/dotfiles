@@ -46,9 +46,6 @@ jobs:
             "https://code.claude.com/docs/en/skills"
             "https://code.claude.com/docs/en/plugins"
             "https://docs.astral.sh/ty/"
-            "https://hermes-agent.nousresearch.com/docs/user-guide/configuration"
-            "https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp"
-            "https://hermes-agent.nousresearch.com/docs/user-guide/features/skills"
             "https://agentskills.io/specification"
           )
           for url in "${urls[@]}"; do

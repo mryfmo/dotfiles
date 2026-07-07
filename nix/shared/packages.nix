@@ -21,7 +21,6 @@ with pkgs;
   shellcheck
   shfmt
   starship
-  tmux
   uv
   vim
   yazi

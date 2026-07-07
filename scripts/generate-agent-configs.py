@@ -341,72 +341,6 @@ def render_claude_mcp(manifest: dict[str, Any]) -> str:
     )
 
 
-def deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
-    merged = dict(base)
-    for key, value in override.items():
-        if isinstance(value, dict) and isinstance(merged.get(key), dict):
-            merged[key] = deep_merge(merged[key], value)
-        else:
-            merged[key] = value
-    return merged
-
-
-def render_hermes(manifest: dict[str, Any]) -> str:
-    hermes = manifest["hermes"]
-    base_path = ROOT / hermes["base_config_path"]
-    base_data = yaml.safe_load(base_path.read_text()) or {}
-    if not isinstance(base_data, dict):
-        fail(f"{base_path} must contain a YAML mapping")
-    data: dict[str, Any] = deep_merge(
-        base_data,
-        {
-            "skills": {
-                "external_dirs": [manifest["skills"]["canonical_dir"]],
-                "creation_nudge_interval": manifest["skills"]["creation_nudge_interval"],
-            },
-            "terminal": hermes["terminal"],
-            "plugins": hermes["plugins"],
-            "mcp_servers": {},
-        },
-    )
-    for name, server in manifest.get("mcp_servers", {}).items():
-        if not enabled_for(server, "hermes"):
-            continue
-        entry: dict[str, Any] = {"enabled": server["enabled"]}
-        if server["transport"] == "stdio":
-            entry["command"] = server["command"]
-            entry["args"] = server.get("args", [])
-        elif server["transport"] == "http":
-            entry["url"] = server["url"]
-            if server.get("headers"):
-                entry["headers"] = server["headers"]
-        else:
-            fail(f"unsupported MCP transport for {name}: {server['transport']}")
-        for key in ("env", "timeout", "connect_timeout"):
-            if key in server:
-                entry[key] = server[key]
-        tools: dict[str, Any] = {}
-        if "include_tools" in server:
-            tools["include"] = server["include_tools"]
-        if "prompts" in server:
-            tools["prompts"] = server["prompts"]
-        if "resources" in server:
-            tools["resources"] = server["resources"]
-        if tools:
-            entry["tools"] = tools
-        if "sampling" in server:
-            entry["sampling"] = {"enabled": server["sampling"]}
-        data["mcp_servers"][name] = entry
-
-    body = yaml.safe_dump(data, sort_keys=False, allow_unicode=True)
-    return (
-        "# Hermes Agent configuration managed by chezmoi.\n"
-        f"# {GENERATED_HEADER}\n"
-        "# Keep API keys and tokens in ~/.hermes/.env or a private chezmoi source, not here.\n\n"
-        + body
-    )
-
-
 def render_marketplace(manifest: dict[str, Any]) -> str:
     plugins = manifest["plugins"]
     data = {
@@ -481,7 +415,6 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
         ROOT / manifest["claude"]["settings_path"]: render_claude_settings(manifest),
         ROOT / manifest["claude"]["mcp_config_path"]: render_claude_mcp(manifest),
         ROOT / manifest["claude"]["ccgate_config_path"]: render_ccgate_config("claude"),
-        ROOT / manifest["hermes"]["config_path"]: render_hermes(manifest),
         ROOT / manifest["plugins"]["marketplace_path"]: render_marketplace(manifest),
     }
     for plugin in manifest["plugins"].get("codex_plugins", []):

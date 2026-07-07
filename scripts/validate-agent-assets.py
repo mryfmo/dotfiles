@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Codex, Claude Code, Hermes, MCP, plugin, and skill assets."""
+"""Validate Codex, Claude Code, MCP, plugin, and skill assets."""
 
 from __future__ import annotations
 
@@ -275,30 +275,14 @@ def validate_claude_mcp_config() -> dict[str, Any]:
     return data
 
 
-def validate_hermes_config_template() -> dict[str, Any]:
-    hermes_path = ROOT / "home/private_dot_hermes/private_config.yaml.tmpl"
-    data = yaml.safe_load(render_template_text(hermes_path))
-    if not isinstance(data, dict):
-        fail(f"{hermes_path} must render to a mapping")
-    external_dirs = data.get("skills", {}).get("external_dirs", [])
-    if "~/.agents/skills" not in external_dirs:
-        fail(f"{hermes_path} must expose ~/.agents/skills as an external skill directory")
-    for name, server in data.get("mcp_servers", {}).items():
-        if server.get("enabled", False) is not False:
-            fail(f"Hermes MCP server {name} should be disabled by default")
-        if server.get("sampling", {}).get("enabled") is not False:
-            fail(f"Hermes MCP server {name} should disable sampling by default")
-    return data
-
-
 def validate_agent_manifest() -> dict[str, Any]:
     manifest_path = ROOT / "home/dot_agents/agent-config.yaml"
     manifest = load_yaml(manifest_path)
     if manifest.get("schema_version") != 1:
         fail(f"{manifest_path} schema_version must be 1")
     targets = set(manifest.get("target_agents", []))
-    if targets != {"codex", "claude", "hermes"}:
-        fail(f"{manifest_path} must target exactly Codex, Claude Code, and Hermes")
+    if targets != {"codex", "claude"}:
+        fail(f"{manifest_path} must target exactly Codex and Claude Code")
     canonical_dir = manifest.get("skills", {}).get("canonical_dir")
     if canonical_dir != "~/.agents/skills":
         fail(f"{manifest_path} must keep ~/.agents/skills as the canonical skill directory")
@@ -329,16 +313,15 @@ def validate_agent_manifest() -> dict[str, Any]:
     return manifest
 
 
-def validate_mcp_parity(codex: dict[str, Any], claude: dict[str, Any], hermes: dict[str, Any], manifest: dict[str, Any]) -> None:
+def validate_mcp_parity(codex: dict[str, Any], claude: dict[str, Any], manifest: dict[str, Any]) -> None:
     manifest_names = set(manifest.get("mcp_servers", {}))
     codex_names = set(codex.get("mcp_servers", {}))
     claude_names = set(claude.get("mcpServers", {}))
-    hermes_names = set(hermes.get("mcp_servers", {}))
-    if not (manifest_names == codex_names == claude_names == hermes_names):
+    if not (manifest_names == codex_names == claude_names):
         fail(
             "MCP server names differ: "
             f"manifest={sorted(manifest_names)} codex={sorted(codex_names)} "
-            f"claude={sorted(claude_names)} hermes={sorted(hermes_names)}"
+            f"claude={sorted(claude_names)}"
         )
 
 
@@ -633,8 +616,7 @@ def main() -> None:
     validate_codex_plugins()
     codex = validate_codex_config(manifest)
     claude = validate_claude_mcp_config()
-    hermes = validate_hermes_config_template()
-    validate_mcp_parity(codex, claude, hermes, manifest)
+    validate_mcp_parity(codex, claude, manifest)
     validate_cognee_install_assets(manifest)
     validate_crit_install_assets()
     validate_ponytail_assets(manifest, codex)

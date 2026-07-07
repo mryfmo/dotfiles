@@ -10,14 +10,12 @@
 [![codecov](https://codecov.io/gh/mryfmo/dotfiles/branch/main/graph/badge.svg)](https://codecov.io/gh/mryfmo/dotfiles)
 
 [![zsh-users/zsh](https://img.shields.io/github/v/tag/zsh-users/zsh?color=2885F1&display_name=release&label=zsh&logo=zsh&logoColor=2885F1&sort=semver)](https://github.com/zsh-users/zsh)
-[![tmux/tmux](https://img.shields.io/github/v/tag/tmux/tmux?color=1BB91F&display_name=release&label=tmux&logo=tmux&logoColor=1BB91F&sort=semver)](https://github.com/tmux/tmux)
 [![rossmacarthur/sheldon](https://img.shields.io/github/v/tag/rossmacarthur/sheldon?color=282d3f&display_name=release&label=🚀%20sheldon&sort=semver)](https://github.com/rossmacarthur/sheldon)
 [![starship/starship](https://img.shields.io/github/v/tag/starship/starship?color=DD0B78&display_name=release&label=starship&logo=starship&logoColor=DD0B78&sort=semver)](https://github.com/starship/starship)
 [![jdx/mise](https://img.shields.io/github/v/tag/jdx/mise?color=00acc1&display_name=release&label=mise&logo=gnometerminal&logoColor=00acc1&sort=semver)](https://github.com/jdx/mise)
 
 [![anthropics/claude-code](https://img.shields.io/github/v/tag/anthropics/claude-code?color=D97757&display_name=release&label=claude-code&logo=claude&logoColor=D97757&sort=semver)](https://github.com/anthropics/claude-code)
 [![openai/codex](https://img.shields.io/github/v/tag/openai/codex?color=0081A5&display_name=release&label=codex&logo=openaigym&logoColor=0081A5&sort=semver)](https://github.com/openai/codex)
-[![NousResearch/hermes-agent](https://img.shields.io/github/v/tag/NousResearch/hermes-agent?color=6B46C1&display_name=release&label=hermes-agent&logo=sparkles&logoColor=6B46C1&sort=semver)](https://github.com/NousResearch/hermes-agent)
 
 </div>
 
@@ -31,8 +29,7 @@ See [.chezmoiroot - chezmoi](https://www.chezmoi.io/reference/special-files-and-
 
 ## 📥 Setup
 
-To set up the dotfiles run the appropriate snippet in the terminal. Public bootstrap installs Hermes Agent by default by downloading the official NousResearch installer with `--skip-setup`.
-Set chezmoi data `hermes.install: false` before applying if you need to skip that network installer.
+To set up the dotfiles run the appropriate snippet in the terminal.
 
 ### 💻 `MacOS` [![MacOS](https://github.com/mryfmo/dotfiles/actions/workflows/macos.yaml/badge.svg)](https://github.com/mryfmo/dotfiles/actions/workflows/macos.yaml)
 
@@ -145,9 +142,7 @@ upgrades. Other values, including `SYSTEM=0`, keep `make upgrade` in user-level
 tooling mode.
 
 `make update` applies managed files only and excludes chezmoi scripts, so
-one-time installers do not run during routine updates. It force-applies
-`~/.hermes` before the normal apply so Hermes runtime rewrites do not block
-updates.
+one-time installers do not run during routine updates.
 
 ### Agent review and permission assets
 
@@ -332,12 +327,6 @@ The startup speed of zsh on MacOS with this dotfile is continuously measured at 
 ## 💡 Miscellaneous Tips
 
 ### Minimum setup for server machine without chezmoi
-
-- Download [`.tmux.conf.d/system/server.conf`](https://github.com/mryfmo/dotfiles/blob/main/home/dot_tmux.conf.d/system/server.conf) and deploy as `~/.tmux.conf`
-
-```shell
-wget -O ~/.tmux.conf https://raw.githubusercontent.com/mryfmo/dotfiles/main/home/dot_tmux.conf.d/system/server.conf
-```
 
 - Download [`.vimrc`](https://github.com/mryfmo/dotfiles/blob/main/home/dot_vimrc) and deploy to `~/.vimrc`
 

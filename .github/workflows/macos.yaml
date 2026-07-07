@@ -10,7 +10,6 @@ on:
       - "install/macos/**"
       - "home/.chezmoiscripts/common/**"
       - "home/.chezmoiscripts/macos/**"
-      - "home/dot_tmux.conf.d/os/macos.conf"
       - "tests/install/common/**"
       - "tests/install/macos/**"
 
@@ -23,7 +22,6 @@ on:
       - "install/macos/**"
       - "home/.chezmoiscripts/common/**"
       - "home/.chezmoiscripts/macos/**"
-      - "home/dot_tmux.conf.d/os/macos.conf"
       - "tests/install/common/**"
       - "tests/install/macos/**"
 

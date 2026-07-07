@@ -12,15 +12,6 @@
     make -n apply
 }
 
-@test "[common] Makefile force-applies only Hermes runtime config before normal file-only update" {
-    run make -n update
-    [ "$status" -eq 0 ]
-    [[ "$output" == *'chezmoi apply --verbose --force --exclude=scripts ~/.hermes'* ]]
-    grep -xF 'chezmoi apply --verbose --exclude=scripts' <<< "$output"
-    [[ "$output" == *'apply --verbose --exclude=scripts'* ]]
-    [[ "$output" != *'apply --verbose;'* ]]
-}
-
 @test "[common] Makefile treats private chezmoi as optional during update" {
     run make -n update
     [ "$status" -eq 0 ]
@@ -112,11 +103,6 @@
     grep -q 'case "${formula}" in' scripts/upgrade-tools.sh
     grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --formula "${upgrade_formulae\[@\]}"' scripts/upgrade-tools.sh
     grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --cask --skip-cask-deps "${outdated_casks\[@\]}"' scripts/upgrade-tools.sh
-    grep -q 'brew list --cask codexbar' scripts/update-codex-statusline-tools.sh
-    grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew install --cask --skip-cask-deps codexbar' scripts/update-codex-statusline-tools.sh
-    grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --cask --skip-cask-deps codexbar' scripts/update-codex-statusline-tools.sh
-    grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --formula codexbar' scripts/update-codex-statusline-tools.sh
-    grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --formula steipete/tap/codexbar' scripts/update-codex-statusline-tools.sh
 }
 
 @test "[common] agent CLI upgrade installs npm latest into mise packages and removes node-global shadows" {
@@ -204,12 +190,6 @@
     grep -q 'HookInput.model' home/dot_config/codex/AGENTS.md
     grep -q 'provider.model' home/dot_config/claude/rules/model-selection.md
     grep -q 'metrics --details 5' home/dot_config/claude/rules/model-selection.md
-}
-
-@test "[common] Hermes home is managed as a private directory" {
-    [ -d home/private_dot_hermes ]
-    [ ! -e home/dot_hermes ]
-    [ -f home/private_dot_hermes/private_config.yaml.tmpl ]
 }
 
 @test "[common] README documents setup update doctor and upgrade lifecycle" {

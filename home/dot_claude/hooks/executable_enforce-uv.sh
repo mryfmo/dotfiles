@@ -6,7 +6,7 @@
 #   Claude hook that inspects shell commands and returns a JSON decision that
 #   blocks direct `pip` or `python` usage, guiding the caller toward `uv`.
 
-# ===== 関数定義 =====
+# Function definitions.
 
 # @description Emit the `uv` replacement message for `pip install`.
 # @arg $1 string Parsed `pip` subcommand beginning with `install`.

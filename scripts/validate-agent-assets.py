@@ -588,18 +588,30 @@ def validate_no_removed_claude_skill() -> None:
         fail("removed Claude skill references remain: " + ", ".join(str(p.relative_to(ROOT)) for p in matches[:10]))
 
 
+def is_text_file(path: Path) -> bool:
+    data = path.read_bytes()
+    if b"\0" in data:
+        return False
+    try:
+        data.decode("utf-8")
+    except UnicodeDecodeError:
+        return False
+    return True
+
+
 def validate_no_obvious_secrets() -> None:
-    checked_suffixes = {".json", ".toml", ".yaml", ".yml", ".md", ".tmpl", ".py", ".sh"}
     allowed_secret_placeholders = {
         "GITHUB_PERSONAL_ACCESS_TOKEN",
         "FIGMA_OAUTH_TOKEN",
     }
     for path in ROOT.rglob("*"):
-        if not path.is_file() or path.suffix not in checked_suffixes:
+        if not path.is_file():
             continue
-        if any(part in {".git", "docs", "site", "__pycache__"} for part in path.parts):
+        if any(part in {".git", "site", "__pycache__"} for part in path.parts):
             continue
-        text = path.read_text(errors="ignore")
+        if not is_text_file(path):
+            continue
+        text = path.read_text(encoding="utf-8")
         sanitized = text
         for placeholder in allowed_secret_placeholders:
             sanitized = sanitized.replace(placeholder, "")

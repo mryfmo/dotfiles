@@ -4,12 +4,17 @@
   refreshPeriod: "720h"
 
 {{ $fontsPath := .chezmoi.os | replace "darwin" "Library/Fonts" | replace "linux" ".local/share/fonts" -}}
+{{ $offline := or (and (hasKey . "offline") .offline) (eq (env "CHEZMOI_OFFLINE") "1") -}}
+{{ $nerdFontsVersion := "v3.4.0" -}}
+{{ $nerdFontsBaseURL := printf "https://github.com/ryanoasis/nerd-fonts/releases/download/%s" $nerdFontsVersion -}}
 "{{ $fontsPath }}/RobotoMono":
   type: "archive"
-  url: {{ gitHubLatestReleaseAssetURL "ryanoasis/nerd-fonts" "RobotoMono.zip" | quote }}
-  refreshPeriod: "720h"
+{{ if $offline }}  url: {{ printf "%s/RobotoMono.zip" $nerdFontsBaseURL | quote }}
+{{ else }}  url: {{ gitHubLatestReleaseAssetURL "ryanoasis/nerd-fonts" "RobotoMono.zip" | quote }}
+{{ end }}  refreshPeriod: "720h"
 
 "{{ $fontsPath }}/Hack":
   type: "archive"
-  url: {{ gitHubLatestReleaseAssetURL "ryanoasis/nerd-fonts" "Hack.zip" | quote }}
-  refreshPeriod: "720h"
+{{ if $offline }}  url: {{ printf "%s/Hack.zip" $nerdFontsBaseURL | quote }}
+{{ else }}  url: {{ gitHubLatestReleaseAssetURL "ryanoasis/nerd-fonts" "Hack.zip" | quote }}
+{{ end }}  refreshPeriod: "720h"

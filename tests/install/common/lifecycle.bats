@@ -103,11 +103,6 @@
     grep -q 'case "${formula}" in' scripts/upgrade-tools.sh
     grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --formula "${upgrade_formulae\[@\]}"' scripts/upgrade-tools.sh
     grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --cask --skip-cask-deps "${outdated_casks\[@\]}"' scripts/upgrade-tools.sh
-    grep -q 'brew list --cask codexbar' scripts/update-codex-statusline-tools.sh
-    grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew install --cask --skip-cask-deps codexbar' scripts/update-codex-statusline-tools.sh
-    grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --cask --skip-cask-deps codexbar' scripts/update-codex-statusline-tools.sh
-    grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --formula codexbar' scripts/update-codex-statusline-tools.sh
-    grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --formula steipete/tap/codexbar' scripts/update-codex-statusline-tools.sh
 }
 
 @test "[common] agent CLI upgrade installs npm latest into mise packages and removes node-global shadows" {

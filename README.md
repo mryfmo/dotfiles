@@ -203,17 +203,25 @@ with a configured PermissionRequest hook whose runtime is missing.
 
 Ghostty starts as a normal terminal; `~/.config/ghostty/config.ghostty` must not
 set a Herdr `initial-command`. In Ghostty zsh sessions, bare `herdr` calls
-`herdr-agents` to create the Claude Code over Codex layout. Argumented Herdr
+`herdr-agents "$PWD"` and then the real `herdr` CLI, so the terminal attaches
+to the focused workspace after the agent layout is created. Argumented Herdr
 calls such as `herdr --remote` and `herdr server reload-config` still run the
 real Herdr CLI. Outside Ghostty, bare `herdr` also runs the real Herdr CLI.
 
-The layout itself stays centralized in `herdr-agents`, which is also bound
-inside Herdr at `prefix+alt+a`.
+The workspace layout itself stays centralized in `herdr-agents`, which is also
+bound inside Herdr at `prefix+alt+a`. It reuses the workspace root pane for
+Claude Code and starts Codex in the same workspace with `--split down`, so the
+visible result is Claude Code above Codex. Both agents start in the same project
+cwd and use the shared agmsg scripts/state for cross-agent messaging.
 
 Verification for this flow lives in `tests/unit/test_herdr_agents.py`: it checks
 the Ghostty config keeps normal shell startup, bare `herdr` routing in Ghostty,
 argumented `herdr` routing in Ghostty, bare `herdr` routing outside Ghostty, and
-the Herdr `prefix+alt+a` command binding.
+the Herdr `prefix+alt+a` command binding. Its sandbox E2E fakes Herdr deeply
+enough to execute fake Claude Code and Codex commands, verifies Claude Code is
+run in the root pane, Codex is started with `--split down`, and proves agmsg is
+usable by sending a message from fake Claude Code to fake Codex through a
+temporary agmsg database.
 
 `make require-crit-review` is the mechanical review gate for agents
 (`scripts/require-crit-review.py` is the underlying script).

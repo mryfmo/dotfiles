@@ -203,6 +203,14 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_no_obvious_secrets()
 
+    def test_secret_scan_checks_utf16_bom_text(self) -> None:
+        path = self.temp_dir / "docs/reference/leaky-utf16.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(("to" + 'ken = "real-secret"\n').encode("utf-16"))
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_no_obvious_secrets()
+
 
 if __name__ == "__main__":
     unittest.main()

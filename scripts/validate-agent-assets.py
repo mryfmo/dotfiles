@@ -588,15 +588,19 @@ def validate_no_removed_claude_skill() -> None:
         fail("removed Claude skill references remain: " + ", ".join(str(p.relative_to(ROOT)) for p in matches[:10]))
 
 
-def is_text_file(path: Path) -> bool:
+def read_scannable_text(path: Path) -> str | None:
     data = path.read_bytes()
+    if data.startswith((b"\xff\xfe", b"\xfe\xff")):
+        try:
+            return data.decode("utf-16")
+        except UnicodeDecodeError:
+            return None
     if b"\0" in data:
-        return False
+        return None
     try:
-        data.decode("utf-8")
+        return data.decode("utf-8")
     except UnicodeDecodeError:
-        return False
-    return True
+        return None
 
 
 def validate_no_obvious_secrets() -> None:
@@ -609,9 +613,9 @@ def validate_no_obvious_secrets() -> None:
             continue
         if any(part in {".git", "site", "__pycache__"} for part in path.parts):
             continue
-        if not is_text_file(path):
+        text = read_scannable_text(path)
+        if text is None:
             continue
-        text = path.read_text(encoding="utf-8")
         sanitized = text
         for placeholder in allowed_secret_placeholders:
             sanitized = sanitized.replace(placeholder, "")

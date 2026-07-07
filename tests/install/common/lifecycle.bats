@@ -220,6 +220,7 @@
     grep -q 'make upgrade' README.md
     grep -q 'make upgrade SYSTEM=1' README.md
     grep -q 'setup.sh' README.md
+    grep -Fq 'git -C "$(chezmoi source-path)" rev-parse --show-toplevel' README.md
 }
 
 @test "[common] README documents agent permission asset lifecycle" {

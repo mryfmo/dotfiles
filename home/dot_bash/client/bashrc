@@ -143,7 +143,7 @@ source "${HOME%/}/.local/bin/server/history.sh"
 source "${HOME%/}/.local/bin/server/aliases.sh"
 
 # Load optional secret exports supplied by the private chezmoi domain.
-# shellcheck source=../../dot_local/bin/server/secrets.sh
+# shellcheck disable=SC1091
 [ -r "${HOME%/}/.local/bin/server/secrets.sh" ] && source "${HOME%/}/.local/bin/server/secrets.sh"
 
 # for cache directories

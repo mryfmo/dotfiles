@@ -30,19 +30,27 @@ HIGH_RISK_PREFIXES = (
     "home/dot_codex/",
     "home/dot_config/claude/",
     "home/dot_config/codex/",
+    "home/dot_config/herdr/",
     "scripts/",
 )
 
 HIGH_RISK_FILES = {
     "AGENTS.md",
+    "home/.chezmoiscripts/common/run_once_after_06-install-agent-assets.sh.tmpl",
     "home/dot_agents/agent-config.yaml",
     "home/dot_agents/hermes-config-base.yaml",
+    "home/dot_local/bin/common/executable_agent-fanout",
+    "home/dot_local/bin/common/executable_herdr-agents",
+    "home/dot_local/bin/common/executable_start-cognee-mcp",
+    "home/dot_zshrc",
     "tests/install/common/lifecycle.bats",
 }
 
 HIGH_RISK_TOKENS = (
     "ccgate",
     "crit",
+    "agmsg",
+    "herdr",
     "hook",
     "hooks",
     "plugin",

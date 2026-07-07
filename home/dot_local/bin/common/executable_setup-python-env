@@ -5,6 +5,8 @@
 # @description
 #   Upgrades core Python packaging tools with pip, initializes a Poetry
 #   project, and adds common development dependencies.
+# @example
+#   setup-python-env
 
 # @description Upgrade pip, wheel, setuptools, and Poetry.
 function install_with_pip() {

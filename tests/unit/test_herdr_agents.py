@@ -185,8 +185,13 @@ printf 'codex cwd=%s\\n' "$PWD" >> {e2e_log}
         )
 
         env = os.environ.copy()
+        for key in tuple(env):
+            if key.startswith(("GHOSTTY_", "HERDR_")):
+                env.pop(key)
+        env.pop("TERM_PROGRAM", None)
         env["PATH"] = f"{self.bin_dir}{os.pathsep}{env['PATH']}"
         env["AGMSG_STORAGE_PATH"] = str(agmsg_storage)
+        env["GHOSTTY_RESOURCES_DIR"] = str(self.temp_dir / "ghostty")
         result = subprocess.run(
             ["zsh", "-fc", f"source {ZSHRC}; herdr"],
             cwd=self.workdir,

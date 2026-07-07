@@ -81,6 +81,10 @@ reset-config:
 format:
 	shfmt --indent 4 --space-redirects --diff .
 
+.PHONY: unit-test
+unit-test:
+	uv run python -m unittest discover -s tests/unit -v
+
 .PHONY: validate-agent-assets
 validate-agent-assets:
 	uv run --with pyyaml scripts/validate-agent-assets.py

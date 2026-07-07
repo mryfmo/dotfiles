@@ -6,6 +6,8 @@
 #   Checks whether a local GnuPG secret key already exists. If not, starts the
 #   standard interactive `gpg --full-generate-key` flow. Secret keys and trust
 #   databases are intentionally not stored in the public chezmoi source state.
+# @example
+#   setup-gpg
 
 set -Eeuo pipefail
 

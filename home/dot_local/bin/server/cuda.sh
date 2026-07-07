@@ -5,6 +5,8 @@
 # @description
 #   Sets `CUDA_HOME`, prepends the CUDA binaries to the shell path, and extends
 #   `LD_LIBRARY_PATH` for CUDA libraries.
+# @example
+#   source ~/.local/bin/server/cuda.sh
 
 export CUDA_HOME="/usr/local/cuda"
 

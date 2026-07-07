@@ -5,6 +5,8 @@
 # @description
 #   Sets the dataset and model cache directories under the user's home cache
 #   directory for Hugging Face tooling.
+# @example
+#   source ~/.local/bin/server/cache.sh
 
 # for huggingface datasets
 export HF_DATASETS_CACHE="${HOME%/}/.cache/huggingface/datasets"

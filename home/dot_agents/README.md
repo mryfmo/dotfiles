@@ -17,8 +17,10 @@ This directory is the canonical source for AI-agent assets shared by Codex, Clau
 Generated files include:
 
 - `home/dot_codex/private_config.toml.tmpl`
+- `home/dot_codex/ccgate.jsonnet`
 - `home/dot_claude/private_settings.json`
 - `home/dot_claude/private_mcp.json.tmpl`
+- `home/dot_claude/ccgate.jsonnet`
 - `home/dot_claude/skills/**/symlink_*.tmpl`
 - `home/private_dot_hermes/private_config.yaml.tmpl`
 - `home/dot_agents/plugins/marketplace.json`
@@ -34,7 +36,7 @@ Generated files include:
 6. Claude plugins are not enabled by `settings.json` unless this repository also installs the marketplace/plugin. Shared workflows should live in skills first.
 7. Do not hand-edit generated files unless you immediately move the change back into `agent-config.yaml` and regenerate.
 8. Cognee memory stays disabled in public defaults. Enable it locally only after starting Cognee MCP and providing LLM/API/DB secrets from private environment or private chezmoi state.
-9. Hermes should orchestrate Codex and Claude Code as peer agents. For implementation tasks, use separate worktrees or make one agent a reviewer; do not let both write to the same worktree.
+9. Hermes should orchestrate Codex and Claude Code as peer agents. For implementation tasks, use separate worktrees or make one agent a reviewer; do not let both write to the same worktree. This is an operational guideline and is intentionally not enforced by `validate-agent-assets.py`.
 
 ## Shared Cognee memory
 

@@ -5,8 +5,11 @@
 # @description
 #   Provides a `tac` fallback and appends a `PROMPT_COMMAND` hook that merges
 #   duplicate-filtered bash history back into the main history file.
+# @example
+#   source ~/.local/bin/server/history.sh
 
 # @description Reverse lines from stdin or files using `sed`.
+# @arg $@ Optional file paths to reverse. When omitted, stdin is read.
 function tac {
     exec sed '1!G;h;$!d' ${@+"$@"}
 }

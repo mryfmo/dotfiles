@@ -69,6 +69,12 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         path.write_text("#!/bin/sh\n")
         path.chmod(0o755 if executable else 0o644)
 
+    def write_text_file(self, relative_path: str, content: str) -> Path:
+        path = self.temp_dir / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+        return path
+
     def test_codex_sandbox_workspace_write_must_match_manifest(self) -> None:
         self.write_codex_config("network_access = false")
         manifest = {
@@ -165,6 +171,19 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_agmsg_script_modes()
+
+    def test_secret_scan_checks_extensionless_executables(self) -> None:
+        path = self.write_text_file("home/dot_local/bin/common/executable_leaky", "api_" + 'key = "real-secret"\n')
+        path.chmod(0o755)
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_no_obvious_secrets()
+
+    def test_secret_scan_checks_docs_paths(self) -> None:
+        self.write_text_file("docs/reference/leaky.md", "to" + 'ken = "real-secret"\n')
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_no_obvious_secrets()
 
 
 if __name__ == "__main__":

@@ -5,6 +5,9 @@
 # @description
 #   Creates a Herdr workspace for a directory, starts Claude Code and Codex in
 #   stacked panes, and opens the same directory in Zed when the `zed` CLI exists.
+# @arg DIR Optional directory for the Herdr workspace. Defaults to the current directory.
+# @example
+#   herdr-agents ~/Workspace/dotfiles
 
 set -euo pipefail
 

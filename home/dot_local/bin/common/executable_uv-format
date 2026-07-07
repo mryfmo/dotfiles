@@ -5,6 +5,8 @@
 # @description
 #   Runs Ruff formatting first and then fixes import ordering and selected
 #   issues through Ruff's check mode.
+# @example
+#   uv-format
 
 # @description Run Ruff formatting and autofix passes through `uvx`.
 function uv_format() {

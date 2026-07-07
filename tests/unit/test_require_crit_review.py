@@ -58,6 +58,12 @@ class ReviewGuardTest(unittest.TestCase):
         path.write_text(content)
         return path
 
+    def write_changed_path(self, relative_path: str) -> None:
+        run(["git", "clean", "-fd"], self.temp_dir)
+        path = self.temp_dir / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("#!/usr/bin/env bash\n")
+
     def test_no_diff_does_not_require_review(self) -> None:
         result = self.guard()
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -84,6 +90,34 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertIn("Native agent review required", result.stdout)
         self.assertIn("not a browser by default", result.stdout)
         self.assertIn("agent lifecycle", result.stdout)
+
+    def test_agent_lifecycle_surfaces_require_review(self) -> None:
+        high_risk_paths = (
+            "home/dot_local/bin/common/executable_herdr-agents",
+            "home/dot_local/bin/common/executable_agent-fanout",
+            "home/dot_local/bin/common/executable_start-cognee-mcp",
+            "home/dot_config/herdr/config.yaml",
+            "home/dot_zshrc",
+            "home/.chezmoiscripts/common/run_once_after_06-install-agent-assets.sh.tmpl",
+        )
+        for path in high_risk_paths:
+            with self.subTest(path=path):
+                self.write_changed_path(path)
+                result = self.guard()
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn("Native agent review required", result.stdout)
+
+    def test_agent_lifecycle_tokens_require_review(self) -> None:
+        high_risk_paths = (
+            "docs/herdr.md",
+            "docs/agmsg.md",
+        )
+        for path in high_risk_paths:
+            with self.subTest(path=path):
+                self.write_changed_path(path)
+                result = self.guard()
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn("review-sensitive path changed", result.stdout)
 
     def test_broad_diff_requires_review(self) -> None:
         for index in range(5):

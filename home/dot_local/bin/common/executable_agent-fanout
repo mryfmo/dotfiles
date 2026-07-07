@@ -6,6 +6,13 @@
 #   `.agents/runs/`, and prints the output directory. This helper is intended
 #   for read-only reviews, design comparisons, and isolated worktree tasks.
 #   Do not use it to let both agents edit the same worktree concurrently.
+# @option --dry-run Print planned agent commands without running them.
+# @option --no-codex Skip the Codex run.
+# @option --no-claude Skip the Claude Code run.
+# @option --output-dir DIR Directory where prompt and agent logs are written.
+# @arg PROMPT... Optional prompt text. When omitted, the prompt is read from stdin.
+# @example
+#   agent-fanout --no-claude "Review the current diff. Do not edit files."
 
 set -euo pipefail
 

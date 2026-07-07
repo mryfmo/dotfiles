@@ -14,6 +14,7 @@
 ## Comment Policy
 
 - When adding or updating comments for shell scripts or shell-based executables, always write them in English using shdoc-compatible format.
+- Chezmoi script templates that only `{{ include }}` a source script are intentionally thin wrappers, and the shdoc requirement applies to the included `install/**` scripts.
 
 ## Git / PR Workflow
 

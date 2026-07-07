@@ -16,6 +16,10 @@ on:
       - "home/dot_config/alias/**"
       - "home/dot_local/bin/**"
 
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 

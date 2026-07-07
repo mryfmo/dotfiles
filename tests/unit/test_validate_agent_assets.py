@@ -185,6 +185,24 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_no_obvious_secrets()
 
+    def test_secret_scan_allows_exact_placeholder_tokens(self) -> None:
+        self.write_text_file(
+            "docs/reference/placeholders.md",
+            "to" + 'ken = "GITHUB_PERSONAL_ACCESS_TOKEN"\n'
+            "to" + 'ken = "FIGMA_OAUTH_TOKEN"\n',
+        )
+
+        self.module.validate_no_obvious_secrets()
+
+    def test_secret_scan_rejects_placeholder_with_suffix(self) -> None:
+        self.write_text_file(
+            "docs/reference/leaky-placeholder.md",
+            "to" + 'ken = "GITHUB_PERSONAL_ACCESS_TOKEN' + '_REAL"\n',
+        )
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_no_obvious_secrets()
+
 
 if __name__ == "__main__":
     unittest.main()

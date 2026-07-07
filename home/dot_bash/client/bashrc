@@ -142,9 +142,9 @@ source "${HOME%/}/.local/bin/server/history.sh"
 # shellcheck source=../../dot_local/bin/server/aliases.sh
 source "${HOME%/}/.local/bin/server/aliases.sh"
 
-# for secrets (e.g., slack, wandb, zenodo API)
+# Load optional secret exports supplied by the private chezmoi domain.
 # shellcheck source=../../dot_local/bin/server/secrets.sh
-source "${HOME%/}/.local/bin/server/secrets.sh"
+[ -r "${HOME%/}/.local/bin/server/secrets.sh" ] && source "${HOME%/}/.local/bin/server/secrets.sh"
 
 # for cache directories
 # shellcheck source=../../dot_local/bin/server/cache.sh

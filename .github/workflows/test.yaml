@@ -143,6 +143,12 @@ jobs:
         run: |
           git ls-files -- ':(glob)install/**/*.sh' ':(glob)scripts/**/*.sh' | xargs shfmt -i 4 -sr -d
 
+      - name: Setup uv
+        if: ${{ needs.changes.outputs.should_test == 'true' }}
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: false
+
       - name: Run Python unit tests
         if: ${{ needs.changes.outputs.should_test == 'true' }}
         run: |

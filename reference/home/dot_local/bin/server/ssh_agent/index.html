@@ -11,7 +11,7 @@
       
       
       
-        <link rel="prev" href="../secrets/">
+        <link rel="prev" href="../history/">
       
       
         <link rel="next" href="../../../../../install/common/chezmoi_private/">
@@ -1508,34 +1508,6 @@
     
   
     home/dot_local/bin/server/history.sh
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../secrets/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_local/bin/server/secrets.sh
   
 
     
@@ -3324,7 +3296,10 @@
 <span class="c1">#   for the current user when the key exists. This file is sourced by sheldon,</span>
 <span class="c1">#   so it must not enable strict shell options in the parent interactive shell.</span>
 <span class="c1">#   Private keys are intentionally not stored in the public chezmoi source state.</span>
+<span class="c1"># @example</span>
+<span class="c1">#   source ~/.local/bin/server/ssh_agent.sh</span>
 
+<span class="c1"># @description Start ssh-agent and add the default ed25519 key when available.</span>
 <span class="k">function</span><span class="w"> </span>_dotfiles_start_ssh_agent<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">default_ssh_key</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.ssh/id_ed25519&quot;</span>
 

@@ -14,7 +14,7 @@
         <link rel="prev" href="../cuda/">
       
       
-        <link rel="next" href="../secrets/">
+        <link rel="next" href="../ssh_agent/">
       
       
         
@@ -1585,34 +1585,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../secrets/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_local/bin/server/secrets.sh
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -3296,8 +3268,11 @@
 <span class="c1"># @description</span>
 <span class="c1">#   Provides a `tac` fallback and appends a `PROMPT_COMMAND` hook that merges</span>
 <span class="c1">#   duplicate-filtered bash history back into the main history file.</span>
+<span class="c1"># @example</span>
+<span class="c1">#   source ~/.local/bin/server/history.sh</span>
 
 <span class="c1"># @description Reverse lines from stdin or files using `sed`.</span>
+<span class="c1"># @arg $@ Optional file paths to reverse. When omitted, stdin is read.</span>
 <span class="k">function</span><span class="w"> </span>tac<span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">exec</span><span class="w"> </span>sed<span class="w"> </span><span class="s1">&#39;1!G;h;$!d&#39;</span><span class="w"> </span><span class="si">${</span><span class="p">@+</span><span class="s2">&quot;</span><span class="nv">$@</span><span class="s2">&quot;</span><span class="si">}</span>
 <span class="o">}</span>

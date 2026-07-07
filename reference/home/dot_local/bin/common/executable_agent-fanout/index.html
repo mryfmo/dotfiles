@@ -1608,34 +1608,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../server/secrets/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_local/bin/server/secrets.sh
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../server/ssh_agent/" class="md-nav__link">
         
   
@@ -3323,6 +3295,13 @@
 <span class="c1">#   `.agents/runs/`, and prints the output directory. This helper is intended</span>
 <span class="c1">#   for read-only reviews, design comparisons, and isolated worktree tasks.</span>
 <span class="c1">#   Do not use it to let both agents edit the same worktree concurrently.</span>
+<span class="c1"># @option --dry-run Print planned agent commands without running them.</span>
+<span class="c1"># @option --no-codex Skip the Codex run.</span>
+<span class="c1"># @option --no-claude Skip the Claude Code run.</span>
+<span class="c1"># @option --output-dir DIR Directory where prompt and agent logs are written.</span>
+<span class="c1"># @arg PROMPT... Optional prompt text. When omitted, the prompt is read from stdin.</span>
+<span class="c1"># @example</span>
+<span class="c1">#   agent-fanout --no-claude &quot;Review the current diff. Do not edit files.&quot;</span>
 
 <span class="nb">set</span><span class="w"> </span>-euo<span class="w"> </span>pipefail
 

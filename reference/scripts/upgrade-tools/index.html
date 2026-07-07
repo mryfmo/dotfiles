@@ -11,7 +11,7 @@
       
       
       
-        <link rel="prev" href="../update-codex-statusline-tools/">
+        <link rel="prev" href="../update-agent-assets/">
       
       
       
@@ -1099,34 +1099,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../home/dot_local/bin/common/executable_codex-statusline-tmux/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_local/bin/common/executable_codex-statusline-tmux
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../home/dot_local/bin/common/executable_dev/" class="md-nav__link">
         
   
@@ -1756,34 +1728,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../install/common/hermes/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    install/common/hermes.sh
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../install/common/mise/" class="md-nav__link">
         
   
@@ -1820,34 +1764,6 @@
     
   
     install/common/sheldon.sh
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../install/common/tpm/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    install/common/tpm.sh
   
 
     
@@ -2270,34 +2186,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../install/macos/common/tmux/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    install/macos/common/tmux.sh
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -2590,34 +2478,6 @@
     
   
     install/ubuntu/common/ssh.sh
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../install/ubuntu/common/tmux/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    install/ubuntu/common/tmux.sh
   
 
     
@@ -3043,34 +2903,6 @@
                 
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="../update-codex-statusline-tools/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    scripts/update-codex-statusline-tools.sh
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
     
   
   
@@ -3292,13 +3124,11 @@
 <li><code>upgrade_agent_assets</code></li>
 <li><code>upgrade_agent_cli_tools</code></li>
 <li><code>upgrade_apt_packages</code></li>
-<li><code>upgrade_codex_statusline_tools</code></li>
 <li><code>upgrade_gh_extensions</code></li>
 <li><code>upgrade_homebrew</code></li>
 <li><code>upgrade_mise_npm_agent_tool</code></li>
 <li><code>upgrade_mise_self</code></li>
 <li><code>upgrade_mise_tools</code></li>
-<li><code>upgrade_tmux_plugins</code></li>
 <li><code>upgrade_uv_tools</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
@@ -3632,20 +3462,6 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Upgrade tmux plugins when TPM is installed.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>upgrade_tmux_plugins<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">tpm_update</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.tmux/plugins/tpm/bin/update_plugins&quot;</span>
-
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>!<span class="w"> </span>-x<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tpm_update</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
-
-<span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;tmux plugins&quot;</span>
-<span class="w">    </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tpm_update</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>all<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
-<span class="o">}</span>
-
-<span class="c1">#</span>
 <span class="c1"># @description Upgrade apt packages only when system upgrades are requested.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>upgrade_apt_packages<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -3656,16 +3472,6 @@
 <span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;apt&quot;</span>
 <span class="w">    </span>sudo<span class="w"> </span>--preserve-env<span class="o">=</span>http_proxy,https_proxy,no_proxy<span class="w"> </span>apt-get<span class="w"> </span>update
 <span class="w">    </span>sudo<span class="w"> </span>--preserve-env<span class="o">=</span>http_proxy,https_proxy,no_proxy<span class="w"> </span>apt-get<span class="w"> </span>upgrade<span class="w"> </span>-y
-<span class="o">}</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Install or update optional helpers used by the Codex tmux status segment.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>upgrade_codex_statusline_tools<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>repo_root
-<span class="w">    </span><span class="nv">repo_root</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">/..&quot;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="k">)</span><span class="s2">&quot;</span>
-
-<span class="w">    </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">/scripts/update-codex-statusline-tools.sh&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3710,10 +3516,8 @@
 <span class="w">    </span>upgrade_mise_tools
 <span class="w">    </span>upgrade_agent_cli_tools
 <span class="w">    </span>upgrade_agent_assets
-<span class="w">    </span>upgrade_codex_statusline_tools
 <span class="w">    </span>upgrade_uv_tools
 <span class="w">    </span>upgrade_gh_extensions
-<span class="w">    </span>upgrade_tmux_plugins
 <span class="w">    </span>upgrade_apt_packages
 <span class="o">}</span>
 

@@ -61,6 +61,24 @@ fi
             installed.chmod(0o755)
         return target
 
+    def install_zshrc_fakes(self) -> None:
+        self.write_executable(
+            "sheldon",
+            "#!/usr/bin/env bash\nif [[ ${1:-} == source ]]; then exit 0; fi\n",
+        )
+        self.write_executable(
+            "herdr-agents",
+            f"""#!/usr/bin/env bash
+printf 'herdr-agents %s\\n' "$1" >> {self.calls_path}
+""",
+        )
+        self.write_executable(
+            "herdr",
+            f"""#!/usr/bin/env bash
+printf 'herdr %s\\n' "$*" >> {self.calls_path}
+""",
+        )
+
     def run_helper(self) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env["PATH"] = f"{self.bin_dir}{os.pathsep}{env['PATH']}"
@@ -117,7 +135,7 @@ if [[ $1 == workspace && $2 == create ]]; then
 fi
 if [[ $1 == pane && $2 == run ]]; then
     printf 'top pane=%s cwd=%s command=%s\\n' "$3" "$PWD" "$4" >> {e2e_log}
-    bash -lc "$4"
+    bash -c "$4"
     exit 0
 fi
 if [[ $1 == agent && $2 == start ]]; then
@@ -199,23 +217,7 @@ printf 'codex cwd=%s\\n' "$PWD" >> {e2e_log}
         self.assertEqual(command["command"], 'herdr-agents "${HERDR_ACTIVE_PANE_CWD:-$PWD}"')
 
     def run_zshrc_herdr(self, command: str, *, ghostty: bool) -> subprocess.CompletedProcess[str]:
-        self.write_executable(
-            "sheldon",
-            "#!/usr/bin/env bash\nif [[ ${1:-} == source ]]; then exit 0; fi\n",
-        )
-        self.write_executable(
-            "herdr-agents",
-            f"""#!/usr/bin/env bash
-printf 'herdr-agents %s\\n' "$1" >> {self.calls_path}
-""",
-        )
-        self.write_executable(
-            "herdr",
-            f"""#!/usr/bin/env bash
-printf 'herdr %s\\n' "$*" >> {self.calls_path}
-""",
-        )
-
+        self.install_zshrc_fakes()
         env = os.environ.copy()
         env["PATH"] = f"{self.bin_dir}{os.pathsep}{env['PATH']}"
         if ghostty:
@@ -234,23 +236,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         )
 
     def run_interactive_ghostty_herdr(self) -> subprocess.CompletedProcess[str]:
-        self.write_executable(
-            "sheldon",
-            "#!/usr/bin/env bash\nif [[ ${1:-} == source ]]; then exit 0; fi\n",
-        )
-        self.write_executable(
-            "herdr-agents",
-            f"""#!/usr/bin/env bash
-printf 'herdr-agents %s\\n' "$1" >> {self.calls_path}
-""",
-        )
-        self.write_executable(
-            "herdr",
-            f"""#!/usr/bin/env bash
-printf 'herdr %s\\n' "$*" >> {self.calls_path}
-""",
-        )
-
+        self.install_zshrc_fakes()
         env = os.environ.copy()
         env["PATH"] = f"{self.bin_dir}{os.pathsep}{env['PATH']}"
         env["GHOSTTY_RESOURCES_DIR"] = str(self.temp_dir / "ghostty")

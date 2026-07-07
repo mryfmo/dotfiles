@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import errno
 import os
 import pty
 import shutil
@@ -271,7 +272,12 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         output = []
         with os.fdopen(master_fd, "r", errors="replace") as tty:
             while True:
-                chunk = tty.read()
+                try:
+                    chunk = tty.read()
+                except OSError as error:
+                    if error.errno != errno.EIO:
+                        raise
+                    break
                 if not chunk:
                     break
                 output.append(chunk)

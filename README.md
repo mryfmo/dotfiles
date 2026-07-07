@@ -211,17 +211,22 @@ real Herdr CLI. Outside Ghostty, bare `herdr` also runs the real Herdr CLI.
 The workspace layout itself stays centralized in `herdr-agents`, which is also
 bound inside Herdr at `prefix+alt+a`. It reuses the workspace root pane for
 Claude Code and starts Codex in the same workspace with `--split down`, so the
-visible result is Claude Code above Codex. Both agents start in the same project
-cwd and use the shared agmsg scripts/state for cross-agent messaging.
+visible result is Claude Code above Codex. The Codex process still runs the
+`codex` command, but its Herdr agent name is workspace-scoped as
+`codex-${workspace_id}` so repeated runs do not collide with an older active
+Codex agent. Both agents start in the same project cwd and use the shared agmsg
+scripts/state for cross-agent messaging.
 
 Verification for this flow lives in `tests/unit/test_herdr_agents.py`: it checks
 the Ghostty config keeps normal shell startup, bare `herdr` routing in Ghostty,
 argumented `herdr` routing in Ghostty, bare `herdr` routing outside Ghostty, and
 the Herdr `prefix+alt+a` command binding. Its sandbox E2E fakes Herdr deeply
 enough to execute fake Claude Code and Codex commands, verifies Claude Code is
-run in the root pane, Codex is started with `--split down`, and proves agmsg is
-usable by sending a message from fake Claude Code to fake Codex through a
-temporary agmsg database.
+run in the root pane, Codex is started with `--split down` under a
+workspace-scoped Herdr agent name, rejects the old literal `codex` agent name
+that triggers `agent_name_taken` on repeated runs, and proves agmsg is usable by
+sending a message from fake Claude Code to fake Codex through a temporary agmsg
+database.
 
 `make require-crit-review` is the mechanical review gate for agents
 (`scripts/require-crit-review.py` is the underlying script).

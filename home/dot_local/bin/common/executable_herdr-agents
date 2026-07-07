@@ -74,7 +74,7 @@ if [[ -z ${root_pane_id} ]]; then
 fi
 
 herdr pane run "${root_pane_id}" "CLICOLOR_FORCE=1 FORCE_COLOR=1 claude"
-herdr agent start codex --cwd "${workdir}" --workspace "${workspace_id}" --split down --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex
+herdr agent start "codex-${workspace_id}" --cwd "${workdir}" --workspace "${workspace_id}" --split down --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex
 
 if command -v zed > /dev/null 2>&1; then
     zed "${workdir}" > /dev/null 2>&1 &

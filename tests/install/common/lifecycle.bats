@@ -242,11 +242,13 @@
 @test "[common] chezmoi source-path handoff resolves the repository root" {
     local tmpdir
     local repo_root
+    local expected_root
     tmpdir="${BATS_TEST_TMPDIR}/source-path-handoff"
     repo_root="${tmpdir}/dotfiles"
 
     mkdir -p "${tmpdir}/bin" "${repo_root}/home"
     git init -q "${repo_root}"
+    expected_root="$(cd "${repo_root}" && pwd -P)"
 
     cat > "${tmpdir}/bin/chezmoi" <<'CHEZMOI'
 #!/usr/bin/env bash
@@ -262,10 +264,10 @@ CHEZMOI
     chmod +x "${tmpdir}/bin/chezmoi"
 
     run env PATH="${tmpdir}/bin:${PATH}" CHEZMOI_SOURCE_PATH="${repo_root}/home" bash -c '
-        cd "$(git -C "$(chezmoi source-path)" rev-parse --show-toplevel)"
-        pwd
+        cd "$(git -C "$(chezmoi source-path)" rev-parse --show-toplevel 2>/dev/null)"
+        pwd -P
     '
 
     [ "$status" -eq 0 ]
-    [ "$output" = "${repo_root}" ]
+    [ "$output" = "${expected_root}" ]
 }

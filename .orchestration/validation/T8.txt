@@ -1,0 +1,62 @@
+# T8 Validation
+
+## uv run scripts/check-agent-runtime.py; echo exit=$?
+
+The first sandboxed run could not initialize the uv user cache, so the command was rerun with escalation for uv cache access.
+
+Exit: 0
+
+```text
+WARN: unmanaged skill dir: /Users/mryfmo/.agents/skills/crit
+WARN: unmanaged skill dir: /Users/mryfmo/.agents/skills/crit-cli
+WARN: unmanaged skill dir: /Users/mryfmo/.agents/skills/find-skills
+WARN: unmanaged skill dir: /Users/mryfmo/.agents/skills/improve
+active agent runtime files match this chezmoi source tree
+exit=0
+```
+
+## uv run python -m unittest discover -s tests/unit -v
+
+Exit: 0
+
+```text
+Ran 80 tests in 6.176s
+
+OK
+```
+
+New/relevant tests:
+
+```text
+test_agmsg_runtime_paths_are_ignored_on_both_sides ... ok
+test_content_drift_still_fails ... ok
+test_executable_prefix_is_compared_against_deployed_name ... ok
+test_executable_prefix_requires_deployed_execute_bit ... ok
+test_managed_top_level_extra_still_fails_with_unmanaged_warning_mode ... ok
+test_private_prefix_is_compared_against_deployed_name ... ok
+test_unexpected_non_runtime_file_still_fails ... ok
+test_unmanaged_top_level_skill_dir_warns ... ok
+```
+
+## python3 -m py_compile scripts/check-agent-runtime.py tests/unit/test_check_agent_runtime.py
+
+Exit: 0
+
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+```
+
+## git status --porcelain
+
+Exit: 0
+
+```text
+ M scripts/check-agent-runtime.py
+?? .orchestration/autoskill/runs/T8.md
+?? .orchestration/learning/T8.md
+?? .orchestration/reports/T8.md
+?? .orchestration/sandboxes/T8.md
+?? .orchestration/tasks/T8-check-agent-runtime-drift.md
+?? .orchestration/validation/T8.txt
+?? tests/unit/test_check_agent_runtime.py
+```

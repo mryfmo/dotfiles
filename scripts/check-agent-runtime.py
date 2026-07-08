@@ -19,6 +19,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "home"
 HOME = Path.home()
+CHEZMOI_SOURCE_PREFIXES = ("executable_", "private_")
+AGMSG_RUNTIME_IGNORES = (
+    Path("agmsg/.agmsg"),
+    Path("agmsg/db"),
+    Path("agmsg/run"),
+    Path("agmsg/teams"),
+)
 
 
 def render_template(path: Path) -> str:
@@ -55,14 +62,42 @@ def same_modified(source: Path, target: Path) -> bool:
     return result.returncode == 0 and result.stdout == current
 
 
+def is_ignored_runtime_path(rel: Path) -> bool:
+    return any(rel == ignored or ignored in rel.parents for ignored in AGMSG_RUNTIME_IGNORES)
+
+
+def deployed_relative_path(source_rel: Path) -> Path:
+    name = source_rel.name
+    for prefix in CHEZMOI_SOURCE_PREFIXES:
+        if name.startswith(prefix):
+            return source_rel.with_name(name.removeprefix(prefix))
+    return source_rel
+
+
 def source_files(root: Path) -> dict[Path, Path]:
-    return {path.relative_to(root): path for path in sorted(root.rglob("*")) if path.is_file()}
+    return {
+        deployed_relative_path(path.relative_to(root)): path
+        for path in sorted(root.rglob("*"))
+        if path.is_file() and not is_ignored_runtime_path(deployed_relative_path(path.relative_to(root)))
+    }
 
 
 def applied_files(root: Path) -> set[Path]:
     if not root.exists():
         return set()
-    return {path.relative_to(root) for path in sorted(root.rglob("*")) if path.is_file() or path.is_symlink()}
+    return {
+        path.relative_to(root)
+        for path in sorted(root.rglob("*"))
+        if (path.is_file() or path.is_symlink()) and not is_ignored_runtime_path(path.relative_to(root))
+    }
+
+
+def expects_executable(source: Path) -> bool:
+    return source.name.startswith("executable_")
+
+
+def is_warning(message: str) -> bool:
+    return message.startswith("WARN: ")
 
 
 def expected_claude_skill_targets() -> dict[Path, str]:
@@ -82,10 +117,22 @@ def expected_claude_skill_targets() -> dict[Path, str]:
     return outputs
 
 
-def compare_tree_contents(label: str, expected: dict[Path, str], target_root: Path) -> list[str]:
+def compare_tree_contents(
+    label: str,
+    expected: dict[Path, str],
+    target_root: Path,
+    expected_sources: dict[Path, Path] | None = None,
+    warn_unmanaged_top_level: bool = False,
+) -> list[str]:
     failures: list[str] = []
     actual = applied_files(target_root)
     expected_rels = set(expected)
+    if warn_unmanaged_top_level:
+        managed_top_levels = {rel.parts[0] for rel in expected_rels if rel.parts}
+        unmanaged_top_levels = sorted({rel.parts[0] for rel in actual if rel.parts and rel.parts[0] not in managed_top_levels})
+        for top_level in unmanaged_top_levels:
+            failures.append(f"WARN: unmanaged skill dir: {target_root / top_level}")
+        actual = {rel for rel in actual if rel.parts and rel.parts[0] in managed_top_levels}
     missing = sorted(expected_rels - actual)
     extra = sorted(actual - expected_rels)
     if missing:
@@ -101,6 +148,9 @@ def compare_tree_contents(label: str, expected: dict[Path, str], target_root: Pa
             continue
         if actual_text != expected[rel]:
             failures.append(f"{label} differs: {target}")
+        source = expected_sources.get(rel) if expected_sources is not None else None
+        if source is not None and expects_executable(source) and not target.stat().st_mode & stat.S_IXUSR:
+            failures.append(f"{label} is not executable: {target}")
     return failures
 
 
@@ -109,8 +159,9 @@ def compare_shared_skills() -> list[str]:
     target_root = HOME / ".agents/skills"
     if not target_root.exists():
         return ["shared skill directory is missing: ~/.agents/skills"]
-    expected = {rel: path.read_text() for rel, path in source_files(source_root).items()}
-    return compare_tree_contents("shared skill directory", expected, target_root)
+    expected_sources = source_files(source_root)
+    expected = {rel: path.read_text() for rel, path in expected_sources.items()}
+    return compare_tree_contents("shared skill directory", expected, target_root, expected_sources, warn_unmanaged_top_level=True)
 
 
 def compare_claude_skills() -> list[str]:
@@ -167,9 +218,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.parse_args()
     failures = check()
-    if failures:
-        for failure in failures:
+    errors = [failure for failure in failures if not is_warning(failure)]
+    for failure in failures:
+        if is_warning(failure):
+            print(failure)
+        else:
             print(f"ERROR: {failure}", file=sys.stderr)
+    if errors:
         return 1
     print("active agent runtime files match this chezmoi source tree")
     return 0

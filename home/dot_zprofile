@@ -1,2 +1,12 @@
-eval "$(~/.local/bin/mise activate zsh)"
+# @file home/dot_zprofile
+# @brief Initialize login-shell environment (Homebrew first, then mise).
+# @description
+#   Puts /opt/homebrew/{bin,sbin} ahead of /usr/local/bin so ARM Homebrew
+#   tools win over stale Intel-era binaries left under /usr/local.
+#   mise activates afterwards and prepends its own tool paths, so
+#   mise-managed tools keep the highest priority.
+if [ -x /opt/homebrew/bin/brew ]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+fi
 
+eval "$(~/.local/bin/mise activate zsh)"

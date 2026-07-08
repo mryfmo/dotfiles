@@ -10,3 +10,11 @@ if [ -x /opt/homebrew/bin/brew ]; then
 fi
 
 eval "$(~/.local/bin/mise activate zsh)"
+
+typeset -gU path
+path=(
+    $path
+    /usr/local/{,s}bin(N-/)
+    ${HOME}/.local/bin(N-/)
+    ${HOME}/.local/bin/common(N-/)
+)

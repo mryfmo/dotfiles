@@ -1,0 +1,65 @@
+# T7 Validation
+
+## zsh -n home/dot_zprofile
+
+Exit: 0
+
+```text
+```
+
+## zsh -n home/dot_zshrc
+
+Exit: 0
+
+```text
+```
+
+## Static Login PATH Simulation
+
+Command used a temporary fake `mise` on `PATH` so sourcing the repo `.zprofile` did not depend on deployed mise:
+
+```text
+tmpdir=$(mktemp -d)
+mkdir -p "$tmpdir/bin"
+printf '#!/usr/bin/env sh\nif [ "$1" = activate ]; then printf "# mise stub\\n"; fi\n' > "$tmpdir/bin/mise"
+chmod +x "$tmpdir/bin/mise"
+PATH="$tmpdir/bin:/usr/bin:/bin" zsh -fc 'HOME=/Users/mryfmo; source home/dot_zprofile 2>/dev/null; print -l $path | grep -c "/Users/mryfmo/.local/bin/common"'
+```
+
+Exit: 0
+
+```text
+1
+```
+
+## uv run python -m unittest discover -s tests/unit -v
+
+Exit: 0
+
+```text
+Ran 72 tests in 5.949s
+
+OK
+```
+
+New/updated test:
+
+```text
+test_zprofile_adds_common_bin_to_login_shell_path ... ok
+```
+
+## git status --porcelain
+
+Exit: 0
+
+```text
+ M home/dot_zprofile
+ M home/dot_zshrc
+ M tests/unit/test_herdr_agents.py
+?? .orchestration/autoskill/runs/T7.md
+?? .orchestration/learning/T7.md
+?? .orchestration/reports/T7.md
+?? .orchestration/sandboxes/T7.md
+?? .orchestration/tasks/T7-zprofile-path-noninteractive.md
+?? .orchestration/validation/T7.txt
+```

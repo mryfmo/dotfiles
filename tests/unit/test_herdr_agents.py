@@ -20,6 +20,7 @@ SCRIPT = ROOT / "home/dot_local/bin/common/executable_herdr-agents"
 HERDR_SESSION_SCRIPT = ROOT / "home/dot_local/bin/common/executable_herdr-session"
 HERDR_CONFIG = ROOT / "home/dot_config/herdr/config.toml"
 GHOSTTY_CONFIG = ROOT / "home/dot_config/ghostty/config"
+ZPROFILE = ROOT / "home/dot_zprofile"
 ZSHRC = ROOT / "home/dot_zshrc"
 
 
@@ -548,6 +549,14 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
     def test_ghostty_config_starts_herdr_session(self) -> None:
         self.assertIn("initial-command = /bin/zsh -lc 'exec herdr-session'", GHOSTTY_CONFIG.read_text())
+
+    def test_zprofile_adds_common_bin_to_login_shell_path(self) -> None:
+        zprofile = ZPROFILE.read_text()
+        zshrc = ZSHRC.read_text()
+
+        self.assertIn("typeset -gU path", zprofile)
+        self.assertIn("${HOME}/.local/bin/common(N-/)", zprofile)
+        self.assertNotIn("typeset -gU path fpath", zshrc)
 
     def test_bare_herdr_in_ghostty_starts_agent_layout(self) -> None:
         result = self.run_zshrc_herdr("herdr", ghostty=True)

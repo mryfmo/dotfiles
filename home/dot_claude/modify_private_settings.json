@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+"""Merge managed Claude settings with Claude-owned runtime state.
+
+Whitespace-only, missing, or invalid JSON input falls back to the rendered
+managed baseline so `chezmoi apply` does not fail on a malformed runtime file.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import sys
+from pathlib import Path
+from typing import Any
+
+RUNTIME_KEYS = ("enabledPlugins",)
+
+
+def source_dir() -> Path:
+    if os.environ.get("CHEZMOI_SOURCE_DIR"):
+        return Path(os.environ["CHEZMOI_SOURCE_DIR"])
+    return Path(__file__).resolve().parents[1]
+
+
+def home_dir() -> Path:
+    if os.environ.get("CHEZMOI_HOME_DIR"):
+        return Path(os.environ["CHEZMOI_HOME_DIR"])
+    return Path.home()
+
+
+def render_managed_template(text: str) -> str:
+    return text.replace("{{ .chezmoi.sourceDir }}", str(source_dir())).replace("{{ .chezmoi.homeDir }}", str(home_dir()))
+
+
+def load_json_object(text: str) -> dict[str, Any] | None:
+    if not text.strip():
+        return None
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def merge_settings(managed: dict[str, Any], current: dict[str, Any] | None) -> dict[str, Any]:
+    if current is None:
+        return dict(managed)
+
+    merged: dict[str, Any] = {}
+    for key, value in current.items():
+        if key in RUNTIME_KEYS:
+            merged[key] = value
+        elif key in managed:
+            merged[key] = managed[key]
+        else:
+            merged[key] = value
+
+    for key, value in managed.items():
+        if key not in merged:
+            merged[key] = value
+    return merged
+
+
+def dump_settings(settings: dict[str, Any]) -> str:
+    return json.dumps(settings, indent=2) + "\n"
+
+
+def main() -> int:
+    baseline = source_dir() / ".chezmoitemplates/claude-settings-managed.json"
+    managed = json.loads(render_managed_template(baseline.read_text()))
+    current_text = sys.stdin.read()
+    current = load_json_object(current_text)
+    merged = merge_settings(managed, current)
+    if current is not None and merged == current:
+        sys.stdout.write(current_text)
+    else:
+        sys.stdout.write(dump_settings(merged))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

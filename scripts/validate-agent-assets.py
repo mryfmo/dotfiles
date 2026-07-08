@@ -176,8 +176,8 @@ def validate_codex_agmsg_writable_roots(sandbox_workspace_write: dict[str, Any],
 
 
 def validate_claude_settings() -> None:
-    settings_path = ROOT / "home/dot_claude/private_settings.json"
-    settings = json.loads(settings_path.read_text())
+    settings_path = ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
+    settings = json.loads(render_template_text(settings_path))
     if settings.get("$schema") != "https://json.schemastore.org/claude-code-settings.json":
         fail(f"{settings_path} must declare the Claude Code settings schema")
     if settings.get("model") != "claude-fable-5[1m]":
@@ -493,11 +493,12 @@ def validate_ccgate_assets() -> None:
         if token not in codex_text:
             fail(f"{codex_path} must configure Codex ccgate hook token {token!r}")
 
-    claude_settings = json.loads((ROOT / "home/dot_claude/private_settings.json").read_text())
+    claude_settings_path = ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
+    claude_settings = json.loads(render_template_text(claude_settings_path))
     claude_hooks = json.dumps(claude_settings.get("hooks", {}), ensure_ascii=False)
     for token in ("PermissionRequest", "ccgate claude"):
         if token not in claude_hooks:
-            fail(f"home/dot_claude/private_settings.json must configure Claude ccgate hook token {token!r}")
+            fail(f"{claude_settings_path} must configure Claude ccgate hook token {token!r}")
 
     ccgate_configs = {
         ROOT / "home/dot_codex/ccgate.jsonnet": (

@@ -134,7 +134,6 @@ def check_executable_hook(source: Path, target: Path, label: str) -> list[str]:
 def check() -> list[str]:
     failures: list[str] = []
     checks = [
-        (SOURCE_ROOT / "dot_claude/private_settings.json", HOME / ".claude/settings.json", False, "Claude settings"),
         (SOURCE_ROOT / "dot_claude/private_mcp.json.tmpl", HOME / ".claude/mcp.json", True, "Claude MCP config"),
     ]
     for source, target, template, label in checks:
@@ -142,6 +141,8 @@ def check() -> list[str]:
             failures.append(f"{label} differs or is missing: {target}")
     if not same_modified(SOURCE_ROOT / "dot_codex/modify_private_config.toml", HOME / ".codex/config.toml"):
         failures.append(f"Codex config managed keys differ or config is missing: {HOME / '.codex/config.toml'}")
+    if not same_modified(SOURCE_ROOT / "dot_claude/modify_private_settings.json", HOME / ".claude/settings.json"):
+        failures.append(f"Claude settings managed keys differ or settings file is missing: {HOME / '.claude/settings.json'}")
 
     failures.extend(compare_shared_skills())
     failures.extend(compare_claude_skills())

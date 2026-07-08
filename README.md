@@ -225,7 +225,7 @@ The official Herdr integrations are refreshed by `make update` through
 `herdr integration install claude` and `herdr integration install codex` when
 the `herdr` CLI is available. The Claude `SessionStart` hook is also represented
 in `home/dot_agents/agent-config.yaml` and generated into
-`home/dot_claude/private_settings.json`, so `chezmoi apply` and Herdr's
+`home/.chezmoitemplates/claude-settings-managed.json`, so `chezmoi apply` and Herdr's
 installer converge regardless of which runs first. Those integrations install
 Herdr agent-state hooks; with Herdr's `[session] resume_agents_on_restore`
 default enabled, agent panes can be restored with their conversation sessions

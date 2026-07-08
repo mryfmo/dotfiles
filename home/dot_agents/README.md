@@ -18,7 +18,7 @@ Generated files include:
 - `home/.chezmoitemplates/codex-config-managed.toml`
 - `home/dot_codex/modify_private_config.toml`
 - `home/dot_codex/ccgate.jsonnet`
-- `home/dot_claude/private_settings.json`
+- `home/.chezmoitemplates/claude-settings-managed.json`
 - `home/dot_claude/private_mcp.json.tmpl`
 - `home/dot_claude/ccgate.jsonnet`
 - `home/dot_claude/skills/**/symlink_*.tmpl`

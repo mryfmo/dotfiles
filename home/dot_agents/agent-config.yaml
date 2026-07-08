@@ -90,7 +90,7 @@ codex:
       trust_level: trusted
 
 claude:
-  settings_path: home/dot_claude/private_settings.json
+  settings_path: home/.chezmoitemplates/claude-settings-managed.json
   mcp_config_path: home/dot_claude/private_mcp.json.tmpl
   ccgate_config_path: home/dot_claude/ccgate.jsonnet
   schema: https://json.schemastore.org/claude-code-settings.json

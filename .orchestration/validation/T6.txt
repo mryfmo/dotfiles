@@ -1,0 +1,98 @@
+# T6 Validation
+
+## uv run python -m unittest discover -s tests/unit -v
+
+Exit: 0
+
+```text
+Ran 71 tests in 6.058s
+
+OK
+```
+
+New/relevant merge tests included:
+
+```text
+test_current_only_key_is_preserved ... ok
+test_desired_current_output_is_byte_identical ... ok
+test_empty_stdin_outputs_managed ... ok
+test_enabled_plugins_are_preserved_from_current ... ok
+test_invalid_json_outputs_managed ... ok
+test_managed_wins_for_managed_key ... ok
+test_merge_is_idempotent ... ok
+test_real_value_change_is_redumped ... ok
+test_reordered_but_equal_current_is_byte_identical ... ok
+test_trailing_newline ... ok
+```
+
+## make validate-agent-assets
+
+Exit: 0
+
+```text
+uv run --with pyyaml scripts/validate-agent-assets.py
+agent asset validation ok
+```
+
+## Merge Simulation Against Real Deployed File
+
+Command shape:
+
+```text
+CHEZMOI_SOURCE_DIR=$PWD/home CHEZMOI_HOME_DIR=$HOME python3 home/dot_claude/modify_private_settings.json < ~/.claude/settings.json
+```
+
+Then the output was piped back through the same script and compared with `cmp -s`.
+
+Exit: 0
+
+```text
+enabledPlugins={"crit@crit": true, "ponytail@ponytail": true}
+model=claude-fable-5[1m]
+effortLevel=high
+sessionStart=bash '/Users/mryfmo/.claude/hooks/herdr-agent-state.sh' session
+idempotent=true
+trailing_newline=false
+```
+
+The output is byte-identical after the second merge. `trailing_newline=false` reflects pass-through of the current deployed file as-is when semantically equal.
+
+The command also printed sandbox-local `mise WARN failed to write cache file ... Operation not permitted` warnings while resolving shims; the merge still exited 0.
+
+## python3 -m py_compile
+
+Command:
+
+```text
+python3 -m py_compile home/dot_claude/modify_private_settings.json tests/unit/test_claude_settings_merge.py scripts/check-agent-runtime.py scripts/validate-agent-assets.py tests/unit/test_generate_agent_configs.py
+```
+
+Exit: 0
+
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+```
+
+## git status --porcelain
+
+Exit: 0
+
+```text
+ M README.md
+ M home/dot_agents/README.md
+ M home/dot_agents/agent-config.yaml
+ D home/dot_claude/private_settings.json
+ M scripts/check-agent-runtime.py
+ M scripts/validate-agent-assets.py
+ M tests/install/common/lifecycle.bats
+ M tests/unit/test_generate_agent_configs.py
+?? .orchestration/autoskill/runs/T6.md
+?? .orchestration/learning/T6.md
+?? .orchestration/reports/T6.md
+?? .orchestration/sandboxes/T6.md
+?? .orchestration/tasks/T6-claude-settings-modify-merge.md
+?? .orchestration/validation/T6.txt
+?? home/.chezmoitemplates/claude-settings-managed.json
+?? home/dot_claude/modify_private_settings.json
+?? tests/unit/test_claude_settings_merge.py
+```

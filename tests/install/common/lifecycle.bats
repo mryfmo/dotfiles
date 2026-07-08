@@ -183,7 +183,7 @@
     grep -q 'aqua:tak848/ccgate' scripts/update-agent-assets.sh
     grep -q '"aqua:tak848/ccgate" = "latest"' home/dot_mise/config.toml
     grep -q 'ccgate --version' scripts/update-agent-assets.sh
-    grep -q 'ccgate claude' home/dot_claude/private_settings.json
+    grep -q 'ccgate claude' home/.chezmoitemplates/claude-settings-managed.json
     grep -q 'ccgate codex' home/.chezmoitemplates/codex-config-managed.toml
     grep -q 'claude-haiku-4-5' home/dot_claude/ccgate.jsonnet
     grep -q 'HookInput.model' home/dot_codex/ccgate.jsonnet

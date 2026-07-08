@@ -18,7 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "home/dot_local/bin/common/executable_herdr-agents"
 HERDR_CONFIG = ROOT / "home/dot_config/herdr/config.toml"
-GHOSTTY_CONFIG = ROOT / "home/dot_config/ghostty/config.ghostty.tmpl"
+GHOSTTY_CONFIG = ROOT / "home/dot_config/ghostty/config"
 ZSHRC = ROOT / "home/dot_zshrc"
 
 
@@ -38,9 +38,8 @@ printf '%s\\n' "$*" >> {self.calls_path}
 if [[ $1 == workspace && $2 == create ]]; then
     printf '%s\\n' '{{"id":"cli:workspace:create","result":{{"root_pane":{{"pane_id":"w-test:p1"}},"workspace":{{"workspace_id":"w-test"}}}}}}'
 fi
-if [[ $1 == agent && $2 == start && $3 == codex ]]; then
-    printf '%s\\n' '{{"error":{{"code":"agent_name_taken","message":"agent name codex is already used"}},"id":"cli:agent:start"}}' >&2
-    exit 1
+if [[ $1 == agent && $2 == start ]]; then
+    printf '%s\\n' '{{"id":"cli:agent:start","result":{{"pane":{{"pane_id":"w-test:p2"}}}}}}'
 fi
 """,
         )
@@ -101,11 +100,13 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
         calls = self.calls_path.read_text().splitlines()
-        self.assertIn("pane run w-test:p1 CLICOLOR_FORCE=1 FORCE_COLOR=1 claude", calls)
+        self.assertIn("pane rename w-test:p1 claude-orchestrator", calls)
+        self.assertIn("pane run w-test:p1 CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high", calls)
         self.assertIn(
-            f"agent start codex-w-test --cwd {self.workdir} --workspace w-test --split down --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex",
+            f"agent start codex-worker-w-test --cwd {self.workdir} --workspace w-test --split down --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex --sandbox workspace-write -m gpt-5.5 -c model_reasoning_effort=high",
             calls,
         )
+        self.assertIn("pane rename w-test:p2 codex-worker", calls)
         self.assertNotIn(
             f"agent start claude --cwd {self.workdir} --workspace w-test --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --focus -- claude",
             calls,
@@ -142,11 +143,10 @@ if [[ $1 == pane && $2 == run ]]; then
     bash -c "$4"
     exit 0
 fi
+if [[ $1 == pane && $2 == rename ]]; then
+    exit 0
+fi
 if [[ $1 == agent && $2 == start ]]; then
-    if [[ $3 == codex ]]; then
-        printf '%s\\n' '{{"error":{{"code":"agent_name_taken","message":"agent name codex is already used"}},"id":"cli:agent:start"}}' >&2
-        exit 1
-    fi
     cwd=''
     workspace=''
     split=''
@@ -161,6 +161,7 @@ if [[ $1 == agent && $2 == start ]]; then
     done
     printf 'bottom workspace=%s split=%s cwd=%s command=%s\\n' "$workspace" "$split" "$cwd" "$*" >> {e2e_log}
     (cd "$cwd" && "$@")
+    printf '%s\\n' '{{"id":"cli:agent:start","result":{{"pane":{{"pane_id":"w-test:p2"}}}}}}'
     exit 0
 fi
 """,
@@ -208,14 +209,16 @@ printf 'codex cwd=%s\\n' "$PWD" >> {e2e_log}
             [
                 f"herdr-agents {self.workdir.resolve()}",
                 f"herdr workspace create --cwd {self.workdir.resolve()} --label project agents --focus",
-                "herdr pane run w-test:p1 CLICOLOR_FORCE=1 FORCE_COLOR=1 claude",
-                f"herdr agent start codex-w-test --cwd {self.workdir.resolve()} --workspace w-test --split down --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex",
+                "herdr pane rename w-test:p1 claude-orchestrator",
+                "herdr pane run w-test:p1 CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high",
+                f"herdr agent start codex-worker-w-test --cwd {self.workdir.resolve()} --workspace w-test --split down --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex --sandbox workspace-write -m gpt-5.5 -c model_reasoning_effort=high",
+                "herdr pane rename w-test:p2 codex-worker",
                 "herdr ",
             ],
         )
         e2e_lines = e2e_log.read_text()
-        self.assertIn(f"top pane=w-test:p1 cwd={self.workdir.resolve()} command=CLICOLOR_FORCE=1 FORCE_COLOR=1 claude", e2e_lines)
-        self.assertIn(f"bottom workspace=w-test split=down cwd={self.workdir.resolve()} command=codex", e2e_lines)
+        self.assertIn(f"top pane=w-test:p1 cwd={self.workdir.resolve()} command=CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high", e2e_lines)
+        self.assertIn(f"bottom workspace=w-test split=down cwd={self.workdir.resolve()} command=codex --sandbox workspace-write -m gpt-5.5 -c model_reasoning_effort=high", e2e_lines)
         self.assertIn(f"claude cwd={self.workdir.resolve()}", e2e_lines)
         self.assertIn(f"codex cwd={self.workdir.resolve()}", e2e_lines)
         self.assertIn("1 new message(s):", e2e_lines)

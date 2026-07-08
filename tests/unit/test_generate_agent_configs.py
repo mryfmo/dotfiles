@@ -50,6 +50,58 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             outputs,
         )
 
+    def test_expected_outputs_uses_codex_baseline_path(self) -> None:
+        manifest = {
+            "codex": {
+                "config_path": "home/.chezmoitemplates/codex-config-managed.toml",
+                "ccgate_config_path": "home/dot_codex/ccgate.jsonnet",
+                "model": "gpt-5.5",
+                "model_reasoning_effort": "high",
+                "approval_policy": "on-request",
+                "sandbox_mode": "workspace-write",
+                "web_search": "cached",
+                "project_doc_max_bytes": 65536,
+                "project_doc_fallback_filenames": ["CLAUDE.md"],
+                "tui": {},
+                "sandbox_workspace_write": {"network_access": False},
+                "shell_environment_policy": {},
+                "features": {},
+                "plugins": {},
+                "marketplaces": {},
+                "hooks": {},
+                "projects": {},
+            },
+            "claude": {
+                "settings_path": "home/dot_claude/private_settings.json",
+                "mcp_config_path": "home/dot_claude/private_mcp.json.tmpl",
+                "ccgate_config_path": "home/dot_claude/ccgate.jsonnet",
+                "schema": "https://json.schemastore.org/claude-code-settings.json",
+                "model": "claude-fable-5[1m]",
+                "effortLevel": "high",
+                "alwaysThinkingEnabled": True,
+                "autoUpdates": False,
+                "autoUpdatesChannel": "stable",
+                "plansDirectory": "./.agents/worklog/claude",
+                "permissions": {"deny": [], "defaultMode": "plan", "ask": []},
+                "hooks": {
+                    "ccgate_permission_request_hook": "ccgate claude",
+                    "enforce_uv_hook": "~/.claude/hooks/enforce-uv.sh",
+                    "format_edited_files_hook": "~/.claude/hooks/format-edited-files.py",
+                },
+                "statusLine": {},
+                "disableSkillShellExecution": True,
+                "includeGitInstructions": True,
+                "enabledPlugins": {},
+            },
+            "plugins": {"marketplace_path": "home/dot_agents/plugins/marketplace.json", "marketplace": {"displayName": "Local", "name": "local"}},
+            "mcp_servers": {},
+        }
+
+        outputs = self.module.expected_outputs(manifest)
+
+        self.assertIn(self.temp_dir / "home/.chezmoitemplates/codex-config-managed.toml", outputs)
+        self.assertNotIn(self.temp_dir / "home/dot_codex/private_config.toml.tmpl", outputs)
+
 
 if __name__ == "__main__":
     unittest.main()

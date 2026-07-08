@@ -180,6 +180,10 @@ def validate_claude_settings() -> None:
     settings = json.loads(settings_path.read_text())
     if settings.get("$schema") != "https://json.schemastore.org/claude-code-settings.json":
         fail(f"{settings_path} must declare the Claude Code settings schema")
+    if settings.get("model") != "claude-fable-5[1m]":
+        fail(f"{settings_path} must pin Claude Fable 5")
+    if settings.get("effortLevel") != "high":
+        fail(f"{settings_path} must pin high effort")
     commands = json.dumps(settings.get("hooks", {}), ensure_ascii=False)
     legacy_type_checker = "uvx " + "my" + "py"
     if legacy_type_checker in commands:
@@ -195,7 +199,7 @@ def validate_claude_settings() -> None:
 
 
 def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
-    codex_path = ROOT / "home/dot_codex/private_config.toml.tmpl"
+    codex_path = ROOT / manifest.get("codex", {}).get("config_path", "home/.chezmoitemplates/codex-config-managed.toml")
     text = render_template_text(codex_path)
     if not text.startswith("#:schema https://developers.openai.com/codex/config-schema.json"):
         fail(f"{codex_path} must declare the Codex config schema")
@@ -289,6 +293,9 @@ def validate_agent_manifest() -> dict[str, Any]:
     codex_plugins = manifest.get("codex", {}).get("plugins", {})
     if codex_plugins.get("crit@mryfmo-personal-plugins", {}).get("enabled") is not True:
         fail(f"{manifest_path} must enable the Crit Codex plugin")
+    claude = manifest.get("claude", {})
+    if claude.get("model") != "claude-fable-5[1m]" or claude.get("effortLevel") != "high":
+        fail(f"{manifest_path} must pin Claude Fable 5 with high effort")
     for name, server in manifest.get("mcp_servers", {}).items():
         if server.get("enabled", False) is not False:
             fail(f"MCP server {name} must be disabled by default in the shared manifest")
@@ -323,6 +330,18 @@ def validate_mcp_parity(codex: dict[str, Any], claude: dict[str, Any], manifest:
             f"manifest={sorted(manifest_names)} codex={sorted(codex_names)} "
             f"claude={sorted(claude_names)}"
         )
+
+
+def validate_codex_modify_script() -> None:
+    path = ROOT / "home/dot_codex/modify_private_config.toml"
+    if not path.exists():
+        fail(f"{path} is missing")
+    if path.stat().st_mode & 0o111 == 0:
+        fail(f"{path} must be executable")
+    text = path.read_text()
+    for token in ("RUNTIME_PREFIXES", "hooks.state", "marketplaces", "tui.model_availability_nux", "projects"):
+        if token not in text:
+            fail(f"{path} must preserve Codex runtime-owned table token {token!r}")
 
 
 def validate_cognee_install_assets(manifest: dict[str, Any]) -> None:
@@ -420,9 +439,9 @@ def validate_ponytail_assets(manifest: dict[str, Any], codex: dict[str, Any]) ->
     if manifest_plugins.get("ponytail@ponytail", {}).get("enabled") is not True:
         fail("home/dot_agents/agent-config.yaml must enable the Ponytail Codex plugin")
     if codex.get("plugins", {}).get("ponytail@ponytail", {}).get("enabled") is not True:
-        fail("home/dot_codex/private_config.toml.tmpl must render the Ponytail Codex plugin")
+        fail("home/.chezmoitemplates/codex-config-managed.toml must render the Ponytail Codex plugin")
     if codex.get("marketplaces", {}).get("ponytail", {}).get("source") != "https://github.com/DietrichGebert/ponytail.git":
-        fail("home/dot_codex/private_config.toml.tmpl must render the Ponytail Codex marketplace source")
+        fail("home/.chezmoitemplates/codex-config-managed.toml must render the Ponytail Codex marketplace source")
     hook_state = codex.get("hooks", {}).get("state", {})
     for key in (
         "ponytail@ponytail:hooks/claude-codex-hooks.json:session_start:0:0",
@@ -430,7 +449,7 @@ def validate_ponytail_assets(manifest: dict[str, Any], codex: dict[str, Any]) ->
         "ponytail@ponytail:hooks/claude-codex-hooks.json:subagent_start:0:0",
     ):
         if not hook_state.get(key, {}).get("trusted_hash", "").startswith("sha256:"):
-            fail(f"home/dot_codex/private_config.toml.tmpl must render trusted Ponytail hook state for {key}")
+            fail(f"home/.chezmoitemplates/codex-config-managed.toml must render trusted Ponytail hook state for {key}")
 
     codex_agents = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
     for token in ("Ponytail", "/hooks", "ponytail@ponytail", "YAGNI", "stdlib"):
@@ -468,7 +487,7 @@ def validate_ccgate_assets() -> None:
     if '"aqua:tak848/ccgate" = "latest"' not in mise_config:
         fail("home/dot_mise/config.toml must activate aqua:tak848/ccgate")
 
-    codex_path = ROOT / "home/dot_codex/private_config.toml.tmpl"
+    codex_path = ROOT / "home/.chezmoitemplates/codex-config-managed.toml"
     codex_text = render_template_text(codex_path)
     for token in ("[[hooks.PermissionRequest]]", "ccgate codex", "ccgate evaluating request"):
         if token not in codex_text:
@@ -614,6 +633,7 @@ def main() -> None:
     validate_agmsg_script_modes()
     validate_claude_settings()
     validate_codex_plugins()
+    validate_codex_modify_script()
     codex = validate_codex_config(manifest)
     claude = validate_claude_mcp_config()
     validate_mcp_parity(codex, claude, manifest)

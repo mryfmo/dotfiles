@@ -15,7 +15,8 @@ This directory is the canonical source for AI-agent assets shared by Codex and C
 
 Generated files include:
 
-- `home/dot_codex/private_config.toml.tmpl`
+- `home/.chezmoitemplates/codex-config-managed.toml`
+- `home/dot_codex/modify_private_config.toml`
 - `home/dot_codex/ccgate.jsonnet`
 - `home/dot_claude/private_settings.json`
 - `home/dot_claude/private_mcp.json.tmpl`
@@ -35,6 +36,19 @@ Generated files include:
 7. Do not hand-edit generated files unless you immediately move the change back into `agent-config.yaml` and regenerate.
 8. Cognee memory stays disabled in public defaults. Enable it locally only after starting Cognee MCP and providing LLM/API/DB secrets from private environment or private chezmoi state.
 9. For implementation tasks shared between Codex and Claude Code, use separate worktrees or make one agent a reviewer; do not let both write to the same worktree. This is an operational guideline and is intentionally not enforced by `validate-agent-assets.py`.
+
+## Codex runtime state
+
+Codex writes stable runtime state into `~/.codex/config.toml`, so the file is managed through `home/dot_codex/modify_private_config.toml` instead of a full-file template. The generated managed baseline lives at `home/.chezmoitemplates/codex-config-managed.toml`.
+
+The merge script keeps managed settings from `agent-config.yaml` authoritative while preserving these Codex-owned table prefixes from the live target when they exist:
+
+- `hooks.state`
+- `marketplaces`
+- `tui.model_availability_nux`
+- `projects`
+
+Current-target tables outside the generated baseline are also preserved so local Codex additions are not lost during `chezmoi apply`.
 
 ## Shared Cognee memory
 

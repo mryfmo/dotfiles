@@ -1,0 +1,104 @@
+WP-H validation
+Date: 2026-07-08T08:39:41+0900
+
+## 1. codexbar/deleted-script grep
+Command:
+
+```sh
+grep -n "update-codex-statusline-tools\|codexbar" tests/install/common/lifecycle.bats || true
+```
+
+Output:
+
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+```
+
+Result: zero hits.
+
+## 2. surgical edit evidence
+Command:
+
+```sh
+sed -n '95,115p' tests/install/common/lifecycle.bats
+```
+
+Output:
+
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+    grep -q 'run_mise_with_isolated_git_config "${mise_command}" --yes --before 7d "${mise_tool}"' scripts/upgrade-tools.sh
+    grep -q 'warning: unable to list current mise tools for %s; continuing' scripts/upgrade-tools.sh
+    grep -q 'warning: mise %s failed for %s; continuing' scripts/upgrade-tools.sh
+}
+
+@test "[common] Homebrew upgrade filters forbidden formulae without installed-dependent side effects" {
+    grep -q 'DEFAULT_FORBIDDEN_HOMEBREW_FORMULAE="node node@\* python python@\* python3 pip npm pnpm yarn claude"' scripts/upgrade-tools.sh
+    grep -q 'for forbidden_formula in ${DEFAULT_FORBIDDEN_HOMEBREW_FORMULAE} ${HOMEBREW_FORBIDDEN_FORMULAE:-}' scripts/upgrade-tools.sh
+    grep -q 'case "${formula}" in' scripts/upgrade-tools.sh
+    grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --formula "${upgrade_formulae\[@\]}"' scripts/upgrade-tools.sh
+    grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --cask --skip-cask-deps "${outdated_casks\[@\]}"' scripts/upgrade-tools.sh
+}
+
+@test "[common] agent CLI upgrade installs npm latest into mise packages and removes node-global shadows" {
+    local latest_line
+    local install_line
+    local repair_line
+    local codex_cleanup_line
+    local claude_cleanup_line
+
+    grep -q 'npm uninstall -g "${npm_package}"' scripts/upgrade-tools.sh
+```
+
+## 3. scan for other deleted-file references
+Command:
+
+```sh
+grep -n "update-codex-statusline-tools\|install/common/hermes.sh\|install/common/tpm.sh\|install/macos/common/tmux.sh\|install/ubuntu/common/tmux.sh\|dot_tmux\|private_dot_hermes\|hermes-config-base.yaml\|hermes-agent-orchestration" tests/install/common/lifecycle.bats || true
+```
+
+Output:
+
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+```
+
+Result: no other references found.
+
+## 4. diff stat
+Command:
+
+```sh
+git diff --stat tests/install/common/lifecycle.bats
+```
+
+Output:
+
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+ tests/install/common/lifecycle.bats | 5 -----
+ 1 file changed, 5 deletions(-)
+```
+
+## 5. scoped status
+Command:
+
+```sh
+git status --porcelain -- tests/install/common/lifecycle.bats .orchestration/reports/WP-H.md .orchestration/validation/WP-H.txt .orchestration/sandboxes/WP-H.md .orchestration/learning/WP-H.md .orchestration/autoskill/runs/WP-H.md
+```
+
+Output:
+
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+ M tests/install/common/lifecycle.bats
+?? .orchestration/autoskill/runs/WP-H.md
+?? .orchestration/learning/WP-H.md
+?? .orchestration/reports/WP-H.md
+?? .orchestration/sandboxes/WP-H.md
+?? .orchestration/validation/WP-H.txt
+```
+
+## Not run
+
+- `bats` was not run because WP-H forbids running bats locally.

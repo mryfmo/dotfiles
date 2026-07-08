@@ -1,0 +1,153 @@
+WP-F validation
+Date: 2026-07-08T08:18:50+0900
+
+## 1. scoped tmux/Hermes/TPM grep
+Command:
+
+```sh
+grep -n -i "tmux\|hermes\|tpm" Makefile scripts/check-tools.sh scripts/upgrade-tools.sh .github/workflows/*.yaml .github/workflows/*.yml README.md home/dot_local/bin/common/executable_start-cognee-mcp || true
+```
+
+Output:
+
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+```
+
+Result: zero hits in the required WP-F validation scope.
+
+## 2. shfmt
+Command:
+
+```sh
+shfmt --indent 4 --space-redirects --diff scripts/ home/dot_local/bin/common/executable_start-cognee-mcp || true
+```
+
+Output:
+
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+```
+
+Result: no shfmt diff.
+
+## 3. deleted path check
+Command:
+
+```sh
+for target in scripts/update-codex-statusline-tools.sh; do if [ -e "$target" ]; then printf 'PRESENT %s\n' "$target"; else printf 'ABSENT %s\n' "$target"; fi; done
+```
+
+Output:
+
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+ABSENT scripts/update-codex-statusline-tools.sh
+```
+
+## 4. git status --porcelain
+Command:
+
+```sh
+git status --porcelain
+```
+
+Output:
+
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+ M .github/workflows/agent-assets.yml
+ M .github/workflows/macos.yaml
+ M .github/workflows/ubuntu.yaml
+ M Makefile
+ M README.md
+ M home/.chezmoi.yaml.tmpl
+ D home/.chezmoiscripts/common/run_once_after_04-install-hermes.sh.tmpl
+ D home/.chezmoiscripts/macos/run_once_08-install-tmux.sh.tmpl
+ D home/.chezmoiscripts/ubuntu/run_once_08-install-tmux.sh.tmpl
+ M home/.chezmoitemplates/chezmoiignore.d/common
+ M home/.chezmoitemplates/chezmoiignore.d/macos
+ M home/.chezmoitemplates/chezmoiignore.d/ubuntu/client
+ M home/.chezmoitemplates/chezmoiignore.d/ubuntu/server
+ M home/dot_agents/agent-config.yaml
+ D home/dot_agents/hermes-config-base.yaml
+ D home/dot_agents/skills/hermes-agent-orchestration/SKILL.md
+ D home/dot_agents/skills/hermes-agent-orchestration/agents/openai.yaml
+ M home/dot_bash/client/bashrc
+ D home/dot_claude/skills/hermes-agent-orchestration/agents/symlink_openai.yaml.tmpl
+ D home/dot_claude/skills/hermes-agent-orchestration/symlink_SKILL.md.tmpl
+ D home/dot_local/bin/common/executable_codex-statusline-tmux
+ M home/dot_local/bin/common/executable_start-cognee-mcp
+ D home/dot_tmux-powerlinerc
+ D home/dot_tmux.conf.d/common.conf
+ D home/dot_tmux.conf.d/os/macos.conf
+ D home/dot_tmux.conf.d/os/ubuntu_client.conf
+ D home/dot_tmux.conf.d/os/ubuntu_server.conf
+ D home/dot_tmux.conf.d/system/client.conf
+ D home/dot_tmux.conf.d/system/server.conf
+ D home/dot_tmux.conf.tmpl
+ D home/private_dot_hermes/private_config.yaml.tmpl
+ D install/common/hermes.sh
+ D install/common/tpm.sh
+ D install/macos/common/tmux.sh
+ D install/ubuntu/common/tmux.sh
+ M nix/shared/packages.nix
+ M scripts/check-agent-runtime.py
+ M scripts/check-tools.sh
+ M scripts/generate-agent-configs.py
+ D scripts/update-codex-statusline-tools.sh
+ M scripts/upgrade-tools.sh
+ M scripts/validate-agent-assets.py
+ M tests/files/common.bats
+ M tests/files/macos.bats
+ M tests/files/ubuntu.bats
+ D tests/install/common/hermes.bats
+ M tests/install/common/lifecycle.bats
+ D tests/install/common/tpm.bats
+ D tests/install/macos/common/tmux.bats
+ D tests/install/ubuntu/common/tmux.bats
+ D tests/install/ubuntu/common/tmux_unit.bats
+ D tests/install/ubuntu/common/tpm.bats
+?? .orchestration/
+```
+
+Note: the shared worktree contains accepted out-of-scope package changes outside the WP-F edit boundary. I did not modify or clean those.
+
+WP-F scoped changed paths:
+
+```text
+.github/workflows/agent-assets.yml
+.github/workflows/macos.yaml
+.github/workflows/ubuntu.yaml
+Makefile
+README.md
+home/dot_local/bin/common/executable_start-cognee-mcp
+scripts/check-tools.sh
+scripts/update-codex-statusline-tools.sh
+scripts/upgrade-tools.sh
+```
+
+Scoped status for WP-F-owned files and artifacts:
+
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+ M .github/workflows/agent-assets.yml
+ M .github/workflows/macos.yaml
+ M .github/workflows/ubuntu.yaml
+ M Makefile
+ M README.md
+ M home/dot_local/bin/common/executable_start-cognee-mcp
+ M scripts/check-tools.sh
+ D scripts/update-codex-statusline-tools.sh
+ M scripts/upgrade-tools.sh
+?? .orchestration/autoskill/runs/WP-F.md
+?? .orchestration/learning/WP-F.md
+?? .orchestration/reports/WP-F.md
+?? .orchestration/sandboxes/WP-F.md
+?? .orchestration/validation/WP-F.txt
+```
+
+## Not run
+
+- `make require-crit-review` was not run because the orchestrator clarified that review guard is final integration work.
+- `bats` was not run because WP-F forbids running bats locally.

@@ -1,0 +1,118 @@
+WP-K validation evidence
+
+1. bash -n home/dot_local/bin/common/executable_herdr-agents
+
+Exit: 0
+Output:
+<empty>
+
+2. shfmt --indent 4 --space-redirects --diff home/dot_local/bin/common/executable_herdr-agents
+
+Exit: 0
+Output:
+<empty>
+
+3. Help excerpts proving flags used exist
+
+claude --help | rg -C 1 -- "--model|--effort"
+
+Exit: 0
+Output:
+      Edit")
+  --effort <level>                      Effort level for the current session
+                                        (low, medium, high, xhigh, max)
+--
+                                        strings (space-separated)
+  --model <model>                       Model for the current session. Provide
+                                        an alias for the latest model (e.g.
+
+codex --help | rg -C 1 -- "--sandbox|--model|--config"
+
+Exit: 0
+Output:
+Options:
+  -c, --config <key=value>
+          Override a configuration value that would otherwise be loaded from `~/.codex/config.toml`.
+--
+
+  -m, --model <MODEL>
+          Model the agent should use
+--
+
+  -s, --sandbox <SANDBOX_MODE>
+          Select the sandbox policy to use when executing model-generated shell commands
+
+herdr pane --help 2>&1 | rg -C 1 "pane rename"
+
+Exit: 0
+Output:
+  herdr pane zoom [<pane_id>|--pane ID|--current] [--toggle|--on|--off]
+  herdr pane rename <pane_id> <label>|--clear
+  herdr pane read <pane_id> [--source visible|recent|recent-unwrapped] [--lines N] [--format text|ansi] [--ansi]
+
+herdr agent --help 2>&1 | rg -C 1 "agent start|targets accept"
+
+Exit: 0
+Output:
+  herdr agent attach <target> [--takeover]
+  herdr agent start <name> [--cwd PATH] [--workspace ID] [--tab ID] [--split right|down] [--env KEY=VALUE] [--focus|--no-focus] -- <argv...>
+  herdr agent explain <target> [--json]
+  herdr agent explain --file PATH --agent LABEL [--json]
+  targets accept terminal ids, unique agent names, detected/reported agent labels, and legacy pane ids
+  agent send writes literal text; use pane run when you want command text plus Enter
+
+4. uv run python -m unittest tests.unit.test_herdr_agents -v
+
+Exit: 0
+Output summary:
+Ran 8 tests in 1.539s
+OK
+
+5. make unit-test
+
+Exit: 0
+Output summary:
+uv run python -m unittest discover -s tests/unit -v
+Ran 51 tests in 7.540s
+OK
+
+6. git status --porcelain -- home/dot_local/bin/common/executable_herdr-agents home/dot_config/herdr/config.toml tests/unit/test_herdr_agents.py .orchestration/reports/WP-K.md .orchestration/validation/WP-K.txt .orchestration/sandboxes/WP-K.md .orchestration/learning/WP-K.md .orchestration/autoskill/runs/WP-K.md
+
+Exit: 0
+Output:
+ M home/dot_local/bin/common/executable_herdr-agents
+ M tests/unit/test_herdr_agents.py
+
+7. git status --porcelain
+
+Exit: 0
+Output:
+ M README.md
+ M home/dot_agents/README.md
+ M home/dot_agents/agent-config.yaml
+ M home/dot_claude/private_settings.json
+ D home/dot_codex/private_config.toml.tmpl
+ D home/dot_config/ghostty/config.ghostty.tmpl
+ M home/dot_local/bin/common/executable_herdr-agents
+ M install/macos/common/defaults.sh
+ M scripts/check-agent-runtime.py
+ M scripts/generate-agent-configs.py
+ M scripts/validate-agent-assets.py
+ M tests/files/macos.bats
+ M tests/install/common/lifecycle.bats
+ M tests/unit/test_generate_agent_configs.py
+ M tests/unit/test_herdr_agents.py
+ M tests/unit/test_validate_agent_assets.py
+?? .orchestration/
+?? home/.chezmoitemplates/codex-config-managed.toml
+?? home/dot_codex/modify_private_config.toml
+?? home/dot_config/ghostty/config
+?? tests/unit/test_codex_config_merge.py
+
+Note: full status includes accepted WP-I and WP-J changes in the shared worktree. WP-K-specific source changes are the helper script plus the Herdr unit test update.
+
+8. git diff --check -- home/dot_local/bin/common/executable_herdr-agents tests/unit/test_herdr_agents.py
+
+Exit: 0
+Output:
+<empty>

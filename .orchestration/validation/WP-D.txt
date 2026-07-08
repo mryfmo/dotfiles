@@ -1,0 +1,225 @@
+WP-D validation
+Date: 2026-07-08T08:15:06+0900
+
+## 1. deleted paths gone
+Command:
+
+```sh
+for target in home/private_dot_hermes home/dot_agents/hermes-config-base.yaml; do if [ -e "$target" ]; then printf 'PRESENT %s\n' "$target"; else printf 'ABSENT %s\n' "$target"; fi; done
+```
+
+Output:
+
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+ABSENT home/private_dot_hermes
+ABSENT home/dot_agents/hermes-config-base.yaml
+```
+
+## 2. Hermes grep in WP-D files
+Command:
+
+```sh
+grep -rn -i "hermes" home/dot_agents/agent-config.yaml scripts/generate-agent-configs.py scripts/validate-agent-assets.py scripts/check-agent-runtime.py || true
+```
+
+Output:
+
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+```
+
+Result: zero Hermes hits in the required WP-D files.
+
+## 3. generator run
+Generation entrypoint found by checking `scripts/update-agent-assets.sh`, `Makefile`, and `scripts/` references. The direct generator command is:
+
+```sh
+uv run --with pyyaml scripts/generate-agent-configs.py
+```
+
+Output:
+
+```text
+generated agent configs updated
+```
+
+Generated output drift check:
+
+```sh
+git diff -- home/dot_codex/private_config.toml.tmpl home/dot_claude/private_settings.json home/dot_claude/private_mcp.json.tmpl home/dot_agents/plugins/marketplace.json
+```
+
+Output:
+
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+```
+
+Result: no generated Codex/Claude output diffs.
+
+`git status --porcelain` after generator:
+
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+ M .github/workflows/agent-assets.yml
+ M .github/workflows/macos.yaml
+ M .github/workflows/ubuntu.yaml
+ M Makefile
+ M README.md
+ M home/.chezmoi.yaml.tmpl
+ D home/.chezmoiscripts/common/run_once_after_04-install-hermes.sh.tmpl
+ D home/.chezmoiscripts/macos/run_once_08-install-tmux.sh.tmpl
+ D home/.chezmoiscripts/ubuntu/run_once_08-install-tmux.sh.tmpl
+ M home/.chezmoitemplates/chezmoiignore.d/common
+ M home/.chezmoitemplates/chezmoiignore.d/macos
+ M home/.chezmoitemplates/chezmoiignore.d/ubuntu/client
+ M home/.chezmoitemplates/chezmoiignore.d/ubuntu/server
+ M home/dot_agents/agent-config.yaml
+ D home/dot_agents/hermes-config-base.yaml
+ D home/dot_agents/skills/hermes-agent-orchestration/SKILL.md
+ D home/dot_agents/skills/hermes-agent-orchestration/agents/openai.yaml
+ M home/dot_bash/client/bashrc
+ D home/dot_claude/skills/hermes-agent-orchestration/agents/symlink_openai.yaml.tmpl
+ D home/dot_claude/skills/hermes-agent-orchestration/symlink_SKILL.md.tmpl
+ D home/dot_local/bin/common/executable_codex-statusline-tmux
+ M home/dot_local/bin/common/executable_start-cognee-mcp
+ D home/dot_tmux-powerlinerc
+ D home/dot_tmux.conf.d/common.conf
+ D home/dot_tmux.conf.d/os/macos.conf
+ D home/dot_tmux.conf.d/os/ubuntu_client.conf
+ D home/dot_tmux.conf.d/os/ubuntu_server.conf
+ D home/dot_tmux.conf.d/system/client.conf
+ D home/dot_tmux.conf.d/system/server.conf
+ D home/dot_tmux.conf.tmpl
+ D home/private_dot_hermes/private_config.yaml.tmpl
+ D install/common/hermes.sh
+ D install/common/tpm.sh
+ D install/macos/common/tmux.sh
+ D install/ubuntu/common/tmux.sh
+ M nix/shared/packages.nix
+ M scripts/check-agent-runtime.py
+ M scripts/check-tools.sh
+ M scripts/generate-agent-configs.py
+ D scripts/update-codex-statusline-tools.sh
+ M scripts/upgrade-tools.sh
+ M scripts/validate-agent-assets.py
+ M tests/files/common.bats
+ M tests/files/macos.bats
+ M tests/files/ubuntu.bats
+ D tests/install/common/hermes.bats
+ M tests/install/common/lifecycle.bats
+ D tests/install/common/tpm.bats
+ D tests/install/macos/common/tmux.bats
+ D tests/install/ubuntu/common/tmux.bats
+ D tests/install/ubuntu/common/tmux_unit.bats
+ D tests/install/ubuntu/common/tpm.bats
+?? .orchestration/
+```
+
+Note: the shared worktree contains unrelated WP-A/WP-B/WP-C/WP-E/WP-F changes outside the WP-D edit boundary. I did not modify or clean those.
+
+WP-D scoped changed paths:
+
+```text
+home/dot_agents/agent-config.yaml
+home/dot_agents/hermes-config-base.yaml
+home/private_dot_hermes/private_config.yaml.tmpl
+scripts/check-agent-runtime.py
+scripts/generate-agent-configs.py
+scripts/validate-agent-assets.py
+```
+
+## 4. validator
+Command:
+
+```sh
+uv run --with pyyaml scripts/validate-agent-assets.py
+```
+
+Output:
+
+```text
+agent asset validation ok
+```
+
+## 5. unit tests
+Checked for unit coverage:
+
+```sh
+rg -n "unit-test|tests/unit|pytest|validate-agent|generate-agent" Makefile pyproject.toml tests scripts
+```
+
+Relevant output:
+
+```text
+Makefile:82:.PHONY: unit-test
+Makefile:83:unit-test:
+Makefile:84:	uv run python -m unittest discover -s tests/unit -v
+tests/unit/test_validate_agent_assets.py:2:"""Exercise focused checks in validate-agent-assets.py."""
+tests/unit/test_generate_agent_configs.py:2:"""Exercise focused checks in generate-agent-configs.py."""
+```
+
+Command:
+
+```sh
+make unit-test
+```
+
+Output:
+
+```text
+uv run python -m unittest discover -s tests/unit -v
+test_claude_skill_symlink_outputs_strip_executable_target_prefix (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_skill_symlink_outputs_strip_executable_target_prefix) ... ok
+test_bare_herdr_in_ghostty_starts_agent_layout (test_herdr_agents.HerdrAgentsTest.test_bare_herdr_in_ghostty_starts_agent_layout) ... ok
+test_bare_herdr_outside_ghostty_uses_real_cli (test_herdr_agents.HerdrAgentsTest.test_bare_herdr_outside_ghostty_uses_real_cli) ... ok
+test_ghostty_config_keeps_normal_shell_startup (test_herdr_agents.HerdrAgentsTest.test_ghostty_config_keeps_normal_shell_startup) ... ok
+test_ghostty_herdr_starts_stacked_agents_with_working_agmsg (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_stacked_agents_with_working_agmsg) ... ok
+test_herdr_prefix_alt_a_runs_helper_from_active_pane (test_herdr_agents.HerdrAgentsTest.test_herdr_prefix_alt_a_runs_helper_from_active_pane) ... ok
+test_herdr_with_args_in_ghostty_uses_real_cli (test_herdr_agents.HerdrAgentsTest.test_herdr_with_args_in_ghostty_uses_real_cli) ... ok
+test_interactive_ghostty_shell_attaches_after_agent_layout (test_herdr_agents.HerdrAgentsTest.test_interactive_ghostty_shell_attaches_after_agent_layout) ... ok
+test_uses_initial_workspace_pane_for_claude_and_splits_codex_below (test_herdr_agents.HerdrAgentsTest.test_uses_initial_workspace_pane_for_claude_and_splits_codex_below) ... ok
+test_agent_lifecycle_script_change_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_lifecycle_script_change_requires_review) ... ok
+test_agent_lifecycle_surfaces_require_review (test_require_crit_review.ReviewGuardTest.test_agent_lifecycle_surfaces_require_review) ... ok
+test_agent_lifecycle_tokens_require_review (test_require_crit_review.ReviewGuardTest.test_agent_lifecycle_tokens_require_review) ... ok
+test_agent_reviewer_with_command_string_source_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_command_string_source_still_requires_review) ... ok
+test_agent_reviewer_with_crit_data_satisfies_required_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_crit_data_satisfies_required_review) ... ok
+test_agent_reviewer_with_crit_reviewed_marker_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_crit_reviewed_marker_still_requires_review) ... ok
+test_agent_reviewer_with_external_crit_json_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_external_crit_json_still_requires_review) ... ok
+test_agent_reviewer_with_non_review_crit_json_object_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_non_review_crit_json_object_still_requires_review) ... ok
+test_agent_reviewer_with_unresolved_crit_json_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_unresolved_crit_json_still_requires_review) ... ok
+test_agent_self_review_flag_evidence_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_self_review_flag_evidence_still_requires_review) ... ok
+test_agent_self_reviewer_evidence_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_self_reviewer_evidence_still_requires_review) ... ok
+test_broad_diff_requires_review (test_require_crit_review.ReviewGuardTest.test_broad_diff_requires_review) ... ok
+test_explicit_disable_skips_guard (test_require_crit_review.ReviewGuardTest.test_explicit_disable_skips_guard) ... ok
+test_high_risk_markdown_change_requires_review (test_require_crit_review.ReviewGuardTest.test_high_risk_markdown_change_requires_review) ... ok
+test_large_untracked_file_requires_broad_diff_review (test_require_crit_review.ReviewGuardTest.test_large_untracked_file_requires_broad_diff_review) ... ok
+test_native_reviewed_environment_satisfies_required_review (test_require_crit_review.ReviewGuardTest.test_native_reviewed_environment_satisfies_required_review) ... ok
+test_native_reviewed_without_evidence_still_requires_review (test_require_crit_review.ReviewGuardTest.test_native_reviewed_without_evidence_still_requires_review) ... ok
+test_no_diff_does_not_require_review (test_require_crit_review.ReviewGuardTest.test_no_diff_does_not_require_review) ... ok
+test_reviewed_environment_satisfies_required_review (test_require_crit_review.ReviewGuardTest.test_reviewed_environment_satisfies_required_review) ... ok
+test_reviewed_with_blank_evidence_values_still_requires_review (test_require_crit_review.ReviewGuardTest.test_reviewed_with_blank_evidence_values_still_requires_review) ... ok
+test_reviewed_with_incomplete_evidence_still_requires_review (test_require_crit_review.ReviewGuardTest.test_reviewed_with_incomplete_evidence_still_requires_review) ... ok
+test_small_docs_only_change_does_not_require_review (test_require_crit_review.ReviewGuardTest.test_small_docs_only_change_does_not_require_review) ... ok
+test_agmsg_script_modes_accept_prefixed_entrypoints_and_lib_helpers (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_script_modes_accept_prefixed_entrypoints_and_lib_helpers) ... ok
+test_agmsg_script_modes_reject_non_executable_prefixed_entrypoint (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_script_modes_reject_non_executable_prefixed_entrypoint) ... ok
+test_agmsg_script_modes_reject_unprefixed_direct_entrypoint (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_script_modes_reject_unprefixed_direct_entrypoint) ... ok
+test_codex_sandbox_workspace_write_accepts_matching_manifest (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_accepts_matching_manifest) ... ok
+test_codex_sandbox_workspace_write_must_match_manifest (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_must_match_manifest) ... ok
+test_codex_sandbox_workspace_write_requires_all_agmsg_roots (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_requires_all_agmsg_roots) ... ok
+test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
+test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
+test_secret_scan_checks_extensionless_executables (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_extensionless_executables) ... ok
+test_secret_scan_checks_utf16_bom_text (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_utf16_bom_text) ... ok
+test_secret_scan_rejects_placeholder_with_suffix (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_placeholder_with_suffix) ... ok
+
+----------------------------------------------------------------------
+Ran 42 tests in 7.309s
+
+OK
+```
+
+## Not run
+
+- `make require-crit-review` was not run because the orchestrator clarified that review guard is final integration work.
+- `bats` was not run because WP-D forbids running bats locally.

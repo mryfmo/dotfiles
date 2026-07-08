@@ -1,0 +1,101 @@
+WP-I validation evidence
+
+1. uv run --with pyyaml scripts/generate-agent-configs.py
+
+Exit: 0
+Output:
+generated agent configs updated
+
+2. git status --porcelain
+
+Exit: 0
+Output:
+ M home/dot_agents/README.md
+ M home/dot_agents/agent-config.yaml
+ M home/dot_claude/private_settings.json
+ D home/dot_codex/private_config.toml.tmpl
+ M scripts/check-agent-runtime.py
+ M scripts/generate-agent-configs.py
+ M scripts/validate-agent-assets.py
+ M tests/install/common/lifecycle.bats
+ M tests/unit/test_generate_agent_configs.py
+ M tests/unit/test_validate_agent_assets.py
+?? .orchestration/
+?? home/.chezmoitemplates/codex-config-managed.toml
+?? home/dot_codex/modify_private_config.toml
+?? tests/unit/test_codex_config_merge.py
+
+3. uv run --with pyyaml scripts/validate-agent-assets.py
+
+Exit: 0
+Output:
+agent asset validation ok
+
+4. make unit-test
+
+Exit: 0
+Output summary:
+uv run python -m unittest discover -s tests/unit -v
+Ran 51 tests in 7.853s
+OK
+
+New merge tests passed:
+- test_current_only_runtime_tables_keep_current_group_order
+- test_fresh_machine_outputs_managed_baseline
+- test_managed_templates_are_rendered_before_merge
+- test_managed_wins_for_managed_keys
+- test_runtime_tables_are_preserved
+- test_runtime_tables_seed_from_managed_when_absent
+- test_unknown_current_tables_are_preserved
+
+5. Simulated merge using current live ~/.codex/config.toml on stdin
+
+Exit: 0
+Output:
+all live hooks.state entries preserved: True
+marketplaces preserved: True
+model_availability_nux preserved: True
+projects preserved: True
+model from baseline: True
+sandbox_mode from baseline: True
+mcp_servers from baseline: True
+live hooks.state entries: 6
+merged hooks.state entries: 6
+seeded hooks.state entries: []
+live model_availability_nux keys: ['gpt-5.5']
+baseline model: gpt-5.5 merged model: gpt-5.5
+baseline sandbox_mode: workspace-write merged sandbox_mode: workspace-write
+baseline mcp_servers: ['cognee_memory', 'context7', 'filesystem_dotfiles', 'github', 'playwright', 'sequential_thinking', 'time']
+parsed merged output: /private/tmp/wp-i-codex-merged.toml
+
+6. chezmoi diff ~/.codex/config.toml
+
+Exit: 0
+Output:
+<empty>
+
+7. chezmoi diff ~/.claude/settings.json
+
+Exit: 0
+Output summary:
+- Source target includes "model": "claude-fable-5[1m]" and "effortLevel": "high".
+- Diff contains ordering and live enabledPlugins differences, but no model downgrade from the desired Fable 5 high-effort pin.
+
+8. rg -n "private_config\.toml\.tmpl|opusplan" home/dot_agents home/dot_claude home/dot_codex home/.chezmoitemplates scripts tests/unit tests/install
+
+Exit: 0
+Output:
+tests/unit/test_generate_agent_configs.py:103:        self.assertNotIn(self.temp_dir / "home/dot_codex/private_config.toml.tmpl", outputs)
+
+9. git diff --check -- allowed WP-I paths
+
+Exit: 0
+Output:
+<empty>
+
+10. ls -l home/dot_codex/modify_private_config.toml home/.chezmoitemplates/codex-config-managed.toml
+
+Exit: 0
+Output:
+-rw-r--r--  1 mryfmo  staff  4360 Jul  8 09:37 home/.chezmoitemplates/codex-config-managed.toml
+-rwxr-xr-x  1 mryfmo  staff  5389 Jul  8 09:36 home/dot_codex/modify_private_config.toml

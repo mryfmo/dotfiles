@@ -1,0 +1,94 @@
+# WP-A Validation
+
+## 1. Deleted path checks
+
+Command:
+
+```
+for p in install/macos/common/tmux.sh install/ubuntu/common/tmux.sh install/common/tpm.sh home/.chezmoiscripts/macos/run_once_08-install-tmux.sh.tmpl home/.chezmoiscripts/ubuntu/run_once_08-install-tmux.sh.tmpl tests/install/macos/common/tmux.bats tests/install/ubuntu/common/tmux.bats tests/install/ubuntu/common/tmux_unit.bats tests/install/common/tpm.bats tests/install/ubuntu/common/tpm.bats; do printf '$ ls %s\n' "$p"; ls "$p" 2>&1; printf '\n'; done
+```
+
+Output:
+
+```
+$ ls install/macos/common/tmux.sh
+ls: install/macos/common/tmux.sh: No such file or directory
+
+$ ls install/ubuntu/common/tmux.sh
+ls: install/ubuntu/common/tmux.sh: No such file or directory
+
+$ ls install/common/tpm.sh
+ls: install/common/tpm.sh: No such file or directory
+
+$ ls home/.chezmoiscripts/macos/run_once_08-install-tmux.sh.tmpl
+ls: home/.chezmoiscripts/macos/run_once_08-install-tmux.sh.tmpl: No such file or directory
+
+$ ls home/.chezmoiscripts/ubuntu/run_once_08-install-tmux.sh.tmpl
+ls: home/.chezmoiscripts/ubuntu/run_once_08-install-tmux.sh.tmpl: No such file or directory
+
+$ ls tests/install/macos/common/tmux.bats
+ls: tests/install/macos/common/tmux.bats: No such file or directory
+
+$ ls tests/install/ubuntu/common/tmux.bats
+ls: tests/install/ubuntu/common/tmux.bats: No such file or directory
+
+$ ls tests/install/ubuntu/common/tmux_unit.bats
+ls: tests/install/ubuntu/common/tmux_unit.bats: No such file or directory
+
+$ ls tests/install/common/tpm.bats
+ls: tests/install/common/tpm.bats: No such file or directory
+
+$ ls tests/install/ubuntu/common/tpm.bats
+ls: tests/install/ubuntu/common/tpm.bats: No such file or directory
+```
+
+## 2. Remaining tmux/tpm references
+
+Command:
+
+```
+grep -rn "tmux\|tpm" install/ home/.chezmoiscripts/ nix/ tests/install/ || true
+```
+
+Output:
+
+```
+```
+
+Justification: no remaining hits under the requested paths.
+
+## 3. Git status
+
+Command:
+
+```
+git status --porcelain
+```
+
+Output:
+
+```
+ M home/.chezmoi.yaml.tmpl
+ D home/.chezmoiscripts/common/run_once_after_04-install-hermes.sh.tmpl
+ D home/.chezmoiscripts/macos/run_once_08-install-tmux.sh.tmpl
+ D home/.chezmoiscripts/ubuntu/run_once_08-install-tmux.sh.tmpl
+ D home/dot_agents/skills/hermes-agent-orchestration/SKILL.md
+ D home/dot_agents/skills/hermes-agent-orchestration/agents/openai.yaml
+ D home/dot_claude/skills/hermes-agent-orchestration/agents/symlink_openai.yaml.tmpl
+ D home/dot_claude/skills/hermes-agent-orchestration/symlink_SKILL.md.tmpl
+ D install/common/hermes.sh
+ D install/common/tpm.sh
+ D install/macos/common/tmux.sh
+ D install/ubuntu/common/tmux.sh
+ M nix/shared/packages.nix
+ D tests/install/common/hermes.bats
+ M tests/install/common/lifecycle.bats
+ D tests/install/common/tpm.bats
+ D tests/install/macos/common/tmux.bats
+ D tests/install/ubuntu/common/tmux.bats
+ D tests/install/ubuntu/common/tmux_unit.bats
+ D tests/install/ubuntu/common/tpm.bats
+?? .orchestration/
+```
+
+Note: WP-A accounts for the tmux/TPM deletions and `nix/shared/packages.nix` edit. The Hermes/lifecycle entries are outside WP-A's allowed files and were not touched by this worker.

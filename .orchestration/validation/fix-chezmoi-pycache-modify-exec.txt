@@ -1,0 +1,282 @@
+# Validation: fix-chezmoi-pycache-modify-exec
+
+## Initial evidence
+
+### command
+`find home/dot_codex -maxdepth 2 -name '__pycache__' -print`
+
+### exit
+0
+
+### output
+```text
+home/dot_codex/__pycache__
+```
+
+### command
+`chezmoi status`
+
+### exit
+1
+
+### output
+```text
+chezmoi: .codex/__pycache__/config.cpython-311.pyc: fork/exec /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/643170175.config.cpython-311.pyc: exec format error
+```
+
+### command
+`find home/dot_codex/__pycache__ -maxdepth 1 -type f -print`
+
+### exit
+0
+
+### output
+```text
+home/dot_codex/__pycache__/modify_private_config.cpython-311.pyc
+```
+
+## Required validation
+
+### command
+`ls home/dot_codex/`
+
+### exit
+0
+
+### output
+```text
+ccgate.jsonnet
+modify_private_config.toml
+symlink_AGENTS.md.tmpl
+```
+
+### command
+`make update`
+
+### exit
+0
+
+### relevant output
+```text
+chezmoi apply --verbose --exclude=scripts
+Warning: private chezmoi source/config not found. Skipping private dotfiles.
+./scripts/update-agent-assets.sh
+...
+v0.9.4
+```
+
+No `.pyc` exec format error appeared. The command also printed unrelated target-home diffs for `.config/ghostty/config`, `.local/bin/common/herdr-agents`, and `.local/bin/common/start-cognee-mcp`.
+
+### command
+`chezmoi status | grep -i pycache`
+
+### exit
+1
+
+### output
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+```
+
+No pycache matches were printed on stdout; exit 1 is from `grep` finding no matches.
+
+### recurrence setup command
+`install -d home/dot_codex/__pycache__`
+
+### exit
+0
+
+### output
+```text
+```
+
+### recurrence setup command
+`printf dummy > home/dot_codex/__pycache__/modify_private_config.cpython-311.pyc`
+
+### exit
+0
+
+### output
+```text
+```
+
+### recurrence check command
+`chezmoi status | grep -i pycache`
+
+### exit
+1
+
+### output
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+```
+
+No pycache matches were printed on stdout; exit 1 is from `grep` finding no matches.
+
+### cleanup command
+`rm -rf home/dot_codex/__pycache__`
+
+### exit
+0
+
+### output
+```text
+```
+
+### command
+`uv run pytest tests/unit/`
+
+### exit
+2
+
+### output
+```text
+error: Failed to spawn: `pytest`
+  Caused by: No such file or directory (os error 2)
+```
+
+### environment check command
+`rg -n "pytest|dependency-groups|dev-dependencies|\[project\]" pyproject.toml uv.lock`
+
+### exit
+2
+
+### output
+```text
+rg: pyproject.toml: No such file or directory (os error 2)
+rg: uv.lock: No such file or directory (os error 2)
+```
+
+### environment check command
+`uv run python -m pytest tests/unit/`
+
+### exit
+1
+
+### output
+```text
+/Users/mryfmo/.local/share/uv/python/cpython-3.11.9-macos-aarch64-none/bin/python3.11: No module named pytest
+```
+
+### fallback command
+`uv run python -m unittest discover tests/unit`
+
+### exit
+0
+
+### output
+```text
+...................................................
+----------------------------------------------------------------------
+Ran 51 tests in 7.327s
+
+OK
+```
+
+### command
+`find home -name '__pycache__' -print`
+
+### exit
+0
+
+### output
+```text
+```
+
+### command
+`find . -path ./.git -prune -o -name '__pycache__' -print`
+
+### exit
+0
+
+### output
+```text
+./tests/unit/__pycache__
+./scripts/__pycache__
+```
+
+### timestamp command
+`stat -f '%Sm %N' -t '%Y-%m-%d %H:%M:%S' scripts/__pycache__/* tests/unit/__pycache__/*`
+
+### exit
+0
+
+### output
+```text
+2026-07-08 09:32:36 scripts/__pycache__/generate-agent-configs.cpython-311.pyc
+2026-07-08 09:32:36 scripts/__pycache__/validate-agent-assets.cpython-311.pyc
+2026-07-08 10:30:21 tests/unit/__pycache__/test_codex_config_merge.cpython-311.pyc
+2026-07-08 10:30:21 tests/unit/__pycache__/test_generate_agent_configs.cpython-311.pyc
+2026-07-08 09:47:56 tests/unit/__pycache__/test_herdr_agents.cpython-311.pyc
+2026-07-07 17:04:40 tests/unit/__pycache__/test_require_crit_review.cpython-311.pyc
+2026-07-08 09:32:36 tests/unit/__pycache__/test_validate_agent_assets.cpython-311.pyc
+```
+
+### command
+`git status --porcelain`
+
+### exit
+0
+
+### output
+```text
+ M home/.chezmoitemplates/chezmoiignore.d/common
+ M tests/unit/test_generate_agent_configs.py
+ M tests/unit/test_validate_agent_assets.py
+?? .orchestration/
+```
+
+## Review guard
+
+### command
+`make require-crit-review`
+
+### exit
+2
+
+### output
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+Native agent review required before completion.
+- broad diff touches 86 files
+- broad diff changes 2974 lines
+...
+make: *** [require-crit-review] Error 1
+```
+
+### command
+`crit comments --json > .orchestration/validation/fix-chezmoi-pycache-modify-exec-crit-comments.json`
+
+### exit
+0
+
+### saved JSON
+```json
+null
+```
+
+### command
+`AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/validation/fix-chezmoi-pycache-modify-exec-review-receipt.md make require-crit-review`
+
+### exit
+0
+
+### output
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+```
+
+### final command
+`git status --porcelain`
+
+### exit
+0
+
+### output
+```text
+ M home/.chezmoitemplates/chezmoiignore.d/common
+ M tests/unit/test_generate_agent_configs.py
+ M tests/unit/test_validate_agent_assets.py
+?? .orchestration/
+```

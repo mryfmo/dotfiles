@@ -1,0 +1,139 @@
+WP-B validation
+Date: 2026-07-08T08:09:40+0900
+
+## 1. deleted paths gone
+Command:
+
+```sh
+for path in home/dot_tmux.conf.tmpl home/dot_tmux.conf.d home/dot_tmux-powerlinerc home/dot_local/bin/common/executable_codex-statusline-tmux; do if [ -e "$path" ]; then printf 'PRESENT %s\n' "$path"; else printf 'ABSENT %s\n' "$path"; fi; done
+```
+
+Output:
+
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+ABSENT home/dot_tmux.conf.tmpl
+ABSENT home/dot_tmux.conf.d
+ABSENT home/dot_tmux-powerlinerc
+ABSENT home/dot_local/bin/common/executable_codex-statusline-tmux
+```
+
+## 2. tmux grep in scoped paths
+Command:
+
+```sh
+grep -rn "tmux" home/.chezmoitemplates/ tests/files/ home/dot_bash/ || true
+```
+
+Output:
+
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+```
+
+Result: no tmux hits left in the WP-B scoped grep paths.
+
+## 3. git status --porcelain
+Command:
+
+```sh
+git status --porcelain
+```
+
+Output:
+
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+ M .github/workflows/agent-assets.yml
+ M .github/workflows/macos.yaml
+ M .github/workflows/ubuntu.yaml
+ M Makefile
+ M README.md
+ M home/.chezmoi.yaml.tmpl
+ D home/.chezmoiscripts/common/run_once_after_04-install-hermes.sh.tmpl
+ D home/.chezmoiscripts/macos/run_once_08-install-tmux.sh.tmpl
+ D home/.chezmoiscripts/ubuntu/run_once_08-install-tmux.sh.tmpl
+ M home/.chezmoitemplates/chezmoiignore.d/common
+ M home/.chezmoitemplates/chezmoiignore.d/macos
+ M home/.chezmoitemplates/chezmoiignore.d/ubuntu/client
+ M home/.chezmoitemplates/chezmoiignore.d/ubuntu/server
+ M home/dot_agents/agent-config.yaml
+ D home/dot_agents/hermes-config-base.yaml
+ D home/dot_agents/skills/hermes-agent-orchestration/SKILL.md
+ D home/dot_agents/skills/hermes-agent-orchestration/agents/openai.yaml
+ M home/dot_bash/client/bashrc
+ D home/dot_claude/skills/hermes-agent-orchestration/agents/symlink_openai.yaml.tmpl
+ D home/dot_claude/skills/hermes-agent-orchestration/symlink_SKILL.md.tmpl
+ D home/dot_local/bin/common/executable_codex-statusline-tmux
+ M home/dot_local/bin/common/executable_start-cognee-mcp
+ D home/dot_tmux-powerlinerc
+ D home/dot_tmux.conf.d/common.conf
+ D home/dot_tmux.conf.d/os/macos.conf
+ D home/dot_tmux.conf.d/os/ubuntu_client.conf
+ D home/dot_tmux.conf.d/os/ubuntu_server.conf
+ D home/dot_tmux.conf.d/system/client.conf
+ D home/dot_tmux.conf.d/system/server.conf
+ D home/dot_tmux.conf.tmpl
+ D home/private_dot_hermes/private_config.yaml.tmpl
+ D install/common/hermes.sh
+ D install/common/tpm.sh
+ D install/macos/common/tmux.sh
+ D install/ubuntu/common/tmux.sh
+ M nix/shared/packages.nix
+ M scripts/check-agent-runtime.py
+ M scripts/check-tools.sh
+ M scripts/generate-agent-configs.py
+ D scripts/update-codex-statusline-tools.sh
+ M scripts/upgrade-tools.sh
+ M scripts/validate-agent-assets.py
+ M tests/files/common.bats
+ M tests/files/macos.bats
+ M tests/files/ubuntu.bats
+ D tests/install/common/hermes.bats
+ M tests/install/common/lifecycle.bats
+ D tests/install/common/tpm.bats
+ D tests/install/macos/common/tmux.bats
+ D tests/install/ubuntu/common/tmux.bats
+ D tests/install/ubuntu/common/tmux_unit.bats
+ D tests/install/ubuntu/common/tpm.bats
+?? .orchestration/
+```
+
+Note: the shared worktree contains unrelated WP-A/WP-C/WP-E/WP-F changes outside the WP-B edit boundary. I did not modify or clean those.
+
+WP-B scoped changed paths:
+
+```text
+home/.chezmoitemplates/chezmoiignore.d/common
+home/.chezmoitemplates/chezmoiignore.d/macos
+home/.chezmoitemplates/chezmoiignore.d/ubuntu/client
+home/.chezmoitemplates/chezmoiignore.d/ubuntu/server
+home/dot_bash/client/bashrc
+home/dot_local/bin/common/executable_codex-statusline-tmux
+home/dot_tmux-powerlinerc
+home/dot_tmux.conf.d/common.conf
+home/dot_tmux.conf.d/os/macos.conf
+home/dot_tmux.conf.d/os/ubuntu_client.conf
+home/dot_tmux.conf.d/os/ubuntu_server.conf
+home/dot_tmux.conf.d/system/client.conf
+home/dot_tmux.conf.d/system/server.conf
+home/dot_tmux.conf.tmpl
+tests/files/common.bats
+tests/files/macos.bats
+tests/files/ubuntu.bats
+```
+
+## 4. shfmt
+Command:
+
+```sh
+shfmt --indent 4 --space-redirects --diff home/dot_bash/client/bashrc || true
+```
+
+Output:
+
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+```
+
+Result: no shfmt diff.

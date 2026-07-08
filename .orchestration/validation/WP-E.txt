@@ -1,0 +1,84 @@
+# WP-E Validation
+
+## 1. both directories gone
+
+Command:
+
+```sh
+test ! -d home/dot_agents/skills/hermes-agent-orchestration && printf 'gone: home/dot_agents/skills/hermes-agent-orchestration\n'; test ! -d home/dot_claude/skills/hermes-agent-orchestration && printf 'gone: home/dot_claude/skills/hermes-agent-orchestration\n'
+```
+
+Output:
+
+```text
+gone: home/dot_agents/skills/hermes-agent-orchestration
+gone: home/dot_claude/skills/hermes-agent-orchestration
+```
+
+## 2. Check-grep output captured
+
+Command:
+
+```sh
+grep -rln "hermes-agent-orchestration" home/ scripts/ docs/ mkdocs.yml 2>/dev/null || true
+```
+
+Output:
+
+```text
+```
+
+## 3. git status --porcelain
+
+Command:
+
+```sh
+git status --porcelain
+```
+
+Output:
+
+```text
+ M home/.chezmoi.yaml.tmpl
+ D home/.chezmoiscripts/common/run_once_after_04-install-hermes.sh.tmpl
+ D home/.chezmoiscripts/macos/run_once_08-install-tmux.sh.tmpl
+ D home/.chezmoiscripts/ubuntu/run_once_08-install-tmux.sh.tmpl
+ D home/dot_agents/skills/hermes-agent-orchestration/SKILL.md
+ D home/dot_agents/skills/hermes-agent-orchestration/agents/openai.yaml
+ D home/dot_claude/skills/hermes-agent-orchestration/agents/symlink_openai.yaml.tmpl
+ D home/dot_claude/skills/hermes-agent-orchestration/symlink_SKILL.md.tmpl
+ D install/common/hermes.sh
+ D install/common/tpm.sh
+ D install/macos/common/tmux.sh
+ D install/ubuntu/common/tmux.sh
+ M nix/shared/packages.nix
+ D tests/install/common/hermes.bats
+ M tests/install/common/lifecycle.bats
+ D tests/install/common/tpm.bats
+ D tests/install/macos/common/tmux.bats
+ D tests/install/ubuntu/common/tmux.bats
+ D tests/install/ubuntu/common/tmux_unit.bats
+ D tests/install/ubuntu/common/tpm.bats
+?? .orchestration/
+```
+
+Scoped source-deletion status:
+
+Command:
+
+```sh
+git status --porcelain -- home/dot_agents/skills/hermes-agent-orchestration home/dot_claude/skills/hermes-agent-orchestration
+```
+
+Output:
+
+```text
+ D home/dot_agents/skills/hermes-agent-orchestration/SKILL.md
+ D home/dot_agents/skills/hermes-agent-orchestration/agents/openai.yaml
+ D home/dot_claude/skills/hermes-agent-orchestration/agents/symlink_openai.yaml.tmpl
+ D home/dot_claude/skills/hermes-agent-orchestration/symlink_SKILL.md.tmpl
+```
+
+The untracked `.orchestration/` entry is the orchestration workspace containing the task file and required WP-E artifacts.
+
+The non-WP-E source changes in the full status are outside this task's allowed files and were not edited by WP-E. The scoped source-deletion status above contains only the expected WP-E deletions.

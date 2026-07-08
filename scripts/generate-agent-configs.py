@@ -233,6 +233,7 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
                     ],
                 }
             ],
+            "SessionStart": hooks.get("session_start", []),
             "PostToolUse": [
                 {
                     "matcher": "Write|Edit|MultiEdit",

@@ -266,6 +266,19 @@ function ensure_ccgate_cli() {
 }
 
 #
+# @description Install or refresh the Herdr agent integrations.
+#
+function ensure_herdr_integrations() {
+    if ! has_command herdr; then
+        return 0
+    fi
+
+    section "herdr integrations"
+    herdr integration install claude
+    herdr integration install codex
+}
+
+#
 # @description Install or update the Claude Code Superpowers plugin.
 #
 function update_claude_superpowers() {
@@ -450,6 +463,7 @@ function main() {
     update_codex_superpowers
     update_codex_crit
     update_codex_ponytail
+    ensure_herdr_integrations
     ensure_ccgate_cli
 }
 

@@ -21,7 +21,10 @@ fpath=(
 # @description Start the managed Herdr agent layout for bare `herdr` in Ghostty.
 function herdr() {
     if [[ $# -eq 0 && -n "${GHOSTTY_RESOURCES_DIR:-}" ]]; then
-        herdr-agents "${PWD}" && command herdr
+        if ! herdr-agents "${PWD}"; then
+            print -u2 "herdr-agents failed; attaching to herdr anyway"
+        fi
+        command herdr
         return
     fi
 

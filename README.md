@@ -199,29 +199,50 @@ with a configured PermissionRequest hook whose runtime is missing.
 Ghostty starts as a normal terminal; `~/.config/ghostty/config` must not
 set a Herdr `initial-command`. In Ghostty zsh sessions, bare `herdr` calls
 `herdr-agents "$PWD"` and then the real `herdr` CLI, so the terminal attaches
-to the focused workspace after the agent layout is created. Argumented Herdr
-calls such as `herdr --remote` and `herdr server reload-config` still run the
-real Herdr CLI. Outside Ghostty, bare `herdr` also runs the real Herdr CLI.
+to the focused workspace after the agent layout is ready. If `herdr-agents`
+fails, the wrapper prints `herdr-agents failed; attaching to herdr anyway` on
+stderr and still runs `command herdr`, instead of silently returning to the
+prompt. Argumented Herdr calls such as `herdr --remote` and
+`herdr server reload-config` still run the real Herdr CLI. Outside Ghostty,
+bare `herdr` also runs the real Herdr CLI. Already-open Ghostty shells keep
+the zsh function they sourced at startup; run `exec zsh` or open a new window
+after updating these dotfiles when the wrapper changes.
 
 The workspace layout itself stays centralized in `herdr-agents`, which is also
-bound inside Herdr at `prefix+alt+a`. It reuses the workspace root pane for
-Claude Code and starts Codex in the same workspace with `--split down`, so the
-visible result is Claude Code above Codex. The Codex process still runs the
+bound inside Herdr at `prefix+alt+a`. Before creating a workspace, it looks for
+an existing agents workspace by matching the workspace label and a pane whose
+`cwd` is the requested project directory. A healthy match is focused instead of
+recreated. If only one side is missing, `herdr-agents` repairs that side:
+Claude Code is restarted in an empty pane or a new top pane, and Codex is
+restarted as `codex-worker-${workspace_id}` with `--split down`. On a new
+workspace it reuses the root pane for Claude Code and starts Codex below it, so
+the visible result is Claude Code above Codex. The Codex process still runs the
 `codex` command, but its Herdr agent name is workspace-scoped as
-`codex-${workspace_id}` so repeated runs do not collide with an older active
-Codex agent. Both agents start in the same project cwd and use the shared agmsg
-scripts/state for cross-agent messaging.
+`codex-worker-${workspace_id}` so repeated runs do not collide with an older
+active Codex agent. Both agents start in the same project cwd and use the
+shared agmsg scripts/state for cross-agent messaging.
+
+The official Herdr integrations are refreshed by `make update` through
+`scripts/update-agent-assets.sh`: `ensure_herdr_integrations` runs
+`herdr integration install claude` and `herdr integration install codex` when
+the `herdr` CLI is available. The Claude `SessionStart` hook is also represented
+in `home/dot_agents/agent-config.yaml` and generated into
+`home/dot_claude/private_settings.json`, so `chezmoi apply` and Herdr's
+installer converge regardless of which runs first. Those integrations install
+Herdr agent-state hooks; with Herdr's `[session] resume_agents_on_restore`
+default enabled, agent panes can be restored with their conversation sessions
+after a Herdr server restart.
 
 Verification for this flow lives in `tests/unit/test_herdr_agents.py`: it checks
 the Ghostty config keeps normal shell startup, bare `herdr` routing in Ghostty,
 argumented `herdr` routing in Ghostty, bare `herdr` routing outside Ghostty, and
 the Herdr `prefix+alt+a` command binding. Its sandbox E2E fakes Herdr deeply
 enough to execute fake Claude Code and Codex commands, verifies Claude Code is
-run in the root pane, Codex is started with `--split down` under a
-workspace-scoped Herdr agent name, rejects the old literal `codex` agent name
-that triggers `agent_name_taken` on repeated runs, and proves agmsg is usable by
-sending a message from fake Claude Code to fake Codex through a temporary agmsg
-database.
+run in the root pane, Codex is started with `--split down` under the
+`codex-worker-${workspace_id}` Herdr agent name, covers existing workspace
+focus and missing-agent repair paths, verifies the wrapper still attaches after
+`herdr-agents` failure, and proves agmsg is usable by sending a message from
+fake Claude Code to fake Codex through a temporary agmsg database.
 
 `make require-crit-review` is the mechanical review gate for agents
 (`scripts/require-crit-review.py` is the underlying script).

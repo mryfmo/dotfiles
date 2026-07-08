@@ -28,18 +28,59 @@ class HerdrAgentsTest(unittest.TestCase):
         self.bin_dir = self.temp_dir / "bin"
         self.bin_dir.mkdir()
         self.calls_path = self.temp_dir / "herdr-calls.txt"
+        self.workspace_list_path = self.temp_dir / "workspace-list.json"
+        self.pane_list_path = self.temp_dir / "pane-list.json"
+        self.agent_get_path = self.temp_dir / "agent-get.json"
         self.workdir = self.temp_dir / "project"
         self.workdir.mkdir()
+        self.workspace_list_path.write_text('{"id":"cli:workspace:list","result":{"type":"workspace_list","workspaces":[]}}\n')
+        self.pane_list_path.write_text('{"id":"cli:pane:list","result":{"panes":[]}}\n')
+        self.agent_get_path.write_text("")
 
         self.write_executable(
             "herdr",
             f"""#!/usr/bin/env bash
 printf '%s\\n' "$*" >> {self.calls_path}
+if [[ $1 == workspace && $2 == list ]]; then
+    cat {self.workspace_list_path}
+    exit 0
+fi
 if [[ $1 == workspace && $2 == create ]]; then
     printf '%s\\n' '{{"id":"cli:workspace:create","result":{{"root_pane":{{"pane_id":"w-test:p1"}},"workspace":{{"workspace_id":"w-test"}}}}}}'
+    exit 0
+fi
+if [[ $1 == workspace && $2 == focus ]]; then
+    exit 0
+fi
+if [[ $1 == pane && $2 == list ]]; then
+    cat {self.pane_list_path}
+    exit 0
+fi
+if [[ $1 == pane && $2 == split ]]; then
+    workspace="${{3%%:*}}"
+    printf '{{"id":"cli:pane:split","result":{{"pane":{{"pane_id":"%s:p3"}}}}}}\\n' "$workspace"
+    exit 0
+fi
+if [[ $1 == pane && $2 == swap ]]; then
+    exit 0
 fi
 if [[ $1 == agent && $2 == start ]]; then
-    printf '%s\\n' '{{"id":"cli:agent:start","result":{{"pane":{{"pane_id":"w-test:p2"}}}}}}'
+    workspace='w-test'
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --workspace) workspace="$2"; shift 2 ;;
+            *) shift ;;
+        esac
+    done
+    printf '{{"id":"cli:agent:start","result":{{"pane":{{"pane_id":"%s:p2"}}}}}}\\n' "$workspace"
+    exit 0
+fi
+if [[ $1 == agent && $2 == get ]]; then
+    if [[ -s {self.agent_get_path} ]]; then
+        cat {self.agent_get_path}
+        exit 0
+    fi
+    exit 1
 fi
 """,
         )
@@ -64,7 +105,7 @@ fi
             installed.chmod(0o755)
         return target
 
-    def install_zshrc_fakes(self) -> None:
+    def install_zshrc_fakes(self, *, herdr_agents_exit_code: int = 0) -> None:
         self.write_executable(
             "sheldon",
             "#!/usr/bin/env bash\nif [[ ${1:-} == source ]]; then exit 0; fi\n",
@@ -73,6 +114,7 @@ fi
             "herdr-agents",
             f"""#!/usr/bin/env bash
 printf 'herdr-agents %s\\n' "$1" >> {self.calls_path}
+exit {herdr_agents_exit_code}
 """,
         )
         self.write_executable(
@@ -81,6 +123,22 @@ printf 'herdr-agents %s\\n' "$1" >> {self.calls_path}
 printf 'herdr %s\\n' "$*" >> {self.calls_path}
 """,
         )
+
+    def write_workspace_state(self, workspace_id: str, panes: str, *, agent_pane_id: str = "") -> None:
+        self.workspace_list_path.write_text(
+            textwrap.dedent(
+                f"""\
+                {{"id":"cli:workspace:list","result":{{"type":"workspace_list","workspaces":[
+                    {{"active_tab_id":"{workspace_id}:t1","agent_status":"working","focused":false,"label":"project agents","number":1,"pane_count":2,"tab_count":1,"workspace_id":"{workspace_id}"}}
+                ]}}}}
+                """
+            )
+        )
+        self.pane_list_path.write_text(f'{{"id":"cli:pane:list","result":{{"panes":[{panes}]}}}}\n')
+        if agent_pane_id:
+            self.agent_get_path.write_text(f'{{"id":"cli:agent:get","result":{{"agent":{{"pane_id":"{agent_pane_id}"}},"type":"agent_info"}}}}\n')
+        else:
+            self.agent_get_path.write_text("")
 
     def run_helper(self) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
@@ -112,6 +170,91 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             calls,
         )
 
+    def test_existing_agents_workspace_focuses_without_recreating_agents(self) -> None:
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":"claude","cwd":"{self.workdir}","pane_id":"w-old:p1","workspace_id":"w-old"}},'
+            f'{{"agent":"codex","cwd":"{self.workdir}","pane_id":"w-old:p2","workspace_id":"w-old"}}',
+            agent_pane_id="w-old:p2",
+        )
+
+        result = self.run_helper()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn("workspace focus w-old", calls)
+        self.assertNotIn(f"workspace create --cwd {self.workdir} --label project agents --focus", calls)
+        self.assertFalse(any(call.startswith("agent start ") for call in calls))
+
+    def test_existing_workspace_restarts_missing_codex_agent(self) -> None:
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":"claude","cwd":"{self.workdir}","pane_id":"w-old:p1","workspace_id":"w-old"}}',
+        )
+
+        result = self.run_helper()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn(
+            f"agent start codex-worker-w-old --cwd {self.workdir} --workspace w-old --split down --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex --sandbox workspace-write -m gpt-5.5 -c model_reasoning_effort=high",
+            calls,
+        )
+        self.assertIn("pane rename w-old:p2 codex-worker", calls)
+        self.assertNotIn(f"workspace create --cwd {self.workdir} --label project agents --focus", calls)
+        self.assertIn("workspace focus w-old", calls)
+
+    def test_claude_repair_skips_just_restarted_codex_pane_without_agent_field(self) -> None:
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":null,"cwd":"{self.workdir}","pane_id":"w-old:p2","workspace_id":"w-old"}},'
+            f'{{"agent":null,"cwd":"{self.workdir}","pane_id":"w-old:p3","workspace_id":"w-old"}}',
+        )
+
+        result = self.run_helper()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn(
+            f"agent start codex-worker-w-old --cwd {self.workdir} --workspace w-old --split down --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex --sandbox workspace-write -m gpt-5.5 -c model_reasoning_effort=high",
+            calls,
+        )
+        self.assertIn("pane run w-old:p3 CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high", calls)
+        self.assertNotIn("pane run w-old:p2 CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high", calls)
+
+    def test_existing_workspace_restarts_missing_claude_in_empty_pane(self) -> None:
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":null,"cwd":"{self.workdir}","pane_id":"w-old:p1","workspace_id":"w-old"}},'
+            f'{{"agent":"codex","cwd":"{self.workdir}","pane_id":"w-old:p2","workspace_id":"w-old"}}',
+            agent_pane_id="w-old:p2",
+        )
+
+        result = self.run_helper()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn("pane rename w-old:p1 claude-orchestrator", calls)
+        self.assertIn("pane run w-old:p1 CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high", calls)
+        self.assertFalse(any(call.startswith("agent start ") for call in calls))
+        self.assertIn("workspace focus w-old", calls)
+
+    def test_existing_workspace_splits_when_missing_claude_has_no_empty_pane(self) -> None:
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":"codex","cwd":"{self.workdir}","pane_id":"w-old:p2","workspace_id":"w-old"}}',
+            agent_pane_id="w-old:p2",
+        )
+
+        result = self.run_helper()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn("pane split w-old:p2 --direction down --no-focus", calls)
+        self.assertIn("pane swap --pane w-old:p3 --direction up", calls)
+        self.assertIn("pane run w-old:p3 CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high", calls)
+        self.assertIn("workspace focus w-old", calls)
+
     def test_ghostty_herdr_starts_stacked_agents_with_working_agmsg(self) -> None:
         agmsg_scripts = self.materialize_agmsg_scripts()
         agmsg_storage = self.temp_dir / "agmsg-db"
@@ -132,6 +275,10 @@ set -euo pipefail
 printf 'herdr %s\\n' "$*" >> {self.calls_path}
 if [[ $# -eq 0 ]]; then
     printf 'attached workspace from cwd=%s\\n' "$PWD" >> {e2e_log}
+    exit 0
+fi
+if [[ $1 == workspace && $2 == list ]]; then
+    printf '%s\\n' '{{"id":"cli:workspace:list","result":{{"type":"workspace_list","workspaces":[]}}}}'
     exit 0
 fi
 if [[ $1 == workspace && $2 == create ]]; then
@@ -208,6 +355,7 @@ printf 'codex cwd=%s\\n' "$PWD" >> {e2e_log}
             self.calls_path.read_text().splitlines(),
             [
                 f"herdr-agents {self.workdir.resolve()}",
+                "herdr workspace list",
                 f"herdr workspace create --cwd {self.workdir.resolve()} --label project agents --focus",
                 "herdr pane rename w-test:p1 claude-orchestrator",
                 "herdr pane run w-test:p1 CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high",
@@ -232,8 +380,14 @@ printf 'codex cwd=%s\\n' "$PWD" >> {e2e_log}
         self.assertEqual(command["type"], "shell")
         self.assertEqual(command["command"], 'herdr-agents "${HERDR_ACTIVE_PANE_CWD:-$PWD}"')
 
-    def run_zshrc_herdr(self, command: str, *, ghostty: bool) -> subprocess.CompletedProcess[str]:
-        self.install_zshrc_fakes()
+    def run_zshrc_herdr(
+        self,
+        command: str,
+        *,
+        ghostty: bool,
+        herdr_agents_exit_code: int = 0,
+    ) -> subprocess.CompletedProcess[str]:
+        self.install_zshrc_fakes(herdr_agents_exit_code=herdr_agents_exit_code)
         env = os.environ.copy()
         env["PATH"] = f"{self.bin_dir}{os.pathsep}{env['PATH']}"
         if ghostty:
@@ -301,6 +455,15 @@ printf 'codex cwd=%s\\n' "$PWD" >> {e2e_log}
             self.calls_path.read_text().splitlines(),
             [f"herdr-agents {self.workdir.resolve()}", "herdr "],
         )
+
+    def test_bare_herdr_in_ghostty_attaches_after_agent_layout_failure(self) -> None:
+        result = self.run_zshrc_herdr("herdr", ghostty=True, herdr_agents_exit_code=42)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(
+            self.calls_path.read_text().splitlines(),
+            [f"herdr-agents {self.workdir.resolve()}", "herdr "],
+        )
+        self.assertIn("herdr-agents failed; attaching to herdr anyway", result.stderr)
 
     def test_interactive_ghostty_shell_attaches_after_agent_layout(self) -> None:
         result = self.run_interactive_ghostty_herdr()

@@ -105,6 +105,59 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertIn(self.temp_dir / "home/.chezmoitemplates/codex-config-managed.toml", outputs)
         self.assertNotIn(self.temp_dir / "home/dot_codex/private_config.toml.tmpl", outputs)
 
+    def test_claude_settings_renders_session_start_hooks(self) -> None:
+        manifest = {
+            "claude": {
+                "schema": "https://json.schemastore.org/claude-code-settings.json",
+                "model": "claude-fable-5[1m]",
+                "effortLevel": "high",
+                "alwaysThinkingEnabled": True,
+                "autoUpdates": False,
+                "autoUpdatesChannel": "stable",
+                "plansDirectory": "./.agents/worklog/claude",
+                "permissions": {"deny": [], "defaultMode": "plan", "ask": []},
+                "hooks": {
+                    "ccgate_permission_request_hook": "ccgate claude",
+                    "enforce_uv_hook": "~/.claude/hooks/enforce-uv.sh",
+                    "format_edited_files_hook": "~/.claude/hooks/format-edited-files.py",
+                    "session_start": [
+                        {
+                            "matcher": "*",
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "bash '/Users/mryfmo/.claude/hooks/herdr-agent-state.sh' session",
+                                    "timeout": 10,
+                                }
+                            ],
+                        }
+                    ],
+                },
+                "statusLine": {},
+                "disableSkillShellExecution": True,
+                "includeGitInstructions": True,
+                "enabledPlugins": {},
+            }
+        }
+
+        settings = self.module.json.loads(self.module.render_claude_settings(manifest))
+
+        self.assertEqual(
+            settings["hooks"]["SessionStart"],
+            [
+                {
+                    "matcher": "*",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": "bash '/Users/mryfmo/.claude/hooks/herdr-agent-state.sh' session",
+                            "timeout": 10,
+                        }
+                    ],
+                }
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

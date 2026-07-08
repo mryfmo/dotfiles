@@ -36,6 +36,110 @@ function json_agent_pane_id() {
     jq -r '.result.pane.pane_id // .result.agent.pane_id // .result.terminal.pane_id // .result.pane_id // .pane.pane_id // .agent.pane_id // .terminal.pane_id // .pane_id // empty' 2> /dev/null || true
 }
 
+# @description Build the Claude command run in the orchestrator pane.
+function claude_command() {
+    printf "%s\n" "CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high"
+}
+
+# @description Start Claude in an existing pane.
+# @arg $1 pane_id Herdr pane id to reuse.
+function start_claude_in_pane() {
+    local pane_id="$1"
+
+    herdr pane rename "${pane_id}" claude-orchestrator
+    herdr pane run "${pane_id}" "$(claude_command)"
+}
+
+# @description Start Codex in a workspace split and return its pane id.
+# @arg $1 workspace_id Herdr workspace id.
+# @arg $2 agent_name Herdr Codex agent registration name.
+# @arg $3 workdir Working directory for Codex.
+function start_codex_agent() {
+    local workspace_id="$1"
+    local agent_name="$2"
+    local workdir="$3"
+    local codex_agent_json
+    local codex_pane_id
+
+    if ! codex_agent_json="$(
+        herdr agent start "${agent_name}" --cwd "${workdir}" --workspace "${workspace_id}" --split down --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- \
+            codex --sandbox workspace-write -m gpt-5.5 -c model_reasoning_effort=high
+    )"; then
+        printf 'Failed to start Codex agent %s: %s\n' "${agent_name}" "${codex_agent_json}" >&2
+        return 1
+    fi
+
+    codex_pane_id="$(printf '%s\n' "${codex_agent_json}" | json_agent_pane_id)"
+    if [[ -z ${codex_pane_id} ]]; then
+        codex_pane_id="$(herdr agent get "${agent_name}" | json_agent_pane_id)"
+    fi
+    if [[ -z ${codex_pane_id} ]]; then
+        printf 'Unable to read Codex pane id for Herdr agent: %s\n' "${agent_name}" >&2
+        return 1
+    fi
+    herdr pane rename "${codex_pane_id}" codex-worker
+    printf '%s\n' "${codex_pane_id}"
+}
+
+# @description Find an existing agents workspace for a workdir.
+# @arg $1 label Expected Herdr workspace label.
+# @arg $2 workdir Absolute workdir path.
+function find_existing_workspace() {
+    local label="$1"
+    local workdir="$2"
+    local workspace_list_json
+    local workspace_id
+    local panes_json
+
+    workspace_list_json="$(herdr workspace list)"
+    while IFS= read -r workspace_id; do
+        [[ -n ${workspace_id} ]] || continue
+        if ! panes_json="$(herdr pane list --workspace "${workspace_id}")"; then
+            continue
+        fi
+        if printf '%s\n' "${panes_json}" | jq -e --arg cwd "${workdir}" '.result.panes[]? | select(.cwd == $cwd)' > /dev/null; then
+            printf '%s\n' "${workspace_id}"
+            return 0
+        fi
+    done < <(printf '%s\n' "${workspace_list_json}" | jq -r --arg label "${label}" '.result.workspaces[]? | select(.label == $label) | .workspace_id // empty')
+}
+
+# @description Return success when a Claude pane is present.
+# @arg $1 json Herdr pane list JSON.
+function has_claude_pane() {
+    local panes_json="$1"
+
+    printf '%s\n' "${panes_json}" | jq -e '.result.panes[]? | select(.agent == "claude")' > /dev/null
+}
+
+# @description Return the Codex pane id when the registered agent points to a live pane.
+# @arg $1 agent_name Herdr Codex agent registration name.
+# @arg $2 json Herdr pane list JSON.
+function live_codex_pane_id() {
+    local agent_name="$1"
+    local panes_json="$2"
+    local agent_json
+    local pane_id
+
+    if ! agent_json="$(herdr agent get "${agent_name}" 2> /dev/null)"; then
+        return 1
+    fi
+    pane_id="$(printf '%s\n' "${agent_json}" | json_agent_pane_id)"
+    [[ -n ${pane_id} ]] || return 1
+    printf '%s\n' "${panes_json}" | jq -e --arg pane_id "${pane_id}" '.result.panes[]? | select(.pane_id == $pane_id)' > /dev/null || return 1
+    printf '%s\n' "${pane_id}"
+}
+
+# @description Return the first pane id without an attached agent.
+# @arg $1 json Herdr pane list JSON.
+# @arg $2 pane_id Optional pane id to exclude.
+function empty_pane_id() {
+    local panes_json="$1"
+    local exclude_pane_id="${2:-}"
+
+    printf '%s\n' "${panes_json}" | jq -r --arg exclude "${exclude_pane_id}" '.result.panes[]? | select((.agent? // "") == "" and .pane_id != $exclude) | .pane_id // empty' | head -n 1
+}
+
 # @description Require a command before starting a partial layout.
 # @arg $1 string Command name.
 function require_command() {
@@ -66,6 +170,38 @@ workdir="${1:-$PWD}"
 cd -- "${workdir}"
 workdir="$PWD"
 workspace_label="$(basename "${workdir}") agents"
+existing_workspace_id="$(find_existing_workspace "${workspace_label}" "${workdir}")"
+
+if [[ -n ${existing_workspace_id} ]]; then
+    workspace_id="${existing_workspace_id}"
+    codex_agent_name="codex-worker-${workspace_id}"
+    panes_json="$(herdr pane list --workspace "${workspace_id}")"
+    codex_pane_id="$(live_codex_pane_id "${codex_agent_name}" "${panes_json}")" || codex_pane_id=""
+
+    if [[ -z ${codex_pane_id} ]]; then
+        codex_pane_id="$(start_codex_agent "${workspace_id}" "${codex_agent_name}" "${workdir}")"
+        panes_json="$(herdr pane list --workspace "${workspace_id}")"
+    fi
+
+    if ! has_claude_pane "${panes_json}"; then
+        claude_pane_id="$(empty_pane_id "${panes_json}" "${codex_pane_id}")"
+        if [[ -z ${claude_pane_id} ]]; then
+            claude_pane_json="$(herdr pane split "${codex_pane_id}" --direction down --no-focus)"
+            claude_pane_id="$(printf '%s\n' "${claude_pane_json}" | json_agent_pane_id)"
+            [[ -n ${claude_pane_id} ]] || claude_pane_id="$(printf '%s\n' "${claude_pane_json}" | jq -r '.result.pane.pane_id // .pane.pane_id // .pane_id // empty')"
+            if [[ -z ${claude_pane_id} ]]; then
+                printf 'Unable to read Claude repair pane id for Herdr workspace: %s\n' "${workspace_id}" >&2
+                exit 1
+            fi
+            herdr pane swap --pane "${claude_pane_id}" --direction up
+        fi
+        start_claude_in_pane "${claude_pane_id}"
+    fi
+
+    herdr workspace focus "${workspace_id}"
+    printf 'Herdr agents workspace: %s\n' "${workspace_id}"
+    exit 0
+fi
 
 workspace_json="$(herdr workspace create --cwd "${workdir}" --label "${workspace_label}" --focus)"
 workspace_id="$(printf '%s\n' "${workspace_json}" | json_workspace_id)"
@@ -82,22 +218,8 @@ if [[ -z ${root_pane_id} ]]; then
     exit 1
 fi
 
-herdr pane rename "${root_pane_id}" claude-orchestrator
-herdr pane run "${root_pane_id}" "CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high"
-
-codex_agent_json="$(
-    herdr agent start "${codex_agent_name}" --cwd "${workdir}" --workspace "${workspace_id}" --split down --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- \
-        codex --sandbox workspace-write -m gpt-5.5 -c model_reasoning_effort=high
-)"
-codex_pane_id="$(printf '%s\n' "${codex_agent_json}" | json_agent_pane_id)"
-if [[ -z ${codex_pane_id} ]]; then
-    codex_pane_id="$(herdr agent get "${codex_agent_name}" | json_agent_pane_id)"
-fi
-if [[ -z ${codex_pane_id} ]]; then
-    printf 'Unable to read Codex pane id for Herdr agent: %s\n' "${codex_agent_name}" >&2
-    exit 1
-fi
-herdr pane rename "${codex_pane_id}" codex-worker
+start_claude_in_pane "${root_pane_id}"
+start_codex_agent "${workspace_id}" "${codex_agent_name}" "${workdir}" > /dev/null
 
 if command -v zed > /dev/null 2>&1; then
     zed "${workdir}" > /dev/null 2>&1 &

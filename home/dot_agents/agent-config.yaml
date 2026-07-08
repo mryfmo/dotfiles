@@ -126,6 +126,12 @@ claude:
     ccgate_permission_request_hook: ccgate claude
     enforce_uv_hook: ~/.claude/hooks/enforce-uv.sh
     format_edited_files_hook: ~/.claude/hooks/format-edited-files.py
+    session_start:
+      - matcher: "*"
+        hooks:
+          - type: command
+            command: "bash '/Users/mryfmo/.claude/hooks/herdr-agent-state.sh' session"
+            timeout: 10
     python_post_edit:
       - uvx ruff format
       - uvx ruff check --fix

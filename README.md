@@ -196,17 +196,15 @@ with a configured PermissionRequest hook whose runtime is missing.
 
 ### Herdr and Ghostty agent workspace
 
-Ghostty starts as a normal terminal; `~/.config/ghostty/config` must not
-set a Herdr `initial-command`. In Ghostty zsh sessions, bare `herdr` calls
-`herdr-agents "$PWD"` and then the real `herdr` CLI, so the terminal attaches
-to the focused workspace after the agent layout is ready. If `herdr-agents`
-fails, the wrapper prints `herdr-agents failed; attaching to herdr anyway` on
-stderr and still runs `command herdr`, instead of silently returning to the
-prompt. Argumented Herdr calls such as `herdr --remote` and
-`herdr server reload-config` still run the real Herdr CLI. Outside Ghostty,
-bare `herdr` also runs the real Herdr CLI. Already-open Ghostty shells keep
-the zsh function they sourced at startup; run `exec zsh` or open a new window
-after updating these dotfiles when the wrapper changes.
+Ghostty starts its first surface with `herdr-session`, which calls
+`herdr-agents "$PWD"` with output logged to `~/.config/herdr/herdr-agents.log`
+and then execs the real `herdr` CLI, so the terminal attaches to the focused
+workspace after the agent layout is ready. In Ghostty zsh sessions, bare
+`herdr` delegates to `herdr-session`; argumented Herdr calls such as
+`herdr --remote` and `herdr server reload-config` still run the real Herdr CLI.
+Outside Ghostty, bare `herdr` also runs the real Herdr CLI. Already-open
+Ghostty shells keep the zsh function they sourced at startup; run `exec zsh` or
+open a new window after updating these dotfiles when the wrapper changes.
 
 The workspace layout itself stays centralized in `herdr-agents`, which is also
 bound inside Herdr at `prefix+alt+a`. Before creating a workspace, it looks for
@@ -234,15 +232,15 @@ default enabled, agent panes can be restored with their conversation sessions
 after a Herdr server restart.
 
 Verification for this flow lives in `tests/unit/test_herdr_agents.py`: it checks
-the Ghostty config keeps normal shell startup, bare `herdr` routing in Ghostty,
+the Ghostty initial command, `herdr-session`, bare `herdr` routing in Ghostty,
 argumented `herdr` routing in Ghostty, bare `herdr` routing outside Ghostty, and
 the Herdr `prefix+alt+a` command binding. Its sandbox E2E fakes Herdr deeply
 enough to execute fake Claude Code and Codex commands, verifies Claude Code is
 run in the root pane, Codex is started with `--split down` under the
 `codex-worker-${workspace_id}` Herdr agent name, covers existing workspace
-focus and missing-agent repair paths, verifies the wrapper still attaches after
-`herdr-agents` failure, and proves agmsg is usable by sending a message from
-fake Claude Code to fake Codex through a temporary agmsg database.
+focus and missing-agent repair paths, verifies the session entrypoint still
+attaches after `herdr-agents` failure, and proves agmsg is usable by sending a
+message from fake Claude Code to fake Codex through a temporary agmsg database.
 
 `make require-crit-review` is the mechanical review gate for agents
 (`scripts/require-crit-review.py` is the underlying script).

@@ -1,0 +1,79 @@
+# T5 Validation
+
+## Commands
+
+### bash -n home/dot_local/bin/common/executable_herdr-session
+
+Exit: 0
+
+```text
+```
+
+### shfmt --indent 4 --space-redirects --diff home/dot_local/bin/common/executable_herdr-session
+
+Exit: 0
+
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+```
+
+No diff was printed.
+
+### shellcheck home/dot_local/bin/common/executable_herdr-session
+
+Exit: 0
+
+```text
+mise WARN  failed to write cache file: /Users/mryfmo/Library/Caches/mise/gcloud/575.0.0/exec_env_effb79b8cb720327-3cd79.msgpack.z Operation not permitted (os error 1)
+```
+
+No shellcheck findings were printed.
+
+### zsh -n home/dot_zshrc
+
+Exit: 0
+
+```text
+```
+
+### uv run python -m unittest discover -s tests/unit -v
+
+Exit: 0
+
+```text
+Ran 61 tests in 5.715s
+
+OK
+```
+
+Representative new/changed tests:
+
+```text
+test_ghostty_config_starts_herdr_session ... ok
+test_herdr_session_attaches_after_agent_layout_failure ... ok
+test_herdr_session_passes_syntax_check ... ok
+test_herdr_session_rejects_arguments ... ok
+test_herdr_session_runs_agents_then_execs_herdr ... ok
+```
+
+### git status --porcelain
+
+Exit: 0
+
+```text
+ M README.md
+ M home/dot_config/ghostty/config
+ M home/dot_zshrc
+ M tests/unit/test_herdr_agents.py
+?? .orchestration/autoskill/runs/T5.md
+?? .orchestration/learning/T5.md
+?? .orchestration/reports/T5.md
+?? .orchestration/sandboxes/T5.md
+?? .orchestration/tasks/T5-herdr-session-bootstrap.md
+?? .orchestration/validation/T5.txt
+?? home/dot_local/bin/common/executable_herdr-session
+```
+
+## Additional Evidence
+
+- `docs/reference/home/dot_local/bin/common/executable_herdr-session.md` exists, but `docs/reference/` is ignored by `.gitignore`; `git status --porcelain --ignored` reports it as `!! docs/reference/`.

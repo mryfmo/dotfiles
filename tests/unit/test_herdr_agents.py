@@ -17,6 +17,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "home/dot_local/bin/common/executable_herdr-agents"
+HERDR_SESSION_SCRIPT = ROOT / "home/dot_local/bin/common/executable_herdr-session"
 HERDR_CONFIG = ROOT / "home/dot_config/herdr/config.toml"
 GHOSTTY_CONFIG = ROOT / "home/dot_config/ghostty/config"
 ZSHRC = ROOT / "home/dot_zshrc"
@@ -31,6 +32,8 @@ class HerdrAgentsTest(unittest.TestCase):
         self.workspace_list_path = self.temp_dir / "workspace-list.json"
         self.pane_list_path = self.temp_dir / "pane-list.json"
         self.agent_get_path = self.temp_dir / "agent-get.json"
+        self.home_dir = self.temp_dir / "home"
+        (self.home_dir / ".config/herdr").mkdir(parents=True)
         self.workdir = self.temp_dir / "project"
         self.workdir.mkdir()
         self.workspace_list_path.write_text('{"id":"cli:workspace:list","result":{"type":"workspace_list","workspaces":[]}}\n')
@@ -105,16 +108,16 @@ fi
             installed.chmod(0o755)
         return target
 
-    def install_zshrc_fakes(self, *, herdr_agents_exit_code: int = 0) -> None:
+    def install_zshrc_fakes(self, *, herdr_session_exit_code: int = 0) -> None:
         self.write_executable(
             "sheldon",
             "#!/usr/bin/env bash\nif [[ ${1:-} == source ]]; then exit 0; fi\n",
         )
         self.write_executable(
-            "herdr-agents",
+            "herdr-session",
             f"""#!/usr/bin/env bash
-printf 'herdr-agents %s\\n' "$1" >> {self.calls_path}
-exit {herdr_agents_exit_code}
+printf 'herdr-session %s\\n' "$*" >> {self.calls_path}
+exit {herdr_session_exit_code}
 """,
         )
         self.write_executable(
@@ -146,6 +149,20 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         return subprocess.run(
             ["bash", str(SCRIPT), str(self.workdir)],
             cwd=ROOT,
+            env=env,
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+    def run_session_helper(self, *args: str) -> subprocess.CompletedProcess[str]:
+        env = os.environ.copy()
+        env["HOME"] = str(self.home_dir)
+        env["PATH"] = f"{self.bin_dir}{os.pathsep}{env['PATH']}"
+        return subprocess.run(
+            ["bash", str(HERDR_SESSION_SCRIPT), *args],
+            cwd=self.workdir,
             env=env,
             check=False,
             text=True,
@@ -262,6 +279,13 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         e2e_log = self.temp_dir / "e2e.log"
 
         self.write_executable(
+            "herdr-session",
+            f"""#!/usr/bin/env bash
+printf 'herdr-session %s\\n' "$*" >> {self.calls_path}
+exec bash {HERDR_SESSION_SCRIPT}
+""",
+        )
+        self.write_executable(
             "herdr-agents",
             f"""#!/usr/bin/env bash
 printf 'herdr-agents %s\\n' "$1" >> {self.calls_path}
@@ -340,6 +364,7 @@ printf 'codex cwd=%s\\n' "$PWD" >> {e2e_log}
         env["PATH"] = f"{self.bin_dir}{os.pathsep}{env['PATH']}"
         env["AGMSG_STORAGE_PATH"] = str(agmsg_storage)
         env["GHOSTTY_RESOURCES_DIR"] = str(self.temp_dir / "ghostty")
+        env["HOME"] = str(self.home_dir)
         result = subprocess.run(
             ["zsh", "-fc", f"source {ZSHRC}; herdr"],
             cwd=self.workdir,
@@ -354,6 +379,7 @@ printf 'codex cwd=%s\\n' "$PWD" >> {e2e_log}
         self.assertEqual(
             self.calls_path.read_text().splitlines(),
             [
+                "herdr-session ",
                 f"herdr-agents {self.workdir.resolve()}",
                 "herdr workspace list",
                 f"herdr workspace create --cwd {self.workdir.resolve()} --label project agents --focus",
@@ -373,6 +399,81 @@ printf 'codex cwd=%s\\n' "$PWD" >> {e2e_log}
         self.assertIn("claude-code", e2e_lines)
         self.assertIn("ready from claude", e2e_lines)
 
+    def test_herdr_session_passes_syntax_check(self) -> None:
+        result = subprocess.run(
+            ["bash", "-n", str(HERDR_SESSION_SCRIPT)],
+            cwd=ROOT,
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_herdr_session_runs_agents_then_execs_herdr(self) -> None:
+        self.write_executable(
+            "herdr-agents",
+            f"""#!/usr/bin/env bash
+printf 'herdr-agents %s\\n' "$1" >> {self.calls_path}
+printf 'agents stdout\\n'
+printf 'agents stderr\\n' >&2
+""",
+        )
+        self.write_executable(
+            "herdr",
+            f"""#!/usr/bin/env bash
+printf 'herdr %s\\n' "$*" >> {self.calls_path}
+""",
+        )
+
+        result = self.run_session_helper()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(
+            self.calls_path.read_text().splitlines(),
+            [f"herdr-agents {self.workdir.resolve()}", "herdr "],
+        )
+        self.assertEqual(
+            (self.home_dir / ".config/herdr/herdr-agents.log").read_text().splitlines(),
+            ["agents stdout", "agents stderr"],
+        )
+
+    def test_herdr_session_attaches_after_agent_layout_failure(self) -> None:
+        self.write_executable(
+            "herdr-agents",
+            f"""#!/usr/bin/env bash
+printf 'herdr-agents %s\\n' "$1" >> {self.calls_path}
+printf 'layout failed\\n' >&2
+exit 42
+""",
+        )
+        self.write_executable(
+            "herdr",
+            f"""#!/usr/bin/env bash
+printf 'herdr %s\\n' "$*" >> {self.calls_path}
+""",
+        )
+
+        result = self.run_session_helper()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(
+            self.calls_path.read_text().splitlines(),
+            [f"herdr-agents {self.workdir.resolve()}", "herdr "],
+        )
+        self.assertIn(
+            f"herdr-agents failed; see {self.home_dir}/.config/herdr/herdr-agents.log",
+            result.stderr,
+        )
+        self.assertEqual(
+            (self.home_dir / ".config/herdr/herdr-agents.log").read_text().splitlines(),
+            ["layout failed"],
+        )
+
+    def test_herdr_session_rejects_arguments(self) -> None:
+        result = self.run_session_helper("extra")
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("Usage: herdr-session", result.stderr)
+        self.assertFalse(self.calls_path.exists())
+
     def test_herdr_prefix_alt_a_runs_helper_from_active_pane(self) -> None:
         config = tomllib.loads(HERDR_CONFIG.read_text())
         command = next(item for item in config["keys"]["command"] if item["key"] == "prefix+alt+a")
@@ -385,9 +486,9 @@ printf 'codex cwd=%s\\n' "$PWD" >> {e2e_log}
         command: str,
         *,
         ghostty: bool,
-        herdr_agents_exit_code: int = 0,
+        herdr_session_exit_code: int = 0,
     ) -> subprocess.CompletedProcess[str]:
-        self.install_zshrc_fakes(herdr_agents_exit_code=herdr_agents_exit_code)
+        self.install_zshrc_fakes(herdr_session_exit_code=herdr_session_exit_code)
         env = os.environ.copy()
         env["PATH"] = f"{self.bin_dir}{os.pathsep}{env['PATH']}"
         if ghostty:
@@ -445,32 +546,23 @@ printf 'codex cwd=%s\\n' "$PWD" >> {e2e_log}
             "",
         )
 
-    def test_ghostty_config_keeps_normal_shell_startup(self) -> None:
-        self.assertNotIn("initial-command", GHOSTTY_CONFIG.read_text())
+    def test_ghostty_config_starts_herdr_session(self) -> None:
+        self.assertIn("initial-command = /bin/zsh -lc 'exec herdr-session'", GHOSTTY_CONFIG.read_text())
 
     def test_bare_herdr_in_ghostty_starts_agent_layout(self) -> None:
         result = self.run_zshrc_herdr("herdr", ghostty=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(
             self.calls_path.read_text().splitlines(),
-            [f"herdr-agents {self.workdir.resolve()}", "herdr "],
+            ["herdr-session "],
         )
-
-    def test_bare_herdr_in_ghostty_attaches_after_agent_layout_failure(self) -> None:
-        result = self.run_zshrc_herdr("herdr", ghostty=True, herdr_agents_exit_code=42)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(
-            self.calls_path.read_text().splitlines(),
-            [f"herdr-agents {self.workdir.resolve()}", "herdr "],
-        )
-        self.assertIn("herdr-agents failed; attaching to herdr anyway", result.stderr)
 
     def test_interactive_ghostty_shell_attaches_after_agent_layout(self) -> None:
         result = self.run_interactive_ghostty_herdr()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(
             self.calls_path.read_text().splitlines(),
-            [f"herdr-agents {self.workdir.resolve()}", "herdr "],
+            ["herdr-session "],
         )
 
     def test_herdr_with_args_in_ghostty_uses_real_cli(self) -> None:

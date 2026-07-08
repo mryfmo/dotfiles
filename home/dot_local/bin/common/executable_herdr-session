@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+# @file herdr-session
+# @brief Prepare a Herdr agent workspace, then attach to Herdr.
+# @description
+#   Runs `herdr-agents` for the current directory with output redirected to the
+#   Herdr agent log, then attaches with the `herdr` CLI even if layout setup
+#   fails.
+# @example
+#   herdr-session
+
+set -euo pipefail
+
+# @description Print usage information.
+function usage() {
+    cat << 'USAGE'
+Usage: herdr-session
+
+Prepare a Herdr agent workspace for the current directory, then attach to Herdr.
+USAGE
+}
+
+if [[ ${1:-} == "--help" || ${1:-} == "-h" ]]; then
+    usage
+    exit 0
+fi
+
+if [[ $# -gt 0 ]]; then
+    usage >&2
+    exit 2
+fi
+
+log_path="${HOME}/.config/herdr/herdr-agents.log"
+
+if ! herdr-agents "${PWD}" >> "${log_path}" 2>&1; then
+    printf 'herdr-agents failed; see %s\n' "${log_path}" >&2
+fi
+
+exec herdr

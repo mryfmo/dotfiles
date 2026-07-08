@@ -34,3 +34,6 @@ window-padding-x = 8
 window-padding-y = 4
 confirm-close-surface = true
 shell-integration = detect
+
+# Start first Ghostty surface through the Herdr session entrypoint.
+initial-command = /bin/zsh -lc 'exec herdr-session'

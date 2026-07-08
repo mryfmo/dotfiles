@@ -7,3 +7,5 @@ plugin.jupyterlab-settings
 .config/claude/skills
 .config/codex
 .ccstatusline
+**/__pycache__
+**/*.pyc

@@ -9,8 +9,10 @@ using the generated source state.
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import stat
+import subprocess
 import sys
 from pathlib import Path
 
@@ -33,6 +35,24 @@ def same_text(source: Path, target: Path, template: bool = False) -> bool:
         return False
     expected = render_template(source) if template else source.read_text()
     return target.read_text() == expected
+
+
+def same_modified(source: Path, target: Path) -> bool:
+    if not target.exists():
+        return False
+    current = target.read_text()
+    env = os.environ.copy()
+    env["CHEZMOI_SOURCE_DIR"] = str(SOURCE_ROOT)
+    result = subprocess.run(
+        [str(source)],
+        input=current,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env,
+        check=False,
+    )
+    return result.returncode == 0 and result.stdout == current
 
 
 def source_files(root: Path) -> dict[Path, Path]:
@@ -114,13 +134,14 @@ def check_executable_hook(source: Path, target: Path, label: str) -> list[str]:
 def check() -> list[str]:
     failures: list[str] = []
     checks = [
-        (SOURCE_ROOT / "dot_codex/private_config.toml.tmpl", HOME / ".codex/config.toml", True, "Codex config"),
         (SOURCE_ROOT / "dot_claude/private_settings.json", HOME / ".claude/settings.json", False, "Claude settings"),
         (SOURCE_ROOT / "dot_claude/private_mcp.json.tmpl", HOME / ".claude/mcp.json", True, "Claude MCP config"),
     ]
     for source, target, template, label in checks:
         if not same_text(source, target, template=template):
             failures.append(f"{label} differs or is missing: {target}")
+    if not same_modified(SOURCE_ROOT / "dot_codex/modify_private_config.toml", HOME / ".codex/config.toml"):
+        failures.append(f"Codex config managed keys differ or config is missing: {HOME / '.codex/config.toml'}")
 
     failures.extend(compare_shared_skills())
     failures.extend(compare_claude_skills())

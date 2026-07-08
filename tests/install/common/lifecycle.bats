@@ -174,7 +174,7 @@
     grep -q 'update_claude_ponytail' scripts/update-agent-assets.sh
     grep -q 'update_codex_ponytail' scripts/update-agent-assets.sh
     grep -q 'PONYTAIL_DEFAULT_MODE' scripts/update-agent-assets.sh
-    grep -q 'ponytail@ponytail' home/dot_codex/private_config.toml.tmpl
+    grep -q 'ponytail@ponytail' home/.chezmoitemplates/codex-config-managed.toml
     grep -q 'Ponytail' home/dot_config/codex/AGENTS.md
     grep -q 'ponytail@ponytail' home/dot_config/claude/rules/ponytail.md
 }
@@ -184,7 +184,7 @@
     grep -q '"aqua:tak848/ccgate" = "latest"' home/dot_mise/config.toml
     grep -q 'ccgate --version' scripts/update-agent-assets.sh
     grep -q 'ccgate claude' home/dot_claude/private_settings.json
-    grep -q 'ccgate codex' home/dot_codex/private_config.toml.tmpl
+    grep -q 'ccgate codex' home/.chezmoitemplates/codex-config-managed.toml
     grep -q 'claude-haiku-4-5' home/dot_claude/ccgate.jsonnet
     grep -q 'HookInput.model' home/dot_codex/ccgate.jsonnet
     grep -q 'HookInput.model' home/dot_config/codex/AGENTS.md

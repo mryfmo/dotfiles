@@ -1,0 +1,167 @@
+#!/usr/bin/env python3
+"""Merge managed Codex config with Codex-owned runtime state."""
+
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+
+RUNTIME_PREFIXES = (
+    "hooks.state",
+    "marketplaces",
+    "tui.model_availability_nux",
+    "projects",
+)
+
+
+def source_dir() -> Path:
+    if os.environ.get("CHEZMOI_SOURCE_DIR"):
+        return Path(os.environ["CHEZMOI_SOURCE_DIR"])
+    return Path(__file__).resolve().parents[1]
+
+
+def home_dir() -> Path:
+    if os.environ.get("CHEZMOI_HOME_DIR"):
+        return Path(os.environ["CHEZMOI_HOME_DIR"])
+    return Path.home()
+
+
+def render_managed_template(text: str) -> str:
+    return (
+        text.replace("{{ .chezmoi.sourceDir }}", str(source_dir()))
+        .replace("{{ .chezmoi.homeDir }}", str(home_dir()))
+    )
+
+
+def table_name(header: str) -> str | None:
+    stripped = header.strip()
+    if stripped.startswith("[[") and stripped.endswith("]]"):
+        return stripped[2:-2].strip()
+    if stripped.startswith("[") and stripped.endswith("]"):
+        return stripped[1:-1].strip()
+    return None
+
+
+def split_chunks(text: str) -> list[tuple[str | None, str]]:
+    chunks: list[tuple[str | None, str]] = []
+    current_name: str | None = None
+    current_lines: list[str] = []
+    pending_lines: list[str] = []
+
+    for line in text.splitlines(keepends=True):
+        name = table_name(line)
+        if name is None:
+            if current_name is None:
+                pending_lines.append(line)
+            else:
+                current_lines.append(line)
+            continue
+
+        if current_name is None:
+            if pending_lines:
+                chunks.append((None, "".join(pending_lines)))
+                pending_lines = []
+        else:
+            chunks.append((current_name, "".join(current_lines)))
+        current_name = name
+        current_lines = pending_lines + [line]
+        pending_lines = []
+
+    if current_name is None:
+        if pending_lines:
+            chunks.append((None, "".join(pending_lines)))
+    else:
+        chunks.append((current_name, "".join(current_lines)))
+    return chunks
+
+
+def is_runtime_table(name: str | None) -> bool:
+    if name is None:
+        return False
+    return any(name == prefix or name.startswith(f"{prefix}.") for prefix in RUNTIME_PREFIXES)
+
+
+def runtime_prefix(name: str | None) -> str | None:
+    if name is None:
+        return None
+    for prefix in RUNTIME_PREFIXES:
+        if name == prefix or name.startswith(f"{prefix}."):
+            return prefix
+    return None
+
+
+def merge_config(managed: str, current: str) -> str:
+    if not current.strip():
+        return managed
+
+    managed_chunks = split_chunks(managed)
+    current_chunks = split_chunks(current)
+    current_by_name: dict[str, list[str]] = {}
+    current_by_runtime_prefix: dict[str, list[tuple[str, str]]] = {}
+    managed_by_runtime_prefix: dict[str, list[tuple[str, str]]] = {}
+    for name, chunk in current_chunks:
+        if name is not None:
+            current_by_name.setdefault(name, []).append(chunk)
+            prefix = runtime_prefix(name)
+            if prefix is not None:
+                current_by_runtime_prefix.setdefault(prefix, []).append((name, chunk))
+    for name, chunk in managed_chunks:
+        prefix = runtime_prefix(name)
+        if name is not None and prefix is not None:
+            managed_by_runtime_prefix.setdefault(prefix, []).append((name, chunk))
+
+    managed_names = {name for name, _ in managed_chunks if name is not None}
+    emitted_current: set[str] = set()
+    emitted_runtime_prefixes: set[str] = set()
+    output: list[str] = []
+
+    for name, chunk in managed_chunks:
+        prefix = runtime_prefix(name)
+        if prefix is not None:
+            if prefix in emitted_runtime_prefixes:
+                continue
+            current_group = current_by_runtime_prefix.get(prefix, [])
+            if current_group:
+                for current_name, current_chunk in current_group:
+                    output.append(current_chunk)
+                    emitted_current.add(current_name)
+                for managed_name, managed_chunk in managed_by_runtime_prefix.get(prefix, []):
+                    if managed_name not in current_by_name:
+                        output.append(managed_chunk)
+            else:
+                output.extend(managed_chunk for _, managed_chunk in managed_by_runtime_prefix.get(prefix, []))
+            emitted_runtime_prefixes.add(prefix)
+        else:
+            output.append(chunk)
+
+    for name, chunk in current_chunks:
+        if name is None:
+            continue
+        if name in emitted_current:
+            continue
+        prefix = runtime_prefix(name)
+        if prefix is not None:
+            if prefix in emitted_runtime_prefixes:
+                continue
+            output.append(chunk)
+            emitted_current.add(name)
+            continue
+        if name not in managed_names:
+            output.append(chunk)
+            emitted_current.add(name)
+
+    merged = "".join(output)
+    return merged if merged.endswith("\n") else merged + "\n"
+
+
+def main() -> int:
+    baseline = source_dir() / ".chezmoitemplates/codex-config-managed.toml"
+    managed = render_managed_template(baseline.read_text())
+    current = sys.stdin.read()
+    sys.stdout.write(merge_config(managed, current))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

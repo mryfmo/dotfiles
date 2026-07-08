@@ -22,7 +22,7 @@
 #     done
 
 #     symbolic_links_exists=(
-#         "${HOME}/.config/ghostty/config.ghostty"
+#         "${HOME}/.config/ghostty/config"
 #     )
 #     for link in "${symbolic_links_exists[@]}"; do
 #         echo "Checking ${link}"

@@ -1,0 +1,36 @@
+# ~/.config/ghostty/config
+# Keep this file minimal and boring; add more after you confirm your baseline is stable.
+
+# Font
+font-family = "JetBrainsMono Nerd Font"
+font-size = 14
+
+# macOS: treat Option as Alt for terminal keybindings
+macos-option-as-alt = true
+
+# Secure Input can interfere with global hotkeys / accessibility tooling.
+# If you see "AeroSpace hotkeys stop working when a password prompt is visible",
+# consider disabling auto secure input and rely on manual "Secure Keyboard Entry".
+macos-auto-secure-input = false
+macos-secure-input-indication = true
+
+# OSC52でクリップボード更新（リモート→ローカル）を確実に通す
+clipboard-write = allow
+
+# readはセキュリティ的に ask 推奨（必要なら allow）
+clipboard-read = ask
+
+# 貼り付けを明示（端末貼り付け＝どこでも成立）
+keybind = ctrl+shift+v=paste_from_clipboard
+
+# 選択があるときだけコピー（選択がないときは素通し）
+keybind = performable:ctrl+shift+c=copy_to_clipboard
+
+# 端末からSSHする人向けの快適化（任意）
+shell-integration-features = ssh-terminfo,ssh-env
+
+# Managed extras from the old chezmoi Ghostty config
+window-padding-x = 8
+window-padding-y = 4
+confirm-close-surface = true
+shell-integration = detect

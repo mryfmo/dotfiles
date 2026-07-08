@@ -31,6 +31,11 @@ function json_root_pane_id() {
     jq -r '.result.root_pane.pane_id // .root_pane.pane_id // .pane_id // empty' 2> /dev/null || true
 }
 
+# @description Extract an agent pane id from Herdr JSON on stdin.
+function json_agent_pane_id() {
+    jq -r '.result.pane.pane_id // .result.agent.pane_id // .result.terminal.pane_id // .result.pane_id // .pane.pane_id // .agent.pane_id // .terminal.pane_id // .pane_id // empty' 2> /dev/null || true
+}
+
 # @description Require a command before starting a partial layout.
 # @arg $1 string Command name.
 function require_command() {
@@ -65,6 +70,7 @@ workspace_label="$(basename "${workdir}") agents"
 workspace_json="$(herdr workspace create --cwd "${workdir}" --label "${workspace_label}" --focus)"
 workspace_id="$(printf '%s\n' "${workspace_json}" | json_workspace_id)"
 root_pane_id="$(printf '%s\n' "${workspace_json}" | json_root_pane_id)"
+codex_agent_name="codex-worker-${workspace_id}"
 
 if [[ -z ${workspace_id} ]]; then
     printf 'Unable to read Herdr workspace id from: %s\n' "${workspace_json}" >&2
@@ -76,8 +82,22 @@ if [[ -z ${root_pane_id} ]]; then
     exit 1
 fi
 
-herdr pane run "${root_pane_id}" "CLICOLOR_FORCE=1 FORCE_COLOR=1 claude"
-herdr agent start "codex-${workspace_id}" --cwd "${workdir}" --workspace "${workspace_id}" --split down --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex
+herdr pane rename "${root_pane_id}" claude-orchestrator
+herdr pane run "${root_pane_id}" "CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high"
+
+codex_agent_json="$(
+    herdr agent start "${codex_agent_name}" --cwd "${workdir}" --workspace "${workspace_id}" --split down --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- \
+        codex --sandbox workspace-write -m gpt-5.5 -c model_reasoning_effort=high
+)"
+codex_pane_id="$(printf '%s\n' "${codex_agent_json}" | json_agent_pane_id)"
+if [[ -z ${codex_pane_id} ]]; then
+    codex_pane_id="$(herdr agent get "${codex_agent_name}" | json_agent_pane_id)"
+fi
+if [[ -z ${codex_pane_id} ]]; then
+    printf 'Unable to read Codex pane id for Herdr agent: %s\n' "${codex_agent_name}" >&2
+    exit 1
+fi
+herdr pane rename "${codex_pane_id}" codex-worker
 
 if command -v zed > /dev/null 2>&1; then
     zed "${workdir}" > /dev/null 2>&1 &

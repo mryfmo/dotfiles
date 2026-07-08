@@ -200,6 +200,7 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
     settings: dict[str, Any] = {
         "$schema": claude["schema"],
         "model": claude["model"],
+        "effortLevel": claude["effortLevel"],
         "alwaysThinkingEnabled": claude["alwaysThinkingEnabled"],
         "autoUpdates": claude["autoUpdates"],
         "autoUpdatesChannel": claude["autoUpdatesChannel"],

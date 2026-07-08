@@ -214,8 +214,8 @@ function defaults_assistant() {
 #
 # @description Apply Ghostty-specific defaults expected by this setup.
 # @description
-#   Ghostty is configured through `~/.config/ghostty/config.ghostty`, which is
-#   managed by chezmoi from `home/dot_config/ghostty/config.ghostty.tmpl`.
+#   Ghostty is configured through `~/.config/ghostty/config`, which is
+#   managed by chezmoi from `home/dot_config/ghostty/config`.
 #
 function defaults_ghostty() {
     return 0

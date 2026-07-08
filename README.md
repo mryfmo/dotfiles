@@ -196,7 +196,7 @@ with a configured PermissionRequest hook whose runtime is missing.
 
 ### Herdr and Ghostty agent workspace
 
-Ghostty starts as a normal terminal; `~/.config/ghostty/config.ghostty` must not
+Ghostty starts as a normal terminal; `~/.config/ghostty/config` must not
 set a Herdr `initial-command`. In Ghostty zsh sessions, bare `herdr` calls
 `herdr-agents "$PWD"` and then the real `herdr` CLI, so the terminal attaches
 to the focused workspace after the agent layout is created. Argumented Herdr

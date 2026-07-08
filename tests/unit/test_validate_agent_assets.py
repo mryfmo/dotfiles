@@ -33,13 +33,14 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.module.ROOT = self.temp_dir
         self.required_agmsg_writable_roots = sorted(self.module.REQUIRED_AGMSG_WRITABLE_ROOTS)
         (self.temp_dir / "home/dot_codex").mkdir(parents=True)
+        (self.temp_dir / "home/.chezmoitemplates").mkdir(parents=True)
 
     def tearDown(self) -> None:
         self.module.ROOT = self.old_root
         shutil.rmtree(self.temp_dir)
 
     def write_codex_config(self, sandbox_workspace_write: str) -> None:
-        (self.temp_dir / "home/dot_codex/private_config.toml.tmpl").write_text(
+        (self.temp_dir / "home/.chezmoitemplates/codex-config-managed.toml").write_text(
             "\n".join(
                 [
                     "#:schema https://developers.openai.com/codex/config-schema.json",
@@ -62,6 +63,17 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 ]
             )
         )
+
+    def test_codex_modify_script_requires_executable_source(self) -> None:
+        path = self.temp_dir / "home/dot_codex/modify_private_config.toml"
+        path.write_text("RUNTIME_PREFIXES = ('hooks.state', 'marketplaces', 'tui.model_availability_nux', 'projects')\n")
+        path.chmod(0o644)
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_codex_modify_script()
+
+        path.chmod(0o755)
+        self.module.validate_codex_modify_script()
 
     def write_agmsg_script(self, relative_path: str, executable: bool = True) -> None:
         path = self.temp_dir / "home/dot_agents/skills/agmsg/scripts" / relative_path

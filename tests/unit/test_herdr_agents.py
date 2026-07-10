@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "home/dot_local/bin/common/executable_herdr-agents"
 HERDR_SESSION_SCRIPT = ROOT / "home/dot_local/bin/common/executable_herdr-session"
 HERDR_CONFIG = ROOT / "home/dot_config/herdr/config.toml"
+YAZI_CONFIG = ROOT / "home/dot_config/yazi/yazi.toml"
 GHOSTTY_CONFIG = ROOT / "home/dot_config/ghostty/config"
 ZPROFILE = ROOT / "home/dot_zprofile"
 ZSHRC = ROOT / "home/dot_zshrc"
@@ -94,7 +95,7 @@ fi
         )
         self.write_executable("claude", "#!/usr/bin/env bash\n")
         self.write_executable("codex", "#!/usr/bin/env bash\n")
-        self.write_executable("eza", "#!/usr/bin/env bash\n")
+        self.write_executable("yazi", "#!/usr/bin/env bash\n")
 
     def tearDown(self) -> None:
         shutil.rmtree(self.temp_dir)
@@ -190,10 +191,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertIn("pane rename w-test:p2 codex-worker", calls)
         self.assertIn(f"pane split w-test:p1 --direction right --ratio 0.8 --cwd {self.workdir} --no-focus", calls)
         self.assertIn("pane rename w-test:p3 files", calls)
-        self.assertIn(
-            "pane run w-test:p3 while :; do clear; eza -1 --icons=always --color=always --group-directories-first; sleep 2; done",
-            calls,
-        )
+        self.assertIn("pane run w-test:p3 yazi", calls)
         self.assertNotIn(
             f"agent start claude --cwd {self.workdir} --workspace w-test --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --focus -- claude",
             calls,
@@ -231,10 +229,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         calls = self.calls_path.read_text().splitlines()
         self.assertIn(f"pane split w-old:p2 --direction right --ratio 0.6 --cwd {self.workdir} --no-focus", calls)
         self.assertIn("pane rename w-old:p3 files", calls)
-        self.assertIn(
-            "pane run w-old:p3 while :; do clear; eza -1 --icons=always --color=always --group-directories-first; sleep 2; done",
-            calls,
-        )
+        self.assertIn("pane run w-old:p3 yazi", calls)
 
     def test_existing_files_pane_is_not_reused_for_claude_or_split_again(self) -> None:
         self.write_workspace_state(
@@ -444,7 +439,7 @@ printf 'codex cwd=%s\\n' "$PWD" >> {e2e_log}
                 "herdr pane run w-test:p1 CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high",
                 f"herdr pane split w-test:p1 --direction right --ratio 0.8 --cwd {self.workdir.resolve()} --no-focus",
                 "herdr pane rename w-test:p3 files",
-                "herdr pane run w-test:p3 while :; do clear; eza -1 --icons=always --color=always --group-directories-first; sleep 2; done",
+                "herdr pane run w-test:p3 yazi",
                 f"herdr agent start codex-worker-w-test --cwd {self.workdir.resolve()} --workspace w-test --split right --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex --sandbox workspace-write -m gpt-5.6-sol -c model_reasoning_effort=high",
                 "herdr pane rename w-test:p2 codex-worker",
                 "herdr ",
@@ -540,6 +535,14 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         self.assertEqual(command["type"], "shell")
         self.assertEqual(command["command"], 'herdr-agents "${HERDR_ACTIVE_PANE_CWD:-$PWD}"')
+
+    def test_yazi_edit_opener_uses_existing_zed_workspace(self) -> None:
+        config = tomllib.loads(YAZI_CONFIG.read_text())
+
+        self.assertEqual(
+            config["opener"]["edit"],
+            [{"run": "zed --existing %s", "orphan": True, "for": "unix"}],
+        )
 
     def run_zshrc_herdr(
         self,

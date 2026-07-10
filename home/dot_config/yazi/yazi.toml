@@ -1,0 +1,2 @@
+[opener]
+edit = [{ run = "zed --existing %s", orphan = true, for = "unix" }]

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
 # @file herdr-agents
-# @brief Open a Herdr workspace with Claude Code left of Codex and a file list on the right.
+# @brief Open a Herdr workspace with Claude Code, Codex, and Yazi panes.
 # @description
 #   Creates a Herdr workspace for a directory, starts Claude Code and Codex in
-#   left/right panes, adds an auto-refreshing icon file list pane on the far
-#   right when `eza` exists, and opens the same directory in Zed when the
+#   left/right panes, adds an interactive Yazi file pane on the far right when
+#   `yazi` exists, and opens the same directory in Zed when the
 #   `zed` CLI exists.
 # @arg DIR Optional directory for the Herdr workspace. Defaults to the current directory.
 # @example
@@ -19,8 +19,8 @@ function usage() {
 Usage: herdr-agents [DIR]
 
 Create a Herdr workspace for DIR, start Claude Code left of Codex, add an
-icon file list pane on the far right when eza is available, and open DIR in
-Zed when available. DIR defaults to the current directory.
+interactive Yazi file pane on the far right when yazi is available, and open
+DIR in Zed when available. DIR defaults to the current directory.
 USAGE
 }
 
@@ -84,12 +84,7 @@ function start_codex_agent() {
     printf '%s\n' "${codex_pane_id}"
 }
 
-# @description Build the auto-refreshing icon file list command run in the files pane.
-function files_command() {
-    printf "%s\n" "while :; do clear; eza -1 --icons=always --color=always --group-directories-first; sleep 2; done"
-}
-
-# @description Start an icon file list in a right split when eza is available.
+# @description Start Yazi in a right split when available.
 # @arg $1 pane_id Herdr pane id to split.
 # @arg $2 workdir Directory listed in the files pane.
 # @arg $3 ratio Fraction of the original pane to retain.
@@ -100,8 +95,8 @@ function start_files_pane() {
     local files_pane_json
     local files_pane_id
 
-    if ! command -v eza > /dev/null 2>&1; then
-        printf 'eza command not found; skipping files pane\n' >&2
+    if ! command -v yazi > /dev/null 2>&1; then
+        printf 'yazi command not found; skipping files pane\n' >&2
         return 0
     fi
     if ! files_pane_json="$(herdr pane split "${pane_id}" --direction right --ratio "${ratio}" --cwd "${workdir}" --no-focus)"; then
@@ -114,7 +109,7 @@ function start_files_pane() {
         return 0
     fi
     herdr pane rename "${files_pane_id}" files
-    herdr pane run "${files_pane_id}" "$(files_command)"
+    herdr pane run "${files_pane_id}" yazi
 }
 
 # @description Find an existing agents workspace for a workdir.

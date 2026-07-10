@@ -3135,7 +3135,7 @@
 
 
 <h1 id="homedot_localbincommonexecutable_herdr-agents">home/dot_local/bin/common/executable_herdr-agents<a class="headerlink" href="#homedot_localbincommonexecutable_herdr-agents" title="Permanent link">&para;</a></h1>
-<p>Creates a Herdr workspace for a directory, starts Claude Code and Codex in left/right panes, adds an auto-refreshing icon file list pane on the far right when <code>eza</code> exists, and opens the same directory in Zed when the <code>zed</code> CLI exists.</p>
+<p>Creates a Herdr workspace for a directory, starts Claude Code and Codex in left/right panes, adds an interactive Yazi file pane on the far right when <code>yazi</code> exists, and opens the same directory in Zed when the <code>zed</code> CLI exists.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_herdr-agents</code></li>
@@ -3146,7 +3146,6 @@
 <ul>
 <li><code>claude_command</code></li>
 <li><code>empty_pane_id</code></li>
-<li><code>files_command</code></li>
 <li><code>find_existing_workspace</code></li>
 <li><code>has_claude_pane</code></li>
 <li><code>has_files_pane</code></li>
@@ -3164,11 +3163,11 @@
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
 
 <span class="c1"># @file herdr-agents</span>
-<span class="c1"># @brief Open a Herdr workspace with Claude Code left of Codex and a file list on the right.</span>
+<span class="c1"># @brief Open a Herdr workspace with Claude Code, Codex, and Yazi panes.</span>
 <span class="c1"># @description</span>
 <span class="c1">#   Creates a Herdr workspace for a directory, starts Claude Code and Codex in</span>
-<span class="c1">#   left/right panes, adds an auto-refreshing icon file list pane on the far</span>
-<span class="c1">#   right when `eza` exists, and opens the same directory in Zed when the</span>
+<span class="c1">#   left/right panes, adds an interactive Yazi file pane on the far right when</span>
+<span class="c1">#   `yazi` exists, and opens the same directory in Zed when the</span>
 <span class="c1">#   `zed` CLI exists.</span>
 <span class="c1"># @arg DIR Optional directory for the Herdr workspace. Defaults to the current directory.</span>
 <span class="c1"># @example</span>
@@ -3182,8 +3181,8 @@
 <span class="s">Usage: herdr-agents [DIR]</span>
 
 <span class="s">Create a Herdr workspace for DIR, start Claude Code left of Codex, add an</span>
-<span class="s">icon file list pane on the far right when eza is available, and open DIR in</span>
-<span class="s">Zed when available. DIR defaults to the current directory.</span>
+<span class="s">interactive Yazi file pane on the far right when yazi is available, and open</span>
+<span class="s">DIR in Zed when available. DIR defaults to the current directory.</span>
 <span class="s">USAGE</span>
 <span class="o">}</span>
 
@@ -3247,12 +3246,7 @@
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_pane_id</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="o">}</span>
 
-<span class="c1"># @description Build the auto-refreshing icon file list command run in the files pane.</span>
-<span class="k">function</span><span class="w"> </span>files_command<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;%s\n&quot;</span><span class="w"> </span><span class="s2">&quot;while :; do clear; eza -1 --icons=always --color=always --group-directories-first; sleep 2; done&quot;</span>
-<span class="o">}</span>
-
-<span class="c1"># @description Start an icon file list in a right split when eza is available.</span>
+<span class="c1"># @description Start Yazi in a right split when available.</span>
 <span class="c1"># @arg $1 pane_id Herdr pane id to split.</span>
 <span class="c1"># @arg $2 workdir Directory listed in the files pane.</span>
 <span class="c1"># @arg $3 ratio Fraction of the original pane to retain.</span>
@@ -3263,8 +3257,8 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>files_pane_json
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>files_pane_id
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>eza<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;eza command not found; skipping files pane\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>yazi<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;yazi command not found; skipping files pane\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">files_pane_json</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>herdr<span class="w"> </span>pane<span class="w"> </span>split<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--direction<span class="w"> </span>right<span class="w"> </span>--ratio<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">ratio</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--cwd<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--no-focus<span class="k">)</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
@@ -3277,7 +3271,7 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span>herdr<span class="w"> </span>pane<span class="w"> </span>rename<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">files_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>files
-<span class="w">    </span>herdr<span class="w"> </span>pane<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">files_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>files_command<span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span>herdr<span class="w"> </span>pane<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">files_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>yazi
 <span class="o">}</span>
 
 <span class="c1"># @description Find an existing agents workspace for a workdir.</span>

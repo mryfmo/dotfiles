@@ -1,2 +1,2 @@
 [opener]
-edit = [{ run = "zed --existing %s", orphan = true, for = "unix" }]
+edit = [{ run = "command -v zed >/dev/null && zed --existing %s || ${EDITOR:-vi} %s", block = true, for = "unix" }]

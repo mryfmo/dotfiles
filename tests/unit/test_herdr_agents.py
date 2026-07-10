@@ -536,13 +536,34 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(command["type"], "shell")
         self.assertEqual(command["command"], 'herdr-agents "${HERDR_ACTIVE_PANE_CWD:-$PWD}"')
 
-    def test_yazi_edit_opener_uses_existing_zed_workspace(self) -> None:
+    def test_yazi_edit_opener_prefers_zed_with_editor_fallback(self) -> None:
         config = tomllib.loads(YAZI_CONFIG.read_text())
 
         self.assertEqual(
             config["opener"]["edit"],
-            [{"run": "zed --existing %s", "orphan": True, "for": "unix"}],
+            [
+                {
+                    "run": "command -v zed >/dev/null && zed --existing %s || ${EDITOR:-vi} %s",
+                    "block": True,
+                    "for": "unix",
+                }
+            ],
         )
+
+        editor_calls = self.temp_dir / "editor-calls.txt"
+        self.write_executable("editor", f'#!/usr/bin/env bash\nprintf "%s\\n" "$*" > {editor_calls}\n')
+        env = {"PATH": f"{self.bin_dir}:/usr/bin:/bin", "EDITOR": "editor"}
+        result = subprocess.run(
+            ["bash", "-c", config["opener"]["edit"][0]["run"].replace("%s", "example.txt")],
+            env=env,
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(editor_calls.read_text(), "example.txt\n")
 
     def run_zshrc_herdr(
         self,

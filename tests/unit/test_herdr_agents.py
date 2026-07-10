@@ -33,6 +33,7 @@ class HerdrAgentsTest(unittest.TestCase):
         self.workspace_list_path = self.temp_dir / "workspace-list.json"
         self.pane_list_path = self.temp_dir / "pane-list.json"
         self.agent_get_path = self.temp_dir / "agent-get.json"
+        self.pane_counter_path = self.temp_dir / "pane-counter.txt"
         self.home_dir = self.temp_dir / "home"
         (self.home_dir / ".config/herdr").mkdir(parents=True)
         self.workdir = self.temp_dir / "project"
@@ -40,6 +41,7 @@ class HerdrAgentsTest(unittest.TestCase):
         self.workspace_list_path.write_text('{"id":"cli:workspace:list","result":{"type":"workspace_list","workspaces":[]}}\n')
         self.pane_list_path.write_text('{"id":"cli:pane:list","result":{"panes":[]}}\n')
         self.agent_get_path.write_text("")
+        self.pane_counter_path.write_text("2\n")
 
         self.write_executable(
             "herdr",
@@ -62,7 +64,9 @@ if [[ $1 == pane && $2 == list ]]; then
 fi
 if [[ $1 == pane && $2 == split ]]; then
     workspace="${{3%%:*}}"
-    printf '{{"id":"cli:pane:split","result":{{"pane":{{"pane_id":"%s:p3"}}}}}}\\n' "$workspace"
+    pane_number="$(( $(cat {self.pane_counter_path}) + 1 ))"
+    printf '%s\\n' "$pane_number" > {self.pane_counter_path}
+    printf '{{"id":"cli:pane:split","result":{{"pane":{{"pane_id":"%s:p%s"}}}}}}\\n' "$workspace" "$pane_number"
     exit 0
 fi
 if [[ $1 == pane && $2 == swap ]]; then
@@ -90,6 +94,7 @@ fi
         )
         self.write_executable("claude", "#!/usr/bin/env bash\n")
         self.write_executable("codex", "#!/usr/bin/env bash\n")
+        self.write_executable("eza", "#!/usr/bin/env bash\n")
 
     def tearDown(self) -> None:
         shutil.rmtree(self.temp_dir)
@@ -183,6 +188,12 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             calls,
         )
         self.assertIn("pane rename w-test:p2 codex-worker", calls)
+        self.assertIn(f"pane split w-test:p1 --direction right --ratio 0.8 --cwd {self.workdir} --no-focus", calls)
+        self.assertIn("pane rename w-test:p3 files", calls)
+        self.assertIn(
+            "pane run w-test:p3 while :; do clear; eza -1 --icons=always --color=always --group-directories-first; sleep 2; done",
+            calls,
+        )
         self.assertNotIn(
             f"agent start claude --cwd {self.workdir} --workspace w-test --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --focus -- claude",
             calls,
@@ -191,8 +202,9 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
     def test_existing_agents_workspace_focuses_without_recreating_agents(self) -> None:
         self.write_workspace_state(
             "w-old",
-            f'{{"agent":"claude","cwd":"{self.workdir}","pane_id":"w-old:p1","workspace_id":"w-old"}},'
-            f'{{"agent":"codex","cwd":"{self.workdir}","pane_id":"w-old:p2","workspace_id":"w-old"}}',
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}},'
+            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-old:p9","workspace_id":"w-old"}}',
             agent_pane_id="w-old:p2",
         )
 
@@ -203,6 +215,44 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertIn("workspace focus w-old", calls)
         self.assertNotIn(f"workspace create --cwd {self.workdir} --label project agents --focus", calls)
         self.assertFalse(any(call.startswith("agent start ") for call in calls))
+        self.assertFalse(any(call.startswith("pane split ") for call in calls))
+
+    def test_existing_workspace_adds_missing_files_pane(self) -> None:
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}}',
+            agent_pane_id="w-old:p2",
+        )
+
+        result = self.run_helper()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn(f"pane split w-old:p2 --direction right --ratio 0.6 --cwd {self.workdir} --no-focus", calls)
+        self.assertIn("pane rename w-old:p3 files", calls)
+        self.assertIn(
+            "pane run w-old:p3 while :; do clear; eza -1 --icons=always --color=always --group-directories-first; sleep 2; done",
+            calls,
+        )
+
+    def test_existing_files_pane_is_not_reused_for_claude_or_split_again(self) -> None:
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}},'
+            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-old:p9","workspace_id":"w-old"}}',
+            agent_pane_id="w-old:p2",
+        )
+
+        result = self.run_helper()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn("pane split w-old:p2 --direction right --no-focus", calls)
+        self.assertIn("pane run w-old:p3 CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high", calls)
+        self.assertFalse(any("--ratio" in call for call in calls))
+        self.assertFalse(any(call.startswith("pane rename w-old:p9 ") for call in calls))
+        self.assertFalse(any(call.startswith("pane run w-old:p9 ") for call in calls))
 
     def test_existing_workspace_restarts_missing_codex_agent(self) -> None:
         self.write_workspace_state(
@@ -310,9 +360,15 @@ if [[ $1 == workspace && $2 == create ]]; then
     printf '%s\\n' '{{"id":"cli:workspace:create","result":{{"root_pane":{{"pane_id":"w-test:p1"}},"workspace":{{"workspace_id":"w-test"}}}}}}'
     exit 0
 fi
+if [[ $1 == pane && $2 == split ]]; then
+    printf '%s\\n' '{{"id":"cli:pane:split","result":{{"pane":{{"pane_id":"w-test:p3"}}}}}}'
+    exit 0
+fi
 if [[ $1 == pane && $2 == run ]]; then
     printf 'left pane=%s cwd=%s command=%s\\n' "$3" "$PWD" "$4" >> {e2e_log}
-    bash -c "$4"
+    if [[ $3 == w-test:p1 ]]; then
+        bash -c "$4"
+    fi
     exit 0
 fi
 if [[ $1 == pane && $2 == rename ]]; then
@@ -386,6 +442,9 @@ printf 'codex cwd=%s\\n' "$PWD" >> {e2e_log}
                 f"herdr workspace create --cwd {self.workdir.resolve()} --label project agents --focus",
                 "herdr pane rename w-test:p1 claude-orchestrator",
                 "herdr pane run w-test:p1 CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high",
+                f"herdr pane split w-test:p1 --direction right --ratio 0.8 --cwd {self.workdir.resolve()} --no-focus",
+                "herdr pane rename w-test:p3 files",
+                "herdr pane run w-test:p3 while :; do clear; eza -1 --icons=always --color=always --group-directories-first; sleep 2; done",
                 f"herdr agent start codex-worker-w-test --cwd {self.workdir.resolve()} --workspace w-test --split right --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex --sandbox workspace-write -m gpt-5.6-sol -c model_reasoning_effort=high",
                 "herdr pane rename w-test:p2 codex-worker",
                 "herdr ",

@@ -196,11 +196,11 @@ with a configured PermissionRequest hook whose runtime is missing.
 
 ### Herdr and Ghostty agent workspace
 
-Ghostty starts its first surface with `herdr-session`, which calls
-`herdr-agents "$PWD"` with output logged to `~/.config/herdr/herdr-agents.log`
-and then execs the real `herdr` CLI, so the terminal attaches to the focused
-workspace after the agent layout is ready. In Ghostty zsh sessions, bare
-`herdr` delegates to `herdr-session`; argumented Herdr calls such as
+Ghostty starts at a normal zsh prompt. In Ghostty zsh sessions, bare `herdr`
+delegates to `herdr-session`, which calls `herdr-agents "$PWD"` with output
+logged to `~/.config/herdr/herdr-agents.log` and then execs the real `herdr`
+CLI, so the terminal attaches to the focused workspace after the agent layout is
+ready. Exiting Herdr returns to the shell. Argumented Herdr calls such as
 `herdr --remote` and `herdr server reload-config` still run the real Herdr CLI.
 Outside Ghostty, bare `herdr` also runs the real Herdr CLI. Already-open
 Ghostty shells keep the zsh function they sourced at startup; run `exec zsh` or
@@ -211,11 +211,11 @@ bound inside Herdr at `prefix+alt+a`. Before creating a workspace, it looks for
 an existing agents workspace by matching the workspace label and a pane whose
 `cwd` is the requested project directory. A healthy match is focused instead of
 recreated. If only one side is missing, `herdr-agents` repairs that side:
-Claude Code is restarted in an empty pane or a new top pane, and Codex is
-restarted as `codex-worker-${workspace_id}` with `--split down`. On a new
-workspace it reuses the root pane for Claude Code and starts Codex below it, so
-the visible result is Claude Code above Codex. The Codex process still runs the
-`codex` command, but its Herdr agent name is workspace-scoped as
+Claude Code is restarted in an empty pane or a new left pane, and Codex is
+restarted as `codex-worker-${workspace_id}` with `--split right`. On a new
+workspace it reuses the root pane for Claude Code and starts Codex to its right,
+so the visible result is Claude Code left of Codex. The Codex process still runs
+the `codex` command, but its Herdr agent name is workspace-scoped as
 `codex-worker-${workspace_id}` so repeated runs do not collide with an older
 active Codex agent. Both agents start in the same project cwd and use the
 shared agmsg scripts/state for cross-agent messaging.
@@ -232,11 +232,11 @@ default enabled, agent panes can be restored with their conversation sessions
 after a Herdr server restart.
 
 Verification for this flow lives in `tests/unit/test_herdr_agents.py`: it checks
-the Ghostty initial command, `herdr-session`, bare `herdr` routing in Ghostty,
-argumented `herdr` routing in Ghostty, bare `herdr` routing outside Ghostty, and
-the Herdr `prefix+alt+a` command binding. Its sandbox E2E fakes Herdr deeply
-enough to execute fake Claude Code and Codex commands, verifies Claude Code is
-run in the root pane, Codex is started with `--split down` under the
+that Ghostty does not auto-start Herdr, `herdr-session`, bare `herdr` routing in
+Ghostty, argumented `herdr` routing in Ghostty, bare `herdr` routing outside
+Ghostty, and the Herdr `prefix+alt+a` command binding. Its sandbox E2E fakes
+Herdr deeply enough to execute fake Claude Code and Codex commands, verifies
+Claude Code is run in the root pane, Codex is started with `--split right` under the
 `codex-worker-${workspace_id}` Herdr agent name, covers existing workspace
 focus and missing-agent repair paths, verifies the session entrypoint still
 attaches after `herdr-agents` failure, and proves agmsg is usable by sending a

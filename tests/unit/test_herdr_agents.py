@@ -171,7 +171,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             stderr=subprocess.PIPE,
         )
 
-    def test_uses_initial_workspace_pane_for_claude_and_splits_codex_below(self) -> None:
+    def test_uses_initial_workspace_pane_for_claude_and_splits_codex_right(self) -> None:
         result = self.run_helper()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
@@ -179,7 +179,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertIn("pane rename w-test:p1 claude-orchestrator", calls)
         self.assertIn("pane run w-test:p1 CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high", calls)
         self.assertIn(
-            f"agent start codex-worker-w-test --cwd {self.workdir} --workspace w-test --split down --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex --sandbox workspace-write -m gpt-5.5 -c model_reasoning_effort=high",
+            f"agent start codex-worker-w-test --cwd {self.workdir} --workspace w-test --split right --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex --sandbox workspace-write -m gpt-5.6-sol -c model_reasoning_effort=high",
             calls,
         )
         self.assertIn("pane rename w-test:p2 codex-worker", calls)
@@ -215,7 +215,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         calls = self.calls_path.read_text().splitlines()
         self.assertIn(
-            f"agent start codex-worker-w-old --cwd {self.workdir} --workspace w-old --split down --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex --sandbox workspace-write -m gpt-5.5 -c model_reasoning_effort=high",
+            f"agent start codex-worker-w-old --cwd {self.workdir} --workspace w-old --split right --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex --sandbox workspace-write -m gpt-5.6-sol -c model_reasoning_effort=high",
             calls,
         )
         self.assertIn("pane rename w-old:p2 codex-worker", calls)
@@ -234,7 +234,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         calls = self.calls_path.read_text().splitlines()
         self.assertIn(
-            f"agent start codex-worker-w-old --cwd {self.workdir} --workspace w-old --split down --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex --sandbox workspace-write -m gpt-5.5 -c model_reasoning_effort=high",
+            f"agent start codex-worker-w-old --cwd {self.workdir} --workspace w-old --split right --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex --sandbox workspace-write -m gpt-5.6-sol -c model_reasoning_effort=high",
             calls,
         )
         self.assertIn("pane run w-old:p3 CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high", calls)
@@ -268,12 +268,12 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
         calls = self.calls_path.read_text().splitlines()
-        self.assertIn("pane split w-old:p2 --direction down --no-focus", calls)
-        self.assertIn("pane swap --pane w-old:p3 --direction up", calls)
+        self.assertIn("pane split w-old:p2 --direction right --no-focus", calls)
+        self.assertIn("pane swap --pane w-old:p3 --direction left", calls)
         self.assertIn("pane run w-old:p3 CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high", calls)
         self.assertIn("workspace focus w-old", calls)
 
-    def test_ghostty_herdr_starts_stacked_agents_with_working_agmsg(self) -> None:
+    def test_ghostty_herdr_starts_left_right_agents_with_working_agmsg(self) -> None:
         agmsg_scripts = self.materialize_agmsg_scripts()
         agmsg_storage = self.temp_dir / "agmsg-db"
         agmsg_storage.mkdir()
@@ -311,7 +311,7 @@ if [[ $1 == workspace && $2 == create ]]; then
     exit 0
 fi
 if [[ $1 == pane && $2 == run ]]; then
-    printf 'top pane=%s cwd=%s command=%s\\n' "$3" "$PWD" "$4" >> {e2e_log}
+    printf 'left pane=%s cwd=%s command=%s\\n' "$3" "$PWD" "$4" >> {e2e_log}
     bash -c "$4"
     exit 0
 fi
@@ -331,7 +331,7 @@ if [[ $1 == agent && $2 == start ]]; then
             *) shift ;;
         esac
     done
-    printf 'bottom workspace=%s split=%s cwd=%s command=%s\\n' "$workspace" "$split" "$cwd" "$*" >> {e2e_log}
+    printf 'right workspace=%s split=%s cwd=%s command=%s\\n' "$workspace" "$split" "$cwd" "$*" >> {e2e_log}
     (cd "$cwd" && "$@")
     printf '%s\\n' '{{"id":"cli:agent:start","result":{{"pane":{{"pane_id":"w-test:p2"}}}}}}'
     exit 0
@@ -386,14 +386,14 @@ printf 'codex cwd=%s\\n' "$PWD" >> {e2e_log}
                 f"herdr workspace create --cwd {self.workdir.resolve()} --label project agents --focus",
                 "herdr pane rename w-test:p1 claude-orchestrator",
                 "herdr pane run w-test:p1 CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high",
-                f"herdr agent start codex-worker-w-test --cwd {self.workdir.resolve()} --workspace w-test --split down --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex --sandbox workspace-write -m gpt-5.5 -c model_reasoning_effort=high",
+                f"herdr agent start codex-worker-w-test --cwd {self.workdir.resolve()} --workspace w-test --split right --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex --sandbox workspace-write -m gpt-5.6-sol -c model_reasoning_effort=high",
                 "herdr pane rename w-test:p2 codex-worker",
                 "herdr ",
             ],
         )
         e2e_lines = e2e_log.read_text()
-        self.assertIn(f"top pane=w-test:p1 cwd={self.workdir.resolve()} command=CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high", e2e_lines)
-        self.assertIn(f"bottom workspace=w-test split=down cwd={self.workdir.resolve()} command=codex --sandbox workspace-write -m gpt-5.5 -c model_reasoning_effort=high", e2e_lines)
+        self.assertIn(f"left pane=w-test:p1 cwd={self.workdir.resolve()} command=CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high", e2e_lines)
+        self.assertIn(f"right workspace=w-test split=right cwd={self.workdir.resolve()} command=codex --sandbox workspace-write -m gpt-5.6-sol -c model_reasoning_effort=high", e2e_lines)
         self.assertIn(f"claude cwd={self.workdir.resolve()}", e2e_lines)
         self.assertIn(f"codex cwd={self.workdir.resolve()}", e2e_lines)
         self.assertIn("1 new message(s):", e2e_lines)
@@ -547,8 +547,8 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             "",
         )
 
-    def test_ghostty_config_starts_herdr_session(self) -> None:
-        self.assertIn("initial-command = /bin/zsh -lc 'exec herdr-session'", GHOSTTY_CONFIG.read_text())
+    def test_ghostty_config_does_not_auto_start_herdr_session(self) -> None:
+        self.assertNotIn("initial-command", GHOSTTY_CONFIG.read_text())
 
     def test_zprofile_adds_common_bin_to_login_shell_path(self) -> None:
         zprofile = ZPROFILE.read_text()

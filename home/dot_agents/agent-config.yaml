@@ -25,7 +25,7 @@ skills:
 codex:
   config_path: home/.chezmoitemplates/codex-config-managed.toml
   ccgate_config_path: home/dot_codex/ccgate.jsonnet
-  model: gpt-5.5
+  model: gpt-5.6-sol
   model_reasoning_effort: high
   approval_policy: on-request
   sandbox_mode: workspace-write
@@ -44,7 +44,7 @@ codex:
       - weekly-limit
       - git-branch
     model_availability_nux:
-      gpt-5.5: 2
+      gpt-5.6-sol: 2
   sandbox_workspace_write:
     network_access: false
     writable_roots:

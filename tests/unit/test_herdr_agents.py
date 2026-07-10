@@ -543,7 +543,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             config["opener"]["edit"],
             [
                 {
-                    "run": "command -v zed >/dev/null && zed --existing %s || ${EDITOR:-vi} %s",
+                    "run": "command -v zed >/dev/null && zed --add %s || ${EDITOR:-vi} %s",
                     "block": True,
                     "for": "unix",
                 }
@@ -564,6 +564,22 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(editor_calls.read_text(), "example.txt\n")
+
+        zed_calls = self.temp_dir / "zed-calls.txt"
+        self.write_executable("zed", f'#!/usr/bin/env bash\nprintf "%s\\n" "$*" > {zed_calls}\n')
+        editor_calls.unlink()
+        result = subprocess.run(
+            ["bash", "-c", config["opener"]["edit"][0]["run"].replace("%s", "example.txt")],
+            env=env,
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(zed_calls.read_text(), "--add example.txt\n")
+        self.assertFalse(editor_calls.exists())
 
     def run_zshrc_herdr(
         self,

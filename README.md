@@ -221,8 +221,8 @@ active Codex agent. Both agents start in the same project cwd and use the
 shared agmsg scripts/state for cross-agent messaging.
 
 The far-right `files` pane runs Yazi, using its built-in file-type icons and
-interactive file operations. Opening an editable file uses `zed --existing`
-when available and falls back to `${EDITOR:-vi}` elsewhere, while directory
+interactive file operations. Opening an editable file uses `zed --add` when
+available and falls back to `${EDITOR:-vi}` elsewhere, while directory
 navigation and non-edit opener rules retain Yazi's defaults.
 
 The official Herdr integrations are refreshed by `make update` through

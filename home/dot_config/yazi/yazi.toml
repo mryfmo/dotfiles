@@ -1,0 +1,2 @@
+[opener]
+edit = [{ run = "command -v zed >/dev/null && zed --add %s || ${EDITOR:-vi} %s", block = true, for = "unix" }]

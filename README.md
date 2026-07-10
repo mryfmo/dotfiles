@@ -220,6 +220,11 @@ the `codex` command, but its Herdr agent name is workspace-scoped as
 active Codex agent. Both agents start in the same project cwd and use the
 shared agmsg scripts/state for cross-agent messaging.
 
+The far-right `files` pane runs Yazi, using its built-in file-type icons and
+interactive file operations. Opening an editable file uses `zed --add` when
+available and falls back to `${EDITOR:-vi}` elsewhere, while directory
+navigation and non-edit opener rules retain Yazi's defaults.
+
 The official Herdr integrations are refreshed by `make update` through
 `scripts/update-agent-assets.sh`: `ensure_herdr_integrations` runs
 `herdr integration install claude` and `herdr integration install codex` when

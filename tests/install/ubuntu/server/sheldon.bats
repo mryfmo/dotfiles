@@ -21,6 +21,16 @@ function teardown() {
 }
 
 @test "[ubuntu-server] sheldon" {
+    mkdir -p "$(dirname "${MISE_BIN}")"
+    cat > "${MISE_BIN}" <<'EOF'
+#!/bin/sh
+[ "$1" = exec ] && [ "$2" = --locked ] && [ "$3" = -- ] && [ "$4" = cargo ] || exit 98
+mkdir -p "${CARGO_INSTALL_ROOT}/bin"
+printf '#!/bin/sh\n' > "${CARGO_INSTALL_ROOT}/bin/sheldon"
+chmod +x "${CARGO_INSTALL_ROOT}/bin/sheldon"
+EOF
+    chmod +x "${MISE_BIN}"
+
     DOTFILES_DEBUG=1 bash "${SCRIPT_PATH}"
 
     export PATH="${PATH}:${HOME%/}/.local/bin"

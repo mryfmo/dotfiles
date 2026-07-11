@@ -28,3 +28,9 @@
 
 - Do not run `bats` tests locally.
 - When you need to validate `bats` results, push to GitHub, let GitHub Actions CI run, and check the results there.
+
+## Agent Review Evidence
+
+- Locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` as repo-local agent evidence.
+- Agent evidence must contain at least one resolved record. For a finding-free review, add and resolve one review-scope approval record.
+- This local evidence is process evidence, not reviewer authentication. Human `CRIT_REVIEWED=1` receipts remain supported.

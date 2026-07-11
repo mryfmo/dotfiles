@@ -159,6 +159,15 @@
     grep -q 'CRIT_REVIEW=off' scripts/require-crit-review.py
     grep -q 'make require-crit-review' home/dot_config/codex/AGENTS.md
     grep -q 'make require-crit-review' home/dot_config/claude/rules/crit-review.md
+    grep -q 'crit status --json' home/dot_config/codex/AGENTS.md
+    grep -q 'crit status --json' home/dot_config/claude/rules/crit-review.md
+    grep -q 'crit comments --all --json <review.json>' home/dot_config/codex/AGENTS.md
+    grep -q 'crit comments --all --json <review.json>' home/dot_config/claude/rules/crit-review.md
+    grep -q '作業手順の証跡' home/dot_config/codex/AGENTS.md
+    grep -q 'レビュー実施者を認証するものではありません' home/dot_config/codex/AGENTS.md
+    grep -q 'process evidence, not reviewer authentication' home/dot_config/claude/rules/crit-review.md
+    ! grep -q 'crit comments --json' home/dot_config/codex/AGENTS.md
+    ! grep -q 'crit comments --json' home/dot_config/claude/rules/crit-review.md
 }
 
 @test "[common] agent asset lifecycle installs Ponytail integrations for Claude Code and Codex" {
@@ -214,7 +223,7 @@
     grep -q 'make require-crit-review' README.md
     grep -q 'AGENT_REVIEWED=1' README.md
     grep -q 'REVIEW_EVIDENCE' README.md
-    grep -q 'crit comments --json' README.md
+    grep -q 'crit comments --all --json <review.json>' README.md
     grep -q 'review_surface: crit-data' README.md
     grep -q 'review_source:' README.md
     grep -q 'CRIT_REVIEW=off' README.md

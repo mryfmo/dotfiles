@@ -2476,6 +2476,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../common/aws_cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/aws_cli.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../common/dependencies/" class="md-nav__link">
         
   
@@ -3133,7 +3161,7 @@
 
 
 <h1 id="installubuntuserverstarshipsh">install/ubuntu/server/starship.sh<a class="headerlink" href="#installubuntuserverstarshipsh" title="Permanent link">&para;</a></h1>
-<p>Downloads the upstream Starship installer and places the binary in the user's local bin directory.</p>
+<p>Downloads and verifies a pinned Starship release archive.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>install/ubuntu/server/starship.sh</code></li>
@@ -3142,8 +3170,8 @@
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>install_starship</code></li>
 <li><code>main</code></li>
+<li><code>starship_artifact</code></li>
 <li><code>uninstall_starship</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
@@ -3152,8 +3180,7 @@
 <span class="c1"># @file install/ubuntu/server/starship.sh</span>
 <span class="c1"># @brief Install the Starship prompt on Ubuntu servers.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Downloads the upstream Starship installer and places the binary in the</span>
-<span class="c1">#   user&#39;s local bin directory.</span>
+<span class="c1">#   Downloads and verifies a pinned Starship release archive.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
@@ -3162,22 +3189,46 @@
 <span class="k">fi</span>
 
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">BIN_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">STARSHIP_VERSION</span><span class="o">=</span><span class="s2">&quot;v1.25.1&quot;</span>
+
+<span class="c1"># @description Print the Starship Linux artifact name for the current architecture.</span>
+<span class="k">function</span><span class="w"> </span>starship_artifact<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span>x86_64<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;starship-x86_64-unknown-linux-musl.tar.gz\n&#39;</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>aarch64<span class="w"> </span><span class="p">|</span><span class="w"> </span>arm64<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;starship-aarch64-unknown-linux-musl.tar.gz\n&#39;</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Unsupported Starship architecture: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="o">}</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Download and install the Starship binary.</span>
 <span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>install_starship<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="c1"># equivalent to `https://starship.rs/install.sh`</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">url</span><span class="o">=</span><span class="s2">&quot;https://raw.githubusercontent.com/starship/starship/master/install/install.sh&quot;</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">version</span><span class="o">=</span><span class="s2">&quot;latest&quot;</span>
-
-<span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BIN_DIR</span><span class="si">}</span><span class="s2">&quot;</span>
-
-<span class="w">    </span>curl<span class="w"> </span>-sS<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>dash<span class="w"> </span>-s<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span>--yes<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span>--version<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">        </span>--bin-dir<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BIN_DIR</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="o">}</span>
+<span class="k">function</span><span class="w"> </span>install_starship<span class="o">()</span><span class="w"> </span><span class="o">(</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>actual<span class="w"> </span>artifact<span class="w"> </span>base_url<span class="w"> </span>expected<span class="w"> </span><span class="nv">stage</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="w"> </span>tmpdir
+<span class="w">    </span><span class="nv">artifact</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>starship_artifact<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="nv">base_url</span><span class="o">=</span><span class="s2">&quot;https://github.com/starship/starship/releases/download/</span><span class="si">${</span><span class="nv">STARSHIP_VERSION</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">tmpdir</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="nb">trap</span><span class="w"> </span><span class="s1">&#39;rm -rf &quot;${tmpdir}&quot;; [ -z &quot;${stage}&quot; ] || rm -f &quot;${stage}&quot;&#39;</span><span class="w"> </span>EXIT
+<span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BIN_DIR</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="nv">stage</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>mktemp<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BIN_DIR</span><span class="si">}</span><span class="s2">/starship.tmp.XXXXXX&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span>curl<span class="w"> </span>-fsSL<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">base_url</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>-o<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="nv">expected</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>curl<span class="w"> </span>-fsSL<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">base_url</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">.sha256&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">expected</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Missing checksum for %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="nv">actual</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>sha256sum<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;{ print $1 }&#39;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">actual</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">expected</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Checksum mismatch for %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span>tar<span class="w"> </span>-xzf<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>-C<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span>install<span class="w"> </span>-m<span class="w"> </span><span class="m">0755</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/starship&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">stage</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span>mv<span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">stage</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BIN_DIR</span><span class="si">}</span><span class="s2">/starship&quot;</span>
+<span class="o">)</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Remove the locally installed Starship binary.</span>

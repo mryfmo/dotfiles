@@ -2585,6 +2585,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../reference/install/ubuntu/common/aws_cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/aws_cli.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../reference/install/ubuntu/common/dependencies/" class="md-nav__link">
         
   
@@ -3221,6 +3249,13 @@
 <li>Nix may install a conservative base toolset such as Git, GnuPG, Vim, Zsh, tmux, CMake, jq, yq, fd, eza, uv, ShellCheck, shfmt, Starship, chezmoi, age, GitHub CLI, Rust via rustup, Node.js, Python 3.11, ripgrep, yazi, and AWS CLI when available.</li>
 <li>Existing mise usage may continue for project-local language versions and tools that are not yet migrated. If both Nix and mise provide Rust, Node.js, or Python, mise remains the project-specific version selector while Nix provides only the baseline interactive toolchain. Go is intentionally not part of the default Nix package set.</li>
 </ul>
+<p>AWS CLI ownership is explicit:</p>
+<ul>
+<li>Default macOS: Homebrew owns the AWS CLI version and installation integrity. Repository snapshot pinning for Homebrew is outside Plan004's scope.</li>
+<li>Default Ubuntu: the signed AWS archive installer owns the user-local installation.</li>
+<li>Opt-in Nix activation: <code>awscli2</code> owns the active AWS CLI on <code>PATH</code>. Deactivating Nix returns AWS CLI ownership to the operating-system default.</li>
+<li>Chezmoi never mutates the Nix store.</li>
+</ul>
 <h2 id="future-target">Future target<a class="headerlink" href="#future-target" title="Permanent link">&para;</a></h2>
 <p>A fuller Nix-first design may eventually move these areas into Nix after explicit migration decisions:</p>
 <ul>
@@ -3232,13 +3267,19 @@
 <p>Configuration files should move from chezmoi to Home Manager only after collision risks are resolved and rollback behavior is documented.</p>
 <h2 id="activation-examples">Activation examples<a class="headerlink" href="#activation-examples" title="Permanent link">&para;</a></h2>
 <p>Home Manager standalone on Linux:</p>
-<div class="highlight"><pre><span></span><code>nix<span class="w"> </span>run<span class="w"> </span>github:nix-community/home-manager/release-25.05<span class="w"> </span>--<span class="w"> </span>switch<span class="w"> </span>--flake<span class="w"> </span>.#mryfmo-linux
+<div class="highlight"><pre><span></span><code>nix<span class="w"> </span>run<span class="w"> </span>github:nix-community/home-manager/release-26.05<span class="w"> </span>--<span class="w"> </span>switch<span class="w"> </span>--flake<span class="w"> </span>.#mryfmo-linux
 </code></pre></div>
 <p>Home Manager standalone on Apple Silicon macOS:</p>
-<div class="highlight"><pre><span></span><code>nix<span class="w"> </span>run<span class="w"> </span>github:nix-community/home-manager/release-25.05<span class="w"> </span>--<span class="w"> </span>switch<span class="w"> </span>--flake<span class="w"> </span>.#mryfmo-darwin
+<div class="highlight"><pre><span></span><code>nix<span class="w"> </span>run<span class="w"> </span>github:nix-community/home-manager/release-26.05<span class="w"> </span>--<span class="w"> </span>switch<span class="w"> </span>--flake<span class="w"> </span>.#mryfmo-darwin
 </code></pre></div>
 <p>nix-darwin on Apple Silicon macOS:</p>
 <div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>darwin-rebuild<span class="w"> </span>switch<span class="w"> </span>--flake<span class="w"> </span>.#mryfmo-mac
+</code></pre></div>
+<p>Evaluate without activation:</p>
+<div class="highlight"><pre><span></span><code>nix<span class="w"> </span>flake<span class="w"> </span>check<span class="w"> </span>--no-build<span class="w"> </span>--no-update-lock-file
+nix<span class="w"> </span><span class="nb">eval</span><span class="w"> </span>--no-update-lock-file<span class="w"> </span>.#homeConfigurations.mryfmo-linux.activationPackage.drvPath
+nix<span class="w"> </span><span class="nb">eval</span><span class="w"> </span>--no-update-lock-file<span class="w"> </span>.#homeConfigurations.mryfmo-darwin.activationPackage.drvPath
+nix<span class="w"> </span><span class="nb">eval</span><span class="w"> </span>--no-update-lock-file<span class="w"> </span>.#darwinConfigurations.mryfmo-mac.system.drvPath
 </code></pre></div>
 <p>The nix-darwin configuration enables Homebrew management, but <code>homebrew.enable</code> does not install Homebrew itself. Install Homebrew before activating nix-darwin if Homebrew management is needed.</p>
 <h2 id="non-goals-for-the-initial-scaffold">Non-goals for the initial scaffold<a class="headerlink" href="#non-goals-for-the-initial-scaffold" title="Permanent link">&para;</a></h2>

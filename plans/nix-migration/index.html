@@ -2596,6 +2596,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../reference/install/ubuntu/common/aws_cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/aws_cli.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../reference/install/ubuntu/common/dependencies/" class="md-nav__link">
         
   
@@ -3240,11 +3268,12 @@
 <li>Add documentation describing architecture and migration rules.</li>
 </ul>
 <p>Validation target:</p>
-<div class="highlight"><pre><span></span><code>nix<span class="w"> </span>fmt
-nix<span class="w"> </span>flake<span class="w"> </span>show
-nix<span class="w"> </span>flake<span class="w"> </span>check
+<div class="highlight"><pre><span></span><code>nix<span class="w"> </span>fmt<span class="w"> </span>--no-update-lock-file
+nix<span class="w"> </span>flake<span class="w"> </span>show<span class="w"> </span>--no-update-lock-file
+nix<span class="w"> </span>flake<span class="w"> </span>check<span class="w"> </span>--no-build<span class="w"> </span>--no-update-lock-file
 </code></pre></div>
-<p>If Nix is unavailable on a machine, skip Nix validation and rely on repository checks such as <code>git diff --check</code>. Commit <code>flake.lock</code> after the first successful <code>nix flake lock</code> or <code>nix flake check</code> on a machine with Nix installed; the scaffold intentionally does not include a hand-written lock file.</p>
+<p>If Nix is unavailable on a machine, CI evaluates every declared output on Linux and macOS. Never hand-edit <code>flake.lock</code>; regenerate it with <code>nix flake lock</code>.</p>
+<p>AWS CLI follows the ownership boundary in the architecture plan: Homebrew owns the default macOS installation, the signed user-local installer owns the default Ubuntu installation, and opt-in Nix activation puts Nix <code>awscli2</code> first on <code>PATH</code>. Deactivating Nix restores the operating-system default, and chezmoi never mutates the Nix store. Homebrew repository snapshot pinning remains outside Plan004's scope.</p>
 <h2 id="phase-1-package-only-adoption">Phase 1: Package-only adoption<a class="headerlink" href="#phase-1-package-only-adoption" title="Permanent link">&para;</a></h2>
 <p>Goal: use Nix to install common packages without changing dotfile ownership.</p>
 <p>Candidate packages:</p>

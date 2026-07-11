@@ -2558,6 +2558,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../ubuntu/common/aws_cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/aws_cli.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../ubuntu/common/dependencies/" class="md-nav__link">
         
   
@@ -3158,6 +3186,9 @@
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">HOMEBREW_INSTALL_COMMIT</span><span class="o">=</span><span class="s2">&quot;c7952e40b7957268f61643152f4db725379b292e&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">HOMEBREW_INSTALL_SHA256</span><span class="o">=</span><span class="s2">&quot;99287f194a8b3c9e6b0203a11a5fa54518be57209343e6bb954dec4635796d9d&quot;</span>
+
 <span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nb">set</span><span class="w"> </span>-x
 <span class="k">fi</span>
@@ -3174,7 +3205,18 @@
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>install_homebrew<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>is_homebrew_exists<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>/bin/bash<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh<span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="o">(</span>
+<span class="w">            </span><span class="nb">local</span><span class="w"> </span>actual<span class="w"> </span>installer
+<span class="w">            </span><span class="nv">installer</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>mktemp<span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">            </span><span class="nb">trap</span><span class="w"> </span><span class="s1">&#39;rm -f &quot;${installer}&quot;&#39;</span><span class="w"> </span>EXIT
+<span class="w">            </span>curl<span class="w"> </span>-fsSL<span class="w"> </span><span class="s2">&quot;https://raw.githubusercontent.com/Homebrew/install/</span><span class="si">${</span><span class="nv">HOMEBREW_INSTALL_COMMIT</span><span class="si">}</span><span class="s2">/install.sh&quot;</span><span class="w"> </span>-o<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">installer</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">            </span><span class="nv">actual</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">installer</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;{ print $1 }&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">            </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">actual</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOMEBREW_INSTALL_SHA256</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Homebrew installer checksum mismatch\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">            </span><span class="o">}</span>
+<span class="w">            </span><span class="nv">NONINTERACTIVE</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>/bin/bash<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">installer</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="o">)</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 

@@ -2556,6 +2556,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../ubuntu/common/aws_cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/aws_cli.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../ubuntu/common/dependencies/" class="md-nav__link">
         
   
@@ -3131,7 +3159,7 @@
 
 
 <h1 id="installcommonmisesh">install/common/mise.sh<a class="headerlink" href="#installcommonmisesh" title="Permanent link">&para;</a></h1>
-<p>Downloads a pinned standalone <code>mise</code> release and runs <code>mise install</code> against the repository tool definitions.</p>
+<p>Downloads and verifies a pinned standalone <code>mise</code> release, then runs <code>mise install</code> against the repository tool definitions.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>install/common/mise.sh</code></li>
@@ -3142,9 +3170,11 @@
 <ul>
 <li><code>install_mise</code></li>
 <li><code>main</code></li>
+<li><code>mise_artifact</code></li>
 <li><code>run_mise_install</code></li>
 <li><code>trust_mise_config</code></li>
 <li><code>uninstall_mise</code></li>
+<li><code>verify_mise_archive</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
@@ -3152,7 +3182,7 @@
 <span class="c1"># @file install/common/mise.sh</span>
 <span class="c1"># @brief Install and bootstrap `mise`.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Downloads a pinned standalone `mise` release and runs `mise install`</span>
+<span class="c1">#   Downloads and verifies a pinned standalone `mise` release, then runs `mise install`</span>
 <span class="c1">#   against the repository tool definitions.</span>
 
 <span class="c1"># set -Eeuo pipefail</span>
@@ -3163,18 +3193,75 @@
 
 <span class="nb">export</span><span class="w"> </span><span class="nv">MISE_INSTALL_PATH</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin/mise&quot;</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">DEFAULT_NPM_MIN_RELEASE_AGE_DAYS</span><span class="o">=</span><span class="m">7</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">MISE_VERSION</span><span class="o">=</span><span class="s2">&quot;v2026.7.5&quot;</span>
+
+<span class="c1"># @description Print the mise release artifact name for the current platform.</span>
+<span class="k">function</span><span class="w"> </span>mise_artifact<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>os<span class="w"> </span>arch
+<span class="w">    </span><span class="nv">os</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>uname<span class="w"> </span>-s<span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">arch</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">os</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">arch</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span>Darwin/x86_64<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;mise-%s-macos-x64.tar.gz\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">MISE_VERSION</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>Darwin/arm64<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;mise-%s-macos-arm64.tar.gz\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">MISE_VERSION</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>Linux/x86_64<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;mise-%s-linux-x64.tar.gz\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">MISE_VERSION</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>Linux/aarch64<span class="w"> </span><span class="p">|</span><span class="w"> </span>Linux/arm64<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;mise-%s-linux-arm64.tar.gz\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">MISE_VERSION</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Unsupported mise platform: %s/%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">os</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">arch</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Verify a release archive against an upstream checksum manifest.</span>
+<span class="c1"># @arg $1 archive Archive path.</span>
+<span class="c1"># @arg $2 manifest Checksum manifest path.</span>
+<span class="c1"># @arg $3 name Artifact name in the manifest.</span>
+<span class="k">function</span><span class="w"> </span>verify_mise_archive<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">archive</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span><span class="w"> </span><span class="nv">manifest</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span><span class="w"> </span><span class="nv">name</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$3</span><span class="s2">&quot;</span><span class="w"> </span>expected<span class="w"> </span>actual
+<span class="w">    </span><span class="nv">expected</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>awk<span class="w"> </span>-v<span class="w"> </span><span class="nv">name</span><span class="o">=</span><span class="s2">&quot;./</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s1">&#39;$2 == name { print $1 }&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">manifest</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">expected</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Missing checksum for %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>sha256sum<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">actual</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>sha256sum<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">archive</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;{ print $1 }&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nv">actual</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">archive</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;{ print $1 }&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">actual</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">expected</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Checksum mismatch for %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Install the pinned standalone `mise` binary and activate it.</span>
+<span class="c1"># @description Install the pinned standalone `mise` binary.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>_install_mise_binary<span class="o">()</span><span class="w"> </span><span class="o">(</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>artifact<span class="w"> </span>base_url<span class="w"> </span><span class="nv">stage</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="w"> </span>tmpdir
+<span class="w">    </span><span class="nv">artifact</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>mise_artifact<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="nv">base_url</span><span class="o">=</span><span class="s2">&quot;https://github.com/jdx/mise/releases/download/</span><span class="si">${</span><span class="nv">MISE_VERSION</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">tmpdir</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="nb">trap</span><span class="w"> </span><span class="s1">&#39;rm -rf &quot;${tmpdir}&quot;; [ -z &quot;${stage}&quot; ] || rm -f &quot;${stage}&quot;&#39;</span><span class="w"> </span>EXIT
+<span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">MISE_INSTALL_PATH</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="nv">stage</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>mktemp<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">MISE_INSTALL_PATH</span><span class="si">}</span><span class="s2">.tmp.XXXXXX&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+
+<span class="w">    </span>curl<span class="w"> </span>-fsSL<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">base_url</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>-o<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span>curl<span class="w"> </span>-fsSL<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">base_url</span><span class="si">}</span><span class="s2">/SHASUMS256.txt&quot;</span><span class="w"> </span>-o<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/SHASUMS256.txt&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span>verify_mise_archive<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/SHASUMS256.txt&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span>tar<span class="w"> </span>-xzf<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>-C<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span>install<span class="w"> </span>-m<span class="w"> </span><span class="m">0755</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/mise/bin/mise&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">stage</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span>mv<span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">stage</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">MISE_INSTALL_PATH</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="o">)</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Install the pinned standalone `mise` binary and activate it for the caller.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>install_mise<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="c1"># https://mise.run</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">version</span><span class="o">=</span><span class="s2">&quot;v2026.5.9&quot;</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">url</span><span class="o">=</span><span class="s2">&quot;https://github.com/jdx/mise/releases/download/</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">/install.sh&quot;</span>
-
-<span class="w">    </span>curl<span class="w"> </span>-fsSL<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sh
-
-<span class="w">    </span><span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>~/.local/bin/mise<span class="w"> </span>activate<span class="w"> </span>bash<span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>activation
+<span class="w">    </span>_install_mise_binary<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="nv">activation</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">MISE_INSTALL_PATH</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>activate<span class="w"> </span>bash<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">activation</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3191,7 +3278,7 @@
 <span class="w">    </span><span class="c1"># `MISE_CURRENT_VERSION` is interpreted by mise as a tool env override for `current`.</span>
 <span class="w">    </span><span class="nb">unset</span><span class="w"> </span>MISE_CURRENT_VERSION
 <span class="w">    </span>trust_mise_config
-<span class="w">    </span>mise<span class="w"> </span>install<span class="w"> </span>--before<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_NPM_MIN_RELEASE_AGE_DAYS</span><span class="si">}</span><span class="s2">d&quot;</span>
+<span class="w">    </span>mise<span class="w"> </span>install<span class="w"> </span>--locked<span class="w"> </span>--before<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_NPM_MIN_RELEASE_AGE_DAYS</span><span class="si">}</span><span class="s2">d&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3205,7 +3292,7 @@
 <span class="c1"># @description Install `mise` and the configured tools.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>install_mise
+<span class="w">    </span>install_mise<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span>run_mise_install
 <span class="o">}</span>
 

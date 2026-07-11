@@ -67,20 +67,20 @@
 
 @test "[common] upgrade lifecycle refreshes mise itself before mise-managed tools" {
     local self_update_line
-    local install_line
     local upgrade_line
+    local tool_upgrade_line
 
     grep -q 'mise self-update --yes' scripts/upgrade-tools.sh
     grep -q 'run_mise_tool_command install' scripts/upgrade-tools.sh
     grep -q 'run_mise_tool_command upgrade' scripts/upgrade-tools.sh
     self_update_line="$(grep -n 'upgrade_mise_self' scripts/upgrade-tools.sh | tail -n 1 | cut -d: -f1)"
-    install_line="$(grep -n 'upgrade_mise_tools' scripts/upgrade-tools.sh | tail -n 1 | cut -d: -f1)"
-    upgrade_line="$(grep -n 'run_mise_tool_command upgrade' scripts/upgrade-tools.sh | cut -d: -f1)"
+    upgrade_line="$(grep -n 'upgrade_mise_tools' scripts/upgrade-tools.sh | tail -n 1 | cut -d: -f1)"
+    tool_upgrade_line="$(grep -n 'run_mise_tool_command upgrade' scripts/upgrade-tools.sh | cut -d: -f1)"
 
     [ -n "${self_update_line}" ]
-    [ -n "${install_line}" ]
     [ -n "${upgrade_line}" ]
-    [ "${self_update_line}" -lt "${install_line}" ]
+    [ -n "${tool_upgrade_line}" ]
+    [ "${self_update_line}" -lt "${upgrade_line}" ]
 }
 
 @test "[common] mise tool lifecycle isolates Git config and continues after individual tool failures" {
@@ -92,7 +92,8 @@
     grep -q 'MISE_CONFIG_DIR="${mise_config_dir}"' scripts/upgrade-tools.sh
     grep -q 'rm -rf "${isolated_xdg_config_home}"' scripts/upgrade-tools.sh
     grep -q 'run_mise_with_isolated_git_config ls --current --no-header' scripts/upgrade-tools.sh
-    grep -q 'run_mise_with_isolated_git_config "${mise_command}" --yes --before 7d "${mise_tool}"' scripts/upgrade-tools.sh
+    grep -q 'MISE_LOCKED=0 run_mise_with_isolated_git_config upgrade --bump --yes --before 7d "${mise_tool}"' scripts/upgrade-tools.sh
+    grep -q 'MISE_LOCKED=0 npm_config_min_release_age=0 run_mise_with_isolated_git_config upgrade --bump --yes "${versioned_mise_tool}"' scripts/upgrade-tools.sh
     grep -q 'warning: unable to list current mise tools for %s; continuing' scripts/upgrade-tools.sh
     grep -q 'warning: mise %s failed for %s; continuing' scripts/upgrade-tools.sh
 }
@@ -107,7 +108,7 @@
 
 @test "[common] agent CLI upgrade installs npm latest into mise packages and removes node-global shadows" {
     local latest_line
-    local install_line
+    local upgrade_line
     local repair_line
     local codex_cleanup_line
     local claude_cleanup_line
@@ -115,23 +116,23 @@
     grep -q 'npm uninstall -g "${npm_package}"' scripts/upgrade-tools.sh
     grep -q 'npm view "$1" version' scripts/upgrade-tools.sh
     grep -q 'versioned_mise_tool="${mise_tool}@${package_version}"' scripts/upgrade-tools.sh
-    grep -q 'npm_config_min_release_age=0 run_mise_with_isolated_git_config install --yes "${versioned_mise_tool}"' scripts/upgrade-tools.sh
+    grep -q 'MISE_LOCKED=0 npm_config_min_release_age=0 run_mise_with_isolated_git_config upgrade --bump --yes "${versioned_mise_tool}"' scripts/upgrade-tools.sh
     grep -q 'repair_mise_npm_package "${versioned_mise_tool}" "${npm_package}" "${package_version}"' scripts/upgrade-tools.sh
     grep -q 'if upgrade_mise_npm_agent_tool "npm:@openai/codex" "@openai/codex"; then' scripts/upgrade-tools.sh
     grep -q 'if upgrade_mise_npm_agent_tool "npm:@anthropic-ai/claude-code" "@anthropic-ai/claude-code"; then' scripts/upgrade-tools.sh
     latest_line="$(grep -n 'latest_npm_package_version "${npm_package}"' scripts/upgrade-tools.sh | cut -d: -f1)"
-    install_line="$(grep -n 'run_mise_with_isolated_git_config install --yes "${versioned_mise_tool}"' scripts/upgrade-tools.sh | cut -d: -f1)"
+    upgrade_line="$(grep -n 'run_mise_with_isolated_git_config upgrade --bump --yes "${versioned_mise_tool}"' scripts/upgrade-tools.sh | cut -d: -f1)"
     repair_line="$(grep -n 'repair_mise_npm_package "${versioned_mise_tool}" "${npm_package}" "${package_version}"' scripts/upgrade-tools.sh | cut -d: -f1)"
     codex_cleanup_line="$(grep -n 'remove_node_global_npm_package "@openai/codex"' scripts/upgrade-tools.sh | cut -d: -f1)"
     claude_cleanup_line="$(grep -n 'remove_node_global_npm_package "@anthropic-ai/claude-code"' scripts/upgrade-tools.sh | cut -d: -f1)"
 
     [ -n "${latest_line}" ]
-    [ -n "${install_line}" ]
+    [ -n "${upgrade_line}" ]
     [ -n "${repair_line}" ]
     [ -n "${codex_cleanup_line}" ]
     [ -n "${claude_cleanup_line}" ]
-    [ "${latest_line}" -lt "${install_line}" ]
-    [ "${install_line}" -lt "${repair_line}" ]
+    [ "${latest_line}" -lt "${upgrade_line}" ]
+    [ "${upgrade_line}" -lt "${repair_line}" ]
     [ "${repair_line}" -lt "${codex_cleanup_line}" ]
     [ "${repair_line}" -lt "${claude_cleanup_line}" ]
     grep -q 'remove_node_global_npm_package "@openai/codex"' scripts/upgrade-tools.sh
@@ -190,7 +191,7 @@
 
 @test "[common] agent asset lifecycle installs ccgate for Claude Code and Codex permission gates" {
     grep -q 'aqua:tak848/ccgate' scripts/update-agent-assets.sh
-    grep -q '"aqua:tak848/ccgate" = "latest"' home/dot_mise/config.toml
+    grep -q '"aqua:tak848/ccgate" = "0.9.5"' home/dot_mise/config.toml
     grep -q 'ccgate --version' scripts/update-agent-assets.sh
     grep -q 'ccgate claude' home/.chezmoitemplates/claude-settings-managed.json
     grep -q 'ccgate codex' home/.chezmoitemplates/codex-config-managed.toml

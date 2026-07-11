@@ -1,20 +1,24 @@
 ".emacs.d":
-  type: "git-repo"
-  url: "https://github.com/syl20bnr/spacemacs"
+  type: "archive"
+  url: "https://github.com/syl20bnr/spacemacs/archive/530c17d62e4ccca09087a2f142752b21000658fb.tar.gz"
+  checksum:
+    sha256: "ba040a5d04a6d37c821274eea1f1e4c26d146e2f65057b4d15f4741159071260"
+  stripComponents: 1
   refreshPeriod: "720h"
 
 {{ $fontsPath := .chezmoi.os | replace "darwin" "Library/Fonts" | replace "linux" ".local/share/fonts" -}}
-{{ $offline := or (and (hasKey . "offline") .offline) (eq (env "CHEZMOI_OFFLINE") "1") -}}
 {{ $nerdFontsVersion := "v3.4.0" -}}
 {{ $nerdFontsBaseURL := printf "https://github.com/ryanoasis/nerd-fonts/releases/download/%s" $nerdFontsVersion -}}
 "{{ $fontsPath }}/RobotoMono":
   type: "archive"
-{{ if $offline }}  url: {{ printf "%s/RobotoMono.zip" $nerdFontsBaseURL | quote }}
-{{ else }}  url: {{ gitHubLatestReleaseAssetURL "ryanoasis/nerd-fonts" "RobotoMono.zip" | quote }}
-{{ end }}  refreshPeriod: "720h"
+  url: {{ printf "%s/RobotoMono.zip" $nerdFontsBaseURL | quote }}
+  checksum:
+    sha256: "84a4e9d0bc8b5f55c0476d82ab73f36315a16171a4d06bf5270fd604c7103c9f"
+  refreshPeriod: "720h"
 
 "{{ $fontsPath }}/Hack":
   type: "archive"
-{{ if $offline }}  url: {{ printf "%s/Hack.zip" $nerdFontsBaseURL | quote }}
-{{ else }}  url: {{ gitHubLatestReleaseAssetURL "ryanoasis/nerd-fonts" "Hack.zip" | quote }}
-{{ end }}  refreshPeriod: "720h"
+  url: {{ printf "%s/Hack.zip" $nerdFontsBaseURL | quote }}
+  checksum:
+    sha256: "8ca33a60c791392d872b80d26c42f2bfa914a480f9eb2d7516d9f84373c36897"
+  refreshPeriod: "720h"

@@ -14,6 +14,7 @@ if [ "${DOTFILES_DEBUG:-}" ]; then
 fi
 
 readonly BREW_PACKAGES=(
+    awscli
     cmake
     git
     gawk

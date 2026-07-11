@@ -360,7 +360,7 @@ def validate_cognee_install_assets(manifest: dict[str, Any]) -> None:
         if token not in installer:
             fail(f"install/common/cognee.sh must contain {token!r}")
     mise_config = (ROOT / "home/dot_mise/config.toml").read_text()
-    if 'cmake = "latest"' not in mise_config:
+    if not re.search(r'^cmake = "\d', mise_config, re.MULTILINE):
         fail("Cognee MCP install needs cmake available through mise for source-built Python dependencies")
     template = (ROOT / "home/.chezmoiscripts/common/run_once_after_05-install-cognee.sh.tmpl").read_text()
     for token in ("hasKey . \"cognee\"", "get .cognee \"install\"", "install/common/cognee.sh"):
@@ -484,7 +484,7 @@ def validate_ccgate_assets() -> None:
         if token not in updater:
             fail(f"scripts/update-agent-assets.sh must manage ccgate asset token {token!r}")
     mise_config = (ROOT / "home/dot_mise/config.toml").read_text()
-    if '"aqua:tak848/ccgate" = "latest"' not in mise_config:
+    if '"aqua:tak848/ccgate" = "0.9.5"' not in mise_config:
         fail("home/dot_mise/config.toml must activate aqua:tak848/ccgate")
 
     codex_path = ROOT / "home/.chezmoitemplates/codex-config-managed.toml"

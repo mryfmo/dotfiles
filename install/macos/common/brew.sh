@@ -8,6 +8,9 @@
 
 set -Eeuo pipefail
 
+readonly HOMEBREW_INSTALL_COMMIT="c7952e40b7957268f61643152f4db725379b292e"
+readonly HOMEBREW_INSTALL_SHA256="99287f194a8b3c9e6b0203a11a5fa54518be57209343e6bb954dec4635796d9d"
+
 if [ "${DOTFILES_DEBUG:-}" ]; then
     set -x
 fi
@@ -24,7 +27,18 @@ function is_homebrew_exists() {
 #
 function install_homebrew() {
     if ! is_homebrew_exists; then
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        (
+            local actual installer
+            installer="$(mktemp)"
+            trap 'rm -f "${installer}"' EXIT
+            curl -fsSL "https://raw.githubusercontent.com/Homebrew/install/${HOMEBREW_INSTALL_COMMIT}/install.sh" -o "${installer}"
+            actual="$(shasum -a 256 "${installer}" | awk '{ print $1 }')"
+            [ "${actual}" = "${HOMEBREW_INSTALL_SHA256}" ] || {
+                printf 'Homebrew installer checksum mismatch\n' >&2
+                return 1
+            }
+            NONINTERACTIVE=1 /bin/bash "${installer}"
+        )
     fi
 }
 

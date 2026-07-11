@@ -25,6 +25,9 @@ on:
       - "tests/install/common/**"
       - "tests/install/macos/**"
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: macos-14 # M1 Mac
@@ -43,9 +46,15 @@ jobs:
 
       - name: Set up SSH agent and add the private deploy key for the private dotfiles repo
         if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}
-        uses: webfactory/ssh-agent@v0.10.0
+        uses: webfactory/ssh-agent@e83874834305fe9a4a2997156cb26c5de65a8555 # v0.10.0
         with:
           ssh-private-key: ${{ secrets.PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY }}
+
+      - name: Checkout repository
+        if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
 
       - name: Setup dotfiles and verify rerun
         if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}
@@ -66,17 +75,20 @@ jobs:
           fi
           export BRANCH_NAME
 
-          URL="https://raw.githubusercontent.com/mryfmo/dotfiles/${BRANCH_NAME}/setup.sh"
-          echo "Download setup.sh from ${URL}"
-
-          printf "${EMAIL_ADDRESS}\n" | bash -c "$(curl -fsLS "$URL")"
+          printf '%s\n' "${EMAIL_ADDRESS}" | bash ./setup.sh
           #              │
           #              └─ Simulate inputting an email address into the chezmoi's config.
 
-          # Simulate a target changed after chezmoi last wrote it. The bootstrap
-          # must force apply and must not stop on an overwrite prompt.
+          # Simulate local drift after chezmoi last wrote the target. A rerun must
+          # reject the drift and leave the target byte-identical.
           printf '\n# CI local change after chezmoi apply\n' >> "${HOME}/.zprofile"
-          printf "${EMAIL_ADDRESS}\n" | bash -c "$(curl -fsLS "$URL")"
+          before_local_change="$(cksum "${HOME}/.zprofile")"
+          if printf '%s\n' "${EMAIL_ADDRESS}" | bash ./setup.sh; then
+            echo "setup unexpectedly accepted local drift" >&2
+            exit 1
+          fi
+          after_local_change="$(cksum "${HOME}/.zprofile")"
+          [ "${after_local_change}" = "${before_local_change}" ]
 
       - name: Unset gpg
         if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}
@@ -104,7 +116,7 @@ jobs:
 
       - name: Store benchmark result
         if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' && env.HAS_BENCHMARK_TOKEN == 'true' }}
-        uses: benchmark-action/github-action-benchmark@v1
+        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1
         with:
           name: MacOS benchmark
           tool: customSmallerIsBetter
@@ -118,7 +130,7 @@ jobs:
           alert-comment-cc-users: "@mryfmo"
           benchmark-data-dir-path: "."
 
-      - uses: jdx/mise-action@v4
+      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4
         if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}
         with:
           install: true

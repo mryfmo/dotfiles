@@ -10,9 +10,10 @@ readonly SCRIPT_PATH="./install/ubuntu/common/dependencies.sh"
     '
 
     [ "${status}" -eq 0 ]
-    [ "${lines[0]}" -eq 13 ]
+    [ "${lines[0]}" -eq 15 ]
 
     expected_packages=(
+        build-essential
         busybox
         cmake
         curl
@@ -21,6 +22,7 @@ readonly SCRIPT_PATH="./install/ubuntu/common/dependencies.sh"
         htop
         iproute2
         iputils-ping
+        perl
         sudo
         unzip
         vim

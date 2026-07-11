@@ -1,41 +1,64 @@
 [tools]
-node = "lts"
-rust = "latest"
-python = "3.11"
+# Versions are reviewed and updated only by `make upgrade` with the lock diff.
+node = "24.18.0"
+rust = "1.96.1"
+python = "3.11.15"
 
-age = "latest"
-aws-cli = "latest"
-bats = "latest"
-bun = "latest"
-chezmoi = "latest"
-cmake = "latest"
-dotenvx = "latest"
-eza = "latest"
-fd = "latest"
-gcloud = "latest"
-jq = "latest"
+age = "1.3.1"
+bun = "1.3.14"
+chezmoi = "2.70.5"
+cmake = "4.3.3"
+dotenvx = "2.1.4"
+"cargo:eza" = "0.23.4"
+fd = "10.3.0"
+jq = "1.8.2"
 hugo-extended = "0.136.5"
-uv = "latest"
-yazi = "latest"
-yq = "latest"
-shellcheck = "latest"
-shfmt = "latest"
+uv = "0.11.26"
+yazi = "26.5.6"
+"github:mikefarah/yq" = "4.53.3"
+shellcheck = "0.11.0"
+shfmt = "3.13.1"
 
-"npm:@anthropic-ai/claude-code" = "latest"
-"npm:@openai/codex" = "latest"
-"npm:bash-language-server" = "latest"
-"npm:pyright" = "latest"
-"npm:fast-cli" = "latest"
+"npm:@anthropic-ai/claude-code" = "2.1.201"
+"npm:@openai/codex" = "0.142.5"
+"npm:bash-language-server" = "5.6.0"
+"npm:pyright" = "1.1.411"
+"npm:fast-cli" = "5.2.0"
 
-"aqua:tak848/ccgate" = "latest"
+"aqua:tak848/ccgate" = "0.9.5"
 
-"github:x-motemen/ghq" = "latest"
-"github:d-kuro/gwq" = "latest"
-"github:cli/cli" = "latest"
-"github:ogulcancelik/herdr" = "latest"
-"github:shuntaka9576/blocc" = { version = "latest", os = ["linux/x64"] }
+"github:x-motemen/ghq" = "1.10.1"
+"github:d-kuro/gwq" = "0.1.1"
+"github:cli/cli" = "2.96.0"
+"github:ogulcancelik/herdr" = "0.7.1"
+"github:shuntaka9576/blocc" = { version = "0.6.0", os = ["linux/x64"] }
 
-"cargo:pueue" = "latest"
+"cargo:pueue" = "4.0.4"
+
+[tools."http:bats"]
+version = "1.13.0"
+url = "https://github.com/bats-core/bats-core/archive/refs/tags/v1.13.0.tar.gz"
+checksum = "sha256:a85e12b8828271a152b338ca8109aa23493b57950987c8e6dff97ba492772ff3"
+strip_components = 1
+bin_path = "bin"
+
+[tools."http:gcloud"]
+version = "575.0.1"
+bin_path = "google-cloud-sdk/bin"
+
+# Provenance: https://docs.cloud.google.com/sdk/docs/downloads-versioned-archives publishes the current digests;
+# these versioned wrappers have byte-identical decompressed tar streams and are pinned by their wrapper SHA-256.
+[tools."http:gcloud".platforms]
+linux-x64 = { url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-cli-575.0.1-linux-x86_64.tar.gz", checksum = "sha256:38198fa76b1aa64a332fadca7dba45f96c6dbb5cd9e77f173f9d6a65443e37ab" }
+linux-arm64 = { url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-cli-575.0.1-linux-arm.tar.gz", checksum = "sha256:e5c3a354d4c5775eccede626746547d6d3dc3f59db350f62f05dbc604eec5e3f" }
+macos-x64 = { url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-cli-575.0.1-darwin-x86_64.tar.gz", checksum = "sha256:0f9b0f45e5dff30d8c67c0f9ceb4d64b03497efa9135849b80ecf0cd0706009c" }
+macos-arm64 = { url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-cli-575.0.1-darwin-arm.tar.gz", checksum = "sha256:055892517a1101903938bbc1006c02feb639ec7efff8b25509c72e9a20351b3c" }
 
 [settings]
 idiomatic_version_file_enable_tools = ["python"]
+lockfile = true
+locked = true
+lockfile_platforms = ["linux-x64", "linux-arm64", "macos-x64", "macos-arm64"]
+
+[settings.cargo]
+binstall = false

@@ -24,6 +24,7 @@ zsh-defer _client_path
 
 [plugins.powerlevel10k]
 github = "romkatv/powerlevel10k"
+rev = "9253fb1c5034410c43a0c681ff8294181c54016c"
 
 [plugins.p10k]
 local = "~/.config/powerlevel10k"
@@ -45,4 +46,5 @@ apply = ['source']
 
 [plugins.git-open]
 github = "paulirish/git-open"
+rev = "63c0e77aaf18b72c839b1113c1e2f9514413643b"
 apply = ["defer"]

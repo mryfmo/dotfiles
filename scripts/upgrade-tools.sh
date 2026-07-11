@@ -179,7 +179,11 @@ function run_mise_tool_command() {
             continue
         fi
 
-        if ! run_mise_with_isolated_git_config "${mise_command}" --yes --before 7d "${mise_tool}"; then
+        if [ "${mise_command}" = "upgrade" ]; then
+            if ! MISE_LOCKED=0 run_mise_with_isolated_git_config upgrade --bump --yes --before 7d "${mise_tool}"; then
+                printf 'warning: mise %s failed for %s; continuing\n' "${mise_command}" "${mise_tool}" >&2
+            fi
+        elif ! run_mise_with_isolated_git_config install --yes --before 7d "${mise_tool}"; then
             printf 'warning: mise %s failed for %s; continuing\n' "${mise_command}" "${mise_tool}" >&2
         fi
     done <<< "${mise_tools}"
@@ -263,8 +267,8 @@ function upgrade_mise_npm_agent_tool() {
     fi
 
     versioned_mise_tool="${mise_tool}@${package_version}"
-    if ! npm_config_min_release_age=0 run_mise_with_isolated_git_config install --yes "${versioned_mise_tool}"; then
-        printf 'warning: mise install failed for %s; continuing\n' "${versioned_mise_tool}" >&2
+    if ! MISE_LOCKED=0 npm_config_min_release_age=0 run_mise_with_isolated_git_config upgrade --bump --yes "${versioned_mise_tool}"; then
+        printf 'warning: mise upgrade failed for %s; continuing\n' "${versioned_mise_tool}" >&2
         return 1
     fi
 

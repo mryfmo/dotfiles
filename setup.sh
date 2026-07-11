@@ -29,6 +29,9 @@ declare -r DOTFILES_LOGO='
 
 declare -r DOTFILES_REPO_URL="${DOTFILES_REPO_URL:-https://github.com/mryfmo/dotfiles}"
 declare -r BRANCH_NAME="${BRANCH_NAME:-main}"
+declare -r HOMEBREW_INSTALL_COMMIT="c7952e40b7957268f61643152f4db725379b292e"
+declare -r HOMEBREW_INSTALL_SHA256="99287f194a8b3c9e6b0203a11a5fa54518be57209343e6bb954dec4635796d9d"
+declare -r CHEZMOI_VERSION="2.70.4"
 
 function is_ci() {
     "${CI:-false}"
@@ -59,6 +62,56 @@ function fetch_url() {
         echo "Neither curl nor wget is available; cannot download ${url}." >&2
         return 1
     fi
+}
+
+# @description Download one URL to a file, preferring curl over wget.
+# @arg $1 url URL to download.
+# @arg $2 output Destination file.
+function fetch_file() {
+    local url="$1" output="$2"
+    if command -v curl > /dev/null 2>&1; then
+        curl -fsLS "${url}" -o "${output}"
+    elif command -v wget > /dev/null 2>&1; then
+        wget -qO "${output}" "${url}"
+    else
+        printf 'Neither curl nor wget is available; cannot download %s.\n' "${url}" >&2
+        return 1
+    fi
+}
+
+# @description Print the SHA-256 digest of a file.
+# @arg $1 path File to hash.
+function sha256_file() {
+    if command -v sha256sum > /dev/null 2>&1; then
+        sha256sum "$1" | awk '{ print $1 }'
+    else
+        shasum -a 256 "$1" | awk '{ print $1 }'
+    fi
+}
+
+# @description Verify a file against an expected SHA-256 digest.
+# @arg $1 path File to verify.
+# @arg $2 expected Expected lowercase digest.
+function verify_sha256() {
+    local path="$1" expected="${2:-}"
+    [ -n "${expected}" ] || {
+        printf 'Missing checksum for %s\n' "${path}" >&2
+        return 1
+    }
+    [ "$(sha256_file "${path}")" = "${expected}" ] || {
+        printf 'Checksum mismatch for %s\n' "${path}" >&2
+        return 1
+    }
+}
+
+# @description Verify an artifact against its entry in an upstream manifest.
+# @arg $1 artifact Artifact path.
+# @arg $2 manifest Checksum manifest path.
+# @arg $3 name Artifact filename in the manifest.
+function verify_checksum_manifest() {
+    local artifact="$1" manifest="$2" name="$3" expected
+    expected="$(awk -v name="${name}" '$2 == name { print $1 }' "${manifest}")"
+    verify_sha256 "${artifact}" "${expected}"
 }
 
 function at_exit() {
@@ -125,6 +178,7 @@ function keepalive_sudo() {
 function initialize_os_macos() {
     local brew_prefix
     local installer
+    local installer_sha256
 
     function is_homebrew_exists() {
         command -v brew &> /dev/null
@@ -156,9 +210,15 @@ function initialize_os_macos() {
             keepalive_sudo
         fi
 
-        installer="$(fetch_url \
-            https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || return
-        NONINTERACTIVE=1 /bin/bash -c "${installer}"
+        installer="$(mktemp)"
+        at_exit "rm -f '${installer}'"
+        fetch_file "https://raw.githubusercontent.com/Homebrew/install/${HOMEBREW_INSTALL_COMMIT}/install.sh" "${installer}"
+        installer_sha256="$(sha256_file "${installer}")"
+        [ "${installer_sha256}" = "${HOMEBREW_INSTALL_SHA256}" ] || {
+            printf 'Homebrew installer checksum mismatch\n' >&2
+            return 1
+        }
+        NONINTERACTIVE=1 /bin/bash "${installer}"
         hash -r
     fi
 
@@ -190,17 +250,42 @@ function initialize_os_env() {
 
 function run_chezmoi() {
     local bin_dir="${HOME}/.local/bin"
+    local archive
+    local artifact
+    local base_url="https://github.com/twpayne/chezmoi/releases/download/v${CHEZMOI_VERSION}"
     local chezmoi_cmd
-    local installer
+    local checksums
     local local_drift=false
     local no_tty_option
+    local stage
     local status_line
     local status_output
+    local tmpdir
     export PATH="${PATH}:${bin_dir}"
 
-    # download the chezmoi binary from the URL
-    installer="$(fetch_url https://get.chezmoi.io)" || return
-    sh -c "${installer}" -- -b "${bin_dir}"
+    case "$(get_os_type)/$(uname -m)" in
+    Darwin/x86_64) artifact="chezmoi_${CHEZMOI_VERSION}_darwin_amd64.tar.gz" ;;
+    Darwin/arm64) artifact="chezmoi_${CHEZMOI_VERSION}_darwin_arm64.tar.gz" ;;
+    Linux/x86_64) artifact="chezmoi_${CHEZMOI_VERSION}_linux_amd64.tar.gz" ;;
+    Linux/aarch64 | Linux/arm64) artifact="chezmoi_${CHEZMOI_VERSION}_linux_arm64.tar.gz" ;;
+    *)
+        printf 'Unsupported chezmoi platform: %s/%s\n' "$(get_os_type)" "$(uname -m)" >&2
+        return 1
+        ;;
+    esac
+    tmpdir="$(mktemp -d)"
+    at_exit "rm -rf '${tmpdir}'"
+    archive="${tmpdir}/${artifact}"
+    checksums="${tmpdir}/chezmoi_${CHEZMOI_VERSION}_checksums.txt"
+    fetch_file "${base_url}/${artifact}" "${archive}"
+    fetch_file "${base_url}/chezmoi_${CHEZMOI_VERSION}_checksums.txt" "${checksums}"
+    verify_checksum_manifest "${archive}" "${checksums}" "${artifact}"
+    tar -xzf "${archive}" -C "${tmpdir}" chezmoi
+    mkdir -p "${bin_dir}"
+    stage="$(mktemp "${bin_dir}/chezmoi.tmp.XXXXXX")"
+    at_exit "rm -f '${stage}'"
+    install -m 0755 "${tmpdir}/chezmoi" "${stage}"
+    mv -f "${stage}" "${bin_dir}/chezmoi"
     chezmoi_cmd="${bin_dir}/chezmoi"
 
     if is_ci_or_not_tty; then
@@ -304,11 +389,8 @@ function restart_shell_system() {
     fi
 }
 
+# @description Restart an interactive shell, or defer when setup input is piped.
 function restart_shell() {
-
-    # Restart shell if specified "bash -c $(curl -L {URL})"
-    # not restart:
-    #   curl -L {URL} | bash
     if [ -p /dev/stdin ]; then
         echo "Now continue with Rebooting your shell"
     else

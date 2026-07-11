@@ -51,12 +51,22 @@ function run_apt_get() {
 function install_apt_packages() {
     local missing_packages=()
     local package
+    local query_status
     local package_status
 
     for package in "${PACKAGES[@]}"; do
-        if ! package_status="$(dpkg-query -W -f='${Status}' "${package}" 2> /dev/null)" || [ "${package_status}" != "install ok installed" ]; then
-            missing_packages+=("${package}")
+        if package_status="$(dpkg-query -W -f='${Status}' "${package}" 2> /dev/null)"; then
+            if [ "${package_status}" = "install ok installed" ]; then
+                continue
+            fi
+        else
+            query_status=$?
+            if [ "${query_status}" -ne 1 ]; then
+                return "${query_status}"
+            fi
         fi
+
+        missing_packages+=("${package}")
     done
 
     if [ "${#missing_packages[@]}" -eq 0 ]; then

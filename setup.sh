@@ -124,6 +124,7 @@ function keepalive_sudo() {
 
 function initialize_os_macos() {
     local brew_prefix
+    local installer
 
     function is_homebrew_exists() {
         command -v brew &> /dev/null
@@ -155,8 +156,9 @@ function initialize_os_macos() {
             keepalive_sudo
         fi
 
-        NONINTERACTIVE=1 /bin/bash -c "$(fetch_url \
-            https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        installer="$(fetch_url \
+            https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || return
+        NONINTERACTIVE=1 /bin/bash -c "${installer}"
         hash -r
     fi
 
@@ -189,6 +191,7 @@ function initialize_os_env() {
 function run_chezmoi() {
     local bin_dir="${HOME}/.local/bin"
     local chezmoi_cmd
+    local installer
     local local_drift=false
     local no_tty_option
     local status_line
@@ -196,7 +199,8 @@ function run_chezmoi() {
     export PATH="${PATH}:${bin_dir}"
 
     # download the chezmoi binary from the URL
-    sh -c "$(fetch_url https://get.chezmoi.io)" -- -b "${bin_dir}"
+    installer="$(fetch_url https://get.chezmoi.io)" || return
+    sh -c "${installer}" -- -b "${bin_dir}"
     chezmoi_cmd="${bin_dir}/chezmoi"
 
     if is_ci_or_not_tty; then
@@ -231,7 +235,7 @@ function run_chezmoi() {
     export PATH="${PATH}:${HOME}/.local/bin"
 
     if ! status_output="$("${chezmoi_cmd}" status --path-style absolute --exclude=scripts)"; then
-        echo "chezmoi status failed; no files were changed." >&2
+        echo "chezmoi status failed; no destination targets were changed." >&2
         return 1
     fi
 
@@ -243,12 +247,12 @@ function run_chezmoi() {
     done <<< "${status_output}"
 
     if ! "${chezmoi_cmd}" diff; then
-        echo "chezmoi diff failed; no files were changed." >&2
+        echo "chezmoi diff failed; no destination targets were changed." >&2
         return 1
     fi
 
     if "${local_drift}"; then
-        echo "Local changes detected; no files were changed. Resolve them and rerun setup." >&2
+        echo "Local changes detected; no destination targets were changed. Resolve them and rerun setup." >&2
         return 1
     fi
 
@@ -258,7 +262,7 @@ function run_chezmoi() {
     fi
 
     if ! "${chezmoi_cmd}" apply ${no_tty_option}; then
-        echo "chezmoi apply failed." >&2
+        echo "chezmoi apply failed; completed target operations may remain." >&2
         return 1
     fi
 

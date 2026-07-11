@@ -137,6 +137,22 @@ render_role_config() {
     [ "${output}" = "Neither curl nor wget is available; cannot download ${url}." ]
 }
 
+@test "[common] setup.sh does not execute partial installer output from a failed fetch" {
+    local marker="${BATS_TEST_TMPDIR}/partial-installer-ran"
+
+    run env MARKER="${marker}" HOME="${BATS_TEST_TMPDIR}" bash -c '
+        source ./setup.sh
+        fetch_url() {
+            printf '\''printf ran > "%s"\n'\'' "${MARKER}"
+            return 23
+        }
+        run_chezmoi
+    '
+
+    [ "${status}" -eq 23 ]
+    [ ! -e "${marker}" ]
+}
+
 @test "[common] setup.sh previews and applies without force" {
     grep -q '"${chezmoi_cmd}" status --path-style absolute --exclude=scripts' setup.sh
     grep -q '"${chezmoi_cmd}" diff' setup.sh
@@ -225,20 +241,22 @@ EOF
 @test "[common] wget-only Linux bootstrap previews safely and propagates failures" {
     local mode
     local tmpdir
-    local before_hash
+    local before_managed_hash
     local before_mode
+    local before_sentinel_hash
 
-    for mode in clean drift status-fail diff-fail apply-fail; do
+    for mode in clean target-only drift status-fail diff-fail apply-fail; do
         tmpdir="$(mktemp -d)"
         mkdir -p "${tmpdir}/bin" "${tmpdir}/home"
         printf 'managed-original\n' > "${tmpdir}/home/managed"
         printf 'sentinel-original\n' > "${tmpdir}/home/sentinel"
         chmod 640 "${tmpdir}/home/managed" "${tmpdir}/home/sentinel"
-        before_hash="$(cksum "${tmpdir}/home/managed" "${tmpdir}/home/sentinel")"
+        before_managed_hash="$(cksum "${tmpdir}/home/managed")"
+        before_sentinel_hash="$(cksum "${tmpdir}/home/sentinel")"
         before_mode="$(stat -c '%a' "${tmpdir}/home/managed" "${tmpdir}/home/sentinel" 2> /dev/null || stat -f '%Lp' "${tmpdir}/home/managed" "${tmpdir}/home/sentinel")"
 
-        for command_path in sh find rm mkdir chmod; do
-            ln -s "/bin/${command_path}" "${tmpdir}/bin/${command_path}"
+        for command_path in sh find rm mkdir chmod cat; do
+            ln -s "$(command -v "${command_path}")" "${tmpdir}/bin/${command_path}"
         done
 
         cat > "${tmpdir}/bin/uname" <<'EOF'
@@ -262,6 +280,14 @@ cat > "${bin_dir}/chezmoi" <<'CHEZMOI'
 #!/bin/bash
 printf 'chezmoi %s\n' "$*" >> "${HOME}/log"
 case "${1:-}" in
+    init)
+        mkdir -p "${HOME}/.config/chezmoi"
+        printf 'init changed config\n' > "${HOME}/.config/chezmoi/chezmoi.yaml"
+        ;;
+    update)
+        mkdir -p "${HOME}/source"
+        printf 'update changed source\n' > "${HOME}/source/update-state"
+        ;;
     source-path)
         mkdir -p "${HOME}/source"
         printf '%s\n' "${HOME}/source"
@@ -271,6 +297,8 @@ case "${1:-}" in
             exit 1
         elif [ "${CHEZMOI_TEST_MODE}" = "drift" ]; then
             printf 'M  %s/managed\n' "${HOME}"
+        elif [ "${CHEZMOI_TEST_MODE}" = "target-only" ]; then
+            printf ' M %s/managed\n' "${HOME}"
         fi
         ;;
     diff)
@@ -278,8 +306,8 @@ case "${1:-}" in
         [ "${CHEZMOI_TEST_MODE}" != "diff-fail" ]
         ;;
     apply)
-        [ "${CHEZMOI_TEST_MODE}" != "apply-fail" ] || exit 1
         printf 'managed-applied\n' > "${HOME}/managed"
+        [ "${CHEZMOI_TEST_MODE}" != "apply-fail" ] || exit 1
         ;;
 esac
 CHEZMOI
@@ -294,9 +322,12 @@ EOF
 
         grep -qx 'wget https://get.chezmoi.io' "${tmpdir}/home/fetch.log"
         grep -q '^chezmoi init ' "${tmpdir}/home/log"
+        grep -q '^chezmoi update ' "${tmpdir}/home/log"
         grep -q '^chezmoi status --path-style absolute --exclude=scripts$' "${tmpdir}/home/log"
+        grep -qx 'init changed config' "${tmpdir}/home/.config/chezmoi/chezmoi.yaml"
+        grep -qx 'update changed source' "${tmpdir}/home/source/update-state"
 
-        if [ "${mode}" = "clean" ]; then
+        if [ "${mode}" = "clean" ] || [ "${mode}" = "target-only" ]; then
             [ "${status}" -eq 0 ]
             grep -q '^chezmoi diff$' "${tmpdir}/home/log"
             grep -q '^chezmoi apply --no-tty$' "${tmpdir}/home/log"
@@ -306,12 +337,18 @@ EOF
 
         if [ "${mode}" = "drift" ]; then
             grep -q '^chezmoi diff$' "${tmpdir}/home/log"
-            ! grep -q '^chezmoi apply ' "${tmpdir}/home/log"
         fi
 
-        if [ "${mode}" != "clean" ]; then
-            [ "$(cksum "${tmpdir}/home/managed" "${tmpdir}/home/sentinel")" = "${before_hash}" ]
+        if [ "${mode}" = "drift" ] || [ "${mode}" = "status-fail" ] || [ "${mode}" = "diff-fail" ]; then
+            ! grep -q '^chezmoi apply ' "${tmpdir}/home/log"
+            [ "$(cksum "${tmpdir}/home/managed")" = "${before_managed_hash}" ]
             [ "$(stat -c '%a' "${tmpdir}/home/managed" "${tmpdir}/home/sentinel" 2> /dev/null || stat -f '%Lp' "${tmpdir}/home/managed" "${tmpdir}/home/sentinel")" = "${before_mode}" ]
+        fi
+
+        [ "$(cksum "${tmpdir}/home/sentinel")" = "${before_sentinel_hash}" ]
+
+        if [ "${mode}" = "apply-fail" ]; then
+            grep -qx 'managed-applied' "${tmpdir}/home/managed"
         fi
     done
 }

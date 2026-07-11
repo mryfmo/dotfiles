@@ -9,6 +9,9 @@ on:
   schedule:
     - cron: "0 0 * * 5"
 
+permissions:
+  contents: read
+
 jobs:
   public-bootstrap:
     strategy:
@@ -29,6 +32,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Bootstrap the checked-out public source
         shell: bash
@@ -84,6 +89,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Explain skipped private bootstrap
         if: ${{ github.actor == 'dependabot[bot]' || env.HAS_EMAIL_ADDRESS != 'true' || env.HAS_PRIVATE_DEPLOY_KEY != 'true' }}

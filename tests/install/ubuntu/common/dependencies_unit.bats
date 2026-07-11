@@ -94,6 +94,27 @@ readonly SCRIPT_PATH="./install/ubuntu/common/dependencies.sh"
     [ "${lines[1]}" = "install -y curl git" ]
 }
 
+@test "[ubuntu-common] install_apt_packages propagates fatal dpkg-query errors" {
+    local calls_path="${BATS_TEST_TMPDIR}/fatal_query_calls.txt"
+
+    run env CALLS_PATH="${calls_path}" bash -c '
+        source "'"${SCRIPT_PATH}"'"
+
+        dpkg-query() {
+            return 2
+        }
+
+        run_apt_get() {
+            echo "$*" >> "${CALLS_PATH}"
+        }
+
+        install_apt_packages
+    '
+
+    [ "${status}" -eq 2 ]
+    [ ! -e "${calls_path}" ]
+}
+
 @test "[ubuntu-common] uninstall_apt_packages excludes sudo and git" {
     local args_path="${BATS_TEST_TMPDIR}/uninstall_args.txt"
 

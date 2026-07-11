@@ -39,3 +39,37 @@ function teardown() {
     [ -e "${HOME}/.local/bin/must-survive" ]
     [ -d "${HOME}/.local/bin" ]
 }
+
+@test "[ubuntu-server] failed checksum preserves Starship and sibling binary" {
+    local archive="${BATS_TEST_TMPDIR}/starship.tar.gz"
+    local fixture="${BATS_TEST_TMPDIR}/fixture"
+    mkdir -p "${BIN_DIR}"
+    mkdir -p "${fixture}"
+    printf 'old-starship\n' > "${BIN_DIR}/starship"
+    printf 'sibling\n' > "${BIN_DIR}/must-survive"
+    printf '#!/bin/sh\ntouch should-not-run\n' > "${fixture}/starship"
+    tar -czf "${archive}" -C "${fixture}" starship
+    function curl() {
+        local output url
+        url="$1"
+        shift
+        while [ "$#" -gt 0 ]; do
+            if [ "$1" = "-o" ]; then
+                output="$2"
+                break
+            fi
+            shift
+        done
+        if [ -n "${output:-}" ]; then
+            cp "${archive}" "${output}"
+        else
+            printf 'incorrect-checksum\n'
+        fi
+    }
+
+    run install_starship
+
+    [ "${status}" -ne 0 ]
+    grep -qx old-starship "${BIN_DIR}/starship"
+    grep -qx sibling "${BIN_DIR}/must-survive"
+}

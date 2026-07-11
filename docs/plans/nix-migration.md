@@ -31,10 +31,10 @@ Validation target:
 ```shell
 nix fmt
 nix flake show
-nix flake check
+nix flake check --no-build
 ```
 
-If Nix is unavailable on a machine, skip Nix validation and rely on repository checks such as `git diff --check`. Commit `flake.lock` after the first successful `nix flake lock` or `nix flake check` on a machine with Nix installed; the scaffold intentionally does not include a hand-written lock file.
+If Nix is unavailable on a machine, CI evaluates every declared output on Linux and macOS. Never hand-edit `flake.lock`; regenerate it with `nix flake lock`.
 
 ## Phase 1: Package-only adoption
 

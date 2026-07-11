@@ -78,8 +78,8 @@ render_role_config() {
 }
 
 @test "[common] setup.sh installs Homebrew non-interactively and continues from its prefix" {
-    grep -q 'NONINTERACTIVE=1 /bin/bash -c' setup.sh
-    grep -q 'https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh' setup.sh
+    grep -q 'NONINTERACTIVE=1 /bin/bash' setup.sh
+    grep -q 'https://raw.githubusercontent.com/Homebrew/install/${HOMEBREW_INSTALL_COMMIT}/install.sh' setup.sh
     grep -q 'hash -r' setup.sh
     grep -q 'get_homebrew_prefix' setup.sh
     grep -q 'HOMEBREW_PREFIX_CANDIDATES:-/opt/homebrew /usr/local' setup.sh
@@ -150,6 +150,20 @@ render_role_config() {
     '
 
     [ "${status}" -eq 23 ]
+    [ ! -e "${marker}" ]
+}
+
+@test "[common] checksum verification fails closed for corrupt or missing digests" {
+    local payload="${BATS_TEST_TMPDIR}/payload"
+    local marker="${BATS_TEST_TMPDIR}/executed"
+    printf '#!/bin/sh\ntouch %q\n' "${marker}" > "${payload}"
+
+    run bash -c 'source ./setup.sh; verify_sha256 "$1" "$2" && sh "$1"' _ "${payload}" "$(printf corrupt | shasum -a 256 | awk '{print $1}')"
+    [ "${status}" -ne 0 ]
+    [ ! -e "${marker}" ]
+
+    run bash -c 'source ./setup.sh; verify_sha256 "$1" "" && sh "$1"' _ "${payload}"
+    [ "${status}" -ne 0 ]
     [ ! -e "${marker}" ]
 }
 

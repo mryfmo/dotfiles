@@ -48,19 +48,28 @@ Configuration files should move from chezmoi to Home Manager only after collisio
 Home Manager standalone on Linux:
 
 ```shell
-nix run github:nix-community/home-manager/release-25.05 -- switch --flake .#mryfmo-linux
+nix run github:nix-community/home-manager/release-26.05 -- switch --flake .#mryfmo-linux
 ```
 
 Home Manager standalone on Apple Silicon macOS:
 
 ```shell
-nix run github:nix-community/home-manager/release-25.05 -- switch --flake .#mryfmo-darwin
+nix run github:nix-community/home-manager/release-26.05 -- switch --flake .#mryfmo-darwin
 ```
 
 nix-darwin on Apple Silicon macOS:
 
 ```shell
 sudo darwin-rebuild switch --flake .#mryfmo-mac
+```
+
+Evaluate without activation:
+
+```shell
+nix flake check --no-build
+nix eval .#homeConfigurations.mryfmo-linux.activationPackage.drvPath
+nix eval .#homeConfigurations.mryfmo-darwin.activationPackage.drvPath
+nix eval .#darwinConfigurations.mryfmo-mac.system.drvPath
 ```
 
 The nix-darwin configuration enables Homebrew management, but `homebrew.enable` does not install Homebrew itself. Install Homebrew before activating nix-darwin if Homebrew management is needed.

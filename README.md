@@ -312,7 +312,7 @@ If you are already inside the cloned repository root, `make setup` remains avail
 `make apply` remains as a compatibility alias for `make update` because `apply` is the native chezmoi verb, while `update` is the public dotfiles workflow command.
 One-time chezmoi scripts under `home/.chezmoiscripts/**/run_once_*` are for initial installation.
 Do not use `make reset` as the normal update path; it clears chezmoi's script state so one-time installers can run again intentionally.
-The `latest` entries in `home/dot_mise/config.toml` are rolling tool definitions and are refreshed by the explicit upgrade lifecycle, not by ordinary dotfile updates.
+Tool versions in `home/dot_mise/config.toml` are exact and backed by `mise.lock`. Updates occur only through `make upgrade` with a reviewed config and lock diff.
 
 ### 💡 Develop the Setup Scripts
 

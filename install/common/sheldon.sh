@@ -3,7 +3,7 @@
 # @file install/common/sheldon.sh
 # @brief Install the Sheldon shell plugin manager.
 # @description
-#   Downloads the latest `sheldon` binary into the user's local bin directory.
+#   Builds the pinned crates.io release with its packaged Cargo.lock.
 
 set -Eeuo pipefail
 
@@ -12,15 +12,24 @@ if [ "${DOTFILES_DEBUG:-}" ]; then
 fi
 
 readonly BIN_DIR="${HOME}/.local/bin"
+readonly SHELDON_VERSION="0.8.5"
+# crates.io API: https://crates.io/api/v1/crates/sheldon/0.8.5
+# Registry SHA-256: 43a2d8fc0be4474cfe2d603992c7e9765c9a0f87465aabcfc0603c1de4290b4d
 
 #
-# @description Download and install `sheldon` into `BIN_DIR`.
+# @description Build and install the crates.io Sheldon release with locked dependencies.
 #
 function install_sheldon() {
+    local stage tmpdir
+    tmpdir="$(mktemp -d)"
     mkdir -p "${BIN_DIR}"
-
-    curl --proto '=https' -fLsS https://rossmacarthur.github.io/install/crate.sh |
-        bash -s -- --repo rossmacarthur/sheldon --to "${BIN_DIR}" --force
+    stage="$(mktemp "${BIN_DIR}/sheldon.tmp.XXXXXX")"
+    trap 'rm -rf "${tmpdir}"; rm -f "${stage}"' RETURN
+    CARGO_INSTALL_ROOT="${tmpdir}" cargo install \
+        --locked --features vendored --registry crates-io \
+        --version "=${SHELDON_VERSION}" sheldon
+    install -m 0755 "${tmpdir}/bin/sheldon" "${stage}"
+    mv -f "${stage}" "${BIN_DIR}/sheldon"
 }
 
 #

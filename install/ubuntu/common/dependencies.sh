@@ -13,6 +13,7 @@ if [ "${DOTFILES_DEBUG:-}" ]; then
 fi
 
 readonly PACKAGES=(
+    build-essential
     busybox
     cmake
     curl
@@ -21,6 +22,7 @@ readonly PACKAGES=(
     htop
     iproute2
     iputils-ping
+    perl
     sudo
     unzip
     vim

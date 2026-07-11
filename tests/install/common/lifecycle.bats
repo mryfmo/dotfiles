@@ -92,7 +92,8 @@
     grep -q 'MISE_CONFIG_DIR="${mise_config_dir}"' scripts/upgrade-tools.sh
     grep -q 'rm -rf "${isolated_xdg_config_home}"' scripts/upgrade-tools.sh
     grep -q 'run_mise_with_isolated_git_config ls --current --no-header' scripts/upgrade-tools.sh
-    grep -q 'run_mise_with_isolated_git_config "${mise_command}" --yes --before 7d "${mise_tool}"' scripts/upgrade-tools.sh
+    grep -q 'MISE_LOCKED=0 run_mise_with_isolated_git_config upgrade --bump --yes --before 7d "${mise_tool}"' scripts/upgrade-tools.sh
+    grep -q 'MISE_LOCKED=0 npm_config_min_release_age=0 run_mise_with_isolated_git_config upgrade --bump --yes "${versioned_mise_tool}"' scripts/upgrade-tools.sh
     grep -q 'warning: unable to list current mise tools for %s; continuing' scripts/upgrade-tools.sh
     grep -q 'warning: mise %s failed for %s; continuing' scripts/upgrade-tools.sh
 }
@@ -190,7 +191,7 @@
 
 @test "[common] agent asset lifecycle installs ccgate for Claude Code and Codex permission gates" {
     grep -q 'aqua:tak848/ccgate' scripts/update-agent-assets.sh
-    grep -q '"aqua:tak848/ccgate" = "latest"' home/dot_mise/config.toml
+    grep -q '"aqua:tak848/ccgate" = "0.9.5"' home/dot_mise/config.toml
     grep -q 'ccgate --version' scripts/update-agent-assets.sh
     grep -q 'ccgate claude' home/.chezmoitemplates/claude-settings-managed.json
     grep -q 'ccgate codex' home/.chezmoitemplates/codex-config-managed.toml

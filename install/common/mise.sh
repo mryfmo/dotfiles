@@ -58,24 +58,24 @@ function verify_mise_archive() {
 #
 # @description Install the pinned standalone `mise` binary and activate it.
 #
-function install_mise() {
-    local artifact base_url stage tmpdir
-    artifact="$(mise_artifact)"
+function install_mise() (
+    local artifact base_url stage="" tmpdir
+    artifact="$(mise_artifact)" || return
     base_url="https://github.com/jdx/mise/releases/download/${MISE_VERSION}"
-    tmpdir="$(mktemp -d)"
-    mkdir -p "$(dirname "${MISE_INSTALL_PATH}")"
-    stage="$(mktemp "${MISE_INSTALL_PATH}.tmp.XXXXXX")"
-    trap 'rm -rf "${tmpdir}"; rm -f "${stage}"' RETURN
+    tmpdir="$(mktemp -d)" || return
+    trap 'rm -rf "${tmpdir}"; [ -z "${stage}" ] || rm -f "${stage}"' EXIT
+    mkdir -p "$(dirname "${MISE_INSTALL_PATH}")" || return
+    stage="$(mktemp "${MISE_INSTALL_PATH}.tmp.XXXXXX")" || return
 
-    curl -fsSL "${base_url}/${artifact}" -o "${tmpdir}/${artifact}"
-    curl -fsSL "${base_url}/SHASUMS256.txt" -o "${tmpdir}/SHASUMS256.txt"
-    verify_mise_archive "${tmpdir}/${artifact}" "${tmpdir}/SHASUMS256.txt" "${artifact}"
-    tar -xzf "${tmpdir}/${artifact}" -C "${tmpdir}"
-    install -m 0755 "${tmpdir}/mise/bin/mise" "${stage}"
-    mv -f "${stage}" "${MISE_INSTALL_PATH}"
+    curl -fsSL "${base_url}/${artifact}" -o "${tmpdir}/${artifact}" || return
+    curl -fsSL "${base_url}/SHASUMS256.txt" -o "${tmpdir}/SHASUMS256.txt" || return
+    verify_mise_archive "${tmpdir}/${artifact}" "${tmpdir}/SHASUMS256.txt" "${artifact}" || return
+    tar -xzf "${tmpdir}/${artifact}" -C "${tmpdir}" || return
+    install -m 0755 "${tmpdir}/mise/bin/mise" "${stage}" || return
+    mv -f "${stage}" "${MISE_INSTALL_PATH}" || return
 
     eval "$("${MISE_INSTALL_PATH}" activate bash)"
-}
+)
 
 #
 # @description Trust the local `mise.toml` before plugin or tool installation.

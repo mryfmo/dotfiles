@@ -19,18 +19,18 @@ readonly SHELDON_VERSION="0.8.5"
 #
 # @description Build and install the crates.io Sheldon release with locked dependencies.
 #
-function install_sheldon() {
-    local stage tmpdir
-    tmpdir="$(mktemp -d)"
-    mkdir -p "${BIN_DIR}"
-    stage="$(mktemp "${BIN_DIR}/sheldon.tmp.XXXXXX")"
-    trap 'rm -rf "${tmpdir}"; rm -f "${stage}"' RETURN
+function install_sheldon() (
+    local stage="" tmpdir
+    tmpdir="$(mktemp -d)" || return
+    trap 'rm -rf "${tmpdir}"; [ -z "${stage}" ] || rm -f "${stage}"' EXIT
+    mkdir -p "${BIN_DIR}" || return
+    stage="$(mktemp "${BIN_DIR}/sheldon.tmp.XXXXXX")" || return
     CARGO_INSTALL_ROOT="${tmpdir}" cargo install \
         --locked --features vendored --registry crates-io \
-        --version "=${SHELDON_VERSION}" sheldon
-    install -m 0755 "${tmpdir}/bin/sheldon" "${stage}"
+        --version "=${SHELDON_VERSION}" sheldon || return
+    install -m 0755 "${tmpdir}/bin/sheldon" "${stage}" || return
     mv -f "${stage}" "${BIN_DIR}/sheldon"
-}
+)
 
 #
 # @description Remove the installed `sheldon` binary.

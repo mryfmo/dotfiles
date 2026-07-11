@@ -29,29 +29,29 @@ function starship_artifact() {
 #
 # @description Download and install the Starship binary.
 #
-function install_starship() {
-    local actual artifact base_url expected stage tmpdir
-    artifact="$(starship_artifact)"
+function install_starship() (
+    local actual artifact base_url expected stage="" tmpdir
+    artifact="$(starship_artifact)" || return
     base_url="https://github.com/starship/starship/releases/download/${STARSHIP_VERSION}"
-    tmpdir="$(mktemp -d)"
-    mkdir -p "${BIN_DIR}"
-    stage="$(mktemp "${BIN_DIR}/starship.tmp.XXXXXX")"
-    trap 'rm -rf "${tmpdir}"; rm -f "${stage}"' RETURN
-    curl -fsSL "${base_url}/${artifact}" -o "${tmpdir}/${artifact}"
-    expected="$(curl -fsSL "${base_url}/${artifact}.sha256")"
+    tmpdir="$(mktemp -d)" || return
+    trap 'rm -rf "${tmpdir}"; [ -z "${stage}" ] || rm -f "${stage}"' EXIT
+    mkdir -p "${BIN_DIR}" || return
+    stage="$(mktemp "${BIN_DIR}/starship.tmp.XXXXXX")" || return
+    curl -fsSL "${base_url}/${artifact}" -o "${tmpdir}/${artifact}" || return
+    expected="$(curl -fsSL "${base_url}/${artifact}.sha256")" || return
     [ -n "${expected}" ] || {
         printf 'Missing checksum for %s\n' "${artifact}" >&2
         return 1
     }
-    actual="$(sha256sum "${tmpdir}/${artifact}" | awk '{ print $1 }')"
+    actual="$(sha256sum "${tmpdir}/${artifact}" | awk '{ print $1 }')" || return
     [ "${actual}" = "${expected}" ] || {
         printf 'Checksum mismatch for %s\n' "${artifact}" >&2
         return 1
     }
-    tar -xzf "${tmpdir}/${artifact}" -C "${tmpdir}"
-    install -m 0755 "${tmpdir}/starship" "${stage}"
+    tar -xzf "${tmpdir}/${artifact}" -C "${tmpdir}" || return
+    install -m 0755 "${tmpdir}/starship" "${stage}" || return
     mv -f "${stage}" "${BIN_DIR}/starship"
-}
+)
 
 #
 # @description Remove the locally installed Starship binary.

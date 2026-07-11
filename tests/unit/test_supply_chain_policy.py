@@ -12,6 +12,107 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class SupplyChainPolicyTest(unittest.TestCase):
+    def test_installer_cleanup_survives_mock_function_returns(self):
+        cases = {
+            "install/common/mise.sh": r'''
+uname() { [ "$1" = -s ] && printf Linux || printf x86_64; }
+curl() {
+    local output
+    while [ "$#" -gt 0 ]; do
+        if [ "$1" = -o ]; then output="$2"; shift 2; else shift; fi
+    done
+    printf payload > "${output}"
+}
+verify_mise_archive() { :; }
+tar() {
+    local destination
+    while [ "$#" -gt 0 ]; do
+        if [ "$1" = -C ]; then destination="$2"; shift 2; else shift; fi
+    done
+    mkdir -p "${destination}/mise/bin"
+    printf '#!/bin/sh\nprintf ":\\n"\n' > "${destination}/mise/bin/mise"
+    chmod +x "${destination}/mise/bin/mise"
+}
+install() { cp "$3" "$4"; chmod 0755 "$4"; }
+mv() { command mv "$@"; }
+install_mise
+''',
+            "install/common/sheldon.sh": r'''
+cargo() {
+    mkdir -p "${CARGO_INSTALL_ROOT}/bin"
+    printf '#!/bin/sh\n' > "${CARGO_INSTALL_ROOT}/bin/sheldon"
+    chmod +x "${CARGO_INSTALL_ROOT}/bin/sheldon"
+}
+install() { cp "$3" "$4"; chmod 0755 "$4"; }
+mv() { command mv "$@"; }
+install_sheldon
+''',
+            "install/ubuntu/server/starship.sh": r'''
+uname() { printf x86_64; }
+curl() {
+    local output
+    while [ "$#" -gt 0 ]; do
+        if [ "$1" = -o ]; then output="$2"; shift 2; else shift; fi
+    done
+    if [ -n "${output:-}" ]; then printf archive > "${output}"; else printf checksum; fi
+}
+sha256sum() { printf 'checksum  %s\n' "$1"; }
+tar() {
+    local destination
+    while [ "$#" -gt 0 ]; do
+        if [ "$1" = -C ]; then destination="$2"; shift 2; else shift; fi
+    done
+    printf '#!/bin/sh\n' > "${destination}/starship"
+    chmod +x "${destination}/starship"
+}
+install() { cp "$3" "$4"; chmod 0755 "$4"; }
+mv() { command mv "$@"; }
+install_starship
+''',
+        }
+        for relative, body in cases.items():
+            with self.subTest(relative=relative), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                home = root / "home"
+                temp = root / "tmp"
+                home.mkdir()
+                temp.mkdir()
+                result = subprocess.run(
+                    [
+                        "bash",
+                        "-c",
+                        'set -Eeuo pipefail\nsource "$1"\n' + body + '\n[ -z "$(trap -p RETURN)" ]\n',
+                        "_",
+                        str(ROOT / relative),
+                    ],
+                    env={**os.environ, "HOME": str(home), "TMPDIR": str(temp)},
+                    check=False,
+                    text=True,
+                    capture_output=True,
+                )
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertTrue((home / ".local/bin" / Path(relative).stem).is_file())
+                self.assertEqual([], list(temp.iterdir()))
+
+    def test_installer_cleanup_preserves_failure_status(self):
+        cases = {
+            "install/common/mise.sh": ("mise_artifact() { return 42; }", "install_mise"),
+            "install/common/sheldon.sh": ("cargo() { return 42; }", "install_sheldon"),
+            "install/ubuntu/server/starship.sh": ("starship_artifact() { return 42; }", "install_starship"),
+        }
+        for relative, (mock, function) in cases.items():
+            with self.subTest(relative=relative), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                (root / "home").mkdir()
+                (root / "tmp").mkdir()
+                result = subprocess.run(
+                    ["bash", "-c", f'source "$1"\nset +e\n{mock}\n{function}\n[ "$?" -eq 42 ]\n', "_", str(ROOT / relative)],
+                    env={**os.environ, "HOME": str(root / "home"), "TMPDIR": str(root / "tmp")},
+                    check=False,
+                )
+                self.assertEqual(0, result.returncode)
+                self.assertEqual([], list((root / "tmp").iterdir()))
+
     def test_executable_downloads_are_verified_and_not_piped_to_shell(self):
         paths = [ROOT / "setup.sh", *sorted((ROOT / "install").rglob("*.sh"))]
         executable = "\n".join(

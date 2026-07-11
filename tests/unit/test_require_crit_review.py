@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -63,6 +64,19 @@ class ReviewGuardTest(unittest.TestCase):
         path = self.temp_dir / relative_path
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("#!/usr/bin/env bash\n")
+
+    def agent_review(self, data: object, *, outcome: str = "approved", reviewer: str = "codex") -> subprocess.CompletedProcess[str]:
+        self.touch_lifecycle_script()
+        source = ".agents/worklog/review/crit-comments.json"
+        self.write_review_file(source, json.dumps(data))
+        evidence = self.write_review_file(
+            ".agents/worklog/review/agent-crit-data.md",
+            "review_surface: crit-data\n"
+            f"reviewer: {reviewer}\n"
+            f"review_source: {source}\n"
+            f"review_outcome: {outcome}\n",
+        )
+        return self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
 
     def test_no_diff_does_not_require_review(self) -> None:
         result = self.guard()
@@ -142,15 +156,15 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("CRIT_REVIEWED=1", result.stdout)
 
-    def test_native_reviewed_environment_satisfies_required_review(self) -> None:
+    def test_native_reviewed_environment_rejects_human_reviewer(self) -> None:
         self.touch_lifecycle_script()
         evidence = self.write_review_file(
             ".agents/worklog/review/native.md",
             "review_surface: codex-/review\nreviewer: user\nreview_outcome: addressed\n",
         )
         result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("AGENT_REVIEWED=1", result.stdout)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("agent reviewer", result.stdout)
 
     def test_native_reviewed_without_evidence_still_requires_review(self) -> None:
         self.touch_lifecycle_script()
@@ -186,18 +200,54 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertIn("review_surface: crit-data", result.stdout)
 
     def test_agent_reviewer_with_crit_data_satisfies_required_review(self) -> None:
-        self.touch_lifecycle_script()
-        self.write_review_file(".agents/worklog/review/crit-comments.json", "null\n")
-        evidence = self.write_review_file(
-            ".agents/worklog/review/agent-crit-data.md",
-            "review_surface: crit-data\n"
-            "reviewer: codex\n"
-            "review_source: .agents/worklog/review/crit-comments.json\n"
-            "review_outcome: approved\n",
+        result = self.agent_review(
+            [{"id": "c_1", "body": "Approved", "author": "codex", "scope": "review", "resolved": True}]
         )
-        result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("AGENT_REVIEWED=1", result.stdout)
+
+    def test_agent_reviewer_with_resolved_line_comment_satisfies_required_review(self) -> None:
+        result = self.agent_review(
+            [
+                {
+                    "id": "c_1",
+                    "body": "Addressed",
+                    "author": "codex",
+                    "scope": "line",
+                    "path": "scripts/example.py",
+                    "resolved": True,
+                }
+            ],
+            outcome="addressed",
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_agent_reviewer_rejects_empty_or_malformed_crit_data(self) -> None:
+        valid = {"id": "c_1", "body": "Approved", "author": "codex", "scope": "review", "resolved": True}
+        cases = {
+            "null": None,
+            "empty list": [],
+            "dict root": {"comments": [valid]},
+            "malformed member": ["comment"],
+            "unresolved": [{**valid, "resolved": False}],
+            "unrelated scope": [{**valid, "scope": "thread"}],
+            "line without path": [{**valid, "scope": "line"}],
+        }
+        for field in ("id", "body", "author", "scope"):
+            cases[f"missing {field}"] = [{key: value for key, value in valid.items() if key != field}]
+            cases[f"empty {field}"] = [{**valid, field: ""}]
+        for name, data in cases.items():
+            with self.subTest(name=name):
+                result = self.agent_review(data)
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+
+    def test_agent_reviewer_rejects_invalid_review_outcome(self) -> None:
+        result = self.agent_review(
+            [{"id": "c_1", "body": "Approved", "author": "codex", "scope": "review", "resolved": True}],
+            outcome="pending",
+        )
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("review_outcome", result.stdout)
 
     def test_agent_reviewer_with_command_string_source_still_requires_review(self) -> None:
         self.touch_lifecycle_script()
@@ -227,7 +277,7 @@ class ReviewGuardTest(unittest.TestCase):
         )
         result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
-        self.assertIn("unresolved Crit comments", result.stdout)
+        self.assertIn("resolved: true", result.stdout)
 
     def test_agent_reviewer_with_non_review_crit_json_object_still_requires_review(self) -> None:
         self.touch_lifecycle_script()
@@ -241,7 +291,7 @@ class ReviewGuardTest(unittest.TestCase):
         )
         result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
-        self.assertIn("Crit review object", result.stdout)
+        self.assertIn("non-empty Crit comment list", result.stdout)
 
     def test_agent_reviewer_with_external_crit_json_still_requires_review(self) -> None:
         self.touch_lifecycle_script()

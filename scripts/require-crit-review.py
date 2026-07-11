@@ -82,6 +82,8 @@ AGENT_REVIEWERS = {
 }
 CRIT_DATA_REVIEW_SURFACE = "crit-data"
 CRIT_DATA_SOURCE_FIELD = "review_source"
+CRIT_DATA_REQUIRED_FIELDS = ("id", "body", "author", "scope")
+AGENT_REVIEW_OUTCOMES = {"approved", "addressed"}
 
 
 def run_git(args: list[str], root: Path | None = None) -> subprocess.CompletedProcess[str]:
@@ -212,6 +214,8 @@ def evidence_errors(root: Path, marker: str) -> list[str]:
     reviewer = parsed_fields["reviewer"]
     if reviewer and is_agent_reviewer(reviewer):
         errors.extend(agent_review_errors(root, text, parsed_fields, marker))
+    elif reviewer and marker == f"{NATIVE_REVIEWED_ENV}=1":
+        errors.append(f"{NATIVE_REVIEWED_ENV}=1 requires an agent reviewer")
     elif reviewer and any(token in reviewer.lower() for token in SELF_REVIEWER_TOKENS):
         errors.append(f"{EVIDENCE_ENV} reviewer must not be bare agent self-attestation")
     return errors
@@ -228,6 +232,8 @@ def agent_review_errors(root: Path, text: str, parsed_fields: dict[str, str | No
     errors: list[str] = []
     if parsed_fields["review_surface"] != CRIT_DATA_REVIEW_SURFACE:
         errors.append(f"{EVIDENCE_ENV} agent reviewer requires `review_surface: {CRIT_DATA_REVIEW_SURFACE}`")
+    if parsed_fields["review_outcome"] not in AGENT_REVIEW_OUTCOMES:
+        errors.append(f"{EVIDENCE_ENV} agent reviewer requires `review_outcome: approved` or `review_outcome: addressed`")
     source = evidence_field(text, CRIT_DATA_SOURCE_FIELD)
     if not source:
         errors.append(f"{EVIDENCE_ENV} agent reviewer requires non-empty `{CRIT_DATA_SOURCE_FIELD}: ...`")
@@ -254,44 +260,27 @@ def crit_data_errors(root: Path, source: str) -> list[str]:
     except json.JSONDecodeError as error:
         return [f"{CRIT_DATA_SOURCE_FIELD} must be valid JSON: {error}"]
 
-    comments = unresolved_crit_comments(data)
-    if comments is None:
-        return [f"{CRIT_DATA_SOURCE_FIELD} JSON must be null, a comment list, or a Crit review object"]
-    if comments:
-        return [f"{CRIT_DATA_SOURCE_FIELD} contains {len(comments)} unresolved Crit comments"]
-    return []
+    if not isinstance(data, list) or not data:
+        return [f"{CRIT_DATA_SOURCE_FIELD} JSON must be a non-empty Crit comment list"]
 
-
-def unresolved_crit_comments(data: object) -> list[object] | None:
-    if data is None:
-        return []
-    if isinstance(data, list):
-        return [comment for comment in data if comment_is_unresolved(comment)]
-    if isinstance(data, dict):
-        comments: list[object] = []
-        has_comment_container = False
-        if isinstance(data.get("comments"), list):
-            has_comment_container = True
-            comments.extend(data["comments"])
-        if isinstance(data.get("review_comments"), list):
-            has_comment_container = True
-            comments.extend(data["review_comments"])
-        files = data.get("files")
-        if isinstance(files, dict):
-            has_comment_container = True
-            for file_review in files.values():
-                if isinstance(file_review, dict) and isinstance(file_review.get("comments"), list):
-                    comments.extend(file_review["comments"])
-        if not has_comment_container:
-            return None
-        return [comment for comment in comments if comment_is_unresolved(comment)]
-    return None
-
-
-def comment_is_unresolved(comment: object) -> bool:
-    if not isinstance(comment, dict):
-        return True
-    return comment.get("resolved") is not True
+    errors: list[str] = []
+    has_review_record = False
+    for index, comment in enumerate(data):
+        if not isinstance(comment, dict):
+            errors.append(f"{CRIT_DATA_SOURCE_FIELD} comment {index} must be an object")
+            continue
+        for field in CRIT_DATA_REQUIRED_FIELDS:
+            if not isinstance(comment.get(field), str) or not comment[field].strip():
+                errors.append(f"{CRIT_DATA_SOURCE_FIELD} comment {index} requires non-empty string `{field}`")
+        if comment.get("resolved") is not True:
+            errors.append(f"{CRIT_DATA_SOURCE_FIELD} comment {index} must have `resolved: true`")
+        scope = comment.get("scope")
+        has_review_record |= scope == "review" or (
+            scope in {"line", "file"} and isinstance(comment.get("path"), str) and bool(comment["path"].strip())
+        )
+    if not has_review_record:
+        errors.append(f"{CRIT_DATA_SOURCE_FIELD} requires a review-scope or path-bound line/file comment")
+    return errors
 
 
 def evidence_field(text: str, field: str) -> str | None:
@@ -341,7 +330,9 @@ def main() -> None:
     print("- Claude Code: retrieve Crit comments/status data, review it inside the task, then address findings.")
     print("- Use browser Crit review only when the user explicitly asks for Crit web UI or Crit data is unavailable.")
     print("Record a receipt with `review_surface:`, `reviewer:`, and `review_outcome:`.")
-    print("For agent judgment from Crit data, save `crit comments --json` to a repo-local JSON file.")
+    print("For agent judgment, locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` to a repo-local JSON file.")
+    print("Evidence must contain at least one resolved record; for a finding-free review, add and resolve one review-scope approval record.")
+    print("This local evidence is process evidence, not reviewer authentication.")
     print("Then use `review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`, and `review_source: <json path>`.")
     print("After addressing review feedback, rerun with AGENT_REVIEWED=1 or CRIT_REVIEWED=1 plus REVIEW_EVIDENCE=<path>.")
     raise SystemExit(1)

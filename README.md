@@ -253,19 +253,23 @@ It keeps small documentation-only edits from opening unnecessary reviews, but
 requires review before completion for agent lifecycle scripts, hooks, plugins,
 permission gates, shared agent rules or skills, and broad multi-file diffs.
 When review is required, the active agent should retrieve Crit data first,
-for example with `crit comments --json`, save that output to a repo-local JSON
-evidence file under `.agents/worklog/...`, judge the findings inside the
-current task, and address any feedback. Then write a receipt file and set
-`REVIEW_EVIDENCE` to its path. For agent judgment the receipt must include
+locate the review with `crit status --json`, then save
+`crit comments --all --json <review.json>` to a repo-local JSON evidence file
+under `.agents/worklog/...`, judge the findings inside the current task, and
+address any feedback. Evidence must contain at least one resolved record; for
+a finding-free review, add and resolve one review-scope approval record. Then
+write a receipt file and set `REVIEW_EVIDENCE` to its path. For agent judgment
+the receipt must include
 `review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`,
 `review_source:` pointing to that JSON file, and `review_outcome:`. The guard
-parses the JSON and rejects missing files, invalid JSON, external paths, and
-unresolved Crit comments. Set `AGENT_REVIEWED=1` only after the agent has read
-the Crit data, addressed feedback, and recorded evidence. Use Crit's browser
-review only when the user explicitly asks for Crit web UI or Crit data is
-unavailable; then set `CRIT_REVIEWED=1` with the same `REVIEW_EVIDENCE`
-requirement after finishing the Crit round. Set `CRIT_REVIEW=off` only when
-Crit/review is explicitly disabled for the task.
+parses the JSON and rejects missing files, invalid JSON, external paths, empty
+evidence, malformed records, and unresolved Crit comments. This local evidence
+is process evidence, not reviewer authentication. Set `AGENT_REVIEWED=1` only
+after the agent has read the Crit data, addressed feedback, and recorded
+evidence. Use Crit's browser review only when the user explicitly asks for Crit
+web UI or Crit data is unavailable; then set `CRIT_REVIEWED=1` with the same
+`REVIEW_EVIDENCE` requirement after finishing the Crit round. Set
+`CRIT_REVIEW=off` only when Crit/review is explicitly disabled for the task.
 
 Ponytail keeps coding tasks biased toward YAGNI, existing code, standard
 library and native platform features, and the smallest correct diff. The

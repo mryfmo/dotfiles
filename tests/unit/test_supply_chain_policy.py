@@ -195,6 +195,8 @@ install_starship
         for name, request in config["tools"].items():
             version = request if isinstance(request, str) else request["version"]
             self.assertEqual(version, versions.get(name), name)
+        self.assertEqual("0.23.4", config["tools"]["cargo:eza"])
+        self.assertEqual("0.23.4", versions["cargo:eza"])
 
         expected = {
             "platforms.linux-arm64",
@@ -233,15 +235,26 @@ install_starship
         }
         self.assertEqual(expected_gcloud, gcloud["platforms"])
         locked_gcloud = {
-            key.removeprefix("platforms."): {"url": value["url"], "checksum": value["checksum"]}
+            key.removeprefix("platforms."): value
             for key, value in lock["tools"]["http:gcloud"][0].items()
             if key.startswith("platforms.")
         }
         self.assertEqual(expected_gcloud, locked_gcloud)
         self.assertNotIn("channels/rapid", (ROOT / "home/dot_mise/config.toml").read_text())
         self.assertNotIn("channels/rapid", (ROOT / "home/dot_mise/mise.lock").read_text())
+        bootstrap = (ROOT / "install/common/mise.sh").read_text()
+        pinned_mise = re.search(r'readonly MISE_VERSION="(v[^"]+)"', bootstrap)
+        self.assertIsNotNone(pinned_mise)
+        self.assertEqual("v2026.7.5", pinned_mise.group(1))
+        lock_text = (ROOT / "home/dot_mise/mise.lock").read_text()
         for name in ("http:bats", "http:gcloud"):
-            self.assertEqual(name, lock["tools"][name][0]["backend"])
+            entry = lock["tools"][name][0]
+            self.assertEqual(name, entry["backend"])
+            platforms = {key.removeprefix("platforms.") for key in entry if key.startswith("platforms.")}
+            self.assertEqual(set(config["settings"]["lockfile_platforms"]), platforms)
+            for platform in config["settings"]["lockfile_platforms"]:
+                self.assertIn(f'[tools."{name}"."platforms.{platform}"]', lock_text)
+        self.assertEqual({"strip_components": "1"}, lock["tools"]["http:bats"][0]["options"])
 
     def test_mise_lock_url_entries_have_checksums(self):
         with (ROOT / "home/dot_mise/mise.lock").open("rb") as lock_file:

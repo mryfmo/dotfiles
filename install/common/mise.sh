@@ -14,7 +14,7 @@ fi
 
 export MISE_INSTALL_PATH="${HOME}/.local/bin/mise"
 readonly DEFAULT_NPM_MIN_RELEASE_AGE_DAYS=7
-readonly MISE_VERSION="v2026.5.9"
+readonly MISE_VERSION="v2026.7.5"
 
 # @description Print the mise release artifact name for the current platform.
 function mise_artifact() {

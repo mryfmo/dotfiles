@@ -12,14 +12,15 @@ render_role_config() {
 }
 
 create_chezmoi_release_fixture() {
-    local fixture_dir="$1" os="$2" arch="$3" artifact checksum
+    local fixture_dir="$1" os="$2" arch="$3" artifact checksum version
+    version="$(/bin/bash -c 'source ./setup.sh; printf %s "${CHEZMOI_VERSION}"')"
     fixture_dir="${fixture_dir}/release"
     mkdir -p "${fixture_dir}/payload"
-    artifact="chezmoi_${CHEZMOI_VERSION}_${os}_${arch}.tar.gz"
+    artifact="chezmoi_${version}_${os}_${arch}.tar.gz"
     cp "${fixture_dir}/chezmoi" "${fixture_dir}/payload/chezmoi"
     tar -czf "${fixture_dir}/${artifact}" -C "${fixture_dir}/payload" chezmoi
-    checksum="$(sha256_file "${fixture_dir}/${artifact}")"
-    printf '%s  %s\n' "${checksum}" "${artifact}" > "${fixture_dir}/chezmoi_${CHEZMOI_VERSION}_checksums.txt"
+    checksum="$(/bin/bash -c 'source ./setup.sh; sha256_file "$1"' _ "${fixture_dir}/${artifact}")"
+    printf '%s  %s\n' "${checksum}" "${artifact}" > "${fixture_dir}/chezmoi_${version}_checksums.txt"
 }
 
 @test "[common] chezmoi config accepts Linux roles and defaults macOS to client" {
@@ -198,8 +199,6 @@ create_chezmoi_release_fixture() {
 
     tmpdir="$(mktemp -d)"
     mkdir -p "${tmpdir}/bin" "${tmpdir}/home/fakebrew/bin" "${tmpdir}/release"
-    source ./setup.sh
-
     cat > "${tmpdir}/release/chezmoi" <<'EOF'
 #!/usr/bin/env bash
 echo "chezmoi $*" >> "${HOME}/log"
@@ -253,8 +252,9 @@ EOF
     local before_managed_hash
     local before_mode
     local before_sentinel_hash
+    local version
 
-    source ./setup.sh
+    version="$(/bin/bash -c 'source ./setup.sh; printf %s "${CHEZMOI_VERSION}"')"
     for mode in clean target-only drift status-fail diff-fail apply-fail; do
         tmpdir="$(mktemp -d)"
         mkdir -p "${tmpdir}/bin" "${tmpdir}/home" "${tmpdir}/release"
@@ -326,8 +326,8 @@ EOF
             CHEZMOI_FIXTURE_DIR="${tmpdir}/release" \
             /bin/bash -c "$(cat setup.sh)"
 
-        grep -qx "wget https://github.com/twpayne/chezmoi/releases/download/v${CHEZMOI_VERSION}/chezmoi_${CHEZMOI_VERSION}_linux_amd64.tar.gz" "${tmpdir}/home/fetch.log"
-        grep -qx "wget https://github.com/twpayne/chezmoi/releases/download/v${CHEZMOI_VERSION}/chezmoi_${CHEZMOI_VERSION}_checksums.txt" "${tmpdir}/home/fetch.log"
+        grep -qx "wget https://github.com/twpayne/chezmoi/releases/download/v${version}/chezmoi_${version}_linux_amd64.tar.gz" "${tmpdir}/home/fetch.log"
+        grep -qx "wget https://github.com/twpayne/chezmoi/releases/download/v${version}/chezmoi_${version}_checksums.txt" "${tmpdir}/home/fetch.log"
         grep -q '^chezmoi init ' "${tmpdir}/home/log"
         grep -q '^chezmoi update ' "${tmpdir}/home/log"
         grep -q '^chezmoi status --path-style absolute --exclude=scripts$' "${tmpdir}/home/log"
@@ -361,6 +361,7 @@ EOF
 }
 
 @test "[common] setup.sh resolves Homebrew fallback prefixes behaviorally" {
+    (
     local tmpdir
     local prefix
 
@@ -393,6 +394,7 @@ EOF
 
     # shellcheck source=/dev/null
     source ./setup.sh
+    sha256_file() { printf '%s\n' "${HOMEBREW_INSTALL_SHA256}"; }
 
     for prefix in "${tmpdir}/arm" "${tmpdir}/intel"; do
         HOMEBREW_TEST_PREFIX=""
@@ -402,4 +404,5 @@ EOF
         initialize_os_macos
         [ "${HOMEBREW_TEST_PREFIX}" = "${prefix}" ]
     done
+    )
 }

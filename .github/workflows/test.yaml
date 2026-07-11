@@ -234,6 +234,7 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.should_nix == 'true' }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-14]
     runs-on: ${{ matrix.os }}

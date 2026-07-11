@@ -376,6 +376,7 @@ install_starship
         self.assertIn("nix:", workflow)
         self.assertIn("macos-14", workflow)
         self.assertIn("ubuntu-latest", workflow)
+        self.assertIn("fail-fast: false", workflow)
         self.assertNotIn("workflow_dispatch:", workflow)
         self.assertEqual(4, workflow.count("--no-update-lock-file"))
         if actual_refs == expected_refs:

@@ -31,10 +31,10 @@ function install_starship() {
 }
 
 #
-# @description Remove the locally installed Starship binary directory.
+# @description Remove the locally installed Starship binary.
 #
 function uninstall_starship() {
-    rm -rf "${BIN_DIR}"
+    rm -f -- "${BIN_DIR}/starship"
 }
 
 #

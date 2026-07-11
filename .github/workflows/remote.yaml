@@ -40,6 +40,8 @@ jobs:
           persist-credentials: false
 
       - name: Bootstrap the checked-out public source
+        env:
+          CHEZMOI_GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
@@ -113,6 +115,7 @@ jobs:
       - name: Bootstrap with private restoration
         if: ${{ github.actor != 'dependabot[bot]' && env.HAS_EMAIL_ADDRESS == 'true' && env.HAS_PRIVATE_DEPLOY_KEY == 'true' }}
         env:
+          CHEZMOI_GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
         shell: bash
         run: |

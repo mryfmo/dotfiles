@@ -245,30 +245,9 @@ jobs:
       - name: Install Nix
         uses: cachix/install-nix-action@a49548c11d9846ad46ecc0115273879b045f001c # v31
 
-      - name: Refresh Nix lock for consistency check
-        id: lock
-        run: |
-          nix flake lock
-          if [ -n "$(git status --short -- flake.lock)" ]; then
-            echo "updated=true" >> "${GITHUB_OUTPUT}"
-          fi
-
-      - name: Upload generated lock
-        if: ${{ steps.lock.outputs.updated == 'true' }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: flake-lock-${{ matrix.os }}
-          path: flake.lock
-
       - name: Evaluate flake outputs
         run: |
           nix flake check --no-build --no-update-lock-file
           nix eval --no-update-lock-file .#homeConfigurations.mryfmo-linux.activationPackage.drvPath
           nix eval --no-update-lock-file .#homeConfigurations.mryfmo-darwin.activationPackage.drvPath
           nix eval --no-update-lock-file .#darwinConfigurations.mryfmo-mac.system.drvPath
-
-      - name: Require committed Nix lock
-        if: ${{ steps.lock.outputs.updated == 'true' }}
-        run: |
-          echo "flake.lock was updated by Nix and uploaded for review; commit it before CI can pass." >&2
-          exit 1

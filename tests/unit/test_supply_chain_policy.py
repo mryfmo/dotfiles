@@ -371,6 +371,7 @@ install_starship
         actual_refs = {
             name: lock["nodes"][name]["original"]["ref"] for name in expected_refs
         }
+        self.assertEqual(expected_refs, actual_refs)
         workflow = (ROOT / ".github/workflows/test.yaml").read_text()
         self.assertIn("should_nix:", workflow)
         self.assertIn("nix:", workflow)
@@ -379,23 +380,9 @@ install_starship
         self.assertIn("fail-fast: false", workflow)
         self.assertNotIn("workflow_dispatch:", workflow)
         self.assertEqual(4, workflow.count("--no-update-lock-file"))
-        if actual_refs == expected_refs:
-            self.assertNotIn("nix flake lock", workflow)
-            self.assertNotIn("Upload generated lock", workflow)
-            self.assertNotIn("Require committed Nix lock", workflow)
-        else:
-            self.assertEqual(
-                {
-                    "home-manager": "release-25.05",
-                    "nix-darwin": "nix-darwin-25.05",
-                    "nixpkgs": "nixos-25.05",
-                },
-                actual_refs,
-            )
-            self.assertIn("nix flake lock", workflow)
-            self.assertIn("git status --short -- flake.lock", workflow)
-            self.assertIn("Upload generated lock", workflow)
-            self.assertIn("Require committed Nix lock", workflow)
+        self.assertNotIn("Refresh Nix lock", workflow)
+        self.assertNotIn("Upload generated lock", workflow)
+        self.assertNotIn("Require committed Nix lock", workflow)
 
     def test_dependabot_owns_github_action_updates(self):
         self.assertFalse((ROOT / ".github/dependabot.yaml").exists())

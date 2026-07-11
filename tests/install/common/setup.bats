@@ -303,7 +303,7 @@ EOF
         chmod +x "${tmpdir}/release/chezmoi"
         create_chezmoi_release_fixture "${tmpdir}" linux amd64
 
-        for command_path in sh find rm mkdir chmod cat cp tar install mv mktemp awk shasum; do
+        for command_path in sh find rm mkdir chmod cat cp tar gzip install mv mktemp awk shasum; do
             ln -s "$(command -v "${command_path}")" "${tmpdir}/bin/${command_path}"
         done
 

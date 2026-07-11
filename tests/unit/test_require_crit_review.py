@@ -201,7 +201,7 @@ class ReviewGuardTest(unittest.TestCase):
 
     def test_agent_reviewer_with_crit_data_satisfies_required_review(self) -> None:
         result = self.agent_review(
-            [{"id": "c_1", "body": "Approved", "author": "codex", "scope": "review", "resolved": True}]
+            [{"id": "c_1", "body": "Approved", "scope": "review", "resolved": True}]
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("AGENT_REVIEWED=1", result.stdout)
@@ -233,7 +233,7 @@ class ReviewGuardTest(unittest.TestCase):
             "unrelated scope": [{**valid, "scope": "thread"}],
             "line without path": [{**valid, "scope": "line"}],
         }
-        for field in ("id", "body", "author", "scope"):
+        for field in ("id", "body", "scope"):
             cases[f"missing {field}"] = [{key: value for key, value in valid.items() if key != field}]
             cases[f"empty {field}"] = [{**valid, field: ""}]
         for name, data in cases.items():

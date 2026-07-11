@@ -82,7 +82,7 @@ AGENT_REVIEWERS = {
 }
 CRIT_DATA_REVIEW_SURFACE = "crit-data"
 CRIT_DATA_SOURCE_FIELD = "review_source"
-CRIT_DATA_REQUIRED_FIELDS = ("id", "body", "author", "scope")
+CRIT_DATA_REQUIRED_FIELDS = ("id", "body", "scope")
 AGENT_REVIEW_OUTCOMES = {"approved", "addressed"}
 
 

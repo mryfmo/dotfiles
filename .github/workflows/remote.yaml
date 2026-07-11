@@ -9,65 +9,117 @@ on:
   schedule:
     - cron: "0 0 * * 5"
 
+permissions:
+  contents: read
+
 jobs:
-  build:
+  public-bootstrap:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-14]
-        system: [client, server]
-        exclude:
-          - os: macos-14
+        include:
+          - os: ubuntu-latest
+            system: client
+          - os: ubuntu-latest
             system: server
+          - os: macos-14
+            system: client
 
     runs-on: ${{ matrix.os }}
     env:
-      # DOTFILES_DEBUG: 1
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      OS: ${{ matrix.os }}
+      CI: true
       SYSTEM: ${{ matrix.system }}
-      HAS_EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS != '' }}
-      HAS_PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY: ${{ secrets.PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY != '' }}
 
     steps:
-      - name: Validate public setup snippet endpoints
+      - name: Configure isolated HOME
+        run: |
+          mkdir -p "${RUNNER_TEMP}/dotfiles-home"
+          printf 'HOME=%s/dotfiles-home\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
+
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Bootstrap the checked-out public source
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
           set -euo pipefail
-          curl -fsLSI https://raw.githubusercontent.com/mryfmo/dotfiles/main/setup.sh > /dev/null
-          if [ "${OS}" == "ubuntu-latest" ]; then
-            wget --spider -q https://raw.githubusercontent.com/mryfmo/dotfiles/main/setup.sh
-          fi
+          git checkout -b bootstrap-under-test
+          mkdir -p "${HOME}/.local/bin" "${HOME}/.ssh"
+          printf 'local-bin-sentinel\n' > "${HOME}/.local/bin/sentinel"
+          printf 'ssh-sentinel\n' > "${HOME}/.ssh/sentinel"
+          printf 'home-sentinel\n' > "${HOME}/unmanaged-sentinel"
+          chmod 640 "${HOME}/.local/bin/sentinel"
+          chmod 600 "${HOME}/.ssh/sentinel"
+          chmod 644 "${HOME}/unmanaged-sentinel"
 
-      - name: Set up SSH agent and add the private deploy key for the private dotfiles repo
-        if: ${{ github.actor != 'dependabot[bot]' && env.HAS_PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY == 'true' }}
+          checksum() { cksum "$@"; }
+          mode() { stat -c '%a' "$@" 2> /dev/null || stat -f '%Lp' "$@"; }
+          before_checksum="$(checksum "${HOME}/.local/bin/sentinel" "${HOME}/.ssh/sentinel" "${HOME}/unmanaged-sentinel")"
+          before_mode="$(mode "${HOME}/.local/bin/sentinel" "${HOME}/.ssh/sentinel" "${HOME}/unmanaged-sentinel")"
+
+          printf 'ci@example.invalid\n%s\n' "${SYSTEM}" | \
+            DOTFILES_REPO_URL="${GITHUB_WORKSPACE}" BRANCH_NAME=bootstrap-under-test \
+            bash "${GITHUB_WORKSPACE}/setup.sh"
+
+          test "$(git -C "${HOME}/.local/share/chezmoi" rev-parse HEAD)" = "${GITHUB_SHA}"
+          test "$(checksum "${HOME}/.local/bin/sentinel" "${HOME}/.ssh/sentinel" "${HOME}/unmanaged-sentinel")" = "${before_checksum}"
+          test "$(mode "${HOME}/.local/bin/sentinel" "${HOME}/.ssh/sentinel" "${HOME}/unmanaged-sentinel")" = "${before_mode}"
+          if [ "${SYSTEM}" = client ]; then
+            test -e "${HOME}/.zshrc"
+          else
+            test -e "${HOME}/.bashrc"
+          fi
+          printf 'Validated checkout SHA %s\n' "${GITHUB_SHA}"
+
+  private-bootstrap:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            system: client
+          - os: ubuntu-latest
+            system: server
+          - os: macos-14
+            system: client
+
+    runs-on: ${{ matrix.os }}
+    env:
+      CI: true
+      SYSTEM: ${{ matrix.system }}
+      HAS_EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS != '' }}
+      HAS_PRIVATE_DEPLOY_KEY: ${{ secrets.PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY != '' }}
+
+    steps:
+      - name: Configure isolated HOME
+        run: |
+          mkdir -p "${RUNNER_TEMP}/dotfiles-home"
+          printf 'HOME=%s/dotfiles-home\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
+
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Explain skipped private bootstrap
+        if: ${{ github.actor == 'dependabot[bot]' || env.HAS_EMAIL_ADDRESS != 'true' || env.HAS_PRIVATE_DEPLOY_KEY != 'true' }}
+        run: echo "Private bootstrap is optional and secrets are unavailable in this context."
+
+      - name: Set up the private deploy key
+        if: ${{ github.actor != 'dependabot[bot]' && env.HAS_EMAIL_ADDRESS == 'true' && env.HAS_PRIVATE_DEPLOY_KEY == 'true' }}
         uses: webfactory/ssh-agent@v0.10.0
         with:
           ssh-private-key: ${{ secrets.PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY }}
 
-      - name: Explain skipped full snippet install
-        if: ${{ env.HAS_EMAIL_ADDRESS != 'true' || env.HAS_PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY != 'true' || github.actor == 'dependabot[bot]' }}
-        run: |
-          echo "Skipping full snippet install because private install secrets are not available in this context."
-          echo "The public setup snippet URL was still validated above."
-
-      - name: Setup dotfiles with snippet
-        if: ${{ github.actor != 'dependabot[bot]' && env.HAS_EMAIL_ADDRESS == 'true' && env.HAS_PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY == 'true' }}
+      - name: Bootstrap with private restoration
+        if: ${{ github.actor != 'dependabot[bot]' && env.HAS_EMAIL_ADDRESS == 'true' && env.HAS_PRIVATE_DEPLOY_KEY == 'true' }}
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
-          OS: ${{ matrix.os }}
-          SYSTEM: ${{ matrix.system }}
+        shell: bash
         run: |
-          if [ "${OS}" == "macos-14" ]; then
-            printf "${EMAIL_ADDRESS}\n" | bash -c "$(curl -fsLS https://raw.githubusercontent.com/mryfmo/dotfiles/main/setup.sh)"
-            #              │
-            #              └─ Simulate inputting an email address into the chezmoi's config.
-
-          elif [ "${OS}" == "ubuntu-latest" ]; then
-            printf "${EMAIL_ADDRESS}\n${SYSTEM}\n" | bash -c "$(wget -qO - https://raw.githubusercontent.com/mryfmo/dotfiles/main/setup.sh)"
-            #              │               │
-            #              │               └─ Simulate inputting an system arcitecture into the config.
-            #              └─ Simulate inputting an email address into the config.
-
-          else
-            echo "${OS} is not supported" >&2
-            exit 1
-          fi
+          set -euo pipefail
+          git checkout -b bootstrap-under-test
+          printf '%s\n%s\n' "${EMAIL_ADDRESS}" "${SYSTEM}" | \
+            DOTFILES_REPO_URL="${GITHUB_WORKSPACE}" BRANCH_NAME=bootstrap-under-test \
+            bash "${GITHUB_WORKSPACE}/setup.sh"

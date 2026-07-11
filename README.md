@@ -288,6 +288,25 @@ managed source subtree such as `~/.local/share/chezmoi/home`, not at the
 directory that contains `Makefile`. Use the Git repository root from that path
 before running `make` commands.
 
+Before applying files, `setup.sh` runs `chezmoi status` and `chezmoi diff`. A
+clean target proceeds to `chezmoi apply`; local changes since chezmoi's last
+write stop the bootstrap without changing destination targets. Initialization
+and update may still change chezmoi's source directory or config before this
+check. Review and resolve that state, then rerun setup:
+
+```shell
+chezmoi status --path-style absolute --exclude=scripts
+chezmoi diff
+# Keep the local version by adding it, or edit/remove it to accept the source state.
+chezmoi add ~/.path/to/changed-file
+bash -c "$(curl -fsLS https://raw.githubusercontent.com/mryfmo/dotfiles/main/setup.sh)"
+```
+
+After apply, use `chezmoi status` again to verify the target state. An apply
+failure returns nonzero but may leave target operations that chezmoi completed
+before the failure; inspect `chezmoi status` and `chezmoi diff`, resolve the
+error, and rerun setup. Setup does not provide rollback.
+
 If you are already inside the cloned repository root, `make setup` remains available as a local wrapper around `./setup.sh`.
 
 `make apply` remains as a compatibility alias for `make update` because `apply` is the native chezmoi verb, while `update` is the public dotfiles workflow command.

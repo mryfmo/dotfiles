@@ -36,18 +36,15 @@ readonly SCRIPT_PATH="./install/ubuntu/common/dependencies.sh"
     [[ "${output}" == *"sudo --preserve-env=http_proxy,https_proxy,no_proxy apt-get install -y busybox"* ]]
 }
 
-@test "[ubuntu-common] install_apt_packages skips install when all commands exist" {
+@test "[ubuntu-common] install_apt_packages skips apt when all packages are installed" {
     local calls_path="${BATS_TEST_TMPDIR}/install_calls.txt"
     : > "${calls_path}"
 
     run env CALLS_PATH="${calls_path}" bash -c '
         source "'"${SCRIPT_PATH}"'"
 
-        command() {
-            if [ "$1" = "-v" ]; then
-                return 0
-            fi
-            builtin command "$@"
+        dpkg-query() {
+            printf "install ok installed\n"
         }
 
         run_apt_get() {
@@ -61,33 +58,61 @@ readonly SCRIPT_PATH="./install/ubuntu/common/dependencies.sh"
     [ ! -s "${calls_path}" ]
 }
 
-@test "[ubuntu-common] install_apt_packages installs when commands are missing" {
-    local args_path="${BATS_TEST_TMPDIR}/install_args.txt"
+@test "[ubuntu-common] install_apt_packages distinguishes absent and partial package states" {
+    local calls_path="${BATS_TEST_TMPDIR}/install_calls.txt"
 
-    run env ARGS_PATH="${args_path}" DOTFILES_DEBUG= bash -c '
+    run env CALLS_PATH="${calls_path}" DOTFILES_DEBUG= bash -c '
         source "'"${SCRIPT_PATH}"'"
 
-        command() {
-            if [ "$1" = "-v" ] && [ "$2" = "sudo" ]; then
-                return 0
-            fi
-            if [ "$1" = "-v" ]; then
-                return 1
-            fi
-            builtin command "$@"
+        dpkg-query() {
+            [ "$1" = "-W" ]
+            [ "$2" = "-f=\${Status}" ]
+            case "$3" in
+                curl)
+                    return 1
+                    ;;
+                git)
+                    printf "deinstall ok config-files\n"
+                    ;;
+                *)
+                    printf "install ok installed\n"
+                    ;;
+            esac
         }
 
         run_apt_get() {
-            echo "$*" > "${ARGS_PATH}"
+            echo "$*" >> "${CALLS_PATH}"
         }
 
         install_apt_packages
     '
     [ "${status}" -eq 0 ]
 
-    run cat "${args_path}"
+    run cat "${calls_path}"
     [ "${status}" -eq 0 ]
-    [[ "${output}" == install\ -y* ]]
+    [ "${lines[0]}" = "update" ]
+    [ "${lines[1]}" = "install -y curl git" ]
+}
+
+@test "[ubuntu-common] install_apt_packages propagates fatal dpkg-query errors" {
+    local calls_path="${BATS_TEST_TMPDIR}/fatal_query_calls.txt"
+
+    run env CALLS_PATH="${calls_path}" bash -c '
+        source "'"${SCRIPT_PATH}"'"
+
+        dpkg-query() {
+            return 2
+        }
+
+        run_apt_get() {
+            echo "$*" >> "${CALLS_PATH}"
+        }
+
+        install_apt_packages
+    '
+
+    [ "${status}" -eq 2 ]
+    [ ! -e "${calls_path}" ]
 }
 
 @test "[ubuntu-common] uninstall_apt_packages excludes sudo and git" {
@@ -143,14 +168,11 @@ readonly SCRIPT_PATH="./install/ubuntu/common/dependencies.sh"
     [ "${status}" -eq 0 ]
 }
 
-@test "[ubuntu-common] install_apt_packages returns early in current shell when all commands exist" {
+@test "[ubuntu-common] install_apt_packages returns early in current shell when all packages are installed" {
     source "${SCRIPT_PATH}"
 
-    command() {
-        if [ "$1" = "-v" ]; then
-            return 0
-        fi
-        builtin command "$@"
+    dpkg-query() {
+        printf "install ok installed\n"
     }
 
     CALLS_PATH="${BATS_TEST_TMPDIR}/install_no_missing_calls.txt"

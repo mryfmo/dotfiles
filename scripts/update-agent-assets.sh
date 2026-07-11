@@ -262,7 +262,7 @@ function ensure_ccgate_cli() {
     fi
 
     printf 'Skipping ccgate hook runtime verification: ccgate command not found.\n'
-    return 1
+    return 0
 }
 
 #

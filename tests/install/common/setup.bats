@@ -1,5 +1,50 @@
 #!/usr/bin/env bats
 
+render_role_config() {
+    local data="$1"
+    shift
+
+    {
+        printf '{{- define "config" -}}\n'
+        cat home/.chezmoi.yaml.tmpl
+        printf '{{- end -}}{{ template "config" %s }}\n' "${data}"
+    } | CI=true chezmoi execute-template "$@"
+}
+
+@test "[common] chezmoi config accepts Linux roles and defaults macOS to client" {
+    local context='"chezmoi" (dict "homeDir" "/tmp/home" "workingTree" "/tmp/source"'
+
+    run render_role_config "(dict \"email\" \"ci@example.invalid\" \"system\" \"client\" ${context} \"os\" \"linux\"))" --init
+    [ "${status}" -eq 0 ]
+    grep -qx '    system: "client"' <<< "${output}"
+
+    run render_role_config "(dict \"email\" \"ci@example.invalid\" \"system\" \"server\" ${context} \"os\" \"linux\"))" --init
+    [ "${status}" -eq 0 ]
+    grep -qx '    system: "server"' <<< "${output}"
+
+    run render_role_config "(dict \"email\" \"ci@example.invalid\" ${context} \"os\" \"darwin\"))" --init
+    [ "${status}" -eq 0 ]
+    grep -qx '    system: "client"' <<< "${output}"
+}
+
+@test "[common] chezmoi config rejects invalid roles before rendering YAML" {
+    local context='"chezmoi" (dict "homeDir" "/tmp/home" "workingTree" "/tmp/source" "os" "linux")'
+    local role
+
+    run render_role_config "(dict \"email\" \"ci@example.invalid\" \"system\" \"persisted-invalid\" ${context})" --init
+    [ "${status}" -ne 0 ]
+    [[ "${output}" == *"client or server"* ]]
+    [[ "${output}" != *"sourceDir:"* ]]
+
+    for role in typo '' ' '; do
+        run render_role_config "(dict \"email\" \"ci@example.invalid\" ${context})" \
+            --init --promptString "System (client or server)=${role}"
+        [ "${status}" -ne 0 ]
+        [[ "${output}" == *"client or server"* ]]
+        [[ "${output}" != *"sourceDir:"* ]]
+    done
+}
+
 @test "[common] setup.sh keeps macOS sudo alive without Keychain password storage" {
     run grep -Eq "add-generic-password|find-generic-password|delete-generic-password|SUDO_ASKPASS|security -i" setup.sh
     [ "$status" -eq 1 ]
@@ -45,8 +90,74 @@
     [ "$status" -eq 1 ]
 }
 
-@test "[common] setup.sh forces apply so reruns do not stop on modified targets" {
-    grep -q '"${chezmoi_cmd}" apply --force' setup.sh
+@test "[common] setup.sh fetches with curl first, falls back to wget, and fails without either" {
+    local fetchers
+    local expected
+    local url="https://example.invalid/bootstrap"
+
+    for fetchers in curl wget curl,wget; do
+        expected="${fetchers%%,*}"
+        run env FETCHERS="${fetchers}" URL_LOG="${BATS_TEST_TMPDIR}/${expected}.log" bash -c '
+            source ./setup.sh
+            command() {
+                if [ "$1" = "-v" ] && { [ "$2" = "curl" ] || [ "$2" = "wget" ]; }; then
+                    [[ ",${FETCHERS}," == *",$2,"* ]]
+                    return
+                fi
+                builtin command "$@"
+            }
+            curl() {
+                printf "curl %s\n" "${*: -1}" >> "${URL_LOG}"
+                printf "body\n"
+            }
+            wget() {
+                printf "wget %s\n" "${*: -1}" >> "${URL_LOG}"
+                printf "body\n"
+            }
+            fetch_url "'"${url}"'"
+        '
+
+        [ "${status}" -eq 0 ]
+        [ "${output}" = "body" ]
+        grep -qx "${expected} ${url}" "${BATS_TEST_TMPDIR}/${expected}.log"
+    done
+
+    run env FETCHERS= bash -c '
+        source ./setup.sh
+        command() {
+            if [ "$1" = "-v" ] && { [ "$2" = "curl" ] || [ "$2" = "wget" ]; }; then
+                return 1
+            fi
+            builtin command "$@"
+        }
+        fetch_url "'"${url}"'"
+    '
+
+    [ "${status}" -ne 0 ]
+    [ "${output}" = "Neither curl nor wget is available; cannot download ${url}." ]
+}
+
+@test "[common] setup.sh does not execute partial installer output from a failed fetch" {
+    local marker="${BATS_TEST_TMPDIR}/partial-installer-ran"
+
+    run env MARKER="${marker}" HOME="${BATS_TEST_TMPDIR}" bash -c '
+        source ./setup.sh
+        fetch_url() {
+            printf '\''printf ran > "%s"\n'\'' "${MARKER}"
+            return 23
+        }
+        run_chezmoi
+    '
+
+    [ "${status}" -eq 23 ]
+    [ ! -e "${marker}" ]
+}
+
+@test "[common] setup.sh previews and applies without force" {
+    grep -q '"${chezmoi_cmd}" status --path-style absolute --exclude=scripts' setup.sh
+    grep -q '"${chezmoi_cmd}" diff' setup.sh
+    grep -q '"${chezmoi_cmd}" apply ${no_tty_option}' setup.sh
+    ! grep -q '"${chezmoi_cmd}" apply --force' setup.sh
 }
 
 @test "[common] setup.sh lets chezmoi choose sourceDir instead of cloning into cwd" {
@@ -119,11 +230,127 @@ EOF
     chmod +x "${tmpdir}/bin/curl"
 
     run env HOME="${tmpdir}/home" PATH="${tmpdir}/bin:/usr/bin:/bin" CI=true \
+        RUNNER_TEMP="${tmpdir}" \
         HOMEBREW_PREFIX_CANDIDATES="${tmpdir}/home/fakebrew" \
         bash -c "$(cat setup.sh)"
 
     [ "$status" -eq 0 ]
     grep -q 'chezmoi apply' "${tmpdir}/home/log"
+}
+
+@test "[common] wget-only Linux bootstrap previews safely and propagates failures" {
+    local mode
+    local tmpdir
+    local before_managed_hash
+    local before_mode
+    local before_sentinel_hash
+
+    for mode in clean target-only drift status-fail diff-fail apply-fail; do
+        tmpdir="$(mktemp -d)"
+        mkdir -p "${tmpdir}/bin" "${tmpdir}/home"
+        printf 'managed-original\n' > "${tmpdir}/home/managed"
+        printf 'sentinel-original\n' > "${tmpdir}/home/sentinel"
+        chmod 640 "${tmpdir}/home/managed" "${tmpdir}/home/sentinel"
+        before_managed_hash="$(cksum "${tmpdir}/home/managed")"
+        before_sentinel_hash="$(cksum "${tmpdir}/home/sentinel")"
+        before_mode="$(stat -c '%a' "${tmpdir}/home/managed" "${tmpdir}/home/sentinel" 2> /dev/null || stat -f '%Lp' "${tmpdir}/home/managed" "${tmpdir}/home/sentinel")"
+
+        for command_path in sh find rm mkdir chmod cat; do
+            ln -s "$(command -v "${command_path}")" "${tmpdir}/bin/${command_path}"
+        done
+
+        cat > "${tmpdir}/bin/uname" <<'EOF'
+#!/bin/bash
+printf 'Linux\n'
+EOF
+        cat > "${tmpdir}/bin/wget" <<'EOF'
+#!/bin/bash
+printf 'wget %s\n' "${*: -1}" >> "${HOME}/fetch.log"
+cat <<'INSTALLER'
+#!/bin/sh
+while [ "$#" -gt 0 ]; do
+    if [ "$1" = "-b" ]; then
+        shift
+        bin_dir="$1"
+    fi
+    shift
+done
+mkdir -p "${bin_dir}"
+cat > "${bin_dir}/chezmoi" <<'CHEZMOI'
+#!/bin/bash
+printf 'chezmoi %s\n' "$*" >> "${HOME}/log"
+case "${1:-}" in
+    init)
+        mkdir -p "${HOME}/.config/chezmoi"
+        printf 'init changed config\n' > "${HOME}/.config/chezmoi/chezmoi.yaml"
+        ;;
+    update)
+        mkdir -p "${HOME}/source"
+        printf 'update changed source\n' > "${HOME}/source/update-state"
+        ;;
+    source-path)
+        mkdir -p "${HOME}/source"
+        printf '%s\n' "${HOME}/source"
+        ;;
+    status)
+        if [ "${CHEZMOI_TEST_MODE}" = "status-fail" ]; then
+            exit 1
+        elif [ "${CHEZMOI_TEST_MODE}" = "drift" ]; then
+            printf 'M  %s/managed\n' "${HOME}"
+        elif [ "${CHEZMOI_TEST_MODE}" = "target-only" ]; then
+            printf ' M %s/managed\n' "${HOME}"
+        fi
+        ;;
+    diff)
+        printf 'preview\n'
+        [ "${CHEZMOI_TEST_MODE}" != "diff-fail" ]
+        ;;
+    apply)
+        printf 'managed-applied\n' > "${HOME}/managed"
+        [ "${CHEZMOI_TEST_MODE}" != "apply-fail" ] || exit 1
+        ;;
+esac
+CHEZMOI
+chmod +x "${bin_dir}/chezmoi"
+INSTALLER
+EOF
+        chmod +x "${tmpdir}/bin/uname" "${tmpdir}/bin/wget"
+
+        run env HOME="${tmpdir}/home" PATH="${tmpdir}/bin" CI=true \
+            RUNNER_TEMP="${tmpdir}" CHEZMOI_TEST_MODE="${mode}" \
+            /bin/bash -c "$(cat setup.sh)"
+
+        grep -qx 'wget https://get.chezmoi.io' "${tmpdir}/home/fetch.log"
+        grep -q '^chezmoi init ' "${tmpdir}/home/log"
+        grep -q '^chezmoi update ' "${tmpdir}/home/log"
+        grep -q '^chezmoi status --path-style absolute --exclude=scripts$' "${tmpdir}/home/log"
+        grep -qx 'init changed config' "${tmpdir}/home/.config/chezmoi/chezmoi.yaml"
+        grep -qx 'update changed source' "${tmpdir}/home/source/update-state"
+
+        if [ "${mode}" = "clean" ] || [ "${mode}" = "target-only" ]; then
+            [ "${status}" -eq 0 ]
+            grep -q '^chezmoi diff$' "${tmpdir}/home/log"
+            grep -q '^chezmoi apply --no-tty$' "${tmpdir}/home/log"
+        else
+            [ "${status}" -ne 0 ]
+        fi
+
+        if [ "${mode}" = "drift" ]; then
+            grep -q '^chezmoi diff$' "${tmpdir}/home/log"
+        fi
+
+        if [ "${mode}" = "drift" ] || [ "${mode}" = "status-fail" ] || [ "${mode}" = "diff-fail" ]; then
+            ! grep -q '^chezmoi apply ' "${tmpdir}/home/log"
+            [ "$(cksum "${tmpdir}/home/managed")" = "${before_managed_hash}" ]
+            [ "$(stat -c '%a' "${tmpdir}/home/managed" "${tmpdir}/home/sentinel" 2> /dev/null || stat -f '%Lp' "${tmpdir}/home/managed" "${tmpdir}/home/sentinel")" = "${before_mode}" ]
+        fi
+
+        [ "$(cksum "${tmpdir}/home/sentinel")" = "${before_sentinel_hash}" ]
+
+        if [ "${mode}" = "apply-fail" ]; then
+            grep -qx 'managed-applied' "${tmpdir}/home/managed"
+        fi
+    done
 }
 
 @test "[common] setup.sh resolves Homebrew fallback prefixes behaviorally" {

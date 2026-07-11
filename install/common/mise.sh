@@ -56,9 +56,9 @@ function verify_mise_archive() {
 }
 
 #
-# @description Install the pinned standalone `mise` binary and activate it.
+# @description Install the pinned standalone `mise` binary.
 #
-function install_mise() (
+function _install_mise_binary() (
     local artifact base_url stage="" tmpdir
     artifact="$(mise_artifact)" || return
     base_url="https://github.com/jdx/mise/releases/download/${MISE_VERSION}"
@@ -72,10 +72,18 @@ function install_mise() (
     verify_mise_archive "${tmpdir}/${artifact}" "${tmpdir}/SHASUMS256.txt" "${artifact}" || return
     tar -xzf "${tmpdir}/${artifact}" -C "${tmpdir}" || return
     install -m 0755 "${tmpdir}/mise/bin/mise" "${stage}" || return
-    mv -f "${stage}" "${MISE_INSTALL_PATH}" || return
-
-    eval "$("${MISE_INSTALL_PATH}" activate bash)"
+    mv -f "${stage}" "${MISE_INSTALL_PATH}"
 )
+
+#
+# @description Install the pinned standalone `mise` binary and activate it for the caller.
+#
+function install_mise() {
+    local activation
+    _install_mise_binary || return
+    activation="$("${MISE_INSTALL_PATH}" activate bash)" || return
+    eval "${activation}"
+}
 
 #
 # @description Trust the local `mise.toml` before plugin or tool installation.
@@ -105,7 +113,7 @@ function uninstall_mise() {
 # @description Install `mise` and the configured tools.
 #
 function main() {
-    install_mise
+    install_mise || return
     run_mise_install
 }
 

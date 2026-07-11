@@ -11,6 +11,17 @@ render_role_config() {
     } | CI=true chezmoi execute-template "$@"
 }
 
+create_chezmoi_release_fixture() {
+    local fixture_dir="$1" os="$2" arch="$3" artifact checksum
+    fixture_dir="${fixture_dir}/release"
+    mkdir -p "${fixture_dir}/payload"
+    artifact="chezmoi_${CHEZMOI_VERSION}_${os}_${arch}.tar.gz"
+    cp "${fixture_dir}/chezmoi" "${fixture_dir}/payload/chezmoi"
+    tar -czf "${fixture_dir}/${artifact}" -C "${fixture_dir}/payload" chezmoi
+    checksum="$(sha256_file "${fixture_dir}/${artifact}")"
+    printf '%s  %s\n' "${checksum}" "${artifact}" > "${fixture_dir}/chezmoi_${CHEZMOI_VERSION}_checksums.txt"
+}
+
 @test "[common] chezmoi config accepts Linux roles and defaults macOS to client" {
     local context='"chezmoi" (dict "homeDir" "/tmp/home" "workingTree" "/tmp/source"'
 
@@ -142,8 +153,10 @@ render_role_config() {
 
     run env MARKER="${marker}" HOME="${BATS_TEST_TMPDIR}" bash -c '
         source ./setup.sh
-        fetch_url() {
-            printf '\''printf ran > "%s"\n'\'' "${MARKER}"
+        get_os_type() { printf Linux; }
+        uname() { printf x86_64; }
+        fetch_file() {
+            printf '\''#!/bin/sh\nprintf ran > "%s"\n'\'' "${MARKER}" > "$2"
             return 23
         }
         run_chezmoi
@@ -184,67 +197,49 @@ render_role_config() {
     local tmpdir
 
     tmpdir="$(mktemp -d)"
-    mkdir -p "${tmpdir}/bin" "${tmpdir}/home"
+    mkdir -p "${tmpdir}/bin" "${tmpdir}/home/fakebrew/bin" "${tmpdir}/release"
+    source ./setup.sh
+
+    cat > "${tmpdir}/release/chezmoi" <<'EOF'
+#!/usr/bin/env bash
+echo "chezmoi $*" >> "${HOME}/log"
+case "${1:-}" in
+    source-path)
+        mkdir -p "${HOME}/source"
+        printf '%s\n' "${HOME}/source"
+        ;;
+esac
+EOF
+    chmod +x "${tmpdir}/release/chezmoi"
+    create_chezmoi_release_fixture "${tmpdir}" darwin arm64
+
+    cat > "${tmpdir}/home/fakebrew/bin/brew" <<'EOF'
+#!/usr/bin/env bash
+case "${1:-}" in
+    --prefix) printf '%s\n' "${HOME}/fakebrew" ;;
+    shellenv) printf 'export PATH="%s/bin:${PATH}"\n' "${HOME}/fakebrew" ;;
+esac
+EOF
+    chmod +x "${tmpdir}/home/fakebrew/bin/brew"
 
     cat > "${tmpdir}/bin/uname" <<'EOF'
 #!/usr/bin/env bash
-printf 'Darwin\n'
+if [ "${1:-}" = -m ]; then printf 'arm64\n'; else printf 'Darwin\n'; fi
 EOF
     chmod +x "${tmpdir}/bin/uname"
 
     cat > "${tmpdir}/bin/curl" <<'EOF'
 #!/usr/bin/env bash
-case "${*: -1}" in
-    *Homebrew/install*)
-        cat <<'BREW'
-#!/usr/bin/env bash
-mkdir -p "${HOME}/fakebrew/bin"
-cat > "${HOME}/fakebrew/bin/brew" <<'BREW_BIN'
-#!/usr/bin/env bash
-case "${1:-}" in
-    --prefix)
-        printf '%s\n' "${HOME}/fakebrew"
-        ;;
-    shellenv)
-        printf 'export PATH="%s/bin:${PATH}"\n' "${HOME}/fakebrew"
-        ;;
-esac
-BREW_BIN
-chmod +x "${HOME}/fakebrew/bin/brew"
-BREW
-        ;;
-    *get.chezmoi.io*)
-        cat <<'CHEZMOI_INSTALL'
-#!/usr/bin/env bash
 while [ "$#" -gt 0 ]; do
-    case "$1" in
-        -b)
-            shift
-            bin_dir="$1"
-            ;;
-    esac
-    shift || true
+    if [ "$1" = -o ]; then output="$2"; shift 2; else url="$1"; shift; fi
 done
-mkdir -p "${bin_dir}"
-cat > "${bin_dir}/chezmoi" <<'CHEZMOI_BIN'
-#!/usr/bin/env bash
-echo "chezmoi $*" >> "${HOME}/log"
-case "${1:-}" in
-    source-path)
-        printf '%s\n' "${HOME}/source"
-        mkdir -p "${HOME}/source"
-        ;;
-esac
-CHEZMOI_BIN
-chmod +x "${bin_dir}/chezmoi"
-CHEZMOI_INSTALL
-        ;;
-esac
+cp "${CHEZMOI_FIXTURE_DIR}/${url##*/}" "${output}"
 EOF
     chmod +x "${tmpdir}/bin/curl"
 
-    run env HOME="${tmpdir}/home" PATH="${tmpdir}/bin:/usr/bin:/bin" CI=true \
+    run env HOME="${tmpdir}/home" PATH="${tmpdir}/home/fakebrew/bin:${tmpdir}/bin:/usr/bin:/bin" CI=true \
         RUNNER_TEMP="${tmpdir}" \
+        CHEZMOI_FIXTURE_DIR="${tmpdir}/release" \
         HOMEBREW_PREFIX_CANDIDATES="${tmpdir}/home/fakebrew" \
         bash -c "$(cat setup.sh)"
 
@@ -259,9 +254,10 @@ EOF
     local before_mode
     local before_sentinel_hash
 
+    source ./setup.sh
     for mode in clean target-only drift status-fail diff-fail apply-fail; do
         tmpdir="$(mktemp -d)"
-        mkdir -p "${tmpdir}/bin" "${tmpdir}/home"
+        mkdir -p "${tmpdir}/bin" "${tmpdir}/home" "${tmpdir}/release"
         printf 'managed-original\n' > "${tmpdir}/home/managed"
         printf 'sentinel-original\n' > "${tmpdir}/home/sentinel"
         chmod 640 "${tmpdir}/home/managed" "${tmpdir}/home/sentinel"
@@ -269,28 +265,7 @@ EOF
         before_sentinel_hash="$(cksum "${tmpdir}/home/sentinel")"
         before_mode="$(stat -c '%a' "${tmpdir}/home/managed" "${tmpdir}/home/sentinel" 2> /dev/null || stat -f '%Lp' "${tmpdir}/home/managed" "${tmpdir}/home/sentinel")"
 
-        for command_path in sh find rm mkdir chmod cat; do
-            ln -s "$(command -v "${command_path}")" "${tmpdir}/bin/${command_path}"
-        done
-
-        cat > "${tmpdir}/bin/uname" <<'EOF'
-#!/bin/bash
-printf 'Linux\n'
-EOF
-        cat > "${tmpdir}/bin/wget" <<'EOF'
-#!/bin/bash
-printf 'wget %s\n' "${*: -1}" >> "${HOME}/fetch.log"
-cat <<'INSTALLER'
-#!/bin/sh
-while [ "$#" -gt 0 ]; do
-    if [ "$1" = "-b" ]; then
-        shift
-        bin_dir="$1"
-    fi
-    shift
-done
-mkdir -p "${bin_dir}"
-cat > "${bin_dir}/chezmoi" <<'CHEZMOI'
+        cat > "${tmpdir}/release/chezmoi" <<'EOF'
 #!/bin/bash
 printf 'chezmoi %s\n' "$*" >> "${HOME}/log"
 case "${1:-}" in
@@ -324,17 +299,35 @@ case "${1:-}" in
         [ "${CHEZMOI_TEST_MODE}" != "apply-fail" ] || exit 1
         ;;
 esac
-CHEZMOI
-chmod +x "${bin_dir}/chezmoi"
-INSTALLER
+EOF
+        chmod +x "${tmpdir}/release/chezmoi"
+        create_chezmoi_release_fixture "${tmpdir}" linux amd64
+
+        for command_path in sh find rm mkdir chmod cat cp tar install mv mktemp awk shasum; do
+            ln -s "$(command -v "${command_path}")" "${tmpdir}/bin/${command_path}"
+        done
+
+        cat > "${tmpdir}/bin/uname" <<'EOF'
+#!/bin/bash
+if [ "${1:-}" = -m ]; then printf 'x86_64\n'; else printf 'Linux\n'; fi
+EOF
+        cat > "${tmpdir}/bin/wget" <<'EOF'
+#!/bin/bash
+while [ "$#" -gt 0 ]; do
+    if [ "$1" = -qO ]; then output="$2"; shift 2; else url="$1"; shift; fi
+done
+printf 'wget %s\n' "${url}" >> "${HOME}/fetch.log"
+cp "${CHEZMOI_FIXTURE_DIR}/${url##*/}" "${output}"
 EOF
         chmod +x "${tmpdir}/bin/uname" "${tmpdir}/bin/wget"
 
         run env HOME="${tmpdir}/home" PATH="${tmpdir}/bin" CI=true \
             RUNNER_TEMP="${tmpdir}" CHEZMOI_TEST_MODE="${mode}" \
+            CHEZMOI_FIXTURE_DIR="${tmpdir}/release" \
             /bin/bash -c "$(cat setup.sh)"
 
-        grep -qx 'wget https://get.chezmoi.io' "${tmpdir}/home/fetch.log"
+        grep -qx "wget https://github.com/twpayne/chezmoi/releases/download/v${CHEZMOI_VERSION}/chezmoi_${CHEZMOI_VERSION}_linux_amd64.tar.gz" "${tmpdir}/home/fetch.log"
+        grep -qx "wget https://github.com/twpayne/chezmoi/releases/download/v${CHEZMOI_VERSION}/chezmoi_${CHEZMOI_VERSION}_checksums.txt" "${tmpdir}/home/fetch.log"
         grep -q '^chezmoi init ' "${tmpdir}/home/log"
         grep -q '^chezmoi update ' "${tmpdir}/home/log"
         grep -q '^chezmoi status --path-style absolute --exclude=scripts$' "${tmpdir}/home/log"

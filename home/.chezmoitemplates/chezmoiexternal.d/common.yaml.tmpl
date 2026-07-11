@@ -1,6 +1,9 @@
 ".emacs.d":
-  type: "git-repo"
-  url: "https://github.com/syl20bnr/spacemacs"
+  type: "archive"
+  url: "https://github.com/syl20bnr/spacemacs/archive/530c17d62e4ccca09087a2f142752b21000658fb.tar.gz"
+  checksum:
+    sha256: "ba040a5d04a6d37c821274eea1f1e4c26d146e2f65057b4d15f4741159071260"
+  stripComponents: 1
   refreshPeriod: "720h"
 
 {{ $fontsPath := .chezmoi.os | replace "darwin" "Library/Fonts" | replace "linux" ".local/share/fonts" -}}

@@ -28,10 +28,9 @@ function teardown() {
 }
 
 @test "[ubuntu-server] failed locked cargo install leaves no Sheldon binary" {
-    function cargo() {
-        printf 'registry checksum mismatch\n' >&2
-        return 1
-    }
+    mkdir -p "$(dirname "${MISE_BIN}")"
+    printf '#!/bin/sh\nprintf "registry checksum mismatch\\n" >&2\nexit 1\n' > "${MISE_BIN}"
+    chmod +x "${MISE_BIN}"
 
     run install_sheldon
 

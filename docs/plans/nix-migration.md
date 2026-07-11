@@ -29,12 +29,14 @@ Status: initial implementation.
 Validation target:
 
 ```shell
-nix fmt
-nix flake show
-nix flake check --no-build
+nix fmt --no-update-lock-file
+nix flake show --no-update-lock-file
+nix flake check --no-build --no-update-lock-file
 ```
 
 If Nix is unavailable on a machine, CI evaluates every declared output on Linux and macOS. Never hand-edit `flake.lock`; regenerate it with `nix flake lock`.
+
+AWS CLI follows the ownership boundary in the architecture plan: Homebrew owns the default macOS installation, the signed user-local installer owns the default Ubuntu installation, and opt-in Nix activation puts Nix `awscli2` first on `PATH`. Deactivating Nix restores the operating-system default, and chezmoi never mutates the Nix store. Homebrew repository snapshot pinning remains outside Plan004's scope.
 
 ## Phase 1: Package-only adoption
 

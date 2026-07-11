@@ -82,10 +82,16 @@ jobs:
           #              │               └─ Simulate inputting an system arcitecture into the config.
           #              └─ Simulate inputting an email address into the config.
 
-          # Simulate a target changed after chezmoi last wrote it. The bootstrap
-          # must force apply and must not stop on an overwrite prompt.
+          # Simulate local drift after chezmoi last wrote the target. A rerun must
+          # reject the drift and leave the target byte-identical.
           printf '\n# CI local change after chezmoi apply\n' >> "${HOME}/.zprofile"
-          printf '%s\n%s\n' "${EMAIL_ADDRESS}" "${SYSTEM}" | bash ./setup.sh
+          before_local_change="$(cksum "${HOME}/.zprofile")"
+          if printf '%s\n%s\n' "${EMAIL_ADDRESS}" "${SYSTEM}" | bash ./setup.sh; then
+            echo "setup unexpectedly accepted local drift" >&2
+            exit 1
+          fi
+          after_local_change="$(cksum "${HOME}/.zprofile")"
+          [ "${after_local_change}" = "${before_local_change}" ]
 
       - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4
         if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}

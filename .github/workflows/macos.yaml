@@ -77,10 +77,16 @@ jobs:
           #              │
           #              └─ Simulate inputting an email address into the chezmoi's config.
 
-          # Simulate a target changed after chezmoi last wrote it. The bootstrap
-          # must force apply and must not stop on an overwrite prompt.
+          # Simulate local drift after chezmoi last wrote the target. A rerun must
+          # reject the drift and leave the target byte-identical.
           printf '\n# CI local change after chezmoi apply\n' >> "${HOME}/.zprofile"
-          printf '%s\n' "${EMAIL_ADDRESS}" | bash ./setup.sh
+          before_local_change="$(cksum "${HOME}/.zprofile")"
+          if printf '%s\n' "${EMAIL_ADDRESS}" | bash ./setup.sh; then
+            echo "setup unexpectedly accepted local drift" >&2
+            exit 1
+          fi
+          after_local_change="$(cksum "${HOME}/.zprofile")"
+          [ "${after_local_change}" = "${before_local_change}" ]
 
       - name: Unset gpg
         if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}

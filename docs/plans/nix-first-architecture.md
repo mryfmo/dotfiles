@@ -32,6 +32,13 @@ Near-term package ownership can be split as follows:
 - Nix may install a conservative base toolset such as Git, GnuPG, Vim, Zsh, tmux, CMake, jq, yq, fd, eza, uv, ShellCheck, shfmt, Starship, chezmoi, age, GitHub CLI, Rust via rustup, Node.js, Python 3.11, ripgrep, yazi, and AWS CLI when available.
 - Existing mise usage may continue for project-local language versions and tools that are not yet migrated. If both Nix and mise provide Rust, Node.js, or Python, mise remains the project-specific version selector while Nix provides only the baseline interactive toolchain. Go is intentionally not part of the default Nix package set.
 
+AWS CLI ownership is explicit:
+
+- Default macOS: Homebrew owns the AWS CLI version and installation integrity. Repository snapshot pinning for Homebrew is outside Plan004's scope.
+- Default Ubuntu: the signed AWS archive installer owns the user-local installation.
+- Opt-in Nix activation: `awscli2` owns the active AWS CLI on `PATH`. Deactivating Nix returns AWS CLI ownership to the operating-system default.
+- Chezmoi never mutates the Nix store.
+
 ## Future target
 
 A fuller Nix-first design may eventually move these areas into Nix after explicit migration decisions:
@@ -66,10 +73,10 @@ sudo darwin-rebuild switch --flake .#mryfmo-mac
 Evaluate without activation:
 
 ```shell
-nix flake check --no-build
-nix eval .#homeConfigurations.mryfmo-linux.activationPackage.drvPath
-nix eval .#homeConfigurations.mryfmo-darwin.activationPackage.drvPath
-nix eval .#darwinConfigurations.mryfmo-mac.system.drvPath
+nix flake check --no-build --no-update-lock-file
+nix eval --no-update-lock-file .#homeConfigurations.mryfmo-linux.activationPackage.drvPath
+nix eval --no-update-lock-file .#homeConfigurations.mryfmo-darwin.activationPackage.drvPath
+nix eval --no-update-lock-file .#darwinConfigurations.mryfmo-mac.system.drvPath
 ```
 
 The nix-darwin configuration enables Homebrew management, but `homebrew.enable` does not install Homebrew itself. Install Homebrew before activating nix-darwin if Homebrew management is needed.

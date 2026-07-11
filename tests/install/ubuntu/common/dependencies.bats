@@ -33,21 +33,24 @@ readonly SCRIPT_PATH="./install/ubuntu/common/dependencies.sh"
     done
 }
 
-@test "[ubuntu-common] install_apt_packages includes all non-sudo packages in apt install args" {
+@test "[ubuntu-common] install_apt_packages installs only absent packages after update" {
     run bash -c '
         set +x
         unset DOTFILES_DEBUG
         source "'"${SCRIPT_PATH}"'"
-        command() {
-            if [ "$1" = "-v" ] && [ "$2" = "sudo" ]; then
-                return 0
-            fi
-            if [ "$1" = "-v" ]; then
-                return 1
-            fi
-            builtin command "$@"
+        dpkg-query() {
+            [ "$1" = "-W" ]
+            [ "$2" = "-f=\${Status}" ]
+            case "$3" in
+                iproute2|iputils-ping|sudo)
+                    printf "install ok installed\n"
+                    ;;
+                *)
+                    return 1
+                    ;;
+            esac
         }
-        sudo() {
+        run_apt_get() {
             printf "%s\n" "$*"
         }
 
@@ -60,14 +63,14 @@ readonly SCRIPT_PATH="./install/ubuntu/common/dependencies.sh"
     run bash -c '
         source "'"${SCRIPT_PATH}"'"
 
-        install_targets=()
+        install_targets=(update)
         for package in "${PACKAGES[@]}"; do
-            if [ "${package}" != "sudo" ]; then
+            if [ "${package}" != "iproute2" ] && [ "${package}" != "iputils-ping" ] && [ "${package}" != "sudo" ]; then
                 install_targets+=("${package}")
             fi
         done
 
-        printf "%s\n" "--preserve-env=http_proxy,https_proxy,no_proxy apt-get install -y ${install_targets[*]}"
+        printf "%s\n" "update" "install -y ${install_targets[*]:1}"
     '
     [ "${status}" -eq 0 ]
     [ "${actual_output}" = "${output}" ]
@@ -78,11 +81,8 @@ readonly SCRIPT_PATH="./install/ubuntu/common/dependencies.sh"
         set +x
         unset DOTFILES_DEBUG
         source "'"${SCRIPT_PATH}"'"
-        command() {
-            if [ "$1" = "-v" ]; then
-                return 0
-            fi
-            builtin command "$@"
+        dpkg-query() {
+            printf "install ok installed\n"
         }
         sudo() {
             printf "unexpected:%s\n" "$*"

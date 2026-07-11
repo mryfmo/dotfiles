@@ -29,12 +29,17 @@ readonly PACKAGES=(
 )
 
 #
-# @description Run `apt-get`, installing `sudo` first when required.
+# @description Run `apt-get`, bootstrapping `sudo` with a single index refresh when required.
+# @arg $@ arguments Arguments passed to `apt-get`.
 #
 function run_apt_get() {
     if ! command -v sudo > /dev/null 2>&1; then
         apt-get update
         apt-get install -y sudo
+
+        if [ "${1:-}" = "update" ]; then
+            return
+        fi
     fi
 
     sudo --preserve-env=http_proxy,https_proxy,no_proxy apt-get "$@"
@@ -46,9 +51,10 @@ function run_apt_get() {
 function install_apt_packages() {
     local missing_packages=()
     local package
+    local package_status
 
     for package in "${PACKAGES[@]}"; do
-        if ! command -v "${package}" > /dev/null 2>&1; then
+        if ! package_status="$(dpkg-query -W -f='${Status}' "${package}" 2> /dev/null)" || [ "${package_status}" != "install ok installed" ]; then
             missing_packages+=("${package}")
         fi
     done
@@ -57,6 +63,7 @@ function install_apt_packages() {
         return 0
     fi
 
+    run_apt_get update
     run_apt_get install -y "${missing_packages[@]}"
 }
 

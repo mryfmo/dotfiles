@@ -14,6 +14,9 @@
 {{- else -}}
 {{-   $system = promptString "System (client or server)" -}}
 {{- end -}}
+{{- if not (or (eq $system "client") (eq $system "server")) -}}
+{{-   fail (printf "System must be client or server; got %q" $system) -}}
+{{- end -}}
 
 {{- $homeDir := .chezmoi.homeDir -}}
 {{- $homeDirName := base $homeDir -}}

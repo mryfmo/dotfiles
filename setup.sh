@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# @file setup.sh
+# @brief Bootstrap the public dotfiles on supported macOS and Ubuntu systems.
+
 set -Eeuo pipefail
 
 if [ "${DOTFILES_DEBUG:-}" ]; then
@@ -24,7 +27,7 @@ declare -r DOTFILES_LOGO='
                      https://github.com/mryfmo/dotfiles
 '
 
-declare -r DOTFILES_REPO_URL="https://github.com/mryfmo/dotfiles"
+declare -r DOTFILES_REPO_URL="${DOTFILES_REPO_URL:-https://github.com/mryfmo/dotfiles}"
 declare -r BRANCH_NAME="${BRANCH_NAME:-main}"
 
 function is_ci() {
@@ -41,6 +44,21 @@ function is_not_tty() {
 
 function is_ci_or_not_tty() {
     is_ci || is_not_tty
+}
+
+# @description Download one URL to standard output, preferring curl over wget.
+# @arg $1 url URL to download.
+function fetch_url() {
+    local url="$1"
+
+    if command -v curl > /dev/null 2>&1; then
+        curl -fsLS "${url}"
+    elif command -v wget > /dev/null 2>&1; then
+        wget -qO - "${url}"
+    else
+        echo "Neither curl nor wget is available; cannot download ${url}." >&2
+        return 1
+    fi
 }
 
 function at_exit() {
@@ -137,7 +155,7 @@ function initialize_os_macos() {
             keepalive_sudo
         fi
 
-        NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL \
+        NONINTERACTIVE=1 /bin/bash -c "$(fetch_url \
             https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
         hash -r
     fi
@@ -170,11 +188,16 @@ function initialize_os_env() {
 
 function run_chezmoi() {
     local bin_dir="${HOME}/.local/bin"
+    local chezmoi_cmd
+    local local_drift=false
+    local no_tty_option
+    local status_line
+    local status_output
     export PATH="${PATH}:${bin_dir}"
 
     # download the chezmoi binary from the URL
-    sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "${bin_dir}"
-    local chezmoi_cmd="${bin_dir}/chezmoi"
+    sh -c "$(fetch_url https://get.chezmoi.io)" -- -b "${bin_dir}"
+    chezmoi_cmd="${bin_dir}/chezmoi"
 
     if is_ci_or_not_tty; then
         no_tty_option="--no-tty" # /dev/tty is not available (especially in the CI)
@@ -185,7 +208,6 @@ function run_chezmoi() {
     # generate the config file, and optionally update the destination directory
     # to match the target state.
     "${chezmoi_cmd}" init "${DOTFILES_REPO_URL}" \
-        --force \
         --branch "${BRANCH_NAME}" \
         --use-builtin-git true \
         ${no_tty_option}
@@ -195,7 +217,6 @@ function run_chezmoi() {
     "${chezmoi_cmd}" update \
         --apply=false \
         --init \
-        --force \
         --use-builtin-git true \
         ${no_tty_option}
 
@@ -209,12 +230,37 @@ function run_chezmoi() {
     # Add to PATH for installing the necessary binary files under `$HOME/.local/bin`.
     export PATH="${PATH}:${HOME}/.local/bin"
 
-    # run `chezmoi apply` to ensure that target... are in the target state,
-    # updating them if necessary. Always use --force so repeated interactive and
-    # non-interactive bootstrap runs complete instead of stopping on prompts for
-    # files changed since chezmoi last wrote them. This intentionally overwrites
-    # locally modified chezmoi-managed targets during bootstrap reruns.
-    "${chezmoi_cmd}" apply --force ${no_tty_option}
+    if ! status_output="$("${chezmoi_cmd}" status --path-style absolute --exclude=scripts)"; then
+        echo "chezmoi status failed; no files were changed." >&2
+        return 1
+    fi
+
+    while IFS= read -r status_line; do
+        if [ -n "${status_line}" ] && [ "${status_line:0:1}" != " " ]; then
+            local_drift=true
+            break
+        fi
+    done <<< "${status_output}"
+
+    if ! "${chezmoi_cmd}" diff; then
+        echo "chezmoi diff failed; no files were changed." >&2
+        return 1
+    fi
+
+    if "${local_drift}"; then
+        echo "Local changes detected; no files were changed. Resolve them and rerun setup." >&2
+        return 1
+    fi
+
+    if is_ci && { [ -z "${RUNNER_TEMP:-}" ] || [[ "${HOME}/" != "${RUNNER_TEMP%/}/"* ]]; }; then
+        echo "Refusing to apply in CI outside RUNNER_TEMP: ${HOME}" >&2
+        return 1
+    fi
+
+    if ! "${chezmoi_cmd}" apply ${no_tty_option}; then
+        echo "chezmoi apply failed." >&2
+        return 1
+    fi
 
     # purge the binary of the chezmoi cmd
     rm -fv "${chezmoi_cmd}"

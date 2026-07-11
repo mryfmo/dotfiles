@@ -27,10 +27,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       CI: true
-      HOME: ${{ runner.temp }}/dotfiles-home
       SYSTEM: ${{ matrix.system }}
 
     steps:
+      - name: Configure isolated HOME
+        run: |
+          mkdir -p "${RUNNER_TEMP}/dotfiles-home"
+          printf 'HOME=%s/dotfiles-home\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
+
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
@@ -82,12 +86,16 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       CI: true
-      HOME: ${{ runner.temp }}/dotfiles-home
       SYSTEM: ${{ matrix.system }}
       HAS_EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS != '' }}
       HAS_PRIVATE_DEPLOY_KEY: ${{ secrets.PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY != '' }}
 
     steps:
+      - name: Configure isolated HOME
+        run: |
+          mkdir -p "${RUNNER_TEMP}/dotfiles-home"
+          printf 'HOME=%s/dotfiles-home\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
+
       - uses: actions/checkout@v7
         with:
           persist-credentials: false

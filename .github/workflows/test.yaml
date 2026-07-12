@@ -281,6 +281,13 @@ jobs:
 
           # Remove external definitions only from the fixture copy, then apply
           # everything else so role-specific ignores determine both boundaries.
+          # Regenerate the full config from its managed template first so
+          # subsequent `chezmoi diff` output contains only target drift.
+          CI=true HOME="${files_test_home}" chezmoi \
+            --source "${files_test_source}" \
+            --destination "${files_test_home}" \
+            --config "${files_test_config}" \
+            init
           HOME="${files_test_home}" chezmoi \
             --source "${files_test_source}" \
             --destination "${files_test_home}" \

@@ -45,9 +45,34 @@ function run_os_specific_test() {
 }
 
 #
+# @description Run the rendered public-dotfiles manifest tests for the active CI target.
+#
+function run_files_test() {
+    local -a bats_args
+    local test_count
+
+    if [ "${OS}" == "macos-14" ] && [ "${SYSTEM}" == "client" ]; then
+        bats_args=(tests/files/macos.bats)
+    elif [ "${OS}" == "ubuntu-latest" ] && { [ "${SYSTEM}" == "client" ] || [ "${SYSTEM}" == "server" ]; }; then
+        bats_args=(--filter-tags "common,ubuntu:${SYSTEM}" tests/files/ubuntu.bats)
+    else
+        echo "${OS} and ${SYSTEM} are not supported" >&2
+        exit 1
+    fi
+
+    test_count="$(HOME="${FILES_TEST_HOME:?FILES_TEST_HOME is required}" bats --count "${bats_args[@]}")"
+    if [[ ! ${test_count} =~ ^[1-9][0-9]*$ ]]; then
+        echo "Expected at least one files test; got ${test_count:-no count}" >&2
+        exit 1
+    fi
+    HOME="${FILES_TEST_HOME}" bats "${bats_args[@]}"
+}
+
+#
 # @description Run the full unit test flow used by CI.
 #
 function main() {
+    run_files_test
     run_common_test
     run_os_specific_test
 }

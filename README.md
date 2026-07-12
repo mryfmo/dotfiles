@@ -142,7 +142,10 @@ upgrades. Other values, including `SYSTEM=0`, keep `make upgrade` in user-level
 tooling mode.
 
 `make update` applies managed files only and excludes chezmoi scripts, so
-one-time installers do not run during routine updates.
+one-time installers do not run during routine updates. After assets are
+refreshed, it reloads a running Herdr server, skips a stopped or unavailable
+server, and fails on ambiguous status or reload errors. After correcting a
+reload error, run `herdr server reload-config` manually.
 
 ### Agent review and permission assets
 

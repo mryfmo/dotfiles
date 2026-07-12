@@ -9,6 +9,9 @@
 
 set -Eeuo pipefail
 
+required_failures=0
+optional_warnings=0
+
 #
 # @description Print a section heading.
 # @arg $1 string Heading text.
@@ -18,7 +21,7 @@ function section() {
 }
 
 #
-# @description Report whether a command exists and print its version when known.
+# @description Require a command and a successful version command.
 # @arg $1 string Command name.
 # @arg $@ string Optional version command arguments.
 #
@@ -27,35 +30,55 @@ function check_command() {
     shift || true
 
     if ! command -v "${command_name}" > /dev/null 2>&1; then
-        printf 'missing: %s\n' "${command_name}"
+        printf 'required missing: %s\n' "${command_name}" >&2
+        ((required_failures += 1))
         return 0
     fi
 
     printf 'found:   %s -> %s\n' "${command_name}" "$(command -v "${command_name}")"
 
-    local output
+    local output first_line
 
     if [ "$#" -gt 0 ]; then
-        output="$("${command_name}" "$@" 2>&1 || true)"
+        if ! output="$("${command_name}" "$@" 2>&1)"; then
+            printf 'required failed: %s %s\n' "${command_name}" "$*" >&2
+            ((required_failures += 1))
+            return 0
+        fi
     else
-        output="$("${command_name}" --version 2>&1 || true)"
+        if ! output="$("${command_name}" --version 2>&1)"; then
+            printf 'required failed: %s --version\n' "${command_name}" >&2
+            ((required_failures += 1))
+            return 0
+        fi
     fi
 
-    printf '%s\n' "${output}" | head -n 1
+    IFS= read -r first_line <<< "${output}"
+    printf '%s\n' "${first_line}"
 }
 
 #
-# @description Run an optional read-only doctor command when available.
+# @description Run a required read-only doctor command when its tool is available.
 # @arg $1 string Command name.
 # @arg $@ string Doctor command arguments.
 #
-function run_optional_doctor() {
+function run_required_doctor() {
     local command_name="$1"
     shift || true
 
-    if command -v "${command_name}" > /dev/null 2>&1; then
-        "${command_name}" "$@" || true
+    if command -v "${command_name}" > /dev/null 2>&1 && ! "${command_name}" "$@"; then
+        printf 'required failed: %s %s\n' "${command_name}" "$*" >&2
+        ((required_failures += 1))
     fi
+}
+
+#
+# @description Record an optional warning.
+# @arg $1 string Warning text.
+#
+function warn_optional() {
+    printf 'optional warning: %s\n' "$1" >&2
+    ((optional_warnings += 1))
 }
 
 #
@@ -70,36 +93,35 @@ function check_private_chezmoi() {
         if [ -f "${private_config}" ]; then
             printf 'found:   private config -> %s\n' "${private_config}"
         else
-            printf 'missing: private config -> %s\n' "${private_config}"
+            warn_optional "private config is missing: ${private_config}"
         fi
     else
-        printf 'missing: private source -> %s\n' "${private_source}"
+        warn_optional "private source is missing: ${private_source}"
+        if [ ! -f "${private_config}" ]; then
+            warn_optional "private config is missing: ${private_config}"
+        fi
     fi
 }
 
 #
-# @description Print the current Homebrew state when Homebrew is installed.
+# @description Require Homebrew on macOS and skip it on other platforms.
 #
 function check_homebrew() {
-    if ! command -v brew > /dev/null 2>&1; then
-        printf 'missing: brew\n'
+    if [ "$(uname)" != "Darwin" ]; then
+        printf 'not applicable: Homebrew (non-Darwin)\n'
         return 0
     fi
 
-    brew --version | head -n 1
-    brew outdated || true
+    check_command brew --version
 }
 
 #
 # @description Print the current GitHub CLI extension state when gh is installed.
 #
 function check_gh_extensions() {
-    if ! command -v gh > /dev/null 2>&1; then
-        printf 'missing: gh\n'
-        return 0
+    if command -v gh > /dev/null 2>&1 && ! gh extension list; then
+        warn_optional "unable to list installed GitHub CLI extensions"
     fi
-
-    gh extension list || true
 }
 
 #
@@ -114,18 +136,22 @@ function main() {
     check_command gh --version
 
     section "Chezmoi"
-    run_optional_doctor chezmoi doctor
+    run_required_doctor chezmoi doctor
     check_private_chezmoi
 
     section "Mise"
-    run_optional_doctor mise doctor
-    run_optional_doctor mise ls --current
+    run_required_doctor mise doctor
+    run_required_doctor mise ls --current
 
     section "Homebrew"
     check_homebrew
 
     section "GitHub CLI extensions"
     check_gh_extensions
+
+    printf '\nTool check summary: required failures: %d; optional warnings: %d\n' \
+        "${required_failures}" "${optional_warnings}"
+    [ "${required_failures}" -eq 0 ]
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

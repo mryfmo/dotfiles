@@ -140,7 +140,7 @@ claude:
       - npx prettier@2 --write
   statusLine:
     type: command
-    command: npx ccstatusline@latest
+    command: ccstatusline
   # External Claude plugins are intentionally not enabled here. The shared local
   # workflow pack is represented as the common skill tree, because settings alone
   # cannot install third-party Claude plugins or marketplaces.

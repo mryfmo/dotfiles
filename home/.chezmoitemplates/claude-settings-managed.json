@@ -78,7 +78,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "npx ccstatusline@latest"
+    "command": "ccstatusline"
   },
   "disableSkillShellExecution": true,
   "includeGitInstructions": true,

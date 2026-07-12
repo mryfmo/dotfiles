@@ -84,6 +84,18 @@ function start_codex_agent() {
     printf '%s\n' "${codex_pane_id}"
 }
 
+# @description Start Yazi in an existing pane when available.
+# @arg $1 pane_id Herdr pane id to reuse.
+function start_yazi_in_pane() {
+    local pane_id="$1"
+
+    if ! command -v yazi > /dev/null 2>&1; then
+        printf 'yazi command not found; files pane cannot be started\n' >&2
+        return 1
+    fi
+    herdr pane run "${pane_id}" yazi
+}
+
 # @description Start Yazi in a right split when available.
 # @arg $1 pane_id Herdr pane id to split.
 # @arg $2 workdir Directory listed in the files pane.
@@ -96,20 +108,20 @@ function start_files_pane() {
     local files_pane_id
 
     if ! command -v yazi > /dev/null 2>&1; then
-        printf 'yazi command not found; skipping files pane\n' >&2
-        return 0
+        printf 'yazi command not found; files pane cannot be started\n' >&2
+        return 1
     fi
     if ! files_pane_json="$(herdr pane split "${pane_id}" --direction right --ratio "${ratio}" --cwd "${workdir}" --no-focus)"; then
         printf 'Failed to split files pane from %s: %s\n' "${pane_id}" "${files_pane_json}" >&2
-        return 0
+        return 1
     fi
     files_pane_id="$(printf '%s\n' "${files_pane_json}" | json_agent_pane_id)"
     if [[ -z ${files_pane_id} ]]; then
         printf 'Unable to read files pane id from: %s\n' "${files_pane_json}" >&2
-        return 0
+        return 1
     fi
-    herdr pane rename "${files_pane_id}" files
-    herdr pane run "${files_pane_id}" yazi
+    herdr pane rename "${files_pane_id}" files || return 1
+    start_yazi_in_pane "${files_pane_id}"
 }
 
 # @description Find an existing agents workspace for a workdir.
@@ -143,12 +155,38 @@ function has_claude_pane() {
     printf '%s\n' "${panes_json}" | jq -e '.result.panes[]? | select(.agent == "claude")' > /dev/null
 }
 
-# @description Return success when a files pane is present.
+# @description Return every labeled files pane id.
 # @arg $1 json Herdr pane list JSON.
-function has_files_pane() {
+function files_pane_id() {
     local panes_json="$1"
 
-    printf '%s\n' "${panes_json}" | jq -e '.result.panes[]? | select(.label == "files")' > /dev/null
+    printf '%s\n' "${panes_json}" | jq -r '.result.panes[]? | select(.label == "files") | .pane_id // empty'
+}
+
+# @description Classify a pane as live Yazi, validly stale, or inspection error.
+# @arg $1 pane_id Herdr pane id to inspect.
+# @exitcode 0 A live Yazi foreground process exists.
+# @exitcode 1 Process data is valid and Yazi is absent.
+# @exitcode 2 Process data could not be inspected safely.
+function pane_runs_yazi() {
+    local pane_id="$1"
+    local process_info_json
+
+    if ! process_info_json="$(herdr pane process-info --pane "${pane_id}")"; then
+        printf 'Failed to inspect files pane process: %s\n' "${pane_id}" >&2
+        return 2
+    fi
+    if ! printf '%s\n' "${process_info_json}" | jq -e \
+        '.result.process_info.foreground_processes as $processes
+         | ($processes | type == "array")
+           and all($processes[]; (type == "object") and (.name | type == "string"))' > /dev/null; then
+        printf 'Invalid files pane process response: %s\n' "${pane_id}" >&2
+        return 2
+    fi
+    if printf '%s\n' "${process_info_json}" | jq -e '.result.process_info.foreground_processes[] | select(.name == "yazi")' > /dev/null; then
+        return 0
+    fi
+    return 1
 }
 
 # @description Return the Codex pane id when the registered agent points to a live pane.
@@ -237,8 +275,21 @@ if [[ -n ${existing_workspace_id} ]]; then
         start_claude_in_pane "${claude_pane_id}"
     fi
 
-    if ! has_files_pane "${panes_json}"; then
-        start_files_pane "${codex_pane_id}" "${workdir}" 0.6 || true
+    files_pane_id="$(files_pane_id "${panes_json}")"
+    if [[ ${files_pane_id} == *$'\n'* ]]; then
+        printf 'Multiple Herdr files panes are ambiguous; refusing repair.\n' >&2
+        exit 1
+    fi
+    if [[ -z ${files_pane_id} ]]; then
+        start_files_pane "${codex_pane_id}" "${workdir}" 0.6
+    elif pane_runs_yazi "${files_pane_id}"; then
+        :
+    else
+        files_pane_status="$?"
+        if [[ ${files_pane_status} -ne 1 ]]; then
+            exit "${files_pane_status}"
+        fi
+        start_yazi_in_pane "${files_pane_id}"
     fi
 
     herdr workspace focus "${workspace_id}"
@@ -262,7 +313,7 @@ if [[ -z ${root_pane_id} ]]; then
 fi
 
 start_claude_in_pane "${root_pane_id}"
-start_files_pane "${root_pane_id}" "${workdir}" 0.8 || true
+start_files_pane "${root_pane_id}" "${workdir}" 0.8
 start_codex_agent "${workspace_id}" "${codex_agent_name}" "${workdir}" > /dev/null
 
 if command -v zed > /dev/null 2>&1; then

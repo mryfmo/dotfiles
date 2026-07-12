@@ -465,6 +465,14 @@ backend = "npm:@openai/codex"
 version = "5.6.0"
 backend = "npm:bash-language-server"
 
+[[tools."npm:ccstatusline"]]
+version = "2.2.23"
+backend = "npm:ccstatusline"
+
+[[tools."npm:ccusage"]]
+version = "20.0.17"
+backend = "npm:ccusage"
+
 [[tools."npm:fast-cli"]]
 version = "5.2.0"
 backend = "npm:fast-cli"

@@ -12,6 +12,117 @@
     make -n apply
 }
 
+function run_update_fixture() {
+    local server_status="${1-running}"
+    local status_exit="${2:-0}"
+    local reload_exit="${3:-0}"
+    local apply_exit="${4:-0}"
+    local assets_exit="${5:-0}"
+    local fixture="${BATS_TEST_TMPDIR}/update-${BATS_TEST_NUMBER}"
+
+    mkdir -p "${fixture}/bin" "${fixture}/scripts" "${fixture}/home"
+    cp Makefile "${fixture}/Makefile"
+    cat > "${fixture}/bin/chezmoi" <<EOF
+#!/usr/bin/env bash
+printf 'chezmoi %s\n' "\$*" >> "${fixture}/calls"
+exit ${apply_exit}
+EOF
+    cat > "${fixture}/scripts/update-agent-assets.sh" <<EOF
+#!/usr/bin/env bash
+printf 'assets\n' >> "${fixture}/calls"
+exit ${assets_exit}
+EOF
+    cat > "${fixture}/bin/herdr" <<EOF
+#!/usr/bin/env bash
+printf 'herdr %s\n' "\$*" >> "${fixture}/calls"
+if [[ \$1 == status ]]; then
+    case '${server_status}' in
+        duplicate-status) printf 'server:\n  status: running\n  status: stopped\n' ;;
+        duplicate-server) printf 'server:\n  status: stopped\nserver:\n  status: running\n' ;;
+        client-first) printf 'client:\n  status: stopped\nserver:\n  status: running\n' ;;
+        trailing-value) printf 'server:\n  status: running extra\n' ;;
+        *) printf 'client:\n  status: connected\nserver:\n  status: %s\n' '${server_status}' ;;
+    esac
+    exit ${status_exit}
+fi
+exit ${reload_exit}
+EOF
+    chmod +x "${fixture}/bin/chezmoi" "${fixture}/bin/herdr" "${fixture}/scripts/update-agent-assets.sh"
+
+    run env HOME="${fixture}/home" PATH="${fixture}/bin:${PATH}" make -C "${fixture}" update
+    UPDATE_FIXTURE="${fixture}"
+}
+
+@test "[common] update reloads a running Herdr server exactly once" {
+    run_update_fixture running
+    [ "$status" -eq 0 ]
+    [ "$(grep -c '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls")" -eq 1 ]
+}
+
+@test "[common] update skips a stopped Herdr server" {
+    run_update_fixture stopped
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'Herdr server is stopped; skipping config reload.'* ]]
+    ! grep -q '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls"
+}
+
+@test "[common] update skips reload when Herdr is absent" {
+    local fixture="${BATS_TEST_TMPDIR}/update-${BATS_TEST_NUMBER}"
+    mkdir -p "${fixture}/bin" "${fixture}/scripts" "${fixture}/home"
+    cp Makefile "${fixture}/Makefile"
+    printf '#!/usr/bin/env bash\nexit 0\n' > "${fixture}/bin/chezmoi"
+    printf '#!/usr/bin/env bash\nexit 0\n' > "${fixture}/scripts/update-agent-assets.sh"
+    chmod +x "${fixture}/bin/chezmoi" "${fixture}/scripts/update-agent-assets.sh"
+
+    run env HOME="${fixture}/home" PATH="${fixture}/bin:/usr/bin:/bin" make -C "${fixture}" update
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'Herdr command not found; skipping config reload.'* ]]
+}
+
+@test "[common] update fails when Herdr status fails" {
+    run_update_fixture running 42
+    [ "$status" -ne 0 ]
+    ! grep -q '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls"
+}
+
+@test "[common] update rejects missing or unknown Herdr server status" {
+    run_update_fixture unknown
+    [ "$status" -ne 0 ]
+    ! grep -q '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls"
+
+    run_update_fixture ""
+    [ "$status" -ne 0 ]
+    ! grep -q '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls"
+
+    for malformed in duplicate-status duplicate-server trailing-value; do
+        run_update_fixture "${malformed}"
+        [ "$status" -ne 0 ]
+        ! grep -q '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls"
+    done
+}
+
+@test "[common] update reads only the unique server status" {
+    run_update_fixture client-first
+    [ "$status" -eq 0 ]
+    [ "$(grep -c '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls")" -eq 1 ]
+}
+
+@test "[common] update propagates Herdr reload failure" {
+    run_update_fixture running 0 23
+    [ "$status" -ne 0 ]
+    [ "$(grep -c '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls")" -eq 1 ]
+}
+
+@test "[common] update does not reload after apply or asset failure" {
+    run_update_fixture running 0 0 19
+    [ "$status" -ne 0 ]
+    ! grep -q '^herdr ' "${UPDATE_FIXTURE}/calls"
+
+    run_update_fixture running 0 0 0 20
+    [ "$status" -ne 0 ]
+    ! grep -q '^herdr ' "${UPDATE_FIXTURE}/calls"
+}
+
 @test "[common] Makefile treats private chezmoi as optional during update" {
     run make -n update
     [ "$status" -eq 0 ]
@@ -60,9 +171,9 @@
     [ -x scripts/check-tools.sh ]
 }
 
-@test "[common] doctor uses OS-aware mise listing" {
-    grep -q 'run_optional_doctor mise ls --current' scripts/check-tools.sh
-    ! grep -q 'run_optional_doctor mise current' scripts/check-tools.sh
+@test "[common] doctor requires the OS-aware mise listing" {
+    grep -q 'run_required_doctor mise ls --current' scripts/check-tools.sh
+    ! grep -q 'run_required_doctor mise current' scripts/check-tools.sh
 }
 
 @test "[common] upgrade lifecycle refreshes mise itself before mise-managed tools" {

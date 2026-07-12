@@ -135,7 +135,7 @@ jobs:
             # Ruby is required for bashcov/simplecov formatters. Install chezmoi
             # explicitly so template tests can verify rendered behavior.
             sudo apt-get update && sudo apt-get install -y bats curl iproute2 parallel ruby shellcheck shfmt
-            chezmoi_version=2.70.4
+            chezmoi_version=2.70.5
             artifact="chezmoi_${chezmoi_version}_linux_amd64.tar.gz"
             base_url="https://github.com/twpayne/chezmoi/releases/download/v${chezmoi_version}"
             curl -fsSL "${base_url}/${artifact}" -o "${RUNNER_TEMP}/${artifact}"

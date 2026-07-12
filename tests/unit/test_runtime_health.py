@@ -28,6 +28,24 @@ class RuntimeHealthTest(unittest.TestCase):
         path.write_text("#!/bin/bash\n" + textwrap.dedent(body))
         path.chmod(0o755)
 
+    @staticmethod
+    def run_test_command(
+        command: list[str],
+        *,
+        cwd: Path | None = None,
+        env: dict[str, str] | None = None,
+        check: bool = False,
+    ) -> subprocess.CompletedProcess[str]:
+        """Run a fixed test command whose dynamic arguments come only from its fixture."""
+        return subprocess.run(  # noqa: S603, S607 -- commands and PATH stubs are test-owned
+            command,
+            cwd=cwd,
+            env=env,
+            text=True,
+            capture_output=True,
+            check=check,
+        )
+
     def test_agent_runs_are_private_and_ignored(self) -> None:
         repo = self.temp_dir / "repo"
         home = self.temp_dir / "home"
@@ -37,15 +55,12 @@ class RuntimeHealthTest(unittest.TestCase):
         shutil.copy(ROOT / ".gitignore", repo / ".gitignore")
         shutil.copy(ROOT / "home/dot_local/bin/common/executable_agent-fanout", repo / "agent-fanout")
         self.executable(bin_dir / "codex", "printf 'fake agent output\\n'\n")
-        subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+        self.run_test_command(["git", "init", "-q"], cwd=repo, check=True)
 
-        result = subprocess.run(
+        result = self.run_test_command(
             ["bash", "./agent-fanout", "--no-claude", "secret prompt"],
             cwd=repo,
             env={**os.environ, "HOME": str(home), "PATH": f"{bin_dir}:{os.environ['PATH']}"},
-            text=True,
-            capture_output=True,
-            check=False,
         )
 
         self.assertEqual(0, result.returncode, result.stderr)
@@ -56,11 +71,9 @@ class RuntimeHealthTest(unittest.TestCase):
         for artifact in run_dir.iterdir():
             if artifact.is_file():
                 self.assertEqual(0, stat.S_IMODE(artifact.stat().st_mode) & 0o077, artifact)
-        status = subprocess.run(
+        status = self.run_test_command(
             ["git", "status", "--short", "--ignored", ".agents/runs"],
             cwd=repo,
-            text=True,
-            capture_output=True,
             check=True,
         )
         self.assertIn("!! .agents/runs/", status.stdout)
@@ -78,13 +91,10 @@ class RuntimeHealthTest(unittest.TestCase):
             artifact.write_text("old public content\n")
             artifact.chmod(0o644)
 
-        result = subprocess.run(
+        result = self.run_test_command(
             ["bash", "./agent-fanout", "--dry-run", "--no-claude", "--output-dir", str(output_dir), "secret"],
             cwd=repo,
             env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}"},
-            text=True,
-            capture_output=True,
-            check=False,
         )
 
         self.assertEqual(0, result.returncode, result.stderr)
@@ -104,13 +114,10 @@ class RuntimeHealthTest(unittest.TestCase):
         shutil.copy(ROOT / "home/dot_local/bin/common/executable_agent-fanout", repo / "agent-fanout")
         self.executable(bin_dir / "codex", "exit 0\n")
 
-        result = subprocess.run(
+        result = self.run_test_command(
             ["bash", "./agent-fanout", "--dry-run", "--no-claude", "--output-dir", str(output_dir), "secret"],
             cwd=repo,
             env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}"},
-            text=True,
-            capture_output=True,
-            check=False,
         )
 
         self.assertNotEqual(0, result.returncode)
@@ -128,7 +135,7 @@ class RuntimeHealthTest(unittest.TestCase):
                 continue
             self.executable(
                 bin_dir / command,
-                f"""
+                """
                 printf '%s %s\\n' "$(basename "$0")" "$*" >> "$TEST_LOG"
                 if [[ "$(basename "$0"):$*" == "$FAIL_COMMAND" ]]; then exit 9; fi
                 printf '%s healthy\\n' "$(basename "$0")"
@@ -157,22 +164,16 @@ class RuntimeHealthTest(unittest.TestCase):
         )
         for fail, expected_status, summary in cases:
             with self.subTest(fail=fail):
-                result = subprocess.run(
+                result = self.run_test_command(
                     ["bash", str(ROOT / "scripts/check-tools.sh")],
                     env=self.doctor_environment(fail=fail),
-                    text=True,
-                    capture_output=True,
-                    check=False,
                 )
                 self.assertEqual(expected_status, result.returncode, result.stdout + result.stderr)
                 self.assertIn(summary, result.stdout)
 
-        result = subprocess.run(
+        result = self.run_test_command(
             ["bash", str(ROOT / "scripts/check-tools.sh")],
             env=self.doctor_environment(fail="missing:brew", os_name="Darwin"),
-            text=True,
-            capture_output=True,
-            check=False,
         )
         self.assertNotEqual(0, result.returncode)
         self.assertIn("required missing: brew", result.stderr)
@@ -193,9 +194,7 @@ class RuntimeHealthTest(unittest.TestCase):
         env = self.doctor_environment()
         env["HOME"] = str(home)
 
-        result = subprocess.run(
-            ["make", "doctor"], cwd=repo, env=env, text=True, capture_output=True, check=False
-        )
+        result = self.run_test_command(["make", "doctor"], cwd=repo, env=env)
 
         self.assertNotEqual(0, result.returncode)
         self.assertIn("runtime drift", result.stderr)
@@ -203,9 +202,7 @@ class RuntimeHealthTest(unittest.TestCase):
         self.assertIn("Doctor summary: tools=passed; runtime=failed", result.stdout)
 
         self.executable(repo / "scripts/check-agent-runtime.py", "printf 'runtime healthy\\n'\n")
-        result = subprocess.run(
-            ["make", "doctor"], cwd=repo, env=env, text=True, capture_output=True, check=False
-        )
+        result = self.run_test_command(["make", "doctor"], cwd=repo, env=env)
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
 
     def test_make_doctor_does_not_skip_runtime_check_when_deployed_root_is_missing(self) -> None:
@@ -223,9 +220,7 @@ class RuntimeHealthTest(unittest.TestCase):
         env = self.doctor_environment()
         env["HOME"] = str(home)
 
-        result = subprocess.run(
-            ["make", "doctor"], cwd=repo, env=env, text=True, capture_output=True, check=False
-        )
+        result = self.run_test_command(["make", "doctor"], cwd=repo, env=env)
 
         self.assertNotEqual(0, result.returncode)
         self.assertIn("missing runtime root", result.stderr)
@@ -326,13 +321,10 @@ class RuntimeHealthTest(unittest.TestCase):
         for phase, os_name, args in cases:
             with self.subTest(phase=phase):
                 repo, env = self.upgrade_fixture(phase, os_name)
-                result = subprocess.run(
+                result = self.run_test_command(
                     ["bash", "scripts/upgrade-tools.sh", *args],
                     cwd=repo,
                     env=env,
-                    text=True,
-                    capture_output=True,
-                    check=False,
                 )
                 self.assertEqual(1, result.returncode, result.stdout + result.stderr)
                 self.assertIn("required failures:", result.stdout)
@@ -342,13 +334,10 @@ class RuntimeHealthTest(unittest.TestCase):
 
     def test_upgrade_github_extensions_are_warning_only(self) -> None:
         repo, env = self.upgrade_fixture("gh")
-        result = subprocess.run(
+        result = self.run_test_command(
             ["bash", "scripts/upgrade-tools.sh"],
             cwd=repo,
             env=env,
-            text=True,
-            capture_output=True,
-            check=False,
         )
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)

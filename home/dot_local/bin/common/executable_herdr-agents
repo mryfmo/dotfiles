@@ -4,9 +4,8 @@
 # @brief Open a Herdr workspace with Claude Code, Codex, and Yazi panes.
 # @description
 #   Creates a Herdr workspace for a directory, starts Claude Code and Codex in
-#   left/right panes, adds an interactive Yazi file pane on the far right when
-#   `yazi` exists, and opens the same directory in Zed when the
-#   `zed` CLI exists.
+#   left/right panes, adds the required interactive Yazi file pane on the far
+#   right, and opens the same directory in Zed when the `zed` CLI exists.
 # @arg DIR Optional directory for the Herdr workspace. Defaults to the current directory.
 # @example
 #   herdr-agents ~/Workspace/dotfiles
@@ -19,8 +18,9 @@ function usage() {
 Usage: herdr-agents [DIR]
 
 Create a Herdr workspace for DIR, start Claude Code left of Codex, add an
-interactive Yazi file pane on the far right when yazi is available, and open
-DIR in Zed when available. DIR defaults to the current directory.
+interactive Yazi file pane on the far right, and open DIR in Zed when
+available. Herdr, jq, Claude Code, Codex, and Yazi are required. DIR defaults
+to the current directory.
 USAGE
 }
 
@@ -84,19 +84,15 @@ function start_codex_agent() {
     printf '%s\n' "${codex_pane_id}"
 }
 
-# @description Start Yazi in an existing pane when available.
+# @description Start the required Yazi process in an existing pane.
 # @arg $1 pane_id Herdr pane id to reuse.
 function start_yazi_in_pane() {
     local pane_id="$1"
 
-    if ! command -v yazi > /dev/null 2>&1; then
-        printf 'yazi command not found; files pane cannot be started\n' >&2
-        return 1
-    fi
     herdr pane run "${pane_id}" yazi
 }
 
-# @description Start Yazi in a right split when available.
+# @description Start the required Yazi files pane in a right split.
 # @arg $1 pane_id Herdr pane id to split.
 # @arg $2 workdir Directory listed in the files pane.
 # @arg $3 ratio Fraction of the original pane to retain.
@@ -107,10 +103,6 @@ function start_files_pane() {
     local files_pane_json
     local files_pane_id
 
-    if ! command -v yazi > /dev/null 2>&1; then
-        printf 'yazi command not found; files pane cannot be started\n' >&2
-        return 1
-    fi
     if ! files_pane_json="$(herdr pane split "${pane_id}" --direction right --ratio "${ratio}" --cwd "${workdir}" --no-focus)"; then
         printf 'Failed to split files pane from %s: %s\n' "${pane_id}" "${files_pane_json}" >&2
         return 1
@@ -242,6 +234,7 @@ require_command herdr
 require_command jq
 require_command claude
 require_command codex
+require_command yazi
 
 workdir="${1:-$PWD}"
 cd -- "${workdir}"

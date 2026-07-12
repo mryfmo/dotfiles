@@ -223,14 +223,14 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             calls,
         )
 
-    def test_missing_yazi_fails_before_creating_a_files_pane(self) -> None:
+    def test_missing_yazi_fails_before_mutating_a_new_workspace(self) -> None:
         (self.bin_dir / "yazi").unlink()
 
         result = self.run_helper()
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("yazi command not found", result.stderr)
-        self.assertFalse(any(call.startswith("pane split ") for call in self.calls_path.read_text().splitlines()))
+        self.assertFalse(self.calls_path.exists())
 
     def test_existing_agents_workspace_focuses_without_recreating_agents(self) -> None:
         self.write_workspace_state(
@@ -271,7 +271,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(calls.count("pane run w-old:p9 yazi"), 1)
         self.assertFalse(any(call.startswith("pane split ") for call in calls))
 
-    def test_missing_yazi_fails_instead_of_accepting_a_stale_files_pane(self) -> None:
+    def test_missing_yazi_fails_before_mutating_an_existing_workspace(self) -> None:
         self.write_workspace_state(
             "w-old",
             f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
@@ -285,7 +285,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("yazi command not found", result.stderr)
-        self.assertNotIn("pane run w-old:p9 yazi", self.calls_path.read_text().splitlines())
+        self.assertFalse(self.calls_path.exists())
 
     def test_existing_files_pane_with_other_process_restarts_yazi_in_place(self) -> None:
         self.write_workspace_state(

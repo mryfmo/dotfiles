@@ -141,8 +141,13 @@ make upgrade SYSTEM=1
 upgrades. Other values, including `SYSTEM=0`, keep `make upgrade` in user-level
 tooling mode.
 
-`make update` applies managed files only and excludes chezmoi scripts, so
-one-time installers do not run during routine updates.
+`make update` applies managed files and excludes chezmoi scripts, so one-time
+installers do not run during routine updates. It then installs the two locked
+statusline tools required by the applied config without upgrading other tools.
+After assets are refreshed, it reloads a running Herdr server, skips reload when
+the server is reported as not running or the command is unavailable, and fails
+on ambiguous status or reload errors. After
+correcting a reload error, run `herdr server reload-config` manually.
 
 ### Agent review and permission assets
 

@@ -129,13 +129,13 @@ jobs:
             # `gawk` is available for shell tooling used by the test suite.
             # `chezmoi` is installed so Bats can render chezmoi templates
             # behaviorally instead of grepping template syntax.
-            brew install bash bats-core chezmoi gawk parallel shfmt
+            brew install bash bats-core chezmoi gawk parallel shellcheck shfmt
 
           elif [ "${OS}" == "ubuntu-latest" ]; then
             # Ruby is required for bashcov/simplecov formatters. Install chezmoi
             # explicitly so template tests can verify rendered behavior.
-            sudo apt-get update && sudo apt-get install -y bats curl parallel ruby shfmt
-            chezmoi_version=2.70.4
+            sudo apt-get update && sudo apt-get install -y bats curl iproute2 parallel ruby shellcheck shfmt
+            chezmoi_version=2.70.5
             artifact="chezmoi_${chezmoi_version}_linux_amd64.tar.gz"
             base_url="https://github.com/twpayne/chezmoi/releases/download/v${chezmoi_version}"
             curl -fsSL "${base_url}/${artifact}" -o "${RUNNER_TEMP}/${artifact}"
@@ -150,18 +150,113 @@ jobs:
             exit 1
           fi
 
+          files_test_chezmoi="$(command -v chezmoi)"
+          case "${files_test_chezmoi}" in
+            /*/mise/shims/*|"")
+              echo "Files test chezmoi must resolve outside mise shims: ${files_test_chezmoi:-missing}" >&2
+              exit 1
+              ;;
+            /*) ;;
+            *)
+              echo "Files test chezmoi must be an absolute path: ${files_test_chezmoi}" >&2
+              exit 1
+              ;;
+          esac
+          test -x "${files_test_chezmoi}"
+          printf 'FILES_TEST_CHEZMOI=%s\n' "${files_test_chezmoi}" >> "${GITHUB_ENV}"
+
           # Install coverage tooling as user gems and expose gem bin dir on PATH
           # before installation so RubyGems can expose executables immediately.
           # `--no-document` keeps CI faster and deterministic.
           gem_bin_dir="$(ruby -r rubygems -e 'puts Gem.user_dir')/bin"
           echo "${gem_bin_dir}" >> "${GITHUB_PATH}"
           export PATH="${gem_bin_dir}:${PATH}"
-          gem install --user-install --no-document bashcov simplecov-cobertura
+          gem install --user-install --no-document bashcov --version 3.3.0
+          gem install --user-install --no-document simplecov-cobertura --version 3.1.0
+
+      - name: Prepare exact statusline tool config
+        if: ${{ needs.changes.outputs.should_test == 'true' }}
+        run: |
+          statusline_mise_dir="${RUNNER_TEMP}/statusline-mise"
+          mkdir -p "${statusline_mise_dir}"
+          cp home/dot_mise/config.toml "${statusline_mise_dir}/mise.toml"
+          cp home/dot_mise/mise.lock "${statusline_mise_dir}/mise.lock"
+
+      - name: Setup mise for statusline smoke
+        if: ${{ needs.changes.outputs.should_test == 'true' }}
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4
+        with:
+          version: 2026.7.5
+          install: false
+          cache: true
+
+      - name: Install exact statusline tools
+        if: ${{ needs.changes.outputs.should_test == 'true' }}
+        run: |
+          mise trust --yes "${RUNNER_TEMP}/statusline-mise/mise.toml"
+          mise -C "${RUNNER_TEMP}/statusline-mise" install --locked \
+            npm:ccstatusline@2.2.23 \
+            npm:ccusage@20.0.17
+
+      - name: Smoke-test statusline tools without network
+        if: ${{ needs.changes.outputs.should_test == 'true' }}
+        run: |
+          set -euo pipefail
+
+          statusline_mise_dir="${RUNNER_TEMP}/statusline-mise"
+          ccstatusline_bin="$(mise -C "${statusline_mise_dir}" which ccstatusline)"
+          ccusage_bin="$(mise -C "${statusline_mise_dir}" which ccusage)"
+          ccstatusline_root="$(mise -C "${statusline_mise_dir}" where npm:ccstatusline@2.2.23)"
+          ccusage_root="$(mise -C "${statusline_mise_dir}" where npm:ccusage@20.0.17)"
+
+          case "${ccstatusline_bin}" in
+            "${ccstatusline_root}"/*) ;;
+            *) echo "ccstatusline did not resolve from mise's exact install" >&2; exit 1 ;;
+          esac
+          case "${ccusage_bin}" in
+            "${ccusage_root}"/*) ;;
+            *) echo "ccusage did not resolve from mise's exact install" >&2; exit 1 ;;
+          esac
+
+          smoke_home="${RUNNER_TEMP}/statusline-smoke-home"
+          mkdir -p "${smoke_home}"
+          smoke=(
+            /usr/bin/env
+            "HOME=${smoke_home}"
+            "PATH=${PATH}"
+            "HTTP_PROXY=http://127.0.0.1:1"
+            "HTTPS_PROXY=http://127.0.0.1:1"
+            NO_PROXY=
+            python3 scripts/check-statusline-tools.py
+            --ccstatusline "${ccstatusline_bin}"
+            --ccusage "${ccusage_bin}"
+          )
+
+          if [ "${OS}" = "ubuntu-latest" ]; then
+            sudo unshare --net -- sh -c 'test -z "$(ip route show)"'
+            sudo unshare --net -- "${smoke[@]}"
+          elif [ "${OS}" = "macos-14" ]; then
+            sandbox_profile='(version 1)(allow default)(deny network*)'
+            if /usr/bin/sandbox-exec -p "${sandbox_profile}" \
+              python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0))'; then
+              echo "macOS network-denial oracle unexpectedly bound a socket" >&2
+              exit 1
+            fi
+            /usr/bin/sandbox-exec -p "${sandbox_profile}" "${smoke[@]}"
+          else
+            echo "${OS} is not supported" >&2
+            exit 1
+          fi
 
       - name: Run `shfmt`
         if: ${{ needs.changes.outputs.should_test == 'true' }}
         run: |
           git ls-files -- ':(glob)install/**/*.sh' ':(glob)scripts/**/*.sh' | xargs shfmt -i 4 -sr -d
+
+      - name: Run `ShellCheck`
+        if: ${{ needs.changes.outputs.should_test == 'true' }}
+        run: |
+          git ls-files -z 'setup.sh' 'install/*.sh' 'install/**/*.sh' 'scripts/*.sh' | xargs -0 shellcheck -x
 
       - name: Setup uv
         if: ${{ needs.changes.outputs.should_test == 'true' }}
@@ -180,6 +275,46 @@ jobs:
           fi
 
           make unit-test
+
+      - name: Prepare public dotfiles fixture
+        if: ${{ needs.changes.outputs.should_test == 'true' }}
+        run: |
+          set -euo pipefail
+
+          files_test_home="${RUNNER_TEMP}/dotfiles-files-${OS}-${SYSTEM}"
+          files_test_source="${RUNNER_TEMP}/dotfiles-public-source-${OS}-${SYSTEM}"
+          files_test_config="${files_test_home}/.config/chezmoi/chezmoi.yaml"
+          if [ -e "${files_test_source}" ]; then
+            echo "Fixture source already exists: ${files_test_source}" >&2
+            exit 1
+          fi
+          cp -R "${GITHUB_WORKSPACE}/home" "${files_test_source}"
+          rm -f "${files_test_source}/.chezmoiexternal.yaml.tmpl"
+          rm -rf "${files_test_source}/.chezmoitemplates/chezmoiexternal.d"
+          mkdir -p "${files_test_home}" "$(dirname "${files_test_config}")"
+          printf 'sourceDir: "%s"\ndata:\n  email: "ci@example.invalid"\n  system: "%s"\n' \
+            "${files_test_source}" "${SYSTEM}" > "${files_test_config}"
+
+          # Remove external definitions only from the fixture copy, then apply
+          # everything else so role-specific ignores determine both boundaries.
+          # Regenerate the full config from its managed template first so
+          # subsequent `chezmoi diff` output contains only target drift.
+          CI=true HOME="${files_test_home}" "${FILES_TEST_CHEZMOI}" \
+            --source "${files_test_source}" \
+            --destination "${files_test_home}" \
+            --config "${files_test_config}" \
+            init
+          HOME="${files_test_home}" "${FILES_TEST_CHEZMOI}" \
+            --source "${files_test_source}" \
+            --destination "${files_test_home}" \
+            --config "${files_test_config}" \
+            --refresh-externals=never \
+            apply --exclude=scripts,externals
+          {
+            printf 'FILES_TEST_HOME=%s\n' "${files_test_home}"
+            printf 'FILES_TEST_SOURCE=%s\n' "${files_test_source}"
+            printf 'FILES_TEST_CONFIG=%s\n' "${files_test_config}"
+          } >> "${GITHUB_ENV}"
 
       - name: Run unit test
         if: ${{ needs.changes.outputs.should_test == 'true' }}

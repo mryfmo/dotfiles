@@ -15,6 +15,9 @@
 #   agent-fanout --no-claude "Review the current diff. Do not edit files."
 
 set -euo pipefail
+AGENT_UMASK="$(umask)"
+readonly AGENT_UMASK
+umask 077
 
 # @description Print usage information.
 function usage() {
@@ -33,6 +36,19 @@ Notes:
   - For implementation, run it inside separate worktrees or disable one writer.
   - Both agents should use the shared Cognee MCP configuration when enabled locally.
 USAGE
+}
+
+# @description Create or truncate an owned artifact with private permissions.
+# @arg $1 path Artifact path inside the selected output directory.
+function prepare_artifact() {
+    local artifact_path="$1"
+
+    if [[ -L $artifact_path || (-e $artifact_path && ! -f $artifact_path) ]]; then
+        printf 'Refusing unsafe artifact path: %s\n' "$artifact_path" >&2
+        return 1
+    fi
+    : >"$artifact_path"
+    chmod 600 "$artifact_path"
 }
 
 run_codex=true
@@ -94,10 +110,13 @@ fi
 if [[ -z $output_dir ]]; then
     timestamp="$(date +%Y%m%d-%H%M%S)"
     mkdir -p .agents/runs
+    chmod 700 .agents/runs
     output_dir="$(mktemp -d ".agents/runs/${timestamp}-fanout.XXXXXX")"
 else
     mkdir -p "$output_dir"
 fi
+chmod 700 "$output_dir"
+prepare_artifact "$output_dir/prompt.txt" || exit 1
 printf '%s\n' "$prompt" >"$output_dir/prompt.txt"
 
 shared_prefix='Before repository-specific decisions, use Cognee recall/search when the Cognee MCP server is enabled. Do not save secrets, tokens, raw logs, temporary PR state, or transient todos. Do not delete, prune, or forget memory. Save only durable facts after completion.'
@@ -111,6 +130,7 @@ labels=()
 status=0
 
 if $run_codex; then
+    prepare_artifact "$output_dir/codex.log" || exit 1
     if ! command -v codex >/dev/null 2>&1; then
         echo "codex command not found" >"$output_dir/codex.log"
         status=1
@@ -120,7 +140,10 @@ if $run_codex; then
             printf 'DRY RUN: %s <prompt>\n' "$codex_command" >"$output_dir/codex.log"
         else
             read -r -a codex_argv <<<"$codex_command"
-            "${codex_argv[@]}" "$full_prompt" >"$output_dir/codex.log" 2>&1 &
+            (
+                umask "$AGENT_UMASK"
+                "${codex_argv[@]}" "$full_prompt" >"$output_dir/codex.log" 2>&1
+            ) &
             pids+=("$!")
             labels+=("codex")
         fi
@@ -128,6 +151,7 @@ if $run_codex; then
 fi
 
 if $run_claude; then
+    prepare_artifact "$output_dir/claude.log" || exit 1
     if ! command -v claude >/dev/null 2>&1; then
         echo "claude command not found" >"$output_dir/claude.log"
         status=1
@@ -137,7 +161,10 @@ if $run_claude; then
             printf 'DRY RUN: %s <prompt>\n' "$claude_command" >"$output_dir/claude.log"
         else
             read -r -a claude_argv <<<"$claude_command"
-            "${claude_argv[@]}" "$full_prompt" >"$output_dir/claude.log" 2>&1 &
+            (
+                umask "$AGENT_UMASK"
+                "${claude_argv[@]}" "$full_prompt" >"$output_dir/claude.log" 2>&1
+            ) &
             pids+=("$!")
             labels+=("claude")
         fi
@@ -151,13 +178,14 @@ for index in "${!pids[@]}"; do
     fi
 done
 
+prepare_artifact "$output_dir/summary.txt" || exit 1
 {
     echo "Output directory: $output_dir"
     echo
     echo "Prompt:"
     sed 's/^/  /' "$output_dir/prompt.txt"
     echo
-    for log in "$output_dir"/*.log; do
+    for log in "$output_dir/codex.log" "$output_dir/claude.log"; do
         [[ -e $log ]] || continue
         echo "## $(basename "$log")"
         tail -n 80 "$log" | sed 's/^/  /'

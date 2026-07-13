@@ -98,8 +98,12 @@ function trust_mise_config() {
 function run_mise_install() {
     # `MISE_CURRENT_VERSION` is interpreted by mise as a tool env override for `current`.
     unset MISE_CURRENT_VERSION
-    trust_mise_config
-    mise install --locked --before "${DEFAULT_NPM_MIN_RELEASE_AGE_DAYS}d"
+    trust_mise_config || return
+
+    # These exact, locked versions are exercised offline by required CI. Install
+    # them with mise's default 24-hour release-age floor before the seven-day batch.
+    mise install --locked npm:ccstatusline npm:ccusage || return
+    mise install --locked --before "${DEFAULT_NPM_MIN_RELEASE_AGE_DAYS}d" || return
 }
 
 #

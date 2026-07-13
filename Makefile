@@ -50,14 +50,45 @@ update:
 	else \
 		echo "Warning: private chezmoi source/config not found. Skipping private dotfiles."; \
 	fi
+	mise install --locked npm:ccstatusline npm:ccusage
 	./scripts/update-agent-assets.sh
+	@if ! command -v herdr > /dev/null 2>&1; then \
+		echo "Herdr command not found; skipping config reload."; \
+		exit 0; \
+	fi; \
+	if ! herdr_status="$$(herdr status server --json)"; then \
+		echo "Failed to read Herdr server status." >&2; \
+		exit 1; \
+	fi; \
+	if ! server_status="$$(printf '%s\n' "$$herdr_status" | jq -er '\
+		if type == "object" and (.status | type == "string") \
+		then .status else error("invalid Herdr server status") end')"; then \
+		echo "Ambiguous or missing Herdr server status." >&2; \
+		exit 1; \
+	fi; \
+	case "$$server_status" in \
+		running) herdr server reload-config ;; \
+		not_running) echo "Herdr server is not running; skipping config reload." ;; \
+		*) echo "Unknown or missing Herdr server status: $${server_status:-<missing>}" >&2; exit 1 ;; \
+	esac
 
 .PHONY: apply
 apply: update
 
 .PHONY: doctor
 doctor:
-	./scripts/check-tools.sh
+	@tool_status=0; runtime_status=0; runtime_result=passed; \
+	./scripts/check-tools.sh || tool_status=$$?; \
+	if [ -d home/dot_agents ] && [ -d home/dot_claude ] && [ -d home/dot_codex ]; then \
+		./scripts/check-agent-runtime.py || runtime_status=$$?; \
+	else \
+		echo "optional warning: agent runtime check skipped because source roots are incomplete"; \
+		runtime_result=not-applicable; \
+	fi; \
+	[ "$$runtime_status" -eq 0 ] || runtime_result=failed; \
+	tool_result=passed; [ "$$tool_status" -eq 0 ] || tool_result=failed; \
+	printf '\nDoctor summary: tools=%s; runtime=%s\n' "$$tool_result" "$$runtime_result"; \
+	[ "$$tool_status" -eq 0 ] && [ "$$runtime_status" -eq 0 ]
 
 .PHONY: upgrade
 upgrade:

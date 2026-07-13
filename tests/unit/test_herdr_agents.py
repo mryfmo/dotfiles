@@ -33,6 +33,10 @@ class HerdrAgentsTest(unittest.TestCase):
         self.calls_path = self.temp_dir / "herdr-calls.txt"
         self.workspace_list_path = self.temp_dir / "workspace-list.json"
         self.pane_list_path = self.temp_dir / "pane-list.json"
+        self.process_info_path = self.temp_dir / "process-info.json"
+        self.process_info_exit_path = self.temp_dir / "process-info-exit.txt"
+        self.pane_run_exit_path = self.temp_dir / "pane-run-exit.txt"
+        self.pane_split_exit_path = self.temp_dir / "pane-split-exit.txt"
         self.agent_get_path = self.temp_dir / "agent-get.json"
         self.pane_counter_path = self.temp_dir / "pane-counter.txt"
         self.home_dir = self.temp_dir / "home"
@@ -41,6 +45,10 @@ class HerdrAgentsTest(unittest.TestCase):
         self.workdir.mkdir()
         self.workspace_list_path.write_text('{"id":"cli:workspace:list","result":{"type":"workspace_list","workspaces":[]}}\n')
         self.pane_list_path.write_text('{"id":"cli:pane:list","result":{"panes":[]}}\n')
+        self.process_info_path.write_text('{"id":"cli:pane:process-info","result":{"process_info":{"foreground_processes":[]}}}\n')
+        self.process_info_exit_path.write_text("0\n")
+        self.pane_run_exit_path.write_text("0\n")
+        self.pane_split_exit_path.write_text("0\n")
         self.agent_get_path.write_text("")
         self.pane_counter_path.write_text("2\n")
 
@@ -63,7 +71,13 @@ if [[ $1 == pane && $2 == list ]]; then
     cat {self.pane_list_path}
     exit 0
 fi
+if [[ $1 == pane && $2 == process-info ]]; then
+    cat {self.process_info_path}
+    exit "$(cat {self.process_info_exit_path})"
+fi
 if [[ $1 == pane && $2 == split ]]; then
+    split_exit="$(cat {self.pane_split_exit_path})"
+    [[ $split_exit == 0 ]] || exit "$split_exit"
     workspace="${{3%%:*}}"
     pane_number="$(( $(cat {self.pane_counter_path}) + 1 ))"
     printf '%s\\n' "$pane_number" > {self.pane_counter_path}
@@ -72,6 +86,9 @@ if [[ $1 == pane && $2 == split ]]; then
 fi
 if [[ $1 == pane && $2 == swap ]]; then
     exit 0
+fi
+if [[ $1 == pane && $2 == run ]]; then
+    exit "$(cat {self.pane_run_exit_path})"
 fi
 if [[ $1 == agent && $2 == start ]]; then
     workspace='w-test'
@@ -96,6 +113,10 @@ fi
         self.write_executable("claude", "#!/usr/bin/env bash\n")
         self.write_executable("codex", "#!/usr/bin/env bash\n")
         self.write_executable("yazi", "#!/usr/bin/env bash\n")
+        jq = shutil.which("jq")
+        if jq is None:
+            self.fail("jq is required for Herdr helper tests")
+        (self.bin_dir / "jq").symlink_to(jq)
 
     def tearDown(self) -> None:
         shutil.rmtree(self.temp_dir)
@@ -150,9 +171,14 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         else:
             self.agent_get_path.write_text("")
 
+    def write_process_info(self, processes: str) -> None:
+        self.process_info_path.write_text(
+            f'{{"id":"cli:pane:process-info","result":{{"process_info":{{"foreground_processes":[{processes}]}}}}}}\n'
+        )
+
     def run_helper(self) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
-        env["PATH"] = f"{self.bin_dir}{os.pathsep}{env['PATH']}"
+        env["PATH"] = f"{self.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"
         return subprocess.run(
             ["bash", str(SCRIPT), str(self.workdir)],
             cwd=ROOT,
@@ -197,7 +223,38 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             calls,
         )
 
+    def test_missing_yazi_fails_before_mutating_a_new_workspace(self) -> None:
+        (self.bin_dir / "yazi").unlink()
+
+        result = self.run_helper()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("yazi command not found", result.stderr)
+        self.assertFalse(self.calls_path.exists())
+
     def test_existing_agents_workspace_focuses_without_recreating_agents(self) -> None:
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}},'
+            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-old:p9","workspace_id":"w-old"}}',
+            agent_pane_id="w-old:p2",
+        )
+        self.write_process_info(
+            f'{{"argv":["yazi"],"cmdline":"yazi","cwd":"{self.workdir}","name":"yazi"}}'
+        )
+
+        result = self.run_helper()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn("workspace focus w-old", calls)
+        self.assertNotIn(f"workspace create --cwd {self.workdir} --label project agents --focus", calls)
+        self.assertFalse(any(call.startswith("agent start ") for call in calls))
+        self.assertFalse(any(call.startswith("pane split ") for call in calls))
+        self.assertFalse(any(call.startswith("pane run w-old:p9 ") for call in calls))
+
+    def test_existing_empty_files_pane_restarts_yazi_in_place(self) -> None:
         self.write_workspace_state(
             "w-old",
             f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
@@ -210,10 +267,108 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
         calls = self.calls_path.read_text().splitlines()
-        self.assertIn("workspace focus w-old", calls)
-        self.assertNotIn(f"workspace create --cwd {self.workdir} --label project agents --focus", calls)
-        self.assertFalse(any(call.startswith("agent start ") for call in calls))
+        self.assertIn("pane process-info --pane w-old:p9", calls)
+        self.assertEqual(calls.count("pane run w-old:p9 yazi"), 1)
         self.assertFalse(any(call.startswith("pane split ") for call in calls))
+
+    def test_missing_yazi_fails_before_mutating_an_existing_workspace(self) -> None:
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}},'
+            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-old:p9","workspace_id":"w-old"}}',
+            agent_pane_id="w-old:p2",
+        )
+        (self.bin_dir / "yazi").unlink()
+
+        result = self.run_helper()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("yazi command not found", result.stderr)
+        self.assertFalse(self.calls_path.exists())
+
+    def test_existing_files_pane_with_other_process_restarts_yazi_in_place(self) -> None:
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}},'
+            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-old:p9","workspace_id":"w-old"}}',
+            agent_pane_id="w-old:p2",
+        )
+        self.write_process_info(
+            f'{{"argv":["zsh"],"cmdline":"zsh","cwd":"{self.workdir}","name":"zsh"}}'
+        )
+
+        result = self.run_helper()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+        calls = self.calls_path.read_text().splitlines()
+        self.assertEqual(calls.count("pane run w-old:p9 yazi"), 1)
+        self.assertFalse(any(call.startswith("pane split ") for call in calls))
+
+    def test_files_pane_inspection_failures_do_not_start_yazi(self) -> None:
+        cases = (
+            ('{"result":{}}\n', 42),
+            ("not-json\n", 0),
+            ('{"result":{"process_info":{"foreground_processes":[{}]}}}\n', 0),
+            ('{"result":{"process_info":{"foreground_processes":[{"name":null}]}}}\n', 0),
+            ('{"result":{"process_info":{"foreground_processes":["yazi"]}}}\n', 0),
+        )
+        for payload, exit_code in cases:
+            with self.subTest(payload=payload, exit_code=exit_code):
+                self.calls_path.write_text("")
+                self.write_workspace_state(
+                    "w-old",
+                    f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
+                    f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}},'
+                    f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-old:p9","workspace_id":"w-old"}}',
+                    agent_pane_id="w-old:p2",
+                )
+                self.process_info_exit_path.write_text(f"{exit_code}\n")
+                self.process_info_path.write_text(payload)
+
+                result = self.run_helper()
+
+                self.assertNotEqual(0, result.returncode)
+                self.assertNotIn("pane run w-old:p9 yazi", self.calls_path.read_text().splitlines())
+
+    def test_files_pane_operations_propagate_failures(self) -> None:
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}},'
+            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-old:p9","workspace_id":"w-old"}}',
+            agent_pane_id="w-old:p2",
+        )
+        self.pane_run_exit_path.write_text("42\n")
+        result = self.run_helper()
+        self.assertNotEqual(0, result.returncode)
+
+        self.pane_run_exit_path.write_text("0\n")
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}}',
+            agent_pane_id="w-old:p2",
+        )
+        self.pane_split_exit_path.write_text("43\n")
+        result = self.run_helper()
+        self.assertNotEqual(0, result.returncode)
+
+    def test_duplicate_files_panes_fail_without_mutation(self) -> None:
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}},'
+            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-old:p8","workspace_id":"w-old"}},'
+            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-old:p9","workspace_id":"w-old"}}',
+            agent_pane_id="w-old:p2",
+        )
+
+        result = self.run_helper()
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertFalse(any(call.startswith("pane run ") for call in self.calls_path.read_text().splitlines()))
 
     def test_existing_workspace_adds_missing_files_pane(self) -> None:
         self.write_workspace_state(
@@ -237,6 +392,9 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}},'
             f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-old:p9","workspace_id":"w-old"}}',
             agent_pane_id="w-old:p2",
+        )
+        self.write_process_info(
+            f'{{"argv":["yazi"],"cmdline":"yazi","cwd":"{self.workdir}","name":"yazi"}}'
         )
 
         result = self.run_helper()

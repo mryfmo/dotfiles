@@ -114,7 +114,10 @@ jobs:
         env:
           SYSTEM: ${{ matrix.system }}
         run: |
-          cd $(chezmoi source-path)/../
+          export FILES_TEST_CHEZMOI="$(command -v chezmoi)"
+          export FILES_TEST_SOURCE="$(chezmoi source-path)"
+          export FILES_TEST_CONFIG="${HOME}/.config/chezmoi/chezmoi.yaml"
+          cd "${FILES_TEST_SOURCE}/.."
           bats tests/files/common.bats
           bats --filter-tags common,ubuntu:${SYSTEM} \
             --print-output-on-failure \

@@ -49,7 +49,7 @@ function configure_accept_env() {
 #
 function setup_sshd() {
     sudo mkdir -p /var/run/sshd
-    mkdir -p ${HOME}/.ssh
+    mkdir -p "${HOME}/.ssh"
 
     sudo sed -i 's/^#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config &&
         sudo sed -i "s/^#\?Port .*/Port ${SSH_PORT}/" /etc/ssh/sshd_config &&
@@ -63,7 +63,7 @@ function setup_sshd() {
     sudo /usr/sbin/sshd -t
 
     # create .ssh/authorized_keys if not exists
-    touch ${HOME}/.ssh/authorized_keys
+    touch "${HOME}/.ssh/authorized_keys"
 }
 
 #

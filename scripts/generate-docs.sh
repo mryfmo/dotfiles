@@ -227,6 +227,7 @@ function source_group_title() {
 #
 # @description Return the summary sentence for a landing-page group.
 # @arg $1 string Stable group slug.
+# shellcheck disable=SC2016 # Markdown backticks are intentional literal output in this renderer.
 #
 function source_group_description() {
     local group="$1"
@@ -375,6 +376,7 @@ function extract_function_names() {
 # @arg $1 path Source file path.
 # @arg $2 string Generated category label.
 # @arg $3 string Renderer identifier.
+# shellcheck disable=SC2016 # Markdown backticks are intentional literal output in this renderer.
 #
 function print_page_header() {
     local source_path="$1"
@@ -415,6 +417,7 @@ function print_source_block() {
 # @description Render a shell source page using `shdoc` or the fallback format.
 # @arg $1 path Source file path.
 # @arg $2 string Generated category label.
+# shellcheck disable=SC2016 # Markdown backticks are intentional literal output in this renderer.
 #
 function render_shell_page() {
     local source_path="$1"
@@ -468,6 +471,7 @@ function render_shell_page() {
 # @description Render an alias file as a list of aliases plus source code.
 # @arg $1 path Source file path.
 # @arg $2 string Generated category label.
+# shellcheck disable=SC2016 # Markdown backticks are intentional literal output in this renderer.
 #
 function render_alias_page() {
     local source_path="$1"
@@ -538,7 +542,7 @@ function link_for_source_page() {
     local output_path
 
     output_path="$(output_path_for_source "${source_path}")"
-    printf "%s\n" "${output_path#${REFERENCE_DIR}/}"
+    printf "%s\n" "${output_path#"${REFERENCE_DIR}"/}"
 }
 
 #
@@ -551,6 +555,7 @@ function docs_link_for_source_page() {
 
 #
 # @description Generate a page mapping chezmoi wrapper templates to install scripts.
+# shellcheck disable=SC2016 # Markdown backticks are intentional literal output in this renderer.
 #
 function generate_template_mapping_page() {
     local found_template=false
@@ -585,6 +590,7 @@ function generate_template_mapping_page() {
 
 #
 # @description Create a placeholder catalog page until `mkdocs-toc-md` rewrites it.
+# shellcheck disable=SC2016 # Markdown backticks are intentional literal output in this renderer.
 #
 function generate_catalog_placeholder() {
     {
@@ -737,6 +743,7 @@ EOF
 
 #
 # @description Print the template-mapping card shown on the landing page.
+# shellcheck disable=SC2016 # Markdown backticks are intentional literal output in this renderer.
 #
 function print_template_mapping_card() {
     local mapped_count
@@ -781,6 +788,7 @@ function print_template_mapping_card() {
 # @description Print one category card with a preview of generated pages.
 # @arg $1 string Stable group slug.
 # @arg $2 int Number of links to preview before deferring to the catalog.
+# shellcheck disable=SC2016 # Markdown backticks are intentional literal output in this renderer.
 #
 function print_category_card() {
     local group="$1"
@@ -842,6 +850,7 @@ function print_category_card() {
 
 #
 # @description Generate the rich top-level landing page under `docs/index.md`.
+# shellcheck disable=SC2016 # Markdown backticks are intentional literal output in this renderer.
 #
 function generate_landing_page() {
     local source_count

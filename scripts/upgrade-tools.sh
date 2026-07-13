@@ -153,12 +153,24 @@ function upgrade_homebrew() {
 }
 
 #
-# @description Upgrade the standalone mise binary when self-update is available.
+# @description Upgrade standalone mise or skip package-manager-managed installations.
+# @stdout Skip message when an official package-manager marker is present.
 #
 function upgrade_mise_self() {
+    local mise_executable
+    local mise_prefix
+
     has_command mise || return 1
+    mise_executable="$(type -P mise)" || return 1
+    mise_prefix="$(cd "$(dirname "${mise_executable}")/.." && pwd -P)" || return
 
     section "mise self-update"
+    if [[ -f "${mise_prefix}/lib/mise-self-update-instructions.toml" ||
+        -f "${mise_prefix}/lib/mise/mise-self-update-instructions.toml" ]]; then
+        printf 'Skipping mise self-update: managed by package manager.\n'
+        return 0
+    fi
+
     mise self-update --yes
 }
 

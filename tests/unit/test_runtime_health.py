@@ -78,6 +78,27 @@ class RuntimeHealthTest(unittest.TestCase):
         )
         self.assertIn("!! .agents/runs/", status.stdout)
 
+    def test_agent_fanout_preserves_caller_umask_for_child_agents(self) -> None:
+        repo = self.temp_dir / "fanout-umask-repo"
+        bin_dir = self.temp_dir / "fanout-umask-bin"
+        observed_umask = self.temp_dir / "child-umask.txt"
+        repo.mkdir()
+        shutil.copy(ROOT / "home/dot_local/bin/common/executable_agent-fanout", repo / "agent-fanout")
+        self.executable(bin_dir / "codex", 'umask > "$OBSERVED_UMASK"\n')
+
+        result = self.run_test_command(
+            ["bash", "-c", 'umask 0022; exec bash ./agent-fanout --no-claude "secret prompt"'],
+            cwd=repo,
+            env={
+                **os.environ,
+                "PATH": f"{bin_dir}:{os.environ['PATH']}",
+                "OBSERVED_UMASK": str(observed_umask),
+            },
+        )
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("0022", observed_umask.read_text().strip())
+
     def test_agent_fanout_restricts_preexisting_output_artifacts(self) -> None:
         repo = self.temp_dir / "fanout-existing-repo"
         output_dir = repo / "output"
@@ -331,6 +352,31 @@ class RuntimeHealthTest(unittest.TestCase):
                 log = (repo / "commands.log").read_text()
                 if phase != "apt":
                     self.assertIn("gh extension upgrade --all", log)
+
+    def test_upgrade_skips_unavailable_mise_self_update(self) -> None:
+        repo, env = self.upgrade_fixture("none")
+        marker = repo / "lib/mise-self-update-instructions.toml"
+        marker.parent.mkdir()
+        marker.write_text('message = "managed by fixture package manager"\n')
+        result = self.run_test_command(
+            ["bash", "scripts/upgrade-tools.sh"],
+            cwd=repo,
+            env=env,
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("Skipping mise self-update: managed by package manager.", result.stdout)
+        log = (repo / "commands.log").read_text()
+        self.assertNotIn("mise self-update --yes", log)
+        self.assertIn("mise upgrade --bump --yes --before 7d python", log)
+
+        repo, env = self.upgrade_fixture("mise_upgrade")
+        marker = repo / "lib/mise/mise-self-update-instructions.toml"
+        marker.parent.mkdir(parents=True)
+        marker.write_text('message = "managed by fixture package manager"\n')
+        result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+        self.assertIn("required failure: mise inventory/install/upgrade", result.stderr)
 
     def test_upgrade_github_extensions_are_warning_only(self) -> None:
         repo, env = self.upgrade_fixture("gh")

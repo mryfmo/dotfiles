@@ -150,13 +150,29 @@ jobs:
             exit 1
           fi
 
+          files_test_chezmoi="$(command -v chezmoi)"
+          case "${files_test_chezmoi}" in
+            /*/mise/shims/*|"")
+              echo "Files test chezmoi must resolve outside mise shims: ${files_test_chezmoi:-missing}" >&2
+              exit 1
+              ;;
+            /*) ;;
+            *)
+              echo "Files test chezmoi must be an absolute path: ${files_test_chezmoi}" >&2
+              exit 1
+              ;;
+          esac
+          test -x "${files_test_chezmoi}"
+          printf 'FILES_TEST_CHEZMOI=%s\n' "${files_test_chezmoi}" >> "${GITHUB_ENV}"
+
           # Install coverage tooling as user gems and expose gem bin dir on PATH
           # before installation so RubyGems can expose executables immediately.
           # `--no-document` keeps CI faster and deterministic.
           gem_bin_dir="$(ruby -r rubygems -e 'puts Gem.user_dir')/bin"
           echo "${gem_bin_dir}" >> "${GITHUB_PATH}"
           export PATH="${gem_bin_dir}:${PATH}"
-          gem install --user-install --no-document bashcov simplecov-cobertura
+          gem install --user-install --no-document bashcov --version 3.3.0
+          gem install --user-install --no-document simplecov-cobertura --version 3.1.0
 
       - name: Prepare exact statusline tool config
         if: ${{ needs.changes.outputs.should_test == 'true' }}
@@ -283,12 +299,12 @@ jobs:
           # everything else so role-specific ignores determine both boundaries.
           # Regenerate the full config from its managed template first so
           # subsequent `chezmoi diff` output contains only target drift.
-          CI=true HOME="${files_test_home}" chezmoi \
+          CI=true HOME="${files_test_home}" "${FILES_TEST_CHEZMOI}" \
             --source "${files_test_source}" \
             --destination "${files_test_home}" \
             --config "${files_test_config}" \
             init
-          HOME="${files_test_home}" chezmoi \
+          HOME="${files_test_home}" "${FILES_TEST_CHEZMOI}" \
             --source "${files_test_source}" \
             --destination "${files_test_home}" \
             --config "${files_test_config}" \

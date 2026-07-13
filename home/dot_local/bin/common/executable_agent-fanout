@@ -114,7 +114,7 @@ else
     mkdir -p "$output_dir"
 fi
 chmod 700 "$output_dir"
-prepare_artifact "$output_dir/prompt.txt"
+prepare_artifact "$output_dir/prompt.txt" || exit 1
 printf '%s\n' "$prompt" >"$output_dir/prompt.txt"
 
 shared_prefix='Before repository-specific decisions, use Cognee recall/search when the Cognee MCP server is enabled. Do not save secrets, tokens, raw logs, temporary PR state, or transient todos. Do not delete, prune, or forget memory. Save only durable facts after completion.'
@@ -128,7 +128,7 @@ labels=()
 status=0
 
 if $run_codex; then
-    prepare_artifact "$output_dir/codex.log"
+    prepare_artifact "$output_dir/codex.log" || exit 1
     if ! command -v codex >/dev/null 2>&1; then
         echo "codex command not found" >"$output_dir/codex.log"
         status=1
@@ -146,7 +146,7 @@ if $run_codex; then
 fi
 
 if $run_claude; then
-    prepare_artifact "$output_dir/claude.log"
+    prepare_artifact "$output_dir/claude.log" || exit 1
     if ! command -v claude >/dev/null 2>&1; then
         echo "claude command not found" >"$output_dir/claude.log"
         status=1
@@ -170,7 +170,7 @@ for index in "${!pids[@]}"; do
     fi
 done
 
-prepare_artifact "$output_dir/summary.txt"
+prepare_artifact "$output_dir/summary.txt" || exit 1
 {
     echo "Output directory: $output_dir"
     echo

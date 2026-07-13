@@ -14,7 +14,11 @@ class FilesFixtureTest(unittest.TestCase):
         self.assertIn('/*/mise/shims/*|"")', workflow)
         self.assertIn('test -x "${files_test_chezmoi}"', workflow)
         self.assertEqual(2, workflow.count('"${FILES_TEST_CHEZMOI}"'))
-        self.assertEqual(3, helpers.count('"${FILES_TEST_CHEZMOI'))
+        self.assertEqual(1, helpers.count('"${FILES_TEST_CHEZMOI'))
+        for name in ("FILES_TEST_SOURCE", "FILES_TEST_CONFIG"):
+            self.assertIn(f"{name}=", workflow)
+            self.assertIn(f'${{{name}:?{name} is required}}', helpers)
+        self.assertIn('--destination "${HOME}"', helpers)
         self.assertNotIn("run chezmoi", helpers)
 
     def test_coverage_gems_are_compatible_and_exact(self):

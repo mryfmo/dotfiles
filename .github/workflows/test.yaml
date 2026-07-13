@@ -310,7 +310,11 @@ jobs:
             --config "${files_test_config}" \
             --refresh-externals=never \
             apply --exclude=scripts,externals
-          printf 'FILES_TEST_HOME=%s\n' "${files_test_home}" >> "${GITHUB_ENV}"
+          {
+            printf 'FILES_TEST_HOME=%s\n' "${files_test_home}"
+            printf 'FILES_TEST_SOURCE=%s\n' "${files_test_source}"
+            printf 'FILES_TEST_CONFIG=%s\n' "${files_test_config}"
+          } >> "${GITHUB_ENV}"
 
       - name: Run unit test
         if: ${{ needs.changes.outputs.should_test == 'true' }}

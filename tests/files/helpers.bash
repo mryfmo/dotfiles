@@ -12,14 +12,20 @@ assert_absent() {
 
 assert_idempotent_apply() {
     local sentinel="${HOME}/.phase5-$1-sentinel"
+    local -a chezmoi_command=(
+        "${FILES_TEST_CHEZMOI:?FILES_TEST_CHEZMOI is required}"
+        --source "${FILES_TEST_SOURCE:?FILES_TEST_SOURCE is required}"
+        --destination "${HOME}"
+        --config "${FILES_TEST_CONFIG:?FILES_TEST_CONFIG is required}"
+    )
     shift
     printf 'keep\n' > "${sentinel}"
 
-    run "${FILES_TEST_CHEZMOI:?FILES_TEST_CHEZMOI is required}" diff "$@"
+    run "${chezmoi_command[@]}" diff "$@"
     assert_chezmoi_result "initial diff"
-    run "${FILES_TEST_CHEZMOI}" apply --exclude=scripts "$@"
+    run "${chezmoi_command[@]}" apply --exclude=scripts "$@"
     assert_chezmoi_result "second apply" false
-    run "${FILES_TEST_CHEZMOI}" diff "$@"
+    run "${chezmoi_command[@]}" diff "$@"
     assert_chezmoi_result "final diff"
     [ "$(cat "${sentinel}")" = keep ]
 

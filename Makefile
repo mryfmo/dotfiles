@@ -56,20 +56,19 @@ update:
 		echo "Herdr command not found; skipping config reload."; \
 		exit 0; \
 	fi; \
-	if ! herdr_status="$$(herdr status)"; then \
+	if ! herdr_status="$$(herdr status server --json)"; then \
 		echo "Failed to read Herdr server status." >&2; \
 		exit 1; \
 	fi; \
-	if ! server_status="$$(printf '%s\n' "$$herdr_status" | awk '\
-		/^[^[:space:]]/ { if ($$0 == "server:") { server_sections++; in_server = 1 } else { in_server = 0 }; next } \
-		in_server && /^  status:[[:space:]]*/ { statuses++; sub(/^  status:[[:space:]]*/, ""); value = $$0 } \
-		END { if (server_sections != 1 || statuses != 1) exit 1; print value }')"; then \
+	if ! server_status="$$(printf '%s\n' "$$herdr_status" | jq -er '\
+		if type == "object" and (.status | type == "string") \
+		then .status else error("invalid Herdr server status") end')"; then \
 		echo "Ambiguous or missing Herdr server status." >&2; \
 		exit 1; \
 	fi; \
 	case "$$server_status" in \
 		running) herdr server reload-config ;; \
-		stopped) echo "Herdr server is stopped; skipping config reload." ;; \
+		not_running) echo "Herdr server is not running; skipping config reload." ;; \
 		*) echo "Unknown or missing Herdr server status: $${server_status:-<missing>}" >&2; exit 1 ;; \
 	esac
 

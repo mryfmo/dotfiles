@@ -46,11 +46,11 @@ EOF
 printf 'herdr %s\n' "\$*" >> "${fixture}/calls"
 if [[ \$1 == status ]]; then
     case '${server_status}' in
-        duplicate-status) printf 'server:\n  status: running\n  status: stopped\n' ;;
-        duplicate-server) printf 'server:\n  status: stopped\nserver:\n  status: running\n' ;;
-        client-first) printf 'client:\n  status: stopped\nserver:\n  status: running\n' ;;
-        trailing-value) printf 'server:\n  status: running extra\n' ;;
-        *) printf 'client:\n  status: connected\nserver:\n  status: %s\n' '${server_status}' ;;
+        missing-status) printf '{"running":true}\n' ;;
+        nonstring-status) printf '{"status":true}\n' ;;
+        multiple-statuses) printf '{"status":"running"}\n{"status":"not_running"}\n' ;;
+        malformed-json) printf '{\n' ;;
+        *) printf '{"status":"%s","running":%s}\n' '${server_status}' "\$([[ '${server_status}' == running ]] && printf true || printf false)" ;;
     esac
     exit ${status_exit}
 fi
@@ -77,7 +77,7 @@ EOF
 chezmoi --source ${UPDATE_FIXTURE}/home/.local/share/chezmoi-private --config ${UPDATE_FIXTURE}/home/.config/chezmoi-private/chezmoi.yaml apply --verbose --exclude=scripts
 mise install --locked npm:ccstatusline npm:ccusage
 assets
-herdr status
+herdr status server --json
 herdr server reload-config" ]
 }
 
@@ -89,10 +89,10 @@ herdr server reload-config" ]
     ! grep -q '^herdr ' "${UPDATE_FIXTURE}/calls"
 }
 
-@test "[common] update skips a stopped Herdr server" {
-    run_update_fixture stopped
+@test "[common] update skips a Herdr server that is not running" {
+    run_update_fixture not_running
     [ "$status" -eq 0 ]
-    [[ "$output" == *'Herdr server is stopped; skipping config reload.'* ]]
+    [[ "$output" == *'Herdr server is not running; skipping config reload.'* ]]
     ! grep -q '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls"
 }
 
@@ -121,21 +121,15 @@ herdr server reload-config" ]
     [ "$status" -ne 0 ]
     ! grep -q '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls"
 
-    run_update_fixture ""
+    run_update_fixture missing-status
     [ "$status" -ne 0 ]
     ! grep -q '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls"
 
-    for malformed in duplicate-status duplicate-server trailing-value; do
+    for malformed in nonstring-status multiple-statuses malformed-json; do
         run_update_fixture "${malformed}"
         [ "$status" -ne 0 ]
         ! grep -q '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls"
     done
-}
-
-@test "[common] update reads only the unique server status" {
-    run_update_fixture client-first
-    [ "$status" -eq 0 ]
-    [ "$(grep -c '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls")" -eq 1 ]
 }
 
 @test "[common] update propagates Herdr reload failure" {

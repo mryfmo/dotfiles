@@ -141,7 +141,10 @@ jobs:
         run: |
           brew install bats-core
 
-          cd $(chezmoi source-path)/../
+          export FILES_TEST_CHEZMOI="$(command -v chezmoi)"
+          export FILES_TEST_SOURCE="$(chezmoi source-path)"
+          export FILES_TEST_CONFIG="${HOME}/.config/chezmoi/chezmoi.yaml"
+          cd "${FILES_TEST_SOURCE}/.."
           bats --print-output-on-failure \
             tests/files/common.bats \
             tests/files/macos.bats

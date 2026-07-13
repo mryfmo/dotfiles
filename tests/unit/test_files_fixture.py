@@ -28,6 +28,14 @@ class FilesFixtureTest(unittest.TestCase):
         self.assertIn("bashcov --version 3.3.0", workflow)
         self.assertIn("simplecov-cobertura --version 3.1.0", workflow)
 
+    def test_legacy_file_workflows_initialize_required_fixture_paths(self):
+        for name in ("macos", "ubuntu"):
+            workflow = (ROOT / f".github/workflows/{name}.yaml").read_text()
+            self.assertIn('export FILES_TEST_CHEZMOI="$(command -v chezmoi)"', workflow)
+            self.assertIn('export FILES_TEST_SOURCE="$(chezmoi source-path)"', workflow)
+            self.assertIn('export FILES_TEST_CONFIG="${HOME}/.config/chezmoi/chezmoi.yaml"', workflow)
+            self.assertIn('cd "${FILES_TEST_SOURCE}/.."', workflow)
+
 
 if __name__ == "__main__":
     unittest.main()

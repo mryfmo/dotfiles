@@ -50,6 +50,7 @@ update:
 	else \
 		echo "Warning: private chezmoi source/config not found. Skipping private dotfiles."; \
 	fi
+	mise install --locked npm:ccstatusline npm:ccusage
 	./scripts/update-agent-assets.sh
 	@if ! command -v herdr > /dev/null 2>&1; then \
 		echo "Herdr command not found; skipping config reload."; \

@@ -18,14 +18,23 @@ function run_update_fixture() {
     local reload_exit="${3:-0}"
     local apply_exit="${4:-0}"
     local assets_exit="${5:-0}"
+    local mise_exit="${6:-0}"
     local fixture="${BATS_TEST_TMPDIR}/update-${BATS_TEST_NUMBER}"
 
-    mkdir -p "${fixture}/bin" "${fixture}/scripts" "${fixture}/home"
+    mkdir -p "${fixture}/bin" "${fixture}/scripts" \
+        "${fixture}/home/.local/share/chezmoi-private" \
+        "${fixture}/home/.config/chezmoi-private"
+    touch "${fixture}/home/.config/chezmoi-private/chezmoi.yaml"
     cp Makefile "${fixture}/Makefile"
     cat > "${fixture}/bin/chezmoi" <<EOF
 #!/usr/bin/env bash
 printf 'chezmoi %s\n' "\$*" >> "${fixture}/calls"
 exit ${apply_exit}
+EOF
+    cat > "${fixture}/bin/mise" <<EOF
+#!/usr/bin/env bash
+printf 'mise %s\n' "\$*" >> "${fixture}/calls"
+exit ${mise_exit}
 EOF
     cat > "${fixture}/scripts/update-agent-assets.sh" <<EOF
 #!/usr/bin/env bash
@@ -47,7 +56,8 @@ if [[ \$1 == status ]]; then
 fi
 exit ${reload_exit}
 EOF
-    chmod +x "${fixture}/bin/chezmoi" "${fixture}/bin/herdr" "${fixture}/scripts/update-agent-assets.sh"
+    chmod +x "${fixture}/bin/chezmoi" "${fixture}/bin/mise" "${fixture}/bin/herdr" \
+        "${fixture}/scripts/update-agent-assets.sh"
 
     run env HOME="${fixture}/home" PATH="${fixture}/bin:${PATH}" make -C "${fixture}" update
     UPDATE_FIXTURE="${fixture}"
@@ -57,6 +67,26 @@ EOF
     run_update_fixture running
     [ "$status" -eq 0 ]
     [ "$(grep -c '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls")" -eq 1 ]
+}
+
+@test "[common] update installs statusline tools after applies and before agent assets" {
+    run_update_fixture running
+    [ "$status" -eq 0 ]
+    run cat "${UPDATE_FIXTURE}/calls"
+    [ "$output" = "chezmoi apply --verbose --exclude=scripts
+chezmoi --source ${UPDATE_FIXTURE}/home/.local/share/chezmoi-private --config ${UPDATE_FIXTURE}/home/.config/chezmoi-private/chezmoi.yaml apply --verbose --exclude=scripts
+mise install --locked npm:ccstatusline npm:ccusage
+assets
+herdr status
+herdr server reload-config" ]
+}
+
+@test "[common] update stops before agent assets and Herdr when statusline install fails" {
+    run_update_fixture running 0 0 0 0 24
+    [ "$status" -ne 0 ]
+    grep -q '^mise install --locked npm:ccstatusline npm:ccusage$' "${UPDATE_FIXTURE}/calls"
+    ! grep -q '^assets$' "${UPDATE_FIXTURE}/calls"
+    ! grep -q '^herdr ' "${UPDATE_FIXTURE}/calls"
 }
 
 @test "[common] update skips a stopped Herdr server" {
@@ -71,8 +101,9 @@ EOF
     mkdir -p "${fixture}/bin" "${fixture}/scripts" "${fixture}/home"
     cp Makefile "${fixture}/Makefile"
     printf '#!/usr/bin/env bash\nexit 0\n' > "${fixture}/bin/chezmoi"
+    printf '#!/usr/bin/env bash\nexit 0\n' > "${fixture}/bin/mise"
     printf '#!/usr/bin/env bash\nexit 0\n' > "${fixture}/scripts/update-agent-assets.sh"
-    chmod +x "${fixture}/bin/chezmoi" "${fixture}/scripts/update-agent-assets.sh"
+    chmod +x "${fixture}/bin/chezmoi" "${fixture}/bin/mise" "${fixture}/scripts/update-agent-assets.sh"
 
     run env HOME="${fixture}/home" PATH="${fixture}/bin:/usr/bin:/bin" make -C "${fixture}" update
     [ "$status" -eq 0 ]

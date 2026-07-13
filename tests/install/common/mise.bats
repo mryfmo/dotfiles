@@ -75,6 +75,18 @@ install --locked --before ${DEFAULT_NPM_MIN_RELEASE_AGE_DAYS}d" ]
     [ ! -e "${BATS_TEST_TMPDIR}/unexpected-batch" ]
 }
 
+@test "[common] run_mise_install returns the seven-day batch failure" {
+    function mise() {
+        if [ "$1" = install ] && [ "$3" = --before ]; then
+            return 43
+        fi
+    }
+
+    run run_mise_install
+
+    [ "${status}" -eq 43 ]
+}
+
 @test "[common] blocc is only installed on Linux x64" {
     run grep -F '"github:shuntaka9576/blocc" = { version = "0.6.0", os = ["linux/x64"] }' home/dot_mise/config.toml
     [ "${status}" -eq 0 ]

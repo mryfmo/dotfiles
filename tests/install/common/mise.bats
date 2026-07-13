@@ -29,18 +29,50 @@ function teardown() {
     [ -x "$(command -v mise)" ]
 }
 
-@test "[common] run_mise_install uses hardcoded min-release-age days" {
+@test "[common] run_mise_install vets statusline tools before the seven-day batch" {
     printf "min-release-age=99\n" > "${HOME}/.npmrc"
 
     function mise() {
-        echo "$*" > "${BATS_TEST_TMPDIR}/mise_install_args.txt"
+        echo "$*" >> "${BATS_TEST_TMPDIR}/mise_install_args.txt"
     }
 
     run_mise_install
 
     run cat "${BATS_TEST_TMPDIR}/mise_install_args.txt"
     [ "${status}" -eq 0 ]
-    [ "${output}" = "install --locked --before ${DEFAULT_NPM_MIN_RELEASE_AGE_DAYS}d" ]
+    [ "${output}" = "trust --yes
+install --locked npm:ccstatusline npm:ccusage
+install --locked --before ${DEFAULT_NPM_MIN_RELEASE_AGE_DAYS}d" ]
+}
+
+@test "[common] run_mise_install stops when config trust fails" {
+    function mise() {
+        if [ "$1" = trust ]; then
+            return 41
+        fi
+        touch "${BATS_TEST_TMPDIR}/unexpected-install"
+    }
+
+    run run_mise_install
+
+    [ "${status}" -eq 41 ]
+    [ ! -e "${BATS_TEST_TMPDIR}/unexpected-install" ]
+}
+
+@test "[common] run_mise_install stops when statusline install fails" {
+    function mise() {
+        if [ "$1" = install ] && [ "$3" = npm:ccstatusline ]; then
+            return 42
+        fi
+        if [ "$1" = install ]; then
+            touch "${BATS_TEST_TMPDIR}/unexpected-batch"
+        fi
+    }
+
+    run run_mise_install
+
+    [ "${status}" -eq 42 ]
+    [ ! -e "${BATS_TEST_TMPDIR}/unexpected-batch" ]
 }
 
 @test "[common] blocc is only installed on Linux x64" {

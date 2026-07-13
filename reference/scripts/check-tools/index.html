@@ -3171,8 +3171,9 @@
 <li><code>check_homebrew</code></li>
 <li><code>check_private_chezmoi</code></li>
 <li><code>main</code></li>
-<li><code>run_optional_doctor</code></li>
+<li><code>run_required_doctor</code></li>
 <li><code>section</code></li>
+<li><code>warn_optional</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
@@ -3186,6 +3187,9 @@
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
+<span class="nv">required_failures</span><span class="o">=</span><span class="m">0</span>
+<span class="nv">optional_warnings</span><span class="o">=</span><span class="m">0</span>
+
 <span class="c1">#</span>
 <span class="c1"># @description Print a section heading.</span>
 <span class="c1"># @arg $1 string Heading text.</span>
@@ -3195,7 +3199,7 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Report whether a command exists and print its version when known.</span>
+<span class="c1"># @description Require a command and a successful version command.</span>
 <span class="c1"># @arg $1 string Command name.</span>
 <span class="c1"># @arg $@ string Optional version command arguments.</span>
 <span class="c1">#</span>
@@ -3204,35 +3208,55 @@
 <span class="w">    </span><span class="nb">shift</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">command_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;missing: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">command_name</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;required missing: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">command_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="o">((</span><span class="nv">required_failures</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="m">1</span><span class="o">))</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;found:   %s -&gt; %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">command_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">command_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
 
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>output
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>output<span class="w"> </span>first_line
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$#</span><span class="s2">&quot;</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nv">output</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">command_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$@</span><span class="s2">&quot;</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">output</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">command_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$@</span><span class="s2">&quot;</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="k">)</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;required failed: %s %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">command_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$*</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="o">((</span><span class="nv">required_failures</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="m">1</span><span class="o">))</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">else</span>
-<span class="w">        </span><span class="nv">output</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">command_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--version<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">output</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">command_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--version<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="k">)</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;required failed: %s --version\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">command_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="o">((</span><span class="nv">required_failures</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="m">1</span><span class="o">))</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">output</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>first_line<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">output</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">first_line</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Run an optional read-only doctor command when available.</span>
+<span class="c1"># @description Run a required read-only doctor command when its tool is available.</span>
 <span class="c1"># @arg $1 string Command name.</span>
 <span class="c1"># @arg $@ string Doctor command arguments.</span>
 <span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>run_optional_doctor<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="k">function</span><span class="w"> </span>run_required_doctor<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">command_name</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
 <span class="w">    </span><span class="nb">shift</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">command_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">command_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$@</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">command_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>!<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">command_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$@</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;required failed: %s %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">command_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$*</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="o">((</span><span class="nv">required_failures</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="m">1</span><span class="o">))</span>
 <span class="w">    </span><span class="k">fi</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Record an optional warning.</span>
+<span class="c1"># @arg $1 string Warning text.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>warn_optional<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;optional warning: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="o">((</span><span class="nv">optional_warnings</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="m">1</span><span class="o">))</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3247,36 +3271,35 @@
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">private_config</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;found:   private config -&gt; %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">private_config</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="w">        </span><span class="k">else</span>
-<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;missing: private config -&gt; %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">private_config</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">            </span>warn_optional<span class="w"> </span><span class="s2">&quot;private config is missing: </span><span class="si">${</span><span class="nv">private_config</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">else</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;missing: private source -&gt; %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">private_source</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span>warn_optional<span class="w"> </span><span class="s2">&quot;private source is missing: </span><span class="si">${</span><span class="nv">private_source</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>!<span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">private_config</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span>warn_optional<span class="w"> </span><span class="s2">&quot;private config is missing: </span><span class="si">${</span><span class="nv">private_config</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Print the current Homebrew state when Homebrew is installed.</span>
+<span class="c1"># @description Require Homebrew on macOS and skip it on other platforms.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>check_homebrew<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>brew<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;missing: brew\n&#39;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uname<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">&quot;Darwin&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;not applicable: Homebrew (non-Darwin)\n&#39;</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span>brew<span class="w"> </span>--version<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
-<span class="w">    </span>brew<span class="w"> </span>outdated<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span>check_command<span class="w"> </span>brew<span class="w"> </span>--version
 <span class="o">}</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Print the current GitHub CLI extension state when gh is installed.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>check_gh_extensions<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>gh<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;missing: gh\n&#39;</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>gh<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>!<span class="w"> </span>gh<span class="w"> </span>extension<span class="w"> </span>list<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>warn_optional<span class="w"> </span><span class="s2">&quot;unable to list installed GitHub CLI extensions&quot;</span>
 <span class="w">    </span><span class="k">fi</span>
-
-<span class="w">    </span>gh<span class="w"> </span>extension<span class="w"> </span>list<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3291,18 +3314,22 @@
 <span class="w">    </span>check_command<span class="w"> </span>gh<span class="w"> </span>--version
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;Chezmoi&quot;</span>
-<span class="w">    </span>run_optional_doctor<span class="w"> </span>chezmoi<span class="w"> </span>doctor
+<span class="w">    </span>run_required_doctor<span class="w"> </span>chezmoi<span class="w"> </span>doctor
 <span class="w">    </span>check_private_chezmoi
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;Mise&quot;</span>
-<span class="w">    </span>run_optional_doctor<span class="w"> </span>mise<span class="w"> </span>doctor
-<span class="w">    </span>run_optional_doctor<span class="w"> </span>mise<span class="w"> </span>ls<span class="w"> </span>--current
+<span class="w">    </span>run_required_doctor<span class="w"> </span>mise<span class="w"> </span>doctor
+<span class="w">    </span>run_required_doctor<span class="w"> </span>mise<span class="w"> </span>ls<span class="w"> </span>--current
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;Homebrew&quot;</span>
 <span class="w">    </span>check_homebrew
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;GitHub CLI extensions&quot;</span>
 <span class="w">    </span>check_gh_extensions
+
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;\nTool check summary: required failures: %d; optional warnings: %d\n&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">required_failures</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">optional_warnings</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">required_failures</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span>
 <span class="o">}</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>

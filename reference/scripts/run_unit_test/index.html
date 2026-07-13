@@ -3168,6 +3168,7 @@
 <ul>
 <li><code>main</code></li>
 <li><code>run_common_test</code></li>
+<li><code>run_files_test</code></li>
 <li><code>run_os_specific_test</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
@@ -3218,9 +3219,34 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Run the rendered public-dotfiles manifest tests for the active CI target.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>run_files_test<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>-a<span class="w"> </span>bats_args
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>test_count
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">OS</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;macos-14&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SYSTEM</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;client&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">bats_args</span><span class="o">=(</span>tests/files/macos.bats<span class="o">)</span>
+<span class="w">    </span><span class="k">elif</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">OS</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;ubuntu-latest&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">{</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SYSTEM</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;client&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SYSTEM</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;server&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="o">}</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">bats_args</span><span class="o">=(</span>--filter-tags<span class="w"> </span><span class="s2">&quot;common,ubuntu:</span><span class="si">${</span><span class="nv">SYSTEM</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>tests/files/ubuntu.bats<span class="o">)</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">OS</span><span class="si">}</span><span class="s2"> and </span><span class="si">${</span><span class="nv">SYSTEM</span><span class="si">}</span><span class="s2"> are not supported&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="nv">test_count</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">HOME</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">FILES_TEST_HOME</span><span class="p">:?FILES_TEST_HOME is required</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>bats<span class="w"> </span>--count<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">bats_args</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span><span class="si">${</span><span class="nv">test_count</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">1</span>-9<span class="o">][</span><span class="m">0</span>-9<span class="o">]</span>*$<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Expected at least one files test; got </span><span class="si">${</span><span class="nv">test_count</span><span class="k">:-</span><span class="nv">no</span><span class="p"> count</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">HOME</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">FILES_TEST_HOME</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>bats<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">bats_args</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Run the full unit test flow used by CI.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>run_files_test
 <span class="w">    </span>run_common_test
 <span class="w">    </span>run_os_specific_test
 <span class="o">}</span>

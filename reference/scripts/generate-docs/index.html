@@ -3431,6 +3431,7 @@
 <span class="c1">#</span>
 <span class="c1"># @description Return the summary sentence for a landing-page group.</span>
 <span class="c1"># @arg $1 string Stable group slug.</span>
+<span class="c1"># shellcheck disable=SC2016 # Markdown backticks are intentional literal output in this renderer.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>source_group_description<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">group</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
@@ -3579,6 +3580,7 @@
 <span class="c1"># @arg $1 path Source file path.</span>
 <span class="c1"># @arg $2 string Generated category label.</span>
 <span class="c1"># @arg $3 string Renderer identifier.</span>
+<span class="c1"># shellcheck disable=SC2016 # Markdown backticks are intentional literal output in this renderer.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>print_page_header<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
@@ -3619,6 +3621,7 @@
 <span class="c1"># @description Render a shell source page using `shdoc` or the fallback format.</span>
 <span class="c1"># @arg $1 path Source file path.</span>
 <span class="c1"># @arg $2 string Generated category label.</span>
+<span class="c1"># shellcheck disable=SC2016 # Markdown backticks are intentional literal output in this renderer.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>render_shell_page<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
@@ -3672,6 +3675,7 @@
 <span class="c1"># @description Render an alias file as a list of aliases plus source code.</span>
 <span class="c1"># @arg $1 path Source file path.</span>
 <span class="c1"># @arg $2 string Generated category label.</span>
+<span class="c1"># shellcheck disable=SC2016 # Markdown backticks are intentional literal output in this renderer.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>render_alias_page<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
@@ -3742,7 +3746,7 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>output_path
 
 <span class="w">    </span><span class="nv">output_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>output_path_for_source<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;%s\n&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">output_path</span><span class="p">#</span><span class="si">${</span><span class="nv">REFERENCE_DIR</span><span class="si">}</span><span class="p">/</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;%s\n&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">output_path</span><span class="p">#</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">REFERENCE_DIR</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">/</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3755,6 +3759,7 @@
 
 <span class="c1">#</span>
 <span class="c1"># @description Generate a page mapping chezmoi wrapper templates to install scripts.</span>
+<span class="c1"># shellcheck disable=SC2016 # Markdown backticks are intentional literal output in this renderer.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>generate_template_mapping_page<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">found_template</span><span class="o">=</span><span class="nb">false</span>
@@ -3789,6 +3794,7 @@
 
 <span class="c1">#</span>
 <span class="c1"># @description Create a placeholder catalog page until `mkdocs-toc-md` rewrites it.</span>
+<span class="c1"># shellcheck disable=SC2016 # Markdown backticks are intentional literal output in this renderer.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>generate_catalog_placeholder<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="o">{</span>
@@ -3931,6 +3937,7 @@ EOF
 }</p>
 <h1 id="_5"><a class="headerlink" href="#_5" title="Permanent link">&para;</a></h1>
 <h1 id="description-print-the-template-mapping-card-shown-on-the-landing-page">@description Print the template-mapping card shown on the landing page.<a class="headerlink" href="#description-print-the-template-mapping-card-shown-on-the-landing-page" title="Permanent link">&para;</a></h1>
+<h1 id="shellcheck-disablesc2016-markdown-backticks-are-intentional-literal-output-in-this-renderer">shellcheck disable=SC2016 # Markdown backticks are intentional literal output in this renderer.<a class="headerlink" href="#shellcheck-disablesc2016-markdown-backticks-are-intentional-literal-output-in-this-renderer" title="Permanent link">&para;</a></h1>
 <h1 id="_6"><a class="headerlink" href="#_6" title="Permanent link">&para;</a></h1>
 <p>function print_template_mapping_card() {
     local mapped_count
@@ -3974,6 +3981,7 @@ printf &#39;\n&lt;/div&gt;\n&#39;
 <h1 id="description-print-one-category-card-with-a-preview-of-generated-pages">@description Print one category card with a preview of generated pages.<a class="headerlink" href="#description-print-one-category-card-with-a-preview-of-generated-pages" title="Permanent link">&para;</a></h1>
 <h1 id="arg-1-string-stable-group-slug">@arg $1 string Stable group slug.<a class="headerlink" href="#arg-1-string-stable-group-slug" title="Permanent link">&para;</a></h1>
 <h1 id="arg-2-int-number-of-links-to-preview-before-deferring-to-the-catalog">@arg $2 int Number of links to preview before deferring to the catalog.<a class="headerlink" href="#arg-2-int-number-of-links-to-preview-before-deferring-to-the-catalog" title="Permanent link">&para;</a></h1>
+<h1 id="shellcheck-disablesc2016-markdown-backticks-are-intentional-literal-output-in-this-renderer_1">shellcheck disable=SC2016 # Markdown backticks are intentional literal output in this renderer.<a class="headerlink" href="#shellcheck-disablesc2016-markdown-backticks-are-intentional-literal-output-in-this-renderer_1" title="Permanent link">&para;</a></h1>
 <h1 id="_8"><a class="headerlink" href="#_8" title="Permanent link">&para;</a></h1>
 <p>function print_category_card() {
     local group="$1"
@@ -4034,6 +4042,7 @@ printf &#39;\n&lt;/div&gt;\n&#39;
 <p>}</p>
 <h1 id="_9"><a class="headerlink" href="#_9" title="Permanent link">&para;</a></h1>
 <h1 id="description-generate-the-rich-top-level-landing-page-under-docsindexmd">@description Generate the rich top-level landing page under <code>docs/index.md</code>.<a class="headerlink" href="#description-generate-the-rich-top-level-landing-page-under-docsindexmd" title="Permanent link">&para;</a></h1>
+<h1 id="shellcheck-disablesc2016-markdown-backticks-are-intentional-literal-output-in-this-renderer_2">shellcheck disable=SC2016 # Markdown backticks are intentional literal output in this renderer.<a class="headerlink" href="#shellcheck-disablesc2016-markdown-backticks-are-intentional-literal-output-in-this-renderer_2" title="Permanent link">&para;</a></h1>
 <h1 id="_10"><a class="headerlink" href="#_10" title="Permanent link">&para;</a></h1>
 <p>function generate_landing_page() {
     local source_count

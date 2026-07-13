@@ -3176,6 +3176,8 @@
 <li><code>repair_mise_npm_package</code></li>
 <li><code>run_mise_tool_command</code></li>
 <li><code>run_mise_with_isolated_git_config</code></li>
+<li><code>run_optional_phase</code></li>
+<li><code>run_required_phase</code></li>
 <li><code>section</code></li>
 <li><code>upgrade_agent_assets</code></li>
 <li><code>upgrade_agent_cli_tools</code></li>
@@ -3202,6 +3204,8 @@
 
 <span class="nv">include_system</span><span class="o">=</span><span class="nb">false</span>
 <span class="nv">DEFAULT_FORBIDDEN_HOMEBREW_FORMULAE</span><span class="o">=</span><span class="s2">&quot;node node@* python python@* python3 pip npm pnpm yarn claude&quot;</span>
+<span class="nv">required_failures</span><span class="o">=</span><span class="m">0</span>
+<span class="nv">optional_warnings</span><span class="o">=</span><span class="m">0</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Print a section heading.</span>
@@ -3234,6 +3238,36 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Run a required upgrade phase and record failure without stopping later phases.</span>
+<span class="c1"># @arg $1 string Phase label.</span>
+<span class="c1"># @arg $2 string Function name.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>run_required_phase<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">label</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">shift</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$@</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;required failure: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">label</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="o">((</span><span class="nv">required_failures</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="m">1</span><span class="o">))</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Run an optional upgrade phase and record warning-only failure.</span>
+<span class="c1"># @arg $1 string Phase label.</span>
+<span class="c1"># @arg $2 string Function name.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>run_optional_phase<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">label</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">shift</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$@</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;optional warning: %s failed\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">label</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="o">((</span><span class="nv">optional_warnings</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="m">1</span><span class="o">))</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Return success when the named Homebrew formula is forbidden.</span>
 <span class="c1"># @arg $1 string Formula name.</span>
 <span class="c1">#</span>
@@ -3257,18 +3291,19 @@
 <span class="c1"># @description Upgrade Homebrew packages on macOS when Homebrew is installed.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>upgrade_homebrew<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>is_macos<span class="w"> </span><span class="o">||</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>brew<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>is_macos<span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>has_command<span class="w"> </span>brew<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;Homebrew&quot;</span>
-<span class="w">    </span>brew<span class="w"> </span>update
+<span class="w">    </span>brew<span class="w"> </span>update<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>outdated_formula
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>outdated_formulae_output
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">outdated_formulae</span><span class="o">=()</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">upgrade_formulae</span><span class="o">=()</span>
-<span class="w">    </span><span class="nv">outdated_formulae_output</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>brew<span class="w"> </span>outdated<span class="w"> </span>--formula<span class="w"> </span>--quiet<span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">outdated_formulae_output</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>brew<span class="w"> </span>outdated<span class="w"> </span>--formula<span class="w"> </span>--quiet<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">outdated_formulae_output</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>outdated_formula<span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">            </span><span class="nv">outdated_formulae</span><span class="o">+=(</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">outdated_formula</span><span class="si">}</span><span class="s2">&quot;</span><span class="o">)</span>
@@ -3287,7 +3322,7 @@
 <span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${#</span><span class="nv">upgrade_formulae</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nv">HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>brew<span class="w"> </span>upgrade<span class="w"> </span>--formula<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">upgrade_formulae</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="nv">HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>brew<span class="w"> </span>upgrade<span class="w"> </span>--formula<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">upgrade_formulae</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span><span class="k">else</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;No upgradeable Homebrew formulae after forbidden formula filtering.\n&#39;</span>
 <span class="w">    </span><span class="k">fi</span>
@@ -3295,7 +3330,7 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>outdated_cask
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>outdated_casks_output
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">outdated_casks</span><span class="o">=()</span>
-<span class="w">    </span><span class="nv">outdated_casks_output</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>brew<span class="w"> </span>outdated<span class="w"> </span>--cask<span class="w"> </span>--quiet<span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">outdated_casks_output</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>brew<span class="w"> </span>outdated<span class="w"> </span>--cask<span class="w"> </span>--quiet<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">outdated_casks_output</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>outdated_cask<span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">            </span><span class="nv">outdated_casks</span><span class="o">+=(</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">outdated_cask</span><span class="si">}</span><span class="s2">&quot;</span><span class="o">)</span>
@@ -3303,22 +3338,32 @@
 <span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${#</span><span class="nv">outdated_casks</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nv">HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>brew<span class="w"> </span>upgrade<span class="w"> </span>--cask<span class="w"> </span>--skip-cask-deps<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">outdated_casks</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="nv">HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>brew<span class="w"> </span>upgrade<span class="w"> </span>--cask<span class="w"> </span>--skip-cask-deps<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">outdated_casks</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span><span class="k">else</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;No outdated Homebrew casks.\n&#39;</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Upgrade the standalone mise binary when self-update is available.</span>
+<span class="c1"># @description Upgrade standalone mise or skip package-manager-managed installations.</span>
+<span class="c1"># @stdout Skip message when an official package-manager marker is present.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>upgrade_mise_self<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>mise<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>mise_executable
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>mise_prefix
+
+<span class="w">    </span>has_command<span class="w"> </span>mise<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nv">mise_executable</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">type</span><span class="w"> </span>-P<span class="w"> </span>mise<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nv">mise_prefix</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_executable</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">/..&quot;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;mise self-update&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_prefix</span><span class="si">}</span><span class="s2">/lib/mise-self-update-instructions.toml&quot;</span><span class="w"> </span><span class="o">||</span>
+<span class="w">        </span>-f<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_prefix</span><span class="si">}</span><span class="s2">/lib/mise/mise-self-update-instructions.toml&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Skipping mise self-update: managed by package manager.\n&#39;</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;mise self-update&quot;</span>
-<span class="w">    </span>mise<span class="w"> </span>self-update<span class="w"> </span>--yes<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span>mise<span class="w"> </span>self-update<span class="w"> </span>--yes
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3358,10 +3403,11 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">mise_command</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>mise_tool
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>mise_tools
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">failed</span><span class="o">=</span><span class="m">0</span>
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">mise_tools</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>current_mise_tools<span class="k">)</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;warning: unable to list current mise tools for %s; continuing\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_command</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>mise_tool<span class="p">;</span><span class="w"> </span><span class="k">do</span>
@@ -3372,27 +3418,31 @@
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_command</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;upgrade&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">MISE_LOCKED</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>run_mise_with_isolated_git_config<span class="w"> </span>upgrade<span class="w"> </span>--bump<span class="w"> </span>--yes<span class="w"> </span>--before<span class="w"> </span>7d<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">                </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;warning: mise %s failed for %s; continuing\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_command</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">                </span><span class="nv">failed</span><span class="o">=</span><span class="m">1</span>
 <span class="w">            </span><span class="k">fi</span>
 <span class="w">        </span><span class="k">elif</span><span class="w"> </span>!<span class="w"> </span>run_mise_with_isolated_git_config<span class="w"> </span>install<span class="w"> </span>--yes<span class="w"> </span>--before<span class="w"> </span>7d<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;warning: mise %s failed for %s; continuing\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_command</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="nv">failed</span><span class="o">=</span><span class="m">1</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_tools</span><span class="si">}</span><span class="s2">&quot;</span>
+
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">failed</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Upgrade mise-managed tools declared in the repository config.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>upgrade_mise_tools<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>mise<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>has_command<span class="w"> </span>mise<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;mise tools&quot;</span>
-<span class="w">    </span>mise<span class="w"> </span>trust<span class="w"> </span>--yes
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">failed</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span>mise<span class="w"> </span>trust<span class="w"> </span>--yes<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">failed</span><span class="o">=</span><span class="m">1</span>
 <span class="w">    </span><span class="c1"># Keep the npm safety window used by the bootstrap installer so freshly</span>
 <span class="w">    </span><span class="c1"># published npm packages are not picked up immediately.</span>
-<span class="w">    </span>run_mise_tool_command<span class="w"> </span>install
-<span class="w">    </span>run_mise_tool_command<span class="w"> </span>upgrade
+<span class="w">    </span>run_mise_tool_command<span class="w"> </span>install<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">failed</span><span class="o">=</span><span class="m">1</span>
+<span class="w">    </span>run_mise_tool_command<span class="w"> </span>upgrade<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">failed</span><span class="o">=</span><span class="m">1</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">failed</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3416,7 +3466,9 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">package_version</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$3</span><span class="s2">&quot;</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>install_prefix
 
-<span class="w">    </span><span class="nv">install_prefix</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>mise<span class="w"> </span>where<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">install_prefix</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>mise<span class="w"> </span>where<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="nv">npm_config_min_release_age</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>npm<span class="w"> </span>install<span class="w"> </span>-g<span class="w"> </span><span class="se">\</span>
 <span class="w">        </span>--prefix<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">install_prefix</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">        </span>--ignore-scripts<span class="o">=</span><span class="nb">false</span><span class="w"> </span><span class="se">\</span>
@@ -3474,17 +3526,21 @@
 <span class="c1"># @description Upgrade fast-moving agent CLIs managed by mise to the latest npm release.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>upgrade_agent_cli_tools<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>mise<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>has_command<span class="w"> </span>mise<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;agent CLI tools&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">failed</span><span class="o">=</span><span class="m">0</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>upgrade_mise_npm_agent_tool<span class="w"> </span><span class="s2">&quot;npm:@openai/codex&quot;</span><span class="w"> </span><span class="s2">&quot;@openai/codex&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>remove_node_global_npm_package<span class="w"> </span><span class="s2">&quot;@openai/codex&quot;</span>
+<span class="w">        </span>remove_node_global_npm_package<span class="w"> </span><span class="s2">&quot;@openai/codex&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">failed</span><span class="o">=</span><span class="m">1</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nv">failed</span><span class="o">=</span><span class="m">1</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>upgrade_mise_npm_agent_tool<span class="w"> </span><span class="s2">&quot;npm:@anthropic-ai/claude-code&quot;</span><span class="w"> </span><span class="s2">&quot;@anthropic-ai/claude-code&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>remove_node_global_npm_package<span class="w"> </span><span class="s2">&quot;@anthropic-ai/claude-code&quot;</span>
+<span class="w">        </span>remove_node_global_npm_package<span class="w"> </span><span class="s2">&quot;@anthropic-ai/claude-code&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">failed</span><span class="o">=</span><span class="m">1</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nv">failed</span><span class="o">=</span><span class="m">1</span>
 <span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">failed</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3501,12 +3557,10 @@
 <span class="c1"># @description Upgrade uv tool installations when uv is available.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>upgrade_uv_tools<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>uv<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>has_command<span class="w"> </span>uv<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;uv tools&quot;</span>
-<span class="w">    </span>uv<span class="w"> </span>tool<span class="w"> </span>upgrade<span class="w"> </span>--all<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span>uv<span class="w"> </span>tool<span class="w"> </span>upgrade<span class="w"> </span>--all
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3518,19 +3572,20 @@
 <span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;GitHub CLI extensions&quot;</span>
-<span class="w">    </span>gh<span class="w"> </span>extension<span class="w"> </span>upgrade<span class="w"> </span>--all<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span>gh<span class="w"> </span>extension<span class="w"> </span>upgrade<span class="w"> </span>--all
 <span class="o">}</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Upgrade apt packages only when system upgrades are requested.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>upgrade_apt_packages<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="si">${</span><span class="nv">include_system</span><span class="si">}</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>!<span class="w"> </span>is_linux<span class="w"> </span><span class="o">||</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>apt-get<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="si">${</span><span class="nv">include_system</span><span class="si">}</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>!<span class="w"> </span>is_linux<span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>has_command<span class="w"> </span>apt-get<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;apt&quot;</span>
-<span class="w">    </span>sudo<span class="w"> </span>--preserve-env<span class="o">=</span>http_proxy,https_proxy,no_proxy<span class="w"> </span>apt-get<span class="w"> </span>update
+<span class="w">    </span>sudo<span class="w"> </span>--preserve-env<span class="o">=</span>http_proxy,https_proxy,no_proxy<span class="w"> </span>apt-get<span class="w"> </span>update<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span>sudo<span class="w"> </span>--preserve-env<span class="o">=</span>http_proxy,https_proxy,no_proxy<span class="w"> </span>apt-get<span class="w"> </span>upgrade<span class="w"> </span>-y
 <span class="o">}</span>
 
@@ -3571,14 +3626,18 @@
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span>parse_args<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$@</span><span class="s2">&quot;</span>
 
-<span class="w">    </span>upgrade_homebrew
-<span class="w">    </span>upgrade_mise_self
-<span class="w">    </span>upgrade_mise_tools
-<span class="w">    </span>upgrade_agent_cli_tools
-<span class="w">    </span>upgrade_agent_assets
-<span class="w">    </span>upgrade_uv_tools
-<span class="w">    </span>upgrade_gh_extensions
-<span class="w">    </span>upgrade_apt_packages
+<span class="w">    </span>run_required_phase<span class="w"> </span><span class="s2">&quot;Homebrew&quot;</span><span class="w"> </span>upgrade_homebrew
+<span class="w">    </span>run_required_phase<span class="w"> </span><span class="s2">&quot;mise self-update&quot;</span><span class="w"> </span>upgrade_mise_self
+<span class="w">    </span>run_required_phase<span class="w"> </span><span class="s2">&quot;mise inventory/install/upgrade&quot;</span><span class="w"> </span>upgrade_mise_tools
+<span class="w">    </span>run_required_phase<span class="w"> </span><span class="s2">&quot;Codex/Claude CLI upgrade&quot;</span><span class="w"> </span>upgrade_agent_cli_tools
+<span class="w">    </span>run_required_phase<span class="w"> </span><span class="s2">&quot;agent asset regeneration&quot;</span><span class="w"> </span>upgrade_agent_assets
+<span class="w">    </span>run_required_phase<span class="w"> </span><span class="s2">&quot;uv tool upgrade&quot;</span><span class="w"> </span>upgrade_uv_tools
+<span class="w">    </span>run_optional_phase<span class="w"> </span><span class="s2">&quot;GitHub CLI extension upgrade&quot;</span><span class="w"> </span>upgrade_gh_extensions
+<span class="w">    </span>run_required_phase<span class="w"> </span><span class="s2">&quot;apt system upgrade&quot;</span><span class="w"> </span>upgrade_apt_packages
+
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;\nUpgrade summary: required failures: %d; optional warnings: %d\n&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">required_failures</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">optional_warnings</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">required_failures</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span>
 <span class="o">}</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>

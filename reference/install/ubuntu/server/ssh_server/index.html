@@ -3228,7 +3228,7 @@
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>setup_sshd<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span>sudo<span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>/var/run/sshd
-<span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span>/.ssh
+<span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.ssh&quot;</span>
 
 <span class="w">    </span>sudo<span class="w"> </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s1">&#39;s/^#PermitRootLogin prohibit-password/PermitRootLogin yes/&#39;</span><span class="w"> </span>/etc/ssh/sshd_config<span class="w"> </span><span class="o">&amp;&amp;</span>
 <span class="w">        </span>sudo<span class="w"> </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s2">&quot;s/^#\?Port .*/Port </span><span class="si">${</span><span class="nv">SSH_PORT</span><span class="si">}</span><span class="s2">/&quot;</span><span class="w"> </span>/etc/ssh/sshd_config<span class="w"> </span><span class="o">&amp;&amp;</span>
@@ -3242,7 +3242,7 @@
 <span class="w">    </span>sudo<span class="w"> </span>/usr/sbin/sshd<span class="w"> </span>-t
 
 <span class="w">    </span><span class="c1"># create .ssh/authorized_keys if not exists</span>
-<span class="w">    </span>touch<span class="w"> </span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span>/.ssh/authorized_keys
+<span class="w">    </span>touch<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.ssh/authorized_keys&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>

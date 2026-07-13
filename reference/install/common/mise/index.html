@@ -3277,8 +3277,12 @@
 <span class="k">function</span><span class="w"> </span>run_mise_install<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="c1"># `MISE_CURRENT_VERSION` is interpreted by mise as a tool env override for `current`.</span>
 <span class="w">    </span><span class="nb">unset</span><span class="w"> </span>MISE_CURRENT_VERSION
-<span class="w">    </span>trust_mise_config
-<span class="w">    </span>mise<span class="w"> </span>install<span class="w"> </span>--locked<span class="w"> </span>--before<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_NPM_MIN_RELEASE_AGE_DAYS</span><span class="si">}</span><span class="s2">d&quot;</span>
+<span class="w">    </span>trust_mise_config<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+
+<span class="w">    </span><span class="c1"># These exact, locked versions are exercised offline by required CI. Install</span>
+<span class="w">    </span><span class="c1"># them with mise&#39;s default 24-hour release-age floor before the seven-day batch.</span>
+<span class="w">    </span>mise<span class="w"> </span>install<span class="w"> </span>--locked<span class="w"> </span>npm:ccstatusline<span class="w"> </span>npm:ccusage<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span>mise<span class="w"> </span>install<span class="w"> </span>--locked<span class="w"> </span>--before<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_NPM_MIN_RELEASE_AGE_DAYS</span><span class="si">}</span><span class="s2">d&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>

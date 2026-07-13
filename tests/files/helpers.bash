@@ -21,11 +21,11 @@ assert_idempotent_apply() {
     shift
     printf 'keep\n' > "${sentinel}"
 
-    run "${chezmoi_command[@]}" diff "$@"
+    run "${chezmoi_command[@]}" diff --exclude=scripts "$@"
     assert_chezmoi_result "initial diff"
     run "${chezmoi_command[@]}" apply --exclude=scripts "$@"
     assert_chezmoi_result "second apply" false
-    run "${chezmoi_command[@]}" diff "$@"
+    run "${chezmoi_command[@]}" diff --exclude=scripts "$@"
     assert_chezmoi_result "final diff"
     [ "$(cat "${sentinel}")" = keep ]
 

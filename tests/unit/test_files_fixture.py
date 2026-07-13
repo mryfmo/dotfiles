@@ -19,6 +19,7 @@ class FilesFixtureTest(unittest.TestCase):
             self.assertIn(f"{name}=", workflow)
             self.assertIn(f'${{{name}:?{name} is required}}', helpers)
         self.assertIn('--destination "${HOME}"', helpers)
+        self.assertEqual(3, helpers.count("--exclude=scripts"))
         self.assertNotIn("run chezmoi", helpers)
 
     def test_coverage_gems_are_compatible_and_exact(self):

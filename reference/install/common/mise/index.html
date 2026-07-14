@@ -3280,8 +3280,11 @@
 <span class="w">    </span>trust_mise_config<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 
 <span class="w">    </span><span class="c1"># These exact, locked versions are exercised offline by required CI. Install</span>
-<span class="w">    </span><span class="c1"># them with mise&#39;s default 24-hour release-age floor before the seven-day batch.</span>
+<span class="w">    </span><span class="c1"># statusline tools with mise&#39;s default floor, and agent CLIs with the same</span>
+<span class="w">    </span><span class="c1"># explicit cooldown bypass used by the exact-version upgrade path.</span>
 <span class="w">    </span>mise<span class="w"> </span>install<span class="w"> </span>--locked<span class="w"> </span>npm:ccstatusline<span class="w"> </span>npm:ccusage<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="nv">npm_config_min_release_age</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>mise<span class="w"> </span>install<span class="w"> </span>--locked<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>npm:@anthropic-ai/claude-code<span class="w"> </span>npm:@openai/codex<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="w">    </span>mise<span class="w"> </span>install<span class="w"> </span>--locked<span class="w"> </span>--before<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DEFAULT_NPM_MIN_RELEASE_AGE_DAYS</span><span class="si">}</span><span class="s2">d&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
 <span class="o">}</span>
 

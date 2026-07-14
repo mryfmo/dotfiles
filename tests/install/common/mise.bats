@@ -29,7 +29,7 @@ function teardown() {
     [ -x "$(command -v mise)" ]
 }
 
-@test "[common] run_mise_install vets statusline tools before the seven-day batch" {
+@test "[common] run_mise_install vets exact npm tools before the seven-day batch" {
     printf "min-release-age=99\n" > "${HOME}/.npmrc"
 
     function mise() {
@@ -42,6 +42,7 @@ function teardown() {
     [ "${status}" -eq 0 ]
     [ "${output}" = "trust --yes
 install --locked npm:ccstatusline npm:ccusage
+install --locked npm:@anthropic-ai/claude-code npm:@openai/codex
 install --locked --before ${DEFAULT_NPM_MIN_RELEASE_AGE_DAYS}d" ]
 }
 
@@ -72,6 +73,23 @@ install --locked --before ${DEFAULT_NPM_MIN_RELEASE_AGE_DAYS}d" ]
     run run_mise_install
 
     [ "${status}" -eq 42 ]
+    [ ! -e "${BATS_TEST_TMPDIR}/unexpected-batch" ]
+}
+
+@test "[common] run_mise_install stops when agent CLI install fails" {
+    function mise() {
+        if [ "$1" = install ] && [ "$3" = npm:@anthropic-ai/claude-code ]; then
+            [ "${npm_config_min_release_age:-}" = 0 ]
+            return 44
+        fi
+        if [ "$1" = install ] && [ "$3" = --before ]; then
+            touch "${BATS_TEST_TMPDIR}/unexpected-batch"
+        fi
+    }
+
+    run run_mise_install
+
+    [ "${status}" -eq 44 ]
     [ ! -e "${BATS_TEST_TMPDIR}/unexpected-batch" ]
 }
 

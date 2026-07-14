@@ -27,6 +27,9 @@ codex:
   ccgate_config_path: home/dot_codex/ccgate.jsonnet
   model: gpt-5.6-sol
   model_reasoning_effort: high
+  model_reasoning_summary: concise
+  model_verbosity: low
+  personality: pragmatic
   approval_policy: on-request
   sandbox_mode: workspace-write
   web_search: cached

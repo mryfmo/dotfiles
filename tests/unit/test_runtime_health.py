@@ -275,15 +275,15 @@ class RuntimeHealthTest(unittest.TestCase):
             printf 'mise %s\n' "$*" >> "$TEST_LOG"
             case "$1" in
                 self-update) [[ "$FAIL_PHASE" != mise_self ]] ;;
-                ls) [[ "$FAIL_PHASE" != mise_inventory ]] && printf 'python 3.13 fixture\n' ;;
+                ls) [[ "$FAIL_PHASE" != mise_inventory ]] && printf 'python 3.13 fixture\nfd 10.3.0 fixture\n' ;;
                 install) [[ "$FAIL_PHASE" != mise_install ]] ;;
-                upgrade)
+                use)
                     case "$*" in
                         *npm:@openai/codex*) [[ "$FAIL_PHASE" != codex_cli ]] ;;
                         *npm:@anthropic-ai/claude-code*) [[ "$FAIL_PHASE" != claude_cli ]] ;;
-                        *) [[ "$FAIL_PHASE" != mise_upgrade ]] ;;
                     esac
                     ;;
+                upgrade) [[ "$FAIL_PHASE" != mise_upgrade ]] ;;
                 where)
                     [[ "$FAIL_PHASE" != mise_where ]] || exit 9
                     mkdir -p "$HOME/mise-prefix"; printf '%s\n' "$HOME/mise-prefix"
@@ -369,6 +369,11 @@ class RuntimeHealthTest(unittest.TestCase):
         log = (repo / "commands.log").read_text()
         self.assertNotIn("mise self-update --yes", log)
         self.assertIn("mise upgrade --bump --yes --before 7d python", log)
+        self.assertNotIn("mise upgrade --bump --yes --before 7d fd", log)
+        self.assertIn(
+            "mise use --global --pin --yes --minimum-release-age 0s npm:@openai/codex@1.2.3",
+            log,
+        )
 
         repo, env = self.upgrade_fixture("mise_upgrade")
         marker = repo / "lib/mise/mise-self-update-instructions.toml"

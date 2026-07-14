@@ -224,6 +224,11 @@ function run_mise_tool_command() {
         fi
 
         if [ "${mise_command}" = "upgrade" ]; then
+            # ponytail: keep fd pinned until upstream publishes macOS x64 assets again.
+            if [ "${mise_tool}" = "fd" ]; then
+                printf 'Skipping mise upgrade for fd: newer releases lack a macOS x64 asset.\n'
+                continue
+            fi
             if ! MISE_LOCKED=0 run_mise_with_isolated_git_config upgrade --bump --yes --before 7d "${mise_tool}"; then
                 printf 'warning: mise %s failed for %s; continuing\n' "${mise_command}" "${mise_tool}" >&2
                 failed=1
@@ -317,8 +322,8 @@ function upgrade_mise_npm_agent_tool() {
     fi
 
     versioned_mise_tool="${mise_tool}@${package_version}"
-    if ! MISE_LOCKED=0 npm_config_min_release_age=0 run_mise_with_isolated_git_config upgrade --bump --yes "${versioned_mise_tool}"; then
-        printf 'warning: mise upgrade failed for %s; continuing\n' "${versioned_mise_tool}" >&2
+    if ! MISE_LOCKED=0 npm_config_min_release_age=0 run_mise_with_isolated_git_config use --global --pin --yes --minimum-release-age 0s "${versioned_mise_tool}"; then
+        printf 'warning: mise use failed for %s; continuing\n' "${versioned_mise_tool}" >&2
         return 1
     fi
 

@@ -82,6 +82,9 @@ def render_codex(manifest: dict[str, Any]) -> str:
     for key in (
         "model",
         "model_reasoning_effort",
+        "model_reasoning_summary",
+        "model_verbosity",
+        "personality",
         "approval_policy",
         "sandbox_mode",
         "web_search",

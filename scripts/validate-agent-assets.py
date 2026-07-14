@@ -205,7 +205,7 @@ def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
         fail(f"{codex_path} must declare the Codex config schema")
     data = tomllib.loads(text)
     manifest_codex = manifest.get("codex", {})
-    for key in ("model", "model_reasoning_effort"):
+    for key in ("model", "model_reasoning_effort", "model_reasoning_summary", "model_verbosity", "personality"):
         if manifest_codex.get(key) != data.get(key):
             fail(f"{codex_path} must render codex.{key} from the shared manifest")
     if data.get("sandbox_mode") != "workspace-write":

@@ -149,28 +149,28 @@ url = "https://github.com/Kitware/CMake/releases/download/v4.3.3/cmake-4.3.3-mac
 url_api = "https://api.github.com/repos/Kitware/CMake/releases/assets/426407094"
 
 [[tools.dotenvx]]
-version = "2.1.4"
+version = "2.1.5"
 backend = "aqua:dotenvx/dotenvx"
 
 [tools.dotenvx."platforms.linux-arm64"]
-checksum = "sha256:c178c2ed9ad2917ced8d9782597e9d2bdc1d0d2caf9b1dc332ce0422df5c42db"
-url = "https://github.com/dotenvx/dotenvx/releases/download/v2.1.4/dotenvx-2.1.4-linux-aarch64.tar.gz"
-url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/464825329"
+checksum = "sha256:910786d62a343b6c028597d0c5ef4519919d1737286323c0b790da85c8e9632a"
+url = "https://github.com/dotenvx/dotenvx/releases/download/v2.1.5/dotenvx-2.1.5-linux-aarch64.tar.gz"
+url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/468234463"
 
 [tools.dotenvx."platforms.linux-x64"]
-checksum = "sha256:cced58e6a4a734a04f47c8094eb190e86aae2283837e40f47729a1e02c9c967d"
-url = "https://github.com/dotenvx/dotenvx/releases/download/v2.1.4/dotenvx-2.1.4-linux-amd64.tar.gz"
-url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/464825332"
+checksum = "sha256:0455f58469748bf5a54c3102298f158c3a057d32fdaa9ae285516dcc12986074"
+url = "https://github.com/dotenvx/dotenvx/releases/download/v2.1.5/dotenvx-2.1.5-linux-amd64.tar.gz"
+url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/468234466"
 
 [tools.dotenvx."platforms.macos-arm64"]
-checksum = "sha256:c61a48bd6fe3e131c5f71bada656487505bc48ed88fd1ea9d7ef87bbcbfe045a"
-url = "https://github.com/dotenvx/dotenvx/releases/download/v2.1.4/dotenvx-2.1.4-darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/464825320"
+checksum = "sha256:d96bf19ab53ce75381d23086002302265edce3f5611b699959e4948afbb89f62"
+url = "https://github.com/dotenvx/dotenvx/releases/download/v2.1.5/dotenvx-2.1.5-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/468234461"
 
 [tools.dotenvx."platforms.macos-x64"]
-checksum = "sha256:060371a3b521e61bbda779f05cf74116aa34017783449372ec10972c0f723753"
-url = "https://github.com/dotenvx/dotenvx/releases/download/v2.1.4/dotenvx-2.1.4-darwin-amd64.tar.gz"
-url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/464825322"
+checksum = "sha256:9d6a7cf6d9541c80eb0991f7e780e3b354a28d26ef4216ac78e5c9a105b66aab"
+url = "https://github.com/dotenvx/dotenvx/releases/download/v2.1.5/dotenvx-2.1.5-darwin-amd64.tar.gz"
+url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/468234460"
 
 [[tools.fd]]
 version = "10.3.0"
@@ -382,28 +382,28 @@ checksum = "sha256:0f9b0f45e5dff30d8c67c0f9ceb4d64b03497efa9135849b80ecf0cd07060
 url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-cli-575.0.1-darwin-x86_64.tar.gz"
 
 [[tools.hugo-extended]]
-version = "0.136.5"
+version = "0.164.0"
 backend = "aqua:gohugoio/hugo/hugo-extended"
 
 [tools.hugo-extended."platforms.linux-arm64"]
-checksum = "sha256:8ebc7f58b7a188b608aa851788d1e490a9ebe4857dfb9238ab70ea93be08d9c4"
-url = "https://github.com/gohugoio/hugo/releases/download/v0.136.5/hugo_extended_0.136.5_linux-arm64.tar.gz"
-url_api = "https://api.github.com/repos/gohugoio/hugo/releases/assets/201442336"
+checksum = "sha256:232d3bc2d1d9510625985ff7c89767598ffea5bc6e5e2882c791313f5a43f723"
+url = "https://github.com/gohugoio/hugo/releases/download/v0.164.0/hugo_extended_0.164.0_linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/gohugoio/hugo/releases/assets/468320261"
 
 [tools.hugo-extended."platforms.linux-x64"]
-checksum = "sha256:b7be7c1abb0b077ce079f634c479791dfadaaf3236fa47948b0290a6b0bf70ff"
-url = "https://github.com/gohugoio/hugo/releases/download/v0.136.5/hugo_extended_0.136.5_linux-amd64.tar.gz"
-url_api = "https://api.github.com/repos/gohugoio/hugo/releases/assets/201442332"
+checksum = "sha256:fea17b8c076f950bb2e9f9486667bdaa29422883888d509d63931c73e8a9b3a4"
+url = "https://github.com/gohugoio/hugo/releases/download/v0.164.0/hugo_extended_0.164.0_linux-amd64.tar.gz"
+url_api = "https://api.github.com/repos/gohugoio/hugo/releases/assets/468320235"
 
 [tools.hugo-extended."platforms.macos-arm64"]
-checksum = "sha256:ca3f419f177baf5eac99b079e378e0c492755242c1b723de38d50169266fc557"
-url = "https://github.com/gohugoio/hugo/releases/download/v0.136.5/hugo_extended_0.136.5_darwin-universal.tar.gz"
-url_api = "https://api.github.com/repos/gohugoio/hugo/releases/assets/201442330"
+checksum = "sha256:618491f40cbb36a9f55d4da761c55d89f79312130f926ff7f3e1dfa83ca15eb0"
+url = "https://github.com/gohugoio/hugo/releases/download/v0.164.0/hugo_extended_0.164.0_darwin-universal.pkg"
+url_api = "https://api.github.com/repos/gohugoio/hugo/releases/assets/468320276"
 
 [tools.hugo-extended."platforms.macos-x64"]
-checksum = "sha256:ca3f419f177baf5eac99b079e378e0c492755242c1b723de38d50169266fc557"
-url = "https://github.com/gohugoio/hugo/releases/download/v0.136.5/hugo_extended_0.136.5_darwin-universal.tar.gz"
-url_api = "https://api.github.com/repos/gohugoio/hugo/releases/assets/201442330"
+checksum = "sha256:618491f40cbb36a9f55d4da761c55d89f79312130f926ff7f3e1dfa83ca15eb0"
+url = "https://github.com/gohugoio/hugo/releases/download/v0.164.0/hugo_extended_0.164.0_darwin-universal.pkg"
+url_api = "https://api.github.com/repos/gohugoio/hugo/releases/assets/468320276"
 
 [[tools.jq]]
 version = "1.8.2"
@@ -434,31 +434,31 @@ url_api = "https://api.github.com/repos/jqlang/jq/releases/assets/453012782"
 provenance = "github-attestations"
 
 [[tools.node]]
-version = "24.18.0"
+version = "26.4.0"
 backend = "core:node"
 
 [tools.node."platforms.linux-arm64"]
-checksum = "sha256:6b4484c2190274175df9aa8f28e2d758a819cb1c1fe6ab481e2f95b463ab8508"
-url = "https://nodejs.org/dist/v24.18.0/node-v24.18.0-linux-arm64.tar.gz"
+checksum = "sha256:773d9ec67266838270ddc105c2548ae8aaff28bc8fe6f34c55d1094043c4165e"
+url = "https://nodejs.org/dist/v26.4.0/node-v26.4.0-linux-arm64.tar.gz"
 
 [tools.node."platforms.linux-x64"]
-checksum = "sha256:783130984963db7ba9cbd01089eaf2c2efb055c7c1693c943174b967b3050cb8"
-url = "https://nodejs.org/dist/v24.18.0/node-v24.18.0-linux-x64.tar.gz"
+checksum = "sha256:f221dab30d0e9d544332f06fbee2c62186c97d864d5cac8482dba34f1e38b8dc"
+url = "https://nodejs.org/dist/v26.4.0/node-v26.4.0-linux-x64.tar.gz"
 
 [tools.node."platforms.macos-arm64"]
-checksum = "sha256:e1a97e14c99c803e96c7339403282ea05a499c32f8d83defe9ef5ec66f979ed1"
-url = "https://nodejs.org/dist/v24.18.0/node-v24.18.0-darwin-arm64.tar.gz"
+checksum = "sha256:4f4fbcacf6b1ff1a95deedba7bd7b2d79efecaa53a8ecb0530546dc9063fefbc"
+url = "https://nodejs.org/dist/v26.4.0/node-v26.4.0-darwin-arm64.tar.gz"
 
 [tools.node."platforms.macos-x64"]
-checksum = "sha256:dfd0dbd3e721503434df7b7205e719f61b3a3a31b2bcf9729b8b91fea240f080"
-url = "https://nodejs.org/dist/v24.18.0/node-v24.18.0-darwin-x64.tar.gz"
+checksum = "sha256:eb3bdd8dec3ff2558ee10e284da7d2a3865af0cbda21f06d397b0265837c641e"
+url = "https://nodejs.org/dist/v26.4.0/node-v26.4.0-darwin-x64.tar.gz"
 
 [[tools."npm:@anthropic-ai/claude-code"]]
-version = "2.1.201"
+version = "2.1.209"
 backend = "npm:@anthropic-ai/claude-code"
 
 [[tools."npm:@openai/codex"]]
-version = "0.142.5"
+version = "0.144.4"
 backend = "npm:@openai/codex"
 
 [[tools."npm:bash-language-server"]]
@@ -482,27 +482,27 @@ version = "1.1.411"
 backend = "npm:pyright"
 
 [[tools.python]]
-version = "3.11.15"
+version = "3.14.6"
 backend = "core:python"
 
 [tools.python."platforms.linux-arm64"]
-checksum = "sha256:9ac18c9a761e91e6c6452bc0ef0082922a00a3fdec734555635d57c3169309b7"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260623/cpython-3.11.15+20260623-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz"
+checksum = "sha256:f177d40ca931df03f660fc006f86ad8cd2ac6e7d6b5d54edbc625103464fc4aa"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260623/cpython-3.14.6+20260623-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [tools.python."platforms.linux-x64"]
-checksum = "sha256:0604cd029b142dc223e131f17f5941c0c8d2d5074997c8178b515b19eea2a6c2"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260623/cpython-3.11.15+20260623-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
+checksum = "sha256:c172314f4a8ec137a8f605289010c3d19c8b56867d968f0095074cc68efa1d29"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260623/cpython-3.14.6+20260623-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [tools.python."platforms.macos-arm64"]
-checksum = "sha256:2318799eaf104f8a29bc09a93b0851b05dbbcb4ce9a5f045ddea169c0c7ff3a5"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260623/cpython-3.11.15+20260623-aarch64-apple-darwin-install_only_stripped.tar.gz"
+checksum = "blake3:4d4071b155629f4b8ab336b493e08d5e2ae10369706400f01833aafaa4a8838e"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260623/cpython-3.14.6+20260623-aarch64-apple-darwin-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [tools.python."platforms.macos-x64"]
-checksum = "sha256:4925e5aaa9bc77c85302d350b36c1d9def2002996a6bcfa55c88ba6eb318de29"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260623/cpython-3.11.15+20260623-x86_64-apple-darwin-install_only_stripped.tar.gz"
+checksum = "sha256:12fb3ea3d6a855fe6ca1c2241702b06cb7e5939fbef09a5f54bf326e480f66af"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260623/cpython-3.14.6+20260623-x86_64-apple-darwin-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [[tools.rust]]
@@ -558,31 +558,31 @@ url = "https://github.com/mvdan/sh/releases/download/v3.13.1/shfmt_v3.13.1_darwi
 url_api = "https://api.github.com/repos/mvdan/sh/releases/assets/390322886"
 
 [[tools.uv]]
-version = "0.11.26"
+version = "0.11.27"
 backend = "aqua:astral-sh/uv"
 
 [tools.uv."platforms.linux-arm64"]
-checksum = "sha256:47418cfdb34b1ca42e503da72631ac8c475602e2411ac6c39aa84c2373fe6324"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.26/uv-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/462248215"
+checksum = "sha256:b0b1909a7e5caf2ec0cbe2649f5171050c26d85efb65d9d4de2cfe754dc14ea3"
+url = "https://github.com/astral-sh/uv/releases/download/0.11.27/uv-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/468472287"
 provenance = "github-attestations"
 
 [tools.uv."platforms.linux-x64"]
-checksum = "sha256:62bf1a53501adf4083224b69b33737450ac516935f5a5e483e9dfaf2665084de"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.26/uv-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/462248297"
+checksum = "sha256:5d5594af1530c7c31e46a8cc0a35ceb4d28f3890049efe2149ac53c9ad121493"
+url = "https://github.com/astral-sh/uv/releases/download/0.11.27/uv-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/468472356"
 provenance = "github-attestations"
 
 [tools.uv."platforms.macos-arm64"]
-checksum = "sha256:8f7fbf1708399b921857bce71e1d60f0d3ccf52a30caebc1c1a2f175dce13ab6"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.26/uv-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/462248188"
+checksum = "sha256:34e63cc0de0aebbc8d424767c588c31b685479f045f9ced9e5ef43ff9e0e8d63"
+url = "https://github.com/astral-sh/uv/releases/download/0.11.27/uv-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/468472272"
 provenance = "github-attestations"
 
 [tools.uv."platforms.macos-x64"]
-checksum = "sha256:922b460202707dd5f4ccacbadbe7f6a546cc46e82a99bf50ca99a7977a78eddd"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.26/uv-x86_64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/462248284"
+checksum = "sha256:9f00047455b2a9e81f282297fca39cdd6cd5761a6b0ce75e2d7698744c59e1af"
+url = "https://github.com/astral-sh/uv/releases/download/0.11.27/uv-x86_64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/468472341"
 provenance = "github-attestations"
 
 [[tools.yazi]]

@@ -60,6 +60,9 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 "ccgate_config_path": "home/dot_codex/ccgate.jsonnet",
                 "model": "gpt-5.5",
                 "model_reasoning_effort": "high",
+                "model_reasoning_summary": "concise",
+                "model_verbosity": "low",
+                "personality": "pragmatic",
                 "approval_policy": "on-request",
                 "sandbox_mode": "workspace-write",
                 "web_search": "cached",
@@ -102,7 +105,11 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
         outputs = self.module.expected_outputs(manifest)
 
-        self.assertIn(self.temp_dir / "home/.chezmoitemplates/codex-config-managed.toml", outputs)
+        codex_path = self.temp_dir / "home/.chezmoitemplates/codex-config-managed.toml"
+        self.assertIn(codex_path, outputs)
+        self.assertIn('model_reasoning_summary = "concise"', outputs[codex_path])
+        self.assertIn('model_verbosity = "low"', outputs[codex_path])
+        self.assertIn('personality = "pragmatic"', outputs[codex_path])
         self.assertNotIn(self.temp_dir / "home/dot_codex/private_config.toml.tmpl", outputs)
 
     def test_claude_settings_renders_session_start_hooks(self) -> None:

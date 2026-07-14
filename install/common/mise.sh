@@ -101,8 +101,11 @@ function run_mise_install() {
     trust_mise_config || return
 
     # These exact, locked versions are exercised offline by required CI. Install
-    # them with mise's default 24-hour release-age floor before the seven-day batch.
+    # statusline tools with mise's default floor, and agent CLIs with the same
+    # explicit cooldown bypass used by the exact-version upgrade path.
     mise install --locked npm:ccstatusline npm:ccusage || return
+    npm_config_min_release_age=0 mise install --locked \
+        npm:@anthropic-ai/claude-code npm:@openai/codex || return
     mise install --locked --before "${DEFAULT_NPM_MIN_RELEASE_AGE_DAYS}d" || return
 }
 

@@ -229,7 +229,7 @@ herdr server reload-config" ]
     grep -q 'rm -rf "${isolated_xdg_config_home}"' scripts/upgrade-tools.sh
     grep -q 'run_mise_with_isolated_git_config ls --current --no-header' scripts/upgrade-tools.sh
     grep -q 'MISE_LOCKED=0 run_mise_with_isolated_git_config upgrade --bump --yes --before 7d "${mise_tool}"' scripts/upgrade-tools.sh
-    grep -q 'MISE_LOCKED=0 npm_config_min_release_age=0 run_mise_with_isolated_git_config upgrade --bump --yes "${versioned_mise_tool}"' scripts/upgrade-tools.sh
+    grep -q 'MISE_LOCKED=0 npm_config_min_release_age=0 run_mise_with_isolated_git_config use --global --pin --yes --minimum-release-age 0s "${versioned_mise_tool}"' scripts/upgrade-tools.sh
     grep -q 'warning: unable to list current mise tools for %s; continuing' scripts/upgrade-tools.sh
     grep -q 'warning: mise %s failed for %s; continuing' scripts/upgrade-tools.sh
 }
@@ -252,12 +252,12 @@ herdr server reload-config" ]
     grep -q 'npm uninstall -g "${npm_package}"' scripts/upgrade-tools.sh
     grep -q 'npm view "$1" version' scripts/upgrade-tools.sh
     grep -q 'versioned_mise_tool="${mise_tool}@${package_version}"' scripts/upgrade-tools.sh
-    grep -q 'MISE_LOCKED=0 npm_config_min_release_age=0 run_mise_with_isolated_git_config upgrade --bump --yes "${versioned_mise_tool}"' scripts/upgrade-tools.sh
+    grep -q 'MISE_LOCKED=0 npm_config_min_release_age=0 run_mise_with_isolated_git_config use --global --pin --yes --minimum-release-age 0s "${versioned_mise_tool}"' scripts/upgrade-tools.sh
     grep -q 'repair_mise_npm_package "${versioned_mise_tool}" "${npm_package}" "${package_version}"' scripts/upgrade-tools.sh
     grep -q 'if upgrade_mise_npm_agent_tool "npm:@openai/codex" "@openai/codex"; then' scripts/upgrade-tools.sh
     grep -q 'if upgrade_mise_npm_agent_tool "npm:@anthropic-ai/claude-code" "@anthropic-ai/claude-code"; then' scripts/upgrade-tools.sh
     latest_line="$(grep -n 'latest_npm_package_version "${npm_package}"' scripts/upgrade-tools.sh | cut -d: -f1)"
-    upgrade_line="$(grep -n 'run_mise_with_isolated_git_config upgrade --bump --yes "${versioned_mise_tool}"' scripts/upgrade-tools.sh | cut -d: -f1)"
+    upgrade_line="$(grep -n 'run_mise_with_isolated_git_config use --global --pin --yes --minimum-release-age 0s "${versioned_mise_tool}"' scripts/upgrade-tools.sh | cut -d: -f1)"
     repair_line="$(grep -n 'repair_mise_npm_package "${versioned_mise_tool}" "${npm_package}" "${package_version}"' scripts/upgrade-tools.sh | cut -d: -f1)"
     codex_cleanup_line="$(grep -n 'remove_node_global_npm_package "@openai/codex"' scripts/upgrade-tools.sh | cut -d: -f1)"
     claude_cleanup_line="$(grep -n 'remove_node_global_npm_package "@anthropic-ai/claude-code"' scripts/upgrade-tools.sh | cut -d: -f1)"

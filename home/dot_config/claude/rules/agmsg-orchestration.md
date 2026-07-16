@@ -11,6 +11,6 @@
 - Give each physical agent one unique identity derived from the current directory: `<runtime>-<model+effort>-<project-suffix>` (for example, `codex-gpt56sol-dot` for dotfiles or a `-flue` suffix for flue-pi); task-scoped workers append `-aNNN`.
 - Before any join, search every `~/.agents/skills/agmsg/teams/*/config.json` for the candidate name; on collision, choose a suffixed unique name and never reuse one identity for different physical agents.
 - Always register `project` as the current directory's real repository path; `$HOME` registrations are forbidden because they create codex-hook ambiguity and steal inbox messages.
-- Nudge workers explicitly with the team and identity named in the pane prompt; do not rely on automatic turn delivery.
+- At worker setup run delivery.sh set turn codex <repo> so the worker Stop hook auto-delivers inbox messages each turn from the repo-scoped .codex/hooks.json (gitignored); pane nudges are only generic wakes for idle workers — message content always flows over the bus.
 - Give concurrent resident workers separate stores with `AGMSG_STORAGE_PATH`.
 - Invoke the `agmsg-orchestration` skill for AGMSG-TASK/RESULT/ACCEPTANCE message contracts and playbooks.

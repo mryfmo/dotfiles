@@ -10,3 +10,6 @@ site/
 .agents/runs/
 __pycache__/
 *.pyc
+
+# agmsg per-project codex delivery hooks (machine-local)
+.codex/

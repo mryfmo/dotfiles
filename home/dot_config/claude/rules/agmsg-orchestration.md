@@ -6,7 +6,7 @@
 - Do not idle-wait while worker work is in flight; prepare or delegate independent work.
 - Keep `make require-crit-review` as the orchestrator's final integration step; never assign it to a worker.
 - On regime activation, verify delivery with `delivery.sh status <type> <repo>`; if it is weaker than `both`, run `delivery.sh set both <type> <repo>`, start the SessionStart-printed `watch.sh <session_id> <repo> <type>` command as a persistent in-session monitor, and claim exclusivity with `actas-claim.sh <project> <type> <name> <session_id>`.
-- Detect worker completion only when an AGMSG-RESULT message arrives through monitor/turn delivery; never infer completion from pane or agent status, and never use ad-hoc polling sleep loops.
+- Detect worker completion only when an AGMSG-RESULT message arrives through monitor/turn delivery; send worker liveness and status checks only as AGMSG-PING/AGMSG-PONG over the bus, never by reading worker panes or screens; limit pane interaction to prompt injection and the submit key, never infer completion from pane or agent status, and never use ad-hoc polling sleep loops.
 - If an out-of-band Codex completion signal is ever needed, use the official `notify` config: the `agent-turn-complete` event sends a JSON payload to an external command.
 - Give each physical agent one unique identity derived from the current directory: `<runtime>-<model+effort>-<project-suffix>` (for example, `codex-gpt56sol-dot` for dotfiles or a `-flue` suffix for flue-pi); task-scoped workers append `-aNNN`.
 - Before any join, search every `~/.agents/skills/agmsg/teams/*/config.json` for the candidate name; on collision, choose a suffixed unique name and never reuse one identity for different physical agents.

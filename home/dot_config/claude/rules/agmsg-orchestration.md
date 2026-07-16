@@ -1,0 +1,16 @@
+## agmsg orchestration
+
+- When the operator requests agmsg/Codex collaboration or an orchestration regime is active, act only as orchestrator: lightweight grep/read, judgment, task authoring, and acceptance review.
+- Delegate all file edits, builds, test runs, git state changes, and other executing processes to one resident Codex worker in a herdr pane; assign its tasks sequentially, never through parallel `codex exec` or per-task Codex spawning.
+- Review every RESULT adversarially across correctness, regressions, security, and reporting omissions: try to refute it, independently re-derive findings, and never treat sampled spot-checks as full verification.
+- Do not idle-wait while worker work is in flight; prepare or delegate independent work.
+- Keep `make require-crit-review` as the orchestrator's final integration step; never assign it to a worker.
+- On regime activation, verify delivery with `delivery.sh status <type> <repo>`; if it is weaker than `both`, run `delivery.sh set both <type> <repo>`, start the SessionStart-printed `watch.sh <session_id> <repo> <type>` command as a persistent in-session monitor, and claim exclusivity with `actas-claim.sh <project> <type> <name> <session_id>`.
+- Detect worker completion only when an AGMSG-RESULT message arrives through monitor/turn delivery; never infer completion from pane or agent status, and never use ad-hoc polling sleep loops.
+- If an out-of-band Codex completion signal is ever needed, use the official `notify` config: the `agent-turn-complete` event sends a JSON payload to an external command.
+- Give each physical agent one unique identity derived from the current directory: `<runtime>-<model+effort>-<project-suffix>` (for example, `codex-gpt56sol-dot` for dotfiles or a `-flue` suffix for flue-pi); task-scoped workers append `-aNNN`.
+- Before any join, search every `~/.agents/skills/agmsg/teams/*/config.json` for the candidate name; on collision, choose a suffixed unique name and never reuse one identity for different physical agents.
+- Always register `project` as the current directory's real repository path; `$HOME` registrations are forbidden because they create codex-hook ambiguity and steal inbox messages.
+- Nudge workers explicitly with the team and identity named in the pane prompt; do not rely on automatic turn delivery.
+- Give concurrent resident workers separate stores with `AGMSG_STORAGE_PATH`.
+- Invoke the `agmsg-orchestration` skill for AGMSG-TASK/RESULT/ACCEPTANCE message contracts and playbooks.

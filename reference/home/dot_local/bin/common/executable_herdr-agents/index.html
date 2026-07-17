@@ -3187,6 +3187,7 @@
 <li><code>pane_runs_yazi</code></li>
 <li><code>panes_on_pane_tab</code></li>
 <li><code>repair_attach_pane_order</code></li>
+<li><code>repair_attach_pane_ratio</code></li>
 <li><code>require_command</code></li>
 <li><code>start_claude_in_pane</code></li>
 <li><code>start_codex_agent</code></li>
@@ -3217,10 +3218,10 @@
 <span class="s">Usage: herdr-agents [DIR]</span>
 <span class="s">       herdr-agents --attach</span>
 
-<span class="s">Create a Herdr workspace for DIR, start Claude Code left of Codex, add an</span>
-<span class="s">interactive Yazi file pane on the far right, and open DIR in Zed when</span>
-<span class="s">available. Herdr, jq, Claude Code, Codex, and Yazi are required. DIR defaults</span>
-<span class="s">to the current directory. Attach mode uses the current Herdr pane for Claude.</span>
+<span class="s">Create a Herdr workspace for DIR with equal-width Claude Code, Codex, and Yazi</span>
+<span class="s">panes from left to right, and open DIR in Zed when available. Herdr, jq, Claude</span>
+<span class="s">Code, Codex, and Yazi are required. DIR defaults to the current directory.</span>
+<span class="s">Attach mode uses the current Herdr pane for Claude.</span>
 <span class="s">USAGE</span>
 <span class="o">}</span>
 
@@ -3520,6 +3521,164 @@
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
+<span class="c1"># @description Repair a safe right-nested attach layout to equal thirds.</span>
+<span class="c1"># @arg $1 json Herdr pane list JSON.</span>
+<span class="c1"># @arg $2 pane_id Current Claude pane id.</span>
+<span class="c1"># @arg $3 pane_id Live Codex pane id.</span>
+<span class="k">function</span><span class="w"> </span>repair_attach_pane_ratio<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">panes_json</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">claude_pane_id</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">codex_pane_id</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$3</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>files_pane
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>layout_json
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>metrics
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>topology
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>left_direction
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>left_amount
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>right_direction
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>right_amount
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>primary_pane
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>primary_direction
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>primary_amount
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>secondary_pane
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>secondary_direction
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>secondary_amount
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>geometry_filter
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">resized</span><span class="o">=</span><span class="nb">false</span>
+
+<span class="w">    </span><span class="nv">files_pane</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>files_pane_id<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">files_pane</span><span class="si">}</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">codex_pane_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>!<span class="w"> </span>attach_panes_are_unambiguous<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Herdr attach panes are ambiguous or include unmanaged panes; refusing ratio repair.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="c1"># shellcheck disable=SC2016 # jq variables are intentional literal input.</span>
+<span class="w">    </span><span class="nv">geometry_filter</span><span class="o">=</span><span class="s1">&#39;</span>
+<span class="s1">        ([.result.layout.panes[]?</span>
+<span class="s1">          | select(.pane_id == $claude or .pane_id == $codex or .pane_id == $files)]</span>
+<span class="s1">         | sort_by(.rect.x)) as $panes</span>
+<span class="s1">        | .result.layout.splits as $splits</span>
+<span class="s1">        | ($panes | map(.rect.width) | add) as $total</span>
+<span class="s1">        | if ($panes | length) == 3</span>
+<span class="s1">             and ($splits | type) == &quot;array&quot;</span>
+<span class="s1">             and ($splits | length) == 2</span>
+<span class="s1">             and all($panes[]; (.rect.x | type) == &quot;number&quot;</span>
+<span class="s1">                               and (.rect.width | type) == &quot;number&quot;</span>
+<span class="s1">                               and (.rect.y | type) == &quot;number&quot;</span>
+<span class="s1">                               and (.rect.height | type) == &quot;number&quot;)</span>
+<span class="s1">             and all($splits[]; .direction == &quot;right&quot;</span>
+<span class="s1">                               and (.rect.x | type) == &quot;number&quot;</span>
+<span class="s1">                               and (.rect.width | type) == &quot;number&quot;)</span>
+<span class="s1">             and ($panes | map(.pane_id)) == [$claude, $codex, $files]</span>
+<span class="s1">             and $panes[0].rect.x + $panes[0].rect.width == $panes[1].rect.x</span>
+<span class="s1">             and $panes[1].rect.x + $panes[1].rect.width == $panes[2].rect.x</span>
+<span class="s1">             and any($splits[]; .rect.x == $panes[0].rect.x and .rect.width == $total)</span>
+<span class="s1">             and (</span>
+<span class="s1">                 any($splits[]; .rect.x == $panes[0].rect.x</span>
+<span class="s1">                                  and .rect.width == ($panes[0].rect.width + $panes[1].rect.width))</span>
+<span class="s1">                 !=</span>
+<span class="s1">                 any($splits[]; .rect.x == $panes[1].rect.x</span>
+<span class="s1">                                  and .rect.width == ($panes[1].rect.width + $panes[2].rect.width))</span>
+<span class="s1">             )</span>
+<span class="s1">          then ($total / 3) as $target</span>
+<span class="s1">             | (if any($splits[]; .rect.x == $panes[0].rect.x</span>
+<span class="s1">                                      and .rect.width == ($panes[0].rect.width + $panes[1].rect.width))</span>
+<span class="s1">                then &quot;left&quot; else &quot;right&quot; end) as $topology</span>
+<span class="s1">             | [</span>
+<span class="s1">                 $topology,</span>
+<span class="s1">                 $panes[0].rect.width,</span>
+<span class="s1">                 $panes[1].rect.width,</span>
+<span class="s1">                 $panes[2].rect.width,</span>
+<span class="s1">                 $total,</span>
+<span class="s1">                 (if (($panes[0].rect.width - $target) | fabs) &lt;= 2 then &quot;none&quot;</span>
+<span class="s1">                  elif $panes[0].rect.width &gt; $target then &quot;left&quot; else &quot;right&quot; end),</span>
+<span class="s1">                 ((($panes[0].rect.width - $target) | fabs)</span>
+<span class="s1">                  / (if $topology == &quot;left&quot;</span>
+<span class="s1">                     then $panes[0].rect.width + $panes[1].rect.width</span>
+<span class="s1">                     else $total end)),</span>
+<span class="s1">                 (if (($panes[2].rect.width - $target) | fabs) &lt;= 2 then &quot;none&quot;</span>
+<span class="s1">                  elif $panes[2].rect.width &gt; $target then &quot;right&quot; else &quot;left&quot; end),</span>
+<span class="s1">                 ((($panes[2].rect.width - $target) | fabs)</span>
+<span class="s1">                  / (if $topology == &quot;right&quot;</span>
+<span class="s1">                     then $panes[1].rect.width + $panes[2].rect.width</span>
+<span class="s1">                     else $total end))</span>
+<span class="s1">               ]</span>
+<span class="s1">             | @tsv</span>
+<span class="s1">          else error(&quot;unsafe pane geometry&quot;)</span>
+<span class="s1">          end&#39;</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">layout_json</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>herdr<span class="w"> </span>pane<span class="w"> </span>layout<span class="w"> </span>--pane<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span>
+<span class="w">        </span>!<span class="w"> </span><span class="nv">metrics</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">layout_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-er<span class="w"> </span><span class="se">\</span>
+<span class="w">            </span>--arg<span class="w"> </span>claude<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">            </span>--arg<span class="w"> </span>codex<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">            </span>--arg<span class="w"> </span>files<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">files_pane</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">            </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">geometry_filter</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Unable to inspect a safe Herdr attach layout; refusing ratio repair.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">IFS</span><span class="o">=</span><span class="s1">$&#39;\t&#39;</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>topology<span class="w"> </span>_<span class="w"> </span>_<span class="w"> </span>_<span class="w"> </span>_<span class="w"> </span>left_direction<span class="w"> </span>left_amount<span class="w"> </span>right_direction<span class="w"> </span>right_amount<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">metrics</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">topology</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>right<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">primary_pane</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="nv">primary_direction</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">left_direction</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="nv">primary_amount</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">left_amount</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nv">primary_pane</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">files_pane</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="nv">primary_direction</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">right_direction</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="nv">primary_amount</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">right_amount</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">primary_direction</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>none<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>herdr<span class="w"> </span>pane<span class="w"> </span>resize<span class="w"> </span>--pane<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">primary_pane</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--direction<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">primary_direction</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--amount<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">primary_amount</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Unable to resize the outer Herdr split; refusing further ratio repair.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="nv">resized</span><span class="o">=</span><span class="nb">true</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">layout_json</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>herdr<span class="w"> </span>pane<span class="w"> </span>layout<span class="w"> </span>--pane<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span>
+<span class="w">            </span>!<span class="w"> </span><span class="nv">metrics</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">layout_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-er<span class="w"> </span><span class="se">\</span>
+<span class="w">                </span>--arg<span class="w"> </span>claude<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">                </span>--arg<span class="w"> </span>codex<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">                </span>--arg<span class="w"> </span>files<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">files_pane</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">                </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">geometry_filter</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Unable to inspect the resized Herdr layout; refusing further ratio repair.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="nv">IFS</span><span class="o">=</span><span class="s1">$&#39;\t&#39;</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>topology<span class="w"> </span>_<span class="w"> </span>_<span class="w"> </span>_<span class="w"> </span>_<span class="w"> </span>left_direction<span class="w"> </span>left_amount<span class="w"> </span>right_direction<span class="w"> </span>right_amount<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">metrics</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">topology</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>right<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">secondary_pane</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">files_pane</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="nv">secondary_direction</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">right_direction</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="nv">secondary_amount</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">right_amount</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nv">secondary_pane</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="nv">secondary_direction</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">left_direction</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="nv">secondary_amount</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">left_amount</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">secondary_direction</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>none<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>herdr<span class="w"> </span>pane<span class="w"> </span>resize<span class="w"> </span>--pane<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">secondary_pane</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--direction<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">secondary_direction</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--amount<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">secondary_amount</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Unable to resize the inner Herdr split; refusing further ratio repair.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="nv">resized</span><span class="o">=</span><span class="nb">true</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">resized</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">layout_json</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>herdr<span class="w"> </span>pane<span class="w"> </span>layout<span class="w"> </span>--pane<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span>
+<span class="w">            </span>!<span class="w"> </span><span class="nv">metrics</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">layout_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-er<span class="w"> </span><span class="se">\</span>
+<span class="w">                </span>--arg<span class="w"> </span>claude<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">                </span>--arg<span class="w"> </span>codex<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">                </span>--arg<span class="w"> </span>files<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">files_pane</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">                </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">geometry_filter</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Unable to verify the resized Herdr layout; refusing further ratio repair.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="nv">IFS</span><span class="o">=</span><span class="s1">$&#39;\t&#39;</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>_<span class="w"> </span>_<span class="w"> </span>_<span class="w"> </span>_<span class="w"> </span>_<span class="w"> </span>left_direction<span class="w"> </span>_<span class="w"> </span>right_direction<span class="w"> </span>_<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">metrics</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">left_direction</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>none<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="si">${</span><span class="nv">right_direction</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>none<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Herdr attach pane widths did not converge; refusing further ratio repair.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="o">}</span>
+
 <span class="c1"># @description Skip $HOME or ensure Codex turn delivery and report ambiguity.</span>
 <span class="c1"># @arg $1 workdir Repository path used for repo-scoped agmsg registration.</span>
 <span class="k">function</span><span class="w"> </span>bootstrap_agmsg<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -3638,7 +3797,7 @@ require_command<span class="w"> </span>yazi
 <span class="w">        </span>herdr<span class="w"> </span>pane<span class="w"> </span>rename<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>claude-orchestrator
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span>ensure_files_pane<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="m">0</span>.8
+<span class="w">    </span>ensure_files_pane<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="m">0</span>.667
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">codex_pane_id</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">workspace_codex_pane_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nv">codex_pane_id</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>start_codex_agent<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_agent_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
 <span class="w">    </span><span class="k">fi</span>
@@ -3648,6 +3807,7 @@ require_command<span class="w"> </span>yazi
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span>repair_attach_pane_order<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_pane_id</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span>repair_attach_pane_ratio<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_pane_id</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="w">    </span>bootstrap_agmsg<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span>
 
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Herdr agents workspace: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">&quot;</span>
@@ -3683,7 +3843,18 @@ require_command<span class="w"> </span>yazi
 <span class="w">        </span>start_claude_in_pane<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span>ensure_files_pane<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="m">0</span>.6
+<span class="w">    </span><span class="nv">existing_files_pane_id</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>files_pane_id<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span>ensure_files_pane<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="m">0</span>.667
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">existing_files_pane_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">panes_json</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>herdr<span class="w"> </span>pane<span class="w"> </span>list<span class="w"> </span>--workspace<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nv">panes_json</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>panes_on_pane_tab<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">claude_pane_id</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="se">\</span>
+<span class="w">                </span><span class="s1">&#39;.result.panes[]? | select(.agent == &quot;claude&quot; or .label == &quot;claude-orchestrator&quot;) | .pane_id // empty&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">            </span>repair_attach_pane_ratio<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_pane_id</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="k">else</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Unable to identify the repaired Herdr tab; refusing ratio repair.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span>bootstrap_agmsg<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span>
 
 <span class="w">    </span>herdr<span class="w"> </span>workspace<span class="w"> </span>focus<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">&quot;</span>
@@ -3707,7 +3878,7 @@ require_command<span class="w"> </span>yazi
 <span class="k">fi</span>
 
 start_claude_in_pane<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">root_pane_id</span><span class="si">}</span><span class="s2">&quot;</span>
-start_files_pane<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">root_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="m">0</span>.8
+start_files_pane<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">root_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="m">0</span>.667
 start_codex_agent<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_agent_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null
 bootstrap_agmsg<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span>
 

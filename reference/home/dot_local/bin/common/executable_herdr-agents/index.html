@@ -3520,10 +3520,16 @@
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
-<span class="c1"># @description Ensure Codex turn delivery exists and report trust or identity ambiguity.</span>
+<span class="c1"># @description Skip $HOME or ensure Codex turn delivery and report ambiguity.</span>
 <span class="c1"># @arg $1 workdir Repository path used for repo-scoped agmsg registration.</span>
 <span class="k">function</span><span class="w"> </span>bootstrap_agmsg<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">workdir</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;Skipping agmsg bootstrap for \$HOME; use a repository directory instead.\n&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">scripts</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/agmsg/scripts&quot;</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">delivery</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">/delivery.sh&quot;</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">identities</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">/identities.sh&quot;</span>

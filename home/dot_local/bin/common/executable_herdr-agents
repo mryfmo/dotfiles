@@ -323,7 +323,7 @@ function repair_attach_pane_order() {
     fi
 }
 
-# @description Ensure Codex turn delivery exists and report identity ambiguity.
+# @description Ensure Codex turn delivery exists and report trust or identity ambiguity.
 # @arg $1 workdir Repository path used for repo-scoped agmsg registration.
 function bootstrap_agmsg() {
     local workdir="$1"
@@ -338,7 +338,9 @@ function bootstrap_agmsg() {
     if ! { [[ -f ${hooks_file} ]] && jq -e \
         'any(.hooks.Stop[]?.hooks[]?; ((.bash // .command // "") | contains("agmsg/scripts/check-inbox.sh")))' \
         "${hooks_file}" > /dev/null 2>&1; }; then
-        "${delivery}" set turn codex "${workdir}" >> "${log_file}" 2>&1 || true
+        if "${delivery}" set turn codex "${workdir}" >> "${log_file}" 2>&1; then
+            printf 'Codex loads the new repo hook only after the project .codex layer is trusted; run /hooks or trust the repo in Codex.\n' >&2
+        fi
     fi
 
     if [[ ! -f ${identities} ]] || ! identity_list="$("${identities}" "${workdir}" codex 2>> "${log_file}")"; then
@@ -414,6 +416,7 @@ if [[ ${attach_mode} == true ]]; then
     claude_pane_id="${HERDR_PANE_ID}"
     codex_agent_name="codex-worker-${workspace_id}"
     panes_json="$(herdr pane list --workspace "${workspace_id}")"
+    workspace_codex_pane_id="$(live_codex_pane_id "${codex_agent_name}" "${panes_json}")" || workspace_codex_pane_id=""
     if ! panes_json="$(panes_on_pane_tab "${panes_json}" "${claude_pane_id}")"; then
         printf 'Unable to identify the current Herdr tab; refusing attach repair.\n' >&2
         exit 0
@@ -424,13 +427,16 @@ if [[ ${attach_mode} == true ]]; then
         printf 'Herdr attach panes are ambiguous or include unmanaged panes; refusing repair.\n' >&2
         exit 0
     fi
+    if [[ -z ${codex_pane_id} && -n ${workspace_codex_pane_id} ]]; then
+        printf 'The existing Codex agent is on another Herdr tab; refusing to start a duplicate.\n' >&2
+    fi
 
     if ! printf '%s\n' "${panes_json}" | jq -e --arg pane_id "${claude_pane_id}" '.result.panes[]? | select(.pane_id == $pane_id and .label == "claude-orchestrator")' > /dev/null; then
         herdr pane rename "${claude_pane_id}" claude-orchestrator
     fi
 
     ensure_files_pane "${panes_json}" "${claude_pane_id}" "${workdir}" 0.8
-    if [[ -z ${codex_pane_id} ]]; then
+    if [[ -z ${codex_pane_id} && -z ${workspace_codex_pane_id} ]]; then
         codex_pane_id="$(start_codex_agent "${workspace_id}" "${codex_agent_name}" "${workdir}")"
     fi
     panes_json="$(herdr pane list --workspace "${workspace_id}")"

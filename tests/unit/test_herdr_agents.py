@@ -155,15 +155,40 @@ exit {delivery_exit}
 """
         )
         delivery.chmod(0o755)
+        identities_output_path = scripts / "identities-output.txt"
+        identities_output_path.write_text(identities_output)
         identities = scripts / "identities.sh"
         identities.write_text(
             f"""#!/usr/bin/env bash
 printf 'identities %s\\n' "$*" >> {self.calls_path}
-printf '%s\\n' {json.dumps(identities_output)}
+cat {identities_output_path}
 """
         )
         identities.chmod(0o755)
         return scripts
+
+    def write_agmsg_turn_hook(self, scripts: Path) -> None:
+        hooks = self.workdir / ".codex/hooks.json"
+        hooks.parent.mkdir(exist_ok=True)
+        hooks.write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "Stop": [
+                            {
+                                "matcher": "",
+                                "hooks": [
+                                    {
+                                        "type": "command",
+                                        "command": f"'{scripts}/check-inbox.sh' 'codex' '{self.workdir}'",
+                                    }
+                                ],
+                            }
+                        ]
+                    }
+                }
+            )
+        )
 
     def materialize_agmsg_scripts(self) -> Path:
         source = ROOT / "home/dot_agents/skills/agmsg/scripts"
@@ -439,6 +464,29 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         )
         self.assertFalse(any("w-attach:p3" in call for call in calls))
 
+    def test_attach_does_not_restart_codex_agent_from_another_tab(self) -> None:
+        self.write_workspace_state(
+            "w-attach",
+            f'{{"agent":"claude","cwd":"{self.workdir}","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","tab_id":"w-attach:t2","workspace_id":"w-attach"}},'
+            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-attach:p9","workspace_id":"w-attach"}}',
+            agent_pane_id="w-attach:p2",
+        )
+        self.write_process_info(
+            f'{{"argv":["yazi"],"cmdline":"yazi","cwd":"{self.workdir}","name":"yazi"}}'
+        )
+
+        result = self.run_attach_helper(in_herdr=True)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("another Herdr tab", result.stderr)
+        self.assertFalse(
+            any(
+                call.startswith("agent start ")
+                for call in self.calls_path.read_text().splitlines()
+            )
+        )
+
     def test_attach_bootstraps_agmsg_after_codex_reuse(self) -> None:
         self.install_agmsg_fakes()
         self.write_workspace_state(
@@ -475,30 +523,12 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         calls = self.calls_path.read_text().splitlines()
         self.assertIn(f"delivery set turn codex {self.workdir.resolve()}", calls)
         self.assertIn(f"identities {self.workdir.resolve()} codex", calls)
+        self.assertIn("/hooks", result.stderr)
+        self.assertIn("trust", result.stderr.lower())
 
     def test_attach_skips_delivery_when_turn_hook_exists(self) -> None:
         scripts = self.install_agmsg_fakes()
-        hooks = self.workdir / ".codex/hooks.json"
-        hooks.parent.mkdir()
-        hooks.write_text(
-            json.dumps(
-                {
-                    "hooks": {
-                        "Stop": [
-                            {
-                                "matcher": "",
-                                "hooks": [
-                                    {
-                                        "type": "command",
-                                        "command": f"'{scripts}/check-inbox.sh' 'codex' '{self.workdir}'",
-                                    }
-                                ],
-                            }
-                        ]
-                    }
-                }
-            )
-        )
+        self.write_agmsg_turn_hook(scripts)
         self.write_workspace_state(
             "w-attach",
             f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
@@ -519,6 +549,39 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         calls = self.calls_path.read_text().splitlines()
         self.assertFalse(any(call.startswith("delivery ") for call in calls))
         self.assertIn(f"identities {self.workdir.resolve()} codex", calls)
+
+    def test_attach_warns_when_multiple_agmsg_identities_exist(self) -> None:
+        scripts = self.install_agmsg_fakes(
+            identities_output=(
+                "dotfiles-conformance\tcodex-worker-a\n"
+                "dotfiles-conformance\tcodex-worker-b"
+            )
+        )
+        self.write_agmsg_turn_hook(scripts)
+        self.write_workspace_state(
+            "w-attach",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}},'
+            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-attach:p9","workspace_id":"w-attach"}}',
+            agent_pane_id="w-attach:p2",
+        )
+        self.write_process_info(
+            f'{{"argv":["yazi"],"cmdline":"yazi","cwd":"{self.workdir}","name":"yazi"}}'
+        )
+        self.write_pane_layout(
+            [("w-attach:p1", 0), ("w-attach:p2", 40), ("w-attach:p9", 80)]
+        )
+
+        result = self.run_attach_helper(in_herdr=True)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("Multiple agmsg Codex identities", result.stderr)
+        self.assertFalse(
+            any(
+                call.startswith("delivery ")
+                for call in self.calls_path.read_text().splitlines()
+            )
+        )
 
     def test_attach_skips_agmsg_silently_when_not_installed(self) -> None:
         self.write_workspace_state(

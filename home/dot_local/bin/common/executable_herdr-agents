@@ -83,7 +83,7 @@ function start_codex_agent() {
         printf 'Unable to read Codex pane id for Herdr agent: %s\n' "${agent_name}" >&2
         return 1
     fi
-    herdr pane rename "${codex_pane_id}" codex-worker
+    herdr pane rename "${codex_pane_id}" codex-worker > /dev/null
     printf '%s\n' "${codex_pane_id}"
 }
 
@@ -233,6 +233,125 @@ function live_codex_pane_id() {
     printf '%s\n' "${pane_id}"
 }
 
+# @description Return pane-list JSON filtered to the tab containing a pane.
+# @arg $1 json Herdr pane list JSON.
+# @arg $2 pane_id Pane whose tab should be retained.
+function panes_on_pane_tab() {
+    local panes_json="$1"
+    local pane_id="$2"
+
+    printf '%s\n' "${panes_json}" | jq -ce --arg pane_id "${pane_id}" \
+        '.result.panes as $panes
+         | ($panes | map(select(.pane_id == $pane_id and (.tab_id | type) == "string"))) as $current
+         | if ($current | length) == 1
+           then .result.panes = [$panes[] | select(.tab_id == $current[0].tab_id)]
+           else error("unable to identify pane tab")
+           end'
+}
+
+# @description Return success when attach mode can account for every pane.
+# @arg $1 json Herdr pane list JSON.
+# @arg $2 pane_id Current Claude pane id.
+# @arg $3 pane_id Live Codex pane id, or empty when missing.
+function attach_panes_are_unambiguous() {
+    local panes_json="$1"
+    local claude_pane_id="$2"
+    local codex_pane_id="$3"
+    local files_pane
+
+    files_pane="$(files_pane_id "${panes_json}")"
+    [[ ${files_pane} != *$'\n'* ]] || return 1
+    printf '%s\n' "${panes_json}" | jq -e \
+        --arg claude "${claude_pane_id}" \
+        --arg codex "${codex_pane_id}" \
+        --arg files "${files_pane}" \
+        '.result.panes | map(.pane_id) as $actual
+         | ([$claude, $codex, $files] | map(select(length > 0)) | unique) as $managed
+         | ($actual | length) == ($managed | length)
+           and all($actual[]; . as $pane_id | ($managed | index($pane_id)) != null)' > /dev/null
+}
+
+# @description Repair the left-to-right order of the three attach-mode panes.
+# @arg $1 json Herdr pane list JSON.
+# @arg $2 pane_id Current Claude pane id.
+# @arg $3 pane_id Live Codex pane id.
+function repair_attach_pane_order() {
+    local panes_json="$1"
+    local claude_pane_id="$2"
+    local codex_pane_id="$3"
+    local files_pane
+    local layout_json
+    local current_order
+    local left_pane
+    local middle_pane
+
+    files_pane="$(files_pane_id "${panes_json}")"
+    if [[ -z ${files_pane} || -z ${codex_pane_id} ]] || ! attach_panes_are_unambiguous "${panes_json}" "${claude_pane_id}" "${codex_pane_id}"; then
+        printf 'Herdr attach panes are ambiguous or include unmanaged panes; refusing order repair.\n' >&2
+        return 0
+    fi
+    if ! layout_json="$(herdr pane layout --pane "${claude_pane_id}")"; then
+        printf 'Unable to inspect Herdr attach pane order; refusing order repair.\n' >&2
+        return 0
+    fi
+    if ! current_order="$(
+        printf '%s\n' "${layout_json}" | jq -er \
+            --arg claude "${claude_pane_id}" \
+            --arg codex "${codex_pane_id}" \
+            --arg files "${files_pane}" \
+            '[.result.layout.panes[]? | select(.pane_id == $claude or .pane_id == $codex or .pane_id == $files)] as $panes
+             | if ($panes | length) == 3
+                  and all($panes[]; .rect.x | type == "number")
+                  and ([$panes[].rect.x] | unique | length) == 3
+               then ($panes | sort_by(.rect.x) | map(.pane_id) | @tsv)
+               else error("ambiguous pane layout")
+               end'
+    )"; then
+        printf 'Herdr attach pane layout is ambiguous; refusing order repair.\n' >&2
+        return 0
+    fi
+
+    IFS=$'\t' read -r left_pane middle_pane _ <<< "${current_order}"
+    if [[ ${left_pane} != "${claude_pane_id}" ]]; then
+        herdr pane swap --source-pane "${left_pane}" --target-pane "${claude_pane_id}"
+        if [[ ${middle_pane} == "${claude_pane_id}" ]]; then
+            middle_pane="${left_pane}"
+        fi
+    fi
+    if [[ ${middle_pane} != "${codex_pane_id}" ]]; then
+        herdr pane swap --source-pane "${middle_pane}" --target-pane "${codex_pane_id}"
+    fi
+}
+
+# @description Ensure Codex turn delivery exists and report identity ambiguity.
+# @arg $1 workdir Repository path used for repo-scoped agmsg registration.
+function bootstrap_agmsg() {
+    local workdir="$1"
+    local scripts="${HOME}/.agents/skills/agmsg/scripts"
+    local delivery="${scripts}/delivery.sh"
+    local identities="${scripts}/identities.sh"
+    local hooks_file="${workdir}/.codex/hooks.json"
+    local log_file="${HOME}/.config/herdr/herdr-agents.log"
+    local identity_list
+
+    [[ -f ${delivery} ]] || return 0
+    if ! { [[ -f ${hooks_file} ]] && jq -e \
+        'any(.hooks.Stop[]?.hooks[]?; ((.bash // .command // "") | contains("agmsg/scripts/check-inbox.sh")))' \
+        "${hooks_file}" > /dev/null 2>&1; }; then
+        "${delivery}" set turn codex "${workdir}" >> "${log_file}" 2>&1 || true
+    fi
+
+    if [[ ! -f ${identities} ]] || ! identity_list="$("${identities}" "${workdir}" codex 2>> "${log_file}")"; then
+        return 0
+    fi
+    if [[ -z ${identity_list} ]]; then
+        printf 'No agmsg Codex identity for %s; run: %s/join.sh <team> <agent-name> codex "%s"\n' \
+            "${workdir}" "${scripts}" "${workdir}" >&2
+    elif [[ ${identity_list} == *$'\n'* ]]; then
+        printf 'Multiple agmsg Codex identities are registered for %s; worker identity is ambiguous.\n' "${workdir}" >&2
+    fi
+}
+
 # @description Return the first pane id without an attached agent.
 # @arg $1 json Herdr pane list JSON.
 # @arg $2 pane_id Optional pane id to exclude.
@@ -295,16 +414,32 @@ if [[ ${attach_mode} == true ]]; then
     claude_pane_id="${HERDR_PANE_ID}"
     codex_agent_name="codex-worker-${workspace_id}"
     panes_json="$(herdr pane list --workspace "${workspace_id}")"
+    if ! panes_json="$(panes_on_pane_tab "${panes_json}" "${claude_pane_id}")"; then
+        printf 'Unable to identify the current Herdr tab; refusing attach repair.\n' >&2
+        exit 0
+    fi
+    codex_pane_id="$(live_codex_pane_id "${codex_agent_name}" "${panes_json}")" || codex_pane_id=""
+
+    if ! attach_panes_are_unambiguous "${panes_json}" "${claude_pane_id}" "${codex_pane_id}"; then
+        printf 'Herdr attach panes are ambiguous or include unmanaged panes; refusing repair.\n' >&2
+        exit 0
+    fi
 
     if ! printf '%s\n' "${panes_json}" | jq -e --arg pane_id "${claude_pane_id}" '.result.panes[]? | select(.pane_id == $pane_id and .label == "claude-orchestrator")' > /dev/null; then
         herdr pane rename "${claude_pane_id}" claude-orchestrator
     fi
 
     ensure_files_pane "${panes_json}" "${claude_pane_id}" "${workdir}" 0.8
-    codex_pane_id="$(live_codex_pane_id "${codex_agent_name}" "${panes_json}")" || codex_pane_id=""
     if [[ -z ${codex_pane_id} ]]; then
-        start_codex_agent "${workspace_id}" "${codex_agent_name}" "${workdir}" > /dev/null
+        codex_pane_id="$(start_codex_agent "${workspace_id}" "${codex_agent_name}" "${workdir}")"
     fi
+    panes_json="$(herdr pane list --workspace "${workspace_id}")"
+    if ! panes_json="$(panes_on_pane_tab "${panes_json}" "${claude_pane_id}")"; then
+        printf 'Unable to identify the current Herdr tab; refusing order repair.\n' >&2
+        exit 0
+    fi
+    repair_attach_pane_order "${panes_json}" "${claude_pane_id}" "${codex_pane_id}"
+    bootstrap_agmsg "${workdir}"
 
     printf 'Herdr agents workspace: %s\n' "${workspace_id}"
     exit 0
@@ -340,6 +475,7 @@ if [[ -n ${existing_workspace_id} ]]; then
     fi
 
     ensure_files_pane "${panes_json}" "${codex_pane_id}" "${workdir}" 0.6
+    bootstrap_agmsg "${workdir}"
 
     herdr workspace focus "${workspace_id}"
     printf 'Herdr agents workspace: %s\n' "${workspace_id}"
@@ -364,6 +500,7 @@ fi
 start_claude_in_pane "${root_pane_id}"
 start_files_pane "${root_pane_id}" "${workdir}" 0.8
 start_codex_agent "${workspace_id}" "${codex_agent_name}" "${workdir}" > /dev/null
+bootstrap_agmsg "${workdir}"
 
 if command -v zed > /dev/null 2>&1; then
     zed "${workdir}" > /dev/null 2>&1 &

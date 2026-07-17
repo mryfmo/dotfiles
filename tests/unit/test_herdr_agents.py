@@ -36,6 +36,7 @@ class HerdrAgentsTest(unittest.TestCase):
         self.calls_path = self.temp_dir / "herdr-calls.txt"
         self.workspace_list_path = self.temp_dir / "workspace-list.json"
         self.pane_list_path = self.temp_dir / "pane-list.json"
+        self.pane_layout_path = self.temp_dir / "pane-layout.json"
         self.process_info_path = self.temp_dir / "process-info.json"
         self.process_info_exit_path = self.temp_dir / "process-info-exit.txt"
         self.pane_run_exit_path = self.temp_dir / "pane-run-exit.txt"
@@ -48,6 +49,7 @@ class HerdrAgentsTest(unittest.TestCase):
         self.workdir.mkdir()
         self.workspace_list_path.write_text('{"id":"cli:workspace:list","result":{"type":"workspace_list","workspaces":[]}}\n')
         self.pane_list_path.write_text('{"id":"cli:pane:list","result":{"panes":[]}}\n')
+        self.pane_layout_path.write_text('{"id":"cli:pane:layout","result":{"layout":{"panes":[]}}}\n')
         self.process_info_path.write_text('{"id":"cli:pane:process-info","result":{"process_info":{"foreground_processes":[]}}}\n')
         self.process_info_exit_path.write_text("0\n")
         self.pane_run_exit_path.write_text("0\n")
@@ -74,6 +76,10 @@ if [[ $1 == pane && $2 == list ]]; then
     cat {self.pane_list_path}
     exit 0
 fi
+if [[ $1 == pane && $2 == layout ]]; then
+    cat {self.pane_layout_path}
+    exit 0
+fi
 if [[ $1 == pane && $2 == process-info ]]; then
     cat {self.process_info_path}
     exit "$(cat {self.process_info_exit_path})"
@@ -88,6 +94,10 @@ if [[ $1 == pane && $2 == split ]]; then
     exit 0
 fi
 if [[ $1 == pane && $2 == swap ]]; then
+    exit 0
+fi
+if [[ $1 == pane && $2 == rename ]]; then
+    printf '{{"id":"cli:pane:rename","result":{{"pane":{{"pane_id":"%s"}}}}}}\\n' "$3"
     exit 0
 fi
 if [[ $1 == pane && $2 == run ]]; then
@@ -129,6 +139,32 @@ fi
         path.write_text(textwrap.dedent(content))
         path.chmod(0o755)
 
+    def install_agmsg_fakes(
+        self,
+        *,
+        delivery_exit: int = 0,
+        identities_output: str = "dotfiles-conformance\tcodex-worker",
+    ) -> Path:
+        scripts = self.home_dir / ".agents/skills/agmsg/scripts"
+        scripts.mkdir(parents=True)
+        delivery = scripts / "delivery.sh"
+        delivery.write_text(
+            f"""#!/usr/bin/env bash
+printf 'delivery %s\\n' "$*" >> {self.calls_path}
+exit {delivery_exit}
+"""
+        )
+        delivery.chmod(0o755)
+        identities = scripts / "identities.sh"
+        identities.write_text(
+            f"""#!/usr/bin/env bash
+printf 'identities %s\\n' "$*" >> {self.calls_path}
+printf '%s\\n' {json.dumps(identities_output)}
+"""
+        )
+        identities.chmod(0o755)
+        return scripts
+
     def materialize_agmsg_scripts(self) -> Path:
         source = ROOT / "home/dot_agents/skills/agmsg/scripts"
         target = self.temp_dir / "agmsg" / "scripts"
@@ -168,7 +204,10 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
                 """
             )
         )
-        self.pane_list_path.write_text(f'{{"id":"cli:pane:list","result":{{"panes":[{panes}]}}}}\n')
+        pane_list = json.loads(f'{{"id":"cli:pane:list","result":{{"panes":[{panes}]}}}}')
+        for pane in pane_list["result"]["panes"]:
+            pane.setdefault("tab_id", f"{workspace_id}:t1")
+        self.pane_list_path.write_text(json.dumps(pane_list) + "\n")
         if agent_pane_id:
             self.agent_get_path.write_text(f'{{"id":"cli:agent:get","result":{{"agent":{{"pane_id":"{agent_pane_id}"}},"type":"agent_info"}}}}\n')
         else:
@@ -179,8 +218,18 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             f'{{"id":"cli:pane:process-info","result":{{"process_info":{{"foreground_processes":[{processes}]}}}}}}\n'
         )
 
+    def write_pane_layout(self, panes: list[tuple[str, int]]) -> None:
+        layout_panes = [
+            {"pane_id": pane_id, "rect": {"height": 40, "width": 40, "x": x, "y": 0}}
+            for pane_id, x in panes
+        ]
+        self.pane_layout_path.write_text(
+            json.dumps({"id": "cli:pane:layout", "result": {"layout": {"panes": layout_panes}}}) + "\n"
+        )
+
     def run_helper(self) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
+        env["HOME"] = str(self.home_dir)
         env["PATH"] = f"{self.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"
         return subprocess.run(
             ["bash", str(SCRIPT), str(self.workdir)],
@@ -210,6 +259,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self, *, in_herdr: bool, managed_layout: bool = False
     ) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
+        env["HOME"] = str(self.home_dir)
         env["PATH"] = f"{self.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"
         for key in ("HERDR_ENV", "HERDR_PANE_ID", "HERDR_WORKSPACE_ID", "HERDR_AGENTS_LAYOUT"):
             env.pop(key, None)
@@ -280,6 +330,217 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
         self.assertFalse(any(call.startswith(("agent start ", "pane rename ", "pane run ", "pane split ")) for call in calls))
+
+    def test_attach_repairs_files_claude_codex_order(self) -> None:
+        self.write_workspace_state(
+            "w-attach",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}},'
+            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-attach:p9","workspace_id":"w-attach"}}',
+            agent_pane_id="w-attach:p2",
+        )
+        self.write_process_info(
+            f'{{"argv":["yazi"],"cmdline":"yazi","cwd":"{self.workdir}","name":"yazi"}}'
+        )
+        self.write_pane_layout(
+            [("w-attach:p9", 0), ("w-attach:p1", 40), ("w-attach:p2", 80)]
+        )
+
+        result = self.run_attach_helper(in_herdr=True)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        swaps = [
+            call
+            for call in self.calls_path.read_text().splitlines()
+            if call.startswith("pane swap ")
+        ]
+        self.assertEqual(
+            swaps,
+            [
+                "pane swap --source-pane w-attach:p9 --target-pane w-attach:p1",
+                "pane swap --source-pane w-attach:p9 --target-pane w-attach:p2",
+            ],
+        )
+
+    def test_attach_correct_order_does_not_swap(self) -> None:
+        self.write_workspace_state(
+            "w-attach",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}},'
+            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-attach:p9","workspace_id":"w-attach"}}',
+            agent_pane_id="w-attach:p2",
+        )
+        self.write_process_info(
+            f'{{"argv":["yazi"],"cmdline":"yazi","cwd":"{self.workdir}","name":"yazi"}}'
+        )
+        self.write_pane_layout(
+            [("w-attach:p1", 0), ("w-attach:p2", 40), ("w-attach:p9", 80)]
+        )
+
+        result = self.run_attach_helper(in_herdr=True)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(
+            any(
+                call.startswith("pane swap ")
+                for call in self.calls_path.read_text().splitlines()
+            )
+        )
+
+    def test_attach_ambiguous_files_panes_skip_repair(self) -> None:
+        self.write_workspace_state(
+            "w-attach",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}},'
+            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-attach:p8","workspace_id":"w-attach"}},'
+            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-attach:p9","workspace_id":"w-attach"}}',
+            agent_pane_id="w-attach:p2",
+        )
+
+        result = self.run_attach_helper(in_herdr=True)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("ambiguous", result.stderr.lower())
+        self.assertFalse(
+            any(
+                call.startswith("pane swap ")
+                for call in self.calls_path.read_text().splitlines()
+            )
+        )
+
+    def test_attach_ignores_extra_panes_on_other_tabs(self) -> None:
+        self.write_workspace_state(
+            "w-attach",
+            f'{{"agent":"claude","cwd":"{self.workdir}","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}},'
+            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-attach:p9","workspace_id":"w-attach"}},'
+            f'{{"agent":null,"cwd":"{self.workdir}","pane_id":"w-attach:p3","tab_id":"w-attach:t2","workspace_id":"w-attach"}}',
+            agent_pane_id="w-attach:p2",
+        )
+        self.write_process_info(
+            f'{{"argv":["yazi"],"cmdline":"yazi","cwd":"{self.workdir}","name":"yazi"}}'
+        )
+        self.write_pane_layout(
+            [("w-attach:p9", 0), ("w-attach:p1", 40), ("w-attach:p2", 80)]
+        )
+
+        result = self.run_attach_helper(in_herdr=True)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn("pane rename w-attach:p1 claude-orchestrator", calls)
+        self.assertIn("pane process-info --pane w-attach:p9", calls)
+        self.assertEqual(
+            [call for call in calls if call.startswith("pane swap ")],
+            [
+                "pane swap --source-pane w-attach:p9 --target-pane w-attach:p1",
+                "pane swap --source-pane w-attach:p9 --target-pane w-attach:p2",
+            ],
+        )
+        self.assertFalse(any("w-attach:p3" in call for call in calls))
+
+    def test_attach_bootstraps_agmsg_after_codex_reuse(self) -> None:
+        self.install_agmsg_fakes()
+        self.write_workspace_state(
+            "w-attach",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}},'
+            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-attach:p9","workspace_id":"w-attach"}}',
+            agent_pane_id="w-attach:p2",
+        )
+        self.write_process_info(
+            f'{{"argv":["yazi"],"cmdline":"yazi","cwd":"{self.workdir}","name":"yazi"}}'
+        )
+        self.write_pane_layout(
+            [("w-attach:p1", 0), ("w-attach:p2", 40), ("w-attach:p9", 80)]
+        )
+
+        result = self.run_attach_helper(in_herdr=True)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn(f"delivery set turn codex {self.workdir.resolve()}", calls)
+        self.assertIn(f"identities {self.workdir.resolve()} codex", calls)
+
+    def test_attach_bootstraps_agmsg_after_codex_start(self) -> None:
+        self.install_agmsg_fakes()
+        self.write_workspace_state(
+            "w-attach",
+            f'{{"agent":"claude","cwd":"{self.workdir}","pane_id":"w-attach:p1","workspace_id":"w-attach"}}',
+        )
+
+        result = self.run_attach_helper(in_herdr=True)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn(f"delivery set turn codex {self.workdir.resolve()}", calls)
+        self.assertIn(f"identities {self.workdir.resolve()} codex", calls)
+
+    def test_attach_skips_delivery_when_turn_hook_exists(self) -> None:
+        scripts = self.install_agmsg_fakes()
+        hooks = self.workdir / ".codex/hooks.json"
+        hooks.parent.mkdir()
+        hooks.write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "Stop": [
+                            {
+                                "matcher": "",
+                                "hooks": [
+                                    {
+                                        "type": "command",
+                                        "command": f"'{scripts}/check-inbox.sh' 'codex' '{self.workdir}'",
+                                    }
+                                ],
+                            }
+                        ]
+                    }
+                }
+            )
+        )
+        self.write_workspace_state(
+            "w-attach",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}},'
+            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-attach:p9","workspace_id":"w-attach"}}',
+            agent_pane_id="w-attach:p2",
+        )
+        self.write_process_info(
+            f'{{"argv":["yazi"],"cmdline":"yazi","cwd":"{self.workdir}","name":"yazi"}}'
+        )
+        self.write_pane_layout(
+            [("w-attach:p1", 0), ("w-attach:p2", 40), ("w-attach:p9", 80)]
+        )
+
+        result = self.run_attach_helper(in_herdr=True)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertFalse(any(call.startswith("delivery ") for call in calls))
+        self.assertIn(f"identities {self.workdir.resolve()} codex", calls)
+
+    def test_attach_skips_agmsg_silently_when_not_installed(self) -> None:
+        self.write_workspace_state(
+            "w-attach",
+            f'{{"agent":"claude","cwd":"{self.workdir}","pane_id":"w-attach:p1","workspace_id":"w-attach"}}',
+        )
+
+        result = self.run_attach_helper(in_herdr=True)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn("agmsg", result.stderr.lower())
+
+    def test_attach_ignores_agmsg_bootstrap_failure(self) -> None:
+        self.install_agmsg_fakes(delivery_exit=42, identities_output="")
+        self.write_workspace_state(
+            "w-attach",
+            f'{{"agent":"claude","cwd":"{self.workdir}","pane_id":"w-attach:p1","workspace_id":"w-attach"}}',
+        )
+
+        result = self.run_attach_helper(in_herdr=True)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_claude_settings_add_herdr_attach_session_hook(self) -> None:
         source_dir = self.temp_dir / "source"

@@ -583,6 +583,21 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             )
         )
 
+    def test_full_mode_skips_agmsg_bootstrap_for_home(self) -> None:
+        self.install_agmsg_fakes()
+        self.workdir = self.home_dir
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("Skipping agmsg bootstrap for $HOME", result.stderr)
+        self.assertFalse(
+            any(
+                call.startswith(("delivery ", "identities "))
+                for call in self.calls_path.read_text().splitlines()
+            )
+        )
+
     def test_attach_skips_agmsg_silently_when_not_installed(self) -> None:
         self.write_workspace_state(
             "w-attach",

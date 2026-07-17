@@ -206,10 +206,12 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             stderr=subprocess.PIPE,
         )
 
-    def run_attach_helper(self, *, in_herdr: bool) -> subprocess.CompletedProcess[str]:
+    def run_attach_helper(
+        self, *, in_herdr: bool, managed_layout: bool = False
+    ) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env["PATH"] = f"{self.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"
-        for key in ("HERDR_ENV", "HERDR_PANE_ID", "HERDR_WORKSPACE_ID"):
+        for key in ("HERDR_ENV", "HERDR_PANE_ID", "HERDR_WORKSPACE_ID", "HERDR_AGENTS_LAYOUT"):
             env.pop(key, None)
         if in_herdr:
             env.update(
@@ -217,6 +219,8 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
                 HERDR_PANE_ID="w-attach:p1",
                 HERDR_WORKSPACE_ID="w-attach",
             )
+        if managed_layout:
+            env["HERDR_AGENTS_LAYOUT"] = "managed"
         return subprocess.run(
             ["bash", str(SCRIPT), "--attach"],
             cwd=self.workdir,
@@ -229,6 +233,12 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
     def test_attach_noops_without_herdr_environment(self) -> None:
         result = self.run_attach_helper(in_herdr=False)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(self.calls_path.exists())
+
+    def test_attach_noops_for_full_mode_managed_layout(self) -> None:
+        result = self.run_attach_helper(in_herdr=True, managed_layout=True)
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertFalse(self.calls_path.exists())
@@ -307,7 +317,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         calls = self.calls_path.read_text().splitlines()
         self.assertIn("pane rename w-test:p1 claude-orchestrator", calls)
-        self.assertIn("pane run w-test:p1 CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high", calls)
+        self.assertIn("pane run w-test:p1 CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed claude --model 'claude-fable-5[1m]' --effort high", calls)
         self.assertIn(
             f"agent start codex-worker-w-test --cwd {self.workdir} --workspace w-test --split right --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex --sandbox workspace-write -m gpt-5.6-sol -c model_reasoning_effort=high",
             calls,
@@ -500,7 +510,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         calls = self.calls_path.read_text().splitlines()
         self.assertIn("pane split w-old:p2 --direction right --no-focus", calls)
-        self.assertIn("pane run w-old:p3 CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high", calls)
+        self.assertIn("pane run w-old:p3 CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed claude --model 'claude-fable-5[1m]' --effort high", calls)
         self.assertFalse(any("--ratio" in call for call in calls))
         self.assertFalse(any(call.startswith("pane rename w-old:p9 ") for call in calls))
         self.assertFalse(any(call.startswith("pane run w-old:p9 ") for call in calls))
@@ -538,8 +548,8 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             f"agent start codex-worker-w-old --cwd {self.workdir} --workspace w-old --split right --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex --sandbox workspace-write -m gpt-5.6-sol -c model_reasoning_effort=high",
             calls,
         )
-        self.assertIn("pane run w-old:p3 CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high", calls)
-        self.assertNotIn("pane run w-old:p2 CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high", calls)
+        self.assertIn("pane run w-old:p3 CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed claude --model 'claude-fable-5[1m]' --effort high", calls)
+        self.assertNotIn("pane run w-old:p2 CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed claude --model 'claude-fable-5[1m]' --effort high", calls)
 
     def test_existing_workspace_restarts_missing_claude_in_empty_pane(self) -> None:
         self.write_workspace_state(
@@ -554,7 +564,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         calls = self.calls_path.read_text().splitlines()
         self.assertIn("pane rename w-old:p1 claude-orchestrator", calls)
-        self.assertIn("pane run w-old:p1 CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high", calls)
+        self.assertIn("pane run w-old:p1 CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed claude --model 'claude-fable-5[1m]' --effort high", calls)
         self.assertFalse(any(call.startswith("agent start ") for call in calls))
         self.assertIn("workspace focus w-old", calls)
 
@@ -571,7 +581,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         calls = self.calls_path.read_text().splitlines()
         self.assertIn("pane split w-old:p2 --direction right --no-focus", calls)
         self.assertIn("pane swap --pane w-old:p3 --direction left", calls)
-        self.assertIn("pane run w-old:p3 CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high", calls)
+        self.assertIn("pane run w-old:p3 CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed claude --model 'claude-fable-5[1m]' --effort high", calls)
         self.assertIn("workspace focus w-old", calls)
 
     def test_ghostty_herdr_starts_plain_workspace(self) -> None:

@@ -44,7 +44,7 @@ function json_agent_pane_id() {
 
 # @description Build the Claude command run in the orchestrator pane.
 function claude_command() {
-    printf "%s\n" "CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high"
+    printf "%s\n" "CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed claude --model 'claude-fable-5[1m]' --effort high"
 }
 
 # @description Start Claude in an existing pane.
@@ -266,6 +266,7 @@ if [[ ${1:-} == "--attach" ]]; then
     if [[ -z ${HERDR_ENV:-} || -z ${HERDR_PANE_ID:-} || -z ${HERDR_WORKSPACE_ID:-} ]]; then
         exit 0
     fi
+    [[ ${HERDR_AGENTS_LAYOUT:-} == managed ]] && exit 0
 fi
 
 if { [[ ${attach_mode} == true ]] && [[ $# -gt 0 ]]; } || [[ $# -gt 1 ]]; then

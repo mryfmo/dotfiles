@@ -36,6 +36,7 @@ class HerdrAgentsTest(unittest.TestCase):
         self.calls_path = self.temp_dir / "herdr-calls.txt"
         self.workspace_list_path = self.temp_dir / "workspace-list.json"
         self.pane_list_path = self.temp_dir / "pane-list.json"
+        self.pane_list_after_split_path = self.temp_dir / "pane-list-after-split.json"
         self.pane_layout_path = self.temp_dir / "pane-layout.json"
         self.pane_layout_after_resize_path = self.temp_dir / "pane-layout-after-resize.json"
         self.pane_layout_exit_path = self.temp_dir / "pane-layout-exit.txt"
@@ -51,6 +52,7 @@ class HerdrAgentsTest(unittest.TestCase):
         self.workdir.mkdir()
         self.workspace_list_path.write_text('{"id":"cli:workspace:list","result":{"type":"workspace_list","workspaces":[]}}\n')
         self.pane_list_path.write_text('{"id":"cli:pane:list","result":{"panes":[]}}\n')
+        self.pane_list_after_split_path.write_text("")
         self.pane_layout_path.write_text('{"id":"cli:pane:layout","result":{"layout":{"panes":[]}}}\n')
         self.pane_layout_after_resize_path.write_text("")
         self.pane_layout_exit_path.write_text("0\n")
@@ -94,6 +96,9 @@ if [[ $1 == pane && $2 == split ]]; then
     workspace="${{3%%:*}}"
     pane_number="$(( $(cat {self.pane_counter_path}) + 1 ))"
     printf '%s\\n' "$pane_number" > {self.pane_counter_path}
+    if [[ -s {self.pane_list_after_split_path} ]]; then
+        cp {self.pane_list_after_split_path} {self.pane_list_path}
+    fi
     printf '{{"id":"cli:pane:split","result":{{"pane":{{"pane_id":"%s:p%s"}}}}}}\\n' "$workspace" "$pane_number"
     exit 0
 fi
@@ -268,21 +273,23 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         *,
         after_resize: bool = False,
         nested: str = "right",
+        pane_ids: tuple[str, str, str] = ("w-attach:p1", "w-attach:p2", "w-attach:p9"),
     ) -> None:
         left, middle, right = widths
+        left_id, middle_id, right_id = pane_ids
         total = sum(widths)
         layout = {
             "id": "cli:pane:layout",
             "result": {
                 "layout": {
                     "panes": [
-                        {"pane_id": "w-attach:p1", "rect": {"height": 40, "width": left, "x": 0, "y": 0}},
+                        {"pane_id": left_id, "rect": {"height": 40, "width": left, "x": 0, "y": 0}},
                         {
-                            "pane_id": "w-attach:p2",
+                            "pane_id": middle_id,
                             "rect": {"height": 40, "width": middle, "x": left, "y": 0},
                         },
                         {
-                            "pane_id": "w-attach:p9",
+                            "pane_id": right_id,
                             "rect": {"height": 40, "width": right, "x": left + middle, "y": 0},
                         },
                     ],
@@ -1007,6 +1014,23 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}}',
             agent_pane_id="w-old:p2",
         )
+        pane_list = json.loads(self.pane_list_path.read_text())
+        pane_list["result"]["panes"].append(
+            {
+                "agent": None,
+                "cwd": str(self.workdir),
+                "label": "files",
+                "pane_id": "w-old:p3",
+                "tab_id": "w-old:t1",
+                "workspace_id": "w-old",
+            }
+        )
+        self.pane_list_after_split_path.write_text(json.dumps(pane_list) + "\n")
+        pane_ids = ("w-old:p1", "w-old:p2", "w-old:p3")
+        self.write_ratio_layout((86, 57, 29), pane_ids=pane_ids)
+        self.write_ratio_layout(
+            (57, 58, 57), after_resize=True, pane_ids=pane_ids
+        )
 
         result = self.run_helper()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -1015,6 +1039,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertIn(f"pane split w-old:p2 --direction right --ratio 0.667 --cwd {self.workdir} --no-focus", calls)
         self.assertIn("pane rename w-old:p3 files", calls)
         self.assertIn("pane run w-old:p3 yazi", calls)
+        self.assertTrue(any(call.startswith("pane resize ") for call in calls))
 
     def test_existing_files_pane_is_not_reused_for_claude_or_split_again(self) -> None:
         self.write_workspace_state(

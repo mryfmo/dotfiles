@@ -645,7 +645,18 @@ if [[ -n ${existing_workspace_id} ]]; then
         start_claude_in_pane "${claude_pane_id}"
     fi
 
+    existing_files_pane_id="$(files_pane_id "${panes_json}")"
     ensure_files_pane "${panes_json}" "${codex_pane_id}" "${workdir}" 0.667
+    if [[ -z ${existing_files_pane_id} ]]; then
+        panes_json="$(herdr pane list --workspace "${workspace_id}")"
+        if panes_json="$(panes_on_pane_tab "${panes_json}" "${codex_pane_id}")"; then
+            claude_pane_id="$(printf '%s\n' "${panes_json}" | jq -r \
+                '.result.panes[]? | select(.agent == "claude" or .label == "claude-orchestrator") | .pane_id // empty')"
+            repair_attach_pane_ratio "${panes_json}" "${claude_pane_id}" "${codex_pane_id}"
+        else
+            printf 'Unable to identify the repaired Herdr tab; refusing ratio repair.\n' >&2
+        fi
+    fi
     bootstrap_agmsg "${workdir}"
 
     herdr workspace focus "${workspace_id}"

@@ -71,6 +71,7 @@ update:
 		not_running) echo "Herdr server is not running; skipping config reload." ;; \
 		*) echo "Unknown or missing Herdr server status: $${server_status:-<missing>}" >&2; exit 1 ;; \
 	esac
+	$(MAKE) agmsg-bootstrap
 
 .PHONY: apply
 apply: update
@@ -93,6 +94,15 @@ doctor:
 .PHONY: upgrade
 upgrade:
 	./scripts/upgrade-tools.sh $(if $(filter 1 true yes,$(SYSTEM)),--system,)
+	$(MAKE) agmsg-bootstrap
+
+.PHONY: agmsg-bootstrap
+agmsg-bootstrap:
+	@if [ -f home/dot_local/bin/common/executable_herdr-agents ]; then \
+		bash home/dot_local/bin/common/executable_herdr-agents --bootstrap-agmsg "$(CURDIR)"; \
+	else \
+		echo "Herdr agents source helper not found; skipping agmsg bootstrap."; \
+	fi
 
 .PHONY: watch
 watch:

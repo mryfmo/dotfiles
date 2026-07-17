@@ -13,4 +13,5 @@
 - Always register `project` as the current directory's real repository path; `$HOME` registrations are forbidden because they create codex-hook ambiguity and steal inbox messages.
 - At worker setup run delivery.sh set turn codex <repo> so the worker Stop hook auto-delivers inbox messages each turn from the repo-scoped .codex/hooks.json (gitignored); pane nudges are only generic wakes for idle workers — message content always flows over the bus.
 - Give concurrent resident workers separate stores with AGMSG_STORAGE_PATH; the orchestrator must prefix the SAME AGMSG_STORAGE_PATH on its send/watch/history calls for that worker, or results and pongs land in an unreachable database.
+- Accept tasks that change live desktop behavior (herdr layout/session, pane lifecycle, or delivery hooks) only after live end-to-end verification covers both a fresh session and a persisted-session restore; unit tests and static checks alone are insufficient.
 - Invoke the `agmsg-orchestration` skill for AGMSG-TASK/RESULT/ACCEPTANCE message contracts and playbooks.

@@ -323,10 +323,16 @@ function repair_attach_pane_order() {
     fi
 }
 
-# @description Ensure Codex turn delivery exists and report trust or identity ambiguity.
+# @description Skip $HOME or ensure Codex turn delivery and report ambiguity.
 # @arg $1 workdir Repository path used for repo-scoped agmsg registration.
 function bootstrap_agmsg() {
     local workdir="$1"
+
+    if [[ "$(cd -- "${workdir}" && pwd -P)" == "$(cd -- "${HOME}" && pwd -P)" ]]; then
+        printf "Skipping agmsg bootstrap for \$HOME; use a repository directory instead.\n" >&2
+        return 0
+    fi
+
     local scripts="${HOME}/.agents/skills/agmsg/scripts"
     local delivery="${scripts}/delivery.sh"
     local identities="${scripts}/identities.sh"

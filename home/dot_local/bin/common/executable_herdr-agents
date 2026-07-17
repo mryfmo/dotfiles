@@ -6,11 +6,14 @@
 #   Full mode creates or repairs an agents workspace. Attach mode adds Codex
 #   and Yazi around Claude in the current Herdr pane without restarting Claude.
 # @option --attach Attach the current Claude pane to its Herdr workspace layout.
+# @option --bootstrap-agmsg Configure repo-scoped agmsg hooks without changing Herdr panes.
 # @arg DIR Optional directory for the Herdr workspace. Defaults to the current directory.
 # @example
 #   herdr-agents ~/Workspace/dotfiles
 # @example
 #   herdr-agents --attach
+# @example
+#   herdr-agents --bootstrap-agmsg ~/Workspace/dotfiles
 
 set -euo pipefail
 
@@ -19,11 +22,13 @@ function usage() {
     cat << 'USAGE'
 Usage: herdr-agents [DIR]
        herdr-agents --attach
+       herdr-agents --bootstrap-agmsg [DIR]
 
 Create a Herdr workspace for DIR with equal-width Claude Code, Codex, and Yazi
 panes from left to right, and open DIR in Zed when available. Herdr, jq, Claude
 Code, Codex, and Yazi are required. DIR defaults to the current directory.
 Attach mode uses the current Herdr pane for Claude.
+Bootstrap mode only configures missing repo-scoped agmsg hooks.
 USAGE
 }
 
@@ -481,7 +486,7 @@ function repair_attach_pane_ratio() {
     fi
 }
 
-# @description Skip $HOME or ensure Codex turn delivery and report ambiguity.
+# @description Skip $HOME or ensure Codex and Claude Code agmsg delivery hooks.
 # @arg $1 workdir Repository path used for repo-scoped agmsg registration.
 function bootstrap_agmsg() {
     local workdir="$1"
@@ -494,28 +499,54 @@ function bootstrap_agmsg() {
     local scripts="${HOME}/.agents/skills/agmsg/scripts"
     local delivery="${scripts}/delivery.sh"
     local identities="${scripts}/identities.sh"
-    local hooks_file="${workdir}/.codex/hooks.json"
+    local codex_hooks_file="${workdir}/.codex/hooks.json"
+    local claude_hooks_file="${workdir}/.claude/settings.local.json"
     local log_file="${HOME}/.config/herdr/herdr-agents.log"
+    local agent_type
+    local agent_label
     local identity_list
 
-    [[ -f ${delivery} ]] || return 0
-    if ! { [[ -f ${hooks_file} ]] && jq -e \
+    if [[ ! -f ${delivery} ]]; then
+        printf 'agmsg delivery script not found; skipping bootstrap: %s\n' "${delivery}" >&2
+        return 0
+    fi
+    mkdir -p "${log_file%/*}"
+    if ! { [[ -f ${codex_hooks_file} ]] && jq -e \
         'any(.hooks.Stop[]?.hooks[]?; ((.bash // .command // "") | contains("agmsg/scripts/check-inbox.sh")))' \
-        "${hooks_file}" > /dev/null 2>&1; }; then
+        "${codex_hooks_file}" > /dev/null 2>&1; }; then
         if "${delivery}" set turn codex "${workdir}" >> "${log_file}" 2>&1; then
             printf 'Codex loads the new repo hook only after the project .codex layer is trusted; run /hooks or trust the repo in Codex.\n' >&2
         fi
     fi
+    if ! { [[ -f ${claude_hooks_file} ]] && jq -e \
+        'any(.hooks.SessionStart[]?.hooks[]?; ((.command // "") | contains("agmsg/scripts/session-start.sh")))' \
+        "${claude_hooks_file}" > /dev/null 2>&1; }; then
+        if "${delivery}" set both claude-code "${workdir}" >> "${log_file}" 2>&1; then
+            printf 'First-time Claude Code agmsg setup may stop one same-repo watcher once; the hooks apply in the next Claude Code session.\n' >&2
+        fi
+    fi
 
-    if [[ ! -f ${identities} ]] || ! identity_list="$("${identities}" "${workdir}" codex 2>> "${log_file}")"; then
+    if [[ ! -f ${identities} ]]; then
+        printf 'agmsg identities script not found; skipping identity checks: %s\n' "${identities}" >&2
         return 0
     fi
-    if [[ -z ${identity_list} ]]; then
-        printf 'No agmsg Codex identity for %s; run: %s/join.sh <team> <agent-name> codex "%s"\n' \
-            "${workdir}" "${scripts}" "${workdir}" >&2
-    elif [[ ${identity_list} == *$'\n'* ]]; then
-        printf 'Multiple agmsg Codex identities are registered for %s; worker identity is ambiguous.\n' "${workdir}" >&2
-    fi
+    for agent_type in codex claude-code; do
+        if [[ ${agent_type} == codex ]]; then
+            agent_label=Codex
+        else
+            agent_label="Claude Code"
+        fi
+        if ! identity_list="$("${identities}" "${workdir}" "${agent_type}" 2>> "${log_file}")"; then
+            continue
+        fi
+        if [[ -z ${identity_list} ]]; then
+            printf 'No agmsg %s identity for %s; run: %s/join.sh <team> <agent-name> %s "%s"\n' \
+                "${agent_label}" "${workdir}" "${scripts}" "${agent_type}" "${workdir}" >&2
+        elif [[ ${identity_list} == *$'\n'* ]]; then
+            printf 'Multiple agmsg %s identities are registered for %s; worker identity is ambiguous.\n' \
+                "${agent_label}" "${workdir}" >&2
+        fi
+    done
 }
 
 # @description Return the first pane id without an attached agent.
@@ -545,6 +576,7 @@ if [[ ${1:-} == "--help" || ${1:-} == "-h" ]]; then
 fi
 
 attach_mode=false
+bootstrap_mode=false
 if [[ ${1:-} == "--attach" ]]; then
     attach_mode=true
     shift
@@ -552,11 +584,23 @@ if [[ ${1:-} == "--attach" ]]; then
         exit 0
     fi
     [[ ${HERDR_AGENTS_LAYOUT:-} == managed ]] && exit 0
+elif [[ ${1:-} == "--bootstrap-agmsg" ]]; then
+    bootstrap_mode=true
+    shift
 fi
 
 if { [[ ${attach_mode} == true ]] && [[ $# -gt 0 ]]; } || [[ $# -gt 1 ]]; then
     usage >&2
     exit 2
+fi
+
+if [[ ${bootstrap_mode} == true ]]; then
+    require_command jq
+    workdir="${1:-$PWD}"
+    cd -- "${workdir}"
+    workdir="$(pwd -P)"
+    bootstrap_agmsg "${workdir}"
+    exit 0
 fi
 
 require_command herdr

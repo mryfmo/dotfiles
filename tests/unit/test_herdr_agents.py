@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 import errno
+import json
 import os
 import pty
 import shutil
 import subprocess
+import sys
 import tempfile
 import textwrap
 import tomllib
@@ -18,6 +20,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "home/dot_local/bin/common/executable_herdr-agents"
 HERDR_SESSION_SCRIPT = ROOT / "home/dot_local/bin/common/executable_herdr-session"
+CLAUDE_SETTINGS_MODIFIER = ROOT / "home/dot_claude/modify_private_settings.json"
 HERDR_CONFIG = ROOT / "home/dot_config/herdr/config.toml"
 YAZI_CONFIG = ROOT / "home/dot_config/yazi/yazi.toml"
 GHOSTTY_CONFIG = ROOT / "home/dot_config/ghostty/config"
@@ -202,6 +205,101 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
+
+    def run_attach_helper(self, *, in_herdr: bool) -> subprocess.CompletedProcess[str]:
+        env = os.environ.copy()
+        env["PATH"] = f"{self.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"
+        for key in ("HERDR_ENV", "HERDR_PANE_ID", "HERDR_WORKSPACE_ID"):
+            env.pop(key, None)
+        if in_herdr:
+            env.update(
+                HERDR_ENV="1",
+                HERDR_PANE_ID="w-attach:p1",
+                HERDR_WORKSPACE_ID="w-attach",
+            )
+        return subprocess.run(
+            ["bash", str(SCRIPT), "--attach"],
+            cwd=self.workdir,
+            env=env,
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+    def test_attach_noops_without_herdr_environment(self) -> None:
+        result = self.run_attach_helper(in_herdr=False)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(self.calls_path.exists())
+
+    def test_attach_builds_files_then_codex_around_current_claude_pane(self) -> None:
+        self.write_workspace_state(
+            "w-attach",
+            f'{{"agent":"claude","cwd":"{self.workdir}","pane_id":"w-attach:p1","workspace_id":"w-attach"}}',
+        )
+
+        result = self.run_attach_helper(in_herdr=True)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        workdir = self.workdir.resolve()
+        self.assertLess(
+            calls.index(f"pane split w-attach:p1 --direction right --ratio 0.8 --cwd {workdir} --no-focus"),
+            next(index for index, call in enumerate(calls) if call.startswith("agent start codex-worker-w-attach ")),
+        )
+        self.assertIn("pane rename w-attach:p1 claude-orchestrator", calls)
+        self.assertIn("pane run w-attach:p3 yazi", calls)
+        self.assertFalse(any(call.startswith("pane run w-attach:p1 ") for call in calls))
+        self.assertFalse(any(call.startswith("workspace create ") for call in calls))
+
+    def test_attach_complete_workspace_is_idempotent(self) -> None:
+        self.write_workspace_state(
+            "w-attach",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}},'
+            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-attach:p9","workspace_id":"w-attach"}}',
+            agent_pane_id="w-attach:p2",
+        )
+        self.write_process_info(
+            f'{{"argv":["yazi"],"cmdline":"yazi","cwd":"{self.workdir}","name":"yazi"}}'
+        )
+
+        result = self.run_attach_helper(in_herdr=True)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertFalse(any(call.startswith(("agent start ", "pane rename ", "pane run ", "pane split ")) for call in calls))
+
+    def test_claude_settings_add_herdr_attach_session_hook(self) -> None:
+        source_dir = self.temp_dir / "source"
+        (source_dir / ".chezmoitemplates").mkdir(parents=True)
+        (source_dir / ".chezmoitemplates/claude-settings-managed.json").write_text(
+            '{"enabledPlugins": {}, "hooks": {"SessionStart": []}}\n'
+        )
+        env = os.environ.copy()
+        env["CHEZMOI_SOURCE_DIR"] = str(source_dir)
+        env["CHEZMOI_HOME_DIR"] = str(self.home_dir)
+
+        result = subprocess.run(
+            [sys.executable, str(CLAUDE_SETTINGS_MODIFIER)],
+            input="",
+            env=env,
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        session_hooks = json.loads(result.stdout)["hooks"]["SessionStart"]
+        command = session_hooks[-1]["hooks"][0]["command"]
+        self.assertIn("herdr-agents --attach", command)
+        self.assertIn("herdr-agents.log", command)
+        self.assertTrue(command.endswith("|| true"))
+
+    def test_herdr_session_does_not_prebuild_agent_layout(self) -> None:
+        self.assertNotIn("herdr-agents", HERDR_SESSION_SCRIPT.read_text())
 
     def test_uses_initial_workspace_pane_for_claude_and_splits_codex_right(self) -> None:
         result = self.run_helper()
@@ -476,7 +574,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertIn("pane run w-old:p3 CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high", calls)
         self.assertIn("workspace focus w-old", calls)
 
-    def test_ghostty_herdr_starts_left_right_agents_with_working_agmsg(self) -> None:
+    def test_ghostty_herdr_starts_plain_workspace(self) -> None:
         agmsg_scripts = self.materialize_agmsg_scripts()
         agmsg_storage = self.temp_dir / "agmsg-db"
         agmsg_storage.mkdir()
@@ -590,27 +688,13 @@ printf 'codex cwd=%s\\n' "$PWD" >> {e2e_log}
             self.calls_path.read_text().splitlines(),
             [
                 "herdr-session ",
-                f"herdr-agents {self.workdir.resolve()}",
-                "herdr workspace list",
-                f"herdr workspace create --cwd {self.workdir.resolve()} --label project agents --focus",
-                "herdr pane rename w-test:p1 claude-orchestrator",
-                "herdr pane run w-test:p1 CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high",
-                f"herdr pane split w-test:p1 --direction right --ratio 0.8 --cwd {self.workdir.resolve()} --no-focus",
-                "herdr pane rename w-test:p3 files",
-                "herdr pane run w-test:p3 yazi",
-                f"herdr agent start codex-worker-w-test --cwd {self.workdir.resolve()} --workspace w-test --split right --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex --sandbox workspace-write -m gpt-5.6-sol -c model_reasoning_effort=high",
-                "herdr pane rename w-test:p2 codex-worker",
                 "herdr ",
             ],
         )
         e2e_lines = e2e_log.read_text()
-        self.assertIn(f"left pane=w-test:p1 cwd={self.workdir.resolve()} command=CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high", e2e_lines)
-        self.assertIn(f"right workspace=w-test split=right cwd={self.workdir.resolve()} command=codex --sandbox workspace-write -m gpt-5.6-sol -c model_reasoning_effort=high", e2e_lines)
-        self.assertIn(f"claude cwd={self.workdir.resolve()}", e2e_lines)
-        self.assertIn(f"codex cwd={self.workdir.resolve()}", e2e_lines)
-        self.assertIn("1 new message(s):", e2e_lines)
-        self.assertIn("claude-code", e2e_lines)
-        self.assertIn("ready from claude", e2e_lines)
+        self.assertIn(f"attached workspace from cwd={self.workdir.resolve()}", e2e_lines)
+        self.assertNotIn("claude cwd=", e2e_lines)
+        self.assertNotIn("codex cwd=", e2e_lines)
 
     def test_herdr_session_passes_syntax_check(self) -> None:
         result = subprocess.run(
@@ -623,15 +707,7 @@ printf 'codex cwd=%s\\n' "$PWD" >> {e2e_log}
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
-    def test_herdr_session_runs_agents_then_execs_herdr(self) -> None:
-        self.write_executable(
-            "herdr-agents",
-            f"""#!/usr/bin/env bash
-printf 'herdr-agents %s\\n' "$1" >> {self.calls_path}
-printf 'agents stdout\\n'
-printf 'agents stderr\\n' >&2
-""",
-        )
+    def test_herdr_session_execs_herdr_without_prebuilding_agents(self) -> None:
         self.write_executable(
             "herdr",
             f"""#!/usr/bin/env bash
@@ -643,43 +719,9 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(
             self.calls_path.read_text().splitlines(),
-            [f"herdr-agents {self.workdir.resolve()}", "herdr "],
+            ["herdr "],
         )
-        self.assertEqual(
-            (self.home_dir / ".config/herdr/herdr-agents.log").read_text().splitlines(),
-            ["agents stdout", "agents stderr"],
-        )
-
-    def test_herdr_session_attaches_after_agent_layout_failure(self) -> None:
-        self.write_executable(
-            "herdr-agents",
-            f"""#!/usr/bin/env bash
-printf 'herdr-agents %s\\n' "$1" >> {self.calls_path}
-printf 'layout failed\\n' >&2
-exit 42
-""",
-        )
-        self.write_executable(
-            "herdr",
-            f"""#!/usr/bin/env bash
-printf 'herdr %s\\n' "$*" >> {self.calls_path}
-""",
-        )
-
-        result = self.run_session_helper()
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(
-            self.calls_path.read_text().splitlines(),
-            [f"herdr-agents {self.workdir.resolve()}", "herdr "],
-        )
-        self.assertIn(
-            f"herdr-agents failed; see {self.home_dir}/.config/herdr/herdr-agents.log",
-            result.stderr,
-        )
-        self.assertEqual(
-            (self.home_dir / ".config/herdr/herdr-agents.log").read_text().splitlines(),
-            ["layout failed"],
-        )
+        self.assertFalse((self.home_dir / ".config/herdr/herdr-agents.log").exists())
 
     def test_herdr_session_rejects_arguments(self) -> None:
         result = self.run_session_helper("extra")
@@ -815,7 +857,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertIn("${HOME}/.local/bin/common(N-/)", zprofile)
         self.assertNotIn("typeset -gU path fpath", zshrc)
 
-    def test_bare_herdr_in_ghostty_starts_agent_layout(self) -> None:
+    def test_bare_herdr_in_ghostty_starts_plain_session(self) -> None:
         result = self.run_zshrc_herdr("herdr", ghostty=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(
@@ -823,7 +865,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             ["herdr-session "],
         )
 
-    def test_interactive_ghostty_shell_attaches_after_agent_layout(self) -> None:
+    def test_interactive_ghostty_shell_attaches_plain_session(self) -> None:
         result = self.run_interactive_ghostty_herdr()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(

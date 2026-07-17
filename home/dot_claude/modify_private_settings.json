@@ -68,6 +68,20 @@ def dump_settings(settings: dict[str, Any]) -> str:
 def main() -> int:
     baseline = source_dir() / ".chezmoitemplates/claude-settings-managed.json"
     managed = json.loads(render_managed_template(baseline.read_text()))
+    session_start = managed.get("hooks", {}).get("SessionStart")
+    if isinstance(session_start, list):
+        session_start.append(
+            {
+                "matcher": "*",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": 'herdr-agents --attach >> "$HOME/.config/herdr/herdr-agents.log" 2>&1 || true',
+                        "timeout": 10,
+                    }
+                ],
+            }
+        )
     current_text = sys.stdin.read()
     current = load_json_object(current_text)
     merged = merge_settings(managed, current)

@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 
 # @file herdr-agents
-# @brief Open a Herdr workspace with Claude Code, Codex, and Yazi panes.
+# @brief Build or attach Claude Code, Codex, and Yazi panes in Herdr.
 # @description
-#   Creates a Herdr workspace for a directory, starts Claude Code and Codex in
-#   left/right panes, adds the required interactive Yazi file pane on the far
-#   right, and opens the same directory in Zed when the `zed` CLI exists.
+#   Full mode creates or repairs an agents workspace. Attach mode adds Codex
+#   and Yazi around Claude in the current Herdr pane without restarting Claude.
+# @option --attach Attach the current Claude pane to its Herdr workspace layout.
 # @arg DIR Optional directory for the Herdr workspace. Defaults to the current directory.
 # @example
 #   herdr-agents ~/Workspace/dotfiles
+# @example
+#   herdr-agents --attach
 
 set -euo pipefail
 
@@ -16,11 +18,12 @@ set -euo pipefail
 function usage() {
     cat << 'USAGE'
 Usage: herdr-agents [DIR]
+       herdr-agents --attach
 
 Create a Herdr workspace for DIR, start Claude Code left of Codex, add an
 interactive Yazi file pane on the far right, and open DIR in Zed when
 available. Herdr, jq, Claude Code, Codex, and Yazi are required. DIR defaults
-to the current directory.
+to the current directory. Attach mode uses the current Herdr pane for Claude.
 USAGE
 }
 
@@ -41,7 +44,7 @@ function json_agent_pane_id() {
 
 # @description Build the Claude command run in the orchestrator pane.
 function claude_command() {
-    printf "%s\n" "CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model 'claude-fable-5[1m]' --effort high"
+    printf "%s\n" "CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed claude --model 'claude-fable-5[1m]' --effort high"
 }
 
 # @description Start Claude in an existing pane.
@@ -114,6 +117,37 @@ function start_files_pane() {
     fi
     herdr pane rename "${files_pane_id}" files || return 1
     start_yazi_in_pane "${files_pane_id}"
+}
+
+# @description Ensure one files pane exists and runs Yazi.
+# @arg $1 json Herdr pane list JSON.
+# @arg $2 pane_id Herdr pane id to split when the files pane is missing.
+# @arg $3 workdir Directory listed in the files pane.
+# @arg $4 ratio Fraction of the split pane to retain.
+function ensure_files_pane() {
+    local panes_json="$1"
+    local split_pane_id="$2"
+    local workdir="$3"
+    local ratio="$4"
+    local files_pane
+    local files_pane_status
+
+    files_pane="$(files_pane_id "${panes_json}")"
+    if [[ ${files_pane} == *$'\n'* ]]; then
+        printf 'Multiple Herdr files panes are ambiguous; refusing repair.\n' >&2
+        return 1
+    fi
+    if [[ -z ${files_pane} ]]; then
+        start_files_pane "${split_pane_id}" "${workdir}" "${ratio}"
+    elif pane_runs_yazi "${files_pane}"; then
+        return 0
+    else
+        files_pane_status="$?"
+        if [[ ${files_pane_status} -ne 1 ]]; then
+            return "${files_pane_status}"
+        fi
+        start_yazi_in_pane "${files_pane}"
+    fi
 }
 
 # @description Find an existing agents workspace for a workdir.
@@ -225,20 +259,57 @@ if [[ ${1:-} == "--help" || ${1:-} == "-h" ]]; then
     exit 0
 fi
 
-if [[ $# -gt 1 ]]; then
+attach_mode=false
+if [[ ${1:-} == "--attach" ]]; then
+    attach_mode=true
+    shift
+    if [[ -z ${HERDR_ENV:-} || -z ${HERDR_PANE_ID:-} || -z ${HERDR_WORKSPACE_ID:-} ]]; then
+        exit 0
+    fi
+    [[ ${HERDR_AGENTS_LAYOUT:-} == managed ]] && exit 0
+fi
+
+if { [[ ${attach_mode} == true ]] && [[ $# -gt 0 ]]; } || [[ $# -gt 1 ]]; then
     usage >&2
     exit 2
 fi
 
 require_command herdr
 require_command jq
-require_command claude
 require_command codex
 require_command yazi
+if [[ ${attach_mode} == false ]]; then
+    require_command claude
+fi
 
-workdir="${1:-$PWD}"
+if [[ ${attach_mode} == true ]]; then
+    workdir="$PWD"
+else
+    workdir="${1:-$PWD}"
+fi
 cd -- "${workdir}"
 workdir="$PWD"
+
+if [[ ${attach_mode} == true ]]; then
+    workspace_id="${HERDR_WORKSPACE_ID}"
+    claude_pane_id="${HERDR_PANE_ID}"
+    codex_agent_name="codex-worker-${workspace_id}"
+    panes_json="$(herdr pane list --workspace "${workspace_id}")"
+
+    if ! printf '%s\n' "${panes_json}" | jq -e --arg pane_id "${claude_pane_id}" '.result.panes[]? | select(.pane_id == $pane_id and .label == "claude-orchestrator")' > /dev/null; then
+        herdr pane rename "${claude_pane_id}" claude-orchestrator
+    fi
+
+    ensure_files_pane "${panes_json}" "${claude_pane_id}" "${workdir}" 0.8
+    codex_pane_id="$(live_codex_pane_id "${codex_agent_name}" "${panes_json}")" || codex_pane_id=""
+    if [[ -z ${codex_pane_id} ]]; then
+        start_codex_agent "${workspace_id}" "${codex_agent_name}" "${workdir}" > /dev/null
+    fi
+
+    printf 'Herdr agents workspace: %s\n' "${workspace_id}"
+    exit 0
+fi
+
 workspace_label="$(basename "${workdir}") agents"
 existing_workspace_id="$(find_existing_workspace "${workspace_label}" "${workdir}")"
 
@@ -268,22 +339,7 @@ if [[ -n ${existing_workspace_id} ]]; then
         start_claude_in_pane "${claude_pane_id}"
     fi
 
-    files_pane_id="$(files_pane_id "${panes_json}")"
-    if [[ ${files_pane_id} == *$'\n'* ]]; then
-        printf 'Multiple Herdr files panes are ambiguous; refusing repair.\n' >&2
-        exit 1
-    fi
-    if [[ -z ${files_pane_id} ]]; then
-        start_files_pane "${codex_pane_id}" "${workdir}" 0.6
-    elif pane_runs_yazi "${files_pane_id}"; then
-        :
-    else
-        files_pane_status="$?"
-        if [[ ${files_pane_status} -ne 1 ]]; then
-            exit "${files_pane_status}"
-        fi
-        start_yazi_in_pane "${files_pane_id}"
-    fi
+    ensure_files_pane "${panes_json}" "${codex_pane_id}" "${workdir}" 0.6
 
     herdr workspace focus "${workspace_id}"
     printf 'Herdr agents workspace: %s\n' "${workspace_id}"

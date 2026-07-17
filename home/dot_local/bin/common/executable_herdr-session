@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 
 # @file herdr-session
-# @brief Prepare a Herdr agent workspace, then attach to Herdr.
+# @brief Attach to Herdr with a plain initial terminal.
 # @description
-#   Runs `herdr-agents` for the current directory with output redirected to the
-#   Herdr agent log, then attaches with the `herdr` CLI even if layout setup
-#   fails.
+#   Agent and files panes are added lazily by the Claude SessionStart hook.
 # @example
 #   herdr-session
 
@@ -16,7 +14,7 @@ function usage() {
     cat << 'USAGE'
 Usage: herdr-session
 
-Prepare a Herdr agent workspace for the current directory, then attach to Herdr.
+Attach to Herdr with a plain terminal; starting Claude adds agent panes lazily.
 USAGE
 }
 
@@ -28,12 +26,6 @@ fi
 if [[ $# -gt 0 ]]; then
     usage >&2
     exit 2
-fi
-
-log_path="${HOME}/.config/herdr/herdr-agents.log"
-
-if ! herdr-agents "${PWD}" >> "${log_path}" 2>&1; then
-    printf 'herdr-agents failed; see %s\n' "${log_path}" >&2
 fi
 
 exec herdr

@@ -20,10 +20,10 @@ function usage() {
 Usage: herdr-agents [DIR]
        herdr-agents --attach
 
-Create a Herdr workspace for DIR, start Claude Code left of Codex, add an
-interactive Yazi file pane on the far right, and open DIR in Zed when
-available. Herdr, jq, Claude Code, Codex, and Yazi are required. DIR defaults
-to the current directory. Attach mode uses the current Herdr pane for Claude.
+Create a Herdr workspace for DIR with equal-width Claude Code, Codex, and Yazi
+panes from left to right, and open DIR in Zed when available. Herdr, jq, Claude
+Code, Codex, and Yazi are required. DIR defaults to the current directory.
+Attach mode uses the current Herdr pane for Claude.
 USAGE
 }
 
@@ -323,6 +323,164 @@ function repair_attach_pane_order() {
     fi
 }
 
+# @description Repair a safe right-nested attach layout to equal thirds.
+# @arg $1 json Herdr pane list JSON.
+# @arg $2 pane_id Current Claude pane id.
+# @arg $3 pane_id Live Codex pane id.
+function repair_attach_pane_ratio() {
+    local panes_json="$1"
+    local claude_pane_id="$2"
+    local codex_pane_id="$3"
+    local files_pane
+    local layout_json
+    local metrics
+    local topology
+    local left_direction
+    local left_amount
+    local right_direction
+    local right_amount
+    local primary_pane
+    local primary_direction
+    local primary_amount
+    local secondary_pane
+    local secondary_direction
+    local secondary_amount
+    local geometry_filter
+    local resized=false
+
+    files_pane="$(files_pane_id "${panes_json}")"
+    if [[ -z ${files_pane} || -z ${codex_pane_id} ]] || ! attach_panes_are_unambiguous "${panes_json}" "${claude_pane_id}" "${codex_pane_id}"; then
+        printf 'Herdr attach panes are ambiguous or include unmanaged panes; refusing ratio repair.\n' >&2
+        return 0
+    fi
+
+    # shellcheck disable=SC2016 # jq variables are intentional literal input.
+    geometry_filter='
+        ([.result.layout.panes[]?
+          | select(.pane_id == $claude or .pane_id == $codex or .pane_id == $files)]
+         | sort_by(.rect.x)) as $panes
+        | .result.layout.splits as $splits
+        | ($panes | map(.rect.width) | add) as $total
+        | if ($panes | length) == 3
+             and ($splits | type) == "array"
+             and ($splits | length) == 2
+             and all($panes[]; (.rect.x | type) == "number"
+                               and (.rect.width | type) == "number"
+                               and (.rect.y | type) == "number"
+                               and (.rect.height | type) == "number")
+             and all($splits[]; .direction == "right"
+                               and (.rect.x | type) == "number"
+                               and (.rect.width | type) == "number")
+             and ($panes | map(.pane_id)) == [$claude, $codex, $files]
+             and $panes[0].rect.x + $panes[0].rect.width == $panes[1].rect.x
+             and $panes[1].rect.x + $panes[1].rect.width == $panes[2].rect.x
+             and any($splits[]; .rect.x == $panes[0].rect.x and .rect.width == $total)
+             and (
+                 any($splits[]; .rect.x == $panes[0].rect.x
+                                  and .rect.width == ($panes[0].rect.width + $panes[1].rect.width))
+                 !=
+                 any($splits[]; .rect.x == $panes[1].rect.x
+                                  and .rect.width == ($panes[1].rect.width + $panes[2].rect.width))
+             )
+          then ($total / 3) as $target
+             | (if any($splits[]; .rect.x == $panes[0].rect.x
+                                      and .rect.width == ($panes[0].rect.width + $panes[1].rect.width))
+                then "left" else "right" end) as $topology
+             | [
+                 $topology,
+                 $panes[0].rect.width,
+                 $panes[1].rect.width,
+                 $panes[2].rect.width,
+                 $total,
+                 (if (($panes[0].rect.width - $target) | fabs) <= 2 then "none"
+                  elif $panes[0].rect.width > $target then "left" else "right" end),
+                 ((($panes[0].rect.width - $target) | fabs)
+                  / (if $topology == "left"
+                     then $panes[0].rect.width + $panes[1].rect.width
+                     else $total end)),
+                 (if (($panes[2].rect.width - $target) | fabs) <= 2 then "none"
+                  elif $panes[2].rect.width > $target then "right" else "left" end),
+                 ((($panes[2].rect.width - $target) | fabs)
+                  / (if $topology == "right"
+                     then $panes[1].rect.width + $panes[2].rect.width
+                     else $total end))
+               ]
+             | @tsv
+          else error("unsafe pane geometry")
+          end'
+
+    if ! layout_json="$(herdr pane layout --pane "${claude_pane_id}")" ||
+        ! metrics="$(printf '%s\n' "${layout_json}" | jq -er \
+            --arg claude "${claude_pane_id}" \
+            --arg codex "${codex_pane_id}" \
+            --arg files "${files_pane}" \
+            "${geometry_filter}")"; then
+        printf 'Unable to inspect a safe Herdr attach layout; refusing ratio repair.\n' >&2
+        return 0
+    fi
+    IFS=$'\t' read -r topology _ _ _ _ left_direction left_amount right_direction right_amount <<< "${metrics}"
+    if [[ ${topology} == right ]]; then
+        primary_pane="${claude_pane_id}"
+        primary_direction="${left_direction}"
+        primary_amount="${left_amount}"
+    else
+        primary_pane="${files_pane}"
+        primary_direction="${right_direction}"
+        primary_amount="${right_amount}"
+    fi
+
+    if [[ ${primary_direction} != none ]]; then
+        if ! herdr pane resize --pane "${primary_pane}" --direction "${primary_direction}" --amount "${primary_amount}" > /dev/null; then
+            printf 'Unable to resize the outer Herdr split; refusing further ratio repair.\n' >&2
+            return 0
+        fi
+        resized=true
+        if ! layout_json="$(herdr pane layout --pane "${claude_pane_id}")" ||
+            ! metrics="$(printf '%s\n' "${layout_json}" | jq -er \
+                --arg claude "${claude_pane_id}" \
+                --arg codex "${codex_pane_id}" \
+                --arg files "${files_pane}" \
+                "${geometry_filter}")"; then
+            printf 'Unable to inspect the resized Herdr layout; refusing further ratio repair.\n' >&2
+            return 0
+        fi
+        IFS=$'\t' read -r topology _ _ _ _ left_direction left_amount right_direction right_amount <<< "${metrics}"
+    fi
+
+    if [[ ${topology} == right ]]; then
+        secondary_pane="${files_pane}"
+        secondary_direction="${right_direction}"
+        secondary_amount="${right_amount}"
+    else
+        secondary_pane="${claude_pane_id}"
+        secondary_direction="${left_direction}"
+        secondary_amount="${left_amount}"
+    fi
+    if [[ ${secondary_direction} != none ]]; then
+        if ! herdr pane resize --pane "${secondary_pane}" --direction "${secondary_direction}" --amount "${secondary_amount}" > /dev/null; then
+            printf 'Unable to resize the inner Herdr split; refusing further ratio repair.\n' >&2
+            return 0
+        fi
+        resized=true
+    fi
+
+    if [[ ${resized} == true ]]; then
+        if ! layout_json="$(herdr pane layout --pane "${claude_pane_id}")" ||
+            ! metrics="$(printf '%s\n' "${layout_json}" | jq -er \
+                --arg claude "${claude_pane_id}" \
+                --arg codex "${codex_pane_id}" \
+                --arg files "${files_pane}" \
+                "${geometry_filter}")"; then
+            printf 'Unable to verify the resized Herdr layout; refusing further ratio repair.\n' >&2
+            return 0
+        fi
+        IFS=$'\t' read -r _ _ _ _ _ left_direction _ right_direction _ <<< "${metrics}"
+        if [[ ${left_direction} != none || ${right_direction} != none ]]; then
+            printf 'Herdr attach pane widths did not converge; refusing further ratio repair.\n' >&2
+        fi
+    fi
+}
+
 # @description Skip $HOME or ensure Codex turn delivery and report ambiguity.
 # @arg $1 workdir Repository path used for repo-scoped agmsg registration.
 function bootstrap_agmsg() {
@@ -441,7 +599,7 @@ if [[ ${attach_mode} == true ]]; then
         herdr pane rename "${claude_pane_id}" claude-orchestrator
     fi
 
-    ensure_files_pane "${panes_json}" "${claude_pane_id}" "${workdir}" 0.8
+    ensure_files_pane "${panes_json}" "${claude_pane_id}" "${workdir}" 0.667
     if [[ -z ${codex_pane_id} && -z ${workspace_codex_pane_id} ]]; then
         codex_pane_id="$(start_codex_agent "${workspace_id}" "${codex_agent_name}" "${workdir}")"
     fi
@@ -451,6 +609,7 @@ if [[ ${attach_mode} == true ]]; then
         exit 0
     fi
     repair_attach_pane_order "${panes_json}" "${claude_pane_id}" "${codex_pane_id}"
+    repair_attach_pane_ratio "${panes_json}" "${claude_pane_id}" "${codex_pane_id}"
     bootstrap_agmsg "${workdir}"
 
     printf 'Herdr agents workspace: %s\n' "${workspace_id}"
@@ -486,7 +645,18 @@ if [[ -n ${existing_workspace_id} ]]; then
         start_claude_in_pane "${claude_pane_id}"
     fi
 
-    ensure_files_pane "${panes_json}" "${codex_pane_id}" "${workdir}" 0.6
+    existing_files_pane_id="$(files_pane_id "${panes_json}")"
+    ensure_files_pane "${panes_json}" "${codex_pane_id}" "${workdir}" 0.667
+    if [[ -z ${existing_files_pane_id} ]]; then
+        panes_json="$(herdr pane list --workspace "${workspace_id}")"
+        if panes_json="$(panes_on_pane_tab "${panes_json}" "${codex_pane_id}")"; then
+            claude_pane_id="$(printf '%s\n' "${panes_json}" | jq -r \
+                '.result.panes[]? | select(.agent == "claude" or .label == "claude-orchestrator") | .pane_id // empty')"
+            repair_attach_pane_ratio "${panes_json}" "${claude_pane_id}" "${codex_pane_id}"
+        else
+            printf 'Unable to identify the repaired Herdr tab; refusing ratio repair.\n' >&2
+        fi
+    fi
     bootstrap_agmsg "${workdir}"
 
     herdr workspace focus "${workspace_id}"
@@ -510,7 +680,7 @@ if [[ -z ${root_pane_id} ]]; then
 fi
 
 start_claude_in_pane "${root_pane_id}"
-start_files_pane "${root_pane_id}" "${workdir}" 0.8
+start_files_pane "${root_pane_id}" "${workdir}" 0.667
 start_codex_agent "${workspace_id}" "${codex_agent_name}" "${workdir}" > /dev/null
 bootstrap_agmsg "${workdir}"
 

@@ -3163,7 +3163,7 @@
 
 
 <h1 id="homedot_localbincommonexecutable_herdr-session">home/dot_local/bin/common/executable_herdr-session<a class="headerlink" href="#homedot_localbincommonexecutable_herdr-session" title="Permanent link">&para;</a></h1>
-<p>Runs <code>herdr-agents</code> for the current directory with output redirected to the Herdr agent log, then attaches with the <code>herdr</code> CLI even if layout setup fails.</p>
+<p>Agent and files panes are added lazily by the Claude SessionStart hook.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_herdr-session</code></li>
@@ -3178,11 +3178,9 @@
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
 
 <span class="c1"># @file herdr-session</span>
-<span class="c1"># @brief Prepare a Herdr agent workspace, then attach to Herdr.</span>
+<span class="c1"># @brief Attach to Herdr with a plain initial terminal.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Runs `herdr-agents` for the current directory with output redirected to the</span>
-<span class="c1">#   Herdr agent log, then attaches with the `herdr` CLI even if layout setup</span>
-<span class="c1">#   fails.</span>
+<span class="c1">#   Agent and files panes are added lazily by the Claude SessionStart hook.</span>
 <span class="c1"># @example</span>
 <span class="c1">#   herdr-session</span>
 
@@ -3193,7 +3191,7 @@
 <span class="w">    </span>cat<span class="w"> </span><span class="s">&lt;&lt; &#39;USAGE&#39;</span>
 <span class="s">Usage: herdr-session</span>
 
-<span class="s">Prepare a Herdr agent workspace for the current directory, then attach to Herdr.</span>
+<span class="s">Attach to Herdr with a plain terminal; starting Claude adds agent panes lazily.</span>
 <span class="s">USAGE</span>
 <span class="o">}</span>
 
@@ -3205,12 +3203,6 @@
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="nv">$#</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>usage<span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
-<span class="k">fi</span>
-
-<span class="nv">log_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.config/herdr/herdr-agents.log&quot;</span>
-
-<span class="k">if</span><span class="w"> </span>!<span class="w"> </span>herdr-agents<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PWD</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">log_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;herdr-agents failed; see %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">log_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="k">fi</span>
 
 <span class="nb">exec</span><span class="w"> </span>herdr

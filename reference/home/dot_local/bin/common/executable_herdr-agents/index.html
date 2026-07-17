@@ -3163,7 +3163,7 @@
 
 
 <h1 id="homedot_localbincommonexecutable_herdr-agents">home/dot_local/bin/common/executable_herdr-agents<a class="headerlink" href="#homedot_localbincommonexecutable_herdr-agents" title="Permanent link">&para;</a></h1>
-<p>Creates a Herdr workspace for a directory, starts Claude Code and Codex in left/right panes, adds the required interactive Yazi file pane on the far right, and opens the same directory in Zed when the <code>zed</code> CLI exists.</p>
+<p>Full mode creates or repairs an agents workspace. Attach mode adds Codex and Yazi around Claude in the current Herdr pane without restarting Claude.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_herdr-agents</code></li>
@@ -3174,6 +3174,7 @@
 <ul>
 <li><code>claude_command</code></li>
 <li><code>empty_pane_id</code></li>
+<li><code>ensure_files_pane</code></li>
 <li><code>files_pane_id</code></li>
 <li><code>find_existing_workspace</code></li>
 <li><code>has_claude_pane</code></li>
@@ -3193,14 +3194,16 @@
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
 
 <span class="c1"># @file herdr-agents</span>
-<span class="c1"># @brief Open a Herdr workspace with Claude Code, Codex, and Yazi panes.</span>
+<span class="c1"># @brief Build or attach Claude Code, Codex, and Yazi panes in Herdr.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Creates a Herdr workspace for a directory, starts Claude Code and Codex in</span>
-<span class="c1">#   left/right panes, adds the required interactive Yazi file pane on the far</span>
-<span class="c1">#   right, and opens the same directory in Zed when the `zed` CLI exists.</span>
+<span class="c1">#   Full mode creates or repairs an agents workspace. Attach mode adds Codex</span>
+<span class="c1">#   and Yazi around Claude in the current Herdr pane without restarting Claude.</span>
+<span class="c1"># @option --attach Attach the current Claude pane to its Herdr workspace layout.</span>
 <span class="c1"># @arg DIR Optional directory for the Herdr workspace. Defaults to the current directory.</span>
 <span class="c1"># @example</span>
 <span class="c1">#   herdr-agents ~/Workspace/dotfiles</span>
+<span class="c1"># @example</span>
+<span class="c1">#   herdr-agents --attach</span>
 
 <span class="nb">set</span><span class="w"> </span>-euo<span class="w"> </span>pipefail
 
@@ -3208,11 +3211,12 @@
 <span class="k">function</span><span class="w"> </span>usage<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span>cat<span class="w"> </span><span class="s">&lt;&lt; &#39;USAGE&#39;</span>
 <span class="s">Usage: herdr-agents [DIR]</span>
+<span class="s">       herdr-agents --attach</span>
 
 <span class="s">Create a Herdr workspace for DIR, start Claude Code left of Codex, add an</span>
 <span class="s">interactive Yazi file pane on the far right, and open DIR in Zed when</span>
 <span class="s">available. Herdr, jq, Claude Code, Codex, and Yazi are required. DIR defaults</span>
-<span class="s">to the current directory.</span>
+<span class="s">to the current directory. Attach mode uses the current Herdr pane for Claude.</span>
 <span class="s">USAGE</span>
 <span class="o">}</span>
 
@@ -3233,7 +3237,7 @@
 
 <span class="c1"># @description Build the Claude command run in the orchestrator pane.</span>
 <span class="k">function</span><span class="w"> </span>claude_command<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;%s\n&quot;</span><span class="w"> </span><span class="s2">&quot;CLICOLOR_FORCE=1 FORCE_COLOR=1 claude --model &#39;claude-fable-5[1m]&#39; --effort high&quot;</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;%s\n&quot;</span><span class="w"> </span><span class="s2">&quot;CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed claude --model &#39;claude-fable-5[1m]&#39; --effort high&quot;</span>
 <span class="o">}</span>
 
 <span class="c1"># @description Start Claude in an existing pane.</span>
@@ -3306,6 +3310,37 @@
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span>herdr<span class="w"> </span>pane<span class="w"> </span>rename<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">files_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>files<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span>start_yazi_in_pane<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">files_pane_id</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Ensure one files pane exists and runs Yazi.</span>
+<span class="c1"># @arg $1 json Herdr pane list JSON.</span>
+<span class="c1"># @arg $2 pane_id Herdr pane id to split when the files pane is missing.</span>
+<span class="c1"># @arg $3 workdir Directory listed in the files pane.</span>
+<span class="c1"># @arg $4 ratio Fraction of the split pane to retain.</span>
+<span class="k">function</span><span class="w"> </span>ensure_files_pane<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">panes_json</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">split_pane_id</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">workdir</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$3</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">ratio</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$4</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>files_pane
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>files_pane_status
+
+<span class="w">    </span><span class="nv">files_pane</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>files_pane_id<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">files_pane</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>*<span class="s1">$&#39;\n&#39;</span>*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Multiple Herdr files panes are ambiguous; refusing repair.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">files_pane</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>start_files_pane<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">split_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">ratio</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">elif</span><span class="w"> </span>pane_runs_yazi<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">files_pane</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nv">files_pane_status</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$?</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">files_pane_status</span><span class="si">}</span><span class="w"> </span>-ne<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">files_pane_status</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span>start_yazi_in_pane<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">files_pane</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
 <span class="c1"># @description Find an existing agents workspace for a workdir.</span>
@@ -3417,20 +3452,57 @@
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="k">fi</span>
 
-<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="nv">$#</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="nv">attach_mode</span><span class="o">=</span><span class="nb">false</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;--attach&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nv">attach_mode</span><span class="o">=</span><span class="nb">true</span>
+<span class="w">    </span><span class="nb">shift</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">HERDR_ENV</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">HERDR_PANE_ID</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">HERDR_WORKSPACE_ID</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">HERDR_AGENTS_LAYOUT</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>managed<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="k">fi</span>
+
+<span class="k">if</span><span class="w"> </span><span class="o">{</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">attach_mode</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="nv">$#</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="o">}</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="nv">$#</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>usage<span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="k">fi</span>
 
 require_command<span class="w"> </span>herdr
 require_command<span class="w"> </span>jq
-require_command<span class="w"> </span>claude
 require_command<span class="w"> </span>codex
 require_command<span class="w"> </span>yazi
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">attach_mode</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span>require_command<span class="w"> </span>claude
+<span class="k">fi</span>
 
-<span class="nv">workdir</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="nv">$PWD</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">attach_mode</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nv">workdir</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">&quot;</span>
+<span class="k">else</span>
+<span class="w">    </span><span class="nv">workdir</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="nv">$PWD</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="k">fi</span>
 <span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="nv">workdir</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">&quot;</span>
+
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">attach_mode</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nv">workspace_id</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HERDR_WORKSPACE_ID</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">claude_pane_id</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HERDR_PANE_ID</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">codex_agent_name</span><span class="o">=</span><span class="s2">&quot;codex-worker-</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">panes_json</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>herdr<span class="w"> </span>pane<span class="w"> </span>list<span class="w"> </span>--workspace<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-e<span class="w"> </span>--arg<span class="w"> </span>pane_id<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s1">&#39;.result.panes[]? | select(.pane_id == $pane_id and .label == &quot;claude-orchestrator&quot;)&#39;</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>herdr<span class="w"> </span>pane<span class="w"> </span>rename<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>claude-orchestrator
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>ensure_files_pane<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="m">0</span>.8
+<span class="w">    </span><span class="nv">codex_pane_id</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>live_codex_pane_id<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_agent_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">codex_pane_id</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">codex_pane_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>start_codex_agent<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_agent_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Herdr agents workspace: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="k">fi</span>
+
 <span class="nv">workspace_label</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>basename<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2"> agents&quot;</span>
 <span class="nv">existing_workspace_id</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>find_existing_workspace<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workspace_label</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
 
@@ -3460,22 +3532,7 @@ require_command<span class="w"> </span>yazi
 <span class="w">        </span>start_claude_in_pane<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="nv">files_pane_id</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>files_pane_id<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">files_pane_id</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>*<span class="s1">$&#39;\n&#39;</span>*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Multiple Herdr files panes are ambiguous; refusing repair.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">files_pane_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>start_files_pane<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="m">0</span>.6
-<span class="w">    </span><span class="k">elif</span><span class="w"> </span>pane_runs_yazi<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">files_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>:
-<span class="w">    </span><span class="k">else</span>
-<span class="w">        </span><span class="nv">files_pane_status</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$?</span><span class="s2">&quot;</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">files_pane_status</span><span class="si">}</span><span class="w"> </span>-ne<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nb">exit</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">files_pane_status</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">        </span><span class="k">fi</span>
-<span class="w">        </span>start_yazi_in_pane<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">files_pane_id</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>ensure_files_pane<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="m">0</span>.6
 
 <span class="w">    </span>herdr<span class="w"> </span>workspace<span class="w"> </span>focus<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Herdr agents workspace: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">&quot;</span>

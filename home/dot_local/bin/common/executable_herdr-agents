@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
 # @file herdr-agents
-# @brief Build or attach Claude Code, Codex, and Yazi panes in Herdr.
+# @brief Build or attach Claude Code and Codex panes in Herdr.
 # @description
 #   Full mode creates or repairs an agents workspace. Attach mode adds Codex
-#   and Yazi around Claude in the current Herdr pane without restarting Claude.
+#   beside Claude in the current Herdr pane without restarting Claude.
 # @option --attach Attach the current Claude pane to its Herdr workspace layout.
 # @option --bootstrap-agmsg Configure repo-scoped agmsg hooks without changing Herdr panes.
 # @arg DIR Optional directory for the Herdr workspace. Defaults to the current directory.
@@ -24,9 +24,9 @@ Usage: herdr-agents [DIR]
        herdr-agents --attach
        herdr-agents --bootstrap-agmsg [DIR]
 
-Create a Herdr workspace for DIR with equal-width Claude Code, Codex, and Yazi
-panes from left to right, and open DIR in Zed when available. Herdr, jq, Claude
-Code, Codex, and Yazi are required. DIR defaults to the current directory.
+Create a Herdr workspace for DIR with equal-width Claude Code and Codex panes
+from left to right, and open DIR in Zed when available. Herdr, jq, Claude Code,
+and Codex are required. DIR defaults to the current directory.
 Attach mode uses the current Herdr pane for Claude.
 Bootstrap mode only configures missing repo-scoped agmsg hooks.
 USAGE
@@ -92,69 +92,6 @@ function start_codex_agent() {
     printf '%s\n' "${codex_pane_id}"
 }
 
-# @description Start the required Yazi process in an existing pane.
-# @arg $1 pane_id Herdr pane id to reuse.
-function start_yazi_in_pane() {
-    local pane_id="$1"
-
-    herdr pane run "${pane_id}" yazi
-}
-
-# @description Start the required Yazi files pane in a right split.
-# @arg $1 pane_id Herdr pane id to split.
-# @arg $2 workdir Directory listed in the files pane.
-# @arg $3 ratio Fraction of the original pane to retain.
-function start_files_pane() {
-    local pane_id="$1"
-    local workdir="$2"
-    local ratio="$3"
-    local files_pane_json
-    local files_pane_id
-
-    if ! files_pane_json="$(herdr pane split "${pane_id}" --direction right --ratio "${ratio}" --cwd "${workdir}" --no-focus)"; then
-        printf 'Failed to split files pane from %s: %s\n' "${pane_id}" "${files_pane_json}" >&2
-        return 1
-    fi
-    files_pane_id="$(printf '%s\n' "${files_pane_json}" | json_agent_pane_id)"
-    if [[ -z ${files_pane_id} ]]; then
-        printf 'Unable to read files pane id from: %s\n' "${files_pane_json}" >&2
-        return 1
-    fi
-    herdr pane rename "${files_pane_id}" files || return 1
-    start_yazi_in_pane "${files_pane_id}"
-}
-
-# @description Ensure one files pane exists and runs Yazi.
-# @arg $1 json Herdr pane list JSON.
-# @arg $2 pane_id Herdr pane id to split when the files pane is missing.
-# @arg $3 workdir Directory listed in the files pane.
-# @arg $4 ratio Fraction of the split pane to retain.
-function ensure_files_pane() {
-    local panes_json="$1"
-    local split_pane_id="$2"
-    local workdir="$3"
-    local ratio="$4"
-    local files_pane
-    local files_pane_status
-
-    files_pane="$(files_pane_id "${panes_json}")"
-    if [[ ${files_pane} == *$'\n'* ]]; then
-        printf 'Multiple Herdr files panes are ambiguous; refusing repair.\n' >&2
-        return 1
-    fi
-    if [[ -z ${files_pane} ]]; then
-        start_files_pane "${split_pane_id}" "${workdir}" "${ratio}"
-    elif pane_runs_yazi "${files_pane}"; then
-        return 0
-    else
-        files_pane_status="$?"
-        if [[ ${files_pane_status} -ne 1 ]]; then
-            return "${files_pane_status}"
-        fi
-        start_yazi_in_pane "${files_pane}"
-    fi
-}
-
 # @description Find an existing agents workspace for a workdir.
 # @arg $1 label Expected Herdr workspace label.
 # @arg $2 workdir Absolute workdir path.
@@ -184,40 +121,6 @@ function has_claude_pane() {
     local panes_json="$1"
 
     printf '%s\n' "${panes_json}" | jq -e '.result.panes[]? | select(.agent == "claude")' > /dev/null
-}
-
-# @description Return every labeled files pane id.
-# @arg $1 json Herdr pane list JSON.
-function files_pane_id() {
-    local panes_json="$1"
-
-    printf '%s\n' "${panes_json}" | jq -r '.result.panes[]? | select(.label == "files") | .pane_id // empty'
-}
-
-# @description Classify a pane as live Yazi, validly stale, or inspection error.
-# @arg $1 pane_id Herdr pane id to inspect.
-# @exitcode 0 A live Yazi foreground process exists.
-# @exitcode 1 Process data is valid and Yazi is absent.
-# @exitcode 2 Process data could not be inspected safely.
-function pane_runs_yazi() {
-    local pane_id="$1"
-    local process_info_json
-
-    if ! process_info_json="$(herdr pane process-info --pane "${pane_id}")"; then
-        printf 'Failed to inspect files pane process: %s\n' "${pane_id}" >&2
-        return 2
-    fi
-    if ! printf '%s\n' "${process_info_json}" | jq -e \
-        '.result.process_info.foreground_processes as $processes
-         | ($processes | type == "array")
-           and all($processes[]; (type == "object") and (.name | type == "string"))' > /dev/null; then
-        printf 'Invalid files pane process response: %s\n' "${pane_id}" >&2
-        return 2
-    fi
-    if printf '%s\n' "${process_info_json}" | jq -e '.result.process_info.foreground_processes[] | select(.name == "yazi")' > /dev/null; then
-        return 0
-    fi
-    return 1
 }
 
 # @description Return the Codex pane id when the registered agent points to a live pane.
@@ -262,21 +165,17 @@ function attach_panes_are_unambiguous() {
     local panes_json="$1"
     local claude_pane_id="$2"
     local codex_pane_id="$3"
-    local files_pane
 
-    files_pane="$(files_pane_id "${panes_json}")"
-    [[ ${files_pane} != *$'\n'* ]] || return 1
     printf '%s\n' "${panes_json}" | jq -e \
         --arg claude "${claude_pane_id}" \
         --arg codex "${codex_pane_id}" \
-        --arg files "${files_pane}" \
         '.result.panes | map(.pane_id) as $actual
-         | ([$claude, $codex, $files] | map(select(length > 0)) | unique) as $managed
+         | ([$claude, $codex] | map(select(length > 0)) | unique) as $managed
          | ($actual | length) == ($managed | length)
            and all($actual[]; . as $pane_id | ($managed | index($pane_id)) != null)' > /dev/null
 }
 
-# @description Repair the left-to-right order of the three attach-mode panes.
+# @description Repair the left-to-right order of the two attach-mode panes.
 # @arg $1 json Herdr pane list JSON.
 # @arg $2 pane_id Current Claude pane id.
 # @arg $3 pane_id Live Codex pane id.
@@ -284,14 +183,10 @@ function repair_attach_pane_order() {
     local panes_json="$1"
     local claude_pane_id="$2"
     local codex_pane_id="$3"
-    local files_pane
     local layout_json
-    local current_order
     local left_pane
-    local middle_pane
 
-    files_pane="$(files_pane_id "${panes_json}")"
-    if [[ -z ${files_pane} || -z ${codex_pane_id} ]] || ! attach_panes_are_unambiguous "${panes_json}" "${claude_pane_id}" "${codex_pane_id}"; then
+    if [[ -z ${codex_pane_id} ]] || ! attach_panes_are_unambiguous "${panes_json}" "${claude_pane_id}" "${codex_pane_id}"; then
         printf 'Herdr attach panes are ambiguous or include unmanaged panes; refusing order repair.\n' >&2
         return 0
     fi
@@ -299,16 +194,15 @@ function repair_attach_pane_order() {
         printf 'Unable to inspect Herdr attach pane order; refusing order repair.\n' >&2
         return 0
     fi
-    if ! current_order="$(
+    if ! left_pane="$(
         printf '%s\n' "${layout_json}" | jq -er \
             --arg claude "${claude_pane_id}" \
             --arg codex "${codex_pane_id}" \
-            --arg files "${files_pane}" \
-            '[.result.layout.panes[]? | select(.pane_id == $claude or .pane_id == $codex or .pane_id == $files)] as $panes
-             | if ($panes | length) == 3
+            '[.result.layout.panes[]? | select(.pane_id == $claude or .pane_id == $codex)] as $panes
+             | if ($panes | length) == 2
                   and all($panes[]; .rect.x | type == "number")
-                  and ([$panes[].rect.x] | unique | length) == 3
-               then ($panes | sort_by(.rect.x) | map(.pane_id) | @tsv)
+                  and ([$panes[].rect.x] | unique | length) == 2
+               then ($panes | min_by(.rect.x) | .pane_id)
                else error("ambiguous pane layout")
                end'
     )"; then
@@ -316,19 +210,12 @@ function repair_attach_pane_order() {
         return 0
     fi
 
-    IFS=$'\t' read -r left_pane middle_pane _ <<< "${current_order}"
     if [[ ${left_pane} != "${claude_pane_id}" ]]; then
         herdr pane swap --source-pane "${left_pane}" --target-pane "${claude_pane_id}"
-        if [[ ${middle_pane} == "${claude_pane_id}" ]]; then
-            middle_pane="${left_pane}"
-        fi
-    fi
-    if [[ ${middle_pane} != "${codex_pane_id}" ]]; then
-        herdr pane swap --source-pane "${middle_pane}" --target-pane "${codex_pane_id}"
     fi
 }
 
-# @description Repair a safe right-nested attach layout to equal thirds.
+# @description Repair a safe two-pane attach layout to equal halves.
 # @arg $1 json Herdr pane list JSON.
 # @arg $2 pane_id Current Claude pane id.
 # @arg $3 pane_id Live Codex pane id.
@@ -336,25 +223,13 @@ function repair_attach_pane_ratio() {
     local panes_json="$1"
     local claude_pane_id="$2"
     local codex_pane_id="$3"
-    local files_pane
     local layout_json
     local metrics
-    local topology
-    local left_direction
-    local left_amount
-    local right_direction
-    local right_amount
-    local primary_pane
-    local primary_direction
-    local primary_amount
-    local secondary_pane
-    local secondary_direction
-    local secondary_amount
+    local direction
+    local amount
     local geometry_filter
-    local resized=false
 
-    files_pane="$(files_pane_id "${panes_json}")"
-    if [[ -z ${files_pane} || -z ${codex_pane_id} ]] || ! attach_panes_are_unambiguous "${panes_json}" "${claude_pane_id}" "${codex_pane_id}"; then
+    if [[ -z ${codex_pane_id} ]] || ! attach_panes_are_unambiguous "${panes_json}" "${claude_pane_id}" "${codex_pane_id}"; then
         printf 'Herdr attach panes are ambiguous or include unmanaged panes; refusing ratio repair.\n' >&2
         return 0
     fi
@@ -362,13 +237,13 @@ function repair_attach_pane_ratio() {
     # shellcheck disable=SC2016 # jq variables are intentional literal input.
     geometry_filter='
         ([.result.layout.panes[]?
-          | select(.pane_id == $claude or .pane_id == $codex or .pane_id == $files)]
+          | select(.pane_id == $claude or .pane_id == $codex)]
          | sort_by(.rect.x)) as $panes
         | .result.layout.splits as $splits
         | ($panes | map(.rect.width) | add) as $total
-        | if ($panes | length) == 3
+        | if ($panes | length) == 2
              and ($splits | type) == "array"
-             and ($splits | length) == 2
+             and ($splits | length) == 1
              and all($panes[]; (.rect.x | type) == "number"
                                and (.rect.width | type) == "number"
                                and (.rect.y | type) == "number"
@@ -376,39 +251,17 @@ function repair_attach_pane_ratio() {
              and all($splits[]; .direction == "right"
                                and (.rect.x | type) == "number"
                                and (.rect.width | type) == "number")
-             and ($panes | map(.pane_id)) == [$claude, $codex, $files]
+             and ($panes | map(.pane_id)) == [$claude, $codex]
              and $panes[0].rect.x + $panes[0].rect.width == $panes[1].rect.x
-             and $panes[1].rect.x + $panes[1].rect.width == $panes[2].rect.x
-             and any($splits[]; .rect.x == $panes[0].rect.x and .rect.width == $total)
-             and (
-                 any($splits[]; .rect.x == $panes[0].rect.x
-                                  and .rect.width == ($panes[0].rect.width + $panes[1].rect.width))
-                 !=
-                 any($splits[]; .rect.x == $panes[1].rect.x
-                                  and .rect.width == ($panes[1].rect.width + $panes[2].rect.width))
-             )
-          then ($total / 3) as $target
-             | (if any($splits[]; .rect.x == $panes[0].rect.x
-                                      and .rect.width == ($panes[0].rect.width + $panes[1].rect.width))
-                then "left" else "right" end) as $topology
+             and $panes[0].rect.y == $panes[1].rect.y
+             and $panes[0].rect.height == $panes[1].rect.height
+             and $splits[0].rect.x == $panes[0].rect.x
+             and $splits[0].rect.width == $total
+          then ($total / 2) as $target
              | [
-                 $topology,
-                 $panes[0].rect.width,
-                 $panes[1].rect.width,
-                 $panes[2].rect.width,
-                 $total,
                  (if (($panes[0].rect.width - $target) | fabs) <= 2 then "none"
                   elif $panes[0].rect.width > $target then "left" else "right" end),
-                 ((($panes[0].rect.width - $target) | fabs)
-                  / (if $topology == "left"
-                     then $panes[0].rect.width + $panes[1].rect.width
-                     else $total end)),
-                 (if (($panes[2].rect.width - $target) | fabs) <= 2 then "none"
-                  elif $panes[2].rect.width > $target then "right" else "left" end),
-                 ((($panes[2].rect.width - $target) | fabs)
-                  / (if $topology == "right"
-                     then $panes[1].rect.width + $panes[2].rect.width
-                     else $total end))
+                 ((($panes[0].rect.width - $target) | fabs) / $total)
                ]
              | @tsv
           else error("unsafe pane geometry")
@@ -418,71 +271,28 @@ function repair_attach_pane_ratio() {
         ! metrics="$(printf '%s\n' "${layout_json}" | jq -er \
             --arg claude "${claude_pane_id}" \
             --arg codex "${codex_pane_id}" \
-            --arg files "${files_pane}" \
             "${geometry_filter}")"; then
         printf 'Unable to inspect a safe Herdr attach layout; refusing ratio repair.\n' >&2
         return 0
     fi
-    IFS=$'\t' read -r topology _ _ _ _ left_direction left_amount right_direction right_amount <<< "${metrics}"
-    if [[ ${topology} == right ]]; then
-        primary_pane="${claude_pane_id}"
-        primary_direction="${left_direction}"
-        primary_amount="${left_amount}"
-    else
-        primary_pane="${files_pane}"
-        primary_direction="${right_direction}"
-        primary_amount="${right_amount}"
-    fi
+    IFS=$'\t' read -r direction amount <<< "${metrics}"
+    [[ ${direction} == none ]] && return 0
 
-    if [[ ${primary_direction} != none ]]; then
-        if ! herdr pane resize --pane "${primary_pane}" --direction "${primary_direction}" --amount "${primary_amount}" > /dev/null; then
-            printf 'Unable to resize the outer Herdr split; refusing further ratio repair.\n' >&2
-            return 0
-        fi
-        resized=true
-        if ! layout_json="$(herdr pane layout --pane "${claude_pane_id}")" ||
-            ! metrics="$(printf '%s\n' "${layout_json}" | jq -er \
-                --arg claude "${claude_pane_id}" \
-                --arg codex "${codex_pane_id}" \
-                --arg files "${files_pane}" \
-                "${geometry_filter}")"; then
-            printf 'Unable to inspect the resized Herdr layout; refusing further ratio repair.\n' >&2
-            return 0
-        fi
-        IFS=$'\t' read -r topology _ _ _ _ left_direction left_amount right_direction right_amount <<< "${metrics}"
+    if ! herdr pane resize --pane "${claude_pane_id}" --direction "${direction}" --amount "${amount}" > /dev/null; then
+        printf 'Unable to resize the Herdr split; refusing further ratio repair.\n' >&2
+        return 0
     fi
-
-    if [[ ${topology} == right ]]; then
-        secondary_pane="${files_pane}"
-        secondary_direction="${right_direction}"
-        secondary_amount="${right_amount}"
-    else
-        secondary_pane="${claude_pane_id}"
-        secondary_direction="${left_direction}"
-        secondary_amount="${left_amount}"
+    if ! layout_json="$(herdr pane layout --pane "${claude_pane_id}")" ||
+        ! metrics="$(printf '%s\n' "${layout_json}" | jq -er \
+            --arg claude "${claude_pane_id}" \
+            --arg codex "${codex_pane_id}" \
+            "${geometry_filter}")"; then
+        printf 'Unable to verify the resized Herdr layout; refusing further ratio repair.\n' >&2
+        return 0
     fi
-    if [[ ${secondary_direction} != none ]]; then
-        if ! herdr pane resize --pane "${secondary_pane}" --direction "${secondary_direction}" --amount "${secondary_amount}" > /dev/null; then
-            printf 'Unable to resize the inner Herdr split; refusing further ratio repair.\n' >&2
-            return 0
-        fi
-        resized=true
-    fi
-
-    if [[ ${resized} == true ]]; then
-        if ! layout_json="$(herdr pane layout --pane "${claude_pane_id}")" ||
-            ! metrics="$(printf '%s\n' "${layout_json}" | jq -er \
-                --arg claude "${claude_pane_id}" \
-                --arg codex "${codex_pane_id}" \
-                --arg files "${files_pane}" \
-                "${geometry_filter}")"; then
-            printf 'Unable to verify the resized Herdr layout; refusing further ratio repair.\n' >&2
-            return 0
-        fi
-        IFS=$'\t' read -r _ _ _ _ _ left_direction _ right_direction _ <<< "${metrics}"
-        if [[ ${left_direction} != none || ${right_direction} != none ]]; then
-            printf 'Herdr attach pane widths did not converge; refusing further ratio repair.\n' >&2
-        fi
+    IFS=$'\t' read -r direction _ <<< "${metrics}"
+    if [[ ${direction} != none ]]; then
+        printf 'Herdr attach pane widths did not converge; refusing further ratio repair.\n' >&2
     fi
 }
 
@@ -556,6 +366,7 @@ function empty_pane_id() {
     local panes_json="$1"
     local exclude_pane_id="${2:-}"
 
+    # Preserve legacy files panes as unmanaged operator-owned panes.
     printf '%s\n' "${panes_json}" | jq -r --arg exclude "${exclude_pane_id}" '.result.panes[]? | select((.agent? // "") == "" and .label? != "files" and .pane_id != $exclude) | .pane_id // empty' | head -n 1
 }
 
@@ -606,7 +417,6 @@ fi
 require_command herdr
 require_command jq
 require_command codex
-require_command yazi
 if [[ ${attach_mode} == false ]]; then
     require_command claude
 fi
@@ -631,6 +441,9 @@ if [[ ${attach_mode} == true ]]; then
     fi
     codex_pane_id="$(live_codex_pane_id "${codex_agent_name}" "${panes_json}")" || codex_pane_id=""
 
+    if ! printf '%s\n' "${panes_json}" | jq -e --arg pane_id "${claude_pane_id}" '.result.panes[]? | select(.pane_id == $pane_id and .label == "claude-orchestrator")' > /dev/null; then
+        herdr pane rename "${claude_pane_id}" claude-orchestrator
+    fi
     if ! attach_panes_are_unambiguous "${panes_json}" "${claude_pane_id}" "${codex_pane_id}"; then
         printf 'Herdr attach panes are ambiguous or include unmanaged panes; refusing repair.\n' >&2
         exit 0
@@ -639,11 +452,6 @@ if [[ ${attach_mode} == true ]]; then
         printf 'The existing Codex agent is on another Herdr tab; refusing to start a duplicate.\n' >&2
     fi
 
-    if ! printf '%s\n' "${panes_json}" | jq -e --arg pane_id "${claude_pane_id}" '.result.panes[]? | select(.pane_id == $pane_id and .label == "claude-orchestrator")' > /dev/null; then
-        herdr pane rename "${claude_pane_id}" claude-orchestrator
-    fi
-
-    ensure_files_pane "${panes_json}" "${claude_pane_id}" "${workdir}" 0.667
     if [[ -z ${codex_pane_id} && -z ${workspace_codex_pane_id} ]]; then
         codex_pane_id="$(start_codex_agent "${workspace_id}" "${codex_agent_name}" "${workdir}")"
     fi
@@ -689,17 +497,14 @@ if [[ -n ${existing_workspace_id} ]]; then
         start_claude_in_pane "${claude_pane_id}"
     fi
 
-    existing_files_pane_id="$(files_pane_id "${panes_json}")"
-    ensure_files_pane "${panes_json}" "${codex_pane_id}" "${workdir}" 0.667
-    if [[ -z ${existing_files_pane_id} ]]; then
-        panes_json="$(herdr pane list --workspace "${workspace_id}")"
-        if panes_json="$(panes_on_pane_tab "${panes_json}" "${codex_pane_id}")"; then
-            claude_pane_id="$(printf '%s\n' "${panes_json}" | jq -r \
-                '.result.panes[]? | select(.agent == "claude" or .label == "claude-orchestrator") | .pane_id // empty')"
-            repair_attach_pane_ratio "${panes_json}" "${claude_pane_id}" "${codex_pane_id}"
-        else
-            printf 'Unable to identify the repaired Herdr tab; refusing ratio repair.\n' >&2
-        fi
+    panes_json="$(herdr pane list --workspace "${workspace_id}")"
+    if panes_json="$(panes_on_pane_tab "${panes_json}" "${codex_pane_id}")"; then
+        claude_pane_id="$(printf '%s\n' "${panes_json}" | jq -r \
+            '.result.panes[]? | select(.agent == "claude" or .label == "claude-orchestrator") | .pane_id // empty')"
+        repair_attach_pane_order "${panes_json}" "${claude_pane_id}" "${codex_pane_id}"
+        repair_attach_pane_ratio "${panes_json}" "${claude_pane_id}" "${codex_pane_id}"
+    else
+        printf 'Unable to identify the existing Herdr tab; refusing layout repair.\n' >&2
     fi
     bootstrap_agmsg "${workdir}"
 
@@ -724,7 +529,6 @@ if [[ -z ${root_pane_id} ]]; then
 fi
 
 start_claude_in_pane "${root_pane_id}"
-start_files_pane "${root_pane_id}" "${workdir}" 0.667
 start_codex_agent "${workspace_id}" "${codex_agent_name}" "${workdir}" > /dev/null
 bootstrap_agmsg "${workdir}"
 

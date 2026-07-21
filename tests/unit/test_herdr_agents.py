@@ -23,6 +23,7 @@ MAKEFILE = ROOT / "Makefile"
 HERDR_SESSION_SCRIPT = ROOT / "home/dot_local/bin/common/executable_herdr-session"
 CLAUDE_SETTINGS_MODIFIER = ROOT / "home/dot_claude/modify_private_settings.json"
 HERDR_CONFIG = ROOT / "home/dot_config/herdr/config.toml"
+FILE_VIEWER_CONFIG = ROOT / "home/dot_config/herdr/plugins/config/herdr-file-viewer/config.toml"
 YAZI_CONFIG = ROOT / "home/dot_config/yazi/yazi.toml"
 GHOSTTY_CONFIG = ROOT / "home/dot_config/ghostty/config"
 ZPROFILE = ROOT / "home/dot_zprofile"
@@ -1218,6 +1219,21 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         self.assertEqual(command["type"], "shell")
         self.assertEqual(command["command"], 'herdr-agents "${HERDR_ACTIVE_PANE_CWD:-$PWD}"')
+
+    def test_herdr_prefix_f_opens_file_viewer_popup(self) -> None:
+        config = tomllib.loads(HERDR_CONFIG.read_text())
+        command = next(item for item in config["keys"]["command"] if item["key"] == "prefix+f")
+
+        self.assertEqual(command["type"], "popup")
+        self.assertEqual(command["width"], "90%")
+        self.assertEqual(command["height"], "90%")
+        self.assertIn("herdr-file-viewer", command["command"])
+        self.assertIn("HERDR_PLUGIN_CONFIG_DIR", command["command"])
+
+    def test_file_viewer_plugin_config_sets_micro_editor(self) -> None:
+        config = tomllib.loads(FILE_VIEWER_CONFIG.read_text())
+
+        self.assertEqual(config, {"editor": "micro"})
 
     def test_yazi_edit_opener_prefers_zed_with_editor_fallback(self) -> None:
         config = tomllib.loads(YAZI_CONFIG.read_text())

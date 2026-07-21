@@ -932,14 +932,23 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             calls,
         )
 
-    def install_npm_fake(self, *, installed: bool) -> None:
+    def install_npm_fake(self, *, installed: bool, mise_has_tool: bool = True) -> None:
         list_exit = 0 if installed else 1
+        where_exit = 0 if mise_has_tool else 1
         self.write_executable(
             "npm",
             f"""#!/usr/bin/env bash
 printf 'npm %s\\n' "$*" >> {self.calls_path}
 if [[ $1 == list ]]; then
     exit {list_exit}
+fi
+""",
+        )
+        self.write_executable(
+            "mise",
+            f"""#!/usr/bin/env bash
+if [[ $1 == where ]]; then
+    exit {where_exit}
 fi
 """,
         )
@@ -956,6 +965,15 @@ fi
 
     def test_start_skips_node_global_removal_without_stray(self) -> None:
         self.install_npm_fake(installed=False)
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertFalse(any(call.startswith("npm uninstall") for call in calls))
+
+    def test_start_keeps_node_global_without_mise_tool_install(self) -> None:
+        self.install_npm_fake(installed=True, mise_has_tool=False)
 
         result = self.run_helper()
 

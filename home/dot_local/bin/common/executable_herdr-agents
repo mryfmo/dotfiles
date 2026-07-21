@@ -76,11 +76,15 @@ function start_codex_agent() {
     local agent_name="$2"
     local workdir="$3"
     local codex_agent_json
+    local codex_bin
     local codex_pane_id
 
+    # Resolve codex here: the Herdr daemon spawns agent argv with its own stale
+    # PATH snapshot, which can pick an outdated version dir.
+    codex_bin="$(command -v codex)"
     if ! codex_agent_json="$(
         herdr agent start "${agent_name}" --cwd "${workdir}" --workspace "${workspace_id}" --split right --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- \
-            codex --sandbox workspace-write --profile "${HERDR_AGENTS_CODEX_PROFILE:-standard}"
+            "${codex_bin}" --sandbox workspace-write --profile "${HERDR_AGENTS_CODEX_PROFILE:-standard}"
     )"; then
         printf 'Failed to start Codex agent %s: %s\n' "${agent_name}" "${codex_agent_json}" >&2
         return 1
@@ -376,6 +380,17 @@ function empty_pane_id() {
     printf '%s\n' "${panes_json}" | jq -r --arg exclude "${exclude_pane_id}" '.result.panes[]? | select((.agent? // "") == "" and .label? != "files" and .pane_id != $exclude) | .pane_id // empty' | head -n 1
 }
 
+# @description Remove a node-global npm copy that shadows the dedicated mise tool install.
+# @arg $1 string npm package name, for example @scope/package.
+function remove_shadowing_node_global() {
+    local npm_package="$1"
+
+    command -v npm > /dev/null 2>&1 || return 0
+    if npm list -g "${npm_package}" --depth=0 > /dev/null 2>&1; then
+        npm uninstall -g "${npm_package}" > /dev/null
+    fi
+}
+
 # @description Require a command before starting a partial layout.
 # @arg $1 string Command name.
 function require_command() {
@@ -426,6 +441,10 @@ require_command codex
 if [[ ${attach_mode} == false ]]; then
     require_command claude
 fi
+# Heal PATH shadowing left behind by the agent CLIs' own `npm install -g`
+# updaters so the mise-pinned versions are what the panes actually run.
+remove_shadowing_node_global "@openai/codex"
+remove_shadowing_node_global "@anthropic-ai/claude-code"
 
 if [[ ${attach_mode} == true ]]; then
     workdir="$PWD"

@@ -165,6 +165,12 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             ],
         )
 
+    def test_claude_deny_rules_use_edit_for_file_mutations(self) -> None:
+        manifest = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
+
+        self.assertIn("- Edit(.env*)", manifest)
+        self.assertNotIn("- Write(.env*)", manifest)
+
 
 if __name__ == "__main__":
     unittest.main()

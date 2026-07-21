@@ -13,7 +13,7 @@
       "Read(.env.*)",
       "Read(id_rsa*)",
       "Read(id_ed25519*)",
-      "Write(.env*)",
+      "Edit(.env*)",
       "Bash(curl * | sh)",
       "Bash(wget * | sh)",
       "Read(secrets/**)",

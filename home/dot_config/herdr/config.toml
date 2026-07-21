@@ -35,6 +35,15 @@ type = "shell"
 command = 'herdr-agents "${HERDR_ACTIVE_PANE_CWD:-$PWD}"'
 description = "open Claude Code and Codex workspace"
 
+# herdr-file-viewer: prefix+f opens the plugin as a session-modal popup
+[[keys.command]]
+key = "prefix+f"
+type = "popup"
+description = "File Viewer"
+width = "90%"
+height = "90%"
+command = '''PLUGIN_DIR="$(herdr plugin list --json | jq -r '.result.plugins[] | select(.plugin_id=="herdr-file-viewer") | .plugin_root')" && CONFIG_DIR="$(herdr plugin config-dir herdr-file-viewer)" && HERDR_PLUGIN_CONFIG_DIR="$CONFIG_DIR" exec "$PLUGIN_DIR/target/release/herdr-file-viewer"'''
+
 [experimental]
 switch_ascii_input_source_in_prefix = true
 reveal_hidden_cursor_for_cjk_ime = true

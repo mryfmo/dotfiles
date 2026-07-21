@@ -23,6 +23,7 @@ MAKEFILE = ROOT / "Makefile"
 HERDR_SESSION_SCRIPT = ROOT / "home/dot_local/bin/common/executable_herdr-session"
 CLAUDE_SETTINGS_MODIFIER = ROOT / "home/dot_claude/modify_private_settings.json"
 HERDR_CONFIG = ROOT / "home/dot_config/herdr/config.toml"
+FILE_VIEWER_CONFIG = ROOT / "home/dot_config/herdr/plugins/config/herdr-file-viewer/config.toml"
 YAZI_CONFIG = ROOT / "home/dot_config/yazi/yazi.toml"
 GHOSTTY_CONFIG = ROOT / "home/dot_config/ghostty/config"
 ZPROFILE = ROOT / "home/dot_zprofile"
@@ -37,14 +38,9 @@ class HerdrAgentsTest(unittest.TestCase):
         self.calls_path = self.temp_dir / "herdr-calls.txt"
         self.workspace_list_path = self.temp_dir / "workspace-list.json"
         self.pane_list_path = self.temp_dir / "pane-list.json"
-        self.pane_list_after_split_path = self.temp_dir / "pane-list-after-split.json"
         self.pane_layout_path = self.temp_dir / "pane-layout.json"
         self.pane_layout_after_resize_path = self.temp_dir / "pane-layout-after-resize.json"
         self.pane_layout_exit_path = self.temp_dir / "pane-layout-exit.txt"
-        self.process_info_path = self.temp_dir / "process-info.json"
-        self.process_info_exit_path = self.temp_dir / "process-info-exit.txt"
-        self.pane_run_exit_path = self.temp_dir / "pane-run-exit.txt"
-        self.pane_split_exit_path = self.temp_dir / "pane-split-exit.txt"
         self.agent_get_path = self.temp_dir / "agent-get.json"
         self.pane_counter_path = self.temp_dir / "pane-counter.txt"
         self.home_dir = self.temp_dir / "home"
@@ -53,14 +49,9 @@ class HerdrAgentsTest(unittest.TestCase):
         self.workdir.mkdir()
         self.workspace_list_path.write_text('{"id":"cli:workspace:list","result":{"type":"workspace_list","workspaces":[]}}\n')
         self.pane_list_path.write_text('{"id":"cli:pane:list","result":{"panes":[]}}\n')
-        self.pane_list_after_split_path.write_text("")
         self.pane_layout_path.write_text('{"id":"cli:pane:layout","result":{"layout":{"panes":[]}}}\n')
         self.pane_layout_after_resize_path.write_text("")
         self.pane_layout_exit_path.write_text("0\n")
-        self.process_info_path.write_text('{"id":"cli:pane:process-info","result":{"process_info":{"foreground_processes":[]}}}\n')
-        self.process_info_exit_path.write_text("0\n")
-        self.pane_run_exit_path.write_text("0\n")
-        self.pane_split_exit_path.write_text("0\n")
         self.agent_get_path.write_text("")
         self.pane_counter_path.write_text("2\n")
 
@@ -87,19 +78,10 @@ if [[ $1 == pane && $2 == layout ]]; then
     cat {self.pane_layout_path}
     exit "$(cat {self.pane_layout_exit_path})"
 fi
-if [[ $1 == pane && $2 == process-info ]]; then
-    cat {self.process_info_path}
-    exit "$(cat {self.process_info_exit_path})"
-fi
 if [[ $1 == pane && $2 == split ]]; then
-    split_exit="$(cat {self.pane_split_exit_path})"
-    [[ $split_exit == 0 ]] || exit "$split_exit"
     workspace="${{3%%:*}}"
     pane_number="$(( $(cat {self.pane_counter_path}) + 1 ))"
     printf '%s\\n' "$pane_number" > {self.pane_counter_path}
-    if [[ -s {self.pane_list_after_split_path} ]]; then
-        cp {self.pane_list_after_split_path} {self.pane_list_path}
-    fi
     printf '{{"id":"cli:pane:split","result":{{"pane":{{"pane_id":"%s:p%s"}}}}}}\\n' "$workspace" "$pane_number"
     exit 0
 fi
@@ -117,7 +99,7 @@ if [[ $1 == pane && $2 == rename ]]; then
     exit 0
 fi
 if [[ $1 == pane && $2 == run ]]; then
-    exit "$(cat {self.pane_run_exit_path})"
+    exit 0
 fi
 if [[ $1 == agent && $2 == start ]]; then
     workspace='w-test'
@@ -141,7 +123,6 @@ fi
         )
         self.write_executable("claude", "#!/usr/bin/env bash\n")
         self.write_executable("codex", "#!/usr/bin/env bash\n")
-        self.write_executable("yazi", "#!/usr/bin/env bash\n")
         jq = shutil.which("jq")
         if jq is None:
             self.fail("jq is required for Herdr helper tests")
@@ -287,11 +268,6 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         else:
             self.agent_get_path.write_text("")
 
-    def write_process_info(self, processes: str) -> None:
-        self.process_info_path.write_text(
-            f'{{"id":"cli:pane:process-info","result":{{"process_info":{{"foreground_processes":[{processes}]}}}}}}\n'
-        )
-
     def write_pane_layout(self, panes: list[tuple[str, int]]) -> None:
         layout_panes = [
             {"pane_id": pane_id, "rect": {"height": 40, "width": 40, "x": x, "y": 0}}
@@ -303,14 +279,13 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
     def write_ratio_layout(
         self,
-        widths: tuple[int, int, int],
+        widths: tuple[int, int],
         *,
         after_resize: bool = False,
-        nested: str = "right",
-        pane_ids: tuple[str, str, str] = ("w-attach:p1", "w-attach:p2", "w-attach:p9"),
+        pane_ids: tuple[str, str] = ("w-attach:p1", "w-attach:p2"),
     ) -> None:
-        left, middle, right = widths
-        left_id, middle_id, right_id = pane_ids
+        left, right = widths
+        left_id, right_id = pane_ids
         total = sum(widths)
         layout = {
             "id": "cli:pane:layout",
@@ -319,25 +294,12 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
                     "panes": [
                         {"pane_id": left_id, "rect": {"height": 40, "width": left, "x": 0, "y": 0}},
                         {
-                            "pane_id": middle_id,
-                            "rect": {"height": 40, "width": middle, "x": left, "y": 0},
-                        },
-                        {
                             "pane_id": right_id,
-                            "rect": {"height": 40, "width": right, "x": left + middle, "y": 0},
+                            "rect": {"height": 40, "width": right, "x": left, "y": 0},
                         },
                     ],
                     "splits": [
                         {"direction": "right", "rect": {"height": 40, "width": total, "x": 0, "y": 0}},
-                        {
-                            "direction": "right",
-                            "rect": {
-                                "height": 40,
-                                "width": left + middle if nested == "left" else middle + right,
-                                "x": 0 if nested == "left" else left,
-                                "y": 0,
-                            },
-                        },
                     ],
                 }
             },
@@ -425,7 +387,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertFalse(self.calls_path.exists())
 
-    def test_attach_builds_files_then_codex_around_current_claude_pane(self) -> None:
+    def test_attach_builds_codex_right_of_current_claude_pane(self) -> None:
         self.write_workspace_state(
             "w-attach",
             f'{{"agent":"claude","cwd":"{self.workdir}","pane_id":"w-attach:p1","workspace_id":"w-attach"}}',
@@ -435,13 +397,10 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
-        workdir = self.workdir.resolve()
-        self.assertLess(
-            calls.index(f"pane split w-attach:p1 --direction right --ratio 0.667 --cwd {workdir} --no-focus"),
-            next(index for index, call in enumerate(calls) if call.startswith("agent start codex-worker-w-attach ")),
-        )
+        codex_start = next(call for call in calls if call.startswith("agent start codex-worker-w-attach "))
+        self.assertIn("--split right", codex_start)
         self.assertIn("pane rename w-attach:p1 claude-orchestrator", calls)
-        self.assertIn("pane run w-attach:p3 yazi", calls)
+        self.assertFalse(any(call.startswith("pane split ") for call in calls))
         self.assertFalse(any(call.startswith("pane run w-attach:p1 ") for call in calls))
         self.assertFalse(any(call.startswith("workspace create ") for call in calls))
 
@@ -449,13 +408,10 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.write_workspace_state(
             "w-attach",
             f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
-            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}},'
-            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-attach:p9","workspace_id":"w-attach"}}',
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}}',
             agent_pane_id="w-attach:p2",
         )
-        self.write_process_info(
-            f'{{"argv":["yazi"],"cmdline":"yazi","cwd":"{self.workdir}","name":"yazi"}}'
-        )
+        self.write_ratio_layout((60, 60))
 
         result = self.run_attach_helper(in_herdr=True)
 
@@ -463,20 +419,14 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         calls = self.calls_path.read_text().splitlines()
         self.assertFalse(any(call.startswith(("agent start ", "pane rename ", "pane run ", "pane split ")) for call in calls))
 
-    def test_attach_repairs_files_claude_codex_order(self) -> None:
+    def test_attach_repairs_codex_claude_order_with_one_swap(self) -> None:
         self.write_workspace_state(
             "w-attach",
             f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
-            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}},'
-            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-attach:p9","workspace_id":"w-attach"}}',
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}}',
             agent_pane_id="w-attach:p2",
         )
-        self.write_process_info(
-            f'{{"argv":["yazi"],"cmdline":"yazi","cwd":"{self.workdir}","name":"yazi"}}'
-        )
-        self.write_pane_layout(
-            [("w-attach:p9", 0), ("w-attach:p1", 40), ("w-attach:p2", 80)]
-        )
+        self.write_pane_layout([("w-attach:p2", 0), ("w-attach:p1", 40)])
 
         result = self.run_attach_helper(in_herdr=True)
 
@@ -488,26 +438,17 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         ]
         self.assertEqual(
             swaps,
-            [
-                "pane swap --source-pane w-attach:p9 --target-pane w-attach:p1",
-                "pane swap --source-pane w-attach:p9 --target-pane w-attach:p2",
-            ],
+            ["pane swap --source-pane w-attach:p2 --target-pane w-attach:p1"],
         )
 
     def test_attach_correct_order_does_not_swap(self) -> None:
         self.write_workspace_state(
             "w-attach",
             f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
-            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}},'
-            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-attach:p9","workspace_id":"w-attach"}}',
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}}',
             agent_pane_id="w-attach:p2",
         )
-        self.write_process_info(
-            f'{{"argv":["yazi"],"cmdline":"yazi","cwd":"{self.workdir}","name":"yazi"}}'
-        )
-        self.write_pane_layout(
-            [("w-attach:p1", 0), ("w-attach:p2", 40), ("w-attach:p9", 80)]
-        )
+        self.write_pane_layout([("w-attach:p1", 0), ("w-attach:p2", 40)])
 
         result = self.run_attach_helper(in_herdr=True)
 
@@ -519,18 +460,14 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             )
         )
 
-    def test_attach_equal_thirds_does_not_resize(self) -> None:
+    def test_attach_equal_halves_does_not_resize(self) -> None:
         self.write_workspace_state(
             "w-attach",
             f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
-            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}},'
-            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-attach:p9","workspace_id":"w-attach"}}',
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}}',
             agent_pane_id="w-attach:p2",
         )
-        self.write_process_info(
-            f'{{"argv":["yazi"],"cmdline":"yazi","cwd":"{self.workdir}","name":"yazi"}}'
-        )
-        self.write_ratio_layout((57, 58, 57), nested="left")
+        self.write_ratio_layout((60, 60))
 
         result = self.run_attach_helper(in_herdr=True)
 
@@ -542,19 +479,15 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             )
         )
 
-    def test_attach_repairs_skewed_widths_to_equal_thirds(self) -> None:
+    def test_attach_repairs_skewed_widths_to_equal_halves(self) -> None:
         self.write_workspace_state(
             "w-attach",
             f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
-            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}},'
-            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-attach:p9","workspace_id":"w-attach"}}',
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}}',
             agent_pane_id="w-attach:p2",
         )
-        self.write_process_info(
-            f'{{"argv":["yazi"],"cmdline":"yazi","cwd":"{self.workdir}","name":"yazi"}}'
-        )
-        self.write_ratio_layout((86, 43, 43))
-        self.write_ratio_layout((57, 58, 57), after_resize=True)
+        self.write_ratio_layout((90, 30))
+        self.write_ratio_layout((60, 60), after_resize=True)
 
         result = self.run_attach_helper(in_herdr=True)
 
@@ -567,7 +500,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(len(resize_calls), 1)
         self.assertRegex(
             resize_calls[0],
-            r"^pane resize --pane w-attach:p1 --direction left --amount 0\.16",
+            r"^pane resize --pane w-attach:p1 --direction left --amount 0\.25",
         )
         widths = [
             pane["rect"]["width"]
@@ -575,60 +508,50 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         ]
         self.assertLessEqual(max(widths) - min(widths), 2)
 
-    def test_attach_repairs_left_nested_skew_to_equal_thirds(self) -> None:
+    def test_attach_warns_after_one_nonconverging_resize(self) -> None:
         self.write_workspace_state(
             "w-attach",
             f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
-            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}},'
-            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-attach:p9","workspace_id":"w-attach"}}',
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}}',
             agent_pane_id="w-attach:p2",
         )
-        self.write_process_info(
-            f'{{"argv":["yazi"],"cmdline":"yazi","cwd":"{self.workdir}","name":"yazi"}}'
-        )
-        self.write_ratio_layout((43, 43, 86), nested="left")
-        self.write_ratio_layout((57, 58, 57), after_resize=True, nested="left")
+        self.write_ratio_layout((90, 30))
 
         result = self.run_attach_helper(in_herdr=True)
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        resize_calls = [
-            call
-            for call in self.calls_path.read_text().splitlines()
-            if call.startswith("pane resize ")
-        ]
-        self.assertEqual(len(resize_calls), 1)
-        self.assertRegex(
-            resize_calls[0],
-            r"^pane resize --pane w-attach:p9 --direction right --amount 0\.16",
+        self.assertIn("did not converge", result.stderr)
+        self.assertEqual(
+            len(
+                [
+                    call
+                    for call in self.calls_path.read_text().splitlines()
+                    if call.startswith("pane resize ")
+                ]
+            ),
+            1,
         )
 
     def test_attach_ratio_repair_skips_unsafe_layouts(self) -> None:
         self.write_workspace_state(
             "w-attach",
             f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
-            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}},'
-            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-attach:p9","workspace_id":"w-attach"}}',
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}}',
             agent_pane_id="w-attach:p2",
-        )
-        self.write_process_info(
-            f'{{"argv":["yazi"],"cmdline":"yazi","cwd":"{self.workdir}","name":"yazi"}}'
         )
         cases = (
             ('{"result":{"layout":{"panes":[]}}}\n', 42),
             (
                 '{"result":{"layout":{"panes":['
                 '{"pane_id":"w-attach:p1","rect":{"x":0,"width":"wide"}},'
-                '{"pane_id":"w-attach:p2","rect":{"x":40,"width":40}},'
-                '{"pane_id":"w-attach:p9","rect":{"x":80,"width":40}}'
+                '{"pane_id":"w-attach:p2","rect":{"x":40,"width":40}}'
                 ']}}}\n',
                 0,
             ),
             (
                 '{"result":{"layout":{"panes":['
                 '{"pane_id":"w-attach:p1","rect":{"x":0,"width":40}},'
-                '{"pane_id":"w-attach:p2","rect":{"x":40,"width":40}},'
-                '{"pane_id":"w-attach:p9","rect":{"x":80,"width":40}}'
+                '{"pane_id":"w-attach:p2","rect":{"x":40,"width":40}}'
                 '],"splits":[]}}}\n',
                 0,
             ),
@@ -650,12 +573,11 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
                     )
                 )
 
-    def test_attach_ambiguous_files_panes_skip_repair(self) -> None:
+    def test_attach_legacy_files_pane_refuses_repair_without_layout_mutation(self) -> None:
         self.write_workspace_state(
             "w-attach",
-            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
+            f'{{"agent":"claude","cwd":"{self.workdir}","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
             f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}},'
-            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-attach:p8","workspace_id":"w-attach"}},'
             f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-attach:p9","workspace_id":"w-attach"}}',
             agent_pane_id="w-attach:p2",
         )
@@ -664,54 +586,37 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("ambiguous", result.stderr.lower())
-        self.assertFalse(
-            any(
-                call.startswith("pane swap ")
-                for call in self.calls_path.read_text().splitlines()
-            )
-        )
+        mutations = [
+            call
+            for call in self.calls_path.read_text().splitlines()
+            if call.startswith(("agent start ", "pane rename ", "pane run ", "pane split ", "pane swap ", "pane resize "))
+        ]
+        self.assertEqual(mutations, ["pane rename w-attach:p1 claude-orchestrator"])
 
     def test_attach_ignores_extra_panes_on_other_tabs(self) -> None:
         self.write_workspace_state(
             "w-attach",
             f'{{"agent":"claude","cwd":"{self.workdir}","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
             f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}},'
-            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-attach:p9","workspace_id":"w-attach"}},'
             f'{{"agent":null,"cwd":"{self.workdir}","pane_id":"w-attach:p3","tab_id":"w-attach:t2","workspace_id":"w-attach"}}',
             agent_pane_id="w-attach:p2",
         )
-        self.write_process_info(
-            f'{{"argv":["yazi"],"cmdline":"yazi","cwd":"{self.workdir}","name":"yazi"}}'
-        )
-        self.write_pane_layout(
-            [("w-attach:p9", 0), ("w-attach:p1", 40), ("w-attach:p2", 80)]
-        )
+        self.write_ratio_layout((60, 60))
 
         result = self.run_attach_helper(in_herdr=True)
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
         self.assertIn("pane rename w-attach:p1 claude-orchestrator", calls)
-        self.assertIn("pane process-info --pane w-attach:p9", calls)
-        self.assertEqual(
-            [call for call in calls if call.startswith("pane swap ")],
-            [
-                "pane swap --source-pane w-attach:p9 --target-pane w-attach:p1",
-                "pane swap --source-pane w-attach:p9 --target-pane w-attach:p2",
-            ],
-        )
+        self.assertFalse(any(call.startswith("pane swap ") for call in calls))
         self.assertFalse(any("w-attach:p3" in call for call in calls))
 
     def test_attach_does_not_restart_codex_agent_from_another_tab(self) -> None:
         self.write_workspace_state(
             "w-attach",
             f'{{"agent":"claude","cwd":"{self.workdir}","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
-            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","tab_id":"w-attach:t2","workspace_id":"w-attach"}},'
-            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-attach:p9","workspace_id":"w-attach"}}',
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","tab_id":"w-attach:t2","workspace_id":"w-attach"}}',
             agent_pane_id="w-attach:p2",
-        )
-        self.write_process_info(
-            f'{{"argv":["yazi"],"cmdline":"yazi","cwd":"{self.workdir}","name":"yazi"}}'
         )
 
         result = self.run_attach_helper(in_herdr=True)
@@ -730,16 +635,10 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.write_workspace_state(
             "w-attach",
             f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
-            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}},'
-            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-attach:p9","workspace_id":"w-attach"}}',
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}}',
             agent_pane_id="w-attach:p2",
         )
-        self.write_process_info(
-            f'{{"argv":["yazi"],"cmdline":"yazi","cwd":"{self.workdir}","name":"yazi"}}'
-        )
-        self.write_pane_layout(
-            [("w-attach:p1", 0), ("w-attach:p2", 40), ("w-attach:p9", 80)]
-        )
+        self.write_ratio_layout((60, 60))
 
         result = self.run_attach_helper(in_herdr=True)
 
@@ -771,16 +670,10 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.write_workspace_state(
             "w-attach",
             f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
-            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}},'
-            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-attach:p9","workspace_id":"w-attach"}}',
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}}',
             agent_pane_id="w-attach:p2",
         )
-        self.write_process_info(
-            f'{{"argv":["yazi"],"cmdline":"yazi","cwd":"{self.workdir}","name":"yazi"}}'
-        )
-        self.write_pane_layout(
-            [("w-attach:p1", 0), ("w-attach:p2", 40), ("w-attach:p9", 80)]
-        )
+        self.write_ratio_layout((60, 60))
 
         result = self.run_attach_helper(in_herdr=True)
 
@@ -802,16 +695,10 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.write_workspace_state(
             "w-attach",
             f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
-            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}},'
-            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-attach:p9","workspace_id":"w-attach"}}',
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}}',
             agent_pane_id="w-attach:p2",
         )
-        self.write_process_info(
-            f'{{"argv":["yazi"],"cmdline":"yazi","cwd":"{self.workdir}","name":"yazi"}}'
-        )
-        self.write_pane_layout(
-            [("w-attach:p1", 0), ("w-attach:p2", 40), ("w-attach:p9", 80)]
-        )
+        self.write_ratio_layout((60, 60))
 
         result = self.run_attach_helper(in_herdr=True)
 
@@ -1039,24 +926,35 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             calls,
         )
         self.assertIn("pane rename w-test:p2 codex-worker", calls)
-        self.assertIn(f"pane split w-test:p1 --direction right --ratio 0.667 --cwd {self.workdir} --no-focus", calls)
-        self.assertIn("pane rename w-test:p3 files", calls)
-        self.assertIn("pane run w-test:p3 yazi", calls)
+        self.assertFalse(any(call.startswith("pane split ") for call in calls))
         self.assertNotIn(
             f"agent start claude --cwd {self.workdir} --workspace w-test --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --focus -- claude",
             calls,
         )
 
-    def test_missing_yazi_fails_before_mutating_a_new_workspace(self) -> None:
-        (self.bin_dir / "yazi").unlink()
+    def test_existing_two_pane_workspace_repairs_skewed_widths(self) -> None:
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}}',
+            agent_pane_id="w-old:p2",
+        )
+        self.write_ratio_layout((90, 30), pane_ids=("w-old:p1", "w-old:p2"))
+        self.write_ratio_layout(
+            (60, 60), after_resize=True, pane_ids=("w-old:p1", "w-old:p2")
+        )
 
         result = self.run_helper()
 
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("yazi command not found", result.stderr)
-        self.assertFalse(self.calls_path.exists())
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertEqual(
+            [call for call in calls if call.startswith("pane resize ")],
+            ["pane resize --pane w-old:p1 --direction left --amount 0.25"],
+        )
+        self.assertIn("workspace focus w-old", calls)
 
-    def test_existing_agents_workspace_focuses_without_recreating_agents(self) -> None:
+    def test_existing_workspace_with_legacy_files_pane_focuses_without_mutation(self) -> None:
         self.write_workspace_state(
             "w-old",
             f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
@@ -1064,10 +962,6 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-old:p9","workspace_id":"w-old"}}',
             agent_pane_id="w-old:p2",
         )
-        self.write_process_info(
-            f'{{"argv":["yazi"],"cmdline":"yazi","cwd":"{self.workdir}","name":"yazi"}}'
-        )
-
         result = self.run_helper()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
@@ -1078,167 +972,13 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertFalse(any(call.startswith("pane split ") for call in calls))
         self.assertFalse(any(call.startswith("pane run w-old:p9 ") for call in calls))
 
-    def test_existing_empty_files_pane_restarts_yazi_in_place(self) -> None:
-        self.write_workspace_state(
-            "w-old",
-            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
-            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}},'
-            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-old:p9","workspace_id":"w-old"}}',
-            agent_pane_id="w-old:p2",
-        )
-
-        result = self.run_helper()
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-        calls = self.calls_path.read_text().splitlines()
-        self.assertIn("pane process-info --pane w-old:p9", calls)
-        self.assertEqual(calls.count("pane run w-old:p9 yazi"), 1)
-        self.assertFalse(any(call.startswith("pane split ") for call in calls))
-
-    def test_missing_yazi_fails_before_mutating_an_existing_workspace(self) -> None:
-        self.write_workspace_state(
-            "w-old",
-            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
-            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}},'
-            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-old:p9","workspace_id":"w-old"}}',
-            agent_pane_id="w-old:p2",
-        )
-        (self.bin_dir / "yazi").unlink()
-
-        result = self.run_helper()
-
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("yazi command not found", result.stderr)
-        self.assertFalse(self.calls_path.exists())
-
-    def test_existing_files_pane_with_other_process_restarts_yazi_in_place(self) -> None:
-        self.write_workspace_state(
-            "w-old",
-            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
-            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}},'
-            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-old:p9","workspace_id":"w-old"}}',
-            agent_pane_id="w-old:p2",
-        )
-        self.write_process_info(
-            f'{{"argv":["zsh"],"cmdline":"zsh","cwd":"{self.workdir}","name":"zsh"}}'
-        )
-
-        result = self.run_helper()
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-        calls = self.calls_path.read_text().splitlines()
-        self.assertEqual(calls.count("pane run w-old:p9 yazi"), 1)
-        self.assertFalse(any(call.startswith("pane split ") for call in calls))
-
-    def test_files_pane_inspection_failures_do_not_start_yazi(self) -> None:
-        cases = (
-            ('{"result":{}}\n', 42),
-            ("not-json\n", 0),
-            ('{"result":{"process_info":{"foreground_processes":[{}]}}}\n', 0),
-            ('{"result":{"process_info":{"foreground_processes":[{"name":null}]}}}\n', 0),
-            ('{"result":{"process_info":{"foreground_processes":["yazi"]}}}\n', 0),
-        )
-        for payload, exit_code in cases:
-            with self.subTest(payload=payload, exit_code=exit_code):
-                self.calls_path.write_text("")
-                self.write_workspace_state(
-                    "w-old",
-                    f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
-                    f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}},'
-                    f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-old:p9","workspace_id":"w-old"}}',
-                    agent_pane_id="w-old:p2",
-                )
-                self.process_info_exit_path.write_text(f"{exit_code}\n")
-                self.process_info_path.write_text(payload)
-
-                result = self.run_helper()
-
-                self.assertNotEqual(0, result.returncode)
-                self.assertNotIn("pane run w-old:p9 yazi", self.calls_path.read_text().splitlines())
-
-    def test_files_pane_operations_propagate_failures(self) -> None:
-        self.write_workspace_state(
-            "w-old",
-            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
-            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}},'
-            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-old:p9","workspace_id":"w-old"}}',
-            agent_pane_id="w-old:p2",
-        )
-        self.pane_run_exit_path.write_text("42\n")
-        result = self.run_helper()
-        self.assertNotEqual(0, result.returncode)
-
-        self.pane_run_exit_path.write_text("0\n")
-        self.write_workspace_state(
-            "w-old",
-            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
-            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}}',
-            agent_pane_id="w-old:p2",
-        )
-        self.pane_split_exit_path.write_text("43\n")
-        result = self.run_helper()
-        self.assertNotEqual(0, result.returncode)
-
-    def test_duplicate_files_panes_fail_without_mutation(self) -> None:
-        self.write_workspace_state(
-            "w-old",
-            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
-            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}},'
-            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-old:p8","workspace_id":"w-old"}},'
-            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-old:p9","workspace_id":"w-old"}}',
-            agent_pane_id="w-old:p2",
-        )
-
-        result = self.run_helper()
-
-        self.assertNotEqual(0, result.returncode)
-        self.assertFalse(any(call.startswith("pane run ") for call in self.calls_path.read_text().splitlines()))
-
-    def test_existing_workspace_adds_missing_files_pane(self) -> None:
-        self.write_workspace_state(
-            "w-old",
-            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
-            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}}',
-            agent_pane_id="w-old:p2",
-        )
-        pane_list = json.loads(self.pane_list_path.read_text())
-        pane_list["result"]["panes"].append(
-            {
-                "agent": None,
-                "cwd": str(self.workdir),
-                "label": "files",
-                "pane_id": "w-old:p3",
-                "tab_id": "w-old:t1",
-                "workspace_id": "w-old",
-            }
-        )
-        self.pane_list_after_split_path.write_text(json.dumps(pane_list) + "\n")
-        pane_ids = ("w-old:p1", "w-old:p2", "w-old:p3")
-        self.write_ratio_layout((86, 57, 29), pane_ids=pane_ids)
-        self.write_ratio_layout(
-            (57, 58, 57), after_resize=True, pane_ids=pane_ids
-        )
-
-        result = self.run_helper()
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-        calls = self.calls_path.read_text().splitlines()
-        self.assertIn(f"pane split w-old:p2 --direction right --ratio 0.667 --cwd {self.workdir} --no-focus", calls)
-        self.assertIn("pane rename w-old:p3 files", calls)
-        self.assertIn("pane run w-old:p3 yazi", calls)
-        self.assertTrue(any(call.startswith("pane resize ") for call in calls))
-
-    def test_existing_files_pane_is_not_reused_for_claude_or_split_again(self) -> None:
+    def test_existing_legacy_files_pane_is_not_reused_for_claude_or_split_again(self) -> None:
         self.write_workspace_state(
             "w-old",
             f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}},'
             f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-old:p9","workspace_id":"w-old"}}',
             agent_pane_id="w-old:p2",
         )
-        self.write_process_info(
-            f'{{"argv":["yazi"],"cmdline":"yazi","cwd":"{self.workdir}","name":"yazi"}}'
-        )
-
         result = self.run_helper()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
@@ -1479,6 +1219,21 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         self.assertEqual(command["type"], "shell")
         self.assertEqual(command["command"], 'herdr-agents "${HERDR_ACTIVE_PANE_CWD:-$PWD}"')
+
+    def test_herdr_prefix_f_opens_file_viewer_popup(self) -> None:
+        config = tomllib.loads(HERDR_CONFIG.read_text())
+        command = next(item for item in config["keys"]["command"] if item["key"] == "prefix+f")
+
+        self.assertEqual(command["type"], "popup")
+        self.assertEqual(command["width"], "90%")
+        self.assertEqual(command["height"], "90%")
+        self.assertIn("herdr-file-viewer", command["command"])
+        self.assertIn("HERDR_PLUGIN_CONFIG_DIR", command["command"])
+
+    def test_file_viewer_plugin_config_sets_micro_editor(self) -> None:
+        config = tomllib.loads(FILE_VIEWER_CONFIG.read_text())
+
+        self.assertEqual(config, {"editor": "micro"})
 
     def test_yazi_edit_opener_prefers_zed_with_editor_fallback(self) -> None:
         config = tomllib.loads(YAZI_CONFIG.read_text())

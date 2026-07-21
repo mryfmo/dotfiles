@@ -41,6 +41,7 @@ claude-update() {
     npm_config_min_release_age=0 npm install -g \
         --prefix "${claude_prefix}" \
         --ignore-scripts=false \
+        --allow-scripts=@anthropic-ai/claude-code \
         --include=optional \
         "@anthropic-ai/claude-code@${claude_version}"
 }

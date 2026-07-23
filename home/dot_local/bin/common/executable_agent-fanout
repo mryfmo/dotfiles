@@ -10,6 +10,7 @@
 # @option --no-codex Skip the Codex run.
 # @option --no-claude Skip the Claude Code run.
 # @option --output-dir DIR Directory where prompt and agent logs are written.
+# @option --profile NAME Model profile from ~/.agents/model-profiles.env. Default: standard.
 # @arg PROMPT... Optional prompt text. When omitted, the prompt is read from stdin.
 # @example
 #   agent-fanout --no-claude "Review the current diff. Do not edit files."
@@ -22,7 +23,7 @@ umask 077
 # @description Print usage information.
 function usage() {
     cat <<'USAGE'
-Usage: agent-fanout [--dry-run] [--no-codex] [--no-claude] [--output-dir DIR] [PROMPT...]
+Usage: agent-fanout [--dry-run] [--no-codex] [--no-claude] [--output-dir DIR] [--profile NAME] [PROMPT...]
 
 Run Codex and Claude Code in parallel with the same prompt.
 If PROMPT is omitted, the prompt is read from stdin.
@@ -30,6 +31,7 @@ If PROMPT is omitted, the prompt is read from stdin.
 Environment variables:
   AGENT_FANOUT_CODEX_COMMAND   Codex command prefix. Default: codex exec --full-auto
   AGENT_FANOUT_CLAUDE_COMMAND  Claude command prefix. Default: claude -p --max-turns 15
+  AGENT_FANOUT_PROFILE_ENV     Model profile fragment. Default: ~/.agents/model-profiles.env
 
 Notes:
   - Use this helper for read-only comparison in one worktree.
@@ -55,6 +57,7 @@ run_codex=true
 run_claude=true
 dry_run=false
 output_dir=""
+profile="standard"
 args=()
 
 while (($#)); do
@@ -77,6 +80,10 @@ while (($#)); do
             ;;
         --output-dir)
             output_dir="${2:?--output-dir requires a directory}"
+            shift 2
+            ;;
+        --profile)
+            profile="${2:?--profile requires a profile name}"
             shift 2
             ;;
         --)
@@ -105,6 +112,27 @@ fi
 if ! $run_codex && ! $run_claude; then
     echo "At least one agent must be enabled." >&2
     exit 2
+fi
+
+# Model IDs live only in the generated profile fragment; launchers must not
+# hardcode them.
+profile_env="${AGENT_FANOUT_PROFILE_ENV:-$HOME/.agents/model-profiles.env}"
+codex_profile_args=""
+claude_profile_args=""
+if [[ -f $profile_env ]]; then
+    # shellcheck source=/dev/null
+    source "$profile_env"
+    profile_var="$(printf '%s' "$profile" | tr '[:lower:]' '[:upper:]')"
+    codex_ref="MODEL_PROFILE_${profile_var}_CODEX_ARGS"
+    claude_ref="MODEL_PROFILE_${profile_var}_CLAUDE_ARGS"
+    codex_profile_args="${!codex_ref:-}"
+    claude_profile_args="${!claude_ref:-}"
+    if [[ -z $codex_profile_args || -z $claude_profile_args ]]; then
+        printf 'Unknown model profile: %s (see %s)\n' "$profile" "$profile_env" >&2
+        exit 2
+    fi
+else
+    printf 'Model profile fragment not found; running without profile args: %s\n' "$profile_env" >&2
 fi
 
 if [[ -z $output_dir ]]; then
@@ -136,10 +164,16 @@ if $run_codex; then
         status=1
     else
         codex_command=${AGENT_FANOUT_CODEX_COMMAND:-codex exec --full-auto}
+        read -r -a codex_argv <<<"$codex_command"
+        if [[ -n $codex_profile_args ]]; then
+            # Keep profile args right after the binary so codex-global flags
+            # stay before the exec subcommand.
+            read -r -a codex_profile_argv <<<"$codex_profile_args"
+            codex_argv=("${codex_argv[0]}" "${codex_profile_argv[@]}" "${codex_argv[@]:1}")
+        fi
         if $dry_run; then
-            printf 'DRY RUN: %s <prompt>\n' "$codex_command" >"$output_dir/codex.log"
+            printf 'DRY RUN: %s <prompt>\n' "${codex_argv[*]}" >"$output_dir/codex.log"
         else
-            read -r -a codex_argv <<<"$codex_command"
             (
                 umask "$AGENT_UMASK"
                 "${codex_argv[@]}" "$full_prompt" >"$output_dir/codex.log" 2>&1
@@ -157,10 +191,14 @@ if $run_claude; then
         status=1
     else
         claude_command=${AGENT_FANOUT_CLAUDE_COMMAND:-claude -p --max-turns 15}
+        read -r -a claude_argv <<<"$claude_command"
+        if [[ -n $claude_profile_args ]]; then
+            read -r -a claude_profile_argv <<<"$claude_profile_args"
+            claude_argv=("${claude_argv[0]}" "${claude_profile_argv[@]}" "${claude_argv[@]:1}")
+        fi
         if $dry_run; then
-            printf 'DRY RUN: %s <prompt>\n' "$claude_command" >"$output_dir/claude.log"
+            printf 'DRY RUN: %s <prompt>\n' "${claude_argv[*]}" >"$output_dir/claude.log"
         else
-            read -r -a claude_argv <<<"$claude_command"
             (
                 umask "$AGENT_UMASK"
                 "${claude_argv[@]}" "$full_prompt" >"$output_dir/claude.log" 2>&1

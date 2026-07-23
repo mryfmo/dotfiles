@@ -97,13 +97,12 @@
 - ユーザが明示的に Crit web UI を求めた場合、または Crit data を取得できない場合だけ `crit --no-open` または `crit` を使ってください。その場合は `http://localhost` で始まるレビュー URL と「Finish Review をクリックする」旨をユーザ向けメッセージとして TUI 上に表示し、完了後に receipt を作り `CRIT_REVIEWED=1 REVIEW_EVIDENCE=<receipt> make require-crit-review` を通してください。
 - ユーザが明示的に Crit/review を無効化した場合のみ `CRIT_REVIEW=off` を使ってください。
 
-## モデル選択と ccgate
+## モデル選択
 
-- タスクに必要な最小限のモデルを選択してください。単純な読み取り、検索、整形、軽微な編集だけを続ける場合は gpt-5.5 や推論 tier の大型モデルを使い続けないでください。
-- ccgate はモデルルータではなく PermissionRequest gate です。`provider.model` は ccgate の許可判定に使う小型分類器であり、Codex のタスク実行モデルではありません。
-- Codex の PermissionRequest では ccgate が `HookInput.model` を参照できます。これは比例性の補助信号であり、必要な調査・検索・read 操作を大型モデルという理由だけで止めるためのものではありません。
-- ccgate に過剰・危険・広すぎる操作を止められた場合は、小さいモデルへ切り替えるか、タスクを大型モデルが必要な範囲に絞ってから再実行してください。
-- ccgate の判定傾向は `ccgate codex metrics --details 5` で確認し、fallthrough や deny が多い具体的な操作を見てルールを調整してください。
+- モデル ID と reasoning effort の正本は dotfiles の `home/dot_agents/agent-config.yaml` の `model_profiles` だけです。profile は `~/.codex/<profile>.config.toml` と `~/.agents/model-profiles.env` に生成されます。モデル変更は manifest で行い、launcher やルールに直書きしないでください。
+- 通常の実装・デバッグは `codex --profile standard`、読み取り・検索・抽出だけの作業は `--profile express`、独立レビューは `--profile review`、横断設計・未知の障害・セキュリティ関連だけ `--profile deep` を使ってください。難所が終わったら standard へ戻してください。
+- セッション途中でモデルを切り替えず、profile はセッション起動時に選んでください。
+- ccgate の PermissionRequest hook は無効化済みです(分類クレデンシャル未設定のため判定実績ゼロ)。許可プロンプトは Codex native の確認をそのまま使ってください。専用 API キーを用意する判断をした場合のみ再有効化します。
 
 ## Ponytail
 

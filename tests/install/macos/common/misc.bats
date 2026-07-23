@@ -35,8 +35,9 @@ function setup() {
     # because of the time it takes to install the cask packages.
 }
 
-@test "[macos] misc leaves Herdr to mise and includes Zed cask" {
+@test "[macos] misc leaves Herdr to mise, excludes VS Code, and includes Zed cask" {
     [[ " ${BREW_PACKAGES[*]} " != *" herdr "* ]]
+    [[ " ${CASK_PACKAGES[*]} " != *" visual-studio-code "* ]]
     [[ " ${CASK_PACKAGES[*]} " == *" zed "* ]]
 }
 

@@ -14,6 +14,10 @@ RUNTIME_PREFIXES = (
     "projects",
 )
 
+# Formerly managed tables that must not survive as private user tables once
+# the managed template stops emitting them.
+REMOVED_MANAGED_PREFIXES = ("hooks.PermissionRequest",)
+
 
 def source_dir() -> Path:
     if os.environ.get("CHEZMOI_SOURCE_DIR"):
@@ -91,6 +95,12 @@ def runtime_prefix(name: str | None) -> str | None:
     return None
 
 
+def is_removed_managed_table(name: str | None) -> bool:
+    if name is None:
+        return False
+    return any(name == prefix or name.startswith(f"{prefix}.") for prefix in REMOVED_MANAGED_PREFIXES)
+
+
 def merge_config(managed: str, current: str) -> str:
     if not current.strip():
         return managed
@@ -139,6 +149,8 @@ def merge_config(managed: str, current: str) -> str:
         if name is None:
             continue
         if name in emitted_current:
+            continue
+        if is_removed_managed_table(name):
             continue
         prefix = runtime_prefix(name)
         if prefix is not None:

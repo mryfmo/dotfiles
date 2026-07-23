@@ -22,7 +22,6 @@ readonly CASK_PACKAGES=(
     google-drive
     google-japanese-ime
     rectangle
-    visual-studio-code
     zed
 )
 

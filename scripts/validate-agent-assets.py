@@ -175,15 +175,18 @@ def validate_codex_agmsg_writable_roots(sandbox_workspace_write: dict[str, Any],
         fail(f"{label} must include agmsg writable roots: missing={sorted(missing)}")
 
 
-def validate_claude_settings() -> None:
+def validate_claude_settings(manifest: dict[str, Any]) -> None:
     settings_path = ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
     settings = json.loads(render_template_text(settings_path))
     if settings.get("$schema") != "https://json.schemastore.org/claude-code-settings.json":
         fail(f"{settings_path} must declare the Claude Code settings schema")
-    if settings.get("model") != "claude-fable-5[1m]":
-        fail(f"{settings_path} must pin Claude Fable 5")
-    if settings.get("effortLevel") != "high":
-        fail(f"{settings_path} must pin high effort")
+    interactive = manifest.get("model_profiles", {}).get(manifest.get("interactive_profile"), {}).get("claude", {})
+    if settings.get("model") != interactive.get("model"):
+        fail(f"{settings_path} must render the interactive profile model")
+    if settings.get("effortLevel") != interactive.get("effort"):
+        fail(f"{settings_path} must render the interactive profile effort")
+    if "[1m]" in str(settings.get("model")):
+        fail(f"{settings_path} must not use the redundant [1m] suffix")
     commands = json.dumps(settings.get("hooks", {}), ensure_ascii=False)
     legacy_type_checker = "uvx " + "my" + "py"
     if legacy_type_checker in commands:
@@ -205,7 +208,12 @@ def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
         fail(f"{codex_path} must declare the Codex config schema")
     data = tomllib.loads(text)
     manifest_codex = manifest.get("codex", {})
-    for key in ("model", "model_reasoning_effort", "model_reasoning_summary", "model_verbosity", "personality"):
+    interactive = manifest.get("model_profiles", {}).get(manifest.get("interactive_profile"), {}).get("codex", {})
+    if data.get("model") != interactive.get("model"):
+        fail(f"{codex_path} must render the interactive profile model")
+    if data.get("model_reasoning_effort") != interactive.get("model_reasoning_effort"):
+        fail(f"{codex_path} must render the interactive profile reasoning effort")
+    for key in ("model_reasoning_summary", "model_verbosity", "personality"):
         if manifest_codex.get(key) != data.get(key):
             fail(f"{codex_path} must render codex.{key} from the shared manifest")
     if data.get("sandbox_mode") != "workspace-write":
@@ -294,8 +302,19 @@ def validate_agent_manifest() -> dict[str, Any]:
     if codex_plugins.get("crit@mryfmo-personal-plugins", {}).get("enabled") is not True:
         fail(f"{manifest_path} must enable the Crit Codex plugin")
     claude = manifest.get("claude", {})
-    if claude.get("model") != "claude-fable-5[1m]" or claude.get("effortLevel") != "high":
-        fail(f"{manifest_path} must pin Claude Fable 5 with high effort")
+    profiles = manifest.get("model_profiles", {})
+    for required in ("express", "standard", "review", "deep"):
+        if required not in profiles:
+            fail(f"{manifest_path} must define model profile {required}")
+    if manifest.get("interactive_profile") not in profiles:
+        fail(f"{manifest_path} interactive_profile must name a defined model profile")
+    for name, profile in profiles.items():
+        for agent, keys in (("claude", ("model", "effort")), ("codex", ("model", "model_reasoning_effort"))):
+            for key in keys:
+                if not profile.get(agent, {}).get(key):
+                    fail(f"{manifest_path} model profile {name}.{agent}.{key} is required")
+    if claude.get("model") or claude.get("effortLevel") or manifest.get("codex", {}).get("model"):
+        fail(f"{manifest_path} must keep model settings in model_profiles only")
     for name, server in manifest.get("mcp_servers", {}).items():
         if server.get("enabled", False) is not False:
             fail(f"MCP server {name} must be disabled by default in the shared manifest")
@@ -475,66 +494,72 @@ def validate_ponytail_assets(manifest: dict[str, Any], codex: dict[str, Any]) ->
             fail(f"README.md must document Ponytail lifecycle token {token!r}")
 
 
-def validate_ccgate_assets() -> None:
-    updater = (ROOT / "scripts/update-agent-assets.sh").read_text()
-    for token in (
-        "aqua:tak848/ccgate",
-        "ccgate --version",
-    ):
-        if token not in updater:
-            fail(f"scripts/update-agent-assets.sh must manage ccgate asset token {token!r}")
-    mise_config = (ROOT / "home/dot_mise/config.toml").read_text()
-    if '"aqua:tak848/ccgate" = "0.9.5"' not in mise_config:
-        fail("home/dot_mise/config.toml must activate aqua:tak848/ccgate")
-
+def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
     codex_path = ROOT / "home/.chezmoitemplates/codex-config-managed.toml"
     codex_text = render_template_text(codex_path)
-    for token in ("[[hooks.PermissionRequest]]", "ccgate codex", "ccgate evaluating request"):
-        if token not in codex_text:
-            fail(f"{codex_path} must configure Codex ccgate hook token {token!r}")
+    if "hooks.PermissionRequest" in codex_text or "ccgate" in codex_text:
+        fail(f"{codex_path} must not wire the disabled ccgate PermissionRequest hook")
 
     claude_settings_path = ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
     claude_settings = json.loads(render_template_text(claude_settings_path))
     claude_hooks = json.dumps(claude_settings.get("hooks", {}), ensure_ascii=False)
-    for token in ("PermissionRequest", "ccgate claude"):
-        if token not in claude_hooks:
-            fail(f"{claude_settings_path} must configure Claude ccgate hook token {token!r}")
+    if "PermissionRequest" in claude_hooks or "ccgate" in claude_hooks:
+        fail(f"{claude_settings_path} must not wire the disabled ccgate PermissionRequest hook")
 
-    ccgate_configs = {
-        ROOT / "home/dot_codex/ccgate.jsonnet": (
-            "ccgate codex",
-            "HookInput.model",
-            "proportionality context",
-            "Do not deny necessary read-only inspection",
-            "Use metrics later",
-        ),
-        ROOT / "home/dot_claude/ccgate.jsonnet": (
-            "ccgate claude",
-            "does not expose the active task model",
-            "claude-haiku-4-5",
-            "Use metrics later",
-        ),
-    }
-    for path, tokens in ccgate_configs.items():
-        if not path.exists():
-            fail(f"{path} is missing")
-        text = path.read_text()
-        for token in tokens:
-            if token not in text:
-                fail(f"{path} must contain ccgate policy token {token!r}")
+    for stale in (ROOT / "home/dot_codex/ccgate.jsonnet", ROOT / "home/dot_claude/ccgate.jsonnet"):
+        if stale.exists():
+            fail(f"{stale} must be removed while ccgate hooks are disabled")
+    removals = (ROOT / "home/.chezmoiremove").read_text() if (ROOT / "home/.chezmoiremove").exists() else ""
+    for target in (".codex/ccgate.jsonnet", ".claude/ccgate.jsonnet"):
+        if target not in removals:
+            fail(f"home/.chezmoiremove must clean up {target}")
+
+    profiles = manifest.get("model_profiles", {})
+    for name, profile in profiles.items():
+        profile_path = ROOT / "home/dot_codex" / f"{name}.config.toml"
+        if not profile_path.exists():
+            fail(f"{profile_path} is missing for model profile {name}")
+        profile_data = tomllib.loads(profile_path.read_text())
+        if profile_data.get("model") != profile.get("codex", {}).get("model"):
+            fail(f"{profile_path} must render the {name} profile model")
+        if profile_data.get("model_reasoning_effort") != profile.get("codex", {}).get("model_reasoning_effort"):
+            fail(f"{profile_path} must render the {name} profile reasoning effort")
+
+    env_path = ROOT / "home/dot_agents/model-profiles.env"
+    if not env_path.exists():
+        fail(f"{env_path} is missing")
+    env_text = env_path.read_text()
+    for token in ("MODEL_PROFILE_INTERACTIVE", "MODEL_PROFILE_STANDARD_CODEX_ARGS", "MODEL_PROFILE_EXPRESS_CLAUDE_ARGS"):
+        if token not in env_text:
+            fail(f"{env_path} must define {token}")
+
+    express_agent = ROOT / "home/dot_claude/agents/express-explorer.md"
+    if not express_agent.exists() or "model:" not in express_agent.read_text():
+        fail(f"{express_agent} must define the low-cost explorer subagent")
+
+    herdr = (ROOT / "home/dot_local/bin/common/executable_herdr-agents").read_text()
+    fanout = (ROOT / "home/dot_local/bin/common/executable_agent-fanout").read_text()
+    for launcher_text, label in ((herdr, "herdr-agents"), (fanout, "agent-fanout")):
+        for token in ("claude-fable-5", "gpt-5.6", "model_reasoning_effort="):
+            if token in launcher_text:
+                fail(f"{label} must not hardcode model settings: {token!r}")
+    if "HERDR_AGENTS_CODEX_PROFILE" not in herdr:
+        fail("herdr-agents must launch the Codex worker with a model profile")
+    if "model-profiles.env" not in fanout:
+        fail("agent-fanout must resolve profile args from model-profiles.env")
 
     codex_agents = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
-    for token in ("ccgate", "HookInput.model", "provider.model", "metrics --details 5", "最小限のモデル"):
+    for token in ("model_profiles", "--profile standard", "model-profiles.env"):
         if token not in codex_agents:
-            fail(f"home/dot_config/codex/AGENTS.md must document ccgate model token {token!r}")
+            fail(f"home/dot_config/codex/AGENTS.md must document model profile token {token!r}")
 
     claude_rule = ROOT / "home/dot_config/claude/rules/model-selection.md"
     if not claude_rule.exists():
         fail("Claude Code model-selection rule is missing")
     claude_rule_text = claude_rule.read_text()
-    for token in ("ccgate", "PermissionRequest", "provider.model", "metrics --details 5", "smallest Claude Code model"):
+    for token in ("model_profiles", "express-explorer", "review"):
         if token not in claude_rule_text:
-            fail(f"{claude_rule} must document ccgate model token {token!r}")
+            fail(f"{claude_rule} must document model profile token {token!r}")
 
 
 def validate_git_config() -> None:
@@ -632,7 +657,7 @@ def main() -> None:
     validate_skills()
     validate_claude_skill_parity()
     validate_agmsg_script_modes()
-    validate_claude_settings()
+    validate_claude_settings(manifest)
     validate_codex_plugins()
     validate_codex_modify_script()
     codex = validate_codex_config(manifest)
@@ -641,7 +666,7 @@ def main() -> None:
     validate_cognee_install_assets(manifest)
     validate_crit_install_assets()
     validate_ponytail_assets(manifest, codex)
-    validate_ccgate_assets()
+    validate_model_profile_assets(manifest)
     validate_git_config()
     validate_no_removed_claude_skill()
     validate_no_obvious_secrets()

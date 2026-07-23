@@ -224,6 +224,10 @@ function run_mise_tool_command() {
         fi
 
         if [ "${mise_command}" = "upgrade" ]; then
+            if [[ "${mise_tool}" == http:* ]]; then
+                printf 'Skipping mise upgrade for pinned HTTP tool: %s.\n' "${mise_tool}"
+                continue
+            fi
             # ponytail: keep fd pinned until upstream publishes macOS x64 assets again.
             if [ "${mise_tool}" = "fd" ]; then
                 printf 'Skipping mise upgrade for fd: newer releases lack a macOS x64 asset.\n'
@@ -286,23 +290,8 @@ function repair_mise_npm_package() {
         --prefix "${install_prefix}" \
         --ignore-scripts=false \
         --include=optional \
+        --allow-scripts="${npm_package}" \
         "${npm_package}@${package_version}"
-}
-
-#
-# @description Remove a node-global npm package so its dedicated mise npm tool is used.
-# @arg $1 string npm package name, for example @scope/package.
-#
-function remove_node_global_npm_package() {
-    local npm_package="$1"
-
-    if ! has_command npm; then
-        return 0
-    fi
-
-    if npm list -g "${npm_package}" --depth=0 > /dev/null 2>&1; then
-        npm uninstall -g "${npm_package}"
-    fi
 }
 
 #
@@ -343,14 +332,10 @@ function upgrade_agent_cli_tools() {
 
     section "agent CLI tools"
     local failed=0
-    if upgrade_mise_npm_agent_tool "npm:@openai/codex" "@openai/codex"; then
-        remove_node_global_npm_package "@openai/codex" || failed=1
-    else
+    if ! upgrade_mise_npm_agent_tool "npm:@openai/codex" "@openai/codex"; then
         failed=1
     fi
-    if upgrade_mise_npm_agent_tool "npm:@anthropic-ai/claude-code" "@anthropic-ai/claude-code"; then
-        remove_node_global_npm_package "@anthropic-ai/claude-code" || failed=1
-    else
+    if ! upgrade_mise_npm_agent_tool "npm:@anthropic-ai/claude-code" "@anthropic-ai/claude-code"; then
         failed=1
     fi
     return "${failed}"

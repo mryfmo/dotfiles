@@ -17,11 +17,12 @@ Generated files include:
 
 - `home/.chezmoitemplates/codex-config-managed.toml`
 - `home/dot_codex/modify_private_config.toml`
-- `home/dot_codex/ccgate.jsonnet`
+- `home/dot_codex/<profile>.config.toml` (one per `model_profiles` entry)
 - `home/.chezmoitemplates/claude-settings-managed.json`
 - `home/dot_claude/private_mcp.json.tmpl`
-- `home/dot_claude/ccgate.jsonnet`
+- `home/dot_claude/agents/express-explorer.md`
 - `home/dot_claude/skills/**/symlink_*.tmpl`
+- `home/dot_agents/model-profiles.env`
 - `home/dot_agents/plugins/marketplace.json`
 - `home/dot_agents/plugins/mryfmo-dev-workflows/.codex-plugin/plugin.json`
 

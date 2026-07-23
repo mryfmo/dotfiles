@@ -22,17 +22,35 @@ skills:
   canonical_dir: ~/.agents/skills
   creation_nudge_interval: 15
 
+# Model IDs and efforts live only in this map. Profiles render into Claude
+# settings, per-profile Codex config files (~/.codex/<name>.config.toml), and
+# ~/.agents/model-profiles.env for launchers. Keep main-session models fixed
+# within a session; switching models mid-session invalidates the prompt cache.
+model_profiles:
+  express:
+    claude: { model: haiku, effort: low }
+    codex: { model: gpt-5.6-luna, model_reasoning_effort: low }
+  standard:
+    claude: { model: sonnet, effort: high }
+    codex: { model: gpt-5.6-terra, model_reasoning_effort: medium }
+  review:
+    # One capability tier above the worker at reduced effort.
+    claude: { model: sonnet, effort: medium }
+    codex: { model: gpt-5.6-sol, model_reasoning_effort: low }
+  deep:
+    claude: { model: claude-fable-5, effort: high }
+    codex: { model: gpt-5.6-sol, model_reasoning_effort: high }
+interactive_profile: deep
+
 codex:
   config_path: home/.chezmoitemplates/codex-config-managed.toml
-  ccgate_config_path: home/dot_codex/ccgate.jsonnet
-  model: gpt-5.6-sol
-  model_reasoning_effort: high
   model_reasoning_summary: concise
   model_verbosity: low
   personality: pragmatic
   approval_policy: on-request
   sandbox_mode: workspace-write
   web_search: cached
+  check_for_update_on_startup: false
   project_doc_max_bytes: 65536
   project_doc_fallback_filenames:
     - CLAUDE.md
@@ -76,10 +94,7 @@ codex:
       source_type: git
       source: https://github.com/DietrichGebert/ponytail.git
   hooks:
-    ccgate_permission_request_hook: ccgate codex
     state:
-      '{{ .chezmoi.homeDir }}/.codex/config.toml:permission_request:0:0':
-        trusted_hash: sha256:8dc151da52267d3d71565b578be07cff7a133967c34c40dd9308b9d5eaee29f6
       crit@mryfmo-personal-plugins:hooks/hooks.json:stop:0:0:
         trusted_hash: sha256:bf6ad428ae7902810fa2d68d8db42228377af118aa18508ad0eccf73a95ed1f8
       ponytail@ponytail:hooks/claude-codex-hooks.json:session_start:0:0:
@@ -95,10 +110,9 @@ codex:
 claude:
   settings_path: home/.chezmoitemplates/claude-settings-managed.json
   mcp_config_path: home/dot_claude/private_mcp.json.tmpl
-  ccgate_config_path: home/dot_claude/ccgate.jsonnet
   schema: https://json.schemastore.org/claude-code-settings.json
-  model: claude-fable-5[1m]
-  effortLevel: high
+  # No effect on Fable 5 (thinking cannot be disabled there); applies when the
+  # interactive profile maps to Sonnet or below.
   alwaysThinkingEnabled: true
   autoUpdates: false
   autoUpdatesChannel: stable
@@ -126,7 +140,6 @@ claude:
       - Bash(terraform apply:*)
       - Bash(kubectl apply:*)
   hooks:
-    ccgate_permission_request_hook: ccgate claude
     enforce_uv_hook: ~/.claude/hooks/enforce-uv.sh
     format_edited_files_hook: ~/.claude/hooks/format-edited-files.py
     session_start:

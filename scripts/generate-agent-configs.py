@@ -6,10 +6,9 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import shutil
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 try:
     import yaml
@@ -21,14 +20,16 @@ MANIFEST_PATH = ROOT / "home/dot_agents/agent-config.yaml"
 GENERATED_HEADER = "Generated from home/dot_agents/agent-config.yaml by scripts/generate-agent-configs.py."
 
 
-def fail(message: str) -> None:
+def fail(message: str) -> NoReturn:
     print(f"ERROR: {message}", file=sys.stderr)
     raise SystemExit(1)
 
 
 def load_manifest() -> dict[str, Any]:
     if yaml is None:
-        fail("PyYAML is required: uv run --with pyyaml scripts/generate-agent-configs.py")
+        fail(
+            "PyYAML is required: uv run --with pyyaml scripts/generate-agent-configs.py"
+        )
     data = yaml.safe_load(MANIFEST_PATH.read_text())
     if not isinstance(data, dict):
         fail(f"{MANIFEST_PATH} must contain a YAML mapping")
@@ -51,7 +52,14 @@ def quote_toml(value: Any) -> str:
     if isinstance(value, list):
         return "[" + ", ".join(quote_toml(item) for item in value) + "]"
     if isinstance(value, dict):
-        return "{ " + ", ".join(f"{quote_toml_key(str(key))} = {quote_toml(item)}" for key, item in value.items()) + " }"
+        return (
+            "{ "
+            + ", ".join(
+                f"{quote_toml_key(str(key))} = {quote_toml(item)}"
+                for key, item in value.items()
+            )
+            + " }"
+        )
     fail(f"unsupported TOML value: {value!r}")
 
 
@@ -69,6 +77,47 @@ def enabled_for(server: dict[str, Any], agent: str) -> bool:
     return bool(server.get("agents", {}).get(agent, False))
 
 
+PROFILE_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+PROFILE_VALUE_RE = re.compile(r"^[A-Za-z0-9._\[\]-]+$")
+PROFILE_AGENT_KEYS = {
+    "claude": ("model", "effort"),
+    "codex": ("model", "model_reasoning_effort"),
+}
+
+
+def model_profiles(manifest: dict[str, Any]) -> dict[str, Any]:
+    profiles = manifest.get("model_profiles")
+    if not isinstance(profiles, dict) or not profiles:
+        fail("model_profiles must be a non-empty mapping")
+    for required in ("express", "standard"):
+        if required not in profiles:
+            fail(f"model_profiles must define the {required} profile")
+    for name, profile in profiles.items():
+        if not PROFILE_NAME_RE.match(str(name)):
+            fail(f"model profile name is not launcher-safe: {name}")
+        if not isinstance(profile, dict):
+            fail(f"model profile {name} must be a mapping")
+        for agent, keys in PROFILE_AGENT_KEYS.items():
+            mapping = profile.get(agent)
+            if not isinstance(mapping, dict):
+                fail(f"model profile {name} is missing {agent}")
+            for key in keys:
+                value = mapping.get(key)
+                if not isinstance(value, str) or not PROFILE_VALUE_RE.match(value):
+                    fail(
+                        f"model profile {name}.{agent}.{key} must be a launcher-safe string"
+                    )
+    return profiles
+
+
+def interactive_profile(manifest: dict[str, Any]) -> dict[str, Any]:
+    profiles = model_profiles(manifest)
+    name = manifest.get("interactive_profile")
+    if name not in profiles:
+        fail(f"interactive_profile must name a model profile: {name!r}")
+    return profiles[name]
+
+
 def render_codex(manifest: dict[str, Any]) -> str:
     codex = manifest["codex"]
     lines = [
@@ -79,15 +128,19 @@ def render_codex(manifest: dict[str, Any]) -> str:
         "# Codex-managed credential storage for MCP authentication.",
         "",
     ]
+    profile_codex = interactive_profile(manifest)["codex"]
+    lines.append(f"model = {quote_toml(profile_codex['model'])}")
+    lines.append(
+        f"model_reasoning_effort = {quote_toml(profile_codex['model_reasoning_effort'])}"
+    )
     for key in (
-        "model",
-        "model_reasoning_effort",
         "model_reasoning_summary",
         "model_verbosity",
         "personality",
         "approval_policy",
         "sandbox_mode",
         "web_search",
+        "check_for_update_on_startup",
         "project_doc_max_bytes",
         "project_doc_fallback_filenames",
     ):
@@ -103,11 +156,17 @@ def render_codex(manifest: dict[str, Any]) -> str:
                 continue
             lines.extend(["", f"[tui.{quote_toml_key(key)}]"])
             for nested_key, nested_value in value.items():
-                lines.append(f"{quote_toml_key(str(nested_key))} = {quote_toml(nested_value)}")
+                lines.append(
+                    f"{quote_toml_key(str(nested_key))} = {quote_toml(nested_value)}"
+                )
     lines.extend(["", "[sandbox_workspace_write]"])
-    lines.append(f"network_access = {quote_toml(codex['sandbox_workspace_write']['network_access'])}")
+    lines.append(
+        f"network_access = {quote_toml(codex['sandbox_workspace_write']['network_access'])}"
+    )
     if codex["sandbox_workspace_write"].get("writable_roots") is not None:
-        lines.append(f"writable_roots = {quote_toml(codex['sandbox_workspace_write']['writable_roots'])}")
+        lines.append(
+            f"writable_roots = {quote_toml(codex['sandbox_workspace_write']['writable_roots'])}"
+        )
     lines.extend(["", "[shell_environment_policy]"])
     for key, value in codex["shell_environment_policy"].items():
         lines.append(f"{quote_toml_key(str(key))} = {quote_toml(value)}")
@@ -127,11 +186,15 @@ def render_codex(manifest: dict[str, Any]) -> str:
         elif server["transport"] == "http":
             lines.append(f"url = {quote_toml(server['url'])}")
             if server.get("bearer_token_env_var"):
-                lines.append(f"bearer_token_env_var = {quote_toml(server['bearer_token_env_var'])}")
+                lines.append(
+                    f"bearer_token_env_var = {quote_toml(server['bearer_token_env_var'])}"
+                )
             if server.get("http_headers"):
                 lines.append(f"http_headers = {quote_toml(server['http_headers'])}")
             if server.get("env_http_headers"):
-                lines.append(f"env_http_headers = {quote_toml(server['env_http_headers'])}")
+                lines.append(
+                    f"env_http_headers = {quote_toml(server['env_http_headers'])}"
+                )
         else:
             fail(f"unsupported MCP transport for {name}: {server['transport']}")
         for key in (
@@ -163,19 +226,6 @@ def render_codex(manifest: dict[str, Any]) -> str:
         for key, value in marketplace_config.items():
             lines.append(f"{quote_toml_key(str(key))} = {quote_toml(value)}")
     hooks = codex.get("hooks", {})
-    if hooks.get("ccgate_permission_request_hook"):
-        lines.extend(
-            [
-                "",
-                "[[hooks.PermissionRequest]]",
-                'matcher = ""',
-                "",
-                "[[hooks.PermissionRequest.hooks]]",
-                'type = "command"',
-                f"command = {quote_toml(hooks['ccgate_permission_request_hook'])}",
-                'statusMessage = "ccgate evaluating request"',
-            ]
-        )
     if hooks.get("state"):
         lines.extend(["", "[hooks.state]"])
         for hook_key, hook_config in hooks["state"].items():
@@ -200,10 +250,11 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
                 "command": hooks["format_edited_files_hook"],
             }
         )
+    profile_claude = interactive_profile(manifest)["claude"]
     settings: dict[str, Any] = {
         "$schema": claude["schema"],
-        "model": claude["model"],
-        "effortLevel": claude["effortLevel"],
+        "model": profile_claude["model"],
+        "effortLevel": profile_claude["effort"],
         "alwaysThinkingEnabled": claude["alwaysThinkingEnabled"],
         "autoUpdates": claude["autoUpdates"],
         "autoUpdatesChannel": claude["autoUpdatesChannel"],
@@ -214,17 +265,6 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
             "ask": claude["permissions"]["ask"],
         },
         "hooks": {
-            "PermissionRequest": [
-                {
-                    "matcher": "",
-                    "hooks": [
-                        {
-                            "type": "command",
-                            "command": hooks["ccgate_permission_request_hook"],
-                        }
-                    ],
-                }
-            ],
             "PreToolUse": [
                 {
                     "matcher": "Bash",
@@ -250,65 +290,6 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
         "enabledPlugins": claude["enabledPlugins"],
     }
     return json_dumps(settings)
-
-
-def render_ccgate_config(target: str) -> str:
-    if target == "codex":
-        schema = "https://raw.githubusercontent.com/tak848/ccgate/main/schemas/codex.schema.json"
-        lines = [
-            "{",
-            f"  // {GENERATED_HEADER}",
-            f"  ['$schema']: {json.dumps(schema)},",
-            "  provider: {",
-            "    name: 'anthropic',",
-            "    model: 'claude-haiku-4-5',",
-            "  },",
-            "  fallthrough_strategy: 'ask',",
-            "  append_environment: [",
-            "    'ccgate codex is an LLM-backed PermissionRequest gate. Its purpose is to automate clear permission prompts while preserving safety, human review, and useful feedback to the agent.',",
-            "    'The provider model is the ccgate classifier model, not the active Codex task model. Keep permission classification on a small structured-output model and do not spend premium task models on gating.',",
-            "    'Codex HookInput.model is available. Use it as proportionality context, not as a deterministic block. Premium models such as gpt-5.5, gpt-5, and reasoning-tier models are appropriate for architecture, ambiguous debugging, multi-file design, security-sensitive review, and high-stakes decisions.',",
-            "    'Do not deny necessary read-only inspection, search, or small setup commands solely because a premium model is active. Those operations are often part of a larger task that legitimately needs the active model.',",
-            "    'Prefer fallthrough for ambiguous model-proportionality decisions in interactive TUI sessions. Use metrics later to tune repeated fallthrough or deny patterns.',",
-            "  ],",
-            "  append_allow: [",
-            "    'Allow focused read-only inspection, search, status, diff, and version checks when they support the current task and do not expose secrets, escalate privilege, modify files, or access the network.',",
-            "  ],",
-            "  append_deny: [",
-            "    'Deny only when the requested action is clearly unsafe, overbroad, destructive, privileged, network-executing without explicit need, or a repeated trivial operation under a premium active model that is unrelated to any complex user task. deny_message: Narrow the operation or switch to a smaller model before retrying; ccgate should guide model proportionality without blocking necessary task inspection.',",
-            "  ],",
-            "}",
-            "",
-        ]
-    elif target == "claude":
-        schema = "https://raw.githubusercontent.com/tak848/ccgate/main/schemas/claude.schema.json"
-        lines = [
-            "{",
-            f"  // {GENERATED_HEADER}",
-            f"  ['$schema']: {json.dumps(schema)},",
-            "  provider: {",
-            "    name: 'anthropic',",
-            "    model: 'claude-haiku-4-5',",
-            "  },",
-            "  fallthrough_strategy: 'ask',",
-            "  append_environment: [",
-            "    'ccgate claude is an LLM-backed PermissionRequest gate. Its purpose is to automate clear permission prompts while preserving safety, human review, and useful feedback to the agent.',",
-            "    'The provider model is the ccgate classifier model, not the active Claude Code task model. Keep permission classification on a small structured-output model and do not spend premium task models on gating.',",
-            "    'Claude Code PermissionRequest input does not expose the active task model. Model governance for Claude Code must come from settings and agent rules; ccgate can only judge the requested tool action and return allow, deny, or fallthrough.',",
-            "    'Prefer fallthrough for ambiguous model-proportionality decisions in interactive TUI sessions. Use metrics later to tune repeated fallthrough or deny patterns.',",
-            "  ],",
-            "  append_allow: [",
-            "    'Allow focused read-only inspection, search, status, diff, and version checks when they support the current task and do not expose secrets, escalate privilege, modify files, or access the network.',",
-            "  ],",
-            "  append_deny: [",
-            "    'Deny only when the requested action is clearly unsafe, overbroad, destructive, privileged, network-executing without explicit need, or too broad to be a permission-safe unit. deny_message: Narrow the operation and choose the smallest Claude Code model adequate for the task before retrying.',",
-            "  ],",
-            "}",
-            "",
-        ]
-    else:
-        fail(f"unsupported ccgate target: {target}")
-    return "\n".join(lines)
 
 
 def claude_mcp_entry(server: dict[str, Any]) -> dict[str, Any]:
@@ -340,10 +321,7 @@ def render_claude_mcp(manifest: dict[str, Any]) -> str:
             if enabled_for(server, "claude")
         }
     }
-    return (
-        "{{/* " + GENERATED_HEADER + " */}}\n"
-        + json_dumps(data)
-    )
+    return "{{/* " + GENERATED_HEADER + " */}}\n" + json_dumps(data)
 
 
 def render_marketplace(manifest: dict[str, Any]) -> str:
@@ -403,30 +381,89 @@ def claude_skill_symlink_outputs() -> dict[Path, str]:
     claude_root = ROOT / "home/dot_claude/skills"
     if not skills_root.exists():
         return outputs
-    for source_file in sorted(path for path in skills_root.rglob("*") if path.is_file()):
+    for source_file in sorted(
+        path for path in skills_root.rglob("*") if path.is_file()
+    ):
         if source_file.name.startswith("."):
             continue
         rel = source_file.relative_to(skills_root)
         target_path = rel.with_name(chezmoi_target_name(rel.name))
         target_dir = claude_root / target_path.parent
-        outputs[target_dir / f"symlink_{target_path.name}.tmpl"] = render_claude_skill_symlink(source_file)
+        outputs[target_dir / f"symlink_{target_path.name}.tmpl"] = (
+            render_claude_skill_symlink(source_file)
+        )
     return outputs
+
+
+
+def render_codex_profile(name: str, profile: dict[str, Any]) -> str:
+    codex = profile["codex"]
+    lines = [
+        f'# Codex model profile "{name}"; launch with: codex --profile {name}',
+        f"# {GENERATED_HEADER}",
+        "",
+        f"model = {quote_toml(codex['model'])}",
+        f"model_reasoning_effort = {quote_toml(codex['model_reasoning_effort'])}",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def render_model_profiles_env(manifest: dict[str, Any]) -> str:
+    profiles = model_profiles(manifest)
+    interactive_profile(manifest)
+    lines = [
+        "# Shell fragment sourced by agent launchers (herdr-agents, agent-fanout).",
+        f"# {GENERATED_HEADER}",
+        f'MODEL_PROFILE_INTERACTIVE="{manifest["interactive_profile"]}"',
+    ]
+    for name, profile in sorted(profiles.items()):
+        var = str(name).upper()
+        claude = profile["claude"]
+        lines.append(
+            f'MODEL_PROFILE_{var}_CLAUDE_ARGS="--model {claude["model"]} --effort {claude["effort"]}"'
+        )
+        lines.append(f'MODEL_PROFILE_{var}_CODEX_ARGS="--profile {name}"')
+    return "\n".join(lines) + "\n"
+
+
+def render_claude_express_agent(manifest: dict[str, Any]) -> str:
+    express = model_profiles(manifest)["express"]["claude"]
+    return (
+        "---\n"
+        "name: express-explorer\n"
+        "description: Read-only exploration on a low-cost model. Use for codebase searches, file location, and fact gathering whose verbose output should stay out of the main context.\n"
+        "tools: Read, Glob, Grep\n"
+        f"model: {express['model']}\n"
+        f"effort: {express['effort']}\n"
+        "---\n"
+        "\n"
+        f"<!-- {GENERATED_HEADER} -->\n"
+        "\n"
+        "You are a fast, read-only codebase explorer. Locate files, trace call\n"
+        "paths, and report findings as compact summaries with file:line\n"
+        "references. Never edit files and never run shell commands. Say so when a\n"
+        "question needs deeper analysis than a read-only pass can support.\n"
+    )
 
 
 def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
     outputs = {
         ROOT / manifest["codex"]["config_path"]: render_codex(manifest),
-        ROOT / manifest["codex"]["ccgate_config_path"]: render_ccgate_config("codex"),
         ROOT / manifest["claude"]["settings_path"]: render_claude_settings(manifest),
         ROOT / manifest["claude"]["mcp_config_path"]: render_claude_mcp(manifest),
-        ROOT / manifest["claude"]["ccgate_config_path"]: render_ccgate_config("claude"),
         ROOT / manifest["plugins"]["marketplace_path"]: render_marketplace(manifest),
     }
+    for name, profile in sorted(model_profiles(manifest).items()):
+        outputs[ROOT / "home/dot_codex" / f"{name}.config.toml"] = render_codex_profile(name, profile)
+    outputs[ROOT / "home/dot_agents/model-profiles.env"] = render_model_profiles_env(manifest)
+    outputs[ROOT / "home/dot_claude/agents/express-explorer.md"] = render_claude_express_agent(manifest)
     for plugin in manifest["plugins"].get("codex_plugins", []):
         if not plugin.get("managed_manifest", True):
             continue
         source_path = plugin["source_path"].removeprefix("./")
-        outputs[ROOT / "home/dot_agents" / source_path / ".codex-plugin/plugin.json"] = render_codex_plugin(plugin)
+        outputs[
+            ROOT / "home/dot_agents" / source_path / ".codex-plugin/plugin.json"
+        ] = render_codex_plugin(plugin)
     outputs.update(claude_skill_symlink_outputs())
     return outputs
 
@@ -438,7 +475,12 @@ def remove_stale_generated_outputs(outputs: dict[Path, str]) -> None:
         if not generated_root.exists():
             continue
         for path in sorted(generated_root.rglob("*"), reverse=True):
-            if path.is_file() and path.name.startswith("symlink_") and path.suffix == ".tmpl" and path not in output_set:
+            if (
+                path.is_file()
+                and path.name.startswith("symlink_")
+                and path.suffix == ".tmpl"
+                and path not in output_set
+            ):
                 path.unlink()
             elif path.is_dir() and not any(path.iterdir()):
                 path.rmdir()
@@ -446,7 +488,9 @@ def remove_stale_generated_outputs(outputs: dict[Path, str]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true", help="verify generated files are up to date")
+    parser.add_argument(
+        "--check", action="store_true", help="verify generated files are up to date"
+    )
     args = parser.parse_args()
 
     manifest = load_manifest()
@@ -462,7 +506,10 @@ def main() -> None:
     if not args.check:
         remove_stale_generated_outputs(outputs)
     if stale:
-        fail("generated agent configs are stale: " + ", ".join(str(path) for path in stale))
+        fail(
+            "generated agent configs are stale: "
+            + ", ".join(str(path) for path in stale)
+        )
     if args.check:
         print("generated agent configs are up to date")
     else:

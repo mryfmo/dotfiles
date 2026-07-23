@@ -9,6 +9,7 @@ using the generated source state.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import stat
@@ -44,7 +45,7 @@ def same_text(source: Path, target: Path, template: bool = False) -> bool:
     return target.read_text() == expected
 
 
-def same_modified(source: Path, target: Path) -> bool:
+def same_modified(source: Path, target: Path, json_target: bool = False) -> bool:
     if not target.exists():
         return False
     current = target.read_text()
@@ -59,7 +60,14 @@ def same_modified(source: Path, target: Path) -> bool:
         env=env,
         check=False,
     )
-    return result.returncode == 0 and result.stdout == current
+    if result.returncode != 0:
+        return False
+    if json_target:
+        try:
+            return json.loads(result.stdout) == json.loads(current)
+        except json.JSONDecodeError:
+            return False
+    return result.stdout == current
 
 
 def is_ignored_runtime_path(rel: Path) -> bool:
@@ -254,6 +262,7 @@ def check() -> list[str]:
     if not same_modified(
         SOURCE_ROOT / "dot_claude/modify_private_settings.json",
         HOME / ".claude/settings.json",
+        json_target=True,
     ):
         failures.append(
             f"Claude settings managed keys differ or settings file is missing: {HOME / '.claude/settings.json'}"

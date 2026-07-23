@@ -108,6 +108,35 @@ class CheckAgentRuntimeTest(unittest.TestCase):
 
         self.assertEqual(self.compare(), [f"skills differs: {target}"])
 
+    def test_json_modifier_accepts_cosmetic_reserialization(self) -> None:
+        source = self.write_source(
+            "modify.py",
+            "#!/usr/bin/env python3\n"
+            "import json, sys\n"
+            "json.dump(json.load(sys.stdin), sys.stdout, indent=2, sort_keys=True)\n",
+        )
+        source.chmod(0o755)
+        target = self.write_target(
+            "settings.json",
+            '{"model":"managed","hooks":{"PreToolUse":[]}}\n',
+        )
+
+        self.assertTrue(self.module.same_modified(source, target, json_target=True))
+        self.assertFalse(self.module.same_modified(source, target))
+
+    def test_json_modifier_rejects_real_value_drift(self) -> None:
+        source = self.write_source(
+            "modify.py",
+            "#!/usr/bin/env python3\n"
+            "import json, sys\n"
+            'data = json.load(sys.stdin); data["model"] = "managed"\n'
+            "json.dump(data, sys.stdout, sort_keys=True)\n",
+        )
+        source.chmod(0o755)
+        target = self.write_target("settings.json", '{"model":"runtime"}\n')
+
+        self.assertFalse(self.module.same_modified(source, target, json_target=True))
+
 
 if __name__ == "__main__":
     unittest.main()

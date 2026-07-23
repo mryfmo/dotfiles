@@ -42,6 +42,26 @@ def load_json_object(text: str) -> dict[str, Any] | None:
     return data if isinstance(data, dict) else None
 
 
+def merge_hooks(
+    managed: dict[str, Any], current: dict[str, Any]
+) -> dict[str, Any]:
+    merged: dict[str, Any] = {}
+    for key, value in current.items():
+        managed_value = managed.get(key)
+        if isinstance(value, list) and isinstance(managed_value, list):
+            # ponytail: hook arrays are tiny; index entries only if they grow materially.
+            merged[key] = value + [entry for entry in managed_value if entry not in value]
+        elif key in managed:
+            merged[key] = managed_value
+        else:
+            merged[key] = value
+
+    for key, value in managed.items():
+        if key not in merged:
+            merged[key] = value
+    return merged
+
+
 def merge_settings(managed: dict[str, Any], current: dict[str, Any] | None) -> dict[str, Any]:
     if current is None:
         return dict(managed)
@@ -51,7 +71,15 @@ def merge_settings(managed: dict[str, Any], current: dict[str, Any] | None) -> d
         if key in RUNTIME_KEYS:
             merged[key] = value
         elif key in managed:
-            merged[key] = managed[key]
+            managed_value = managed[key]
+            if (
+                key == "hooks"
+                and isinstance(value, dict)
+                and isinstance(managed_value, dict)
+            ):
+                merged[key] = merge_hooks(managed_value, value)
+            else:
+                merged[key] = managed_value
         else:
             merged[key] = value
 

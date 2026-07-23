@@ -27,7 +27,10 @@ def load_report_module():
     return module
 
 
-def snapshot(captured_at: str, models: list[dict[str, object]]) -> dict[str, object]:
+def snapshot(
+    captured_at: str,
+    models: list[dict[str, object]] | dict[str, dict[str, object]],
+) -> dict[str, object]:
     return {
         "captured_at": captured_at,
         "weekly": {"weekly": [{"modelBreakdowns": models}]},
@@ -43,7 +46,10 @@ class UsageReviewTests(unittest.TestCase):
         shutil.rmtree(self.temp_dir)
 
     def write_snapshot(
-        self, name: str, captured_at: str, models: list[dict[str, object]]
+        self,
+        name: str,
+        captured_at: str,
+        models: list[dict[str, object]] | dict[str, dict[str, object]],
     ) -> Path:
         path = self.temp_dir / name
         path.write_text(json.dumps(snapshot(captured_at, models)))
@@ -103,20 +109,18 @@ class UsageReviewTests(unittest.TestCase):
         self.write_snapshot(
             "20260708.json",
             "2026-07-08T09:00:00+09:00",
-            [
-                {
-                    "modelName": "claude-fable-5",
+            {
+                "claude-fable-5": {
                     "inputTokens": 30,
                     "outputTokens": 70,
                     "cacheReadTokens": 100,
                 },
-                {
-                    "modelName": "claude-opus-4-8",
+                "claude-opus-4-8": {
                     "inputTokens": 10,
                     "outputTokens": 30,
                     "cacheReadTokens": 10,
                 },
-            ],
+            },
         )
 
         lines = report.generate_report(

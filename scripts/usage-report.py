@@ -92,7 +92,19 @@ def aggregate_models(
             warnings.append(f"WARN: ignored malformed ccusage record in {path}")
             continue
         breakdowns = record.get("modelBreakdowns")
-        if not isinstance(breakdowns, list):
+        if isinstance(breakdowns, dict):
+            normalized_breakdowns = []
+            for model_name, breakdown in breakdowns.items():
+                if not isinstance(breakdown, dict):
+                    warnings.append(
+                        f"WARN: ignored malformed model breakdown in {path}"
+                    )
+                    continue
+                normalized = dict(breakdown)
+                normalized.setdefault("modelName", model_name)
+                normalized_breakdowns.append(normalized)
+            breakdowns = normalized_breakdowns
+        elif not isinstance(breakdowns, list):
             warnings.append(f"WARN: ignored record without modelBreakdowns in {path}")
             continue
         for breakdown in breakdowns:

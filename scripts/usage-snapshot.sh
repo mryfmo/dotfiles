@@ -39,7 +39,15 @@ temporary_path="${snapshot_path}.tmp.$$"
 trap 'rm -f "${temporary_path}"' EXIT
 printf '{"captured_at":"%s","weekly":%s,"daily":%s}\n' \
     "${captured_at}" "${weekly_json}" "${daily_json}" > "${temporary_path}"
-mv "${temporary_path}" "${snapshot_path}"
-trap - EXIT
+if ln "${temporary_path}" "${snapshot_path}" 2> /dev/null; then
+    rm -f "${temporary_path}"
+    trap - EXIT
+elif [[ -e "${snapshot_path}" ]]; then
+    printf 'Usage snapshot already exists: %s\n' "${snapshot_path}"
+    exit 0
+else
+    printf 'WARN: unable to publish usage snapshot: %s\n' "${snapshot_path}" >&2
+    exit 0
+fi
 
 printf 'Usage snapshot captured: %s\n' "${snapshot_path}"

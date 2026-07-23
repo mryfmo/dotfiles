@@ -605,6 +605,11 @@ class RuntimeHealthTest(unittest.TestCase):
     def test_upgrade_skips_ccr_notice_when_gh_is_unavailable(self) -> None:
         repo, env = self.upgrade_fixture("none")
         (repo / "bin/gh").unlink()
+        for command in ("awk", "bash", "dirname", "mkdir", "mktemp", "rm"):
+            source = shutil.which(command)
+            self.assertIsNotNone(source)
+            (repo / f"bin/{command}").symlink_to(source)
+        env["PATH"] = str(repo / "bin")
 
         result = self.run_test_command(
             ["bash", "scripts/upgrade-tools.sh"],

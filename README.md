@@ -149,6 +149,26 @@ the server is reported as not running or the command is unavailable, and fails
 on ambiguous status or reload errors. After
 correcting a reload error, run `herdr server reload-config` manually.
 
+Weekly model-usage measurement is informational and never changes
+`model_profiles`. Capture or report usage manually with:
+
+```shell
+make usage-snapshot
+make usage-report
+```
+
+On macOS, chezmoi manages a LaunchAgent that runs both targets every Monday at
+09:00 and writes stdout/stderr to
+`~/.config/dotfiles/usage-review.log`. After `make update`, load it once:
+
+```shell
+launchctl bootstrap gui/$(id -u) \
+  ~/Library/LaunchAgents/com.mryfmo.dotfiles.usage-snapshot.plist
+```
+
+Usage reports only surface +7d/+14d review reminders and model-share evidence.
+Any model-profile decision still requires manual quality review and a PR.
+
 ### Agent review and permission assets
 
 `make update` also refreshes agent-managed assets after `chezmoi apply`.

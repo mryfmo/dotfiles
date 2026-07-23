@@ -374,6 +374,33 @@ function upgrade_gh_extensions() {
 }
 
 #
+# @description Report the warning-only Claude Code Router adoption gates.
+#
+function report_ccr_adoption_gates() {
+    if ! has_command gh; then
+        return 0
+    fi
+
+    section "Claude Code Router adoption gate"
+    local state
+    local tag
+    if state="$(gh api repos/musistudio/claude-code-router/issues/1115 --jq .state 2> /dev/null)" &&
+        [[ -n "${state}" ]]; then
+        printf 'CCR gate G1 (#1115): %s\n' "${state}"
+    else
+        printf 'WARN: unable to check CCR gate G1 (#1115).\n' >&2
+    fi
+    if tag="$(gh api repos/musistudio/claude-code-router/releases/latest --jq .tag_name 2> /dev/null)" &&
+        [[ -n "${tag}" ]]; then
+        printf 'CCR latest release: %s\n' "${tag}"
+    else
+        printf 'WARN: unable to check the latest CCR release.\n' >&2
+    fi
+    printf 'CCR gates G2/G3 require manual primary-source verification before any canary.\n'
+    return 0
+}
+
+#
 # @description Upgrade apt packages only when system upgrades are requested.
 #
 function upgrade_apt_packages() {
@@ -431,6 +458,7 @@ function main() {
     run_required_phase "agent asset regeneration" upgrade_agent_assets
     run_required_phase "uv tool upgrade" upgrade_uv_tools
     run_optional_phase "GitHub CLI extension upgrade" upgrade_gh_extensions
+    run_optional_phase "CCR adoption gate notice" report_ccr_adoption_gates
     run_required_phase "apt system upgrade" upgrade_apt_packages
 
     printf '\nUpgrade summary: required failures: %d; optional warnings: %d\n' \

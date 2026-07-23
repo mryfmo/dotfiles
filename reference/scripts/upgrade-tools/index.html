@@ -14,6 +14,8 @@
         <link rel="prev" href="../update-agent-assets/">
       
       
+        <link rel="next" href="../usage-snapshot/">
+      
       
         
       
@@ -3063,6 +3065,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage-snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/usage-snapshot.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -3173,6 +3203,7 @@
 <li><code>main</code></li>
 <li><code>parse_args</code></li>
 <li><code>repair_mise_npm_package</code></li>
+<li><code>report_ccr_adoption_gates</code></li>
 <li><code>run_mise_tool_command</code></li>
 <li><code>run_mise_with_isolated_git_config</code></li>
 <li><code>run_optional_phase</code></li>
@@ -3565,6 +3596,33 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Report the warning-only Claude Code Router adoption gates.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>report_ccr_adoption_gates<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>gh<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;Claude Code Router adoption gate&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>state
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>tag
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">state</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>gh<span class="w"> </span>api<span class="w"> </span>repos/musistudio/claude-code-router/issues/1115<span class="w"> </span>--jq<span class="w"> </span>.state<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">state</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;CCR gate G1 (#1115): %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">state</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;WARN: unable to check CCR gate G1 (#1115).\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">tag</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>gh<span class="w"> </span>api<span class="w"> </span>repos/musistudio/claude-code-router/releases/latest<span class="w"> </span>--jq<span class="w"> </span>.tag_name<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;CCR latest release: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;WARN: unable to check the latest CCR release.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;CCR gates G2/G3 require manual primary-source verification before any canary.\n&#39;</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Upgrade apt packages only when system upgrades are requested.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>upgrade_apt_packages<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -3622,6 +3680,7 @@
 <span class="w">    </span>run_required_phase<span class="w"> </span><span class="s2">&quot;agent asset regeneration&quot;</span><span class="w"> </span>upgrade_agent_assets
 <span class="w">    </span>run_required_phase<span class="w"> </span><span class="s2">&quot;uv tool upgrade&quot;</span><span class="w"> </span>upgrade_uv_tools
 <span class="w">    </span>run_optional_phase<span class="w"> </span><span class="s2">&quot;GitHub CLI extension upgrade&quot;</span><span class="w"> </span>upgrade_gh_extensions
+<span class="w">    </span>run_optional_phase<span class="w"> </span><span class="s2">&quot;CCR adoption gate notice&quot;</span><span class="w"> </span>report_ccr_adoption_gates
 <span class="w">    </span>run_required_phase<span class="w"> </span><span class="s2">&quot;apt system upgrade&quot;</span><span class="w"> </span>upgrade_apt_packages
 
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;\nUpgrade summary: required failures: %d; optional warnings: %d\n&#39;</span><span class="w"> </span><span class="se">\</span>

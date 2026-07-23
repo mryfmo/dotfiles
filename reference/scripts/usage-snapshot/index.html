@@ -11,10 +11,8 @@
       
       
       
-        <link rel="prev" href="../generate-docs/">
+        <link rel="prev" href="../upgrade-tools/">
       
-      
-        <link rel="next" href="../run_unit_test/">
       
       
         
@@ -25,7 +23,7 @@
     
     
       
-        <title>scripts/run_benchmark.sh - Dotfiles Docs</title>
+        <title>scripts/usage-snapshot.sh - Dotfiles Docs</title>
       
     
     
@@ -68,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#scriptsrun_benchmarksh" class="md-skip">
+        <a href="#scriptsusage-snapshotsh" class="md-skip">
           Skip to content
         </a>
       
@@ -104,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              scripts/run_benchmark.sh
+              scripts/usage-snapshot.sh
             
           </span>
         </div>
@@ -2877,37 +2875,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    scripts/run_benchmark.sh
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../run_benchmark/" class="md-nav__link">
         
   
   
@@ -2923,59 +2894,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#metadata" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Metadata
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#functions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Functions
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#source" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Source
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -3069,10 +2987,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../usage-snapshot/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/usage-snapshot.sh
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -3088,6 +3033,48 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metadata
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -3146,17 +3133,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#functions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Functions
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#source" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3184,161 +3160,68 @@
 
 
 
-<h1 id="scriptsrun_benchmarksh">scripts/run_benchmark.sh<a class="headerlink" href="#scriptsrun_benchmarksh" title="Permanent link">&para;</a></h1>
-<p>Creates a temporary directory, records initial and average interactive zsh startup times, prints benchmark-action compatible JSON, and cleans up.</p>
+<h1 id="scriptsusage-snapshotsh">scripts/usage-snapshot.sh<a class="headerlink" href="#scriptsusage-snapshotsh" title="Permanent link">&para;</a></h1>
+<p>Stores weekly and daily ccusage JSON in the repository worklog. Existing snapshots are left unchanged, and unavailable or failing ccusage commands warn without failing scheduled lifecycle runs.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Source: <code>scripts/run_benchmark.sh</code></li>
+<li>Source: <code>scripts/usage-snapshot.sh</code></li>
 <li>Category: repository script</li>
 <li>Renderer: <code>shell-fallback</code></li>
-</ul>
-<h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
-<ul>
-<li><code>cleanup_result_dir</code></li>
-<li><code>get_os</code></li>
-<li><code>get_time_command</code></li>
-<li><code>main</code></li>
-<li><code>measure_average_startup_time</code></li>
-<li><code>measure_initial_startup_time</code></li>
-<li><code>prepare_benchmark</code></li>
-<li><code>record_startup_time</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
 
-<span class="c1"># @file scripts/run_benchmark.sh</span>
-<span class="c1"># @brief Measure zsh startup latency for the repository benchmark workflow.</span>
+<span class="c1"># @file scripts/usage-snapshot.sh</span>
+<span class="c1"># @brief Capture one daily ccusage snapshot for usage reviews.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Creates a temporary directory, records initial and average interactive zsh</span>
-<span class="c1">#   startup times, prints benchmark-action compatible JSON, and cleans up.</span>
+<span class="c1">#   Stores weekly and daily ccusage JSON in the repository worklog. Existing</span>
+<span class="c1">#   snapshots are left unchanged, and unavailable or failing ccusage commands</span>
+<span class="c1">#   warn without failing scheduled lifecycle runs.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
-<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span><span class="nb">set</span><span class="w"> </span>-x
+<span class="nv">repo_root</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">/..&quot;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="nv">usage_dir</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">/.agents/worklog/claude/usage&quot;</span>
+<span class="nv">snapshot_date</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>date<span class="w"> </span>+%Y%m%d<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nv">snapshot_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">usage_dir</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">snapshot_date</span><span class="si">}</span><span class="s2">.json&quot;</span>
+
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">snapshot_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Usage snapshot already exists: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">snapshot_path</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="k">fi</span>
 
-<span class="c1">#</span>
-<span class="c1"># @description Create and print the temporary directory used for benchmark files.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>prepare_benchmark<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>tmp_dir
-<span class="w">    </span><span class="nv">tmp_dir</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="k">)</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;make temp directory to </span><span class="si">${</span><span class="nv">tmp_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">    </span><span class="nb">echo</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmp_dir</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="o">}</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Remove the benchmark result directory after reporting.</span>
-<span class="c1"># @arg $1 path Temporary benchmark directory.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>cleanup_result_dir<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">target_dir</span><span class="o">=</span><span class="nv">$1</span>
-<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;cleanup </span><span class="si">${</span><span class="nv">target_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">    </span>rm<span class="w"> </span>-rf<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">target_dir</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="o">}</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Detect the current operating system in lowercase form.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>get_os<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nv">os</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>uname<span class="w"> </span>-s<span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">&#39;[:upper:]&#39;</span><span class="w"> </span><span class="s1">&#39;[:lower:]&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">echo</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">os</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="o">}</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Select the appropriate `time` command for the current platform.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>get_time_command<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>get_os<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="k">in</span>
-<span class="w">    </span>darwin<span class="o">)</span>
-<span class="w">        </span><span class="nb">echo</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;gtime&quot;</span>
-<span class="w">        </span><span class="p">;;</span>
-<span class="w">    </span>linux<span class="o">)</span>
-<span class="w">        </span><span class="nb">echo</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;time&quot;</span>
-<span class="w">        </span><span class="p">;;</span>
-<span class="w">    </span><span class="k">esac</span>
-<span class="o">}</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Measure the first interactive zsh startup time.</span>
-<span class="c1"># @arg $1 path Temporary benchmark directory.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>measure_initial_startup_time<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">benchmark_result_dir</span><span class="o">=</span><span class="nv">$1</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">result_file</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">benchmark_result_dir</span><span class="si">}</span><span class="s2">/zsh-initial-startup-time.txt&quot;</span>
-
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>time_cmd
-<span class="w">    </span><span class="nv">time_cmd</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>get_time_command<span class="k">)</span><span class="s2">&quot;</span>
-
-<span class="w">    </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">time_cmd</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--format<span class="o">=</span><span class="s2">&quot;%e&quot;</span><span class="w"> </span>--output<span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">result_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>zsh<span class="w"> </span>-i<span class="w"> </span>-c<span class="w"> </span><span class="nb">exit</span>
-<span class="o">}</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Measure ten interactive zsh startups for an average value.</span>
-<span class="c1"># @arg $1 path Temporary benchmark directory.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>measure_average_startup_time<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">benchmark_result_dir</span><span class="o">=</span><span class="nv">$1</span>
-
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">result_file</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">benchmark_result_dir</span><span class="si">}</span><span class="s2">/zsh-average-startup-time.txt&quot;</span>
-
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>time_cmd
-<span class="w">    </span><span class="nv">time_cmd</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>get_time_command<span class="k">)</span><span class="s2">&quot;</span>
-
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>i<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">$(</span>seq<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">10</span><span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">time_cmd</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--format<span class="o">=</span><span class="s2">&quot;%e&quot;</span><span class="w"> </span>--output<span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">benchmark_result_dir</span><span class="si">}</span><span class="s2">/zsh-average-startup-time-</span><span class="si">${</span><span class="nv">i</span><span class="si">}</span><span class="s2">.txt&quot;</span><span class="w"> </span>zsh<span class="w"> </span>-i<span class="w"> </span>-c<span class="w"> </span><span class="nb">exit</span>
-<span class="w">    </span><span class="k">done</span>
-<span class="o">}</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Print benchmark-action compatible JSON from collected timings.</span>
-<span class="c1"># @arg $1 path Temporary benchmark directory.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>record_startup_time<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">benchmark_result_dir</span><span class="o">=</span><span class="nv">$1</span>
-
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">initial_file</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">benchmark_result_dir</span><span class="si">}</span><span class="s2">/zsh-initial-startup-time.txt&quot;</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">average_file</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">benchmark_result_dir</span><span class="si">}</span><span class="s2">/zsh-average-startup-time-*.txt&quot;</span>
-
-<span class="w">    </span><span class="nv">initial_startup_time</span><span class="o">=</span><span class="k">$(</span>cat<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">initial_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span>
-<span class="w">    </span><span class="c1"># shellcheck disable=SC2086</span>
-<span class="w">    </span><span class="nv">average_startup_time</span><span class="o">=</span><span class="k">$(</span>cat<span class="w"> </span><span class="si">${</span><span class="nv">average_file</span><span class="si">}</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;{ total += $1 } END { print total/NR }&#39;</span><span class="k">)</span>
-
-<span class="w">    </span>cat<span class="w"> </span><span class="s">&lt;&lt; EOJ</span>
-<span class="s">[</span>
-<span class="s">    {</span>
-<span class="s">        &quot;name&quot;: &quot;zsh average startup time&quot;,</span>
-<span class="s">        &quot;unit&quot;: &quot;Second&quot;,</span>
-<span class="s">        &quot;value&quot;: ${average_startup_time}</span>
-<span class="s">    },</span>
-<span class="s">    {</span>
-<span class="s">        &quot;name&quot;: &quot;zsh initial startup time&quot;,</span>
-<span class="s">        &quot;unit&quot;: &quot;Second&quot;,</span>
-<span class="s">        &quot;value&quot;: ${initial_startup_time}</span>
-<span class="s">    }</span>
-<span class="s">]</span>
-<span class="s">EOJ</span>
-
-<span class="o">}</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Run the full benchmark workflow and print the JSON payload.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>tmp_dir
-<span class="w">    </span><span class="nv">tmp_dir</span><span class="o">=</span><span class="k">$(</span>prepare_benchmark<span class="k">)</span>
-
-<span class="w">    </span>measure_initial_startup_time<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmp_dir</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">    </span>measure_average_startup_time<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmp_dir</span><span class="si">}</span><span class="s2">&quot;</span>
-
-<span class="w">    </span>record_startup_time<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmp_dir</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">    </span>cleanup_result_dir<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmp_dir</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="o">}</span>
-
-<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span>main
+<span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>ccusage<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;WARN: ccusage is unavailable; usage snapshot skipped.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="k">fi</span>
+
+<span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">weekly_json</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>ccusage<span class="w"> </span>weekly<span class="w"> </span>--json<span class="k">)</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;WARN: ccusage weekly failed; usage snapshot skipped.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="k">fi</span>
+<span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">daily_json</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>ccusage<span class="w"> </span>daily<span class="w"> </span>--json<span class="k">)</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;WARN: ccusage daily failed; usage snapshot skipped.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="k">fi</span>
+
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">usage_dir</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="nv">captured_at</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>date<span class="w"> </span><span class="s1">&#39;+%Y-%m-%dT%H:%M:%S%z&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="nv">temporary_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">snapshot_path</span><span class="si">}</span><span class="s2">.tmp.</span><span class="nv">$$</span><span class="s2">&quot;</span>
+<span class="nb">trap</span><span class="w"> </span><span class="s1">&#39;rm -f &quot;${temporary_path}&quot;&#39;</span><span class="w"> </span>EXIT
+<span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;{&quot;captured_at&quot;:&quot;%s&quot;,&quot;weekly&quot;:%s,&quot;daily&quot;:%s}\n&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">captured_at</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">weekly_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">daily_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">temporary_path</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="k">if</span><span class="w"> </span>ln<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">temporary_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">snapshot_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span>rm<span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">temporary_path</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">trap</span><span class="w"> </span>-<span class="w"> </span>EXIT
+<span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">snapshot_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Usage snapshot already exists: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">snapshot_path</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="k">else</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;WARN: unable to publish usage snapshot: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">snapshot_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="k">fi</span>
+
+<span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Usage snapshot captured: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">snapshot_path</span><span class="si">}</span><span class="s2">&quot;</span>
 </code></pre></div>
 
 

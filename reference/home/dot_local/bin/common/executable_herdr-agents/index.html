@@ -3201,6 +3201,9 @@
 <span class="c1"># @option --attach Attach the current Claude pane to its Herdr workspace layout.</span>
 <span class="c1"># @option --bootstrap-agmsg Configure repo-scoped agmsg hooks without changing Herdr panes.</span>
 <span class="c1"># @arg DIR Optional directory for the Herdr workspace. Defaults to the current directory.</span>
+<span class="c1"># @arg HERDR_AGENTS_CODEX_PROFILE Environment variable naming the Codex model</span>
+<span class="c1">#   profile file (~/.codex/&lt;name&gt;.config.toml) for the worker pane. Defaults</span>
+<span class="c1">#   to standard.</span>
 <span class="c1"># @example</span>
 <span class="c1">#   herdr-agents ~/Workspace/dotfiles</span>
 <span class="c1"># @example</span>
@@ -3241,8 +3244,11 @@
 <span class="o">}</span>
 
 <span class="c1"># @description Build the Claude command run in the orchestrator pane.</span>
+<span class="c1">#   Model and effort come from the generated Claude settings (the</span>
+<span class="c1">#   interactive profile in home/dot_agents/agent-config.yaml); pinning</span>
+<span class="c1">#   flags here would silently override that manifest.</span>
 <span class="k">function</span><span class="w"> </span>claude_command<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;%s\n&quot;</span><span class="w"> </span><span class="s2">&quot;CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed claude --model &#39;claude-fable-5[1m]&#39; --effort high&quot;</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;%s\n&quot;</span><span class="w"> </span><span class="s2">&quot;CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed claude&quot;</span>
 <span class="o">}</span>
 
 <span class="c1"># @description Start Claude in an existing pane.</span>
@@ -3267,7 +3273,7 @@
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">codex_agent_json</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>
 <span class="w">        </span>herdr<span class="w"> </span>agent<span class="w"> </span>start<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">agent_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--cwd<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--workspace<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--split<span class="w"> </span>right<span class="w"> </span>--env<span class="w"> </span><span class="nv">CLICOLOR_FORCE</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>--env<span class="w"> </span><span class="nv">FORCE_COLOR</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>--no-focus<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
-<span class="w">            </span>codex<span class="w"> </span>--sandbox<span class="w"> </span>workspace-write<span class="w"> </span>-m<span class="w"> </span>gpt-5.6-sol<span class="w"> </span>-c<span class="w"> </span><span class="nv">model_reasoning_effort</span><span class="o">=</span>high
+<span class="w">            </span>codex<span class="w"> </span>--sandbox<span class="w"> </span>workspace-write<span class="w"> </span>--profile<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HERDR_AGENTS_CODEX_PROFILE</span><span class="k">:-</span><span class="nv">standard</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="w">    </span><span class="k">)</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Failed to start Codex agent %s: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">agent_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_agent_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>

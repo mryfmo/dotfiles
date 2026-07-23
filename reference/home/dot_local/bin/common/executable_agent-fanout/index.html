@@ -3188,6 +3188,7 @@
 <span class="c1"># @option --no-codex Skip the Codex run.</span>
 <span class="c1"># @option --no-claude Skip the Claude Code run.</span>
 <span class="c1"># @option --output-dir DIR Directory where prompt and agent logs are written.</span>
+<span class="c1"># @option --profile NAME Model profile from ~/.agents/model-profiles.env. Default: standard.</span>
 <span class="c1"># @arg PROMPT... Optional prompt text. When omitted, the prompt is read from stdin.</span>
 <span class="c1"># @example</span>
 <span class="c1">#   agent-fanout --no-claude &quot;Review the current diff. Do not edit files.&quot;</span>
@@ -3200,7 +3201,7 @@
 <span class="c1"># @description Print usage information.</span>
 <span class="k">function</span><span class="w"> </span>usage<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span>cat<span class="w"> </span><span class="s">&lt;&lt;&#39;USAGE&#39;</span>
-<span class="s">Usage: agent-fanout [--dry-run] [--no-codex] [--no-claude] [--output-dir DIR] [PROMPT...]</span>
+<span class="s">Usage: agent-fanout [--dry-run] [--no-codex] [--no-claude] [--output-dir DIR] [--profile NAME] [PROMPT...]</span>
 
 <span class="s">Run Codex and Claude Code in parallel with the same prompt.</span>
 <span class="s">If PROMPT is omitted, the prompt is read from stdin.</span>
@@ -3208,6 +3209,7 @@
 <span class="s">Environment variables:</span>
 <span class="s">  AGENT_FANOUT_CODEX_COMMAND   Codex command prefix. Default: codex exec --full-auto</span>
 <span class="s">  AGENT_FANOUT_CLAUDE_COMMAND  Claude command prefix. Default: claude -p --max-turns 15</span>
+<span class="s">  AGENT_FANOUT_PROFILE_ENV     Model profile fragment. Default: ~/.agents/model-profiles.env</span>
 
 <span class="s">Notes:</span>
 <span class="s">  - Use this helper for read-only comparison in one worktree.</span>
@@ -3233,6 +3235,7 @@
 <span class="nv">run_claude</span><span class="o">=</span><span class="nb">true</span>
 <span class="nv">dry_run</span><span class="o">=</span><span class="nb">false</span>
 <span class="nv">output_dir</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
+<span class="nv">profile</span><span class="o">=</span><span class="s2">&quot;standard&quot;</span>
 <span class="nv">args</span><span class="o">=()</span>
 
 <span class="k">while</span><span class="w"> </span><span class="o">((</span><span class="nv">$#</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
@@ -3255,6 +3258,10 @@
 <span class="w">            </span><span class="p">;;</span>
 <span class="w">        </span>--output-dir<span class="o">)</span>
 <span class="w">            </span><span class="nv">output_dir</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">2</span><span class="p">:?--output-dir requires a directory</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">            </span><span class="nb">shift</span><span class="w"> </span><span class="m">2</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span>--profile<span class="o">)</span>
+<span class="w">            </span><span class="nv">profile</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">2</span><span class="p">:?--profile requires a profile name</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="w">            </span><span class="nb">shift</span><span class="w"> </span><span class="m">2</span>
 <span class="w">            </span><span class="p">;;</span>
 <span class="w">        </span>--<span class="o">)</span>
@@ -3283,6 +3290,27 @@
 <span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">$run_codex</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>!<span class="w"> </span><span class="nv">$run_claude</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;At least one agent must be enabled.&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="k">fi</span>
+
+<span class="c1"># Model IDs live only in the generated profile fragment; launchers must not</span>
+<span class="c1"># hardcode them.</span>
+<span class="nv">profile_env</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">AGENT_FANOUT_PROFILE_ENV</span><span class="k">:-</span><span class="nv">$HOME</span><span class="p">/.agents/model-profiles.env</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="nv">codex_profile_args</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
+<span class="nv">claude_profile_args</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="nv">$profile_env</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="c1"># shellcheck source=/dev/null</span>
+<span class="w">    </span><span class="nb">source</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$profile_env</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">profile_var</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$profile</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">&#39;[:lower:]&#39;</span><span class="w"> </span><span class="s1">&#39;[:upper:]&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">codex_ref</span><span class="o">=</span><span class="s2">&quot;MODEL_PROFILE_</span><span class="si">${</span><span class="nv">profile_var</span><span class="si">}</span><span class="s2">_CODEX_ARGS&quot;</span>
+<span class="w">    </span><span class="nv">claude_ref</span><span class="o">=</span><span class="s2">&quot;MODEL_PROFILE_</span><span class="si">${</span><span class="nv">profile_var</span><span class="si">}</span><span class="s2">_CLAUDE_ARGS&quot;</span>
+<span class="w">    </span><span class="nv">codex_profile_args</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="p">!codex_ref</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">claude_profile_args</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="p">!claude_ref</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="nv">$codex_profile_args</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>-z<span class="w"> </span><span class="nv">$claude_profile_args</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Unknown model profile: %s (see %s)\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$profile</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$profile_env</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="k">else</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Model profile fragment not found; running without profile args: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$profile_env</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="k">fi</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="nv">$output_dir</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
@@ -3314,10 +3342,16 @@ prepare_artifact<span class="w"> </span><span class="s2">&quot;</span><span clas
 <span class="w">        </span><span class="nv">status</span><span class="o">=</span><span class="m">1</span>
 <span class="w">    </span><span class="k">else</span>
 <span class="w">        </span><span class="nv">codex_command</span><span class="o">=</span><span class="si">${</span><span class="nv">AGENT_FANOUT_CODEX_COMMAND</span><span class="k">:-</span><span class="nv">codex</span><span class="p"> exec --full-auto</span><span class="si">}</span>
+<span class="w">        </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>-a<span class="w"> </span>codex_argv<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="s2">&quot;</span><span class="nv">$codex_command</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="nv">$codex_profile_args</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="c1"># Keep profile args right after the binary so codex-global flags</span>
+<span class="w">            </span><span class="c1"># stay before the exec subcommand.</span>
+<span class="w">            </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>-a<span class="w"> </span>codex_profile_argv<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="s2">&quot;</span><span class="nv">$codex_profile_args</span><span class="s2">&quot;</span>
+<span class="w">            </span><span class="nv">codex_argv</span><span class="o">=(</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_argv</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_profile_argv</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_argv</span><span class="p">[@]:</span><span class="nv">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="o">)</span>
+<span class="w">        </span><span class="k">fi</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nv">$dry_run</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;DRY RUN: %s &lt;prompt&gt;\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$codex_command</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="s2">&quot;</span><span class="nv">$output_dir</span><span class="s2">/codex.log&quot;</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;DRY RUN: %s &lt;prompt&gt;\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_argv</span><span class="p">[*]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="s2">&quot;</span><span class="nv">$output_dir</span><span class="s2">/codex.log&quot;</span>
 <span class="w">        </span><span class="k">else</span>
-<span class="w">            </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>-a<span class="w"> </span>codex_argv<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="s2">&quot;</span><span class="nv">$codex_command</span><span class="s2">&quot;</span>
 <span class="w">            </span><span class="o">(</span>
 <span class="w">                </span><span class="nb">umask</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$AGENT_UMASK</span><span class="s2">&quot;</span>
 <span class="w">                </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_argv</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$full_prompt</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="s2">&quot;</span><span class="nv">$output_dir</span><span class="s2">/codex.log&quot;</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span>
@@ -3335,10 +3369,14 @@ prepare_artifact<span class="w"> </span><span class="s2">&quot;</span><span clas
 <span class="w">        </span><span class="nv">status</span><span class="o">=</span><span class="m">1</span>
 <span class="w">    </span><span class="k">else</span>
 <span class="w">        </span><span class="nv">claude_command</span><span class="o">=</span><span class="si">${</span><span class="nv">AGENT_FANOUT_CLAUDE_COMMAND</span><span class="k">:-</span><span class="nv">claude</span><span class="p"> -p --max-turns 15</span><span class="si">}</span>
+<span class="w">        </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>-a<span class="w"> </span>claude_argv<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="s2">&quot;</span><span class="nv">$claude_command</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="nv">$claude_profile_args</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>-a<span class="w"> </span>claude_profile_argv<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="s2">&quot;</span><span class="nv">$claude_profile_args</span><span class="s2">&quot;</span>
+<span class="w">            </span><span class="nv">claude_argv</span><span class="o">=(</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_argv</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_profile_argv</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_argv</span><span class="p">[@]:</span><span class="nv">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="o">)</span>
+<span class="w">        </span><span class="k">fi</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nv">$dry_run</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;DRY RUN: %s &lt;prompt&gt;\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$claude_command</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="s2">&quot;</span><span class="nv">$output_dir</span><span class="s2">/claude.log&quot;</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;DRY RUN: %s &lt;prompt&gt;\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_argv</span><span class="p">[*]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="s2">&quot;</span><span class="nv">$output_dir</span><span class="s2">/claude.log&quot;</span>
 <span class="w">        </span><span class="k">else</span>
-<span class="w">            </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>-a<span class="w"> </span>claude_argv<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="s2">&quot;</span><span class="nv">$claude_command</span><span class="s2">&quot;</span>
 <span class="w">            </span><span class="o">(</span>
 <span class="w">                </span><span class="nb">umask</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$AGENT_UMASK</span><span class="s2">&quot;</span>
 <span class="w">                </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_argv</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$full_prompt</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="s2">&quot;</span><span class="nv">$output_dir</span><span class="s2">/claude.log&quot;</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span>

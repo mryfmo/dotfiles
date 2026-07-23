@@ -3183,6 +3183,7 @@
 <li><code>has_command</code></li>
 <li><code>is_macos</code></li>
 <li><code>main</code></li>
+<li><code>remove_node_global_agent_cli_shadows</code></li>
 <li><code>section</code></li>
 <li><code>update_claude_crit</code></li>
 <li><code>update_claude_ponytail</code></li>
@@ -3233,6 +3234,20 @@
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>has_command<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Remove node-global agent CLIs that shadow their dedicated mise tools.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>remove_node_global_agent_cli_shadows<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>npm_package
+
+<span class="w">    </span>has_command<span class="w"> </span>npm<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>npm_package<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">&quot;@openai/codex&quot;</span><span class="w"> </span><span class="s2">&quot;@anthropic-ai/claude-code&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>npm<span class="w"> </span>list<span class="w"> </span>-g<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">npm_package</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--depth<span class="o">=</span><span class="m">0</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span>npm<span class="w"> </span>uninstall<span class="w"> </span>-g<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">npm_package</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3651,6 +3666,7 @@
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="w">    </span><span class="k">fi</span>
 
+<span class="w">    </span>remove_node_global_agent_cli_shadows
 <span class="w">    </span>update_claude_superpowers
 <span class="w">    </span>update_claude_crit
 <span class="w">    </span>update_claude_ponytail

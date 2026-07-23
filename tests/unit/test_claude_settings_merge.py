@@ -112,6 +112,71 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
 
         self.assertEqual(self.merge(managed, current), current)
 
+    def test_current_session_start_order_is_preserved(self) -> None:
+        state_hook = {
+            "matcher": "*",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": "herdr-agent-state",
+                    "timeout": 10,
+                }
+            ],
+        }
+        attach_hook = {
+            "matcher": "*",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": 'herdr-agents --attach >> "$HOME/.config/herdr/herdr-agents.log" 2>&1 || true',
+                    "timeout": 10,
+                }
+            ],
+        }
+        managed = {
+            "enabledPlugins": {},
+            "hooks": {"SessionStart": [state_hook]},
+        }
+        current = json.dumps(
+            {
+                "enabledPlugins": {},
+                "hooks": {"SessionStart": [attach_hook, state_hook]},
+            },
+            indent=2,
+        ) + "\n"
+
+        output = self.merge(managed, current)
+
+        self.assertEqual(json.loads(output), json.loads(current))
+        self.assertEqual(
+            json.loads(output)["hooks"]["SessionStart"],
+            [attach_hook, state_hook],
+        )
+
+    def test_managed_hook_object_key_order_is_preserved(self) -> None:
+        managed = {
+            "enabledPlugins": {},
+            "hooks": {
+                "PreToolUse": [
+                    {
+                        "matcher": "Bash",
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": "managed-command",
+                            }
+                        ],
+                    }
+                ]
+            },
+        }
+        current = (
+            '{"enabledPlugins":{},"hooks":{"PreToolUse":[{"matcher":"Bash",'
+            '"hooks":[{"command":"managed-command","type":"command"}]}]}}'
+        )
+
+        self.assertEqual(self.merge(managed, current), current)
+
     def test_real_value_change_is_redumped(self) -> None:
         managed = {"model": "managed", "effortLevel": "high", "enabledPlugins": {}}
         current = '{"enabledPlugins":{"crit@crit":true},"effortLevel":"low","model":"managed"}'

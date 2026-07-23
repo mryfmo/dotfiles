@@ -93,9 +93,11 @@ class ValidateAgentAssetsTest(unittest.TestCase):
     def test_codex_sandbox_workspace_write_must_match_manifest(self) -> None:
         self.write_codex_config("network_access = false")
         manifest = {
+            "model_profiles": {
+                "standard": {"codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}}
+            },
+            "interactive_profile": "standard",
             "codex": {
-                "model": "gpt-5.5",
-                "model_reasoning_effort": "high",
                 "sandbox_workspace_write": {
                     "network_access": False,
                     "writable_roots": self.required_agmsg_writable_roots,
@@ -121,9 +123,11 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             f"{json.dumps(self.required_agmsg_writable_roots)}"
         )
         manifest = {
+            "model_profiles": {
+                "standard": {"codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}}
+            },
+            "interactive_profile": "standard",
             "codex": {
-                "model": "gpt-5.5",
-                "model_reasoning_effort": "high",
                 "sandbox_workspace_write": {
                     "network_access": False,
                     "writable_roots": self.required_agmsg_writable_roots,
@@ -146,9 +150,11 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         roots = ["{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db"]
         self.write_codex_config("network_access = false\nwritable_roots = " + json.dumps(roots))
         manifest = {
+            "model_profiles": {
+                "standard": {"codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}}
+            },
+            "interactive_profile": "standard",
             "codex": {
-                "model": "gpt-5.5",
-                "model_reasoning_effort": "high",
                 "sandbox_workspace_write": {
                     "network_access": False,
                     "writable_roots": roots,

@@ -1,0 +1,5 @@
+# Codex model profile "review"; launch with: codex --profile review
+# Generated from home/dot_agents/agent-config.yaml by scripts/generate-agent-configs.py.
+
+model = "gpt-5.6-sol"
+model_reasoning_effort = "low"

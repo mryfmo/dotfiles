@@ -242,37 +242,32 @@ herdr server reload-config" ]
     grep -q 'HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade --cask --skip-cask-deps "${outdated_casks\[@\]}"' scripts/upgrade-tools.sh
 }
 
-@test "[common] agent CLI upgrade installs npm latest into mise packages and removes node-global shadows" {
+@test "[common] agent CLI lifecycle installs npm latest into mise packages and removes node-global shadows before asset commands" {
     local latest_line
     local upgrade_line
     local repair_line
-    local codex_cleanup_line
-    local claude_cleanup_line
+    local cleanup_line
 
-    grep -q 'npm uninstall -g "${npm_package}"' scripts/upgrade-tools.sh
+    grep -q 'for npm_package in "@openai/codex" "@anthropic-ai/claude-code"' scripts/update-agent-assets.sh
+    grep -q 'npm uninstall -g "${npm_package}"' scripts/update-agent-assets.sh
     grep -q 'npm view "$1" version' scripts/upgrade-tools.sh
     grep -q 'versioned_mise_tool="${mise_tool}@${package_version}"' scripts/upgrade-tools.sh
     grep -q 'MISE_LOCKED=0 npm_config_min_release_age=0 run_mise_with_isolated_git_config use --global --pin --yes --minimum-release-age 0s "${versioned_mise_tool}"' scripts/upgrade-tools.sh
     grep -q 'repair_mise_npm_package "${versioned_mise_tool}" "${npm_package}" "${package_version}"' scripts/upgrade-tools.sh
-    grep -q 'if upgrade_mise_npm_agent_tool "npm:@openai/codex" "@openai/codex"; then' scripts/upgrade-tools.sh
-    grep -q 'if upgrade_mise_npm_agent_tool "npm:@anthropic-ai/claude-code" "@anthropic-ai/claude-code"; then' scripts/upgrade-tools.sh
+    grep -q 'if ! upgrade_mise_npm_agent_tool "npm:@openai/codex" "@openai/codex"; then' scripts/upgrade-tools.sh
+    grep -q 'if ! upgrade_mise_npm_agent_tool "npm:@anthropic-ai/claude-code" "@anthropic-ai/claude-code"; then' scripts/upgrade-tools.sh
     latest_line="$(grep -n 'latest_npm_package_version "${npm_package}"' scripts/upgrade-tools.sh | cut -d: -f1)"
     upgrade_line="$(grep -n 'run_mise_with_isolated_git_config use --global --pin --yes --minimum-release-age 0s "${versioned_mise_tool}"' scripts/upgrade-tools.sh | cut -d: -f1)"
     repair_line="$(grep -n 'repair_mise_npm_package "${versioned_mise_tool}" "${npm_package}" "${package_version}"' scripts/upgrade-tools.sh | cut -d: -f1)"
-    codex_cleanup_line="$(grep -n 'remove_node_global_npm_package "@openai/codex"' scripts/upgrade-tools.sh | cut -d: -f1)"
-    claude_cleanup_line="$(grep -n 'remove_node_global_npm_package "@anthropic-ai/claude-code"' scripts/upgrade-tools.sh | cut -d: -f1)"
+    cleanup_line="$(grep -n '^    remove_node_global_agent_cli_shadows$' scripts/update-agent-assets.sh | cut -d: -f1)"
 
     [ -n "${latest_line}" ]
     [ -n "${upgrade_line}" ]
     [ -n "${repair_line}" ]
-    [ -n "${codex_cleanup_line}" ]
-    [ -n "${claude_cleanup_line}" ]
+    [ -n "${cleanup_line}" ]
     [ "${latest_line}" -lt "${upgrade_line}" ]
     [ "${upgrade_line}" -lt "${repair_line}" ]
-    [ "${repair_line}" -lt "${codex_cleanup_line}" ]
-    [ "${repair_line}" -lt "${claude_cleanup_line}" ]
-    grep -q 'remove_node_global_npm_package "@openai/codex"' scripts/upgrade-tools.sh
-    grep -q 'remove_node_global_npm_package "@anthropic-ai/claude-code"' scripts/upgrade-tools.sh
+    [ "${cleanup_line}" -lt "$(grep -n '^    update_claude_superpowers$' scripts/update-agent-assets.sh | cut -d: -f1)" ]
 }
 
 @test "[common] agent asset lifecycle installs Crit integrations for Claude Code and Codex" {
@@ -325,17 +320,21 @@ herdr server reload-config" ]
     grep -q 'ponytail@ponytail' home/dot_config/claude/rules/ponytail.md
 }
 
-@test "[common] agent asset lifecycle installs ccgate for Claude Code and Codex permission gates" {
+@test "[common] agent asset lifecycle renders model profiles and keeps ccgate hooks disabled" {
     grep -q 'aqua:tak848/ccgate' scripts/update-agent-assets.sh
     grep -q '"aqua:tak848/ccgate" = "0.9.5"' home/dot_mise/config.toml
     grep -q 'ccgate --version' scripts/update-agent-assets.sh
-    grep -q 'ccgate claude' home/.chezmoitemplates/claude-settings-managed.json
-    grep -q 'ccgate codex' home/.chezmoitemplates/codex-config-managed.toml
-    grep -q 'claude-haiku-4-5' home/dot_claude/ccgate.jsonnet
-    grep -q 'HookInput.model' home/dot_codex/ccgate.jsonnet
-    grep -q 'HookInput.model' home/dot_config/codex/AGENTS.md
-    grep -q 'provider.model' home/dot_config/claude/rules/model-selection.md
-    grep -q 'metrics --details 5' home/dot_config/claude/rules/model-selection.md
+    ! grep -q 'ccgate' home/.chezmoitemplates/claude-settings-managed.json
+    ! grep -q 'ccgate' home/.chezmoitemplates/codex-config-managed.toml
+    [ ! -e home/dot_claude/ccgate.jsonnet ]
+    [ ! -e home/dot_codex/ccgate.jsonnet ]
+    grep -q '.codex/ccgate.jsonnet' home/.chezmoiremove
+    grep -q 'model_profiles' home/dot_agents/agent-config.yaml
+    grep -q 'model = ' home/dot_codex/standard.config.toml
+    grep -q 'MODEL_PROFILE_INTERACTIVE' home/dot_agents/model-profiles.env
+    grep -q 'model:' home/dot_claude/agents/express-explorer.md
+    grep -q 'model_profiles' home/dot_config/claude/rules/model-selection.md
+    grep -q 'model_profiles' home/dot_config/codex/AGENTS.md
 }
 
 @test "[common] README documents setup update doctor and upgrade lifecycle" {
@@ -351,11 +350,8 @@ herdr server reload-config" ]
 
 @test "[common] README documents agent permission asset lifecycle" {
     grep -q '### Agent review and permission assets' README.md
-    grep -q 'ccgate is used as a permission gate, not as a model router' README.md
-    grep -q '`provider.model` is the small classifier used for permission decisions' README.md
-    grep -q 'HookInput.model' README.md
-    grep -q 'ccgate codex metrics --details 5' README.md
-    grep -q 'ccgate claude metrics --details 5' README.md
+    grep -q 'The ccgate PermissionRequest hooks are disabled' README.md
+    grep -q 'model_profiles' README.md
     grep -q 'scripts/update-agent-assets.sh' README.md
     grep -q 'make require-crit-review' README.md
     grep -q 'AGENT_REVIEWED=1' README.md

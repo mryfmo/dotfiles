@@ -8,6 +8,9 @@
 # @option --attach Attach the current Claude pane to its Herdr workspace layout.
 # @option --bootstrap-agmsg Configure repo-scoped agmsg hooks without changing Herdr panes.
 # @arg DIR Optional directory for the Herdr workspace. Defaults to the current directory.
+# @arg HERDR_AGENTS_CODEX_PROFILE Environment variable naming the Codex model
+#   profile file (~/.codex/<name>.config.toml) for the worker pane. Defaults
+#   to standard.
 # @example
 #   herdr-agents ~/Workspace/dotfiles
 # @example
@@ -48,8 +51,11 @@ function json_agent_pane_id() {
 }
 
 # @description Build the Claude command run in the orchestrator pane.
+#   Model and effort come from the generated Claude settings (the
+#   interactive profile in home/dot_agents/agent-config.yaml); pinning
+#   flags here would silently override that manifest.
 function claude_command() {
-    printf "%s\n" "CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed claude --model 'claude-fable-5[1m]' --effort high"
+    printf "%s\n" "CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed claude"
 }
 
 # @description Start Claude in an existing pane.
@@ -74,7 +80,7 @@ function start_codex_agent() {
 
     if ! codex_agent_json="$(
         herdr agent start "${agent_name}" --cwd "${workdir}" --workspace "${workspace_id}" --split right --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- \
-            codex --sandbox workspace-write -m gpt-5.6-sol -c model_reasoning_effort=high
+            codex --sandbox workspace-write --profile "${HERDR_AGENTS_CODEX_PROFILE:-standard}"
     )"; then
         printf 'Failed to start Codex agent %s: %s\n' "${agent_name}" "${codex_agent_json}" >&2
         return 1

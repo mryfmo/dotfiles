@@ -12,6 +12,7 @@ personality = "pragmatic"
 approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 web_search = "cached"
+check_for_update_on_startup = false
 project_doc_max_bytes = 65536
 project_doc_fallback_filenames = ["CLAUDE.md"]
 
@@ -108,18 +109,7 @@ last_revision = "16f6cbf4b87792938e47b0f8c650b6d80fcbc98c"
 source_type = "git"
 source = "https://github.com/DietrichGebert/ponytail.git"
 
-[[hooks.PermissionRequest]]
-matcher = ""
-
-[[hooks.PermissionRequest.hooks]]
-type = "command"
-command = "ccgate codex"
-statusMessage = "ccgate evaluating request"
-
 [hooks.state]
-
-[hooks.state."{{ .chezmoi.homeDir }}/.codex/config.toml:permission_request:0:0"]
-trusted_hash = "sha256:8dc151da52267d3d71565b578be07cff7a133967c34c40dd9308b9d5eaee29f6"
 
 [hooks.state."crit@mryfmo-personal-plugins:hooks/hooks.json:stop:0:0"]
 trusted_hash = "sha256:bf6ad428ae7902810fa2d68d8db42228377af118aa18508ad0eccf73a95ed1f8"

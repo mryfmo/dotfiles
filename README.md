@@ -153,15 +153,20 @@ correcting a reload error, run `herdr server reload-config` manually.
 
 `make update` also refreshes agent-managed assets after `chezmoi apply`.
 This includes the Crit integrations and Ponytail (`ponytail@ponytail`) plugin
-for Codex and Claude Code, plus ccgate PermissionRequest hooks for both agents.
+for Codex and Claude Code.
 
-ccgate is used as a permission gate, not as a model router. Its
-`provider.model` is the small classifier used for permission decisions, while
-the active Codex or Claude Code task model is selected by the agent itself.
-The managed Codex ccgate config can read `HookInput.model` and uses it as
-model-proportionality context. The managed Claude Code ccgate config cannot see
-the active task model, so Claude model choice is documented in the managed
-Claude rule files and ccgate only judges the requested tool action.
+Model selection is governed by `model_profiles` in
+`home/dot_agents/agent-config.yaml`, the single place where model IDs and
+efforts live. The generator renders the interactive profile into the managed
+Claude settings and Codex config, one `~/.codex/<profile>.config.toml` file per
+profile for `codex --profile <name>`, `~/.agents/model-profiles.env` for the
+launchers, and the low-cost `express-explorer` Claude subagent.
+
+The ccgate PermissionRequest hooks are disabled: no classifier credential was
+configured, so the gate recorded 100% fallthrough and never made a decision.
+Permission prompts use each agent's native confirmation. The ccgate binary
+stays installed via mise so the hooks can be re-enabled later with a dedicated
+low-cost API key.
 
 The intended lifecycle is:
 
@@ -189,15 +194,7 @@ CRIT_REVIEW=off make require-crit-review
 
 # Then upgrade installed tools using the applied mise and agent settings.
 make upgrade
-
-# Inspect ccgate decisions and tune rules from real fallthrough/deny patterns.
-ccgate codex metrics --details 5
-ccgate claude metrics --details 5
 ```
-
-If ccgate is not available after the mise-managed install step,
-`scripts/update-agent-assets.sh` fails instead of leaving Codex or Claude Code
-with a configured PermissionRequest hook whose runtime is missing.
 
 ### Herdr and Ghostty agent workspace
 

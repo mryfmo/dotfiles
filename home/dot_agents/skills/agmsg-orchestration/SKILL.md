@@ -68,7 +68,7 @@ AGMSG-PONG v1 task_id=<id> status=alive|blocked note=<short-note>
 1. Join or confirm the agmsg team and identities with the `agmsg` scripts.
 2. Create the `.orchestration` directories before assigning work.
 3. Write a task file that includes objective, scope, allowed files, forbidden actions, expected artifacts, validation commands, and max turns.
-4. Start worker panes if needed. With herdr, send the worker prompt text into the pane and submit it with a carriage return; sending text alone may leave it unsubmitted.
+4. Start worker panes if needed. With herdr, wake or prompt a worker with `herdr pane run <pane_id> "<text>"` (text plus Enter in one call). Do not use `pane send-text` followed by `send-keys Enter`; the separate Enter races the TUI composer and fails nondeterministically. After every wake, verify delivery via the messages.db `read_at` column and only escalate to a pane restart if a verified `pane run` wake stays undelivered.
 5. Configure delivery deliberately. `delivery.sh set turn` is useful for turn-end inbox checks; changing delivery mode can kill project watcher processes, so do it before starting long-running project watchers.
 6. Send `AGMSG-TASK v1` with the exact artifact paths and `done_signal=AGMSG-RESULT`.
 7. Track `max_turns`. Use `AGMSG-PING` for liveness if a worker stalls.
@@ -97,5 +97,5 @@ AGMSG-PONG v1 task_id=<id> status=alive|blocked note=<short-note>
 - Do not collapse candidate, promoted, rejected, and merged skill registry states into one directory.
 - Do not put secrets, raw logs with credentials, or unredacted AutoSkill inputs in artifacts.
 - Do not install Hermes Agents runtime for this protocol.
-- Do not assume `herdr` text injection submits automatically; send Enter/CR.
+- Do not wake workers with `pane send-text` + `send-keys Enter`; use `herdr pane run` and verify `read_at` in messages.db.
 - Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.

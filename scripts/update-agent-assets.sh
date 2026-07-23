@@ -42,6 +42,20 @@ function has_command() {
 }
 
 #
+# @description Remove node-global agent CLIs that shadow their dedicated mise tools.
+#
+function remove_node_global_agent_cli_shadows() {
+    local npm_package
+
+    has_command npm || return 0
+    for npm_package in "@openai/codex" "@anthropic-ai/claude-code"; do
+        if npm list -g "${npm_package}" --depth=0 > /dev/null 2>&1; then
+            npm uninstall -g "${npm_package}"
+        fi
+    done
+}
+
+#
 # @description Return success when the current OS is macOS.
 #
 function is_macos() {
@@ -457,6 +471,7 @@ function main() {
         exit 2
     fi
 
+    remove_node_global_agent_cli_shadows
     update_claude_superpowers
     update_claude_crit
     update_claude_ponytail

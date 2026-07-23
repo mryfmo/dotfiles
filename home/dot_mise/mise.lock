@@ -177,28 +177,28 @@ url = "https://github.com/Kitware/CMake/releases/download/v4.3.3/cmake-4.3.3-mac
 url_api = "https://api.github.com/repos/Kitware/CMake/releases/assets/426407094"
 
 [[tools.dotenvx]]
-version = "2.7.3"
+version = "2.11.1"
 backend = "aqua:dotenvx/dotenvx"
 
 [tools.dotenvx."platforms.linux-arm64"]
-checksum = "sha256:2aafa6a7cd0f68353ed2ecc22a52de1eb51c967b22e94c680ac26e5e51d504c4"
-url = "https://github.com/dotenvx/dotenvx/releases/download/v2.7.3/dotenvx-2.7.3-linux-aarch64.tar.gz"
-url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/476125956"
+checksum = "sha256:c8cca680697dea3851a9c5224779a19855e52b51a6dc65b7b3490a9dc739c0f1"
+url = "https://github.com/dotenvx/dotenvx/releases/download/v2.11.1/dotenvx-2.11.1-linux-aarch64.tar.gz"
+url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/478549458"
 
 [tools.dotenvx."platforms.linux-x64"]
-checksum = "sha256:ad8c1b1cf5baa11275a503622c38192885e74771da98b57ff0cd1ce52258fb30"
-url = "https://github.com/dotenvx/dotenvx/releases/download/v2.7.3/dotenvx-2.7.3-linux-amd64.tar.gz"
-url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/476125952"
+checksum = "sha256:f28f409249a4fcd909fd515c55a9c208ae97f7e41a80baa5b98ae0b030fce0ba"
+url = "https://github.com/dotenvx/dotenvx/releases/download/v2.11.1/dotenvx-2.11.1-linux-amd64.tar.gz"
+url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/478549428"
 
 [tools.dotenvx."platforms.macos-arm64"]
-checksum = "sha256:49db0dbb95c8f9de293710bab5403d74ace7c649c4b2a9bb353ac3cf9b97fe09"
-url = "https://github.com/dotenvx/dotenvx/releases/download/v2.7.3/dotenvx-2.7.3-darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/476125960"
+checksum = "sha256:f83c2191160eb64d0eb9a9c75dedffe7e8a60c21b76aa5443c921cd46be233fd"
+url = "https://github.com/dotenvx/dotenvx/releases/download/v2.11.1/dotenvx-2.11.1-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/478549466"
 
 [tools.dotenvx."platforms.macos-x64"]
-checksum = "sha256:0964ed1fdc13afd9d1ee5eb31db3bb3f1b6b86480da003006dafa9994b602ea1"
-url = "https://github.com/dotenvx/dotenvx/releases/download/v2.7.3/dotenvx-2.7.3-darwin-amd64.tar.gz"
-url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/476125954"
+checksum = "sha256:2340d8c84acfdc8a9aede37b628e4a8c81451b82255039215d89d3914efd4b41"
+url = "https://github.com/dotenvx/dotenvx/releases/download/v2.11.1/dotenvx-2.11.1-darwin-amd64.tar.gz"
+url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/478549431"
 
 [[tools.fd]]
 version = "10.3.0"
@@ -482,11 +482,11 @@ checksum = "sha256:98293394c945a24e64e00b4177bf075ec963ea70b34d1d2e24bd4a71716d3
 url = "https://nodejs.org/dist/v26.5.0/node-v26.5.0-darwin-x64.tar.gz"
 
 [[tools."npm:@anthropic-ai/claude-code"]]
-version = "2.1.216"
+version = "2.1.218"
 backend = "npm:@anthropic-ai/claude-code"
 
 [[tools."npm:@openai/codex"]]
-version = "0.144.6"
+version = "0.145.0"
 backend = "npm:@openai/codex"
 
 [[tools."npm:bash-language-server"]]
@@ -586,31 +586,31 @@ url = "https://github.com/mvdan/sh/releases/download/v3.13.1/shfmt_v3.13.1_darwi
 url_api = "https://api.github.com/repos/mvdan/sh/releases/assets/390322886"
 
 [[tools.uv]]
-version = "0.11.28"
+version = "0.11.29"
 backend = "aqua:astral-sh/uv"
 
 [tools.uv."platforms.linux-arm64"]
-checksum = "sha256:da10cdfa7d92212b7acb62021a0fd61bcf8580c58c3632ec915d10c3a1a7906b"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.28/uv-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/469655715"
+checksum = "sha256:593d79a797ece3f1dfaaf3e0a973263422a135d9262c7dbc6cd75d9c11acc0b4"
+url = "https://github.com/astral-sh/uv/releases/download/0.11.29/uv-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/478261262"
 provenance = "github-attestations"
 
 [tools.uv."platforms.linux-x64"]
-checksum = "sha256:f02146b371c35c287d860f003ece7345c86e358a3fd70a9b63700cd141ee7fb4"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.28/uv-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/469655835"
+checksum = "sha256:46711858adb2a3acaa9cee00f9060688ad1fd5706aecc005b96a6a7f285a00b7"
+url = "https://github.com/astral-sh/uv/releases/download/0.11.29/uv-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/478261352"
 provenance = "github-attestations"
 
 [tools.uv."platforms.macos-arm64"]
-checksum = "sha256:33540eb7c883ab857eff79bd5ac2aa31fe27b595abecb4a9c003a2c998447232"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.28/uv-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/469655699"
+checksum = "sha256:61c04acc52a33ef0f331e494bdfbedcdb6c26c6970c022ed3699e5860f8930e3"
+url = "https://github.com/astral-sh/uv/releases/download/0.11.29/uv-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/478261245"
 provenance = "github-attestations"
 
 [tools.uv."platforms.macos-x64"]
-checksum = "sha256:2ad79983127ffca7d77b77ce6a24278d7e4f7b817a1acf72fea5f8124b4aac5e"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.28/uv-x86_64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/469655811"
+checksum = "sha256:c4c4de482da9ccdd076dc4fb5cfe7b740609029385c72f58606be3153602387d"
+url = "https://github.com/astral-sh/uv/releases/download/0.11.29/uv-x86_64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/478261331"
 provenance = "github-attestations"
 
 [[tools.yazi]]

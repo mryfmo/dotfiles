@@ -96,6 +96,14 @@ upgrade:
 	./scripts/upgrade-tools.sh $(if $(filter 1 true yes,$(SYSTEM)),--system,)
 	$(MAKE) agmsg-bootstrap
 
+.PHONY: usage-snapshot
+usage-snapshot:
+	./scripts/usage-snapshot.sh
+
+.PHONY: usage-report
+usage-report:
+	uv run python scripts/usage-report.py
+
 .PHONY: agmsg-bootstrap
 agmsg-bootstrap:
 	@if [ -f home/dot_local/bin/common/executable_herdr-agents ]; then \

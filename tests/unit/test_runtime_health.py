@@ -481,14 +481,24 @@ class RuntimeHealthTest(unittest.TestCase):
             [[ "$1" != list ]]
             """,
         )
-        for command in ("uv", "gh"):
-            self.executable(
-                bin_dir / command,
-                f"""
-                printf '{command} %s\\n' "$*" >> "$TEST_LOG"
-                [[ "$FAIL_PHASE" != {command} ]]
-                """,
-            )
+        self.executable(
+            bin_dir / "uv",
+            """
+            printf 'uv %s\n' "$*" >> "$TEST_LOG"
+            [[ "$FAIL_PHASE" != uv ]]
+            """,
+        )
+        self.executable(
+            bin_dir / "gh",
+            """
+            printf 'gh %s\n' "$*" >> "$TEST_LOG"
+            [[ "$FAIL_PHASE" != gh ]] || exit 9
+            case "$*" in
+                *issues/1115*) printf 'open\n' ;;
+                *releases/latest*) printf 'v3.0.15\n' ;;
+            esac
+            """,
+        )
         self.executable(
             bin_dir / "sudo",
             """
@@ -591,6 +601,34 @@ class RuntimeHealthTest(unittest.TestCase):
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertIn("optional warnings: 1", result.stdout)
+
+    def test_upgrade_skips_ccr_notice_when_gh_is_unavailable(self) -> None:
+        repo, env = self.upgrade_fixture("none")
+        (repo / "bin/gh").unlink()
+
+        result = self.run_test_command(
+            ["bash", "scripts/upgrade-tools.sh"],
+            cwd=repo,
+            env=env,
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertNotIn("CCR gate G1", result.stdout)
+        self.assertNotIn("CCR latest release", result.stdout)
+
+    def test_upgrade_reports_ccr_adoption_gate_values(self) -> None:
+        repo, env = self.upgrade_fixture("none")
+
+        result = self.run_test_command(
+            ["bash", "scripts/upgrade-tools.sh"],
+            cwd=repo,
+            env=env,
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("CCR gate G1 (#1115): open", result.stdout)
+        self.assertIn("CCR latest release: v3.0.15", result.stdout)
+        self.assertIn("G2/G3 require manual primary-source verification", result.stdout)
 
 
 if __name__ == "__main__":

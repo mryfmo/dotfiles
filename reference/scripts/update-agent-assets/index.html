@@ -3228,7 +3228,6 @@
 <li><code>codex_marketplace_is_configured_git_marketplace</code></li>
 <li><code>codex_marketplace_root</code></li>
 <li><code>command_output_contains</code></li>
-<li><code>ensure_ccgate_cli</code></li>
 <li><code>ensure_claude_crit_marketplace</code></li>
 <li><code>ensure_claude_ponytail_marketplace</code></li>
 <li><code>ensure_claude_superpowers_marketplace</code></li>
@@ -3274,7 +3273,6 @@
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CODEX_PONYTAIL_MARKETPLACE</span><span class="o">=</span><span class="s2">&quot;DietrichGebert/ponytail&quot;</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CODEX_PONYTAIL_MARKETPLACE_NAME</span><span class="o">=</span><span class="s2">&quot;ponytail&quot;</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CODEX_PONYTAIL_MARKETPLACE_SOURCE</span><span class="o">=</span><span class="s2">&quot;https://github.com/DietrichGebert/ponytail.git&quot;</span>
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">CCGATE_MISE_TOOL</span><span class="o">=</span><span class="s2">&quot;aqua:tak848/ccgate&quot;</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Print a section heading.</span>
@@ -3508,29 +3506,6 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Ensure ccgate is available for agent PermissionRequest hooks.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>ensure_ccgate_cli<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>has_command<span class="w"> </span>ccgate<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>ccgate<span class="w"> </span>--version<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
-
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>has_command<span class="w"> </span>mise<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>section<span class="w"> </span><span class="s2">&quot;ccgate&quot;</span>
-<span class="w">        </span>mise<span class="w"> </span>install<span class="w"> </span>--yes<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CCGATE_MISE_TOOL</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
-<span class="w">    </span><span class="k">fi</span>
-
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>has_command<span class="w"> </span>ccgate<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>ccgate<span class="w"> </span>--version<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
-
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Skipping ccgate hook runtime verification: ccgate command not found.\n&#39;</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="o">}</span>
-
-<span class="c1">#</span>
 <span class="c1"># @description Install or refresh the Herdr agent integrations.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>ensure_herdr_integrations<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -3730,7 +3705,6 @@
 <span class="w">    </span>update_codex_crit
 <span class="w">    </span>update_codex_ponytail
 <span class="w">    </span>ensure_herdr_integrations
-<span class="w">    </span>ensure_ccgate_cli
 <span class="o">}</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>

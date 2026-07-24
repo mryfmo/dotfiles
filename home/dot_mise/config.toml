@@ -28,8 +28,6 @@ shfmt = "3.13.1"
 "npm:pyright" = "1.1.411"
 "npm:fast-cli" = "5.2.0"
 
-"aqua:tak848/ccgate" = "0.9.5"
-
 "github:x-motemen/ghq" = "1.10.1"
 "github:d-kuro/gwq" = "0.1.1"
 "github:cli/cli" = "2.96.0"

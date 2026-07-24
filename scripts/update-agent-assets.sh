@@ -23,7 +23,6 @@ readonly CODEX_PONYTAIL_PLUGIN="ponytail@ponytail"
 readonly CODEX_PONYTAIL_MARKETPLACE="DietrichGebert/ponytail"
 readonly CODEX_PONYTAIL_MARKETPLACE_NAME="ponytail"
 readonly CODEX_PONYTAIL_MARKETPLACE_SOURCE="https://github.com/DietrichGebert/ponytail.git"
-readonly CCGATE_MISE_TOOL="aqua:tak848/ccgate"
 
 #
 # @description Print a section heading.
@@ -257,29 +256,6 @@ sys.exit(0 if enabled else 1)
 }
 
 #
-# @description Ensure ccgate is available for agent PermissionRequest hooks.
-#
-function ensure_ccgate_cli() {
-    if has_command ccgate; then
-        ccgate --version || true
-        return 0
-    fi
-
-    if has_command mise; then
-        section "ccgate"
-        mise install --yes "${CCGATE_MISE_TOOL}" || true
-    fi
-
-    if has_command ccgate; then
-        ccgate --version || true
-        return 0
-    fi
-
-    printf 'Skipping ccgate hook runtime verification: ccgate command not found.\n'
-    return 0
-}
-
-#
 # @description Install or refresh the Herdr agent integrations.
 #
 function ensure_herdr_integrations() {
@@ -479,7 +455,6 @@ function main() {
     update_codex_crit
     update_codex_ponytail
     ensure_herdr_integrations
-    ensure_ccgate_cli
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

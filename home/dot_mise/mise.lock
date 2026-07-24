@@ -177,28 +177,28 @@ url = "https://github.com/Kitware/CMake/releases/download/v4.3.3/cmake-4.3.3-mac
 url_api = "https://api.github.com/repos/Kitware/CMake/releases/assets/426407094"
 
 [[tools.dotenvx]]
-version = "2.11.1"
+version = "2.14.0"
 backend = "aqua:dotenvx/dotenvx"
 
 [tools.dotenvx."platforms.linux-arm64"]
-checksum = "sha256:c8cca680697dea3851a9c5224779a19855e52b51a6dc65b7b3490a9dc739c0f1"
-url = "https://github.com/dotenvx/dotenvx/releases/download/v2.11.1/dotenvx-2.11.1-linux-aarch64.tar.gz"
-url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/478549458"
+checksum = "sha256:15b4e182e90e3aa0f365feebe5374fd698f67c0ee1d2cc5e14ca1640323d55ce"
+url = "https://github.com/dotenvx/dotenvx/releases/download/v2.14.0/dotenvx-2.14.0-linux-aarch64.tar.gz"
+url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/479740359"
 
 [tools.dotenvx."platforms.linux-x64"]
-checksum = "sha256:f28f409249a4fcd909fd515c55a9c208ae97f7e41a80baa5b98ae0b030fce0ba"
-url = "https://github.com/dotenvx/dotenvx/releases/download/v2.11.1/dotenvx-2.11.1-linux-amd64.tar.gz"
-url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/478549428"
+checksum = "sha256:b2868124d07fa8a1bfb6b98b2422b49dfb5819551f35d652c1501e99dab61cc9"
+url = "https://github.com/dotenvx/dotenvx/releases/download/v2.14.0/dotenvx-2.14.0-linux-amd64.tar.gz"
+url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/479740357"
 
 [tools.dotenvx."platforms.macos-arm64"]
-checksum = "sha256:f83c2191160eb64d0eb9a9c75dedffe7e8a60c21b76aa5443c921cd46be233fd"
-url = "https://github.com/dotenvx/dotenvx/releases/download/v2.11.1/dotenvx-2.11.1-darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/478549466"
+checksum = "sha256:76ae9b1a9326d2f78a11144aefaf6d343ef888958057c430bb7b84fffbacfe82"
+url = "https://github.com/dotenvx/dotenvx/releases/download/v2.14.0/dotenvx-2.14.0-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/479740375"
 
 [tools.dotenvx."platforms.macos-x64"]
-checksum = "sha256:2340d8c84acfdc8a9aede37b628e4a8c81451b82255039215d89d3914efd4b41"
-url = "https://github.com/dotenvx/dotenvx/releases/download/v2.11.1/dotenvx-2.11.1-darwin-amd64.tar.gz"
-url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/478549431"
+checksum = "sha256:c2a373af7c5bee579f54cb94ba69e44a2c5eab820e88af6a2942d4a6287cdafe"
+url = "https://github.com/dotenvx/dotenvx/releases/download/v2.14.0/dotenvx-2.14.0-darwin-amd64.tar.gz"
+url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/479740358"
 
 [[tools.fd]]
 version = "10.3.0"
@@ -534,7 +534,7 @@ url = "https://github.com/astral-sh/python-build-standalone/releases/download/20
 provenance = "github-attestations"
 
 [[tools.rust]]
-version = "1.97.0"
+version = "1.97.1"
 backend = "core:rust"
 
 [[tools.shellcheck]]

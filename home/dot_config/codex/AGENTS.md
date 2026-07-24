@@ -102,7 +102,7 @@
 - モデル ID と reasoning effort の正本は dotfiles の `home/dot_agents/agent-config.yaml` の `model_profiles` だけです。profile は `~/.codex/<profile>.config.toml` と `~/.agents/model-profiles.env` に生成されます。モデル変更は manifest で行い、launcher やルールに直書きしないでください。
 - 通常の実装・デバッグは `codex --profile standard`、読み取り・検索・抽出だけの作業は `--profile express`、独立レビューは `--profile review`、横断設計・未知の障害・セキュリティ関連だけ `--profile deep` を使ってください。難所が終わったら standard へ戻してください。
 - セッション途中でモデルを切り替えず、profile はセッション起動時に選んでください。
-- ccgate の PermissionRequest hook は無効化済みです(分類クレデンシャル未設定のため判定実績ゼロ)。許可プロンプトは Codex native の確認をそのまま使ってください。専用 API キーを用意する判断をした場合のみ再有効化します。
+- permgate は PermissionRequest を deterministic-first で評価し、不明・失敗時は Codex native の確認へ fail-closed します。Haiku 分類器は既存認証の `claude -p` を tools/hooks 無効で使い、`llm_enabled: false` の shadow のまま、精度と p50 latency をレビューしてから有効化を判断してください。
 
 ## Ponytail
 

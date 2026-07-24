@@ -177,10 +177,18 @@ class CodexConfigMergeTest(unittest.TestCase):
 
         self.assertEqual(output, textwrap.dedent(managed).lstrip())
 
-    def test_removed_managed_permission_request_hook_is_dropped(self) -> None:
+    def test_managed_permgate_replaces_stale_private_ccgate_hook(self) -> None:
         output = self.merge(
             """
             model = "gpt-5.6-sol"
+
+            [[hooks.PermissionRequest]]
+            matcher = "*"
+
+            [[hooks.PermissionRequest.hooks]]
+            type = "command"
+            command = "permgate codex"
+            timeout = 10
             """,
             """
             model = "gpt-5.6-sol"
@@ -198,7 +206,8 @@ class CodexConfigMergeTest(unittest.TestCase):
             """,
         )
 
-        self.assertNotIn("hooks.PermissionRequest", output)
+        self.assertIn("hooks.PermissionRequest", output)
+        self.assertIn("permgate codex", output)
         self.assertNotIn("ccgate", output)
         self.assertIn("[mcp_servers.private_server]", output)
 

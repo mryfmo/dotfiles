@@ -497,14 +497,39 @@ def validate_ponytail_assets(manifest: dict[str, Any], codex: dict[str, Any]) ->
 def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
     codex_path = ROOT / "home/.chezmoitemplates/codex-config-managed.toml"
     codex_text = render_template_text(codex_path)
-    if "hooks.PermissionRequest" in codex_text or "ccgate" in codex_text:
-        fail(f"{codex_path} must not wire the disabled ccgate PermissionRequest hook")
+    if "hooks.PermissionRequest" not in codex_text or "permgate codex" not in codex_text:
+        fail(f"{codex_path} must wire the permgate PermissionRequest hook")
+    if "ccgate" in codex_text:
+        fail(f"{codex_path} must not wire ccgate")
 
     claude_settings_path = ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
     claude_settings = json.loads(render_template_text(claude_settings_path))
     claude_hooks = json.dumps(claude_settings.get("hooks", {}), ensure_ascii=False)
-    if "PermissionRequest" in claude_hooks or "ccgate" in claude_hooks:
-        fail(f"{claude_settings_path} must not wire the disabled ccgate PermissionRequest hook")
+    if "PermissionRequest" not in claude_hooks or "permgate claude" not in claude_hooks:
+        fail(f"{claude_settings_path} must wire the permgate PermissionRequest hook")
+    if "ccgate" in claude_hooks:
+        fail(f"{claude_settings_path} must not wire ccgate")
+
+    policy_path = ROOT / "home/dot_agents/permgate-policy.yaml"
+    permgate_path = ROOT / "home/dot_local/bin/common/executable_permgate"
+    if not policy_path.exists() or not permgate_path.exists():
+        fail("permgate policy and executable must exist")
+    policy = json.loads(policy_path.read_text())
+    if policy.get("llm_enabled") is not False or policy.get("model") != "haiku":
+        fail("permgate must ship in shadow mode with the haiku model")
+    if not 0 < policy.get("timeout_seconds", 0) <= 10:
+        fail("permgate timeout must not exceed ten seconds")
+    permgate_text = permgate_path.read_text()
+    for token in (
+        "--no-cache",
+        "PERMGATE_INNER",
+        "--safe-mode",
+        '--tools',
+        "--disable-slash-commands",
+        "decisions.jsonl",
+    ):
+        if token not in permgate_text:
+            fail(f"{permgate_path} must contain {token!r}")
 
     for stale in (ROOT / "home/dot_codex/ccgate.jsonnet", ROOT / "home/dot_claude/ccgate.jsonnet"):
         if stale.exists():

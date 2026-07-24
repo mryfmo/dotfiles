@@ -182,11 +182,17 @@ Claude settings and Codex config, one `~/.codex/<profile>.config.toml` file per
 profile for `codex --profile <name>`, `~/.agents/model-profiles.env` for the
 launchers, and the low-cost `express-explorer` Claude subagent.
 
-The ccgate PermissionRequest hooks are disabled: no classifier credential was
-configured, so the gate recorded 100% fallthrough and never made a decision.
-Permission prompts use each agent's native confirmation. The ccgate binary
-stays installed via mise so the hooks can be re-enabled later with a dedicated
-low-cost API key.
+`permgate` handles Claude Code and Codex PermissionRequest hooks from the
+repo-owned policy at `~/.agents/permgate-policy.yaml`. Deterministic allow/deny
+patterns run first. Unknown requests are classified through the authenticated
+`claude -p --model haiku` CLI with hooks and tools disabled; failures and
+unrecognized categories fall through to each agent's native prompt.
+
+The LLM layer ships in shadow mode (`llm_enabled: false`): it records the
+would-be result in `~/.local/state/permgate/decisions.jsonl` but cannot approve
+a request. Keep it disabled until shadow decisions are reviewed and a five-run
+`permgate bench` reports p50 at or below 3 seconds. The ccgate package remains
+installed only for historical metrics and is not wired to either hook.
 
 The intended lifecycle is:
 

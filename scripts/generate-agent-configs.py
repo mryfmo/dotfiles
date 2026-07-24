@@ -226,6 +226,22 @@ def render_codex(manifest: dict[str, Any]) -> str:
         for key, value in marketplace_config.items():
             lines.append(f"{quote_toml_key(str(key))} = {quote_toml(value)}")
     hooks = codex.get("hooks", {})
+    permission_request = hooks.get("permission_request")
+    if permission_request:
+        lines.extend(
+            [
+                "",
+                "[[hooks.PermissionRequest]]",
+                'matcher = "*"',
+                "",
+                "[[hooks.PermissionRequest.hooks]]",
+                'type = "command"',
+                f"command = {quote_toml(permission_request['command'])}",
+                f"timeout = {quote_toml(permission_request['timeout'])}",
+                "statusMessage = "
+                + quote_toml(permission_request["status_message"]),
+            ]
+        )
     if hooks.get("state"):
         lines.extend(["", "[hooks.state]"])
         for hook_key, hook_config in hooks["state"].items():
@@ -251,6 +267,7 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
             }
         )
     profile_claude = interactive_profile(manifest)["claude"]
+    permission_request = hooks.get("permission_request")
     settings: dict[str, Any] = {
         "$schema": claude["schema"],
         "model": profile_claude["model"],
@@ -283,6 +300,27 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
                     "hooks": post_hooks,
                 }
             ],
+            **(
+                {
+                    "PermissionRequest": [
+                        {
+                            "matcher": "*",
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": permission_request["command"],
+                                    "timeout": permission_request["timeout"],
+                                    "statusMessage": permission_request[
+                                        "status_message"
+                                    ],
+                                }
+                            ],
+                        }
+                    ]
+                }
+                if permission_request
+                else {}
+            ),
         },
         "statusLine": claude["statusLine"],
         "disableSkillShellExecution": claude["disableSkillShellExecution"],

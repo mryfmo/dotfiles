@@ -13,3 +13,6 @@ __pycache__/
 
 # agmsg per-project codex delivery hooks (machine-local)
 .codex/
+
+# crit local review state (evidence copies live under .orchestration/)
+.crit/

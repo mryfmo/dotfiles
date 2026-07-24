@@ -3239,6 +3239,7 @@
 <li><code>json_workspace_id</code></li>
 <li><code>live_codex_pane_id</code></li>
 <li><code>panes_on_pane_tab</code></li>
+<li><code>remove_shadowing_node_global</code></li>
 <li><code>repair_attach_pane_order</code></li>
 <li><code>repair_attach_pane_ratio</code></li>
 <li><code>require_command</code></li>
@@ -3325,11 +3326,18 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">agent_name</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">workdir</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$3</span><span class="s2">&quot;</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>codex_agent_json
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>codex_bin
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>codex_pane_id
 
+<span class="w">    </span><span class="c1"># Resolve codex here: the Herdr daemon spawns agent argv with its own stale</span>
+<span class="w">    </span><span class="c1"># PATH snapshot, which can pick an outdated version dir.</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">codex_bin</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>codex<span class="k">)</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;codex executable not found in PATH\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">codex_agent_json</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>
 <span class="w">        </span>herdr<span class="w"> </span>agent<span class="w"> </span>start<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">agent_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--cwd<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--workspace<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--split<span class="w"> </span>right<span class="w"> </span>--env<span class="w"> </span><span class="nv">CLICOLOR_FORCE</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>--env<span class="w"> </span><span class="nv">FORCE_COLOR</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>--no-focus<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
-<span class="w">            </span>codex<span class="w"> </span>--sandbox<span class="w"> </span>workspace-write<span class="w"> </span>--profile<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HERDR_AGENTS_CODEX_PROFILE</span><span class="k">:-</span><span class="nv">standard</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">            </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_bin</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--sandbox<span class="w"> </span>workspace-write<span class="w"> </span>--profile<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HERDR_AGENTS_CODEX_PROFILE</span><span class="k">:-</span><span class="nv">standard</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="w">    </span><span class="k">)</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Failed to start Codex agent %s: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">agent_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">codex_agent_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
@@ -3625,6 +3633,22 @@
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span>--arg<span class="w"> </span>exclude<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">exclude_pane_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s1">&#39;.result.panes[]? | select((.agent? // &quot;&quot;) == &quot;&quot; and .label? != &quot;files&quot; and .pane_id != $exclude) | .pane_id // empty&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
 <span class="o">}</span>
 
+<span class="c1"># @description Remove a node-global npm copy that shadows the dedicated mise tool install.</span>
+<span class="c1"># @arg $1 string mise npm tool name, for example npm:@scope/package.</span>
+<span class="c1"># @arg $2 string npm package name, for example @scope/package.</span>
+<span class="k">function</span><span class="w"> </span>remove_shadowing_node_global<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">mise_tool</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">npm_package</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span>
+
+<span class="w">    </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>npm<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>mise<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="c1"># Never delete the only copy: heal only when the dedicated mise tool install exists.</span>
+<span class="w">    </span>mise<span class="w"> </span>where<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>npm<span class="w"> </span>list<span class="w"> </span>-g<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">npm_package</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--depth<span class="o">=</span><span class="m">0</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>npm<span class="w"> </span>uninstall<span class="w"> </span>-g<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">npm_package</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="o">}</span>
+
 <span class="c1"># @description Require a command before starting a partial layout.</span>
 <span class="c1"># @arg $1 string Command name.</span>
 <span class="k">function</span><span class="w"> </span>require_command<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -3675,6 +3699,10 @@ require_command<span class="w"> </span>codex
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">attach_mode</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>require_command<span class="w"> </span>claude
 <span class="k">fi</span>
+<span class="c1"># Heal PATH shadowing left behind by the agent CLIs&#39; own `npm install -g`</span>
+<span class="c1"># updaters so the mise-pinned versions are what the panes actually run.</span>
+remove_shadowing_node_global<span class="w"> </span><span class="s2">&quot;npm:@openai/codex&quot;</span><span class="w"> </span><span class="s2">&quot;@openai/codex&quot;</span>
+remove_shadowing_node_global<span class="w"> </span><span class="s2">&quot;npm:@anthropic-ai/claude-code&quot;</span><span class="w"> </span><span class="s2">&quot;@anthropic-ai/claude-code&quot;</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">attach_mode</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nv">workdir</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">&quot;</span>

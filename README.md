@@ -197,8 +197,8 @@ the provider, normalized action, status, category, confidence, and would-be
 decision without payload values. Enable a provider only after reviewed
 outcomes and a five-run `permgate bench` show five successful classifications,
 p50 at or below 3 seconds, and p95 at or below 7 seconds. Writes such as
-`apply_patch` are never classifier-eligible. The ccgate package remains
-installed only for historical metrics and is not wired to either hook.
+`apply_patch` are never classifier-eligible. ccgate is fully removed; its
+historical metrics remain in the permgate policy provenance.
 
 The intended lifecycle is:
 

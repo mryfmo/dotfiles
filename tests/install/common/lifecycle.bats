@@ -322,9 +322,9 @@ herdr server reload-config" ]
 }
 
 @test "[common] agent asset lifecycle renders model profiles and permgate hooks" {
-    grep -q 'aqua:tak848/ccgate' scripts/update-agent-assets.sh
-    grep -q '"aqua:tak848/ccgate" = "0.9.5"' home/dot_mise/config.toml
-    grep -q 'ccgate --version' scripts/update-agent-assets.sh
+    ! grep -q 'aqua:tak848/ccgate' scripts/update-agent-assets.sh
+    ! grep -q '"aqua:tak848/ccgate" = "0.9.5"' home/dot_mise/config.toml
+    ! grep -q 'ccgate --version' scripts/update-agent-assets.sh
     grep -q 'permgate claude' home/.chezmoitemplates/claude-settings-managed.json
     grep -q 'permgate codex' home/.chezmoitemplates/codex-config-managed.toml
     ! grep -q 'ccgate' home/.chezmoitemplates/claude-settings-managed.json

@@ -231,33 +231,45 @@ make upgrade
 ### Herdr and Ghostty agent workspace
 
 Ghostty starts at a normal zsh prompt. In Ghostty zsh sessions, bare `herdr`
-delegates to `herdr-session`, which calls `herdr-agents "$PWD"` with output
-logged to `~/.config/herdr/herdr-agents.log` and then execs the real `herdr`
-CLI, so the terminal attaches to the focused workspace after the agent layout is
-ready. Exiting Herdr returns to the shell. Argumented Herdr calls such as
-`herdr --remote` and `herdr server reload-config` still run the real Herdr CLI.
-Outside Ghostty, bare `herdr` also runs the real Herdr CLI. Already-open
-Ghostty shells keep the zsh function they sourced at startup; run `exec zsh` or
-open a new window after updating these dotfiles when the wrapper changes.
+delegates to `herdr-session`, which simply execs the real `herdr` CLI: the
+terminal opens as one plain pane with no agent layout. Agent panes are added
+lazily — starting Claude Code inside a Herdr pane fires the Claude
+`SessionStart` hook, which runs `herdr-agents --attach` (logged to
+`~/.config/herdr/herdr-agents.log`). Exiting Herdr returns to the shell.
+Argumented Herdr calls such as `herdr --remote` and `herdr server
+reload-config` still run the real Herdr CLI, as does bare `herdr` outside
+Ghostty. Already-open Ghostty shells keep the zsh function they sourced at
+startup; run `exec zsh` or open a new window after updating these dotfiles
+when the wrapper changes.
 
-The workspace layout itself stays centralized in `herdr-agents`, which is also
-bound inside Herdr at `prefix+alt+a`. Before creating a workspace, it looks for
-an existing agents workspace by matching the workspace label and a pane whose
-`cwd` is the requested project directory. A healthy match is focused instead of
-recreated. If only one side is missing, `herdr-agents` repairs that side:
-Claude Code is restarted in an empty pane or a new left pane, and Codex is
-restarted as `codex-worker-${workspace_id}` with `--split right`. On a new
-workspace it reuses the root pane for Claude Code and starts Codex to its right,
-so the visible result is Claude Code left of Codex. The Codex process still runs
-the `codex` command, but its Herdr agent name is workspace-scoped as
-`codex-worker-${workspace_id}` so repeated runs do not collide with an older
-active Codex agent. Both agents start in the same project cwd and use the
-shared agmsg scripts/state for cross-agent messaging.
+The workspace layout stays centralized in `herdr-agents`, which is also bound
+inside Herdr at `prefix+alt+a`. The target layout is deliberately fixed at
+exactly two panes, split 50/50: `claude-orchestrator` on the left and
+`codex-worker-${workspace_id}` on the right. Attach mode renames the current
+Claude pane, starts Codex with `--split right` when it is missing, and repairs
+pane order (Claude left) and the 50/50 ratio, refusing any repair when the
+layout is ambiguous or contains unmanaged panes. Full mode
+(`herdr-agents [DIR]`) creates or heals the same two-pane workspace and
+focuses a healthy existing one instead of recreating it. Both agents start in
+the same project cwd and use the shared agmsg scripts/state for cross-agent
+messaging; the worker is a resident interactive session, kept warm so
+delegation avoids per-task cold starts and survives Herdr session restores.
 
-The far-right `files` pane runs Yazi, using its built-in file-type icons and
-interactive file operations. Opening an editable file uses `zed --add` when
-available and falls back to `${EDITOR:-vi}` elsewhere, while directory
-navigation and non-edit opener rules retain Yazi's defaults.
+Per-task agent switching happens at the profile layer, never in the layout:
+the Codex worker profile comes from `HERDR_AGENTS_CODEX_PROFILE` (default
+`standard`, passed to `codex --profile`), and the Claude side follows
+`interactive_profile` in `home/dot_agents/agent-config.yaml`, escalating with
+`/model` and `/effort` only at task boundaries. Parallelism never adds panes
+to this workspace: one git worktree equals one resident worker in its own
+tab/workspace (started with `herdr agent start --cwd <worktree>`), completion
+is detected only through agmsg RESULT messages, and about three concurrent
+workers is the practical supervision ceiling.
+
+There is no persistent files pane; `prefix+f` opens the on-demand
+`herdr-file-viewer` popup instead. Yazi remains available as a mise-managed
+tool: opening an editable file uses `zed --add` when available and falls back
+to `${EDITOR:-vi}` elsewhere, while directory navigation and non-edit opener
+rules retain Yazi's defaults.
 
 The official Herdr integrations are refreshed by `make update` through
 `scripts/update-agent-assets.sh`: `ensure_herdr_integrations` runs

@@ -1,0 +1,44 @@
+[
+  {
+    "scope": "review",
+    "id": "r_c8a555",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "--help",
+    "author": "mryfmo",
+    "created_at": "2026-07-24T06:54:58Z",
+    "updated_at": "2026-07-24T06:55:17Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_b19a6e",
+        "body": "Resolved: this was an accidental CLI help probe, not a review finding.",
+        "author": "Codex",
+        "created_at": "2026-07-24T06:55:17Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_823dda",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review scope approval: adversarially reviewed all five changed files for resurrection paths, policy provenance drift, hook safety regression, and lifecycle test inversion. No actionable findings; the diff removes only the ccgate install path while preserving regression guards and fail-closed permgate settings.",
+    "author": "Codex",
+    "created_at": "2026-07-24T06:55:17Z",
+    "updated_at": "2026-07-24T06:55:22Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_3426b2",
+        "body": "Resolved as the finding-free approval record after completing the adversarial review.",
+        "author": "Codex",
+        "created_at": "2026-07-24T06:55:22Z",
+        "review_round": 1
+      }
+    ]
+  }
+]

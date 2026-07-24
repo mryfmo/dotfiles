@@ -1,0 +1,118 @@
+T24 validation log
+
+Baseline:
+- origin/main: b2c3261eeb0acf0b0bb1c0d2c8131811c5989942
+- branch: feat/usage-review-automation
+- isolated worktree: /private/tmp/dotfiles-usage-review-automation
+
+Test-first evidence:
+- Initial focused suite: 5 errors because usage-report.py and
+  usage-snapshot.sh did not exist.
+- After implementation: all 5 usage-review tests passed.
+
+Required local validation:
+- make unit-test
+  result: Ran 191 tests; OK
+  exit_code=0
+- make validate-agent-assets
+  output: agent asset validation ok
+  exit_code=0
+- uv run --with pyyaml scripts/generate-agent-configs.py --check
+  output: generated agent configs are up to date
+  exit_code=0
+- shellcheck scripts/usage-snapshot.sh scripts/upgrade-tools.sh
+  exit_code=0
+- shfmt --indent 4 --space-redirects --diff
+  scripts/usage-snapshot.sh scripts/upgrade-tools.sh
+  exit_code=0
+- plutil -lint
+  home/Library/LaunchAgents/com.mryfmo.dotfiles.usage-snapshot.plist
+  output: OK
+  exit_code=0
+- git diff --check
+  exit_code=0
+- no local bats command was run
+- no launchctl command was run
+
+Behavior coverage:
+- existing daily snapshot remains byte-identical and ccusage is not invoked
+- list and model-name-keyed modelBreakdowns aggregate correctly
+- output share, cache-read ratio, and baseline deltas match fixture arithmetic
+- +7d/+14d reminders emit and matching review notes suppress only their window
+- Fable candidate yes/no cases pass
+- malformed snapshots warn without raising
+- missing gh skips the CCR notice under an isolated PATH
+- successful CCR queries print G1 state, latest release, and G2/G3 reminder
+- gh/API failures remain optional and do not fail upgrade
+- atomic hard-link publication cannot replace a concurrently created snapshot
+
+Crit-data review:
+- review file: /Users/mryfmo/.crit/reviews/bcb66848a92a/review.json
+- evidence:
+  .agents/worklog/codex/review/20260723_183944_T24_crit-comments.json
+- receipt:
+  .agents/worklog/codex/review/20260723_183944_T24_receipt.md
+- resolved approval records: r_65a9b8 and r_6776b1
+- unresolved local Crit records: 0
+- AGENT_REVIEWED=1 REVIEW_EVIDENCE=<receipt> make require-crit-review
+  output: Review requirement satisfied
+  exit_code=0
+
+Initial GitHub CI failure and fix:
+- failing run: https://github.com/mryfmo/dotfiles/actions/runs/29996389807
+- all three OS/system unit jobs failed only
+  test_upgrade_skips_ccr_notice_when_gh_is_unavailable
+- root cause: the fixture removed bin/gh but retained /usr/bin in PATH, so the
+  GitHub runner's system gh remained discoverable
+- fix: isolate the missing-gh fixture PATH and explicitly link only required
+  standard commands
+- full local unit suite passed after the fix
+
+Final git and PR:
+- commit 1: a985b08cd9534b1db723b6d39eefa4c802ba3f6d
+- commit 2: f876598a89f1f4af02f45699d413d6b70a57fea0
+- local head equals origin/feat/usage-review-automation
+- PR: https://github.com/mryfmo/dotfiles/pull/91
+- PR state: OPEN
+- PR mergeable: MERGEABLE
+- final CI:
+  - Agent assets SUCCESS:
+    https://github.com/mryfmo/dotfiles/actions/runs/29997417254
+  - Unit test SUCCESS:
+    https://github.com/mryfmo/dotfiles/actions/runs/29997417258
+  - Snippet install SUCCESS:
+    https://github.com/mryfmo/dotfiles/actions/runs/29997417278
+  - nix SKIPPED by workflow condition
+  - CodeRabbit SUCCESS (review rate limited)
+
+Boundary validation:
+- no model profile paths changed
+- no dependency files changed
+- no secrets logged
+- pre-acceptance PR was not merged
+- pre-acceptance main remained at
+  b2c3261eeb0acf0b0bb1c0d2c8131811c5989942
+
+After-acceptance validation:
+- acceptance_status=accepted
+- acceptance_next_action=merge
+- gh_pr_merge_exit_code=1
+- gh_pr_merge_note=GitHub squash merge succeeded; local branch deletion failed
+  because the branch was checked out in the task worktree
+- PR_state=MERGED
+- merge_commit=9cfd7a863a868f290dd042ef4fd2b56b3fdfdab1
+- merged_at=2026-07-23T10:11:17Z
+- pre_sync_branch=main
+- pre_sync_HEAD=b2c3261eeb0acf0b0bb1c0d2c8131811c5989942
+- pre_sync_tracked_status=clean
+- git_fetch_origin=pass
+- git_merge_ff_only=pass
+- post_sync_HEAD=9cfd7a863a868f290dd042ef4fd2b56b3fdfdab1
+- origin_main=9cfd7a863a868f290dd042ef4fd2b56b3fdfdab1
+- post_sync_tracked_status=clean
+- T24_worktree_removed=yes
+- local_topic_branch_removed=yes
+- remote_topic_branch_removed=yes
+- review_evidence_preserved_in_main_worklog=yes
+- launchctl_execution=not-run; orchestrator owns final integration
+- final_status=completed

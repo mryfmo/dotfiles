@@ -1,0 +1,34 @@
+{
+  "crit_version": "0.18.0",
+  "unresolved_command_root_type": "null",
+  "all_comments_root_type": "array",
+  "all_comment_fields": [
+    "scope",
+    "path",
+    "id",
+    "start_line",
+    "end_line",
+    "body",
+    "anchor",
+    "author",
+    "created_at",
+    "updated_at",
+    "resolved",
+    "resolved_round",
+    "replies"
+  ],
+  "review_file_fields": [
+    "branch",
+    "base_ref",
+    "updated_at",
+    "review_round",
+    "review_comments",
+    "files"
+  ],
+  "required_but_absent_from_crit_comments_json": [
+    "stable_review_identifier",
+    "completion_or_publication_state",
+    "reviewed_repository",
+    "commit_or_diff_target"
+  ]
+}

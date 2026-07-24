@@ -153,6 +153,100 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
             [attach_hook, state_hook],
         )
 
+    def test_managed_permgate_replaces_stale_current_ccgate_hook(self) -> None:
+        managed_hook = {
+            "matcher": "*",
+            "hooks": [{"type": "command", "command": "permgate claude"}],
+        }
+        stale_hook = {
+            "matcher": "*",
+            "hooks": [{"type": "command", "command": "ccgate claude"}],
+        }
+        output = self.merge(
+            {
+                "enabledPlugins": {},
+                "hooks": {"PermissionRequest": [managed_hook]},
+            },
+            json.dumps(
+                {
+                    "enabledPlugins": {},
+                    "hooks": {"PermissionRequest": [stale_hook]},
+                }
+            ),
+        )
+
+        permission_hooks = json.loads(output)["hooks"]["PermissionRequest"]
+        self.assertEqual(permission_hooks, [managed_hook])
+        self.assertNotIn("ccgate", json.dumps(permission_hooks))
+
+    def test_permission_merge_preserves_unrelated_current_hooks(self) -> None:
+        managed_hook = {
+            "matcher": "*",
+            "hooks": [{"type": "command", "command": "permgate claude"}],
+        }
+        stale_hook = {
+            "matcher": "*",
+            "hooks": [{"type": "command", "command": "ccgate claude"}],
+        }
+        custom_hook = {
+            "matcher": "Bash",
+            "hooks": [{"type": "command", "command": "custom-audit-hook"}],
+        }
+
+        output = self.merge(
+            {
+                "enabledPlugins": {},
+                "hooks": {"PermissionRequest": [managed_hook]},
+            },
+            json.dumps(
+                {
+                    "enabledPlugins": {},
+                    "hooks": {"PermissionRequest": [custom_hook, stale_hook]},
+                }
+            ),
+        )
+
+        permission_hooks = json.loads(output)["hooks"]["PermissionRequest"]
+        self.assertEqual(permission_hooks, [custom_hook, managed_hook])
+
+    def test_permission_merge_preserves_custom_hook_in_mixed_entry(self) -> None:
+        managed_hook = {
+            "matcher": "*",
+            "hooks": [{"type": "command", "command": "permgate claude"}],
+        }
+        mixed_hook = {
+            "matcher": "*",
+            "hooks": [
+                {"type": "command", "command": "/opt/homebrew/bin/ccgate claude"},
+                {"type": "command", "command": "custom-audit-hook"},
+            ],
+        }
+
+        output = self.merge(
+            {
+                "enabledPlugins": {},
+                "hooks": {"PermissionRequest": [managed_hook]},
+            },
+            json.dumps(
+                {
+                    "enabledPlugins": {},
+                    "hooks": {"PermissionRequest": [mixed_hook]},
+                }
+            ),
+        )
+
+        permission_hooks = json.loads(output)["hooks"]["PermissionRequest"]
+        self.assertEqual(
+            permission_hooks,
+            [
+                {
+                    "matcher": "*",
+                    "hooks": [{"type": "command", "command": "custom-audit-hook"}],
+                },
+                managed_hook,
+            ],
+        )
+
     def test_managed_hook_object_key_order_is_preserved(self) -> None:
         managed = {
             "enabledPlugins": {},

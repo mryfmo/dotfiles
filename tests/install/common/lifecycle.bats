@@ -329,8 +329,10 @@ herdr server reload-config" ]
     ! grep -q 'ccgate' home/.chezmoitemplates/claude-settings-managed.json
     ! grep -q 'ccgate' home/.chezmoitemplates/codex-config-managed.toml
     grep -q '"llm_enabled": false' home/dot_agents/permgate-policy.yaml
-    grep -q '"model": "haiku"' home/dot_agents/permgate-policy.yaml
+    grep -q '"model": "claude-haiku-4-5-20251001"' home/dot_agents/permgate-policy.yaml
+    grep -q '"model": "gpt-5.6-luna"' home/dot_agents/permgate-policy.yaml
     grep -q 'PERMGATE_INNER' home/dot_local/bin/common/executable_permgate
+    grep -q 'PERMGATE_CODEX_COMMAND' home/dot_local/bin/common/executable_permgate
     [ ! -e home/dot_claude/ccgate.jsonnet ]
     [ ! -e home/dot_codex/ccgate.jsonnet ]
     grep -q '.codex/ccgate.jsonnet' home/.chezmoiremove

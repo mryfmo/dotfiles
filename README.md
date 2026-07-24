@@ -184,14 +184,20 @@ launchers, and the low-cost `express-explorer` Claude subagent.
 
 `permgate` handles Claude Code and Codex PermissionRequest hooks from the
 repo-owned policy at `~/.agents/permgate-policy.yaml`. Deterministic allow/deny
-patterns run first. Unknown requests are classified through the authenticated
-`claude -p --model haiku` CLI with hooks and tools disabled; failures and
-unrecognized categories fall through to each agent's native prompt.
+patterns run first. Unknown, intrinsically read-only CLI actions use the
+originating agent's authenticated official CLI: `claude -p` for Claude Code
+and `codex exec` for Codex. Classifiers receive only normalized action
+metadata, never raw commands, arguments, patch bodies, or structured values.
+Unconstrained reads and searches remain native prompts because their hidden
+targets cannot be evaluated safely. Failures and unrecognized action/category
+pairs also fall through.
 
-The LLM layer ships in shadow mode (`llm_enabled: false`): it records the
-would-be result in `~/.local/state/permgate/decisions.jsonl` but cannot approve
-a request. Keep it disabled until shadow decisions are reviewed and a five-run
-`permgate bench` reports p50 at or below 3 seconds. The ccgate package remains
+Both providers ship in shadow mode (`llm_enabled: false`). Audit JSONL records
+the provider, normalized action, status, category, confidence, and would-be
+decision without payload values. Enable a provider only after reviewed
+outcomes and a five-run `permgate bench` show five successful classifications,
+p50 at or below 3 seconds, and p95 at or below 7 seconds. Writes such as
+`apply_patch` are never classifier-eligible. The ccgate package remains
 installed only for historical metrics and is not wired to either hook.
 
 The intended lifecycle is:

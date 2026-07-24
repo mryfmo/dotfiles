@@ -55,7 +55,13 @@ def sample_manifest() -> dict:
             "features": {},
             "plugins": {},
             "marketplaces": {},
-            "hooks": {},
+            "hooks": {
+                "permission_request": {
+                    "command": "permgate codex",
+                    "timeout": 10,
+                    "status_message": "Evaluating permission request",
+                }
+            },
             "projects": {},
         },
         "claude": {
@@ -70,6 +76,11 @@ def sample_manifest() -> dict:
             "hooks": {
                 "enforce_uv_hook": "~/.claude/hooks/enforce-uv.sh",
                 "format_edited_files_hook": "~/.claude/hooks/format-edited-files.py",
+                "permission_request": {
+                    "command": "permgate claude",
+                    "timeout": 10,
+                    "status_message": "Evaluating permission request",
+                },
             },
             "statusLine": {},
             "disableSkillShellExecution": True,
@@ -155,7 +166,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
         self.assertFalse([path for path in outputs if path.name == "ccgate.jsonnet"])
 
-    def test_claude_settings_use_interactive_profile_without_permission_gate(
+    def test_claude_settings_use_interactive_profile_with_permgate(
         self,
     ) -> None:
         settings = self.module.json.loads(
@@ -165,7 +176,43 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertEqual("sonnet", settings["model"])
         self.assertEqual("high", settings["effortLevel"])
         self.assertNotIn("[1m]", settings["model"])
-        self.assertNotIn("PermissionRequest", settings["hooks"])
+        self.assertEqual(
+            settings["hooks"]["PermissionRequest"],
+            [
+                {
+                    "matcher": "*",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": "permgate claude",
+                            "timeout": 10,
+                            "statusMessage": "Evaluating permission request",
+                        }
+                    ],
+                }
+            ],
+        )
+
+    def test_codex_config_renders_permgate_permission_request(self) -> None:
+        config = self.module.render_codex(sample_manifest())
+
+        self.assertIn("[[hooks.PermissionRequest]]", config)
+        self.assertIn("[[hooks.PermissionRequest.hooks]]", config)
+        self.assertIn('command = "permgate codex"', config)
+        self.assertNotIn("ccgate", config)
+
+    def test_managed_hooks_use_installed_permgate_paths(self) -> None:
+        codex = (
+            ROOT / "home/.chezmoitemplates/codex-config-managed.toml"
+        ).read_text()
+        claude = (
+            ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
+        ).read_text()
+
+        self.assertIn(
+            "{{ .chezmoi.homeDir }}/.local/bin/common/permgate codex", codex
+        )
+        self.assertIn("~/.local/bin/common/permgate claude", claude)
 
     def test_unknown_interactive_profile_fails(self) -> None:
         manifest = sample_manifest()

@@ -109,6 +109,15 @@ last_revision = "16f6cbf4b87792938e47b0f8c650b6d80fcbc98c"
 source_type = "git"
 source = "https://github.com/DietrichGebert/ponytail.git"
 
+[[hooks.PermissionRequest]]
+matcher = "*"
+
+[[hooks.PermissionRequest.hooks]]
+type = "command"
+command = "{{ .chezmoi.homeDir }}/.local/bin/common/permgate codex"
+timeout = 10
+statusMessage = "Evaluating permission request"
+
 [hooks.state]
 
 [hooks.state."crit@mryfmo-personal-plugins:hooks/hooks.json:stop:0:0"]

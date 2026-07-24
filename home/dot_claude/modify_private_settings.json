@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import sys
 from pathlib import Path
 from typing import Any
 
 RUNTIME_KEYS = ("enabledPlugins",)
+MANAGED_PERMISSION_EXECUTABLES = ("ccgate", "permgate")
 
 
 def source_dir() -> Path:
@@ -42,13 +44,49 @@ def load_json_object(text: str) -> dict[str, Any] | None:
     return data if isinstance(data, dict) else None
 
 
+def is_managed_permission_hook(hook: Any) -> bool:
+    if not isinstance(hook, dict) or not isinstance(hook.get("command"), str):
+        return False
+    try:
+        parts = shlex.split(hook["command"])
+    except ValueError:
+        return False
+    return (
+        len(parts) == 2
+        and Path(parts[0]).name in MANAGED_PERMISSION_EXECUTABLES
+        and parts[1] == "claude"
+    )
+
+
+def preserve_unmanaged_permission_entry(entry: Any) -> Any | None:
+    if not isinstance(entry, dict) or not isinstance(entry.get("hooks"), list):
+        return entry
+    hooks = [
+        hook for hook in entry["hooks"] if not is_managed_permission_hook(hook)
+    ]
+    if len(hooks) == len(entry["hooks"]):
+        return entry
+    return {**entry, "hooks": hooks} if hooks else None
+
+
 def merge_hooks(
     managed: dict[str, Any], current: dict[str, Any]
 ) -> dict[str, Any]:
     merged: dict[str, Any] = {}
     for key, value in current.items():
         managed_value = managed.get(key)
-        if isinstance(value, list) and isinstance(managed_value, list):
+        if key == "PermissionRequest" and isinstance(managed_value, list):
+            current_hooks = value if isinstance(value, list) else []
+            unmanaged = [
+                preserved
+                for entry in current_hooks
+                if (preserved := preserve_unmanaged_permission_entry(entry))
+                is not None
+            ]
+            merged[key] = unmanaged + [
+                entry for entry in managed_value if entry not in unmanaged
+            ]
+        elif isinstance(value, list) and isinstance(managed_value, list):
             # ponytail: hook arrays are tiny; index entries only if they grow materially.
             merged[key] = value + [entry for entry in managed_value if entry not in value]
         elif key in managed:

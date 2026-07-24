@@ -94,6 +94,10 @@ codex:
       source_type: git
       source: https://github.com/DietrichGebert/ponytail.git
   hooks:
+    permission_request:
+      command: '{{ .chezmoi.homeDir }}/.local/bin/common/permgate codex'
+      timeout: 10
+      status_message: Evaluating permission request
     state:
       crit@mryfmo-personal-plugins:hooks/hooks.json:stop:0:0:
         trusted_hash: sha256:bf6ad428ae7902810fa2d68d8db42228377af118aa18508ad0eccf73a95ed1f8
@@ -142,6 +146,10 @@ claude:
   hooks:
     enforce_uv_hook: ~/.claude/hooks/enforce-uv.sh
     format_edited_files_hook: ~/.claude/hooks/format-edited-files.py
+    permission_request:
+      command: ~/.local/bin/common/permgate claude
+      timeout: 10
+      status_message: Evaluating permission request
     session_start:
       - matcher: "*"
         hooks:

@@ -1,0 +1,610 @@
+#!/usr/bin/env -S uv run --no-cache --script
+"""Deterministic-first PermissionRequest gate for Claude Code and Codex."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+import os
+import re
+import shlex
+import statistics
+import subprocess
+import sys
+import tempfile
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+
+SENTINEL_ENV = "PERMGATE_INNER"
+SHELL_CONTROL = re.compile(r"[;&|><`\n]|\$\(")
+SHELL_EXPANSION = re.compile(r"[$*?\[\]{}~]")
+SECRET_MARKER = re.compile(
+    r"(?i)(?:(?:api[_-]?key|authorization|cookie|password|secret|token)\s*[:=]"
+    r"|bearer\s+\S+|://[^\s/@:]+:[^\s/@]+@)"
+)
+SENSITIVE_KEY = re.compile(
+    r"(?i)(?:api[_-]?key|authorization|credential|password|private[_-]?key|secret|token)"
+)
+UNSAFE_READ_OPTIONS = {
+    "--ext-diff",
+    "--hostname-bin",
+    "--no-index",
+    "--open-files-in-pager",
+    "--output",
+    "--pre",
+    "--textconv",
+    "--watch",
+    "--web",
+    "-O",
+    "-w",
+}
+ACTION_NAME = re.compile(r"[A-Za-z0-9_.:-]{1,128}")
+CLASSIFIABLE_ACTIONS = {
+    "gh.issue.list",
+    "gh.issue.view",
+    "gh.pr.checks",
+    "gh.pr.diff",
+    "gh.pr.view",
+    "gh.repo.view",
+    "gh.run.list",
+    "gh.run.view",
+    "git.status",
+}
+SUMMARY_COMMANDS = {
+    "ccgate",
+    "chezmoi",
+    "claude",
+    "codex",
+    "crit",
+    "gh",
+    "git",
+    "herdr",
+    "jq",
+    "make",
+    "mise",
+    "npm",
+    "node",
+    "pgrep",
+    "pnpm",
+    "ps",
+    "python3",
+    "rg",
+    "sysctl",
+    "uv",
+}
+
+
+def policy_path() -> Path:
+    override = os.environ.get("PERMGATE_POLICY_PATH")
+    return Path(override) if override else Path.home() / ".agents/permgate-policy.yaml"
+
+
+def state_path() -> Path:
+    override = os.environ.get("PERMGATE_STATE_PATH")
+    if override:
+        return Path(override)
+    state_home = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
+    return state_home / "permgate/decisions.jsonl"
+
+
+def load_policy() -> dict[str, Any]:
+    policy = json.loads(policy_path().read_text())
+    if policy.get("schema_version") != 2:
+        raise ValueError("unsupported policy schema")
+    providers = policy.get("providers")
+    if not isinstance(providers, dict) or set(providers) != {"claude", "codex"}:
+        raise ValueError("providers must define claude and codex")
+    for name, provider in providers.items():
+        if not isinstance(provider, dict):
+            raise ValueError(f"{name} provider must be an object")
+        if not isinstance(provider.get("llm_enabled"), bool):
+            raise ValueError(f"{name} llm_enabled must be boolean")
+        timeout = provider.get("timeout_seconds")
+        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)):
+            raise ValueError(f"{name} timeout_seconds must be numeric")
+        if not 0 < timeout <= 8:
+            raise ValueError(f"{name} timeout_seconds must leave hook headroom")
+        model = provider.get("model")
+        if not isinstance(model, str) or not model:
+            raise ValueError(f"{name} model must be a non-empty string")
+        minimum_confidence = provider.get("minimum_confidence")
+        if (
+            isinstance(minimum_confidence, bool)
+            or not isinstance(minimum_confidence, (int, float))
+            or not 0 <= minimum_confidence <= 1
+        ):
+            raise ValueError(f"{name} minimum_confidence must be between zero and one")
+    if not providers["claude"]["model"].startswith("claude-haiku-4-5-20"):
+        raise ValueError("claude classifier must use a dated Haiku model ID")
+    categories = policy.get("categories")
+    if not isinstance(categories, list) or not all(
+        isinstance(item, str) for item in categories
+    ):
+        raise ValueError("categories must be strings")
+    prompt = policy.get("classifier_prompt")
+    if not isinstance(prompt, str) or not prompt:
+        raise ValueError("classifier_prompt must be a non-empty string")
+    actions = policy.get("classifier_actions")
+    if not isinstance(actions, dict) or set(actions) != set(categories) or not all(
+        isinstance(category_actions, list)
+        and all(
+            isinstance(action, str) and ACTION_NAME.fullmatch(action)
+            for action in category_actions
+        )
+        for category_actions in actions.values()
+    ):
+        raise ValueError("classifier_actions must map every category to actions")
+    flattened_actions = [action for items in actions.values() for action in items]
+    if len(flattened_actions) != len(set(flattened_actions)):
+        raise ValueError("classifier actions must belong to exactly one category")
+    if not set(flattened_actions) <= CLASSIFIABLE_ACTIONS:
+        raise ValueError("classifier actions must be intrinsically read-only")
+    enablement = policy.get("enablement")
+    if not isinstance(enablement, dict):
+        raise ValueError("enablement must be an object")
+    for key in ("minimum_successes", "maximum_p50_ms", "maximum_p95_ms"):
+        value = enablement.get(key)
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
+            raise ValueError(f"enablement {key} must be positive")
+    return policy
+
+
+def request_parts(payload: dict[str, Any]) -> tuple[str, dict[str, Any], str]:
+    tool = payload.get("tool_name")
+    tool = tool if isinstance(tool, str) else "unknown"
+    tool_input = payload.get("tool_input")
+    tool_input = tool_input if isinstance(tool_input, dict) else {}
+    command = tool_input.get("command")
+    match_text = (
+        command
+        if isinstance(command, str)
+        else json.dumps(tool_input, sort_keys=True, separators=(",", ":"))
+    )
+    return tool, tool_input, match_text
+
+
+def input_summary(tool: str, tool_input: dict[str, Any], match_text: str) -> str:
+    if tool != "Bash":
+        return f"{tool}:structured"[:160]
+    first = re.match(r"\s*([^\s;&|><]+)", match_text)
+    operation = Path(first.group(1)).name if first else "other"
+    if operation not in SUMMARY_COMMANDS:
+        operation = "other"
+    return f"{tool}:{operation}"[:160]
+
+
+def contains_sensitive_input(value: Any) -> bool:
+    if isinstance(value, dict):
+        return any(
+            SENSITIVE_KEY.search(str(key)) or contains_sensitive_input(item)
+            for key, item in value.items()
+        )
+    if isinstance(value, list):
+        return any(contains_sensitive_input(item) for item in value)
+    return isinstance(value, str) and bool(SECRET_MARKER.search(value))
+
+
+def pattern_match(pattern: dict[str, Any], tool: str, text: str) -> bool:
+    return pattern.get("tool") == tool and bool(
+        re.fullmatch(str(pattern.get("regex", r"(?!x)x")), text)
+    )
+
+
+def has_unsafe_read_option(command: str) -> bool:
+    try:
+        parts = shlex.split(command)
+    except ValueError:
+        return True
+    return any(
+        token.split("=", 1)[0] in UNSAFE_READ_OPTIONS for token in parts[1:]
+    )
+
+
+def is_bounded_shell_command(command: str) -> bool:
+    return not (
+        SHELL_CONTROL.search(command)
+        or SHELL_EXPANSION.search(command)
+        or has_unsafe_read_option(command)
+    )
+
+
+def hook_output(behavior: str, message: str | None = None) -> dict[str, Any]:
+    decision = {"behavior": behavior}
+    if message is not None:
+        decision["message"] = message
+    return {
+        "hookSpecificOutput": {
+            "hookEventName": "PermissionRequest",
+            "decision": decision,
+        }
+    }
+
+
+def classifier_schema(categories: list[str]) -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "category": {"type": "string", "enum": [*categories, "unknown"]},
+            "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        },
+        "required": ["category", "confidence"],
+        "additionalProperties": False,
+    }
+
+
+def classification_subject(
+    tool: str, tool_input: dict[str, Any], policy: dict[str, Any]
+) -> dict[str, Any] | None:
+    allowed_actions = {
+        action
+        for actions in policy["classifier_actions"].values()
+        for action in actions
+    }
+    if tool != "Bash":
+        return {"action": tool} if tool in allowed_actions else None
+    command = tool_input.get("command")
+    if not isinstance(command, str) or not is_bounded_shell_command(command):
+        return None
+    try:
+        parts = shlex.split(command)
+    except ValueError:
+        return None
+    if not parts:
+        return None
+    operation = parts[0]
+    if Path(operation).name != operation:
+        return None
+    action = next(
+        (
+            candidate
+            for candidate in sorted(allowed_actions, key=lambda item: -item.count("."))
+            if parts[: len(candidate.split("."))] == candidate.split(".")
+        ),
+        None,
+    )
+    if action is None:
+        return None
+    return {
+        "action": action,
+        "option_count": sum(part.startswith("-") for part in parts[1:]),
+        "argument_count": sum(not part.startswith("-") for part in parts[1:]),
+    }
+
+
+def parse_classification(
+    data: Any,
+    provider: dict[str, Any],
+    categories: list[str],
+    actions: dict[str, list[str]],
+    subject: dict[str, Any],
+) -> dict[str, Any] | None:
+    if not isinstance(data, dict):
+        return None
+    classification = data.get("structured_output", data)
+    if not isinstance(classification, dict):
+        return None
+    category = classification.get("category")
+    confidence = classification.get("confidence")
+    if (
+        category not in categories
+        or subject["action"] not in actions.get(str(category), [])
+        or isinstance(confidence, bool)
+        or not isinstance(confidence, (int, float))
+        or confidence < provider["minimum_confidence"]
+    ):
+        return None
+    return {"category": category, "confidence": confidence}
+
+
+def classify(
+    agent: str,
+    subject: dict[str, Any],
+    policy: dict[str, Any],
+) -> tuple[dict[str, Any] | None, int, str]:
+    started = time.monotonic()
+    schema = classifier_schema(policy["categories"])
+    provider = policy["providers"][agent]
+    prompt = (
+        f"{policy['classifier_prompt']}\n\n"
+        "Classify only this normalized metadata. It contains no argument values:\n"
+        + json.dumps(subject, sort_keys=True, separators=(",", ":"))
+    )
+    env = os.environ.copy()
+    env[SENTINEL_ENV] = "1"
+    try:
+        if agent == "claude":
+            env["CLAUDE_CODE_DISABLE_AUTO_MEMORY"] = "1"
+            result = subprocess.run(
+                [
+                    os.environ.get("PERMGATE_CLAUDE_COMMAND", "claude"),
+                    "-p",
+                    "--model",
+                    provider["model"],
+                    "--max-turns",
+                    "1",
+                    "--safe-mode",
+                    "--tools",
+                    "",
+                    "--disable-slash-commands",
+                    "--strict-mcp-config",
+                    "--no-session-persistence",
+                    "--output-format",
+                    "json",
+                    "--json-schema",
+                    json.dumps(schema, separators=(",", ":")),
+                ],
+                input=prompt,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                timeout=provider["timeout_seconds"],
+                check=False,
+            )
+            raw_output = result.stdout
+        else:
+            with tempfile.TemporaryDirectory(prefix="permgate-classifier-") as directory:
+                root = Path(directory)
+                schema_path = root / "schema.json"
+                output_path = root / "result.json"
+                schema_path.write_text(json.dumps(schema, separators=(",", ":")))
+                result = subprocess.run(
+                    [
+                        os.environ.get("PERMGATE_CODEX_COMMAND", "codex"),
+                        "exec",
+                        "--model",
+                        provider["model"],
+                        "--ignore-user-config",
+                        "--ignore-rules",
+                        "--ephemeral",
+                        "--sandbox",
+                        "read-only",
+                        "--disable",
+                        "hooks",
+                        "--disable",
+                        "shell_tool",
+                        "--skip-git-repo-check",
+                        "--color",
+                        "never",
+                        "--cd",
+                        directory,
+                        "--output-schema",
+                        str(schema_path),
+                        "--output-last-message",
+                        str(output_path),
+                        prompt,
+                    ],
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    env=env,
+                    timeout=provider["timeout_seconds"],
+                    check=False,
+                )
+                raw_output = output_path.read_text() if output_path.exists() else ""
+    except subprocess.TimeoutExpired:
+        return None, round((time.monotonic() - started) * 1000), "timeout"
+    except OSError:
+        return None, round((time.monotonic() - started) * 1000), "unavailable"
+    latency_ms = round((time.monotonic() - started) * 1000)
+    if result.returncode != 0:
+        return None, latency_ms, "error"
+    try:
+        data = json.loads(raw_output)
+    except json.JSONDecodeError:
+        return None, latency_ms, "malformed"
+    classification = parse_classification(
+        data,
+        provider,
+        policy["categories"],
+        policy["classifier_actions"],
+        subject,
+    )
+    if classification is None:
+        return None, latency_ms, "rejected"
+    return classification, latency_ms, "classified"
+
+
+def append_log(record: dict[str, Any]) -> None:
+    path = state_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    line = (json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n").encode()
+    descriptor = os.open(path, os.O_APPEND | os.O_CREAT | os.O_WRONLY, 0o600)
+    try:
+        os.write(descriptor, line)
+    finally:
+        os.close(descriptor)
+
+
+def decision_record(
+    agent: str,
+    payload: dict[str, Any],
+    layer: str,
+    decision: str,
+    latency_ms: int,
+) -> dict[str, Any]:
+    tool, tool_input, match_text = request_parts(payload)
+    return {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "agent": agent,
+        "tool": tool,
+        "input_hash": hashlib.sha256(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest(),
+        "input_summary": input_summary(tool, tool_input, match_text),
+        "layer": layer,
+        "decision": decision,
+        "latency_ms": latency_ms,
+    }
+
+
+def decide(
+    agent: str, payload: dict[str, Any], policy: dict[str, Any]
+) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    started = time.monotonic()
+    tool, tool_input, match_text = request_parts(payload)
+    layer = "fallthrough"
+    decision = "ask"
+    shadow_decision: str | None = None
+    classification: dict[str, Any] | None = None
+    classification_status: str | None = None
+    output: dict[str, Any] | None = None
+
+    for pattern in policy.get("deny_patterns", []):
+        if pattern_match(pattern, tool, match_text):
+            layer = "deterministic"
+            decision = "deny"
+            output = hook_output("deny", str(pattern["message"]))
+            break
+    else:
+        safe_single_action = tool != "Bash" or is_bounded_shell_command(match_text)
+        if safe_single_action:
+            for pattern in policy.get("allow_patterns", []):
+                if pattern_match(pattern, tool, match_text):
+                    layer = "deterministic"
+                    decision = "allow"
+                    output = hook_output("allow")
+                    break
+        if (
+            output is None
+            and safe_single_action
+            and not contains_sensitive_input(tool_input)
+        ):
+            subject = classification_subject(tool, tool_input, policy)
+            if subject is not None:
+                classification, classifier_latency, classification_status = classify(
+                    agent, subject, policy
+                )
+                provider = policy["providers"][agent]
+                layer = "llm-shadow" if not provider["llm_enabled"] else "llm"
+                shadow_decision = "allow" if classification is not None else "ask"
+                if classification is not None and provider["llm_enabled"]:
+                    decision = "allow"
+                    output = hook_output("allow")
+                latency_ms = classifier_latency
+            else:
+                latency_ms = round((time.monotonic() - started) * 1000)
+        else:
+            latency_ms = round((time.monotonic() - started) * 1000)
+
+    if layer == "deterministic":
+        latency_ms = round((time.monotonic() - started) * 1000)
+    record = decision_record(agent, payload, layer, decision, latency_ms)
+    if shadow_decision is not None:
+        record["shadow_decision"] = shadow_decision
+        record["provider"] = agent
+        record["classification_status"] = classification_status
+        record["classification_action"] = subject["action"]
+    if classification is not None:
+        record.update(classification)
+    return output, record
+
+
+def run_bench(policy: dict[str, Any]) -> int:
+    fixtures = [
+        ("Bash", {"command": "gh issue list"}),
+        ("Bash", {"command": "gh issue view 1"}),
+        ("Bash", {"command": "gh pr checks 1"}),
+        ("Bash", {"command": "gh run list"}),
+        ("Bash", {"command": "git status --short"}),
+    ]
+    result: dict[str, Any] = {}
+    for agent in ("claude", "codex"):
+        latencies: list[int] = []
+        successes = 0
+        status_counts: dict[str, int] = {}
+        for tool, tool_input in fixtures:
+            subject = classification_subject(tool, tool_input, policy)
+            if subject is None:
+                continue
+            classification, latency_ms, status = classify(agent, subject, policy)
+            latencies.append(latency_ms)
+            successes += classification is not None
+            status_counts[status] = status_counts.get(status, 0) + 1
+        enablement = policy["enablement"]
+        ordered = sorted(latencies)
+        p50 = round(statistics.median(ordered)) if ordered else None
+        p95 = ordered[math.ceil(0.95 * len(ordered)) - 1] if ordered else None
+        result[agent] = {
+            "n": len(latencies),
+            "successful_classifications": successes,
+            "status_counts": status_counts,
+            "latency_ms": latencies,
+            "p50_ms": p50,
+            "p95_ms": p95,
+            "ready_for_enablement": (
+                bool(ordered)
+                and successes >= enablement["minimum_successes"]
+                and p50 <= enablement["maximum_p50_ms"]
+                and p95 <= enablement["maximum_p95_ms"]
+            ),
+            "llm_enabled": policy["providers"][agent]["llm_enabled"],
+        }
+    print(json.dumps(result, sort_keys=True))
+    return 0
+
+
+def main() -> int:
+    if os.environ.get(SENTINEL_ENV):
+        return 0
+    if len(sys.argv) != 2:
+        return 0
+    if sys.argv[1] == "bench":
+        try:
+            policy = load_policy()
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            return 0
+        return run_bench(policy)
+    agent = sys.argv[1]
+    if agent not in {"claude", "codex"}:
+        return 0
+    raw_input = sys.stdin.read()
+    try:
+        payload = json.loads(raw_input)
+        if not isinstance(payload, dict):
+            raise ValueError("hook input must be an object")
+    except (json.JSONDecodeError, ValueError):
+        try:
+            append_log(
+                {
+                    "ts": datetime.now(timezone.utc).isoformat(),
+                    "agent": agent,
+                    "tool": "unknown",
+                    "input_hash": hashlib.sha256(raw_input.encode()).hexdigest(),
+                    "input_summary": "unknown:invalid-json",
+                    "layer": "input-error",
+                    "decision": "ask",
+                    "latency_ms": 0,
+                }
+            )
+        except OSError:
+            pass
+        return 0
+    try:
+        policy = load_policy()
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        try:
+            append_log(decision_record(agent, payload, "config-error", "ask", 0))
+        except OSError:
+            pass
+        return 0
+    try:
+        output, record = decide(agent, payload, policy)
+    except (KeyError, TypeError, ValueError, re.error):
+        output = None
+        record = decision_record(agent, payload, "config-error", "ask", 0)
+    try:
+        append_log(record)
+    except OSError:
+        return 0
+    if output is not None:
+        print(json.dumps(output, separators=(",", ":")))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

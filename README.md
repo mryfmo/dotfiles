@@ -182,11 +182,23 @@ Claude settings and Codex config, one `~/.codex/<profile>.config.toml` file per
 profile for `codex --profile <name>`, `~/.agents/model-profiles.env` for the
 launchers, and the low-cost `express-explorer` Claude subagent.
 
-The ccgate PermissionRequest hooks are disabled: no classifier credential was
-configured, so the gate recorded 100% fallthrough and never made a decision.
-Permission prompts use each agent's native confirmation. The ccgate binary
-stays installed via mise so the hooks can be re-enabled later with a dedicated
-low-cost API key.
+`permgate` handles Claude Code and Codex PermissionRequest hooks from the
+repo-owned policy at `~/.agents/permgate-policy.yaml`. Deterministic allow/deny
+patterns run first. Unknown, intrinsically read-only CLI actions use the
+originating agent's authenticated official CLI: `claude -p` for Claude Code
+and `codex exec` for Codex. Classifiers receive only normalized action
+metadata, never raw commands, arguments, patch bodies, or structured values.
+Unconstrained reads and searches remain native prompts because their hidden
+targets cannot be evaluated safely. Failures and unrecognized action/category
+pairs also fall through.
+
+Both providers ship in shadow mode (`llm_enabled: false`). Audit JSONL records
+the provider, normalized action, status, category, confidence, and would-be
+decision without payload values. Enable a provider only after reviewed
+outcomes and a five-run `permgate bench` show five successful classifications,
+p50 at or below 3 seconds, and p95 at or below 7 seconds. Writes such as
+`apply_patch` are never classifier-eligible. The ccgate package remains
+installed only for historical metrics and is not wired to either hook.
 
 The intended lifecycle is:
 

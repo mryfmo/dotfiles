@@ -63,6 +63,19 @@
           }
         ]
       }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.local/bin/common/permgate claude",
+            "timeout": 10,
+            "statusMessage": "Evaluating permission request"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {

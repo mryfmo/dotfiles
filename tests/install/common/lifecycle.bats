@@ -320,12 +320,19 @@ herdr server reload-config" ]
     grep -q 'ponytail@ponytail' home/dot_config/claude/rules/ponytail.md
 }
 
-@test "[common] agent asset lifecycle renders model profiles and keeps ccgate hooks disabled" {
+@test "[common] agent asset lifecycle renders model profiles and permgate hooks" {
     grep -q 'aqua:tak848/ccgate' scripts/update-agent-assets.sh
     grep -q '"aqua:tak848/ccgate" = "0.9.5"' home/dot_mise/config.toml
     grep -q 'ccgate --version' scripts/update-agent-assets.sh
+    grep -q 'permgate claude' home/.chezmoitemplates/claude-settings-managed.json
+    grep -q 'permgate codex' home/.chezmoitemplates/codex-config-managed.toml
     ! grep -q 'ccgate' home/.chezmoitemplates/claude-settings-managed.json
     ! grep -q 'ccgate' home/.chezmoitemplates/codex-config-managed.toml
+    grep -q '"llm_enabled": false' home/dot_agents/permgate-policy.yaml
+    grep -q '"model": "claude-haiku-4-5-20251001"' home/dot_agents/permgate-policy.yaml
+    grep -q '"model": "gpt-5.6-luna"' home/dot_agents/permgate-policy.yaml
+    grep -q 'PERMGATE_INNER' home/dot_local/bin/common/executable_permgate
+    grep -q 'PERMGATE_CODEX_COMMAND' home/dot_local/bin/common/executable_permgate
     [ ! -e home/dot_claude/ccgate.jsonnet ]
     [ ! -e home/dot_codex/ccgate.jsonnet ]
     grep -q '.codex/ccgate.jsonnet' home/.chezmoiremove
@@ -350,7 +357,7 @@ herdr server reload-config" ]
 
 @test "[common] README documents agent permission asset lifecycle" {
     grep -q '### Agent review and permission assets' README.md
-    grep -q 'The ccgate PermissionRequest hooks are disabled' README.md
+    grep -q 'permgate' README.md
     grep -q 'model_profiles' README.md
     grep -q 'scripts/update-agent-assets.sh' README.md
     grep -q 'make require-crit-review' README.md

@@ -19,7 +19,10 @@ from typing import Any
 
 SENTINEL_ENV = "PERMGATE_INNER"
 SHELL_CONTROL = re.compile(r"[;&|><`\n]|\$\(")
-SECRET_MARKER = re.compile(r"(?i)(?:api[_-]?key|password|secret|token)\s*[:=]")
+SECRET_MARKER = re.compile(
+    r"(?i)(?:(?:api[_-]?key|authorization|password|secret|token)\s*[:=]"
+    r"|bearer\s+\S+)"
+)
 SENSITIVE_KEY = re.compile(
     r"(?i)(?:api[_-]?key|authorization|credential|password|private[_-]?key|secret|token)"
 )

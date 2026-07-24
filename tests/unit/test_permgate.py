@@ -293,6 +293,35 @@ class PermgateTest(unittest.TestCase):
         self.assertEqual(record["input_summary"], "mcp__vault__read:structured")
         self.assertNotIn(secret_marker, json.dumps(record))
 
+    def test_bearer_secret_in_bash_input_skips_classifier(self) -> None:
+        secret_marker = "bearer-secret-must-not-reach-classifier"
+        payload = CODEX_INPUT | {
+            "tool_input": {
+                "command": (
+                    "curl -H "
+                    f'"Authorization: Bearer {secret_marker}" '
+                    "https://example.invalid"
+                )
+            }
+        }
+        result = self.run_gate("codex", payload)
+        record = self.read_log()[-1]
+        self.assertEqual(result.stdout, "")
+        self.assertEqual(record["layer"], "fallthrough")
+        self.assertNotIn(secret_marker, json.dumps(record))
+
+    def test_script_named_version_is_not_a_version_check(self) -> None:
+        self.policy_path.write_text(
+            (ROOT / "home/dot_agents/permgate-policy.yaml").read_text()
+        )
+        for command in ("python3 version", "node version"):
+            with self.subTest(command=command):
+                result = self.run_gate(
+                    "codex", CODEX_INPUT | {"tool_input": {"command": command}}
+                )
+                self.assertEqual(result.stdout, "")
+                self.assertNotEqual(self.read_log()[-1]["layer"], "deterministic")
+
     def test_bench_runs_five_layer_two_fixtures(self) -> None:
         env = os.environ.copy()
         env.update(

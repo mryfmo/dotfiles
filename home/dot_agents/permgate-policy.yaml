@@ -82,7 +82,7 @@
       "id": "known-version-check",
       "tool": "Bash",
       "category": "version_check",
-      "regex": "\\s*(?:git|gh|claude|codex|uv|python3|node|npm|pnpm|mise|chezmoi|crit|herdr|ccgate)\\s+(?:--version|-V|version)\\s*",
+      "regex": "\\s*(?:git|gh|claude|codex|uv|python3|node|npm|pnpm|mise|chezmoi|crit|herdr|ccgate)\\s+(?:--version|-V)\\s*",
       "sources": [{"kind": "conservative_seed", "count": 0}]
     }
   ],

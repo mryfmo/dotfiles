@@ -244,13 +244,16 @@ when the wrapper changes.
 
 The workspace layout stays centralized in `herdr-agents`, which is also bound
 inside Herdr at `prefix+alt+a`. The target layout is deliberately fixed at
-exactly two panes, split 50/50: `claude-orchestrator` on the left and
+exactly two managed panes, split 50/50: `claude-orchestrator` on the left and
 `codex-worker-${workspace_id}` on the right. Attach mode renames the current
 Claude pane, starts Codex with `--split right` when it is missing, and repairs
 pane order (Claude left) and the 50/50 ratio, refusing any repair when the
-layout is ambiguous or contains unmanaged panes. Full mode
-(`herdr-agents [DIR]`) creates or heals the same two-pane workspace and
-focuses a healthy existing one instead of recreating it. Both agents start in
+layout is ambiguous or contains unmanaged panes. Unmanaged panes — such as a
+legacy `files` pane restored from a pre-two-pane persisted session — are
+deliberately preserved, never closed, split, or reused. Full mode
+(`herdr-agents [DIR]`) creates or heals the two managed panes and focuses a
+healthy existing workspace instead of recreating it, again leaving any
+unmanaged panes in place. Both agents start in
 the same project cwd and use the shared agmsg scripts/state for cross-agent
 messaging; the worker is a resident interactive session, kept warm so
 delegation avoids per-task cold starts and survives Herdr session restores.
@@ -261,12 +264,14 @@ the Codex worker profile comes from `HERDR_AGENTS_CODEX_PROFILE` (default
 `interactive_profile` in `home/dot_agents/agent-config.yaml`, escalating with
 `/model` and `/effort` only at task boundaries. Parallelism never adds panes
 to this workspace: one git worktree equals one resident worker in its own
-tab/workspace (started with `herdr agent start --cwd <worktree>`), completion
+tab/workspace (started with `herdr agent start <agent-name> --cwd <worktree>`), completion
 is detected only through agmsg RESULT messages, and about three concurrent
 workers is the practical supervision ceiling.
 
-There is no persistent files pane; `prefix+f` opens the on-demand
-`herdr-file-viewer` popup instead. Yazi remains available as a mise-managed
+New workspaces no longer create a persistent files pane; `prefix+f` opens the
+on-demand `herdr-file-viewer` popup instead. A legacy `files` pane restored
+from an older persisted session is left untouched as an unmanaged pane, as
+described above. Yazi remains available as a mise-managed
 tool: opening an editable file uses `zed --add` when available and falls back
 to `${EDITOR:-vi}` elsewhere, while directory navigation and non-edit opener
 rules retain Yazi's defaults.

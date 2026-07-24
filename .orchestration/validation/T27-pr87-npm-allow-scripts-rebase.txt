@@ -1,0 +1,86 @@
+T27 validation
+==============
+
+Rebase
+------
+base: 5d6acf84f00d735fd17ff8fb790f561f0591087e
+old head: d66e1eb60327a5bee9c9d579cce56f7fae363b07
+new head: 350291393bd051a00e264402cf04d220df0e2c7d
+result: Successfully rebased and updated refs/heads/fix/npm-allow-scripts-agent-clis.
+
+Scope and diff
+--------------
+git diff --name-only origin/main...HEAD
+home/dot_zshrc
+tests/install/common/lifecycle.bats
+
+git diff --check origin/main...HEAD
+exit 0
+
+Local checks
+------------
+make unit-test
+Ran 226 tests in 20.911s
+OK
+
+make validate-agent-assets
+agent asset validation ok
+
+shellcheck scripts/upgrade-tools.sh
+exit 0
+
+shfmt --indent 4 --space-redirects --diff scripts/upgrade-tools.sh home/dot_zshrc
+exit 0, no diff
+
+zsh -n home/dot_zshrc
+exit 0
+
+Local Bats
+----------
+Not run, per repository policy and task prohibition.
+
+Live smoke
+----------
+Command shape:
+env npm_config_min_release_age=0 npm install -g --prefix <mise-claude-prefix> --ignore-scripts=false --allow-scripts=@anthropic-ai/claude-code --include=optional @anthropic-ai/claude-code@2.1.218
+
+Output:
+changed 2 packages in 2s
+Reshimming mise 26.5.0...
+
+The allow-scripts warning was absent.
+claude --version:
+2.1.218 (Claude Code)
+
+Native binary:
+Mach-O 64-bit executable arm64
+
+Review gate
+-----------
+make require-crit-review
+Review not required: no meaningful review trigger found.
+
+GitHub
+------
+PR: https://github.com/mryfmo/dotfiles/pull/87
+state: OPEN
+mergeable: MERGEABLE
+merge state: CLEAN
+head: 350291393bd051a00e264402cf04d220df0e2c7d
+
+CodeRabbit: pass
+Agent assets / validate: pass
+MacOS / build: pass
+Ubuntu / build client: pass
+Ubuntu / build server: pass
+Unit test / changes: pass
+Unit test / macOS client: pass
+Unit test / Ubuntu client: pass
+Unit test / Ubuntu server: pass
+Snippet install / public macOS client: pass
+Snippet install / public Ubuntu client: pass
+Snippet install / public Ubuntu server: pass
+Snippet install / private macOS client: pass
+Snippet install / private Ubuntu client: pass
+Snippet install / private Ubuntu server: pass
+Nix: skipped by workflow condition

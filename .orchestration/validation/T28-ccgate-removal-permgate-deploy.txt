@@ -1,0 +1,157 @@
+T28 validation
+==============
+
+Repository scope
+----------------
+base: ce79eac7d9bcb02192e8b744239a462290f35c92
+head: 0dc4ef1098da4c832ad38fe4c71e8a2d03eaf2fe
+changed files:
+  README.md
+  home/dot_agents/permgate-policy.yaml
+  home/dot_mise/config.toml
+  scripts/update-agent-assets.sh
+  tests/install/common/lifecycle.bats
+git diff --check: PASS
+
+Generated documentation
+-----------------------
+./scripts/generate-docs.sh: PASS with documented fallback renderer
+docs/reference/scripts/update-agent-assets.md contains no ccgate section: PASS
+The generated docs/reference tree is ignored and is not a tracked PR file.
+
+Local checks
+------------
+make unit-test
+  Ran 226 tests in 18.246s
+  OK
+
+make validate-agent-assets
+  agent asset validation ok
+
+uv run --with pyyaml scripts/generate-agent-configs.py --check
+  generated agent configs are up to date
+
+shellcheck scripts/update-agent-assets.sh
+  PASS
+
+shfmt --indent 4 --space-redirects --diff scripts/update-agent-assets.sh
+  PASS, no diff
+
+Local Bats
+----------
+NOT RUN, per repository and T28 policy.
+
+Preserved resurrection guards
+-----------------------------
+PASS MANAGED_PERMISSION_EXECUTABLES = ("ccgate", "permgate")
+PASS home/.chezmoiremove retains .codex/ccgate.jsonnet and .claude/ccgate.jsonnet
+PASS scripts/validate-agent-assets.py retains ccgate prohibitions
+PASS unit regression tests retain stale-ccgate replacement coverage
+
+Live lifecycle and removal
+--------------------------
+PASS scripts/update-agent-assets.sh
+PASS mise uninstall aqua:tak848/ccgate@0.9.5
+PASS mise uninstall aqua:tak848/ccgate@0.9.3 aqua:tak848/ccgate@0.9.4
+PASS mise reshim
+PASS command -v ccgate is absent
+PASS mise ls contains no ccgate
+PASS mise ls --installed contains no ccgate
+PASS no ccgate install directory or shim remains
+PASS live mise config targets /Users/mryfmo/Workspace/dotfiles/home/dot_mise/config.toml
+PASS canonical live source content is identical to PR #93 for home/dot_mise/config.toml
+
+Live deployment
+---------------
+PASS ~/.local/bin/common/permgate exists and is executable
+PASS Claude PermissionRequest command is ~/.local/bin/common/permgate claude
+PASS Codex PermissionRequest command is /Users/mryfmo/.local/bin/common/permgate codex
+PASS Claude llm_enabled is false
+PASS Codex llm_enabled is false
+PASS known-version-check no longer contains ccgate
+PASS historical metrics remain: Codex fallthrough=370, Claude fallthrough=9
+PASS Claude deny/ask JSON is byte-equivalent after normalized comparison
+PASS Codex approval_policy remains on-request
+PASS Codex sandbox_mode remains workspace-write
+PASS no deployed symlink/config references the temporary worktree
+
+Live fixture output
+-------------------
+before_lines=0
+
+claude safe:
+{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}
+
+claude dangerous:
+{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"Refusing recursive deletion of the filesystem root."}}}
+
+claude ambiguous:
+no hook output; native ask
+
+codex safe:
+{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}
+
+codex dangerous:
+{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"Refusing recursive deletion of the filesystem root."}}}
+
+codex ambiguous:
+no hook output; native ask
+
+after_lines=6
+appended=6
+
+Appended redacted decisions
+---------------------------
+{"agent":"claude","decision":"allow","input_hash":"62df5c85a4b02f0d6c5f212403e9bb6484fe24674723e5227995a1987383fa5f","input_summary":"Bash:git","latency_ms":0,"layer":"deterministic","tool":"Bash","ts":"2026-07-24T06:53:13.966656+00:00"}
+{"agent":"claude","decision":"deny","input_hash":"5ec5b24e4f0b0cecddc5ba38f0afbd67965627ba7b299b995c9cae3c7dffc60f","input_summary":"Bash:other","latency_ms":0,"layer":"deterministic","tool":"Bash","ts":"2026-07-24T06:53:14.051762+00:00"}
+{"agent":"claude","classification_action":"gh.issue.view","classification_status":"timeout","decision":"ask","input_hash":"d720af71c3f50073fd3a4ced2a9337fb5d625e82c3c6600d14f0e7da6f4bd4b5","input_summary":"Bash:gh","latency_ms":7011,"layer":"llm-shadow","provider":"claude","shadow_decision":"ask","tool":"Bash","ts":"2026-07-24T06:53:21.151591+00:00"}
+{"agent":"codex","decision":"allow","input_hash":"db726c9b88c24e61d9d5decfdcdaf0d315fad14acace2e9d03e9a54fd9c00ca6","input_summary":"Bash:git","latency_ms":0,"layer":"deterministic","tool":"Bash","ts":"2026-07-24T06:53:21.241219+00:00"}
+{"agent":"codex","decision":"deny","input_hash":"57ddc12d567782daeceabb350e49578f0f0504521afc67662bed971d2c560e41","input_summary":"Bash:other","latency_ms":0,"layer":"deterministic","tool":"Bash","ts":"2026-07-24T06:53:21.324081+00:00"}
+{"agent":"codex","classification_action":"gh.issue.view","classification_status":"rejected","decision":"ask","input_hash":"b419b922f3b8d6d08b7f52b93fe931534089fe58215fb74b7b57581bef724e99","input_summary":"Bash:gh","latency_ms":4580,"layer":"llm-shadow","provider":"codex","shadow_decision":"ask","tool":"Bash","ts":"2026-07-24T06:53:25.989607+00:00"}
+
+Review gate
+-----------
+PASS AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/validation/T28-review-receipt.md make require-crit-review
+
+GitHub
+------
+PR: https://github.com/mryfmo/dotfiles/pull/93
+head: 0dc4ef1098da4c832ad38fe4c71e8a2d03eaf2fe
+mergeable: MERGEABLE
+merge state: CLEAN
+
+CodeRabbit: PASS
+Agent assets / validate: PASS
+MacOS / build: PASS
+Ubuntu / build client: PASS
+Ubuntu / build server: PASS
+Unit test / changes: PASS
+Unit test / macOS client: PASS
+Unit test / Ubuntu client: PASS
+Unit test / Ubuntu server: PASS
+Snippet install / public macOS client: PASS
+Snippet install / public Ubuntu client: PASS
+Snippet install / public Ubuntu server: PASS
+Snippet install / private macOS client: PASS
+Snippet install / private Ubuntu client: PASS
+Snippet install / private Ubuntu server: PASS
+Nix: SKIPPED by workflow condition
+
+Acceptance and merge
+--------------------
+PASS AGMSG-ACCEPTANCE status=accepted next_action=merge
+PASS PR #93 squash merged
+merge commit: f5c4846f1d5d6e8eba963a380f1899c1141a570f
+PASS local main fast-forward-only sync
+PASS tracked working tree clean
+PASS T28 worktree removed
+PASS local chore/remove-ccgate branch removed
+PASS remote chore/remove-ccgate branch removed
+PASS chezmoi apply --verbose exited 0 from merged main
+NOTE optional Claude Superpowers refresh timed out once and continued warning-only
+PASS chezmoi diff is empty
+PASS final command -v ccgate is absent
+PASS final mise ls contains no ccgate
+PASS final mise ls --installed contains no ccgate
+PASS final Claude/Codex permgate hooks exist
+PASS final Claude/Codex llm_enabled remain false

@@ -1,0 +1,53 @@
+T26 validation
+Timestamp: 2026-07-24T15:01:36+09:00
+PR: https://github.com/mryfmo/dotfiles/pull/86
+Head: b098ddeb6e1cee836d879621d7fe64aef14e1d14
+
+PASS uv run python -m unittest tests.unit.test_herdr_agents
+  Ran 56 tests in 4.122s
+  OK
+
+PASS make unit-test
+  Ran 226 tests in 18.166s
+  OK
+
+PASS make validate-agent-assets
+  agent asset validation ok
+
+PASS shellcheck home/dot_local/bin/common/executable_herdr-agents
+
+PASS shfmt --indent 4 --space-redirects --diff home/dot_local/bin/common/executable_herdr-agents
+
+PASS git diff --check origin/main...HEAD
+
+PASS disposable Herdr lifecycle
+  Session: t26-pr86-e2e (named, isolated from default)
+  Directory: disposable /private/tmp directory
+  Workspace: w2, two panes, split direction right, ratio 0.5
+  Claude pane: left, label claude-orchestrator
+  Codex pane: right, label codex-worker
+  Codex argv included:
+    /Users/mryfmo/.local/share/mise/installs/npm-openai-codex/0.145.0/bin/codex
+    --sandbox workspace-write --profile standard
+  Client detach and reattach preserved running agents and the layout.
+  Server stop and attach restored the same two-pane layout.
+  The isolated session was stopped and deleted.
+  Final default session contains only operator workspace w1C with two panes.
+
+PASS GitHub Actions
+  Agent assets: SUCCESS
+  Unit test: all Linux/macOS jobs SUCCESS (nix SKIPPED)
+  Snippet install: all public/private Linux/macOS jobs SUCCESS
+
+PASS CodeRabbit
+  Review completed: SUCCESS
+
+PASS GitHub merge state
+  CLEAN
+
+NOT RUN local Bats
+  Forbidden by repository and task policy; GitHub Actions is authoritative.
+
+PASS make require-crit-review
+  Review not required: no meaningful uncommitted review trigger found.
+

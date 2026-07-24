@@ -1,0 +1,156 @@
+T25 permgate validation
+Date: 2026-07-24 JST
+Branch: feat/permgate
+
+TEST-FIRST EVIDENCE
+- Initial focused tests failed while runtime/wiring were absent.
+- Eight adversarial review tests failed before their fixes:
+  * git diff --output was not a deterministic allow, but still reached shadow classification.
+  * structured api_key input reached shadow classification and its summary leaked.
+  * generated hooks used a bare permgate command.
+  * an Authorization/Bearer header reached shadow classification.
+  * python3/node execution of a script named version was auto-allowed.
+  * Cookie and basic-auth URL credentials reached shadow classification.
+  * malformed classifier policy fields could continue or crash.
+- After the fixes, focused results:
+  2 passed, 15 deselected, 6 subtests passed (latest review regressions)
+  1 passed, 10 deselected (installed hook path test)
+
+FINAL LOCAL VALIDATION
+$ make unit-test
+Ran 210 tests in 15.954s
+OK
+
+$ make validate-agent-assets
+agent asset validation ok
+
+$ uv run --with pyyaml scripts/generate-agent-configs.py --check
+generated agent configs are up to date
+
+$ uvx ruff check home/dot_local/bin/common/executable_permgate tests/unit/test_permgate.py tests/unit/test_generate_agent_configs.py scripts/validate-agent-assets.py
+All checks passed!
+
+$ git diff --check
+exit 0
+
+Per repository policy, bats was not run locally.
+
+LIVE FIXTURE SMOKE
+The checked-in source executable and policy were used directly. LLM mode
+remained false.
+
+Claude safe read:
+{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}
+
+Claude dangerous:
+{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"Refusing recursive deletion of the filesystem root."}}}
+
+Claude ambiguous/write-capable read option:
+stdout empty => native ask
+
+Codex safe read:
+{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}
+
+Codex dangerous:
+{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"Refusing recursive deletion of the filesystem root."}}}
+
+Codex ambiguous/write-capable read option:
+stdout empty => native ask
+
+JSONL evidence:
+- 6 records
+- safe reads: layer=deterministic, decision=allow
+- root deletion: layer=deterministic, decision=deny
+- git diff --output: layer=fallthrough, decision=ask
+- summaries were Bash:git or Bash:other
+- no full command, argument, output, or secret value was logged
+
+RECURSION AND FAIL-CLOSED TESTS
+- PERMGATE_INNER=1: exit 0, empty stdout, no JSONL record.
+- timeout: empty stdout before the fixture cap.
+- missing/non-zero Claude CLI: empty stdout/native ask.
+- malformed classifier JSON: empty stdout/native ask.
+- invalid policy: empty stdout/native ask with config-error audit record.
+- structured api_key: classifier skipped, summary redacted, native ask.
+- log append failure suppresses any explicit allow/deny output.
+
+FIVE-RUN BENCH
+$ permgate bench
+{"enablement_threshold_p50_ms":3000,"latency_ms":[1149,363,361,366,373],"llm_enabled":false,"n":5,"p50_ms":366,"p95_ms":1149,"successful_classifications":0}
+
+The p50 latency is under the later 3-second threshold, but all classifications
+failed because the current Claude CLI reported that it was not logged in.
+Therefore this run provides no accuracy evidence and llm_enabled remains false.
+
+REVIEW GATE
+$ make require-crit-review
+Expected failure: tracked agent config plus broad 15-file/1032-line change
+requires native agent review.
+
+Local Crit evidence contains eight resolved actionable findings plus one
+resolved administrative record. GitHub Codex and CodeRabbit review findings
+were addressed with failing-first regression tests, replies, and resolved
+GitHub review threads.
+
+$ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/review/T25-crit-receipt.md make require-crit-review
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+
+PULL REQUEST AND CI
+PR: https://github.com/mryfmo/dotfiles/pull/92
+Final head: bdfd6b213601ffdb63f4136eb25040de3eddffed
+Merge state: CLEAN / MERGEABLE
+
+Final checks:
+- Agent assets / validate: success
+- MacOS / build: success
+- Ubuntu / build client and server: success
+- Unit test / macOS client: success
+- Unit test / Ubuntu client and server: success
+- Snippet install / public bootstrap macOS client: success
+- Snippet install / public bootstrap Ubuntu client and server: success
+- Snippet install / private bootstrap macOS/Ubuntu: success
+- CodeRabbit: success
+- nix: intentionally skipped by workflow
+
+All four GitHub review threads are resolved. The PR remains open and unmerged
+until AGMSG-ACCEPTANCE authorizes merge.
+
+ADVERSARIAL REPAIR VALIDATION
+- Provider routing test: Codex invokes only fake codex; Claude invokes only
+  fake claude.
+- Classifier capture tests: raw command arguments, file paths, patch bodies,
+  and structured values are absent.
+- Action/category invariant: a whitelisted but mismatched category is rejected.
+- Mutating/non-bounded inputs: git push, rg --pre, and apply_patch never reach
+  either classifier.
+- Codex inner command is ephemeral, read-only, ignores user config/rules, and
+  disables hooks while preserving CODEX_HOME auth.
+- Claude and Codex llm_enabled values are independent.
+- Audit records include provider, normalized action, status, category,
+  confidence, and shadow decision without payload values.
+- Claude settings merge replaces a stale ccgate PermissionRequest hook.
+
+$ uv run python -m unittest tests.unit.test_permgate tests.unit.test_claude_settings_merge
+Ran 37 tests
+OK
+
+$ make unit-test
+Ran 218 tests
+OK
+
+$ make validate-agent-assets
+agent asset validation ok
+
+$ uv run --with pyyaml scripts/generate-agent-configs.py --check
+generated agent configs are up to date
+
+$ ruff check ... && git diff --check
+All checks passed
+
+CORRECTED LIVE PROVIDER BENCH
+$ permgate bench
+{"claude":{"latency_ms":[7031,7032,6064,5348,6071],"llm_enabled":false,"n":5,"p50_ms":6071,"p95_ms":7032,"ready_for_enablement":false,"status_counts":{"classified":2,"rejected":1,"timeout":2},"successful_classifications":2},"codex":{"latency_ms":[6859,5241,4911,4221,4229],"llm_enabled":false,"n":5,"p50_ms":4911,"p95_ms":6859,"ready_for_enablement":false,"status_counts":{"classified":3,"rejected":2},"successful_classifications":3}}
+
+Both official CLI adapters used the existing environment authentication.
+Neither provider passed five successes plus p50/p95 thresholds, so both remain
+shadow-only.

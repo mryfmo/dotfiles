@@ -1,0 +1,79 @@
+T23 validation log
+
+Source inspection:
+- bad pattern found only at home/dot_agents/skills/agmsg-orchestration/SKILL.md:71 and :100
+- home/dot_agents/skills/agmsg/SKILL.md contains no matching worker-wake pattern
+- main HEAD and origin/main baseline: 92faa35652adb76afb65bb71f92f8d6c813438d2
+
+Diff validation:
+- positive text: herdr pane run <pane_id> "<text>" present
+- positive text: messages.db read_at verification present
+- adversarial text: old carriage-return recommendation absent
+- adversarial text: old send Enter/CR Pitfalls text absent
+- git diff --check: exit 0
+- diff stat: 1 file changed, 2 insertions, 2 deletions
+
+Required local validation:
+- uv run --with pyyaml scripts/generate-agent-configs.py --check
+  output: generated agent configs are up to date
+  exit_code=0
+- make unit-test
+  result: Ran 184 tests; OK
+  exit_code=0
+- make validate-agent-assets
+  output: agent asset validation ok
+  exit_code=0
+
+Review guard:
+- initial make require-crit-review: exit 2; lifecycle path review required
+- crit status --json initially reported review_file_exists=false
+- browser review was not opened, per repository policy
+- review-scope approval id: r_30fb69
+- resolved records: 1
+- unresolved records: 0
+- evidence: .agents/worklog/codex/review/T23-agmsg-nudge-guidance-crit-comments.json
+- receipt: .agents/worklog/codex/review/T23-agmsg-nudge-guidance-receipt.md
+- AGENT_REVIEWED=1 REVIEW_EVIDENCE=<receipt> make require-crit-review
+  output: Review requirement satisfied
+  exit_code=0
+
+Git/PR:
+- branch: docs/agmsg-nudge-pane-run
+- commit: 928218f5cae868f72a8abd54b2d341e8b78367c7
+- commit subject: docs(agmsg): wake workers with pane run and verify read_at
+- worktree tracked status after commit: clean
+- local HEAD equals origin/docs/agmsg-nudge-pane-run
+- PR: https://github.com/mryfmo/dotfiles/pull/90
+- PR state: OPEN
+- PR commits: 1
+- PR files: home/dot_agents/skills/agmsg-orchestration/SKILL.md only
+- initial opened event Actions runs: none
+- close/reopen retrigger: successful; PR returned to OPEN
+
+GitHub Actions:
+- Agent assets: SUCCESS https://github.com/mryfmo/dotfiles/actions/runs/29989794964
+- Unit test: SUCCESS https://github.com/mryfmo/dotfiles/actions/runs/29989794965
+- Snippet install: SUCCESS https://github.com/mryfmo/dotfiles/actions/runs/29989794962
+- nix: SKIPPED by workflow condition
+- gh pr checks 90: exit 0
+- final CI verdict: all reported checks green
+
+After-acceptance validation:
+- acceptance_status=accepted
+- acceptance_next_action=merge
+- gh_pr_merge_exit_code=1
+- gh_pr_merge_note=GitHub merge succeeded; local branch deletion initially failed because the branch was checked out in the task worktree
+- PR_state=MERGED
+- merge_commit=b2c3261eeb0acf0b0bb1c0d2c8131811c5989942
+- merged_at=2026-07-23T08:19:46Z
+- pre_sync_branch=main
+- pre_sync_HEAD=92faa35652adb76afb65bb71f92f8d6c813438d2
+- pre_sync_tracked_status=clean
+- git_fetch_origin=pass
+- git_merge_ff_only=pass
+- post_sync_HEAD=b2c3261eeb0acf0b0bb1c0d2c8131811c5989942
+- origin_main=b2c3261eeb0acf0b0bb1c0d2c8131811c5989942
+- post_sync_tracked_status=clean
+- T23_worktree_removed=yes
+- local_topic_branch_removed=yes
+- final_status=completed

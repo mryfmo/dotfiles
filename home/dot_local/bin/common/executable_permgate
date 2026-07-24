@@ -20,8 +20,8 @@ from typing import Any
 SENTINEL_ENV = "PERMGATE_INNER"
 SHELL_CONTROL = re.compile(r"[;&|><`\n]|\$\(")
 SECRET_MARKER = re.compile(
-    r"(?i)(?:(?:api[_-]?key|authorization|password|secret|token)\s*[:=]"
-    r"|bearer\s+\S+)"
+    r"(?i)(?:(?:api[_-]?key|authorization|cookie|password|secret|token)\s*[:=]"
+    r"|bearer\s+\S+|://[^\s/@:]+:[^\s/@]+@)"
 )
 SENSITIVE_KEY = re.compile(
     r"(?i)(?:api[_-]?key|authorization|credential|password|private[_-]?key|secret|token)"
@@ -82,6 +82,19 @@ def load_policy() -> dict[str, Any]:
         isinstance(item, str) for item in categories
     ):
         raise ValueError("categories must be strings")
+    model = policy.get("model")
+    if not isinstance(model, str) or not model:
+        raise ValueError("model must be a non-empty string")
+    prompt = policy.get("classifier_prompt")
+    if not isinstance(prompt, str) or not prompt:
+        raise ValueError("classifier_prompt must be a non-empty string")
+    minimum_confidence = policy.get("minimum_confidence")
+    if (
+        isinstance(minimum_confidence, bool)
+        or not isinstance(minimum_confidence, (int, float))
+        or not 0 <= minimum_confidence <= 1
+    ):
+        raise ValueError("minimum_confidence must be between zero and one")
     return policy
 
 
@@ -381,7 +394,11 @@ def main() -> int:
         except OSError:
             pass
         return 0
-    output, record = decide(agent, payload, policy)
+    try:
+        output, record = decide(agent, payload, policy)
+    except (KeyError, TypeError, ValueError, re.error):
+        output = None
+        record = decision_record(agent, payload, "config-error", "ask", 0)
     try:
         append_log(record)
     except OSError:

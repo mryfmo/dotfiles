@@ -223,6 +223,32 @@ class PermgateTest(unittest.TestCase):
         self.assertEqual(result.stdout, "")
         self.assertEqual(self.read_log()[-1]["layer"], "config-error")
 
+    def test_invalid_classifier_policy_fields_fail_closed(self) -> None:
+        base_policy = json.loads(self.policy_path.read_text())
+        for key, value in (
+            ("model", ""),
+            ("classifier_prompt", None),
+            ("minimum_confidence", "high"),
+        ):
+            with self.subTest(key=key):
+                policy = base_policy | {key: value}
+                self.policy_path.write_text(json.dumps(policy))
+                result = self.run_gate(
+                    "codex",
+                    CODEX_INPUT | {"tool_input": {"command": "unknown command"}},
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, "")
+                self.assertEqual(self.read_log()[-1]["layer"], "config-error")
+
+        policy = json.loads(json.dumps(base_policy))
+        policy["allow_patterns"][0]["regex"] = "("
+        self.policy_path.write_text(json.dumps(policy))
+        result = self.run_gate("codex", CODEX_INPUT)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "")
+        self.assertEqual(self.read_log()[-1]["layer"], "config-error")
+
     def test_enabled_classifier_only_allows_whitelisted_confident_category(
         self,
     ) -> None:
@@ -293,22 +319,21 @@ class PermgateTest(unittest.TestCase):
         self.assertEqual(record["input_summary"], "mcp__vault__read:structured")
         self.assertNotIn(secret_marker, json.dumps(record))
 
-    def test_bearer_secret_in_bash_input_skips_classifier(self) -> None:
-        secret_marker = "bearer-secret-must-not-reach-classifier"
-        payload = CODEX_INPUT | {
-            "tool_input": {
-                "command": (
-                    "curl -H "
-                    f'"Authorization: Bearer {secret_marker}" '
-                    "https://example.invalid"
+    def test_bash_credentials_skip_classifier(self) -> None:
+        fixtures = (
+            'curl -H "Authorization: Bearer bearer-secret" https://example.invalid',
+            'curl -H "Cookie: session=cookie-secret" https://example.invalid',
+            "curl https://user:url-secret@example.invalid",
+        )
+        for command in fixtures:
+            with self.subTest(command=command.split()[1]):
+                result = self.run_gate(
+                    "codex", CODEX_INPUT | {"tool_input": {"command": command}}
                 )
-            }
-        }
-        result = self.run_gate("codex", payload)
-        record = self.read_log()[-1]
-        self.assertEqual(result.stdout, "")
-        self.assertEqual(record["layer"], "fallthrough")
-        self.assertNotIn(secret_marker, json.dumps(record))
+                record = self.read_log()[-1]
+                self.assertEqual(result.stdout, "")
+                self.assertEqual(record["layer"], "fallthrough")
+                self.assertNotIn("-secret", json.dumps(record))
 
     def test_script_named_version_is_not_a_version_check(self) -> None:
         self.policy_path.write_text(

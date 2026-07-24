@@ -922,7 +922,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertIn("pane rename w-test:p1 claude-orchestrator", calls)
         self.assertIn("pane run w-test:p1 CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed claude", calls)
         self.assertIn(
-            f"agent start codex-worker-w-test --cwd {self.workdir} --workspace w-test --split right --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex --sandbox workspace-write --profile standard",
+            f"agent start codex-worker-w-test --cwd {self.workdir} --workspace w-test --split right --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- {self.bin_dir}/codex --sandbox workspace-write --profile standard",
             calls,
         )
         self.assertIn("pane rename w-test:p2 codex-worker", calls)
@@ -931,6 +931,55 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             f"agent start claude --cwd {self.workdir} --workspace w-test --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --focus -- claude",
             calls,
         )
+
+    def install_npm_fake(self, *, installed: bool, mise_has_tool: bool = True) -> None:
+        list_exit = 0 if installed else 1
+        where_exit = 0 if mise_has_tool else 1
+        self.write_executable(
+            "npm",
+            f"""#!/usr/bin/env bash
+printf 'npm %s\\n' "$*" >> {self.calls_path}
+if [[ $1 == list ]]; then
+    exit {list_exit}
+fi
+""",
+        )
+        self.write_executable(
+            "mise",
+            f"""#!/usr/bin/env bash
+if [[ $1 == where ]]; then
+    exit {where_exit}
+fi
+""",
+        )
+
+    def test_start_removes_node_global_agent_clis_shadowing_mise(self) -> None:
+        self.install_npm_fake(installed=True)
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn("npm uninstall -g @openai/codex", calls)
+        self.assertIn("npm uninstall -g @anthropic-ai/claude-code", calls)
+
+    def test_start_skips_node_global_removal_without_stray(self) -> None:
+        self.install_npm_fake(installed=False)
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertFalse(any(call.startswith("npm uninstall") for call in calls))
+
+    def test_start_keeps_node_global_without_mise_tool_install(self) -> None:
+        self.install_npm_fake(installed=True, mise_has_tool=False)
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertFalse(any(call.startswith("npm uninstall") for call in calls))
 
     def test_existing_two_pane_workspace_repairs_skewed_widths(self) -> None:
         self.write_workspace_state(
@@ -1000,7 +1049,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         calls = self.calls_path.read_text().splitlines()
         self.assertIn(
-            f"agent start codex-worker-w-old --cwd {self.workdir} --workspace w-old --split right --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex --sandbox workspace-write --profile standard",
+            f"agent start codex-worker-w-old --cwd {self.workdir} --workspace w-old --split right --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- {self.bin_dir}/codex --sandbox workspace-write --profile standard",
             calls,
         )
         self.assertIn("pane rename w-old:p2 codex-worker", calls)
@@ -1019,7 +1068,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         calls = self.calls_path.read_text().splitlines()
         self.assertIn(
-            f"agent start codex-worker-w-old --cwd {self.workdir} --workspace w-old --split right --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- codex --sandbox workspace-write --profile standard",
+            f"agent start codex-worker-w-old --cwd {self.workdir} --workspace w-old --split right --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- {self.bin_dir}/codex --sandbox workspace-write --profile standard",
             calls,
         )
         self.assertIn("pane run w-old:p3 CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed claude", calls)

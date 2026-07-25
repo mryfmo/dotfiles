@@ -81,6 +81,13 @@ class CheckAgentRuntimeTest(unittest.TestCase):
 
         self.assertEqual(self.compare(), [])
 
+    def test_agmsg_separate_store_prefix_is_ignored(self) -> None:
+        self.write_source("agmsg/scripts/executable_send.sh")
+        self.write_target("agmsg/scripts/send.sh", executable=True)
+        self.write_target("agmsg/db-flue-pi/messages.db", "runtime\n")
+
+        self.assertEqual(self.compare(), [])
+
     def test_unexpected_non_runtime_file_still_fails(self) -> None:
         self.write_source("agmsg/scripts/executable_send.sh")
         self.write_target("agmsg/scripts/send.sh", executable=True)
@@ -136,6 +143,42 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         target = self.write_target("settings.json", '{"model":"runtime"}\n')
 
         self.assertFalse(self.module.same_modified(source, target, json_target=True))
+
+    def test_check_uses_same_modified_for_codex_profiles(self) -> None:
+        profile = self.write_source(
+            "dot_codex/modify_standard.config.toml", "#!/usr/bin/env python3\n"
+        )
+        profile.chmod(0o755)
+        original_source_root = self.module.SOURCE_ROOT
+        original_home = self.module.HOME
+        original_same_text = self.module.same_text
+        original_same_modified = self.module.same_modified
+        original_shared = self.module.compare_shared_skills
+        original_claude = self.module.compare_claude_skills
+        original_hook = self.module.check_executable_hook
+        modified_sources: list[Path] = []
+        try:
+            self.module.SOURCE_ROOT = self.source_root
+            self.module.HOME = self.target_root
+            self.module.same_text = lambda *args, **kwargs: True
+            self.module.same_modified = lambda source, *args, **kwargs: (
+                modified_sources.append(source) or True
+            )
+            self.module.compare_shared_skills = lambda: []
+            self.module.compare_claude_skills = lambda: []
+            self.module.check_executable_hook = lambda *args, **kwargs: []
+
+            self.module.check()
+        finally:
+            self.module.SOURCE_ROOT = original_source_root
+            self.module.HOME = original_home
+            self.module.same_text = original_same_text
+            self.module.same_modified = original_same_modified
+            self.module.compare_shared_skills = original_shared
+            self.module.compare_claude_skills = original_claude
+            self.module.check_executable_hook = original_hook
+
+        self.assertIn(profile, modified_sources)
 
 
 if __name__ == "__main__":

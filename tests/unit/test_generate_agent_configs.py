@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -143,12 +145,97 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             self.temp_dir / "home/dot_codex/private_config.toml.tmpl", outputs
         )
 
-    def test_expected_outputs_render_profile_artifacts(self) -> None:
+    def test_profile_modify_scripts_preserve_runtime_state(self) -> None:
         outputs = self.module.expected_outputs(sample_manifest())
 
-        express_profile = self.temp_dir / "home/dot_codex/express.config.toml"
-        self.assertIn('model = "gpt-5.6-luna"', outputs[express_profile])
-        self.assertIn('model_reasoning_effort = "low"', outputs[express_profile])
+        standard_profile = (
+            self.temp_dir / "home/dot_codex/modify_standard.config.toml"
+        )
+        self.assertIn(standard_profile, outputs)
+        self.module.write_outputs(outputs)
+        self.assertTrue(standard_profile.stat().st_mode & 0o111)
+
+        result = subprocess.run(
+            [str(standard_profile)],
+            input='model = "runtime"\nmodel_reasoning_effort = "high"\n\n[hooks.state]\ntrusted = true\n',
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env={
+                **os.environ,
+                "CHEZMOI_SOURCE_DIR": str(self.temp_dir / "home"),
+                "CHEZMOI_HOME_DIR": str(self.temp_dir / "target-home"),
+            },
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('model = "gpt-5.6-terra"', result.stdout)
+        self.assertIn('model_reasoning_effort = "medium"', result.stdout)
+        self.assertIn("[hooks.state]", result.stdout)
+        self.assertIn("trusted = true", result.stdout)
+        self.assertNotIn(
+            self.temp_dir / "home/dot_codex/standard.config.toml", outputs
+        )
+
+    def test_profile_modify_scripts_are_byte_idempotent_with_runtime_state(self) -> None:
+        outputs = self.module.expected_outputs(sample_manifest())
+        standard_profile = (
+            self.temp_dir / "home/dot_codex/modify_standard.config.toml"
+        )
+        self.module.write_outputs(outputs)
+        current = (
+            '# Codex model profile "standard"; launch with: codex --profile standard\n'
+            f"# {self.module.GENERATED_HEADER}\n"
+            "\n"
+            'model = "gpt-5.6-terra"\n'
+            'model_reasoning_effort = "medium"\n'
+            "\n"
+            "[hooks.state]\n"
+            "trusted = true\n"
+        )
+        result = subprocess.run(
+            [str(standard_profile)],
+            input=current,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, current)
+
+    def test_profile_modify_scripts_preserve_repeated_runtime_tables(self) -> None:
+        outputs = self.module.expected_outputs(sample_manifest())
+        standard_profile = (
+            self.temp_dir / "home/dot_codex/modify_standard.config.toml"
+        )
+        self.module.write_outputs(outputs)
+        current = (
+            '# Codex model profile "standard"; launch with: codex --profile standard\n'
+            f"# {self.module.GENERATED_HEADER}\n"
+            "\n"
+            'model = "gpt-5.6-terra"\n'
+            'model_reasoning_effort = "medium"\n'
+            "\n"
+            "[[hooks.state.sub]]\n"
+            'name = "first"\n'
+            "\n"
+            "[[hooks.state.sub]]\n"
+            'name = "second"\n'
+        )
+        result = subprocess.run(
+            [str(standard_profile)],
+            input=current,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, current)
 
         env_path = self.temp_dir / "home/dot_agents/model-profiles.env"
         self.assertIn('MODEL_PROFILE_INTERACTIVE="standard"', outputs[env_path])

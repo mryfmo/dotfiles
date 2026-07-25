@@ -83,6 +83,12 @@ PROFILE_AGENT_KEYS = {
     "claude": ("model", "effort"),
     "codex": ("model", "model_reasoning_effort"),
 }
+RUNTIME_PREFIXES = (
+    "hooks.state",
+    "marketplaces",
+    "tui.model_availability_nux",
+    "projects",
+)
 
 
 def model_profiles(manifest: dict[str, Any]) -> dict[str, Any]:
@@ -446,6 +452,133 @@ def render_codex_profile(name: str, profile: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def render_codex_profile_modify(name: str, profile: dict[str, Any]) -> str:
+    managed = render_codex_profile(name, profile)
+    return f'''#!/usr/bin/env python3
+"""Merge the managed Codex {name} profile with Codex-owned runtime state."""
+
+from __future__ import annotations
+
+import sys
+
+RUNTIME_PREFIXES = {RUNTIME_PREFIXES!r}
+MANAGED = {managed!r}
+
+
+def table_name(header: str) -> str | None:
+    stripped = header.strip()
+    if stripped.startswith("[[") and stripped.endswith("]]"):
+        return stripped[2:-2].strip()
+    if stripped.startswith("[") and stripped.endswith("]"):
+        return stripped[1:-1].strip()
+    return None
+
+
+def split_chunks(text: str) -> list[tuple[str | None, str]]:
+    chunks: list[tuple[str | None, str]] = []
+    current_name: str | None = None
+    current_lines: list[str] = []
+    pending_lines: list[str] = []
+    for line in text.splitlines(keepends=True):
+        name = table_name(line)
+        if name is None:
+            if current_name is None:
+                pending_lines.append(line)
+            else:
+                current_lines.append(line)
+            continue
+        if current_name is None:
+            if pending_lines:
+                split_at = len(pending_lines)
+                while split_at and not pending_lines[split_at - 1].strip():
+                    split_at -= 1
+                if split_at:
+                    chunks.append((None, "".join(pending_lines[:split_at])))
+                pending_lines = pending_lines[split_at:]
+        else:
+            chunks.append((current_name, "".join(current_lines)))
+        current_name = name
+        current_lines = pending_lines + [line]
+        pending_lines = []
+    if current_name is None:
+        if pending_lines:
+            chunks.append((None, "".join(pending_lines)))
+    else:
+        chunks.append((current_name, "".join(current_lines)))
+    return chunks
+
+
+def runtime_prefix(name: str | None) -> str | None:
+    if name is None:
+        return None
+    for prefix in RUNTIME_PREFIXES:
+        if name == prefix or name.startswith(f"{{prefix}}."):
+            return prefix
+    return None
+
+
+def merge_config(current: str) -> str:
+    if not current.strip():
+        return MANAGED
+    managed_chunks = split_chunks(MANAGED)
+    current_chunks = split_chunks(current)
+    current_by_name: dict[str, list[str]] = {{}}
+    current_by_runtime_prefix: dict[str, list[tuple[int, str, str]]] = {{}}
+    managed_by_runtime_prefix: dict[str, list[tuple[str, str]]] = {{}}
+    for current_index, (current_name, current_chunk) in enumerate(current_chunks):
+        if current_name is not None:
+            current_by_name.setdefault(current_name, []).append(current_chunk)
+            prefix = runtime_prefix(current_name)
+            if prefix is not None:
+                current_by_runtime_prefix.setdefault(prefix, []).append((current_index, current_name, current_chunk))
+    for managed_name, managed_chunk in managed_chunks:
+        prefix = runtime_prefix(managed_name)
+        if managed_name is not None and prefix is not None:
+            managed_by_runtime_prefix.setdefault(prefix, []).append((managed_name, managed_chunk))
+    managed_names = {{table_name for table_name, _ in managed_chunks if table_name is not None}}
+    emitted_current: set[int] = set()
+    emitted_runtime_prefixes: set[str] = set()
+    output: list[str] = []
+    for managed_name, managed_chunk in managed_chunks:
+        prefix = runtime_prefix(managed_name)
+        if prefix is not None:
+            if prefix in emitted_runtime_prefixes:
+                continue
+            current_group = current_by_runtime_prefix.get(prefix, [])
+            if current_group:
+                for current_index, current_name, current_chunk in current_group:
+                    output.append(current_chunk)
+                    emitted_current.add(current_index)
+                for runtime_name, runtime_chunk in managed_by_runtime_prefix.get(prefix, []):
+                    if runtime_name not in current_by_name:
+                        output.append(runtime_chunk)
+            else:
+                output.extend(chunk for _, chunk in managed_by_runtime_prefix.get(prefix, []))
+            emitted_runtime_prefixes.add(prefix)
+        else:
+            output.append(managed_chunk)
+    for current_index, (current_name, current_chunk) in enumerate(current_chunks):
+        if current_name is None or current_index in emitted_current:
+            continue
+        prefix = runtime_prefix(current_name)
+        if prefix is not None:
+            if prefix in emitted_runtime_prefixes:
+                continue
+            for grouped_index, _, grouped_chunk in current_by_runtime_prefix[prefix]:
+                output.append(grouped_chunk)
+                emitted_current.add(grouped_index)
+            emitted_runtime_prefixes.add(prefix)
+        elif current_name not in managed_names:
+            output.append(current_chunk)
+            emitted_current.add(current_name)
+    merged = "".join(output)
+    return merged if merged.endswith("\\n") else merged + "\\n"
+
+
+sys.stdout.write(merge_config(sys.stdin.read()))
+'''
+
+
 def render_model_profiles_env(manifest: dict[str, Any]) -> str:
     profiles = model_profiles(manifest)
     interactive_profile(manifest)
@@ -492,7 +625,7 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
         ROOT / manifest["plugins"]["marketplace_path"]: render_marketplace(manifest),
     }
     for name, profile in sorted(model_profiles(manifest).items()):
-        outputs[ROOT / "home/dot_codex" / f"{name}.config.toml"] = render_codex_profile(name, profile)
+        outputs[ROOT / "home/dot_codex" / f"modify_{name}.config.toml"] = render_codex_profile_modify(name, profile)
     outputs[ROOT / "home/dot_agents/model-profiles.env"] = render_model_profiles_env(manifest)
     outputs[ROOT / "home/dot_claude/agents/express-explorer.md"] = render_claude_express_agent(manifest)
     for plugin in manifest["plugins"].get("codex_plugins", []):
@@ -524,6 +657,22 @@ def remove_stale_generated_outputs(outputs: dict[Path, str]) -> None:
                 path.rmdir()
 
 
+def write_outputs(outputs: dict[Path, str]) -> None:
+    for path, content in outputs.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+        if path.parent == ROOT / "home/dot_codex" and path.name.startswith("modify_"):
+            path.chmod(path.stat().st_mode | 0o111)
+
+
+def stale_profile_outputs(manifest: dict[str, Any]) -> list[Path]:
+    return [
+        ROOT / "home/dot_codex" / f"{name}.config.toml"
+        for name in model_profiles(manifest)
+        if (ROOT / "home/dot_codex" / f"{name}.config.toml").exists()
+    ]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -534,14 +683,17 @@ def main() -> None:
     manifest = load_manifest()
     outputs = expected_outputs(manifest)
     stale: list[Path] = []
+    stale_profiles = stale_profile_outputs(manifest)
     for path, content in outputs.items():
         if args.check:
             if not path.exists() or path.read_text() != content:
                 stale.append(path.relative_to(ROOT))
-            continue
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content)
+    if args.check:
+        stale.extend(path.relative_to(ROOT) for path in stale_profiles)
     if not args.check:
+        write_outputs(outputs)
+        for path in stale_profiles:
+            path.unlink()
         remove_stale_generated_outputs(outputs)
     if stale:
         fail(

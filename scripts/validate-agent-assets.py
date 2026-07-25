@@ -363,6 +363,30 @@ def validate_codex_modify_script() -> None:
             fail(f"{path} must preserve Codex runtime-owned table token {token!r}")
 
 
+def validate_codex_profile_modify_scripts(manifest: dict[str, Any]) -> None:
+    for name, profile in manifest.get("model_profiles", {}).items():
+        path = ROOT / "home/dot_codex" / f"modify_{name}.config.toml"
+        if not path.exists():
+            fail(f"{path} is missing for model profile {name}")
+        if path.stat().st_mode & 0o111 == 0:
+            fail(f"{path} must be executable")
+        result = subprocess.run(
+            [str(path)],
+            input="",
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        if result.returncode != 0:
+            fail(f"{path} must run successfully: {result.stderr.strip()}")
+        profile_data = tomllib.loads(result.stdout)
+        if profile_data.get("model") != profile.get("codex", {}).get("model"):
+            fail(f"{path} must render the {name} profile model")
+        if profile_data.get("model_reasoning_effort") != profile.get("codex", {}).get("model_reasoning_effort"):
+            fail(f"{path} must render the {name} profile reasoning effort")
+
+
 def validate_cognee_install_assets(manifest: dict[str, Any]) -> None:
     if "cognee_memory" not in manifest.get("mcp_servers", {}):
         return
@@ -557,16 +581,7 @@ def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
         if target not in removals:
             fail(f"home/.chezmoiremove must clean up {target}")
 
-    profiles = manifest.get("model_profiles", {})
-    for name, profile in profiles.items():
-        profile_path = ROOT / "home/dot_codex" / f"{name}.config.toml"
-        if not profile_path.exists():
-            fail(f"{profile_path} is missing for model profile {name}")
-        profile_data = tomllib.loads(profile_path.read_text())
-        if profile_data.get("model") != profile.get("codex", {}).get("model"):
-            fail(f"{profile_path} must render the {name} profile model")
-        if profile_data.get("model_reasoning_effort") != profile.get("codex", {}).get("model_reasoning_effort"):
-            fail(f"{profile_path} must render the {name} profile reasoning effort")
+    validate_codex_profile_modify_scripts(manifest)
 
     env_path = ROOT / "home/dot_agents/model-profiles.env"
     if not env_path.exists():

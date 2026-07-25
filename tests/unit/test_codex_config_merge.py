@@ -166,6 +166,25 @@ class CodexConfigMergeTest(unittest.TestCase):
             output.index('[projects."/repo"]'),
         )
 
+    def test_repeated_runtime_tables_are_preserved_in_order(self) -> None:
+        output = self.merge(
+            """
+            model = "managed"
+            """,
+            """
+            model = "managed"
+
+            [[hooks.state.sub]]
+            name = "first"
+
+            [[hooks.state.sub]]
+            name = "second"
+            """,
+        )
+
+        self.assertEqual(output.count("[[hooks.state.sub]]"), 2)
+        self.assertLess(output.index('name = "first"'), output.index('name = "second"'))
+
     def test_fresh_machine_outputs_managed_baseline(self) -> None:
         managed = """
             model = "managed"

@@ -338,7 +338,7 @@ herdr server reload-config" ]
     [ ! -e home/dot_codex/ccgate.jsonnet ]
     grep -q '.codex/ccgate.jsonnet' home/.chezmoiremove
     grep -q 'model_profiles' home/dot_agents/agent-config.yaml
-    grep -q 'model = ' home/dot_codex/standard.config.toml
+    grep -q 'model = ' home/dot_codex/modify_standard.config.toml
     grep -q 'MODEL_PROFILE_INTERACTIVE' home/dot_agents/model-profiles.env
     grep -q 'model:' home/dot_claude/agents/express-explorer.md
     grep -q 'model_profiles' home/dot_config/claude/rules/model-selection.md

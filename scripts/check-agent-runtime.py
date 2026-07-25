@@ -23,6 +23,7 @@ HOME = Path.home()
 CHEZMOI_SOURCE_PREFIXES = ("executable_", "private_")
 AGMSG_RUNTIME_IGNORES = (
     Path("agmsg/.agmsg"),
+    # agmsg-orchestration permits separate stores such as db-flue-pi.
     Path("agmsg/db"),
     Path("agmsg/run"),
     Path("agmsg/teams"),
@@ -72,7 +73,10 @@ def same_modified(source: Path, target: Path, json_target: bool = False) -> bool
 
 def is_ignored_runtime_path(rel: Path) -> bool:
     return any(
-        rel == ignored or ignored in rel.parents for ignored in AGMSG_RUNTIME_IGNORES
+        rel == ignored
+        or ignored in rel.parents
+        or (ignored == Path("agmsg/db") and str(rel).startswith("agmsg/db-"))
+        for ignored in AGMSG_RUNTIME_IGNORES
     )
 
 
@@ -240,18 +244,16 @@ def check() -> list[str]:
             "Claude express-explorer agent",
         ),
     ]
-    for profile_source in sorted(SOURCE_ROOT.glob("dot_codex/*.config.toml")):
-        checks.append(
-            (
-                profile_source,
-                HOME / ".codex" / profile_source.name,
-                False,
-                f"Codex model profile {profile_source.stem}",
-            )
-        )
     for source, target, template, label in checks:
         if not same_text(source, target, template=template):
             failures.append(f"{label} differs or is missing: {target}")
+    for profile_source in sorted(SOURCE_ROOT.glob("dot_codex/modify_*.config.toml")):
+        target_name = profile_source.name.removeprefix("modify_")
+        target = HOME / ".codex" / target_name
+        if not same_modified(profile_source, target):
+            failures.append(
+                f"Codex model profile {target_name.removesuffix('.config.toml')} managed keys differ or profile is missing: {target}"
+            )
     if not same_modified(
         SOURCE_ROOT / "dot_codex/modify_private_config.toml",
         HOME / ".codex/config.toml",

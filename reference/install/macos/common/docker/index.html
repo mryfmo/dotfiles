@@ -3382,10 +3382,14 @@
 <span class="k">fi</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Install the Docker Desktop Homebrew cask.</span>
+<span class="c1"># @description Validate the Docker Desktop cask in CI or install it locally.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>install_docker<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>brew<span class="w"> </span>install<span class="w"> </span>--cask<span class="w"> </span>docker
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CI</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;true&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>brew<span class="w"> </span>info<span class="w"> </span>--cask<span class="w"> </span>docker
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span>brew<span class="w"> </span>install<span class="w"> </span>--cask<span class="w"> </span>docker
+<span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>

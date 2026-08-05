@@ -3659,7 +3659,7 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Reinstall a mise-managed npm package version with lifecycle scripts enabled.</span>
+<span class="c1"># @description Reinstall a mise-managed npm package with lifecycle scripts denied by default.</span>
 <span class="c1"># @arg $1 string mise npm tool name, for example npm:@scope/package.</span>
 <span class="c1"># @arg $2 string npm package name, for example @scope/package.</span>
 <span class="c1"># @arg $3 string npm package version.</span>
@@ -3669,15 +3669,18 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">npm_package</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">package_version</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$3</span><span class="s2">&quot;</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>install_prefix
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">npm_script_args</span><span class="o">=(</span>--ignore-scripts<span class="o">)</span>
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">install_prefix</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>mise<span class="w"> </span>where<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">npm_package</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;@anthropic-ai/claude-code&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">npm_script_args</span><span class="o">=(</span>--ignore-scripts<span class="o">=</span><span class="nb">false</span><span class="w"> </span>--allow-scripts<span class="o">=</span><span class="s2">&quot;@anthropic-ai/claude-code&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="nv">npm_config_min_release_age</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>npm<span class="w"> </span>install<span class="w"> </span>-g<span class="w"> </span><span class="se">\</span>
 <span class="w">        </span>--prefix<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">install_prefix</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">        </span>--ignore-scripts<span class="o">=</span><span class="nb">false</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">npm_script_args</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">        </span>--include<span class="o">=</span>optional<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span>--allow-scripts<span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">npm_package</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">        </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">npm_package</span><span class="si">}</span><span class="s2">@</span><span class="si">${</span><span class="nv">package_version</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="o">}</span>
 

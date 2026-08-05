@@ -3371,6 +3371,7 @@
 <li><code>ensure_codex_ponytail_marketplace</code></li>
 <li><code>ensure_crit_cli</code></li>
 <li><code>ensure_herdr_integrations</code></li>
+<li><code>ensure_mise_npm_agent_cli</code></li>
 <li><code>git_remote_origin_matches</code></li>
 <li><code>has_command</code></li>
 <li><code>is_macos</code></li>
@@ -3439,6 +3440,27 @@
 <span class="w">            </span>npm<span class="w"> </span>uninstall<span class="w"> </span>-g<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">npm_package</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">done</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Reinstall one broken mise-managed agent CLI through npm.</span>
+<span class="c1"># @arg $1 string CLI command name.</span>
+<span class="c1"># @arg $2 string mise npm tool name.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>ensure_mise_npm_agent_cli<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">cli</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">mise_tool</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>has_command<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">cli</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">cli</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--version<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>has_command<span class="w"> </span>mise<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Repairing %s through the mise npm backend.\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">cli</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">MISE_NPM_PACKAGE_MANAGER</span><span class="o">=</span>npm<span class="w"> </span><span class="nv">npm_config_min_release_age</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>mise<span class="w"> </span>install<span class="w"> </span>--force<span class="w"> </span>--locked<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">hash</span><span class="w"> </span>-r
+<span class="w">    </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">cli</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--version<span class="w"> </span>&gt;<span class="w"> </span>/dev/null
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3834,7 +3856,10 @@
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="w">    </span><span class="k">fi</span>
 
+<span class="w">    </span><span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/share/mise/shims:</span><span class="si">${</span><span class="nv">PATH</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="w">    </span>remove_node_global_agent_cli_shadows
+<span class="w">    </span>ensure_mise_npm_agent_cli<span class="w"> </span>claude<span class="w"> </span><span class="s2">&quot;npm:@anthropic-ai/claude-code&quot;</span>
+<span class="w">    </span>ensure_mise_npm_agent_cli<span class="w"> </span>codex<span class="w"> </span><span class="s2">&quot;npm:@openai/codex&quot;</span>
 <span class="w">    </span>update_claude_superpowers
 <span class="w">    </span>update_claude_crit
 <span class="w">    </span>update_claude_ponytail

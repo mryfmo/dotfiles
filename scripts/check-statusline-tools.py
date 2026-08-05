@@ -17,7 +17,7 @@ CLAUDE_STATUS = {
     "session_id": "offline-test",
     "transcript_path": "/private/tmp/nonexistent.jsonl",
 }
-EXPECTED_VERSIONS = {"ccstatusline": "2.2.23", "ccusage": "20.0.17"}
+EXPECTED_VERSIONS = {"ccstatusline": "2.2.27", "ccusage": "20.0.19"}
 
 
 def run(command: list[str], stdin: str | None = None) -> subprocess.CompletedProcess[str]:

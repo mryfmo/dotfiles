@@ -135,6 +135,76 @@ class RuntimeHealthTest(unittest.TestCase):
             calls.index("npm uninstall -g @anthropic-ai/claude-code"), first_agent_call
         )
 
+    def test_agent_asset_update_repairs_broken_claude_with_npm_backend(self) -> None:
+        repo = self.temp_dir / "agent-assets-repair-repo"
+        home = self.temp_dir / "agent-assets-repair-home"
+        bin_dir = repo / "bin"
+        (repo / "scripts").mkdir(parents=True)
+        home.mkdir()
+        shutil.copy(
+            ROOT / "scripts/update-agent-assets.sh",
+            repo / "scripts/update-agent-assets.sh",
+        )
+        self.executable(bin_dir / "npm", "exit 1\n")
+        self.executable(
+            bin_dir / "claude",
+            """
+            printf 'broken-claude %s\n' "$*" >> "$TEST_LOG"
+            exit 99
+            """,
+        )
+        self.executable(
+            bin_dir / "codex",
+            """
+            printf 'codex %s\n' "$*" >> "$TEST_LOG"
+            """,
+        )
+        self.executable(
+            bin_dir / "mise",
+            """
+            printf 'mise %s %s %s\n' \
+                "${MISE_NPM_PACKAGE_MANAGER:-}" \
+                "${npm_config_min_release_age:-}" \
+                "$*" >> "$TEST_LOG"
+            if [ "$*" = "install --force --locked npm:@anthropic-ai/claude-code" ]; then
+                cat > "$BROKEN_CLAUDE" <<'EOF'
+#!/bin/bash
+printf 'claude %s\n' "$*" >> "$TEST_LOG"
+EOF
+                chmod +x "$BROKEN_CLAUDE"
+            fi
+            """,
+        )
+        log = repo / "commands.log"
+
+        result = self.run_test_command(
+            ["bash", "scripts/update-agent-assets.sh"],
+            cwd=repo,
+            env={
+                **os.environ,
+                "BROKEN_CLAUDE": str(bin_dir / "claude"),
+                "HOME": str(home),
+                "PATH": f"{bin_dir}:/usr/bin:/bin",
+                "TEST_LOG": str(log),
+            },
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        calls = log.read_text().splitlines()
+        repair = (
+            "mise npm 0 install --force --locked "
+            "npm:@anthropic-ai/claude-code"
+        )
+        self.assertIn(repair, calls)
+        self.assertFalse(
+            any(
+                call.endswith("npm:@openai/codex")
+                and call.startswith("mise ")
+                for call in calls
+            )
+        )
+        self.assertLess(calls.index(repair), calls.index("claude plugin marketplace list"))
+
     def test_agent_launchers_do_not_hardcode_model_ids(self) -> None:
         herdr = (ROOT / "home/dot_local/bin/common/executable_herdr-agents").read_text()
         fanout = (

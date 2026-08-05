@@ -20,7 +20,6 @@ target_agents:
 
 skills:
   canonical_dir: ~/.agents/skills
-  creation_nudge_interval: 15
 
 # Model IDs and efforts live only in this map. Profiles render into Claude
 # settings, per-profile Codex config files (~/.codex/<name>.config.toml), and
@@ -154,7 +153,10 @@ claude:
       - matcher: "*"
         hooks:
           - type: command
-            command: "bash '/Users/mryfmo/.claude/hooks/herdr-agent-state.sh' session"
+            # Must stay byte-identical to herdr's own SessionStart entry after
+            # template expansion; herdr integration install no-ops on exact match
+            # and would otherwise append a duplicate on every `make update`.
+            command: "bash '{{ .chezmoi.homeDir }}/.claude/hooks/herdr-agent-state.sh' session"
             timeout: 10
     python_post_edit:
       - uvx ruff format

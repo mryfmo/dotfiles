@@ -233,5 +233,115 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             self.module.validate_no_obvious_secrets()
 
 
+    def write_manifest(self, hook_command: str) -> None:
+        path = self.temp_dir / "home/dot_agents/agent-config.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"claude:\n  hooks:\n    session_start: {hook_command}\n")
+
+    def test_manifest_home_paths_reject_hard_coded_home(self) -> None:
+        self.write_manifest("bash '/Users/mryfmo/.claude/hooks/state.sh' session")
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_manifest_home_paths()
+
+    def test_manifest_home_paths_reject_hard_coded_linux_home(self) -> None:
+        self.write_manifest("bash '/home/mryfmo/.claude/hooks/state.sh' session")
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_manifest_home_paths()
+
+    def test_manifest_home_paths_allow_chezmoi_home_dir(self) -> None:
+        self.write_manifest(
+            "bash '{{ .chezmoi.homeDir }}/.claude/hooks/state.sh' session"
+        )
+
+        self.module.validate_manifest_home_paths()
+
+    def test_manifest_home_paths_allow_flow_style_projects(self) -> None:
+        path = self.temp_dir / "home/dot_agents/agent-config.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            'codex:\n  projects: {"/Users/mryfmo/Workspace/dotfiles": {"trust_level": "trusted"}}\n'
+        )
+
+        self.module.validate_manifest_home_paths()
+
+    def test_manifest_home_paths_exempt_runtime_owned_projects(self) -> None:
+        path = self.temp_dir / "home/dot_agents/agent-config.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            "codex:\n"
+            "  projects:\n"
+            "    /Users/mryfmo/Workspace/dotfiles:\n"
+            "      trust_level: trusted\n"
+            "claude:\n"
+            '  hooks:\n    session_start: bash "$HOME/.claude/hooks/state.sh" session\n'
+        )
+
+        self.module.validate_manifest_home_paths()
+
+    def test_manifest_home_paths_only_exempt_the_projects_subtree(self) -> None:
+        path = self.temp_dir / "home/dot_agents/agent-config.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            "codex:\n"
+            "  projects:\n"
+            "    /Users/mryfmo/Workspace/dotfiles:\n"
+            "      trust_level: trusted\n"
+            "claude:\n"
+            "  hooks:\n"
+            "    session_start: bash '/Users/mryfmo/.claude/hooks/state.sh' session\n"
+        )
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_manifest_home_paths()
+
+    AGMSG_COMMAND_TARGET = "dot_agents/skills/agmsg/templates/cmd.claude-code.md"
+
+    def write_agmsg_command_symlink(
+        self, target: str, create_target: bool = True
+    ) -> None:
+        path = self.temp_dir / "home/dot_claude/commands/symlink_agmsg.md.tmpl"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(target)
+        if create_target:
+            template = self.temp_dir / "home" / self.AGMSG_COMMAND_TARGET
+            template.parent.mkdir(parents=True, exist_ok=True)
+            template.write_text("shared command template\n")
+
+    def test_claude_command_parity_rejects_dangling_target(self) -> None:
+        self.write_agmsg_command_symlink(
+            "{{ .chezmoi.sourceDir }}/" + self.AGMSG_COMMAND_TARGET + "\n",
+            create_target=False,
+        )
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_claude_command_parity()
+
+    def test_claude_command_parity_rejects_wrong_target(self) -> None:
+        self.write_agmsg_command_symlink(
+            "{{ .chezmoi.sourceDir }}/dot_claude/elsewhere.md\n"
+        )
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_claude_command_parity()
+
+    def test_claude_command_parity_rejects_restored_duplicate(self) -> None:
+        self.write_agmsg_command_symlink(
+            "{{ .chezmoi.sourceDir }}/dot_agents/skills/agmsg/templates/cmd.claude-code.md\n"
+        )
+        (self.temp_dir / "home/dot_claude/commands/agmsg.md").write_text("duplicate\n")
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_claude_command_parity()
+
+    def test_claude_command_parity_accepts_symlink_only(self) -> None:
+        self.write_agmsg_command_symlink(
+            "{{ .chezmoi.sourceDir }}/dot_agents/skills/agmsg/templates/cmd.claude-code.md\n"
+        )
+
+        self.module.validate_claude_command_parity()
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -118,6 +118,48 @@ def validate_claude_skill_parity() -> None:
             fail(f"{symlink} must point at the shared skill tree")
 
 
+def validate_claude_command_parity() -> None:
+    symlink = ROOT / "home/dot_claude/commands/symlink_agmsg.md.tmpl"
+    expected_target = "{{ .chezmoi.sourceDir }}/dot_agents/skills/agmsg/templates/cmd.claude-code.md\n"
+    if not symlink.exists() or symlink.read_text() != expected_target:
+        fail(f"{symlink} must point at the shared agmsg command template")
+    target = ROOT / "home" / expected_target.strip().removeprefix("{{ .chezmoi.sourceDir }}/")
+    if not target.is_file():
+        fail(f"{symlink} points at a missing template: {target}")
+    duplicate = ROOT / "home/dot_claude/commands/agmsg.md"
+    if duplicate.exists():
+        fail(f"{duplicate} duplicates the shared agmsg command template; keep the symlink only")
+
+
+HARD_CODED_HOME_RE = re.compile(r"/(?:Users|home)/[^/\s'\"]+/")
+
+
+def validate_manifest_home_paths() -> None:
+    # Scanned as text rather than parsed YAML so the check still runs under
+    # `make unit-test`, which does not install PyYAML.
+    manifest_path = ROOT / "home/dot_agents/agent-config.yaml"
+    top_level = ""
+    projects_indent: int | None = None
+    for number, line in enumerate(manifest_path.read_text().splitlines(), start=1):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        indent = len(line) - len(line.lstrip())
+        if indent == 0:
+            top_level = stripped.split(":", 1)[0]
+        if projects_indent is not None and indent <= projects_indent:
+            projects_indent = None
+        if projects_indent is None and top_level == "codex" and stripped.startswith("projects:"):
+            # Only codex.projects is runtime-owned state keyed by absolute project
+            # path; it is preserved by home/dot_codex/modify_private_config.toml.
+            projects_indent = indent
+            continue
+        if projects_indent is not None:
+            continue
+        if HARD_CODED_HOME_RE.search(line):
+            fail(f"{manifest_path}:{number} must not hard-code a home directory; use {{{{ .chezmoi.homeDir }}}} so the rendered value stays byte-identical to what the agent runtimes write")
+
+
 def validate_codex_plugins() -> None:
     marketplace_path = ROOT / "home/dot_agents/plugins/marketplace.json"
     marketplace = json.loads(marketplace_path.read_text())
@@ -714,6 +756,8 @@ def main() -> None:
     validate_generated_agent_configs()
     validate_skills()
     validate_claude_skill_parity()
+    validate_claude_command_parity()
+    validate_manifest_home_paths()
     validate_agmsg_script_modes()
     validate_claude_settings(manifest)
     validate_codex_plugins()

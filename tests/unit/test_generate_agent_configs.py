@@ -334,7 +334,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "bash '/Users/mryfmo/.claude/hooks/herdr-agent-state.sh' session",
+                        "command": "bash '{{ .chezmoi.homeDir }}/.claude/hooks/herdr-agent-state.sh' session",
                         "timeout": 10,
                     }
                 ],
@@ -351,7 +351,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                     "hooks": [
                         {
                             "type": "command",
-                            "command": "bash '/Users/mryfmo/.claude/hooks/herdr-agent-state.sh' session",
+                            "command": "bash '{{ .chezmoi.homeDir }}/.claude/hooks/herdr-agent-state.sh' session",
                             "timeout": 10,
                         }
                     ],

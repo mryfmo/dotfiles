@@ -16,6 +16,10 @@ from typing import Any
 
 RUNTIME_KEYS = ("enabledPlugins",)
 MANAGED_PERMISSION_EXECUTABLES = ("ccgate", "permgate")
+# SessionStart entries are merged additively, so a managed command whose shape
+# changes would leave its previous variant behind and fire the hook twice. Any
+# entry invoking this script is managed, whatever home path it was rendered with.
+MANAGED_SESSION_START_SCRIPTS = ("herdr-agent-state.sh",)
 
 
 def source_dir() -> Path:
@@ -58,15 +62,29 @@ def is_managed_permission_hook(hook: Any) -> bool:
     )
 
 
-def preserve_unmanaged_permission_entry(entry: Any) -> Any | None:
+def is_managed_session_start_hook(hook: Any) -> bool:
+    if not isinstance(hook, dict) or not isinstance(hook.get("command"), str):
+        return False
+    try:
+        parts = shlex.split(hook["command"])
+    except ValueError:
+        return False
+    return any(Path(part).name in MANAGED_SESSION_START_SCRIPTS for part in parts)
+
+
+def preserve_unmanaged_entry(entry: Any, is_managed: Any) -> Any | None:
     if not isinstance(entry, dict) or not isinstance(entry.get("hooks"), list):
         return entry
-    hooks = [
-        hook for hook in entry["hooks"] if not is_managed_permission_hook(hook)
-    ]
+    hooks = [hook for hook in entry["hooks"] if not is_managed(hook)]
     if len(hooks) == len(entry["hooks"]):
         return entry
     return {**entry, "hooks": hooks} if hooks else None
+
+
+MANAGED_HOOK_PREDICATES = {
+    "PermissionRequest": is_managed_permission_hook,
+    "SessionStart": is_managed_session_start_hook,
+}
 
 
 def merge_hooks(
@@ -75,12 +93,13 @@ def merge_hooks(
     merged: dict[str, Any] = {}
     for key, value in current.items():
         managed_value = managed.get(key)
-        if key == "PermissionRequest" and isinstance(managed_value, list):
+        if key in MANAGED_HOOK_PREDICATES and isinstance(managed_value, list):
+            is_managed = MANAGED_HOOK_PREDICATES[key]
             current_hooks = value if isinstance(value, list) else []
             unmanaged = [
                 preserved
                 for entry in current_hooks
-                if (preserved := preserve_unmanaged_permission_entry(entry))
+                if (preserved := preserve_unmanaged_entry(entry, is_managed))
                 is not None
             ]
             merged[key] = unmanaged + [

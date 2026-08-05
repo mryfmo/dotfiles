@@ -179,6 +179,53 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         self.assertEqual(permission_hooks, [managed_hook])
         self.assertNotIn("ccgate", json.dumps(permission_hooks))
 
+    def test_managed_session_start_replaces_stale_hard_coded_home_hook(self) -> None:
+        """Upgrade path: a machine that received the old hard-coded managed hook."""
+        managed_hook = {
+            "matcher": "*",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": "bash '{{ .chezmoi.homeDir }}/.claude/hooks/herdr-agent-state.sh' session",
+                    "timeout": 10,
+                }
+            ],
+        }
+        stale_hook = {
+            "matcher": "*",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": "bash '/Users/someone-else/.claude/hooks/herdr-agent-state.sh' session",
+                    "timeout": 10,
+                }
+            ],
+        }
+        unrelated_hook = {
+            "matcher": "*",
+            "hooks": [{"type": "command", "command": "custom-session-hook"}],
+        }
+
+        output = self.merge(
+            {"enabledPlugins": {}, "hooks": {"SessionStart": [managed_hook]}},
+            json.dumps(
+                {
+                    "enabledPlugins": {},
+                    "hooks": {"SessionStart": [unrelated_hook, stale_hook]},
+                }
+            ),
+        )
+
+        session_hooks = json.loads(output)["hooks"]["SessionStart"]
+        commands = [h["command"] for e in session_hooks for h in e["hooks"]]
+        self.assertNotIn("/Users/someone-else", json.dumps(session_hooks))
+        self.assertEqual(
+            sum(1 for c in commands if "herdr-agent-state.sh" in c),
+            1,
+            "the managed session-start hook must not be duplicated",
+        )
+        self.assertIn("custom-session-hook", commands)
+
     def test_permission_merge_preserves_unrelated_current_hooks(self) -> None:
         managed_hook = {
             "matcher": "*",

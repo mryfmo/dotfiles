@@ -296,6 +296,19 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_manifest_home_paths()
 
+    def test_manifest_home_paths_reject_non_codex_projects_mapping(self) -> None:
+        path = self.temp_dir / "home/dot_agents/agent-config.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            "claude:\n"
+            "  projects:\n"
+            "    /Users/mryfmo/Workspace/dotfiles:\n"
+            "      trust_level: trusted\n"
+        )
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_manifest_home_paths()
+
     AGMSG_COMMAND_TARGET = "dot_agents/skills/agmsg/templates/cmd.claude-code.md"
 
     def write_agmsg_command_symlink(

@@ -646,11 +646,21 @@ EOF
             "mise use --global --pin --yes --minimum-release-age 0s npm:@openai/codex@1.2.3",
             log,
         )
-        self.assertIn("--allow-scripts=@openai/codex @openai/codex@1.2.3", log)
-        self.assertIn(
-            "--allow-scripts=@anthropic-ai/claude-code @anthropic-ai/claude-code@1.2.3",
-            log,
+        codex_install = next(
+            line
+            for line in log.splitlines()
+            if line.startswith("npm install -g") and "@openai/codex@1.2.3" in line
         )
+        claude_install = next(
+            line
+            for line in log.splitlines()
+            if line.startswith("npm install -g")
+            and "@anthropic-ai/claude-code@1.2.3" in line
+        )
+        self.assertIn("--ignore-scripts", codex_install)
+        self.assertNotIn("--allow-scripts", codex_install)
+        self.assertIn("--ignore-scripts=false", claude_install)
+        self.assertIn("--allow-scripts=@anthropic-ai/claude-code", claude_install)
 
         repo, env = self.upgrade_fixture("mise_upgrade")
         marker = repo / "lib/mise/mise-self-update-instructions.toml"

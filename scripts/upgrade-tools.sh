@@ -272,7 +272,7 @@ function latest_npm_package_version() {
 }
 
 #
-# @description Reinstall a mise-managed npm package version with lifecycle scripts enabled.
+# @description Reinstall a mise-managed npm package with lifecycle scripts denied by default.
 # @arg $1 string mise npm tool name, for example npm:@scope/package.
 # @arg $2 string npm package name, for example @scope/package.
 # @arg $3 string npm package version.
@@ -282,15 +282,18 @@ function repair_mise_npm_package() {
     local npm_package="$2"
     local package_version="$3"
     local install_prefix
+    local npm_script_args=(--ignore-scripts)
 
     if ! install_prefix="$(mise where "${mise_tool}")"; then
         return 1
     fi
+    if [ "${npm_package}" = "@anthropic-ai/claude-code" ]; then
+        npm_script_args=(--ignore-scripts=false --allow-scripts="${npm_package}")
+    fi
     npm_config_min_release_age=0 npm install -g \
         --prefix "${install_prefix}" \
-        --ignore-scripts=false \
+        "${npm_script_args[@]}" \
         --include=optional \
-        --allow-scripts="${npm_package}" \
         "${npm_package}@${package_version}"
 }
 

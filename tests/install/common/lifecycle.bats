@@ -19,6 +19,7 @@ function run_update_fixture() {
     local apply_exit="${4:-0}"
     local assets_exit="${5:-0}"
     local mise_exit="${6:-0}"
+    local mise_fail_args="${7:-}"
     local fixture="${BATS_TEST_TMPDIR}/update-${BATS_TEST_NUMBER}"
 
     mkdir -p "${fixture}/bin" "${fixture}/scripts" \
@@ -34,7 +35,10 @@ EOF
     cat > "${fixture}/bin/mise" <<EOF
 #!/usr/bin/env bash
 printf 'mise %s\n' "\$*" >> "${fixture}/calls"
-exit ${mise_exit}
+if [ -n '${mise_fail_args}' ] && [ "\$*" = '${mise_fail_args}' ]; then
+    exit ${mise_exit}
+fi
+exit 0
 EOF
     cat > "${fixture}/scripts/update-agent-assets.sh" <<EOF
 #!/usr/bin/env bash
@@ -75,6 +79,7 @@ EOF
     run cat "${UPDATE_FIXTURE}/calls"
     [ "$output" = "chezmoi apply --verbose --exclude=scripts
 chezmoi --source ${UPDATE_FIXTURE}/home/.local/share/chezmoi-private --config ${UPDATE_FIXTURE}/home/.config/chezmoi-private/chezmoi.yaml apply --verbose --exclude=scripts
+mise install --locked node
 mise install --locked npm:ccstatusline npm:ccusage
 assets
 herdr status server --json
@@ -82,9 +87,19 @@ herdr server reload-config" ]
 }
 
 @test "[common] update stops before agent assets and Herdr when statusline install fails" {
-    run_update_fixture running 0 0 0 0 24
+    run_update_fixture running 0 0 0 0 24 "install --locked npm:ccstatusline npm:ccusage"
     [ "$status" -ne 0 ]
+    grep -q '^mise install --locked node$' "${UPDATE_FIXTURE}/calls"
     grep -q '^mise install --locked npm:ccstatusline npm:ccusage$' "${UPDATE_FIXTURE}/calls"
+    ! grep -q '^assets$' "${UPDATE_FIXTURE}/calls"
+    ! grep -q '^herdr ' "${UPDATE_FIXTURE}/calls"
+}
+
+@test "[common] update stops before npm tools when Node install fails" {
+    run_update_fixture running 0 0 0 0 25 "install --locked node"
+    [ "$status" -ne 0 ]
+    grep -q '^mise install --locked node$' "${UPDATE_FIXTURE}/calls"
+    ! grep -q '^mise install --locked npm:' "${UPDATE_FIXTURE}/calls"
     ! grep -q '^assets$' "${UPDATE_FIXTURE}/calls"
     ! grep -q '^herdr ' "${UPDATE_FIXTURE}/calls"
 }
@@ -254,7 +269,8 @@ herdr server reload-config" ]
     grep -q 'versioned_mise_tool="${mise_tool}@${package_version}"' scripts/upgrade-tools.sh
     grep -q 'MISE_LOCKED=0 npm_config_min_release_age=0 run_mise_with_isolated_git_config use --global --pin --yes --minimum-release-age 0s "${versioned_mise_tool}"' scripts/upgrade-tools.sh
     grep -q 'repair_mise_npm_package "${versioned_mise_tool}" "${npm_package}" "${package_version}"' scripts/upgrade-tools.sh
-    grep -q -- '--allow-scripts="${npm_package}"' scripts/upgrade-tools.sh
+    grep -q -- '--allow-scripts="@anthropic-ai/claude-code"' scripts/upgrade-tools.sh
+    grep -q -- '--ignore-scripts' scripts/upgrade-tools.sh
     grep -q 'if ! upgrade_mise_npm_agent_tool "npm:@openai/codex" "@openai/codex"; then' scripts/upgrade-tools.sh
     grep -q 'if ! upgrade_mise_npm_agent_tool "npm:@anthropic-ai/claude-code" "@anthropic-ai/claude-code"; then' scripts/upgrade-tools.sh
     latest_line="$(grep -n 'latest_npm_package_version "${npm_package}"' scripts/upgrade-tools.sh | cut -d: -f1)"

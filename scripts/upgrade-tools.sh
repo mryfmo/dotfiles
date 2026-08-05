@@ -288,7 +288,7 @@ function repair_mise_npm_package() {
         return 1
     fi
     if [ "${npm_package}" = "@anthropic-ai/claude-code" ]; then
-        npm_script_args=(--ignore-scripts=false --allow-scripts="${npm_package}")
+        npm_script_args=(--ignore-scripts=false --allow-scripts="@anthropic-ai/claude-code")
     fi
     npm_config_min_release_age=0 npm install -g \
         --prefix "${install_prefix}" \

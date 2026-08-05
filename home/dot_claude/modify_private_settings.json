@@ -72,13 +72,36 @@ def is_managed_session_start_hook(hook: Any) -> bool:
     return any(Path(part).name in MANAGED_SESSION_START_SCRIPTS for part in parts)
 
 
-def preserve_unmanaged_entry(entry: Any, is_managed: Any) -> Any | None:
+def entry_has_managed_hook(entry: Any, is_managed: Any) -> bool:
     if not isinstance(entry, dict) or not isinstance(entry.get("hooks"), list):
-        return entry
-    hooks = [hook for hook in entry["hooks"] if not is_managed(hook)]
-    if len(hooks) == len(entry["hooks"]):
-        return entry
-    return {**entry, "hooks": hooks} if hooks else None
+        return False
+    return any(is_managed(hook) for hook in entry["hooks"])
+
+
+def merge_managed_entries(current_hooks: Any, managed_entries: list[Any], is_managed: Any) -> list[Any]:
+    """Replace managed entries in place so their position in the list is kept.
+
+    A fully managed entry is swapped for its managed counterpart, which is what
+    lets a stale command (for example one rendered with a different home
+    directory) be dropped without reordering the surrounding hooks. A mixed
+    entry keeps its unmanaged hooks where they are, and the managed hook is
+    re-appended with the rest of the managed entries.
+    """
+    queue = [entry for entry in managed_entries if entry_has_managed_hook(entry, is_managed)]
+    merged: list[Any] = []
+    index = 0
+    for entry in current_hooks:
+        if not entry_has_managed_hook(entry, is_managed):
+            merged.append(entry)
+            continue
+        unmanaged = [hook for hook in entry["hooks"] if not is_managed(hook)]
+        if unmanaged:
+            merged.append({**entry, "hooks": unmanaged})
+            continue
+        if index < len(queue):
+            merged.append(queue[index])
+            index += 1
+    return merged + [entry for entry in managed_entries if entry not in merged]
 
 
 MANAGED_HOOK_PREDICATES = {
@@ -94,17 +117,10 @@ def merge_hooks(
     for key, value in current.items():
         managed_value = managed.get(key)
         if key in MANAGED_HOOK_PREDICATES and isinstance(managed_value, list):
-            is_managed = MANAGED_HOOK_PREDICATES[key]
             current_hooks = value if isinstance(value, list) else []
-            unmanaged = [
-                preserved
-                for entry in current_hooks
-                if (preserved := preserve_unmanaged_entry(entry, is_managed))
-                is not None
-            ]
-            merged[key] = unmanaged + [
-                entry for entry in managed_value if entry not in unmanaged
-            ]
+            merged[key] = merge_managed_entries(
+                current_hooks, managed_value, MANAGED_HOOK_PREDICATES[key]
+            )
         elif isinstance(value, list) and isinstance(managed_value, list):
             # ponytail: hook arrays are tiny; index entries only if they grow materially.
             merged[key] = value + [entry for entry in managed_value if entry not in value]

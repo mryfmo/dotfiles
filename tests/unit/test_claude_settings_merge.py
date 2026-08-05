@@ -226,6 +226,61 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         )
         self.assertIn("custom-session-hook", commands)
 
+    def test_managed_session_start_replacement_keeps_hook_order(self) -> None:
+        """Replacing a managed entry must not reorder SessionStart."""
+        state_hook = {
+            "matcher": "*",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": "bash '/Users/someone-else/.claude/hooks/herdr-agent-state.sh' session",
+                    "timeout": 10,
+                }
+            ],
+        }
+        attach_hook = {
+            "matcher": "*",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": 'herdr-agents --attach >> "$HOME/.config/herdr/herdr-agents.log" 2>&1 || true',
+                    "timeout": 10,
+                }
+            ],
+        }
+        managed_state = {
+            "matcher": "*",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": "bash '{{ .chezmoi.homeDir }}/.claude/hooks/herdr-agent-state.sh' session",
+                    "timeout": 10,
+                }
+            ],
+        }
+
+        output = self.merge(
+            {"enabledPlugins": {}, "hooks": {"SessionStart": [managed_state]}},
+            json.dumps(
+                {
+                    "enabledPlugins": {},
+                    "hooks": {"SessionStart": [state_hook, attach_hook]},
+                }
+            ),
+        )
+
+        commands = [
+            h["command"]
+            for e in json.loads(output)["hooks"]["SessionStart"]
+            for h in e["hooks"]
+        ]
+        self.assertTrue(
+            commands[0].endswith("herdr-agent-state.sh' session"),
+            f"state hook must stay first, got {commands}",
+        )
+        self.assertIn("herdr-agents --attach", commands[1])
+        self.assertNotIn("/Users/someone-else", json.dumps(commands))
+
     def test_permission_merge_preserves_unrelated_current_hooks(self) -> None:
         managed_hook = {
             "matcher": "*",

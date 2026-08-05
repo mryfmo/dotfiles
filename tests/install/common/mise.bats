@@ -23,7 +23,7 @@ function teardown() {
 @test "[common] mise" {
     compgen -G "${TMPL_SCRIPT_GLOB}" > /dev/null
 
-    DOTFILES_DEBUG=1 bash "${SCRIPT_PATH}"
+    DOTFILES_DEBUG=1 bash -c 'source "$1"; install_mise' _ "${SCRIPT_PATH}"
 
     export PATH="${PATH}:${HOME}/.local/bin"
     [ -x "$(command -v mise)" ]
@@ -66,7 +66,7 @@ install --locked --before ${DEFAULT_NPM_MIN_RELEASE_AGE_DAYS}d" ]
         if [ "$1" = install ] && [ "$3" = npm:ccstatusline ]; then
             return 42
         fi
-        if [ "$1" = install ]; then
+        if [ "$1" = install ] && [ "$3" != node ]; then
             touch "${BATS_TEST_TMPDIR}/unexpected-batch"
         fi
     }

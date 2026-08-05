@@ -15,7 +15,7 @@ fi
 # @description Validate the Docker Desktop cask in CI or install it locally.
 #
 function install_docker() {
-    if "${CI:-false}"; then
+    if [[ "${CI:-}" == "true" ]]; then
         brew info --cask docker
     else
         brew install --cask docker

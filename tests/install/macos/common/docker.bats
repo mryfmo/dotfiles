@@ -17,13 +17,17 @@ function setup() {
     [ "${output}" = "info --cask docker" ]
 }
 
-@test "[macos] docker installs the cask outside CI" {
+@test "[macos] docker installs the cask unless CI is exactly true" {
     function brew() {
         printf '%s\n' "$*" > "${BATS_TEST_TMPDIR}/brew-args"
     }
 
-    CI=false install_docker
+    local ci_value
 
-    run cat "${BATS_TEST_TMPDIR}/brew-args"
-    [ "${output}" = "install --cask docker" ]
+    for ci_value in false yes no 1 0; do
+        CI="${ci_value}" install_docker
+
+        run cat "${BATS_TEST_TMPDIR}/brew-args"
+        [ "${output}" = "install --cask docker" ]
+    done
 }

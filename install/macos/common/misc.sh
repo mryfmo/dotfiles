@@ -53,7 +53,7 @@ function install_brew_packages() {
     done
 
     if [[ ${#missing_packages[@]} -gt 0 ]]; then
-        if "${CI:-false}"; then
+        if [[ "${CI:-}" == "true" ]]; then
             brew info "${missing_packages[@]}"
         else
             brew install --force "${missing_packages[@]}"
@@ -74,7 +74,7 @@ function install_brew_cask_packages() {
     done
 
     if [[ ${#missing_packages[@]} -gt 0 ]]; then
-        if "${CI:-false}"; then
+        if [[ "${CI:-}" == "true" ]]; then
             brew info --cask "${missing_packages[@]}"
         else
             brew install --cask --force "${missing_packages[@]}"
@@ -100,7 +100,7 @@ function install_additional_brew_packages() {
     done
 
     if [[ ${#missing_packages[@]} -gt 0 ]]; then
-        if "${CI:-false}"; then
+        if [[ "${CI:-}" == "true" ]]; then
             brew info "${missing_packages[@]}"
         else
             brew install --force "${missing_packages[@]}"

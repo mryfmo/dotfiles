@@ -1,37 +1,37 @@
 [tools]
 # Versions are reviewed and updated only by `make upgrade` with the lock diff.
-node = "26.5.0"
+node = "26.5.1"
 rust = "1.97.1"
 python = "3.14.6"
 
 age = "1.3.1"
 bun = "1.3.14"
-chezmoi = "2.71.0"
-cmake = "4.3.3"
-dotenvx = "2.14.0"
-"cargo:eza" = "0.23.4"
+chezmoi = "2.71.1"
+cmake = "4.4.1"
+dotenvx = "2.19.0"
+"cargo:eza" = "0.23.5"
 fd = "10.3.0"
 jq = "1.8.2"
 hugo-extended = "0.164.0"
-uv = "0.11.29"
+uv = "0.12.0"
 yazi = "26.5.6"
 "aqua:micro-editor/micro" = "2.0.15"
 "github:mikefarah/yq" = "4.53.3"
 shellcheck = "0.11.0"
 shfmt = "3.13.1"
 
-"npm:@anthropic-ai/claude-code" = "2.1.219"
-"npm:@openai/codex" = "0.145.0"
+"npm:@anthropic-ai/claude-code" = { version = "2.1.222", allow_builds = ["@anthropic-ai/claude-code"] }
+"npm:@openai/codex" = "0.146.0"
 "npm:bash-language-server" = "5.6.0"
-"npm:ccstatusline" = "2.2.23"
-"npm:ccusage" = "20.0.17"
+"npm:ccstatusline" = "2.2.27"
+"npm:ccusage" = "20.0.19"
 "npm:pyright" = "1.1.411"
 "npm:fast-cli" = "5.2.0"
 
 "github:x-motemen/ghq" = "1.10.1"
 "github:d-kuro/gwq" = "0.1.1"
 "github:cli/cli" = "2.96.0"
-"github:ogulcancelik/herdr" = "0.7.4"
+"github:ogulcancelik/herdr" = "0.7.5"
 "github:shuntaka9576/blocc" = { version = "0.6.0", os = ["linux/x64"] }
 
 "cargo:pueue" = "4.0.4"
@@ -60,6 +60,9 @@ idiomatic_version_file_enable_tools = ["python"]
 lockfile = true
 locked = true
 lockfile_platforms = ["linux-x64", "linux-arm64", "macos-x64", "macos-arm64"]
+
+[settings.npm]
+package_manager = "npm"
 
 [settings.cargo]
 binstall = false

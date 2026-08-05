@@ -12,10 +12,14 @@ if [ "${DOTFILES_DEBUG:-}" ]; then
 fi
 
 #
-# @description Install the Docker Desktop Homebrew cask.
+# @description Validate the Docker Desktop cask in CI or install it locally.
 #
 function install_docker() {
-    brew install --cask docker
+    if [[ "${CI:-}" == "true" ]]; then
+        brew info --cask docker
+    else
+        brew install --cask docker
+    fi
 }
 
 #

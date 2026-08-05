@@ -55,6 +55,27 @@ function remove_node_global_agent_cli_shadows() {
 }
 
 #
+# @description Reinstall one broken mise-managed agent CLI through npm.
+# @arg $1 string CLI command name.
+# @arg $2 string mise npm tool name.
+#
+function ensure_mise_npm_agent_cli() {
+    local cli="$1"
+    local mise_tool="$2"
+
+    if has_command "${cli}" && "${cli}" --version > /dev/null 2>&1; then
+        return 0
+    fi
+    has_command mise || return 0
+
+    printf 'Repairing %s through the mise npm backend.\n' "${cli}"
+    MISE_NPM_PACKAGE_MANAGER=npm npm_config_min_release_age=0 \
+        mise install --force --locked "${mise_tool}"
+    hash -r
+    "${cli}" --version > /dev/null
+}
+
+#
 # @description Return success when the current OS is macOS.
 #
 function is_macos() {
@@ -447,7 +468,10 @@ function main() {
         exit 2
     fi
 
+    export PATH="${HOME}/.local/share/mise/shims:${PATH}"
     remove_node_global_agent_cli_shadows
+    ensure_mise_npm_agent_cli claude "npm:@anthropic-ai/claude-code"
+    ensure_mise_npm_agent_cli codex "npm:@openai/codex"
     update_claude_superpowers
     update_claude_crit
     update_claude_ponytail

@@ -23,7 +23,7 @@ function teardown() {
 @test "[common] mise" {
     compgen -G "${TMPL_SCRIPT_GLOB}" > /dev/null
 
-    DOTFILES_DEBUG=1 bash "${SCRIPT_PATH}"
+    DOTFILES_DEBUG=1 bash -c 'source "$1"; install_mise' _ "${SCRIPT_PATH}"
 
     export PATH="${PATH}:${HOME}/.local/bin"
     [ -x "$(command -v mise)" ]
@@ -41,6 +41,7 @@ function teardown() {
     run cat "${BATS_TEST_TMPDIR}/mise_install_args.txt"
     [ "${status}" -eq 0 ]
     [ "${output}" = "trust --yes
+install --locked node
 install --locked npm:ccstatusline npm:ccusage
 install --locked npm:@anthropic-ai/claude-code npm:@openai/codex
 install --locked --before ${DEFAULT_NPM_MIN_RELEASE_AGE_DAYS}d" ]
@@ -65,7 +66,7 @@ install --locked --before ${DEFAULT_NPM_MIN_RELEASE_AGE_DAYS}d" ]
         if [ "$1" = install ] && [ "$3" = npm:ccstatusline ]; then
             return 42
         fi
-        if [ "$1" = install ]; then
+        if [ "$1" = install ] && [ "$3" != node ]; then
             touch "${BATS_TEST_TMPDIR}/unexpected-batch"
         fi
     }
@@ -74,6 +75,22 @@ install --locked --before ${DEFAULT_NPM_MIN_RELEASE_AGE_DAYS}d" ]
 
     [ "${status}" -eq 42 ]
     [ ! -e "${BATS_TEST_TMPDIR}/unexpected-batch" ]
+}
+
+@test "[common] run_mise_install stops when node install fails" {
+    function mise() {
+        if [ "$1" = install ] && [ "$3" = node ]; then
+            return 45
+        fi
+        if [ "$1" = install ]; then
+            touch "${BATS_TEST_TMPDIR}/unexpected-install"
+        fi
+    }
+
+    run run_mise_install
+
+    [ "${status}" -eq 45 ]
+    [ ! -e "${BATS_TEST_TMPDIR}/unexpected-install" ]
 }
 
 @test "[common] run_mise_install stops when agent CLI install fails" {
@@ -111,7 +128,7 @@ install --locked --before ${DEFAULT_NPM_MIN_RELEASE_AGE_DAYS}d" ]
 }
 
 @test "[common] herdr is installed by mise on Linux and macOS" {
-    run grep -F '"github:ogulcancelik/herdr" = "0.7.4"' home/dot_mise/config.toml
+    run grep -F '"github:ogulcancelik/herdr" = "0.7.5"' home/dot_mise/config.toml
     [ "${status}" -eq 0 ]
 }
 

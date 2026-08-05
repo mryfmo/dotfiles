@@ -1221,6 +1221,8 @@ printf 'codex cwd=%s\\n' "$PWD" >> {e2e_log}
             self.calls_path.read_text().splitlines(),
             [
                 "herdr-session ",
+                "herdr workspace list",
+                f"herdr workspace create --cwd {self.workdir.resolve()} --label project --focus",
                 "herdr ",
             ],
         )
@@ -1240,21 +1242,50 @@ printf 'codex cwd=%s\\n' "$PWD" >> {e2e_log}
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
-    def test_herdr_session_execs_herdr_without_prebuilding_agents(self) -> None:
-        self.write_executable(
-            "herdr",
-            f"""#!/usr/bin/env bash
-printf 'herdr %s\\n' "$*" >> {self.calls_path}
-""",
+    def test_herdr_session_focuses_workspace_for_launch_cwd(self) -> None:
+        self.write_workspace_state(
+            "w-existing",
+            f'{{"pane_id":"w-existing:p1","cwd":"{self.workdir.resolve()}"}}',
         )
 
         result = self.run_session_helper()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(
             self.calls_path.read_text().splitlines(),
-            ["herdr "],
+            [
+                "workspace list",
+                "pane list --workspace w-existing",
+                "workspace focus w-existing",
+                "",
+            ],
         )
         self.assertFalse((self.home_dir / ".config/herdr/herdr-agents.log").exists())
+
+    def test_herdr_session_creates_workspace_for_new_launch_cwd(self) -> None:
+        result = self.run_session_helper()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(
+            self.calls_path.read_text().splitlines(),
+            [
+                "workspace list",
+                f"workspace create --cwd {self.workdir.resolve()} --label project --focus",
+                "",
+            ],
+        )
+
+    def test_herdr_session_starts_normally_when_server_is_not_running(self) -> None:
+        self.write_executable(
+            "herdr",
+            f"""#!/usr/bin/env bash
+printf '%s\\n' "$*" >> {self.calls_path}
+[[ $1 == workspace && $2 == list ]] && exit 1
+exit 0
+""",
+        )
+
+        result = self.run_session_helper()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.calls_path.read_text().splitlines(), ["workspace list", ""])
 
     def test_herdr_session_rejects_arguments(self) -> None:
         result = self.run_session_helper("extra")

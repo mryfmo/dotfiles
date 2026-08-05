@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
 # @file herdr-session
-# @brief Attach to Herdr with a plain initial terminal.
+# @brief Attach to a Herdr workspace for the launch directory.
 # @description
-#   Agent and files panes are added lazily by the Claude SessionStart hook.
+#   Focuses or creates a workspace for the launch directory before attaching.
+#   Agent panes are added lazily by the Claude SessionStart hook.
 # @example
 #   herdr-session
 
@@ -14,8 +15,34 @@ function usage() {
     cat << 'USAGE'
 Usage: herdr-session
 
-Attach to Herdr with a plain terminal; starting Claude adds agent panes lazily.
+Attach to a Herdr workspace for the launch directory; starting Claude adds
+agent panes lazily.
 USAGE
+}
+
+# @description Focus or create the Herdr workspace for the current directory.
+function focus_launch_workspace() {
+    local workdir
+    local workspace_list_json
+    local workspace_id
+    local panes_json
+
+    workdir="$(pwd -P)"
+    command -v jq > /dev/null 2>&1 || return 0
+    if ! workspace_list_json="$(herdr workspace list 2> /dev/null)"; then
+        return 0
+    fi
+
+    while IFS= read -r workspace_id; do
+        if panes_json="$(herdr pane list --workspace "${workspace_id}" 2> /dev/null)" &&
+            printf '%s\n' "${panes_json}" | jq -e --arg cwd "${workdir}" \
+                '.result.panes[]? | select(.cwd == $cwd)' > /dev/null; then
+            herdr workspace focus "${workspace_id}" > /dev/null
+            return 0
+        fi
+    done < <(printf '%s\n' "${workspace_list_json}" | jq -r '.result.workspaces[]?.workspace_id // empty')
+
+    herdr workspace create --cwd "${workdir}" --label "$(basename "${workdir}")" --focus > /dev/null
 }
 
 if [[ ${1:-} == "--help" || ${1:-} == "-h" ]]; then
@@ -28,4 +55,5 @@ if [[ $# -gt 0 ]]; then
     exit 2
 fi
 
+focus_launch_workspace
 exec herdr

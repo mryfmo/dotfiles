@@ -186,6 +186,28 @@ install_starship
         self.assertTrue((ROOT / "home/dot_mise/mise.lock").is_file())
         self.assertTrue((ROOT / "home/dot_config/mise/symlink_mise.lock.tmpl").is_file())
 
+    def test_mise_npm_backend_uses_npm_and_limits_lifecycle_scripts(self):
+        with (ROOT / "home/dot_mise/config.toml").open("rb") as config_file:
+            config = tomllib.load(config_file)
+        with (ROOT / "home/dot_mise/mise.lock").open("rb") as lock_file:
+            lock = tomllib.load(lock_file)
+
+        self.assertEqual("npm", config["settings"]["npm"]["package_manager"])
+        claude = config["tools"]["npm:@anthropic-ai/claude-code"]
+        self.assertEqual(
+            ["@anthropic-ai/claude-code"],
+            claude["allow_builds"],
+        )
+        codex = config["tools"]["npm:@openai/codex"]
+        if isinstance(codex, dict):
+            self.assertNotIn("allow_builds", codex)
+        locked_claude = lock["tools"]["npm:@anthropic-ai/claude-code"]
+        self.assertEqual(1, len(locked_claude))
+        self.assertEqual(
+            claude["allow_builds"],
+            json.loads(locked_claude[0]["options"]["allow_builds"]),
+        )
+
     def test_mise_lock_matches_config_and_supported_platforms(self):
         with (ROOT / "home/dot_mise/config.toml").open("rb") as config_file:
             config = tomllib.load(config_file)
@@ -195,8 +217,8 @@ install_starship
         for name, request in config["tools"].items():
             version = request if isinstance(request, str) else request["version"]
             self.assertEqual(version, versions.get(name), name)
-        self.assertEqual("0.23.4", config["tools"]["cargo:eza"])
-        self.assertEqual("0.23.4", versions["cargo:eza"])
+        self.assertEqual("0.23.5", config["tools"]["cargo:eza"])
+        self.assertEqual("0.23.5", versions["cargo:eza"])
 
         expected = {
             "platforms.linux-arm64",

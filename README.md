@@ -142,8 +142,9 @@ upgrades. Other values, including `SYSTEM=0`, keep `make upgrade` in user-level
 tooling mode.
 
 `make update` applies managed files and excludes chezmoi scripts, so one-time
-installers do not run during routine updates. It then installs the two locked
-statusline tools required by the applied config without upgrading other tools.
+installers do not run during routine updates. It then ensures the locked
+Node/npm runtime is installed before the two locked statusline tools required
+by the applied config, without upgrading other tools.
 After assets are refreshed, it reloads a running Herdr server, skips reload when
 the server is reported as not running or the command is unavailable, and fails
 on ambiguous status or reload errors. After
@@ -364,6 +365,16 @@ If you are already inside the cloned repository root, `make setup` remains avail
 One-time chezmoi scripts under `home/.chezmoiscripts/**/run_once_*` are for initial installation.
 Do not use `make reset` as the normal update path; it clears chezmoi's script state so one-time installers can run again intentionally.
 Tool versions in `home/dot_mise/config.toml` are exact and backed by `mise.lock`. Updates occur only through `make upgrade` with a reviewed config and lock diff.
+For `npm:` tools, mise owns the version, lock entry, and isolated install
+prefix, while the npm CLI performs installation through
+`settings.npm.package_manager = "npm"`. Do not install Claude Code or Codex
+directly with user-global `npm install -g`; duplicate global installs can
+shadow the mise-managed commands. Claude Code alone permits its reviewed
+package lifecycle script because its postinstall replaces `bin/claude.exe`
+with the platform-native binary. Codex has no package lifecycle script and
+does not receive that permission. If an older aube-backed agent CLI cannot run,
+`scripts/update-agent-assets.sh` force-reinstalls only that broken CLI through
+the npm backend before refreshing plugins.
 
 ### 💡 Develop the Setup Scripts
 

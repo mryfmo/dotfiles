@@ -21,8 +21,8 @@ CLAUDE_SETTINGS = ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
 CI_WORKFLOW = ROOT / ".github/workflows/test.yaml"
 INTEGRATION_SMOKE = ROOT / "scripts/check-statusline-tools.py"
 EXPECTED_TOOLS = {
-    "npm:ccusage": "20.0.17",
-    "npm:ccstatusline": "2.2.23",
+    "npm:ccusage": "20.0.19",
+    "npm:ccstatusline": "2.2.27",
 }
 
 
@@ -98,8 +98,8 @@ class StatuslineToolsTest(unittest.TestCase):
         smoke = INTEGRATION_SMOKE.read_text()
 
         for token in (
-            "npm:ccstatusline@2.2.23",
-            "npm:ccusage@20.0.17",
+            "npm:ccstatusline@2.2.27",
+            "npm:ccusage@20.0.19",
             'mise trust --yes "${RUNNER_TEMP}/statusline-mise/mise.toml"',
             "sudo unshare --net",
             "/usr/bin/sandbox-exec",

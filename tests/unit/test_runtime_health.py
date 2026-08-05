@@ -138,7 +138,8 @@ class RuntimeHealthTest(unittest.TestCase):
     def test_agent_asset_update_repairs_broken_claude_with_npm_backend(self) -> None:
         repo = self.temp_dir / "agent-assets-repair-repo"
         home = self.temp_dir / "agent-assets-repair-home"
-        bin_dir = repo / "bin"
+        bin_dir = home / ".local/bin"
+        shim_dir = home / ".local/share/mise/shims"
         (repo / "scripts").mkdir(parents=True)
         home.mkdir()
         shutil.copy(
@@ -147,14 +148,14 @@ class RuntimeHealthTest(unittest.TestCase):
         )
         self.executable(bin_dir / "npm", "exit 1\n")
         self.executable(
-            bin_dir / "claude",
+            shim_dir / "claude",
             """
             printf 'broken-claude %s\n' "$*" >> "$TEST_LOG"
             exit 99
             """,
         )
         self.executable(
-            bin_dir / "codex",
+            shim_dir / "codex",
             """
             printf 'codex %s\n' "$*" >> "$TEST_LOG"
             """,
@@ -182,7 +183,7 @@ EOF
             cwd=repo,
             env={
                 **os.environ,
-                "BROKEN_CLAUDE": str(bin_dir / "claude"),
+                "BROKEN_CLAUDE": str(shim_dir / "claude"),
                 "HOME": str(home),
                 "PATH": f"{bin_dir}:/usr/bin:/bin",
                 "TEST_LOG": str(log),

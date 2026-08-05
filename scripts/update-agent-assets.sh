@@ -468,6 +468,7 @@ function main() {
         exit 2
     fi
 
+    export PATH="${HOME}/.local/share/mise/shims:${PATH}"
     remove_node_global_agent_cli_shadows
     ensure_mise_npm_agent_cli claude "npm:@anthropic-ai/claude-code"
     ensure_mise_npm_agent_cli codex "npm:@openai/codex"

@@ -64,6 +64,7 @@ def runtime_prefix(name: str | None) -> str | None:
 
 
 def base_hook_state() -> list[tuple[str, str]]:
+    """Harvest operator-granted hook trust from the base Codex config."""
     path = Path.home() / ".codex/config.toml"
     if not path.is_file():
         return []
@@ -75,11 +76,13 @@ def base_hook_state() -> list[tuple[str, str]]:
 
 
 def trusted_hash(chunk: str) -> str | None:
+    """Parse a persisted hook-trust hash without recalculating or trusting it."""
     match = re.search(r'^trusted_hash = "([^"]+)"$', chunk, re.MULTILINE)
     return match.group(1) if match else None
 
 
 def merge_config(current: str) -> str:
+    """Keep profile trust authoritative and only warn when base trust diverges."""
     managed_chunks = split_chunks(MANAGED)
     current_chunks = split_chunks(current) if current.strip() else []
     current_by_name: dict[str, list[str]] = {}

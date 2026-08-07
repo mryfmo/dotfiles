@@ -427,6 +427,10 @@ def validate_codex_profile_modify_scripts(manifest: dict[str, Any]) -> None:
             fail(f"{path} must render the {name} profile model")
         if profile_data.get("model_reasoning_effort") != profile.get("codex", {}).get("model_reasoning_effort"):
             fail(f"{path} must render the {name} profile reasoning effort")
+        if profile_data.get("features", {}).get("hooks") is not True:
+            fail(f"{path} must enable hooks for the {name} profile")
+        if "state" not in profile_data.get("hooks", {}):
+            fail(f"{path} must preserve hook trust state for the {name} profile")
 
 
 def validate_cognee_install_assets(manifest: dict[str, Any]) -> None:

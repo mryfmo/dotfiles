@@ -163,6 +163,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             stderr=subprocess.PIPE,
             env={
                 **os.environ,
+                "HOME": str(self.temp_dir / "target-home"),
                 "CHEZMOI_SOURCE_DIR": str(self.temp_dir / "home"),
                 "CHEZMOI_HOME_DIR": str(self.temp_dir / "target-home"),
             },
@@ -191,6 +192,9 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             'model = "gpt-5.6-terra"\n'
             'model_reasoning_effort = "medium"\n'
             "\n"
+            "[features]\n"
+            "hooks = true\n"
+            "\n"
             "[hooks.state]\n"
             "trusted = true\n"
         )
@@ -200,6 +204,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            env={**os.environ, "HOME": str(self.temp_dir / "target-home")},
             check=False,
         )
 
@@ -219,6 +224,11 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             'model = "gpt-5.6-terra"\n'
             'model_reasoning_effort = "medium"\n'
             "\n"
+            "[features]\n"
+            "hooks = true\n"
+            "\n"
+            "[hooks.state]\n"
+            "\n"
             "[[hooks.state.sub]]\n"
             'name = "first"\n'
             "\n"
@@ -231,6 +241,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            env={**os.environ, "HOME": str(self.temp_dir / "target-home")},
             check=False,
         )
 
@@ -252,6 +263,38 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertIn("effort: low", outputs[agent_path])
 
         self.assertFalse([path for path in outputs if path.name == "ccgate.jsonnet"])
+
+    def test_profile_modify_scripts_seed_base_hook_trust(self) -> None:
+        outputs = self.module.expected_outputs(sample_manifest())
+        standard_profile = self.temp_dir / "home/dot_codex/modify_standard.config.toml"
+        self.module.write_outputs(outputs)
+        home = self.temp_dir / "target-home"
+        base = home / ".codex/config.toml"
+        base.parent.mkdir(parents=True)
+        base.write_text(
+            "[hooks.state]\n\n"
+            '[hooks.state."/workspace/.codex/hooks.json:stop:0:0"]\n'
+            'trusted_hash = "sha256:base"\n'
+        )
+
+        result = subprocess.run(
+            [str(standard_profile)],
+            input=(
+                "[hooks.state]\n\n"
+                '[hooks.state."/home/.codex/config.toml:permission_request:0:0"]\n'
+                'trusted_hash = "sha256:profile"\n'
+            ),
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env={**os.environ, "HOME": str(home)},
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("[features]\nhooks = true", result.stdout)
+        self.assertIn('trusted_hash = "sha256:profile"', result.stdout)
+        self.assertIn('trusted_hash = "sha256:base"', result.stdout)
 
     def test_claude_settings_use_interactive_profile_with_permgate(
         self,

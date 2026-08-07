@@ -448,6 +448,11 @@ def render_codex_profile(name: str, profile: dict[str, Any]) -> str:
         "",
         f"model = {quote_toml(codex['model'])}",
         f"model_reasoning_effort = {quote_toml(codex['model_reasoning_effort'])}",
+        "",
+        "[features]",
+        "hooks = true",
+        "",
+        "[hooks.state]",
     ]
     return "\n".join(lines) + "\n"
 
@@ -460,6 +465,7 @@ def render_codex_profile_modify(name: str, profile: dict[str, Any]) -> str:
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
 RUNTIME_PREFIXES = {RUNTIME_PREFIXES!r}
 MANAGED = {managed!r}
@@ -517,11 +523,20 @@ def runtime_prefix(name: str | None) -> str | None:
     return None
 
 
+def base_hook_state() -> list[tuple[str, str]]:
+    path = Path.home() / ".codex/config.toml"
+    if not path.is_file():
+        return []
+    return [
+        (name, chunk)
+        for name, chunk in split_chunks(path.read_text())
+        if runtime_prefix(name) == "hooks.state"
+    ]
+
+
 def merge_config(current: str) -> str:
-    if not current.strip():
-        return MANAGED
     managed_chunks = split_chunks(MANAGED)
-    current_chunks = split_chunks(current)
+    current_chunks = split_chunks(current) if current.strip() else []
     current_by_name: dict[str, list[str]] = {{}}
     current_by_runtime_prefix: dict[str, list[tuple[int, str, str]]] = {{}}
     managed_by_runtime_prefix: dict[str, list[tuple[str, str]]] = {{}}
@@ -535,6 +550,11 @@ def merge_config(current: str) -> str:
         prefix = runtime_prefix(managed_name)
         if managed_name is not None and prefix is not None:
             managed_by_runtime_prefix.setdefault(prefix, []).append((managed_name, managed_chunk))
+    for base_name, base_chunk in base_hook_state():
+        if base_name not in current_by_name and base_name not in {{
+            name for name, _ in managed_by_runtime_prefix.get("hooks.state", [])
+        }}:
+            managed_by_runtime_prefix.setdefault("hooks.state", []).append((base_name, base_chunk))
     managed_names = {{table_name for table_name, _ in managed_chunks if table_name is not None}}
     emitted_current: set[int] = set()
     emitted_runtime_prefixes: set[str] = set()
@@ -546,11 +566,14 @@ def merge_config(current: str) -> str:
                 continue
             current_group = current_by_runtime_prefix.get(prefix, [])
             if current_group:
+                for runtime_name, runtime_chunk in managed_by_runtime_prefix.get(prefix, []):
+                    if runtime_name == prefix and runtime_name not in current_by_name:
+                        output.append(runtime_chunk)
                 for current_index, current_name, current_chunk in current_group:
                     output.append(current_chunk)
                     emitted_current.add(current_index)
                 for runtime_name, runtime_chunk in managed_by_runtime_prefix.get(prefix, []):
-                    if runtime_name not in current_by_name:
+                    if runtime_name != prefix and runtime_name not in current_by_name:
                         output.append(runtime_chunk)
             else:
                 output.extend(chunk for _, chunk in managed_by_runtime_prefix.get(prefix, []))

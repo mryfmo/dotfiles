@@ -8,6 +8,7 @@ import json
 import re
 import sys
 from pathlib import Path
+import re
 from typing import Any, NoReturn
 
 try:
@@ -466,6 +467,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+import re
 
 RUNTIME_PREFIXES = {RUNTIME_PREFIXES!r}
 MANAGED = {managed!r}
@@ -534,6 +536,11 @@ def base_hook_state() -> list[tuple[str, str]]:
     ]
 
 
+def trusted_hash(chunk: str) -> str | None:
+    match = re.search(r'^trusted_hash = "([^"]+)"$', chunk, re.MULTILINE)
+    return match.group(1) if match else None
+
+
 def merge_config(current: str) -> str:
     managed_chunks = split_chunks(MANAGED)
     current_chunks = split_chunks(current) if current.strip() else []
@@ -551,6 +558,14 @@ def merge_config(current: str) -> str:
         if managed_name is not None and prefix is not None:
             managed_by_runtime_prefix.setdefault(prefix, []).append((managed_name, managed_chunk))
     for base_name, base_chunk in base_hook_state():
+        if base_name in current_by_name:
+            profile_hash = trusted_hash(current_by_name[base_name][0])
+            base_hash = trusted_hash(base_chunk)
+            if profile_hash and base_hash and profile_hash != base_hash:
+                print(
+                    f"warning: hook trust divergence for {{base_name}}: profile={{profile_hash}} base={{base_hash}}",
+                    file=sys.stderr,
+                )
         if base_name not in current_by_name and base_name not in {{
             name for name, _ in managed_by_runtime_prefix.get("hooks.state", [])
         }}:

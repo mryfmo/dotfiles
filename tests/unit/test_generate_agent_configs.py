@@ -296,6 +296,43 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertIn('trusted_hash = "sha256:profile"', result.stdout)
         self.assertIn('trusted_hash = "sha256:base"', result.stdout)
 
+    def test_profile_modify_scripts_warn_on_hook_trust_divergence(self) -> None:
+        outputs = self.module.expected_outputs(sample_manifest())
+        profile = self.temp_dir / "home/dot_codex/modify_standard.config.toml"
+        self.module.write_outputs(outputs)
+        home = self.temp_dir / "target-home"
+        base = home / ".codex/config.toml"
+        base.parent.mkdir(parents=True)
+        base.write_text('[hooks.state."hook"]\ntrusted_hash = "sha256:base"\n')
+        current = '[hooks.state."hook"]\ntrusted_hash = "sha256:profile"\n'
+
+        result = subprocess.run(
+            [str(profile)], input=current, text=True, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, env={**os.environ, "HOME": str(home)}, check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('warning: hook trust divergence for hooks.state."hook": profile=sha256:profile base=sha256:base', result.stderr)
+        self.assertIn('trusted_hash = "sha256:profile"', result.stdout)
+
+    def test_profile_modify_scripts_are_quiet_for_matching_hook_trust(self) -> None:
+        outputs = self.module.expected_outputs(sample_manifest())
+        profile = self.temp_dir / "home/dot_codex/modify_standard.config.toml"
+        self.module.write_outputs(outputs)
+        home = self.temp_dir / "target-home"
+        base = home / ".codex/config.toml"
+        base.parent.mkdir(parents=True)
+        base.write_text('[hooks.state."hook"]\ntrusted_hash = "sha256:same"\n')
+        current = '[hooks.state."hook"]\ntrusted_hash = "sha256:same"\n'
+
+        result = subprocess.run(
+            [str(profile)], input=current, text=True, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, env={**os.environ, "HOME": str(home)}, check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual("", result.stderr)
+
     def test_claude_settings_use_interactive_profile_with_permgate(
         self,
     ) -> None:

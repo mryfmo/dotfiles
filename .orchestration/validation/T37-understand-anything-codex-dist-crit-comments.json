@@ -1,0 +1,28 @@
+[
+  {
+    "scope": "review",
+    "id": "r_fdaab3",
+    "body": "Review scope approval: T37 Codex Understand-Anything runtime provisioning copies only version-matched Claude release artifacts, removes stale destinations, and preserves the no-build fallback. No findings.",
+    "author": "Codex",
+    "resolved": true,
+    "replies": [
+      {
+        "body": "Approved after scoped Crit-data review; no changes requested.",
+        "author": "Codex"
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_e9900f",
+    "body": "Review scope approval: T37 revision now verifies a source artifact directory exists before deleting its destination and falls back to lexical cache-directory sorting on non-numeric version names. No findings.",
+    "author": "Codex",
+    "resolved": true,
+    "replies": [
+      {
+        "body": "Approved after revision review; no changes requested.",
+        "author": "Codex"
+      }
+    ]
+  }
+]

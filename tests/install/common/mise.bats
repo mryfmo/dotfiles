@@ -128,7 +128,7 @@ install --locked --before ${DEFAULT_NPM_MIN_RELEASE_AGE_DAYS}d" ]
 }
 
 @test "[common] herdr is installed by mise on Linux and macOS" {
-    run grep -F '"github:ogulcancelik/herdr" = "0.7.5"' home/dot_mise/config.toml
+    run grep -F '"github:ogulcancelik/herdr" = "0.8.0"' home/dot_mise/config.toml
     [ "${status}" -eq 0 ]
 }
 

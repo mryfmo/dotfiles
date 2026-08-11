@@ -1441,34 +1441,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../executable_start-cognee-mcp/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_local/bin/common/executable_start-cognee-mcp
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../executable_uv-format/" class="md-nav__link">
         
   
@@ -1798,34 +1770,6 @@
     
   
     install/common/chezmoi_private.sh
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../../../install/common/cognee/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    install/common/cognee.sh
   
 
     
@@ -3407,7 +3351,6 @@
 <span class="s">Notes:</span>
 <span class="s">  - Use this helper for read-only comparison in one worktree.</span>
 <span class="s">  - For implementation, run it inside separate worktrees or disable one writer.</span>
-<span class="s">  - Both agents should use the shared Cognee MCP configuration when enabled locally.</span>
 <span class="s">USAGE</span>
 <span class="o">}</span>
 
@@ -3518,10 +3461,7 @@ chmod<span class="w"> </span><span class="m">700</span><span class="w"> </span><
 prepare_artifact<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$output_dir</span><span class="s2">/prompt.txt&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
 <span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$prompt</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="s2">&quot;</span><span class="nv">$output_dir</span><span class="s2">/prompt.txt&quot;</span>
 
-<span class="nv">shared_prefix</span><span class="o">=</span><span class="s1">&#39;Before repository-specific decisions, use Cognee recall/search when the Cognee MCP server is enabled. Do not save secrets, tokens, raw logs, temporary PR state, or transient todos. Do not delete, prune, or forget memory. Save only durable facts after completion.&#39;</span>
-<span class="nv">full_prompt</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">shared_prefix</span><span class="si">}</span>
-
-<span class="s2">Task:</span>
+<span class="nv">full_prompt</span><span class="o">=</span><span class="s2">&quot;Task:</span>
 <span class="si">${</span><span class="nv">prompt</span><span class="si">}</span><span class="s2">&quot;</span>
 
 <span class="nv">pids</span><span class="o">=()</span>

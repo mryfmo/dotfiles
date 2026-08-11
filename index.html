@@ -1418,34 +1418,6 @@
   
   
     <li class="md-nav__item">
-      <a href="reference/home/dot_local/bin/common/executable_start-cognee-mcp/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_local/bin/common/executable_start-cognee-mcp
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="reference/home/dot_local/bin/common/executable_uv-format/" class="md-nav__link">
         
   
@@ -1775,34 +1747,6 @@
     
   
     install/common/chezmoi_private.sh
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="reference/install/common/cognee/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    install/common/cognee.sh
   
 
     
@@ -3332,12 +3276,12 @@
 </div>
 <div class="landing-stats">
 <div class="landing-stat">
-  <span class="landing-stat__value">56</span>
+  <span class="landing-stat__value">54</span>
   <span class="landing-stat__label">source docs</span>
   <span class="landing-stat__note">tracked shell assets</span>
 </div>
 <div class="landing-stat">
-  <span class="landing-stat__value">25</span>
+  <span class="landing-stat__value">24</span>
   <span class="landing-stat__label">install scripts</span>
   <span class="landing-stat__note">bootstrap and app setup</span>
 </div>
@@ -3347,7 +3291,7 @@
   <span class="landing-stat__note">maintenance and checks</span>
 </div>
 <div class="landing-stat">
-  <span class="landing-stat__value">19</span>
+  <span class="landing-stat__value">18</span>
   <span class="landing-stat__label">local commands</span>
   <span class="landing-stat__note">helpers under home/dot_local/bin</span>
 </div>
@@ -3362,7 +3306,7 @@
   <span class="landing-stat__note">common, client, server</span>
 </div>
 <div class="landing-stat">
-  <span class="landing-stat__value">22</span>
+  <span class="landing-stat__value">21</span>
   <span class="landing-stat__label">template mappings</span>
   <span class="landing-stat__note">chezmoi wrappers</span>
 </div>
@@ -3407,8 +3351,8 @@ The site is rebuilt from tracked shell sources every time.
 The homepage stays curated, while the complete generated table of contents lives on its own page.
 
 - [Open the full catalog](catalog/)
-- **56** source reference pages are generated from tracked shell assets
-- **22** chezmoi wrappers are mapped back to their source scripts
+- **54** source reference pages are generated from tracked shell assets
+- **21** chezmoi wrappers are mapped back to their source scripts
 
 </div>
 <div class="landing-card" markdown="1">
@@ -3419,17 +3363,17 @@ The homepage stays curated, while the complete generated table of contents lives
 
 Wrapper templates under `home/.chezmoiscripts` are linked back to the source scripts they include.
 
-_22 mapped wrappers_
+_21 mapped wrappers_
 
 - [Open template mapping](reference/chezmoi-templates.md)
 - `home/.chezmoiscripts/common/run_once_after_01-setup-chezmoi-private.sh.tmpl` -> [`install/common/chezmoi_private.sh`](reference/install/common/chezmoi_private.md)
 - `home/.chezmoiscripts/common/run_once_after_02-install-mise.sh.tmpl` -> [`install/common/mise.sh`](reference/install/common/mise.md)
 - `home/.chezmoiscripts/common/run_once_after_03-install-sheldon.sh.tmpl` -> [`install/common/sheldon.sh`](reference/install/common/sheldon.md)
-- `home/.chezmoiscripts/common/run_once_after_05-install-cognee.sh.tmpl` -> [`install/common/cognee.sh`](reference/install/common/cognee.md)
 - `home/.chezmoiscripts/common/run_once_after_99-install-gh-extensions.sh.tmpl` -> [`install/common/gh_extensions.sh`](reference/install/common/gh_extensions.md)
 - `home/.chezmoiscripts/macos/run_once_04-install-ghostty.sh.tmpl` -> [`install/macos/common/ghostty.sh`](reference/install/macos/common/ghostty.md)
+- `home/.chezmoiscripts/macos/run_once_10-install-docker.sh.tmpl` -> [`install/macos/common/docker.sh`](reference/install/macos/common/docker.md)
 
-[16 more mappings](reference/chezmoi-templates.md)
+[15 more mappings](reference/chezmoi-templates.md)
 
 </div>
 </div>
@@ -3445,16 +3389,16 @@ _22 mapped wrappers_
 
 Bootstrap and application setup flows stored under `install/**`.
 
-_25 documented entries_
+_24 documented entries_
 
 - [`install/common/chezmoi_private.sh`](reference/install/common/chezmoi_private.md): Bootstraps `mryfmo/dotfiles-private` using the dedicated source and config paths under the current user's home direct...
-- [`install/common/cognee.sh`](reference/install/common/cognee.md): Installs the `cognee-mcp` command used by the optional shared Cognee MCP memory server. Runtime secrets, model provid...
 - [`install/common/gh_extensions.sh`](reference/install/common/gh_extensions.md): Activates `mise` when available, ensures GitHub authentication, and installs the configured `gh` extensions.
 - [`install/common/mise.sh`](reference/install/common/mise.md): Downloads and verifies a pinned standalone `mise` release, then runs `mise install` against the repository tool defin...
 - [`install/common/sheldon.sh`](reference/install/common/sheldon.md): Builds the pinned crates.io release with its packaged Cargo.lock.
 - [`install/macos/arm64/prepare_arm64_system.sh`](reference/install/macos/arm64/prepare_arm64_system.md): Installs Rosetta on arm64 macOS machines when it is not already present.
+- [`install/macos/arm64/run.sh`](reference/install/macos/arm64/run.md): Emits the relative arm64 installer path consumed by the surrounding setup flow.
 
-[19 more entries in the full catalog](catalog/)
+[18 more entries in the full catalog](catalog/)
 
 </div>
 <div class="landing-card" markdown="1">
@@ -3485,7 +3429,7 @@ _7 documented entries_
 
 Executable helpers published from `home/dot_local/bin/**`.
 
-_19 documented entries_
+_18 documented entries_
 
 - [`home/dot_local/bin/common/executable_agent-fanout`](reference/home/dot_local/bin/common/executable_agent-fanout.md): Runs Codex and Claude Code with the same prompt, stores each result under `.agents/runs/`, and prints the output dire...
 - [`home/dot_local/bin/common/executable_cdgwq`](reference/home/dot_local/bin/common/executable_cdgwq.md): Uses `gwq list --json` and `fzf` to select a known repository path, then changes the current shell into that directory.
@@ -3494,7 +3438,7 @@ _19 documented entries_
 - [`home/dot_local/bin/common/executable_dev`](reference/home/dot_local/bin/common/executable_dev.md): Lets the user choose a repository path from `ghq`, changes into it, and renames the current tmux session to match the...
 - [`home/dot_local/bin/common/executable_fgc`](reference/home/dot_local/bin/common/executable_fgc.md): Lists local branches, selects one with `fzf`, and checks it out.
 
-[13 more entries in the full catalog](catalog/)
+[12 more entries in the full catalog](catalog/)
 
 </div>
 <div class="landing-card" markdown="1">

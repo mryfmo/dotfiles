@@ -173,8 +173,16 @@ Any model-profile decision still requires manual quality review and a PR.
 ### Agent review and permission assets
 
 `make update` also refreshes agent-managed assets after `chezmoi apply`.
-This includes the Crit integrations and Ponytail (`ponytail@ponytail`) plugin
-for Codex and Claude Code.
+This includes the Crit integrations, the Ponytail (`ponytail@ponytail`) plugin,
+and the Understand-Anything (`understand-anything@understand-anything`)
+knowledge-graph plugin for Codex and Claude Code. Understand-Anything installs
+from the `Egonex-AI/Understand-Anything` marketplace for Claude Code and via
+the upstream installer for Codex, pinned to a reviewed commit and verified by
+sha256 before execution (bump both constants together in
+`scripts/update-agent-assets.sh` to take upstream installer updates). The
+installer clones `~/.understand-anything/repo` and symlinks its skills into
+`~/.agents/skills` (expected unmanaged-skill WARNs in `make doctor`, one per
+linked skill).
 
 Model selection is governed by `model_profiles` in
 `home/dot_agents/agent-config.yaml`, the single place where model IDs and

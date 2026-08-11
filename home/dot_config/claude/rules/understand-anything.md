@@ -1,0 +1,7 @@
+## Understand-Anything
+
+- Use Understand-Anything (`understand-anything@understand-anything`) to build and query a repo-local knowledge graph of a codebase: `/understand` (full analysis), `/understand-dashboard`, `/understand-chat`, `/understand-domain`, `/understand-knowledge`. Codex invokes the same skills with `$understand`.
+- The initial `/understand` run analyzes the whole codebase and is token-heavy. Do not run it in the interactive deep session; delegate it to a Codex worker or run it under a cheaper profile. Re-runs are incremental and cheap.
+- Output lives in `.ua/` (legacy projects use `.understand-anything/`). Commit `.ua/` except `.ua/intermediate/` and `.ua/diff-overlay.json`; add those two paths to the target repository's `.gitignore`.
+- The graph is repo-local shared state: the orchestrator and agmsg workers read the same `.ua/knowledge-graph.json`. Under the agmsg orchestration regime, graph (re)builds mutate the repository and therefore go to a Codex worker as an AGMSG-TASK.
+- The managed agent asset lifecycle installs and updates the plugin (`make update`); restart Claude Code after plugin updates. The Codex-side installer clones `~/.understand-anything/repo`, creates the `~/.understand-anything-plugin` symlink, and symlinks each skill into `~/.agents/skills`, which `make doctor` reports as expected unmanaged-skill WARNs (one per linked skill).

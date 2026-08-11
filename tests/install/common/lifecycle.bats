@@ -337,6 +337,27 @@ herdr server reload-config" ]
     grep -q 'ponytail@ponytail' home/dot_config/claude/rules/ponytail.md
 }
 
+@test "[common] agent asset lifecycle installs Understand-Anything integrations for Claude Code and Codex" {
+    grep -q 'CLAUDE_UNDERSTAND_ANYTHING_PLUGIN="understand-anything@understand-anything"' scripts/update-agent-assets.sh
+    grep -q 'CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE="Egonex-AI/Understand-Anything"' scripts/update-agent-assets.sh
+    grep -q 'CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME="understand-anything"' scripts/update-agent-assets.sh
+    grep -q 'CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT=' scripts/update-agent-assets.sh
+    grep -q 'CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256=' scripts/update-agent-assets.sh
+    grep -q 'CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL="https://raw.githubusercontent.com/Egonex-AI/Understand-Anything/${CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT}/install.sh"' scripts/update-agent-assets.sh
+    grep -q '\[ "${actual}" = "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256}" \]' scripts/update-agent-assets.sh
+    grep -q 'if claude_understand_anything_plugin_is_enabled; then' scripts/update-agent-assets.sh
+    grep -q 'claude plugin enable "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"' scripts/update-agent-assets.sh
+    grep -q 'bash "${installer}" codex < /dev/null' scripts/update-agent-assets.sh
+    grep -q 'update_claude_understand_anything' scripts/update-agent-assets.sh
+    grep -q 'update_codex_understand_anything' scripts/update-agent-assets.sh
+    grep -q 'Understand-Anything' home/dot_config/codex/AGENTS.md
+    grep -q '\$understand' home/dot_config/codex/AGENTS.md
+    grep -q 'understand-anything@understand-anything' home/dot_config/claude/rules/understand-anything.md
+    grep -q 'dot_config/claude/rules/understand-anything.md' home/dot_claude/rules/symlink_understand-anything.md.tmpl
+    grep -q 'understand-anything@understand-anything' README.md
+    grep -q 'validate_understand_anything_assets' scripts/validate-agent-assets.py
+}
+
 @test "[common] agent asset lifecycle renders model profiles and permgate hooks" {
     ! grep -q 'aqua:tak848/ccgate' scripts/update-agent-assets.sh
     ! grep -q '"aqua:tak848/ccgate" = "0.9.5"' home/dot_mise/config.toml

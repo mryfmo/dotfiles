@@ -433,39 +433,6 @@ def validate_codex_profile_modify_scripts(manifest: dict[str, Any]) -> None:
             fail(f"{path} must preserve hook trust state for the {name} profile")
 
 
-def validate_cognee_install_assets(manifest: dict[str, Any]) -> None:
-    if "cognee_memory" not in manifest.get("mcp_servers", {}):
-        return
-    required_paths = [
-        ROOT / "install/common/cognee.sh",
-        ROOT / "home/.chezmoiscripts/common/run_once_after_05-install-cognee.sh.tmpl",
-        ROOT / "home/dot_local/bin/common/executable_start-cognee-mcp",
-    ]
-    missing = [str(path.relative_to(ROOT)) for path in required_paths if not path.exists()]
-    if missing:
-        fail("cognee_memory requires install/runtime assets: " + ", ".join(missing))
-    installer = (ROOT / "install/common/cognee.sh").read_text()
-    for token in ("tool install", "cognee-mcp", "COGNEE_MCP_PYTHON", "resolve_uv", ".local/share/mise/shims"):
-        if token not in installer:
-            fail(f"install/common/cognee.sh must contain {token!r}")
-    mise_config = (ROOT / "home/dot_mise/config.toml").read_text()
-    if not re.search(r'^cmake = "\d', mise_config, re.MULTILINE):
-        fail("Cognee MCP install needs cmake available through mise for source-built Python dependencies")
-    template = (ROOT / "home/.chezmoiscripts/common/run_once_after_05-install-cognee.sh.tmpl").read_text()
-    for token in ("hasKey . \"cognee\"", "get .cognee \"install\"", "install/common/cognee.sh"):
-        if token not in template:
-            fail(f"Cognee install template must contain {token!r}")
-    bootstrap = (ROOT / "home/.chezmoi.yaml.tmpl").read_text()
-    for token in ("cognee:", "install: false"):
-        if token not in bootstrap:
-            fail(f"home/.chezmoi.yaml.tmpl must define default Cognee data with {token!r}")
-    runner_path = ROOT / "home/dot_local/bin/common/executable_start-cognee-mcp"
-    runner = runner_path.read_text()
-    for token in ("cognee-mcp", "--transport", "COGNEE_MCP_TRANSPORT", "COGNEE_MCP_HOST", "COGNEE_MCP_PORT", "COGNEE_MCP_PATH"):
-        if token not in runner:
-            fail(f"{runner_path.relative_to(ROOT)} must contain {token!r}")
-
-
 def validate_crit_install_assets() -> None:
     updater = (ROOT / "scripts/update-agent-assets.sh").read_text()
     for token in (
@@ -826,7 +793,6 @@ def main() -> None:
     codex = validate_codex_config(manifest)
     claude = validate_claude_mcp_config()
     validate_mcp_parity(codex, claude, manifest)
-    validate_cognee_install_assets(manifest)
     validate_crit_install_assets()
     validate_ponytail_assets(manifest, codex)
     validate_understand_anything_assets()

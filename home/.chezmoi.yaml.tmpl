@@ -29,9 +29,6 @@ data:
     homeDir: {{ $homeDir | quote }}
     homeDirName: {{ $homeDirName | quote }}
     username: {{ $homeDirName | quote }}
-    cognee:
-        install: false
-
 {{ if ne (env "CI") "true" -}}
 encryption: "age"
 age:

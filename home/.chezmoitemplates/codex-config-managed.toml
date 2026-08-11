@@ -30,15 +30,6 @@ writable_roots = ["{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db", "{{ .chezmoi
 inherit = "core"
 set = { PATH = "{{ .chezmoi.homeDir }}/.local/share/mise/installs/node/lts/bin:{{ .chezmoi.homeDir }}/.local/share/mise/shims:{{ .chezmoi.homeDir }}/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" }
 
-[mcp_servers.cognee_memory]
-url = "http://127.0.0.1:8000/mcp"
-enabled = false
-required = false
-startup_timeout_sec = 60
-tool_timeout_sec = 180
-enabled_tools = ["recall", "search", "remember", "save_interaction", "cognify_status", "improve"]
-disabled_tools = ["prune", "delete", "delete_dataset", "forget_memory"]
-
 [mcp_servers.context7]
 command = "npx"
 args = ["-y", "@upstash/context7-mcp"]

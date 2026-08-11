@@ -36,7 +36,6 @@ Environment variables:
 Notes:
   - Use this helper for read-only comparison in one worktree.
   - For implementation, run it inside separate worktrees or disable one writer.
-  - Both agents should use the shared Cognee MCP configuration when enabled locally.
 USAGE
 }
 
@@ -147,10 +146,7 @@ chmod 700 "$output_dir"
 prepare_artifact "$output_dir/prompt.txt" || exit 1
 printf '%s\n' "$prompt" >"$output_dir/prompt.txt"
 
-shared_prefix='Before repository-specific decisions, use Cognee recall/search when the Cognee MCP server is enabled. Do not save secrets, tokens, raw logs, temporary PR state, or transient todos. Do not delete, prune, or forget memory. Save only durable facts after completion.'
-full_prompt="${shared_prefix}
-
-Task:
+full_prompt="Task:
 ${prompt}"
 
 pids=()

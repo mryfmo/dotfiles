@@ -40,7 +40,6 @@ HIGH_RISK_FILES = {
     "home/dot_agents/agent-config.yaml",
     "home/dot_local/bin/common/executable_agent-fanout",
     "home/dot_local/bin/common/executable_herdr-agents",
-    "home/dot_local/bin/common/executable_start-cognee-mcp",
     "home/dot_zshrc",
     "tests/install/common/lifecycle.bats",
 }

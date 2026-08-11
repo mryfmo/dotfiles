@@ -116,6 +116,7 @@
 - Understand-Anything (`understand-anything@understand-anything`) を利用できる場合は、リポジトリのナレッジグラフ生成・参照に使ってください。Codex では `$understand` で起動します(`/understand` ではありません)。
 - 初回のフル解析はトークン消費が大きい処理です。増分解析(2 回目以降)は軽量です。
 - 出力は `.ua/` に生成されます。`.ua/intermediate/` と `.ua/diff-overlay.json` は commit せず、対象リポジトリの `.gitignore` に追加してください。それ以外の `.ua/` は commit 対象です。
+- リポジトリ全体の探索やシンボル検索の前に、`.ua/knowledge-graph.json` があればまず node の `summary` と `filePath` を照会して対象へ直接移動してください。`.ua/meta.json` の `gitCommitHash` と `git rev-parse HEAD` を比較し、graph が古いか存在しない場合は grep にフォールバックしてください。
 - インストーラは skills を `~/.agents/skills` に symlink します。導入・更新後は CLI を再起動してください。
 
 ## Crit レビューの利用方針

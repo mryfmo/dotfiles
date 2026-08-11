@@ -586,7 +586,7 @@ def validate_understand_anything_assets() -> None:
             fail(f"scripts/update-agent-assets.sh must manage Understand-Anything asset token {token!r}")
 
     codex_agents = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
-    for token in ("Understand-Anything", "$understand", ".ua/intermediate/", ".ua/diff-overlay.json"):
+    for token in ("Understand-Anything", "$understand", "knowledge-graph.json", ".ua/intermediate/", ".ua/diff-overlay.json"):
         if token not in codex_agents:
             fail(f"home/dot_config/codex/AGENTS.md must document Understand-Anything token {token!r}")
 
@@ -597,6 +597,7 @@ def validate_understand_anything_assets() -> None:
     for token in (
         "Understand-Anything",
         "understand-anything@understand-anything",
+        "knowledge-graph.json",
         "/understand",
         ".ua/intermediate/",
         ".ua/diff-overlay.json",

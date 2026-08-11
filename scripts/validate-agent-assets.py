@@ -575,6 +575,12 @@ def validate_understand_anything_assets() -> None:
         "if claude_understand_anything_plugin_is_enabled; then",
         "update_claude_understand_anything",
         "update_codex_understand_anything",
+        "provision_codex_understand_anything_runtime",
+        "packages/core/dist",
+        "packages/core/node_modules",
+        "except ValueError:",
+        '[ -d "${release_root}/${source}" ] || continue',
+        "Understand-Anything Codex runtime not provisioned: no matching Claude plugin release artifact",
     ):
         if token not in updater:
             fail(f"scripts/update-agent-assets.sh must manage Understand-Anything asset token {token!r}")
@@ -604,7 +610,12 @@ def validate_understand_anything_assets() -> None:
         fail(f"{claude_symlink} must point at the managed Understand-Anything Claude rule")
 
     readme = (ROOT / "README.md").read_text()
-    for token in ("Understand-Anything", "Egonex-AI/Understand-Anything", "understand-anything@understand-anything"):
+    for token in (
+        "Understand-Anything",
+        "Egonex-AI/Understand-Anything",
+        "understand-anything@understand-anything",
+        "version-matched Claude release artifact",
+    ):
         if token not in readme:
             fail(f"README.md must document Understand-Anything lifecycle token {token!r}")
 

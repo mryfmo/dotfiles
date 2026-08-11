@@ -533,6 +533,60 @@ function update_codex_crit() {
 }
 
 #
+# @description Provision Codex Understand-Anything runtime files from the matching Claude release artifact.
+# @stdout Prints a skip message when no matching Claude release artifact is available.
+#
+function provision_codex_understand_anything_runtime() {
+    local plugin_root claude_cache release_root source destination
+
+    plugin_root="${HOME}/.understand-anything/repo/understand-anything-plugin"
+    claude_cache="${HOME}/.claude/plugins/cache/understand-anything/understand-anything"
+    if ! has_command python3; then
+        printf 'Understand-Anything Codex runtime not provisioned: no matching Claude plugin release artifact; run make update after installing the Claude plugin.\n'
+        return 0
+    fi
+    release_root="$(
+        python3 - "${plugin_root}/.claude-plugin/plugin.json" "${claude_cache}" << 'PY'
+import json
+import sys
+from pathlib import Path
+
+plugin_manifest = Path(sys.argv[1])
+cache_root = Path(sys.argv[2])
+try:
+    version = json.loads(plugin_manifest.read_text())["version"]
+except (OSError, json.JSONDecodeError, KeyError):
+    sys.exit(0)
+
+matches = []
+for candidate in cache_root.iterdir() if cache_root.is_dir() else ():
+    try:
+        if json.loads((candidate / ".claude-plugin/plugin.json").read_text())["version"] == version:
+            matches.append(candidate)
+    except (OSError, json.JSONDecodeError, KeyError):
+        pass
+try:
+    release_root = max(matches, key=lambda path: tuple(int(part) for part in path.name.split(".")))
+except ValueError:
+    release_root = max(matches, key=lambda path: path.name, default=None)
+print(release_root or "")
+PY
+    )"
+    if [ -z "${release_root}" ]; then
+        printf 'Understand-Anything Codex runtime not provisioned: no matching Claude plugin release artifact; run make update after installing the Claude plugin.\n'
+        return 0
+    fi
+
+    for source in "packages/core/dist" "packages/core/node_modules" "node_modules"; do
+        destination="${plugin_root}/${source}"
+        [ -d "${release_root}/${source}" ] || continue
+        rm -rf "${destination}"
+        mkdir -p "$(dirname "${destination}")"
+        cp -R "${release_root}/${source}" "${destination}"
+    done
+}
+
+#
 # @description Install or update the Codex Understand-Anything skills via the vendor installer.
 # @description
 #   The installer clones the upstream repo into ~/.understand-anything/repo and
@@ -563,6 +617,7 @@ function update_codex_understand_anything() {
             printf 'Understand-Anything installer failed; Codex skills unchanged.\n' >&2
             return 1
         }
+        provision_codex_understand_anything_runtime
         # shellcheck disable=SC2016 # $understand is the literal Codex skill invocation, not a variable.
         printf 'Invoke Understand-Anything in Codex with $understand after restarting the CLI.\n'
     ) || true

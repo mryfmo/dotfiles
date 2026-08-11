@@ -182,7 +182,7 @@ sha256 before execution (bump both constants together in
 `scripts/update-agent-assets.sh` to take upstream installer updates). The
 installer clones `~/.understand-anything/repo` and symlinks its skills into
 `~/.agents/skills` (expected unmanaged-skill WARNs in `make doctor`, one per
-linked skill).
+linked skill); Codex runtime files are provisioned from the version-matched Claude release artifact when available.
 
 Model selection is governed by `model_profiles` in
 `home/dot_agents/agent-config.yaml`, the single place where model IDs and

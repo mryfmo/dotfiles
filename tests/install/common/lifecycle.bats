@@ -348,6 +348,12 @@ herdr server reload-config" ]
     grep -q 'if claude_understand_anything_plugin_is_enabled; then' scripts/update-agent-assets.sh
     grep -q 'claude plugin enable "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"' scripts/update-agent-assets.sh
     grep -q 'bash "${installer}" codex < /dev/null' scripts/update-agent-assets.sh
+    grep -q 'function provision_codex_understand_anything_runtime()' scripts/update-agent-assets.sh
+    grep -q 'packages/core/dist' scripts/update-agent-assets.sh
+    grep -q 'packages/core/node_modules' scripts/update-agent-assets.sh
+    grep -q 'except ValueError:' scripts/update-agent-assets.sh
+    grep -q '\[ -d "${release_root}/${source}" \] || continue' scripts/update-agent-assets.sh
+    grep -q 'Understand-Anything Codex runtime not provisioned: no matching Claude plugin release artifact' scripts/update-agent-assets.sh
     grep -q 'update_claude_understand_anything' scripts/update-agent-assets.sh
     grep -q 'update_codex_understand_anything' scripts/update-agent-assets.sh
     grep -q 'Understand-Anything' home/dot_config/codex/AGENTS.md

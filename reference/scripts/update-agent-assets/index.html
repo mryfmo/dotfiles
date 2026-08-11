@@ -3361,6 +3361,7 @@
 <ul>
 <li><code>claude_crit_plugin_is_enabled</code></li>
 <li><code>claude_ponytail_plugin_is_enabled</code></li>
+<li><code>claude_understand_anything_plugin_is_enabled</code></li>
 <li><code>codex_marketplace_has_source</code></li>
 <li><code>codex_marketplace_is_configured_git_marketplace</code></li>
 <li><code>codex_marketplace_root</code></li>
@@ -3368,6 +3369,7 @@
 <li><code>ensure_claude_crit_marketplace</code></li>
 <li><code>ensure_claude_ponytail_marketplace</code></li>
 <li><code>ensure_claude_superpowers_marketplace</code></li>
+<li><code>ensure_claude_understand_anything_marketplace</code></li>
 <li><code>ensure_codex_ponytail_marketplace</code></li>
 <li><code>ensure_crit_cli</code></li>
 <li><code>ensure_herdr_integrations</code></li>
@@ -3381,9 +3383,11 @@
 <li><code>update_claude_crit</code></li>
 <li><code>update_claude_ponytail</code></li>
 <li><code>update_claude_superpowers</code></li>
+<li><code>update_claude_understand_anything</code></li>
 <li><code>update_codex_crit</code></li>
 <li><code>update_codex_ponytail</code></li>
 <li><code>update_codex_superpowers</code></li>
+<li><code>update_codex_understand_anything</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
@@ -3411,6 +3415,14 @@
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CODEX_PONYTAIL_MARKETPLACE</span><span class="o">=</span><span class="s2">&quot;DietrichGebert/ponytail&quot;</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CODEX_PONYTAIL_MARKETPLACE_NAME</span><span class="o">=</span><span class="s2">&quot;ponytail&quot;</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CODEX_PONYTAIL_MARKETPLACE_SOURCE</span><span class="o">=</span><span class="s2">&quot;https://github.com/DietrichGebert/ponytail.git&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_PLUGIN</span><span class="o">=</span><span class="s2">&quot;understand-anything@understand-anything&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE</span><span class="o">=</span><span class="s2">&quot;Egonex-AI/Understand-Anything&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME</span><span class="o">=</span><span class="s2">&quot;understand-anything&quot;</span>
+<span class="c1"># Pinned like HOMEBREW_INSTALL_COMMIT in install/macos/common/brew.sh; bump both</span>
+<span class="c1"># values together after reviewing the upstream installer diff.</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT</span><span class="o">=</span><span class="s2">&quot;797ce7969312411be2e125c39628854166f055d7&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256</span><span class="o">=</span><span class="s2">&quot;54f0350d09f43fcc8245f3f1fb2057bd322c36c6f158483dd47dcaf5f4a44eba&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL</span><span class="o">=</span><span class="s2">&quot;https://raw.githubusercontent.com/Egonex-AI/Understand-Anything/</span><span class="si">${</span><span class="nv">CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT</span><span class="si">}</span><span class="s2">/install.sh&quot;</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Print a section heading.</span>
@@ -3607,6 +3619,17 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Ensure the Understand-Anything Claude Code plugin marketplace is configured.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>ensure_claude_understand_anything_marketplace<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>command_output_contains<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>claude<span class="w"> </span>plugin<span class="w"> </span>marketplace<span class="w"> </span>list<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>claude<span class="w"> </span>plugin<span class="w"> </span>marketplace<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Return success when the Claude Code Crit plugin is already enabled.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>claude_crit_plugin_is_enabled<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -3654,6 +3677,35 @@
 <span class="s1">    sys.exit(1)</span>
 
 <span class="s1">plugin_id = os.environ[&quot;CLAUDE_PONYTAIL_PLUGIN_ID&quot;]</span>
+<span class="s1">enabled = any(</span>
+<span class="s1">    isinstance(plugin, dict)</span>
+<span class="s1">    and plugin.get(&quot;id&quot;) == plugin_id</span>
+<span class="s1">    and plugin.get(&quot;enabled&quot;) is True</span>
+<span class="s1">    for plugin in plugins</span>
+<span class="s1">)</span>
+<span class="s1">sys.exit(0 if enabled else 1)</span>
+<span class="s1">&#39;</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Return success when the Claude Code Understand-Anything plugin is already enabled.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>claude_understand_anything_plugin_is_enabled<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>python3<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>claude<span class="w"> </span>plugin<span class="w"> </span>list<span class="w"> </span>--json<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_PLUGIN_ID</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;</span>
+<span class="s1">import json</span>
+<span class="s1">import os</span>
+<span class="s1">import sys</span>
+
+<span class="s1">try:</span>
+<span class="s1">    plugins = json.load(sys.stdin)</span>
+<span class="s1">except json.JSONDecodeError:</span>
+<span class="s1">    sys.exit(1)</span>
+
+<span class="s1">plugin_id = os.environ[&quot;CLAUDE_UNDERSTAND_ANYTHING_PLUGIN_ID&quot;]</span>
 <span class="s1">enabled = any(</span>
 <span class="s1">    isinstance(plugin, dict)</span>
 <span class="s1">    and plugin.get(&quot;id&quot;) == plugin_id</span>
@@ -3755,6 +3807,32 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Install or update the Claude Code Understand-Anything plugin.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>update_claude_understand_anything<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>claude<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Skipping Claude Code Understand-Anything plugin: claude command not found.\n&#39;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;Claude Code Understand-Anything plugin&quot;</span>
+<span class="w">    </span>ensure_claude_understand_anything_marketplace
+<span class="w">    </span>claude<span class="w"> </span>plugin<span class="w"> </span>marketplace<span class="w"> </span>update<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>command_output_contains<span class="w"> </span><span class="s2">&quot;\&quot;id\&quot;:\&quot;</span><span class="si">${</span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_PLUGIN</span><span class="si">}</span><span class="s2">\&quot;&quot;</span><span class="w"> </span>claude<span class="w"> </span>plugin<span class="w"> </span>list<span class="w"> </span>--json<span class="w"> </span><span class="o">||</span>
+<span class="w">        </span>command_output_contains<span class="w"> </span><span class="s2">&quot;\&quot;id\&quot;: \&quot;</span><span class="si">${</span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_PLUGIN</span><span class="si">}</span><span class="s2">\&quot;&quot;</span><span class="w"> </span>claude<span class="w"> </span>plugin<span class="w"> </span>list<span class="w"> </span>--json<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>claude<span class="w"> </span>plugin<span class="w"> </span>update<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span>claude<span class="w"> </span>plugin<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>claude_understand_anything_plugin_is_enabled<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Claude Code Understand-Anything plugin is already enabled.\n&#39;</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span>claude<span class="w"> </span>plugin<span class="w"> </span><span class="nb">enable</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Install or update the Codex Superpowers plugin from configured marketplaces.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>update_codex_superpowers<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -3847,6 +3925,42 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Install or update the Codex Understand-Anything skills via the vendor installer.</span>
+<span class="c1"># @description</span>
+<span class="c1">#   The installer clones the upstream repo into ~/.understand-anything/repo and</span>
+<span class="c1">#   symlinks its skills into ~/.agents/skills; check-agent-runtime.py reports</span>
+<span class="c1">#   those symlinks as an expected unmanaged-skill WARN.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>update_codex_understand_anything<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>codex<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Skipping Codex Understand-Anything skills: codex command not found.\n&#39;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;Codex Understand-Anything skills&quot;</span>
+<span class="w">    </span><span class="o">(</span>
+<span class="w">        </span><span class="nb">local</span><span class="w"> </span>actual<span class="w"> </span>installer
+<span class="w">        </span><span class="nv">installer</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>mktemp<span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="nb">trap</span><span class="w"> </span><span class="s1">&#39;rm -f &quot;${installer}&quot;&#39;</span><span class="w"> </span>EXIT
+<span class="w">        </span>curl<span class="w"> </span>-fsSL<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>-o<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">installer</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Skipping Codex Understand-Anything skills: installer download failed.\n&#39;</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="o">}</span>
+<span class="w">        </span><span class="nv">actual</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">installer</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;{ print $1 }&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">actual</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Understand-Anything installer checksum mismatch\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="o">}</span>
+<span class="w">        </span>bash<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">installer</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>codex<span class="w"> </span>&lt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Understand-Anything installer failed; Codex skills unchanged.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="o">}</span>
+<span class="w">        </span><span class="c1"># shellcheck disable=SC2016 # $understand is the literal Codex skill invocation, not a variable.</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Invoke Understand-Anything in Codex with $understand after restarting the CLI.\n&#39;</span>
+<span class="w">    </span><span class="o">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Install and refresh managed agent plugin assets.</span>
 <span class="c1"># @arg $@ string Command-line arguments.</span>
 <span class="c1">#</span>
@@ -3863,9 +3977,11 @@
 <span class="w">    </span>update_claude_superpowers
 <span class="w">    </span>update_claude_crit
 <span class="w">    </span>update_claude_ponytail
+<span class="w">    </span>update_claude_understand_anything
 <span class="w">    </span>update_codex_superpowers
 <span class="w">    </span>update_codex_crit
 <span class="w">    </span>update_codex_ponytail
+<span class="w">    </span>update_codex_understand_anything
 <span class="w">    </span>ensure_herdr_integrations
 <span class="o">}</span>
 

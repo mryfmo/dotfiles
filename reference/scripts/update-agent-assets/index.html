@@ -3378,6 +3378,7 @@
 <li><code>has_command</code></li>
 <li><code>is_macos</code></li>
 <li><code>main</code></li>
+<li><code>provision_codex_understand_anything_runtime</code></li>
 <li><code>remove_node_global_agent_cli_shadows</code></li>
 <li><code>section</code></li>
 <li><code>update_claude_crit</code></li>
@@ -3925,6 +3926,60 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Provision Codex Understand-Anything runtime files from the matching Claude release artifact.</span>
+<span class="c1"># @stdout Prints a skip message when no matching Claude release artifact is available.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>provision_codex_understand_anything_runtime<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>plugin_root<span class="w"> </span>claude_cache<span class="w"> </span>release_root<span class="w"> </span><span class="nb">source</span><span class="w"> </span>destination
+
+<span class="w">    </span><span class="nv">plugin_root</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.understand-anything/repo/understand-anything-plugin&quot;</span>
+<span class="w">    </span><span class="nv">claude_cache</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.claude/plugins/cache/understand-anything/understand-anything&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>python3<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Understand-Anything Codex runtime not provisioned: no matching Claude plugin release artifact; run make update after installing the Claude plugin.\n&#39;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">release_root</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>
+<span class="w">        </span>python3<span class="w"> </span>-<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">plugin_root</span><span class="si">}</span><span class="s2">/.claude-plugin/plugin.json&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">claude_cache</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s">&lt;&lt; &#39;PY&#39;</span>
+<span class="s">import json</span>
+<span class="s">import sys</span>
+<span class="s">from pathlib import Path</span>
+
+<span class="s">plugin_manifest = Path(sys.argv[1])</span>
+<span class="s">cache_root = Path(sys.argv[2])</span>
+<span class="s">try:</span>
+<span class="s">    version = json.loads(plugin_manifest.read_text())[&quot;version&quot;]</span>
+<span class="s">except (OSError, json.JSONDecodeError, KeyError):</span>
+<span class="s">    sys.exit(0)</span>
+
+<span class="s">matches = []</span>
+<span class="s">for candidate in cache_root.iterdir() if cache_root.is_dir() else ():</span>
+<span class="s">    try:</span>
+<span class="s">        if json.loads((candidate / &quot;.claude-plugin/plugin.json&quot;).read_text())[&quot;version&quot;] == version:</span>
+<span class="s">            matches.append(candidate)</span>
+<span class="s">    except (OSError, json.JSONDecodeError, KeyError):</span>
+<span class="s">        pass</span>
+<span class="s">try:</span>
+<span class="s">    release_root = max(matches, key=lambda path: tuple(int(part) for part in path.name.split(&quot;.&quot;)))</span>
+<span class="s">except ValueError:</span>
+<span class="s">    release_root = max(matches, key=lambda path: path.name, default=None)</span>
+<span class="s">print(release_root or &quot;&quot;)</span>
+<span class="s">PY</span>
+<span class="w">    </span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">release_root</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Understand-Anything Codex runtime not provisioned: no matching Claude plugin release artifact; run make update after installing the Claude plugin.\n&#39;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nb">source</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">&quot;packages/core/dist&quot;</span><span class="w"> </span><span class="s2">&quot;packages/core/node_modules&quot;</span><span class="w"> </span><span class="s2">&quot;node_modules&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="nv">destination</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">plugin_root</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">source</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="o">[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">release_root</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">source</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span>rm<span class="w"> </span>-rf<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">destination</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">destination</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">        </span>cp<span class="w"> </span>-R<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">release_root</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">source</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">destination</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Install or update the Codex Understand-Anything skills via the vendor installer.</span>
 <span class="c1"># @description</span>
 <span class="c1">#   The installer clones the upstream repo into ~/.understand-anything/repo and</span>
@@ -3955,6 +4010,7 @@
 <span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Understand-Anything installer failed; Codex skills unchanged.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">        </span><span class="o">}</span>
+<span class="w">        </span>provision_codex_understand_anything_runtime
 <span class="w">        </span><span class="c1"># shellcheck disable=SC2016 # $understand is the literal Codex skill invocation, not a variable.</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Invoke Understand-Anything in Codex with $understand after restarting the CLI.\n&#39;</span>
 <span class="w">    </span><span class="o">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>

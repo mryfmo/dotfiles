@@ -23,6 +23,14 @@ readonly CODEX_PONYTAIL_PLUGIN="ponytail@ponytail"
 readonly CODEX_PONYTAIL_MARKETPLACE="DietrichGebert/ponytail"
 readonly CODEX_PONYTAIL_MARKETPLACE_NAME="ponytail"
 readonly CODEX_PONYTAIL_MARKETPLACE_SOURCE="https://github.com/DietrichGebert/ponytail.git"
+readonly CLAUDE_UNDERSTAND_ANYTHING_PLUGIN="understand-anything@understand-anything"
+readonly CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE="Egonex-AI/Understand-Anything"
+readonly CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME="understand-anything"
+# Pinned like HOMEBREW_INSTALL_COMMIT in install/macos/common/brew.sh; bump both
+# values together after reviewing the upstream installer diff.
+readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT="797ce7969312411be2e125c39628854166f055d7"
+readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256="54f0350d09f43fcc8245f3f1fb2057bd322c36c6f158483dd47dcaf5f4a44eba"
+readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL="https://raw.githubusercontent.com/Egonex-AI/Understand-Anything/${CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT}/install.sh"
 
 #
 # @description Print a section heading.
@@ -219,6 +227,17 @@ function ensure_claude_ponytail_marketplace() {
 }
 
 #
+# @description Ensure the Understand-Anything Claude Code plugin marketplace is configured.
+#
+function ensure_claude_understand_anything_marketplace() {
+    if command_output_contains "${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" claude plugin marketplace list; then
+        return 0
+    fi
+
+    claude plugin marketplace add "${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE}"
+}
+
+#
 # @description Return success when the Claude Code Crit plugin is already enabled.
 #
 function claude_crit_plugin_is_enabled() {
@@ -266,6 +285,35 @@ except json.JSONDecodeError:
     sys.exit(1)
 
 plugin_id = os.environ["CLAUDE_PONYTAIL_PLUGIN_ID"]
+enabled = any(
+    isinstance(plugin, dict)
+    and plugin.get("id") == plugin_id
+    and plugin.get("enabled") is True
+    for plugin in plugins
+)
+sys.exit(0 if enabled else 1)
+'
+}
+
+#
+# @description Return success when the Claude Code Understand-Anything plugin is already enabled.
+#
+function claude_understand_anything_plugin_is_enabled() {
+    if ! has_command python3; then
+        return 1
+    fi
+
+    claude plugin list --json 2> /dev/null | CLAUDE_UNDERSTAND_ANYTHING_PLUGIN_ID="${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" python3 -c '
+import json
+import os
+import sys
+
+try:
+    plugins = json.load(sys.stdin)
+except json.JSONDecodeError:
+    sys.exit(1)
+
+plugin_id = os.environ["CLAUDE_UNDERSTAND_ANYTHING_PLUGIN_ID"]
 enabled = any(
     isinstance(plugin, dict)
     and plugin.get("id") == plugin_id
@@ -367,6 +415,32 @@ function update_claude_ponytail() {
 }
 
 #
+# @description Install or update the Claude Code Understand-Anything plugin.
+#
+function update_claude_understand_anything() {
+    if ! has_command claude; then
+        printf 'Skipping Claude Code Understand-Anything plugin: claude command not found.\n'
+        return 0
+    fi
+
+    section "Claude Code Understand-Anything plugin"
+    ensure_claude_understand_anything_marketplace
+    claude plugin marketplace update "${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" || true
+
+    if command_output_contains "\"id\":\"${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}\"" claude plugin list --json ||
+        command_output_contains "\"id\": \"${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}\"" claude plugin list --json; then
+        claude plugin update "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || true
+    else
+        claude plugin install "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || true
+    fi
+    if claude_understand_anything_plugin_is_enabled; then
+        printf 'Claude Code Understand-Anything plugin is already enabled.\n'
+    else
+        claude plugin enable "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || true
+    fi
+}
+
+#
 # @description Install or update the Codex Superpowers plugin from configured marketplaces.
 #
 function update_codex_superpowers() {
@@ -459,6 +533,42 @@ function update_codex_crit() {
 }
 
 #
+# @description Install or update the Codex Understand-Anything skills via the vendor installer.
+# @description
+#   The installer clones the upstream repo into ~/.understand-anything/repo and
+#   symlinks its skills into ~/.agents/skills; check-agent-runtime.py reports
+#   those symlinks as an expected unmanaged-skill WARN.
+#
+function update_codex_understand_anything() {
+    if ! has_command codex; then
+        printf 'Skipping Codex Understand-Anything skills: codex command not found.\n'
+        return 0
+    fi
+
+    section "Codex Understand-Anything skills"
+    (
+        local actual installer
+        installer="$(mktemp)"
+        trap 'rm -f "${installer}"' EXIT
+        curl -fsSL "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL}" -o "${installer}" || {
+            printf 'Skipping Codex Understand-Anything skills: installer download failed.\n'
+            return 0
+        }
+        actual="$(shasum -a 256 "${installer}" | awk '{ print $1 }')"
+        [ "${actual}" = "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256}" ] || {
+            printf 'Understand-Anything installer checksum mismatch\n' >&2
+            return 1
+        }
+        bash "${installer}" codex < /dev/null || {
+            printf 'Understand-Anything installer failed; Codex skills unchanged.\n' >&2
+            return 1
+        }
+        # shellcheck disable=SC2016 # $understand is the literal Codex skill invocation, not a variable.
+        printf 'Invoke Understand-Anything in Codex with $understand after restarting the CLI.\n'
+    ) || true
+}
+
+#
 # @description Install and refresh managed agent plugin assets.
 # @arg $@ string Command-line arguments.
 #
@@ -475,9 +585,11 @@ function main() {
     update_claude_superpowers
     update_claude_crit
     update_claude_ponytail
+    update_claude_understand_anything
     update_codex_superpowers
     update_codex_crit
     update_codex_ponytail
+    update_codex_understand_anything
     ensure_herdr_integrations
 }
 

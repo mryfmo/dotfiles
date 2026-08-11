@@ -564,6 +564,51 @@ def validate_ponytail_assets(manifest: dict[str, Any], codex: dict[str, Any]) ->
             fail(f"README.md must document Ponytail lifecycle token {token!r}")
 
 
+def validate_understand_anything_assets() -> None:
+    updater = (ROOT / "scripts/update-agent-assets.sh").read_text()
+    for token in (
+        "Egonex-AI/Understand-Anything",
+        "understand-anything@understand-anything",
+        "CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL",
+        "CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256",
+        'claude plugin enable "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"',
+        "if claude_understand_anything_plugin_is_enabled; then",
+        "update_claude_understand_anything",
+        "update_codex_understand_anything",
+    ):
+        if token not in updater:
+            fail(f"scripts/update-agent-assets.sh must manage Understand-Anything asset token {token!r}")
+
+    codex_agents = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
+    for token in ("Understand-Anything", "$understand", ".ua/intermediate/", ".ua/diff-overlay.json"):
+        if token not in codex_agents:
+            fail(f"home/dot_config/codex/AGENTS.md must document Understand-Anything token {token!r}")
+
+    claude_rule = ROOT / "home/dot_config/claude/rules/understand-anything.md"
+    if not claude_rule.exists():
+        fail("Claude Code Understand-Anything rule is missing")
+    claude_rule_text = claude_rule.read_text()
+    for token in (
+        "Understand-Anything",
+        "understand-anything@understand-anything",
+        "/understand",
+        ".ua/intermediate/",
+        ".ua/diff-overlay.json",
+    ):
+        if token not in claude_rule_text:
+            fail(f"{claude_rule} must document Understand-Anything token {token!r}")
+
+    claude_symlink = ROOT / "home/dot_claude/rules/symlink_understand-anything.md.tmpl"
+    expected_target = "{{ .chezmoi.sourceDir }}/dot_config/claude/rules/understand-anything.md\n"
+    if not claude_symlink.exists() or claude_symlink.read_text() != expected_target:
+        fail(f"{claude_symlink} must point at the managed Understand-Anything Claude rule")
+
+    readme = (ROOT / "README.md").read_text()
+    for token in ("Understand-Anything", "Egonex-AI/Understand-Anything", "understand-anything@understand-anything"):
+        if token not in readme:
+            fail(f"README.md must document Understand-Anything lifecycle token {token!r}")
+
+
 def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
     codex_path = ROOT / "home/.chezmoitemplates/codex-config-managed.toml"
     codex_text = render_template_text(codex_path)
@@ -772,6 +817,7 @@ def main() -> None:
     validate_cognee_install_assets(manifest)
     validate_crit_install_assets()
     validate_ponytail_assets(manifest, codex)
+    validate_understand_anything_assets()
     validate_model_profile_assets(manifest)
     validate_git_config()
     validate_no_removed_claude_skill()

@@ -111,6 +111,13 @@
 - Codex で初回導入または更新後は `/hooks` を開き、Ponytail lifecycle hooks を review and trust してから新しい thread を開始してください。
 - モードは上流の既定値 `full` を使います。必要な場合だけ `PONYTAIL_DEFAULT_MODE=lite|full|ultra|off` または Ponytail コマンドで変更してください。
 
+## Understand-Anything
+
+- Understand-Anything (`understand-anything@understand-anything`) を利用できる場合は、リポジトリのナレッジグラフ生成・参照に使ってください。Codex では `$understand` で起動します(`/understand` ではありません)。
+- 初回のフル解析はトークン消費が大きい処理です。増分解析(2 回目以降)は軽量です。
+- 出力は `.ua/` に生成されます。`.ua/intermediate/` と `.ua/diff-overlay.json` は commit せず、対象リポジトリの `.gitignore` に追加してください。それ以外の `.ua/` は commit 対象です。
+- インストーラは skills を `~/.agents/skills` に symlink します。導入・更新後は CLI を再起動してください。
+
 ## Crit レビューの利用方針
 
 - Crit は自分(エージェント)自身のレビューにのみ使う: `crit comment` / `crit share` 等の CLI でコメントを起票・返信・解決し、JSON 証跡を `.orchestration/` または `.agents/worklog/` に保存する。

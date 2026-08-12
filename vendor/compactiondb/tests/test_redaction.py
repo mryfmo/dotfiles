@@ -76,3 +76,31 @@ class RedactionTests(unittest.TestCase):
         text = spool.read_text(encoding="utf-8")
         self.assertNotIn(secret, text)
         self.assertIn("REDACTED", text)
+
+    def test_additional_provider_and_env_secrets_are_redacted(self) -> None:
+        secrets = (
+            "AWS_SECRET_ACCESS_KEY=super-secret-value",
+            "SERVICE_TOKEN=token-value",
+            "sk_live_1234567890abcdefghijkl",
+            "xoxb-1234567890-abcdefghijkl",
+            "AIza" + "A" * 35,
+        )
+        event = self.p.event(
+            {"hook_event_name": "UserPromptSubmit", "session_id": "s1", "prompt": " ".join(secrets)}
+        )
+        for secret in secrets:
+            self.assertNotIn(secret, event["detail_json"])
+        self.assertGreaterEqual(event["redaction_count"], len(secrets))
+
+    def test_additional_sensitive_paths_omit_content(self) -> None:
+        for path in (".netrc", ".npmrc", ".pypirc", ".docker/config.json", ".ssh/authorized_keys"):
+            event = self.p.event(
+                {
+                    "hook_event_name": "PostToolUse",
+                    "session_id": "s1",
+                    "tool_name": "Write",
+                    "tool_input": {"file_path": path, "content": "exotic-value"},
+                }
+            )
+            self.assertNotIn("exotic-value", event["detail_json"])
+            self.assertTrue(event["sensitivity"] == "restricted", path)

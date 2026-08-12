@@ -67,10 +67,13 @@ _SENSITIVE_FILE_NAMES = {
     "id_ecdsa",
     "id_ed25519",
     "known_hosts",
-    ".netrc", ".npmrc", ".pypirc", "authorized_keys",
+    ".netrc",
+    ".npmrc",
+    ".pypirc",
+    "authorized_keys",
 }
 _SENSITIVE_SUFFIXES = {".pem", ".key", ".p12", ".pfx", ".jks", ".keystore", ".kdbx"}
-_SENSITIVE_DIRS = {".git", ".ssh", ".aws", ".gnupg", ".kube"}
+_SENSITIVE_DIRS = {".git", ".ssh", ".aws", ".gnupg", ".kube", ".docker"}
 _CONTENT_KEYS = {
     "content",
     "new_string",
@@ -138,7 +141,7 @@ def _key_is_sensitive(key: str, sensitive_keys: set[str]) -> bool:
     normalized = re.sub(r"[^a-z0-9]", "_", key.casefold()).strip("_")
     return normalized in sensitive_keys or any(
         normalized.endswith("_" + suffix)
-        for suffix in ("password", "secret", "token", "api_key", "private_key")
+        for suffix in ("password", "secret", "token", "key", "api_key", "access_key", "secret_key", "private_key")
     )
 
 

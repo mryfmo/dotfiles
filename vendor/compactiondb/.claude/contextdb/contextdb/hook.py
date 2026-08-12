@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sys
 import time
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from .config import load_config
@@ -24,10 +25,26 @@ def process_payload(payload: dict[str, Any], *, project_root: str | None = None)
             try:
                 from .storage import ContextStore
                 days = int(config.get("operations", {}).get("error_log_retention_days", 30))
-                with ContextStore(paths, config).connect() as conn:
-                    ContextStore(paths, config).prune_expired(conn, paths.project_id, days=days)
+                store = ContextStore(paths, config)
+                with store.connect() as conn:
+                    store.prune_expired(conn, paths.project_id, days=days)
+                cutoff_utc = datetime.now(timezone.utc) - timedelta(days=days)
+                if paths.error_log_path.exists():
+                    retained = []
+                    for line in paths.error_log_path.read_text(encoding="utf-8").splitlines():
+                        try:
+                            ts = datetime.fromisoformat(str(json.loads(line).get("ts_utc", "")).replace("Z", "+00:00"))
+                        except (ValueError, TypeError, json.JSONDecodeError):
+                            retained.append(line)
+                            continue
+                        if ts >= cutoff_utc:
+                            retained.append(line)
+                    if retained:
+                        paths.error_log_path.write_text("\n".join(retained) + "\n", encoding="utf-8")
+                    else:
+                        paths.error_log_path.unlink()
                 cutoff = time.time() - days * 86400
-                for path in (paths.error_log_path, *paths.quarantine_dir.glob("*")):
+                for path in paths.quarantine_dir.glob("*"):
                     if path.exists() and path.stat().st_mtime < cutoff:
                         path.unlink()
             except Exception:

@@ -42,7 +42,10 @@ _KIND_ALIASES = {
     "事実": "fact",
 }
 
-_EXPLICIT_MARKER = re.compile(r"\[(?:memory|記憶)\s*:\s*([^\]]+)\]", re.IGNORECASE)
+_EXPLICIT_MARKER = re.compile(
+    r"\[(?:memory|記憶)\s*:\s*([^\]]+)\](?:\s*(.*))?",
+    re.IGNORECASE | re.DOTALL,
+)
 _SENTENCE_SPLIT = re.compile(r"(?<=[。！？!?\n])")
 
 _KEYWORDS: dict[str, tuple[tuple[str, ...], float]] = {
@@ -99,19 +102,33 @@ def extract_candidates(event: dict[str, Any]) -> list[MemoryCandidate]:
             return result
         explicit = _EXPLICIT_MARKER.search(prompt)
         if explicit:
-            content = explicit.group(1).strip()
-            kind = "fact"
-            result.append(
-                MemoryCandidate(
-                    kind=kind,
-                    content=truncate_middle(content, 4000),
-                    scope="project",
-                    confidence=1.0,
-                    salience=0.98,
-                    reason="explicit memory marker",
-                    explicit=True,
+            interior = explicit.group(1).strip()
+            trailing = (explicit.group(2) or "").strip()
+            folded = interior.casefold()
+            if folded in _KIND_ALIASES:
+                kind = _KIND_ALIASES[folded]
+                content = trailing
+            else:
+                prefixed = re.match(r"^([^\s:—-]+)(?:\s*[:—-]\s*|\s+)(.+)$", interior, re.DOTALL)
+                prefix = prefixed.group(1).casefold() if prefixed else ""
+                if prefixed and prefix in _KIND_ALIASES:
+                    kind = _KIND_ALIASES[prefix]
+                    content = prefixed.group(2).strip()
+                else:
+                    kind = "fact"
+                    content = interior
+            if content:
+                result.append(
+                    MemoryCandidate(
+                        kind=kind,
+                        content=truncate_middle(content, 4000),
+                        scope="project",
+                        confidence=1.0,
+                        salience=0.98,
+                        reason="explicit memory marker",
+                        explicit=True,
+                    )
                 )
-            )
         seen: set[tuple[str, str]] = set()
         for sentence in _sentences(prompt):
             folded = sentence.casefold()

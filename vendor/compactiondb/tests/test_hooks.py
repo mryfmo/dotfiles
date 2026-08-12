@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import time
 import unittest
 
 from tests.support import TempProject
@@ -114,3 +116,28 @@ class HookTests(unittest.TestCase):
         decoded = json.loads(encoded)
         self.assertEqual("SessionStart", decoded["hookSpecificOutput"]["hookEventName"])
         self.assertIn("summary", decoded["hookSpecificOutput"]["additionalContext"])
+
+    def test_session_end_prunes_expired_events_and_runtime_logs(self) -> None:
+        self.p.event({"hook_event_name": "UserPromptSubmit", "session_id": "s1", "prompt": "old event"})
+        conn = self.p.store.connect()
+        try:
+            with conn:
+                conn.execute("UPDATE events SET ts_utc='2000-01-01T00:00:00.000Z'")
+        finally:
+            conn.close()
+        self.p.paths.error_log_path.write_text('{"ts_utc":"2000-01-01T00:00:00Z"}\n', encoding="utf-8")
+        quarantined = self.p.paths.quarantine_dir / "old.json"
+        quarantined.write_text("{}", encoding="utf-8")
+        old = time.time() - 40 * 86400
+        os.utime(quarantined, (old, old))
+        process_payload(
+            {"hook_event_name": "SessionEnd", "session_id": "s1", "cwd": str(self.p.root)},
+            project_root=str(self.p.root),
+        )
+        conn = self.p.store.connect()
+        try:
+            self.assertEqual(1, conn.execute("SELECT COUNT(*) FROM events").fetchone()[0])
+        finally:
+            conn.close()
+        self.assertFalse(quarantined.exists())
+        self.assertFalse(self.p.paths.error_log_path.exists())

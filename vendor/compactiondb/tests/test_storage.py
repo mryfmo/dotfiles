@@ -25,6 +25,26 @@ class StorageTests(unittest.TestCase):
         finally:
             conn.close()
 
+    def test_explicit_memory_marker_supports_tag_and_inline_forms(self) -> None:
+        prompts = (
+            "[memory:decision] Project-wide API version is v2.",
+            "Read README.md and tell me ... Also note [memory: e2e-test decision — this scratch project validates CompactionDB hooks] for the record.",
+            "[memory:decision — Use SQLite for local state.] trailing prose is not memory",
+        )
+        for index, prompt in enumerate(prompts):
+            self.p.event({"hook_event_name": "UserPromptSubmit", "session_id": f"s{index}", "prompt": prompt})
+        conn = self.p.store.connect()
+        try:
+            rows = conn.execute("SELECT kind, content FROM memories ORDER BY id").fetchall()
+            self.assertEqual("decision", rows[0]["kind"])
+            self.assertEqual("Project-wide API version is v2.", rows[0]["content"])
+            self.assertEqual("fact", rows[1]["kind"])
+            self.assertEqual("e2e-test decision — this scratch project validates CompactionDB hooks", rows[1]["content"])
+            self.assertEqual("decision", rows[2]["kind"])
+            self.assertEqual("Use SQLite for local state.", rows[2]["content"])
+        finally:
+            conn.close()
+
     def test_fts_search_supports_japanese_substrings(self) -> None:
         self.p.event(
             {

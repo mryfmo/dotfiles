@@ -42,6 +42,7 @@ class MemoryExtractionTests(unittest.TestCase):
         self.assertEqual("Local storage must use SQLite.", candidates[0].content)
 
     def test_marker_removal_preserves_adjacent_sentence_boundaries(self) -> None:
+        """Keep heuristic sentences separate across removed explicit markers."""
         candidates = extract_candidates(
             user_prompt("We must retain logs.[memory: fact — configured.]Never delete them.")
         )

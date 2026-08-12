@@ -685,6 +685,7 @@ EOF
         self.assertIn("required failure: mise inventory/install/upgrade", result.stderr)
 
     def test_upgrade_uses_current_mise_node_after_runtime_replacement(self) -> None:
+        """Reject ambient npm after mise replaces the active Node runtime."""
         repo, env = self.upgrade_fixture("none")
         fallback_bin = repo / "fallback-bin"
         self.executable(
@@ -706,6 +707,11 @@ EOF
         self.assertNotIn("fallback npm", log)
         self.assertIn("mise exec node -- npm view @openai/codex version", log)
         self.assertIn("mise exec node -- npm view @anthropic-ai/claude-code version", log)
+        self.assertRegex(log, r"mise exec node -- npm install -g .* @openai/codex@1\.2\.3")
+        self.assertRegex(
+            log,
+            r"mise exec node -- npm install -g .* @anthropic-ai/claude-code@1\.2\.3",
+        )
 
     def test_upgrade_github_extensions_are_warning_only(self) -> None:
         repo, env = self.upgrade_fixture("gh")

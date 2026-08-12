@@ -1,0 +1,234 @@
+{
+  "_comment": "Illustrative native-Windows exec-form configuration. Replace C:\\Path\\To\\python.exe with the absolute python.exe path. Running install.py performs this replacement automatically.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Path\\To\\python.exe",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"
+            ],
+            "async": true,
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Path\\To\\python.exe",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_recover.py"
+            ],
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Path\\To\\python.exe",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"
+            ],
+            "async": true,
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Path\\To\\python.exe",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"
+            ],
+            "async": true,
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Path\\To\\python.exe",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"
+            ],
+            "async": true,
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PermissionDenied": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Path\\To\\python.exe",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"
+            ],
+            "async": true,
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Path\\To\\python.exe",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"
+            ],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Path\\To\\python.exe",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"
+            ],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Path\\To\\python.exe",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"
+            ],
+            "async": true,
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Path\\To\\python.exe",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"
+            ],
+            "async": true,
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Path\\To\\python.exe",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"
+            ],
+            "async": true,
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Path\\To\\python.exe",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"
+            ],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Path\\To\\python.exe",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"
+            ],
+            "async": true,
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "TaskCreated": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Path\\To\\python.exe",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"
+            ],
+            "async": true,
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Path\\To\\python.exe",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"
+            ],
+            "async": true,
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

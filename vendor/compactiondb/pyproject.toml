@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "compactiondb-hybrid"
+version = "2.0.0"
+description = "Compaction-safe local event ledger and durable memory for AI coding agents"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "CompactionDB contributors"}]
+dependencies = []
+
+[project.scripts]
+compactiondb = "contextdb.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = ".claude/contextdb"}
+
+[tool.setuptools.packages.find]
+where = [".claude/contextdb"]
+include = ["contextdb*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

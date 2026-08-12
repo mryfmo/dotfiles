@@ -624,6 +624,15 @@ function update_codex_understand_anything() {
 }
 
 #
+# @description Sync the vendored CompactionDB tree without deleting project runtime state.
+#
+function update_compactiondb() {
+    local source_root
+    source_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/vendor/compactiondb/"
+    rsync -a --delete --exclude '.claude/contextdb/state/' --exclude '.claude/contextdb/spool/' --exclude '.claude/contextdb/health/' --exclude '.claude/contextdb/contextdb.sqlite3*' "${source_root}" "${HOME}/.agents/compactiondb/" || true
+}
+
+#
 # @description Install and refresh managed agent plugin assets.
 # @arg $@ string Command-line arguments.
 #
@@ -645,6 +654,7 @@ function main() {
     update_codex_crit
     update_codex_ponytail
     update_codex_understand_anything
+    update_compactiondb
     ensure_herdr_integrations
 }
 

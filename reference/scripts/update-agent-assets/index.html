@@ -1101,6 +1101,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../home/dot_local/bin/common/executable_compactiondb-install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_compactiondb-install
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../home/dot_local/bin/common/executable_dev/" class="md-nav__link">
         
   
@@ -3333,6 +3361,7 @@
 <li><code>update_codex_ponytail</code></li>
 <li><code>update_codex_superpowers</code></li>
 <li><code>update_codex_understand_anything</code></li>
+<li><code>update_compactiondb</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
@@ -3961,6 +3990,15 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Sync the vendored CompactionDB tree without deleting project runtime state.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>update_compactiondb<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>source_root
+<span class="w">    </span><span class="nv">source_root</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">/..&quot;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/vendor/compactiondb/&quot;</span>
+<span class="w">    </span>rsync<span class="w"> </span>-a<span class="w"> </span>--delete<span class="w"> </span>--exclude<span class="w"> </span><span class="s1">&#39;.claude/contextdb/state/&#39;</span><span class="w"> </span>--exclude<span class="w"> </span><span class="s1">&#39;.claude/contextdb/spool/&#39;</span><span class="w"> </span>--exclude<span class="w"> </span><span class="s1">&#39;.claude/contextdb/health/&#39;</span><span class="w"> </span>--exclude<span class="w"> </span><span class="s1">&#39;.claude/contextdb/contextdb.sqlite3*&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_root</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/compactiondb/&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Install and refresh managed agent plugin assets.</span>
 <span class="c1"># @arg $@ string Command-line arguments.</span>
 <span class="c1">#</span>
@@ -3982,6 +4020,7 @@
 <span class="w">    </span>update_codex_crit
 <span class="w">    </span>update_codex_ponytail
 <span class="w">    </span>update_codex_understand_anything
+<span class="w">    </span>update_compactiondb
 <span class="w">    </span>ensure_herdr_integrations
 <span class="o">}</span>
 

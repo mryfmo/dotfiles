@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Any
 
 from .util import normalize_for_fingerprint, one_line, sha256_text, truncate_middle
 
@@ -42,11 +43,9 @@ _KIND_ALIASES = {
     "事実": "fact",
 }
 
-_EXPLICIT_MARKER = re.compile(
-    r"\[(?:memory|記憶)\s*:\s*([^\]]+)\](?:\s*(.*))?",
-    re.IGNORECASE | re.DOTALL,
-)
-_SENTENCE_SPLIT = re.compile(r"(?<=[。！？!?\n])")
+_EXPLICIT_MARKER = re.compile(r"\[(?:memory|記憶)\s*:\s*([^\]]+)\]", re.IGNORECASE)
+# Abbreviation over-splitting is acceptable in this best-effort heuristic layer.
+_SENTENCE_SPLIT = re.compile(r"(?<=[。！？\n])|(?<=[.!?])(?=\s)")
 
 _KEYWORDS: dict[str, tuple[tuple[str, ...], float]] = {
     "constraint": (
@@ -100,14 +99,15 @@ def extract_candidates(event: dict[str, Any]) -> list[MemoryCandidate]:
         prompt = str(detail.get("prompt") or "").strip()
         if not prompt:
             return result
-        explicit = _EXPLICIT_MARKER.search(prompt)
-        if explicit:
-            interior = explicit.group(1).strip()
-            trailing = (explicit.group(2) or "").strip()
+        markers = list(_EXPLICIT_MARKER.finditer(prompt))
+        explicit_spans: list[tuple[int, int]] = []
+        for index, marker in enumerate(markers):
+            interior = marker.group(1).strip()
             folded = interior.casefold()
             if folded in _KIND_ALIASES:
                 kind = _KIND_ALIASES[folded]
-                content = trailing
+                span_end = markers[index + 1].start() if index + 1 < len(markers) else len(prompt)
+                content = prompt[marker.end():span_end].strip()
             else:
                 prefixed = re.match(r"^([^\s:—-]+)(?:\s*[:—-]\s*|\s+)(.+)$", interior, re.DOTALL)
                 prefix = prefixed.group(1).casefold() if prefixed else ""
@@ -117,6 +117,8 @@ def extract_candidates(event: dict[str, Any]) -> list[MemoryCandidate]:
                 else:
                     kind = "fact"
                     content = interior
+                span_end = marker.end()
+            explicit_spans.append((marker.start(), span_end))
             if content:
                 result.append(
                     MemoryCandidate(
@@ -129,8 +131,15 @@ def extract_candidates(event: dict[str, Any]) -> list[MemoryCandidate]:
                         explicit=True,
                     )
                 )
+        residual_parts: list[str] = []
+        cursor = 0
+        for start, end in explicit_spans:
+            residual_parts.append(prompt[cursor:start])
+            cursor = end
+        residual_parts.append(prompt[cursor:])
+        residual = "".join(residual_parts)
         seen: set[tuple[str, str]] = set()
-        for sentence in _sentences(prompt):
+        for sentence in _sentences(residual):
             folded = sentence.casefold()
             for kind, (words, confidence) in _KEYWORDS.items():
                 if any(word.casefold() in folded for word in words):

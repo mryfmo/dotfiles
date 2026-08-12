@@ -61,7 +61,10 @@ python3 .claude/hooks/contextdb_cli.py memory add \
 
 ```text
 [memory:decision] 認証方式はOAuth2に統一する。
+[memory: decision — 認証方式はOAuth2に統一する。]
 ```
+
+前者のtag formは閉じ括弧の直後から次のmemory marker（なければprompt末尾）までを内容とし、後者のbracket formは括弧内を内容とします。複数のmarkerはprompt内の順序ですべて抽出されます。
 
 ### 3. L2: bounded recovery projection
 

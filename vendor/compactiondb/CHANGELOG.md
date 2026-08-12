@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.0+dotfiles.2
+
+- Restructured explicit marker extraction to process all markers with bounded content and isolated heuristics.
+
 ## 2.0.0 — 2026-07-31
 
 - session-isolated compaction recovery

@@ -1,0 +1,23 @@
+[
+  {
+    "scope": "review",
+    "id": "r_14295e",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Reviewed the T44 diff for marker boundaries, heuristic isolation, regression coverage, manifest integrity, and release validation; no actionable findings.",
+    "author": "Codex",
+    "created_at": "2026-08-12T02:21:32Z",
+    "updated_at": "2026-08-12T02:21:43Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_893a31",
+        "body": "Approved after scoped Crit-data review; no changes requested.",
+        "author": "Codex",
+        "created_at": "2026-08-12T02:21:43Z",
+        "review_round": 1
+      }
+    ]
+  }
+]

@@ -263,16 +263,16 @@ function upgrade_mise_tools() {
 }
 
 #
-# @description Print the latest npm registry version for a package.
+# @description Print the latest npm registry version with the current mise-managed Node runtime.
 # @arg $1 string npm package name, for example @scope/package.
 # @stdout npm package version.
 #
 function latest_npm_package_version() {
-    npm view "$1" version
+    mise exec node -- npm view "$1" version
 }
 
 #
-# @description Reinstall a mise-managed npm package with lifecycle scripts denied by default.
+# @description Reinstall a mise-managed npm package with the current mise-managed Node runtime and scripts denied by default.
 # @arg $1 string mise npm tool name, for example npm:@scope/package.
 # @arg $2 string npm package name, for example @scope/package.
 # @arg $3 string npm package version.
@@ -290,7 +290,7 @@ function repair_mise_npm_package() {
     if [ "${npm_package}" = "@anthropic-ai/claude-code" ]; then
         npm_script_args=(--ignore-scripts=false --allow-scripts="@anthropic-ai/claude-code")
     fi
-    npm_config_min_release_age=0 npm install -g \
+    npm_config_min_release_age=0 mise exec node -- npm install -g \
         --prefix "${install_prefix}" \
         "${npm_script_args[@]}" \
         --include=optional \

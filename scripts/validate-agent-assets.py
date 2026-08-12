@@ -764,10 +764,19 @@ def validate_no_obvious_secrets() -> None:
         "GITHUB_PERSONAL_ACCESS_TOKEN",
         "FIGMA_OAUTH_TOKEN",
     }
+    # CompactionDB uses intentional dummy credentials to exercise its redaction boundary.
+    compactiondb_dummy_secret_fixtures = {
+        Path("vendor/compactiondb/validate.py"),
+        Path("vendor/compactiondb/tests/test_migration.py"),
+        Path("vendor/compactiondb/tests/test_redaction.py"),
+        Path("vendor/compactiondb/.claude/contextdb/contextdb/redaction.py"),
+    }
     for path in ROOT.rglob("*"):
         if not path.is_file():
             continue
         if any(part in {".git", "site", "__pycache__"} for part in path.parts):
+            continue
+        if path.relative_to(ROOT) in compactiondb_dummy_secret_fixtures:
             continue
         text = read_scannable_text(path)
         if text is None:

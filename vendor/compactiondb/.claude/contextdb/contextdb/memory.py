@@ -137,7 +137,7 @@ def extract_candidates(event: dict[str, Any]) -> list[MemoryCandidate]:
             residual_parts.append(prompt[cursor:start])
             cursor = end
         residual_parts.append(prompt[cursor:])
-        residual = "".join(residual_parts)
+        residual = " ".join(residual_parts)
         seen: set[tuple[str, str]] = set()
         for sentence in _sentences(residual):
             folded = sentence.casefold()

@@ -1,6 +1,6 @@
 [tools]
 # Versions are reviewed and updated only by `make upgrade` with the lock diff.
-node = "26.6.0"
+node = "26.7.0"
 rust = "1.97.1"
 python = "3.14.6"
 

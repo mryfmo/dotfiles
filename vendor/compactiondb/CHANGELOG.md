@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.0+dotfiles.3
+
+- Preserved sentence boundaries when removing inline explicit memory markers.
+
 ## 2.0.0+dotfiles.2
 
 - Restructured explicit marker extraction to process all markers with bounded content and isolated heuristics.

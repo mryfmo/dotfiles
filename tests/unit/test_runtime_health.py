@@ -537,6 +537,18 @@ EOF
                     esac
                     ;;
                 upgrade) [[ "$FAIL_PHASE" != mise_upgrade ]] ;;
+                exec)
+                    shift
+                    [[ "$1" == node ]] || exit 90
+                    shift
+                    [[ "$1" == -- ]] || exit 91
+                    shift
+                    [[ "$1" == npm ]] || exit 92
+                    shift
+                    printf 'npm %s\n' "$*" >> "$TEST_LOG"
+                    [[ "$1" == view ]] && printf '1.2.3\n'
+                    true
+                    ;;
                 where)
                     [[ "$FAIL_PHASE" != mise_where ]] || exit 9
                     mkdir -p "$HOME/mise-prefix"; printf '%s\n' "$HOME/mise-prefix"
@@ -671,6 +683,35 @@ EOF
         )
         self.assertEqual(1, result.returncode, result.stdout + result.stderr)
         self.assertIn("required failure: mise inventory/install/upgrade", result.stderr)
+
+    def test_upgrade_uses_current_mise_node_after_runtime_replacement(self) -> None:
+        """Reject ambient npm after mise replaces the active Node runtime."""
+        repo, env = self.upgrade_fixture("none")
+        fallback_bin = repo / "fallback-bin"
+        self.executable(
+            fallback_bin / "npm",
+            """
+            printf 'fallback npm %s\n' "$*" >> "$TEST_LOG"
+            exit 86
+            """,
+        )
+        removed_node_bin = repo / "removed-node-26.6.0" / "bin"
+        env["PATH"] = f"{removed_node_bin}:{fallback_bin}:{env['PATH']}"
+
+        result = self.run_test_command(
+            ["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        log = (repo / "commands.log").read_text()
+        self.assertNotIn("fallback npm", log)
+        self.assertIn("mise exec node -- npm view @openai/codex version", log)
+        self.assertIn("mise exec node -- npm view @anthropic-ai/claude-code version", log)
+        self.assertRegex(log, r"mise exec node -- npm install -g .* @openai/codex@1\.2\.3")
+        self.assertRegex(
+            log,
+            r"mise exec node -- npm install -g .* @anthropic-ai/claude-code@1\.2\.3",
+        )
 
     def test_upgrade_github_extensions_are_warning_only(self) -> None:
         repo, env = self.upgrade_fixture("gh")

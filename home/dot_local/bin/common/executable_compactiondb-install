@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# @file home/dot_local/bin/common/executable_compactiondb-install
+# @brief Install CompactionDB for one project.
+python3 "${HOME}/.agents/compactiondb/install.py" --project "${1:-.}" "${@:2}"

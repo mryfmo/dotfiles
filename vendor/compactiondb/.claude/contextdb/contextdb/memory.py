@@ -42,9 +42,7 @@ _KIND_ALIASES = {
     "事実": "fact",
 }
 
-_EXPLICIT_MARKER = re.compile(
-    r"\[(?:memory|記憶)\s*:\s*([^\]]+)\]\s*(.+)", re.IGNORECASE | re.DOTALL
-)
+_EXPLICIT_MARKER = re.compile(r"\[(?:memory|記憶)\s*:\s*([^\]]+)\]", re.IGNORECASE)
 _SENTENCE_SPLIT = re.compile(r"(?<=[。！？!?\n])")
 
 _KEYWORDS: dict[str, tuple[tuple[str, ...], float]] = {
@@ -101,8 +99,8 @@ def extract_candidates(event: dict[str, Any]) -> list[MemoryCandidate]:
             return result
         explicit = _EXPLICIT_MARKER.search(prompt)
         if explicit:
-            raw_kind, content = explicit.group(1).strip().casefold(), explicit.group(2).strip()
-            kind = _KIND_ALIASES.get(raw_kind, "fact")
+            content = explicit.group(1).strip()
+            kind = "fact"
             result.append(
                 MemoryCandidate(
                     kind=kind,

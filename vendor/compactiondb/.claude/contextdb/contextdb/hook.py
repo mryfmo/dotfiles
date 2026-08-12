@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
+import time
 from typing import Any
 
 from .config import load_config
@@ -19,6 +20,18 @@ def process_payload(payload: dict[str, Any], *, project_root: str | None = None)
         # Non-blocking lock: another hook may already be the single writer.
         # The durable spool remains the source of truth until a later drain succeeds.
         drain_spool(paths, config, blocking_lock=False)
+        if event.get("event_type") == "session_end":
+            try:
+                from .storage import ContextStore
+                days = int(config.get("operations", {}).get("error_log_retention_days", 30))
+                with ContextStore(paths, config).connect() as conn:
+                    ContextStore(paths, config).prune_expired(conn, paths.project_id, days=days)
+                cutoff = time.time() - days * 86400
+                for path in (paths.error_log_path, *paths.quarantine_dir.glob("*")):
+                    if path.exists() and path.stat().st_mtime < cutoff:
+                        path.unlink()
+            except Exception:
+                pass
     except Exception as exc:
         record_error(paths, "hook", exc, hook_event_name=payload.get("hook_event_name", "Unknown"))
 

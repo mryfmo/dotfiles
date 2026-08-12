@@ -18,3 +18,7 @@
 - bounded valid JSON detail encoding and embedding-model mismatch rejection
 - idempotent installer that preserves unrelated hooks and supports self-root upgrades
 - 39-test standard-library suite plus release validator and installed-project smoke test
+
+## 2.0.0+dotfiles.1
+
+- Hardened redaction, retention, and explicit memory marker parsing.

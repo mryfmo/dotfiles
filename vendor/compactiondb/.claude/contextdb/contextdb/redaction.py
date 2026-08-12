@@ -33,6 +33,9 @@ _TEXT_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("openai-key", re.compile(r"\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}\b")),
     ("github-token", re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})\b")),
     ("aws-access-key", re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b")),
+    ("stripe-key", re.compile(r"\b[rs]k_live_[A-Za-z0-9]{16,}\b")),
+    ("slack-token", re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b")),
+    ("gcp-key", re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b")),
     (
         "jwt",
         re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b"),
@@ -44,7 +47,7 @@ _TEXT_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     (
         "credential-assignment",
         re.compile(
-            r"(?i)(\b(?:password|passwd|pwd|secret|api[_-]?key|access[_-]?token|refresh[_-]?token|auth[_-]?token|client[_-]?secret)\b\s*[:=]\s*)"
+            r"(?i)(\b(?:[A-Z0-9_]*(?:secret|token|key)[A-Z0-9_]*|password|passwd|pwd)\b\s*[:=]\s*)"
             r"(?:\"[^\"\r\n]*\"|'[^'\r\n]*'|[^\s,;\]\}]+)"
         ),
     ),
@@ -64,6 +67,7 @@ _SENSITIVE_FILE_NAMES = {
     "id_ecdsa",
     "id_ed25519",
     "known_hosts",
+    ".netrc", ".npmrc", ".pypirc", "authorized_keys",
 }
 _SENSITIVE_SUFFIXES = {".pem", ".key", ".p12", ".pfx", ".jks", ".keystore", ".kdbx"}
 _SENSITIVE_DIRS = {".git", ".ssh", ".aws", ".gnupg", ".kube"}

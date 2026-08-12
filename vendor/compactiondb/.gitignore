@@ -1,0 +1,13 @@
+.claude/contextdb/state/*
+!.claude/contextdb/state/.gitkeep
+.claude/contextdb/spool/incoming/*
+!.claude/contextdb/spool/incoming/.gitkeep
+.claude/contextdb/spool/quarantine/*
+!.claude/contextdb/spool/quarantine/.gitkeep
+.claude/contextdb/health/*
+!.claude/contextdb/health/.gitkeep
+__pycache__/
+*.py[cod]
+.coverage
+htmlcov/
+.DS_Store

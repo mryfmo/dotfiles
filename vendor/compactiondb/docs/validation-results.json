@@ -1,0 +1,91 @@
+{
+  "product": "CompactionDB",
+  "version": "2.0.0",
+  "validated_at_utc": "2026-07-31T07:54:28.291886+00:00",
+  "platform": {
+    "system": "Linux",
+    "release": "6.12.13",
+    "machine": "x86_64",
+    "python": "3.13.5",
+    "python_executable": "/opt/pyvenv/bin/python3",
+    "sqlite": "3.46.1"
+  },
+  "summary": {
+    "status": "pass",
+    "passed": 9,
+    "failed": 0,
+    "skipped": 1
+  },
+  "checks": [
+    {
+      "name": "python_runtime",
+      "status": "pass",
+      "detail": "Python 3.13.5 (/opt/pyvenv/bin/python3)",
+      "duration_seconds": 0.0,
+      "required": true
+    },
+    {
+      "name": "required_release_files",
+      "status": "pass",
+      "detail": "required documentation and 4 wrappers are present",
+      "duration_seconds": 0.0,
+      "required": true
+    },
+    {
+      "name": "python_syntax",
+      "status": "pass",
+      "detail": "AST parsed 34 Python files",
+      "duration_seconds": 0.024,
+      "required": true
+    },
+    {
+      "name": "json_documents",
+      "status": "pass",
+      "detail": "parsed 5 JSON files",
+      "duration_seconds": 0.001,
+      "required": true
+    },
+    {
+      "name": "claude_hook_settings",
+      "status": "pass",
+      "detail": "validated 3 settings documents and 45 command handlers",
+      "duration_seconds": 0.0,
+      "required": true
+    },
+    {
+      "name": "runtime_import",
+      "status": "pass",
+      "detail": "imported runtime version 2.0.0",
+      "duration_seconds": 0.576,
+      "required": true
+    },
+    {
+      "name": "unittest_suite",
+      "status": "pass",
+      "detail": "39 tests passed with ResourceWarning promoted to error",
+      "duration_seconds": 14.857,
+      "required": true
+    },
+    {
+      "name": "installed_project_smoke",
+      "status": "pass",
+      "detail": "idempotent install, hook ingest, redaction, verify, and compact recovery passed (2 events)",
+      "duration_seconds": 3.917,
+      "required": true
+    },
+    {
+      "name": "release_tree_clean",
+      "status": "pass",
+      "detail": "no pycache, bytecode, SQLite runtime, or writer-lock artifacts in release tree",
+      "duration_seconds": 0.002,
+      "required": true
+    },
+    {
+      "name": "claude_code_executable",
+      "status": "skip",
+      "detail": "ValidationFailure: Claude Code executable is not installed in this validation environment",
+      "duration_seconds": 0.0,
+      "required": false
+    }
+  ]
+}

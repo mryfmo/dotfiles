@@ -3,7 +3,7 @@
 task_id: T45
 repo: /Users/mryfmo/Workspace/dotfiles
 team: dotfiles-conformance
-worker: codex-standard-dot
+worker: codex-deep-dot
 plan: .orchestration/tasks/PLAN-compactiondb-research-integration.md (Phase 1)
 analysis: .orchestration/analysis/compactiondb-compaction-research.md (P6)
 

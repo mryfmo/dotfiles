@@ -30,12 +30,16 @@ expected_autoskill_file=<path> done_signal=AGMSG-RESULT max_turns=<n>
 note=act-as-worker-<task-or-role>
 ```
 
+Task files must state durable facts with `[memory:decision]` or `[memory:failure]` markers using the tag form, bracket form, and kind aliases defined by the vendored CompactionDB README.
+
 `AGMSG-RESULT v1` fields:
 
 ```text
 AGMSG-RESULT v1 task_id=<id> status=ready_for_review|blocked
 report=<path> validation=<path> sandbox=<path> learning=<path> autoskill=<path>
 ```
+
+RESULT reports must mark durable facts with the same CompactionDB marker contract. In CompactionDB-opted-in projects, the worker runs `python3 .claude/hooks/contextdb_cli.py memory add` before completion and includes the exact command or commands in the RESULT report.
 
 `AGMSG-ACCEPTANCE v1` fields:
 

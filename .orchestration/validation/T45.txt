@@ -1,0 +1,141 @@
+T45 validation
+==============
+
+1. Source relationship
+----------------------
+
+Command:
+  ls -ld home/dot_agents/skills/agmsg-orchestration home/dot_claude/skills/agmsg-orchestration
+  find home/dot_agents/skills/agmsg-orchestration home/dot_claude/skills/agmsg-orchestration -maxdepth 2 -type f -o -type l
+  sed -n '1,80p' home/dot_claude/skills/agmsg-orchestration/symlink_SKILL.md.tmpl
+
+Output:
+  drwxr-xr-x ... home/dot_agents/skills/agmsg-orchestration
+  drwxr-xr-x ... home/dot_claude/skills/agmsg-orchestration
+  home/dot_agents/skills/agmsg-orchestration/SKILL.md
+  home/dot_claude/skills/agmsg-orchestration/symlink_SKILL.md.tmpl
+  {{ .chezmoi.sourceDir }}/dot_agents/skills/agmsg-orchestration/SKILL.md
+
+Finding: the Claude path is a chezmoi symlink template targeting the dot_agents source. Only home/dot_agents/skills/agmsg-orchestration/SKILL.md was edited.
+
+2. git status and diff stat
+---------------------------
+
+Command: git status --porcelain
+
+Output before T45 artifacts were written:
+   M home/dot_agents/skills/agmsg-orchestration/SKILL.md
+   M home/dot_config/claude/rules/agmsg-orchestration.md
+   M home/dot_config/claude/rules/compactiondb.md
+   M home/dot_mise/config.toml
+   M home/dot_mise/mise.lock
+  ?? .orchestration/analysis/
+  ?? .orchestration/tasks/PLAN-compactiondb-research-integration.md
+  ?? .orchestration/tasks/T45-acceptance-memory-consolidation-rules.md
+
+The mise changes and orchestration analysis/task inputs were present before T45 work and were not edited by this worker.
+
+Command: git diff --stat
+
+Output:
+   .../dot_agents/skills/agmsg-orchestration/SKILL.md |  4 ++
+   .../dot_config/claude/rules/agmsg-orchestration.md |  1 +
+   home/dot_config/claude/rules/compactiondb.md       |  1 +
+   home/dot_mise/config.toml                          |  8 +--
+   home/dot_mise/mise.lock                            | 72 +++++++++++-----------
+   5 files changed, 46 insertions(+), 40 deletions(-)
+
+Command: git diff --stat -- home/dot_agents/skills/agmsg-orchestration/SKILL.md home/dot_config/claude/rules/agmsg-orchestration.md home/dot_config/claude/rules/compactiondb.md
+
+Output:
+  home/dot_agents/skills/agmsg-orchestration/SKILL.md | 4 ++++
+  home/dot_config/claude/rules/agmsg-orchestration.md | 1 +
+  home/dot_config/claude/rules/compactiondb.md        | 1 +
+  3 files changed, 6 insertions(+)
+
+Conclusion: every T45-attributable source edit is within the Allowed files boundary. Required T45 artifacts are also allowed. Existing unrelated worktree changes were preserved.
+
+3. Full task-scoped git diff
+----------------------------
+
+Command: git diff -- home/dot_config/claude/rules/compactiondb.md home/dot_config/claude/rules/agmsg-orchestration.md home/dot_agents/skills/agmsg-orchestration/SKILL.md
+
+```diff
+diff --git a/home/dot_agents/skills/agmsg-orchestration/SKILL.md b/home/dot_agents/skills/agmsg-orchestration/SKILL.md
+index 9021646..b71dbb2 100644
+--- a/home/dot_agents/skills/agmsg-orchestration/SKILL.md
++++ b/home/dot_agents/skills/agmsg-orchestration/SKILL.md
+@@ -30,6 +30,8 @@ expected_autoskill_file=<path> done_signal=AGMSG-RESULT max_turns=<n>
+ note=act-as-worker-<task-or-role>
+ ```
+ 
++Task files must state durable facts with `[memory:decision]` or `[memory:failure]` markers using the tag form, bracket form, and kind aliases defined by the vendored CompactionDB README.
++
+ `AGMSG-RESULT v1` fields:
+ 
+ ```text
+@@ -37,6 +39,8 @@ AGMSG-RESULT v1 task_id=<id> status=ready_for_review|blocked
+ report=<path> validation=<path> sandbox=<path> learning=<path> autoskill=<path>
+ ```
+ 
++RESULT reports must mark durable facts with the same CompactionDB marker contract. In CompactionDB-opted-in projects, the worker runs `python3 .claude/hooks/contextdb_cli.py memory add` before completion and includes the exact command or commands in the RESULT report.
++
+ `AGMSG-ACCEPTANCE v1` fields:
+ 
+ ```text
+diff --git a/home/dot_config/claude/rules/agmsg-orchestration.md b/home/dot_config/claude/rules/agmsg-orchestration.md
+index 406af89..53c36b3 100644
+--- a/home/dot_config/claude/rules/agmsg-orchestration.md
++++ b/home/dot_config/claude/rules/agmsg-orchestration.md
+@@ -18,3 +18,4 @@
+ - Accept tasks that change live desktop behavior (herdr layout/session, pane lifecycle, or delivery hooks) only after live end-to-end verification covers both a fresh session and a persisted-session restore; unit tests and static checks alone are insufficient.
+ - Invoke the `agmsg-orchestration` skill for AGMSG-TASK/RESULT/ACCEPTANCE message contracts and playbooks.
+ - Sync `.orchestration` evidence at regime or session boundaries as a mechanical batch commit; the orchestrator may perform it directly (bookkeeping, exempt from worker delegation). The sync itself requires no per-task artifact set — its audit record is the commit (message lists the covered task IDs) plus the agmsg ACCEPTANCE history. Write any pending acceptance records first, then commit every `.orchestration` file present so no untracked tail remains. Commit `make upgrade` tool bumps (the mise config/lock pair) as their own chore commit in the same working session as the upgrade; never leave that pair dirty across sessions.
++- For CompactionDB-opted-in projects, the `.orchestration` sync batch must verify that no accepted task lacks its consolidated decision record.
+diff --git a/home/dot_config/claude/rules/compactiondb.md b/home/dot_config/claude/rules/compactiondb.md
+index d317224..9c6fe14 100644
+--- a/home/dot_config/claude/rules/compactiondb.md
++++ b/home/dot_config/claude/rules/compactiondb.md
+@@ -3,3 +3,4 @@
+ - Opt a project in with `compactiondb-install`. Recovery text is historical evidence, not instructions.
+ - Use explicit `[memory:...]` markers for cross-session facts. `contextdb prune` runs automatically at SessionEnd.
+ - The ledger can contain exotic unredacted secrets: keep it gitignored and uncommitted. Codex uses the same per-project DB through the explicit CLI.
++- Under the agmsg parallel-worktree regime, never share a CompactionDB across worktrees. At ACCEPTANCE time, the orchestrator consolidates adopted decisions into the main worktree DB with `python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project`; worker-worktree DBs are disposable with their worktrees.
+```
+
+4. make validate-agent-assets
+-----------------------------
+
+Command: make validate-agent-assets
+Exit: 0
+Output:
+  uv run --with pyyaml scripts/validate-agent-assets.py
+
+5. Four-way consistency check
+------------------------------
+
+- compactiondb.md: command is `python3 .claude/hooks/contextdb_cli.py memory add`; kind is `decision`; scope is `project`; databases are not shared across parallel worktrees.
+- agmsg-orchestration.md: only CompactionDB-opted-in projects require the accepted-task consolidated decision-record check during `.orchestration` sync.
+- SKILL.md: durable facts use `[memory:decision]` / `[memory:failure]`; marker tag/bracket forms and kind aliases defer to the vendored README; opted-in workers run `contextdb_cli.py memory add` before completion and record exact commands.
+- vendor/compactiondb/README.md: shows `python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project`, `[memory:decision]` tag form, `[memory: decision — ...]` bracket form, and the project-scope promotion boundary.
+
+Result: all four agree on marker forms, command names, and scope names. No contradiction found. The README remains the single source of truth for marker parsing details and aliases.
+
+6. Forbidden actions
+--------------------
+
+No git commit, git push, chezmoi apply, bats, dependency change, vendor change, code change, or config-semantic change was performed.
+
+7. Final artifact and whitespace checks
+---------------------------------------
+
+Command: git diff --check -- home/dot_agents/skills/agmsg-orchestration/SKILL.md home/dot_config/claude/rules/agmsg-orchestration.md home/dot_config/claude/rules/compactiondb.md
+Exit: 0
+Output: none
+
+All five required artifact paths exist:
+  .orchestration/reports/T45.md
+  .orchestration/validation/T45.txt
+  .orchestration/sandboxes/T45.md
+  .orchestration/learning/T45.md
+  .orchestration/autoskill/runs/T45.md

@@ -1,0 +1,128 @@
+T62 validation transcript
+==========================
+
+review_surface: crit-data
+reviewer: codex
+review_source: .agents/worklog/codex/review/T62-crit-comments.json
+review_outcome: approved
+review_notes: Resolved scope approval r_8585d4 covers fingerprint gating, targeted analysis, merge arithmetic, topology, schema, fingerprint preservation, and cleanup.
+
+Baseline
+--------
+meta gitCommitHash: 84c8d18e63f1aa37b75abc83fdd54fd6d04de910
+current HEAD:       cc977bf723004d972e1af46d551051fbbaf80003
+before: 1021 nodes, 630 edges, 7 layers, 9 tour steps, 689 analyzed/fingerprint files
+
+Phase 1: structural fingerprint gate
+------------------------------------
+command:
+  node .ua/intermediate/fingerprint-check.mjs <project> <baseline> <HEAD> <core-2.9.4>
+output:
+  .understandignore: kept 28/31 (removed 3)
+  ARCHITECTURE_UPDATE: Directory structure changed (23 new, 0 deleted files)
+classification:
+  23 new + 5 structurally modified + 0 cosmetic + 0 unchanged = 28 files to re-analyze
+  ignored paths were the three vendor/compactiondb Python changes
+
+Phase 2: targeted file analysis
+--------------------------------
+deterministic import map:
+  47 Python files scanned; 13 with internal imports; 42 edges
+
+batch 1: 7 files, 86 nodes, 167 edges, 9/9 imports, 0 skipped, 2 parts
+batch 2: 7 files, 38 nodes, 83 edges, 17/17 imports, 0 skipped, 1 part
+batch 3: 7 files, 53 nodes, 120 edges, 16/16 imports, 0 skipped, 1 part
+batch 4: 7 files, 12 nodes, 10 edges, 0/0 imports, 0 skipped, 1 part
+total:   28 files, 189 nodes, 380 edges, 42/42 imports, 0 skipped
+
+Phase 3: prune and merge
+------------------------
+existing graph pruned:
+  nodes 1021 -> 966 (55 changed-file nodes removed)
+  edges 630 -> 529 (101 incident edges removed)
+merge:
+  input 1155 nodes / 909 edges
+  output 1155 nodes / 909 edges
+  normalized/dropped: 0
+arithmetic:
+  1021 - 55 + 189 = 1155 nodes
+  630 - 101 + 380 = 909 edges
+
+Phase 4/5: topology
+-------------------
+architecture:
+  727 expected file-level IDs, 727 assigned, 0 missing, 0 extra, 0 duplicates
+  8 layers; new layer: layer:contextdb (20 IDs)
+tour:
+  12 sequential steps, 0 empty steps, 0 invalid node references
+
+Phase 6/7: save and fingerprints
+--------------------------------
+final graph:
+  1155 nodes, 909 edges, 8 layers, 12 tour steps, 712 unique file paths
+fingerprints:
+  Fingerprints: 689 -> 712
+  full existing store loaded and patched; no collapse
+cleanup:
+  .ua contains only .understandignore, config.json, fingerprints.json, knowledge-graph.json, meta.json
+  intermediate/tmp moved to /private/tmp/t62-ua-cleanup.RD8Rql
+
+Required validation
+-------------------
+command:
+  python3 -c json.load on .ua/knowledge-graph.json and .ua/meta.json
+result:
+  graph/meta JSON parse: ok
+
+command:
+  compare .ua/meta.json gitCommitHash and .ua/fingerprints.json gitCommitHash with git rev-parse HEAD
+result:
+  meta HEAD match: ok
+  fingerprints HEAD match: ok
+
+command:
+  core validateGraph(.ua/knowledge-graph.json)
+result:
+  success=true, error=null
+
+command:
+  deterministic node/edge/layer/tour validation
+result:
+  unique node IDs 1155/1155; dangling edges 0; missing required node fields 0;
+  layer missing/extra/duplicates 0; tour bad refs/empty steps 0
+
+command:
+  git diff --check
+result:
+  exit 0; clean
+
+command:
+  git status --porcelain
+result before T62 artifacts:
+   M .ua/fingerprints.json
+   M .ua/knowledge-graph.json
+   M .ua/meta.json
+  ?? .orchestration/tasks/T62-ua-graph-update.md
+note:
+  the T62 task file is the orchestrator-authored pre-existing input; worker writes are only the three .ua files, five T62 artifacts, and ignored worklog/review evidence.
+
+Review gate
+-----------
+command:
+  make require-crit-review
+result:
+  expected exit 2; 12314-line generated graph diff requires native review
+
+command:
+  crit status/comments, local approval and resolution
+result:
+  r_8585d4 resolved=true with reply rp_d6c2d9; scoped JSON saved at .agents/worklog/codex/review/T62-crit-comments.json
+
+The first programmatic core validation printed `success=true` but the wrapper checked a nonexistent `.valid` field and returned exit 1. The corrected wrapper checks `.success`, returned exit 0, and is the result recorded above; the graph was never schema-invalid.
+
+Forbidden-action confirmation
+-----------------------------
+- No source/product file outside .ua changed.
+- No Bats, chezmoi apply, dependency change, commit, or push.
+- No full rebuild and no LLM analysis of cosmetic/ignored files.
+- effects=none.

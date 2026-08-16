@@ -1,0 +1,228 @@
+T51a validation
+Generated: 2026-08-16T09:42:52+0900
+
+1. INITIAL FORMAT GATE
+----------------------
+Command:
+  make format
+
+Result:
+  exit=2
+  shfmt reported 31 files. The complete file list is recorded in reports/T51a.md.
+  The first reported file was home/dot_agents/skills/agmsg/scripts/executable_actas-claim.sh.
+
+Enumeration command:
+  shfmt --indent 4 --space-redirects --list .
+
+Result:
+  31 paths, exactly matching the report list.
+
+2. EXACT FORMAT APPLICATION
+---------------------------
+Applied to exactly the reported paths:
+  shfmt --indent 4 --space-redirects --write <31 reported files>
+
+No manual source edit was made.
+
+Diff stat:
+  31 files changed, 1220 insertions(+), 1180 deletions(-)
+
+3. SYNTAX CHECKS
+----------------
+Command:
+  bash -n <file>
+
+Result:
+  all 27 non-Bats shell files: exit 0
+
+Bats ruling:
+  Plain `bash -n` returns status 2 at standard `@test` syntax for each of the four Bats files. The orchestrator approved shfmt parse-clean as their syntax validation, with local Bats execution remaining forbidden.
+
+Command:
+  shfmt --indent 4 --space-redirects --diff \
+    tests/install/common/lifecycle.bats \
+    tests/install/common/setup.bats \
+    tests/install/macos/common/defaults.bats \
+    tests/install/ubuntu/server/sheldon.bats
+
+Result:
+  exit 0, no output (`bats-shfmt-parse-clean`)
+
+4. FINAL FORMAT GATE
+--------------------
+Command:
+  make format
+
+Result:
+  exit=0
+  stdout: shfmt --indent 4 --space-redirects --diff .
+  no diff output
+
+5. NON-WHITESPACE HUNKS REQUIRED BY ORCHESTRATOR
+-------------------------------------------------
+The original blanket `git diff -w` requirement was withdrawn because exact shfmt output legitimately removes line-continuation backslashes and expands semicolon-form commands. `git diff -w --name-only` reports exactly these nine files. Every resulting hunk follows.
+
+```diff
+diff --git a/home/dot_agents/skills/agmsg/scripts/executable_check-inbox.sh b/home/dot_agents/skills/agmsg/scripts/executable_check-inbox.sh
+@@ -29,9 +29,9 @@
+-SESSION_ID=$(printf '%s' "$INPUT" \
+-  | sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+-  | head -1)
++SESSION_ID=$(printf '%s' "$INPUT" |
++    sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' |
++    head -1)
+
+diff --git a/home/dot_agents/skills/agmsg/scripts/executable_hook.sh b/home/dot_agents/skills/agmsg/scripts/executable_hook.sh
+@@ -19,5 +19,8 @@
+ on) exec "$SCRIPT_DIR/delivery.sh" set turn "$@" ;;
+ off) exec "$SCRIPT_DIR/delivery.sh" set off "$@" ;;
+-  *)   echo "Unknown action: $ACTION (use on|off)" >&2; exit 1 ;;
++*)
++    echo "Unknown action: $ACTION (use on|off)" >&2
++    exit 1
++    ;;
+ esac
+
+diff --git a/home/dot_agents/skills/agmsg/scripts/executable_join.sh b/home/dot_agents/skills/agmsg/scripts/executable_join.sh
+@@ -16,7 +16,10 @@
+ case "$AGENT_TYPE" in
+ claude-code | codex | gemini | antigravity | copilot) ;;
+-  *) echo "Unknown agent type: '$AGENT_TYPE' (supported: claude-code, codex, gemini, antigravity, copilot)" >&2; exit 1 ;;
++*)
++    echo "Unknown agent type: '$AGENT_TYPE' (supported: claude-code, codex, gemini, antigravity, copilot)" >&2
++    exit 1
++    ;;
+ esac
+
+diff --git a/home/dot_agents/skills/agmsg/scripts/executable_session-end.sh b/home/dot_agents/skills/agmsg/scripts/executable_session-end.sh
+@@ -28,9 +28,9 @@
+ if [ -n "$INPUT" ]; then
+-  SESSION_ID=$(printf '%s' "$INPUT" \
+-    | sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+-    | head -1)
++    SESSION_ID=$(printf '%s' "$INPUT" |
++        sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' |
++        head -1)
+ fi
+
+diff --git a/home/dot_agents/skills/agmsg/scripts/executable_session-start.sh b/home/dot_agents/skills/agmsg/scripts/executable_session-start.sh
+@@ -41,9 +41,9 @@
+ if [ -n "$INPUT" ]; then
+-  SESSION_ID=$(printf '%s' "$INPUT" \
+-    | sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+-    | head -1)
++    SESSION_ID=$(printf '%s' "$INPUT" |
++        sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' |
++        head -1)
+ fi
+@@ -106,8 +106,8 @@
+-  if [ -n "$dead_sid" ] \
+-      && ! printf '%s\n' "$live_sids" | tr '|' '\n' | grep -Fxq "$dead_sid"; then
++    if [ -n "$dead_sid" ] &&
++        ! printf '%s\n' "$live_sids" | tr '|' '\n' | grep -Fxq "$dead_sid"; then
+@@ -147,7 +147,6 @@
+-
+ # --- Dedup against the previous watcher in this CC instance. ---
+
+diff --git a/home/dot_agents/skills/agmsg/scripts/lib/actas-lock.sh b/home/dot_agents/skills/agmsg/scripts/lib/actas-lock.sh
+@@ -49,14 +49,20 @@
+-  local t a; t="$(_actas_lock_encode "$team")"; a="$(_actas_lock_encode "$agent")"
++    local t a
++    t="$(_actas_lock_encode "$team")"
++    a="$(_actas_lock_encode "$agent")"
+@@
+-  local lock; lock="$(actas_lock_path "$1" "$2")"
+-  [ -f "$lock" ] || { printf ''; return 0; }
++    local lock
++    lock="$(actas_lock_path "$1" "$2")"
++    [ -f "$lock" ] || {
++        printf ''
++        return 0
++    }
+@@ -65,7 +71,8 @@
+-  local run; run="$(_actas_lock_dir)"
++    local run
++    run="$(_actas_lock_dir)"
+@@ -179,7 +186,8 @@
+-  local dir; dir="$(_actas_lock_dir)"
++    local dir
++    dir="$(_actas_lock_dir)"
+@@ -193,8 +201,12 @@
+-  local dir; dir="$(_actas_lock_dir)"
+-  [ -d "$dir" ] || { echo 0; return 0; }
++    local dir
++    dir="$(_actas_lock_dir)"
++    [ -d "$dir" ] || {
++        echo 0
++        return 0
++    }
+@@ -214,10 +226,12 @@
+-    echo "free"; return 0
++        echo "free"
++        return 0
+@@
+-    echo "mine"; return 0
++        echo "mine"
++        return 0
+
+diff --git a/home/dot_agents/skills/agmsg/scripts/release/executable_sync-version.sh b/home/dot_agents/skills/agmsg/scripts/release/executable_sync-version.sh
+@@ -21,20 +21,38 @@
+-    --check) CHECK_ONLY=1; shift ;;
+-    -h|--help) sed -n '2,/^$/p' "$0" | sed 's/^# \?//'; exit 0 ;;
+-    *) echo "Unknown argument: $1" >&2; exit 2 ;;
++    --check)
++        CHECK_ONLY=1
++        shift
++        ;;
++    -h | --help)
++        sed -n '2,/^$/p' "$0" | sed 's/^# \?//'
++        exit 0
++        ;;
++    *)
++        echo "Unknown argument: $1" >&2
++        exit 2
++        ;;
+@@
+-[[ -f "$VERSION_FILE" ]] || { echo "VERSION file not found at $VERSION_FILE" >&2; exit 1; }
+-command -v jq >/dev/null || { echo "jq is required" >&2; exit 1; }
++[[ -f "$VERSION_FILE" ]] || {
++    echo "VERSION file not found at $VERSION_FILE" >&2
++    exit 1
++}
++command -v jq > /dev/null || {
++    echo "jq is required" >&2
++    exit 1
++}
+@@
+-[[ -n "$VERSION" ]] || { echo "VERSION file is empty" >&2; exit 1; }
++[[ -n "$VERSION" ]] || {
++    echo "VERSION file is empty" >&2
++    exit 1
++}
+@@ -53,7 +71,10 @@
+-  [[ -f "$path" ]] || { echo "missing derived file: $rel" >&2; exit 1; }
++    [[ -f "$path" ]] || {
++        echo "missing derived file: $rel" >&2
++        exit 1
++    }
+
+diff --git a/home/dot_local/bin/server/ssh_agent.sh b/home/dot_local/bin/server/ssh_agent.sh
+@@ -17,7 +17,7 @@
+-        ssh-add "${default_ssh_key}" > /dev/null 2>&1 || \
++        ssh-add "${default_ssh_key}" > /dev/null 2>&1 ||
+             printf 'Failed to add default SSH key: %s\n' "${default_ssh_key}" >&2
+
+diff --git a/tests/install/macos/common/defaults.bats b/tests/install/macos/common/defaults.bats
+@@ -47,9 +47,9 @@
+-        { grep -Eo '(/Applications/Google Chrome\.app|/System/Applications/System (Settings|Preferences)\.app/)' <<<"${persistent_apps}" || true; } \
+-            | wc -l \
+-            | tr -d ' '
++        { grep -Eo '(/Applications/Google Chrome\.app|/System/Applications/System (Settings|Preferences)\.app/)' <<< "${persistent_apps}" || true; } |
++            wc -l |
++            tr -d ' '
+```
+
+6. GIT STATUS / SCOPE
+---------------------
+T51a touched only the 31 paths listed in reports/T51a.md and the five T51a artifact paths. Repository-wide `git status --porcelain` additionally contains accepted T46-T50, T48 wiring, orchestration artifacts, and pre-existing mise changes in the shared worktree. Those unrelated changes were preserved.
+

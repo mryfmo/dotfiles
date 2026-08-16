@@ -1,0 +1,117 @@
+T67 VALIDATION
+Date: 2026-08-16 Asia/Tokyo
+
+REAL-PI BOUNDARY
+- Real Pi binary: NOT RUN
+- Subscription login: NOT RUN
+- API/model request: NOT RUN
+- Bats: NOT RUN (forbidden by task and repository policy)
+
+STATIC AND REPOSITORY GATES
+
+$ make format
+shfmt --indent 4 --space-redirects --diff .
+PASS
+
+$ bash -n home/dot_local/bin/common/executable_pi-model-access-check
+PASS
+
+$ shellcheck home/dot_local/bin/common/executable_pi-model-access-check
+PASS
+
+$ uv run python -m unittest tests.unit.test_pi_model_access_check -v
+Ran 7 tests in 0.530s
+OK
+
+$ make unit-test
+Ran 329 tests in 31.738s
+OK
+
+$ make validate-agent-assets
+agent asset validation ok
+
+$ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/review/T67-receipt.md make require-crit-review
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+
+Crit evidence:
+- review id: r_7ec603
+- resolved: true
+- source: .agents/worklog/codex/review/T67-crit-comments.json
+- review outcome: addressed
+
+FAKE-PI TRANSCRIPT
+
+== PASS ==
+PASS version: pi 0.84.2
+PASS json: assistant replied exactly OK
+PASS rpc: agent_end received
+RPC envelope KINDS: response,agent_start,message_start,message_end,agent_end
+PASS extension: permgate.ts loaded via --extension
+
+== SKIP (provider/model absent) ==
+PASS version: pi 0.84.2
+SKIP json: set PI_CHECK_PROVIDER and PI_CHECK_MODEL
+SKIP rpc: set PI_CHECK_PROVIDER and PI_CHECK_MODEL
+SKIP extension: model-access prerequisites unavailable
+
+== FAIL (wrong pinned version) ==
+FAIL version: expected 0.84.2, got 0.83.0
+SKIP json: exact Pi version unavailable
+SKIP rpc: exact Pi version unavailable
+SKIP extension: exact Pi version unavailable
+
+== FAIL (RPC exits before agent_end) ==
+PASS version: pi 0.84.2
+PASS json: assistant replied exactly OK
+FAIL rpc: agent_end not received
+RPC envelope KINDS: response,agent_start,message_start,message_end
+FAIL extension: explicit permgate.ts load was not confirmed
+
+The fake invocation log was asserted to contain --provider, --model, and the
+explicit --extension path. A sentinel credential value was asserted absent
+from stdout and stderr.
+
+PINNED SOURCE CONFIRMATION
+- quickstart.md: /login, Claude Pro/Max, ChatGPT Plus/Pro (Codex), /model or
+  Ctrl+L, Shift+Tab, --mode json, and --mode rpc.
+- providers.md: documented provider credential-variable names and subscription
+  terms notes.
+- rpc.md: LF-framed JSON commands/events, prompt response, agent_end, and the
+  off/minimal/low/medium/high/xhigh/max vocabulary.
+- extensions.md + loader.ts + main.ts: --extension input, awaited factory, and
+  fatal startup diagnostics on loader failure.
+
+SCOPE
+- `$ git status --porcelain -- <eight T67 deliverable paths>` returned exactly:
+
+  ```text
+  ?? .orchestration/autoskill/runs/T67.md
+  ?? .orchestration/learning/T67.md
+  ?? .orchestration/reports/T67.md
+  ?? .orchestration/sandboxes/T67.md
+  ?? .orchestration/validation/T67-model-access.md
+  ?? .orchestration/validation/T67.txt
+  ?? home/dot_local/bin/common/executable_pi-model-access-check
+  ?? tests/unit/test_pi_model_access_check.py
+  ```
+
+- `$ git diff --stat` returned only the already-accepted T66 tracked delta:
+  5 files changed, 226 insertions(+), 2 deletions(-). T67 paths are new files,
+  so Git does not include them in an unstaged `diff --stat` until staged; no
+  staging was performed.
+- T67 implementation paths are new/untracked and confined to the task's
+  allowed script, tests/unit, operator form, and five artifact paths.
+- .orchestration/tasks/T67-model-access.md is orchestrator-authored input.
+- Existing accepted T65/T66 work remains in the shared dirty worktree and was
+  preserved; it is not a T67 edit.
+- Worklog plan/todo and Crit receipt/data are repository-ignored process
+  evidence required by AGENTS.md.
+
+PLAN QUALITY GATE
+- The repository has no docs/workflows/plan-quality-gate.md, plans/AGENTS.md,
+  plans/TEMPLATE.md, .claude/agents/plan-quality-reviewer.md,
+  .claude/hooks/plan-quality-gate.sh, or scripts/validate_plan_quality.py.
+- Manual plan-quality check: required Goal/Scope/Assumptions/Design/Tests/Open
+  Questions headings and owner-scoped frontmatter are present.
+
+RESULT: PASS

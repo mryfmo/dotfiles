@@ -93,6 +93,10 @@ class PermgateTest(unittest.TestCase):
                     "minimum_confidence": 0.9,
                 },
             },
+            "pi": {
+                "decision_layers": ["deny_patterns", "allow_patterns"],
+                "llm_enabled": False,
+            },
             "enablement": {
                 "minimum_successes": 5,
                 "maximum_p50_ms": 3000,
@@ -241,6 +245,81 @@ class PermgateTest(unittest.TestCase):
                 self.assertEqual(permission_behavior(result.stdout), "deny")
                 decision = json.loads(result.stdout)["hookSpecificOutput"]["decision"]
                 self.assertEqual(set(decision), {"behavior", "message"})
+
+    def test_pi_protocol_emits_each_compact_decision(self) -> None:
+        fixtures = (
+            ({"tool": "bash", "command": "git status --short"}, "allow"),
+            ({"tool": "bash", "command": "rm -rf /"}, "deny"),
+            ({"tool": "write", "path": "/tmp/output"}, "ask"),
+        )
+        for payload, decision in fixtures:
+            with self.subTest(decision=decision):
+                result = self.run_gate("pi", payload)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, f'{{"decision":"{decision}"}}\n')
+
+    def test_pi_protocol_internal_failure_is_nonzero(self) -> None:
+        self.policy_path.write_text("not-json\n")
+
+        result = self.run_gate("pi", {"tool": "bash", "command": "git status"})
+
+        self.assertNotEqual(result.returncode, 0)
+
+        self.write_policy()
+        self.state_path.mkdir()
+        result = self.run_gate("pi", {"tool": "bash", "command": "git status"})
+        self.assertNotEqual(result.returncode, 0)
+
+    def test_pi_policy_pins_shared_layers_and_disables_llm(self) -> None:
+        base_policy = json.loads(self.policy_path.read_text())
+        for key, value in (
+            ("decision_layers", ["allow_patterns"]),
+            ("llm_enabled", True),
+        ):
+            with self.subTest(key=key):
+                policy = json.loads(json.dumps(base_policy))
+                policy["pi"][key] = value
+                self.policy_path.write_text(json.dumps(policy))
+                result = self.run_gate(
+                    "pi", {"tool": "bash", "command": "git status"}
+                )
+                self.assertNotEqual(result.returncode, 0)
+
+    def test_pi_protocol_rejects_malformed_normalized_action(self) -> None:
+        for payload in (
+            "not-json",
+            {"tool": "bash", "command": 7},
+            {"tool": "read", "path": "/tmp/input"},
+        ):
+            with self.subTest(payload=payload):
+                result = self.run_gate("pi", payload)
+                self.assertNotEqual(result.returncode, 0)
+
+    def test_claude_and_codex_hook_outputs_match_golden_bytes(self) -> None:
+        fixtures = (
+            (
+                {"command": "git status --short"},
+                (
+                    '{"hookSpecificOutput":{"hookEventName":"PermissionRequest",'
+                    '"decision":{"behavior":"allow"}}}\n'
+                ),
+            ),
+            (
+                {"command": "rm -rf /"},
+                (
+                    '{"hookSpecificOutput":{"hookEventName":"PermissionRequest",'
+                    '"decision":{"behavior":"deny","message":"Refusing recursive '
+                    'deletion of the filesystem root."}}}\n'
+                ),
+            ),
+            ({"command": "echo undecided"}, ""),
+        )
+        for agent, base in (("claude", CLAUDE_INPUT), ("codex", CODEX_INPUT)):
+            for tool_input, expected in fixtures:
+                with self.subTest(agent=agent, tool_input=tool_input):
+                    result = self.run_gate(agent, base | {"tool_input": tool_input})
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout, expected)
 
     def test_unknown_shadow_classification_returns_native_ask(self) -> None:
         payload = CODEX_INPUT | {

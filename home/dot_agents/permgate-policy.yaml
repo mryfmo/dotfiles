@@ -14,6 +14,10 @@
       "minimum_confidence": 0.9
     }
   },
+  "pi": {
+    "decision_layers": ["deny_patterns", "allow_patterns"],
+    "llm_enabled": false
+  },
   "enablement": {
     "minimum_successes": 5,
     "maximum_p50_ms": 3000,

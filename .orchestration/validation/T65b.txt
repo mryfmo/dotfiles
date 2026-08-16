@@ -1,0 +1,118 @@
+T65b VALIDATION
+Date: 2026-08-16 Asia/Tokyo
+
+BOUNDARIES
+- Real Pi binary: NOT RUN
+- Chezmoi apply: NOT RUN
+- Bats: NOT RUN
+- Dependency install/change: NONE
+- Cooldown-policy change: NONE
+- home/dot_mise or mise.lock change: NONE
+
+TEST-FIRST REPIN
+- Before production edits, exact 0.84.1 expectations failed because the
+  validator and checker still required 0.84.2.
+- The pre-change validator accepted 0.84.2; the pre-change fake checker
+  rejected 0.84.1 and accepted 0.84.2.
+- After the two constant changes, exact 0.84.1 passes and exact 0.84.2 is the
+  cooldown rejection case.
+
+PINNED-SOURCE VERIFICATION
+- Complete table: .orchestration/validation/T65b-anchors.md
+- Ref for every source: refs/tags/v0.84.1
+- Compared with the corresponding accepted v0.84.2 contract slices.
+- Result: no semantic contract difference; no STOP condition.
+
+Mechanical comparison results:
+  PASS settings trust union
+  PASS security whole file
+  PASS loader whole file
+  PASS extension types anchor slices
+  PASS quickstart whole file
+  PASS providers whole file
+  PASS RPC cited slices
+  PASS extensions quick-start slice
+  PASS startup diagnostics slice
+
+FOCUSED TESTS
+
+$ uv run python -m unittest tests.unit.test_pi_model_access_check tests.unit.test_validate_agent_assets -v
+Ran 45 tests
+OK
+
+The ten pin-specific selected cases also passed after the production edit.
+
+STATIC AND REPOSITORY GATES
+
+$ make format
+PASS
+
+$ bash -n home/dot_local/bin/common/executable_pi-model-access-check
+PASS
+
+$ shellcheck home/dot_local/bin/common/executable_pi-model-access-check
+PASS
+
+$ make validate-agent-assets
+agent asset validation ok
+
+SCOPE-UPDATE GATES
+
+$ rg -n '0\\.84\\.2' .orchestration/validation/T67-model-access.md
+No matches
+
+$ rg -n '0\\.84\\.1' .orchestration/validation/T67-model-access.md
+13 literal version tokens across 9 matching lines
+
+$ git diff --check
+PASS
+
+$ make unit-test
+Ran 330 tests in 34.539s
+OK
+
+$ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/review/T65b-receipt.md make require-crit-review
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+
+Crit evidence:
+- review ids: r_f539a8, r_44196f
+- resolved: true (both)
+- source: .agents/worklog/codex/review/T65b-crit-comments.json
+- review outcome: approved
+
+FAKE-PI TRANSCRIPT
+
+== PASS ==
+PASS version: pi 0.84.1
+PASS json: assistant replied exactly OK
+PASS rpc: agent_end received
+RPC envelope KINDS: response,agent_start,message_start,message_end,agent_end
+PASS extension: permgate.ts loaded via --extension
+
+== COOLDOWN_REJECT ==
+FAIL version: expected 0.84.1, got 0.84.2
+SKIP json: exact Pi version unavailable
+SKIP rpc: exact Pi version unavailable
+SKIP extension: exact Pi version unavailable
+
+SCOPE
+- Modified production/test paths are limited to:
+  scripts/validate-agent-assets.py,
+  home/dot_local/bin/common/executable_pi-model-access-check,
+  tests/unit/test_validate_agent_assets.py, and
+  tests/unit/test_pi_model_access_check.py.
+- The new anchor table and five T65b artifacts are permitted task evidence.
+- The orchestrator's scope update permits the living
+  .orchestration/validation/T67-model-access.md procedure; its 13 version
+  tokens across nine lines now name 0.84.1 and its semantics are otherwise
+  unchanged.
+- home/dot_mise and mise.lock have no T65b changes.
+- Existing accepted T65/T66/T67 changes remain in the shared dirty worktree.
+- Historical T67 task/report/acceptance files remain immutable.
+
+PLAN QUALITY GATE
+- Repository plan-quality entrypoints are absent.
+- Manual check passed: required headings, owner-scoped frontmatter, scope,
+  assumptions, design, tests, and open-question handling are present.
+
+RESULT: PASS

@@ -1,5 +1,5 @@
 #!/usr/bin/env -S uv run --no-cache --script
-"""Deterministic-first PermissionRequest gate for Claude Code and Codex."""
+"""Deterministic-first permission gate for Claude Code, Codex, and Pi."""
 
 from __future__ import annotations
 
@@ -120,6 +120,13 @@ def load_policy() -> dict[str, Any]:
             raise ValueError(f"{name} minimum_confidence must be between zero and one")
     if not providers["claude"]["model"].startswith("claude-haiku-4-5-20"):
         raise ValueError("claude classifier must use a dated Haiku model ID")
+    pi = policy.get("pi")
+    if not isinstance(pi, dict):
+        raise TypeError("pi policy must be an object")
+    if pi.get("decision_layers") != ["deny_patterns", "allow_patterns"]:
+        raise ValueError("pi must reuse the deterministic deny and allow layers")
+    if pi.get("llm_enabled") is not False:
+        raise ValueError("pi llm classifier must remain disabled")
     categories = policy.get("categories")
     if not isinstance(categories, list) or not all(
         isinstance(item, str) for item in categories
@@ -470,7 +477,8 @@ def decide(
                     output = hook_output("allow")
                     break
         if (
-            output is None
+            agent in policy["providers"]
+            and output is None
             and safe_single_action
             and not contains_sensitive_input(tool_input)
         ):
@@ -502,6 +510,39 @@ def decide(
     if classification is not None:
         record.update(classification)
     return output, record
+
+
+def pi_payload(action: dict[str, Any]) -> dict[str, Any]:
+    tool = action.get("tool")
+    field = "command" if tool == "bash" else "path"
+    expected = {"tool", field}
+    if tool not in {"bash", "write", "edit"} or set(action) != expected:
+        raise ValueError("invalid normalized Pi action")
+    value = action.get(field)
+    if not isinstance(value, str):
+        raise TypeError("normalized Pi action value must be a string")
+    return {
+        "tool_name": {"bash": "Bash", "write": "Write", "edit": "Edit"}[tool],
+        "tool_input": {field: value},
+    }
+
+
+def run_pi(raw_input: str) -> int:
+    try:
+        action = json.loads(raw_input)
+        if not isinstance(action, dict):
+            raise TypeError("Pi action must be an object")
+        payload = pi_payload(action)
+        policy = load_policy()
+        _, record = decide("pi", payload, policy)
+        append_log(record)
+        decision = record["decision"]
+        if decision not in {"allow", "deny", "ask"}:
+            raise ValueError("invalid Pi decision")
+    except (OSError, KeyError, TypeError, ValueError, re.error):
+        return 1
+    print(json.dumps({"decision": decision}, separators=(",", ":")))
+    return 0
 
 
 def run_bench(policy: dict[str, Any]) -> int:
@@ -560,6 +601,8 @@ def main() -> int:
             return 0
         return run_bench(policy)
     agent = sys.argv[1]
+    if agent == "pi":
+        return run_pi(sys.stdin.read())
     if agent not in {"claude", "codex"}:
         return 0
     raw_input = sys.stdin.read()

@@ -1,0 +1,147 @@
+T58 validation
+Generated: 2026-08-16T13:58:00+09:00
+
+1. TEST-FIRST EVIDENCE
+----------------------
+Before implementation:
+  UV_CACHE_DIR=/private/tmp/t58-uv-cache uv run python -m unittest tests.unit.test_remove_agent_asset tests.unit.test_check_agent_runtime.CheckAgentRuntimeTest.test_orphan_detection_classifies_accounted_stale_and_orphan -v
+
+Result:
+  Ran 10 tests
+  FAILED (failures=10, errors=1)
+
+Expected causes: remove-agent-asset and orphaned_asset_warnings did not exist.
+
+Final targeted command:
+  UV_CACHE_DIR=/private/tmp/t58-uv-cache uv run python -m unittest tests.unit.test_remove_agent_asset tests.unit.test_check_agent_runtime.CheckAgentRuntimeTest.test_orphan_detection_classifies_accounted_stale_and_orphan -v
+
+Result:
+  Ran 13 tests in 2.795s
+  OK
+
+2. REQUIRED FORMAT, SHELL, AND PYTHON GATES
+--------------------------------------------
+Commands:
+  make format
+  bash -n home/dot_local/bin/common/executable_remove-agent-asset
+  shellcheck home/dot_local/bin/common/executable_remove-agent-asset
+  /opt/homebrew/bin/ruff check --select F scripts/check-agent-runtime.py tests/unit/test_check_agent_runtime.py tests/unit/test_remove_agent_asset.py
+  git diff --check
+
+Results:
+  shfmt --indent 4 --space-redirects --diff .
+  All checks passed!
+  Every command exited 0; bash, shellcheck, shfmt, and diff check produced no diagnostics.
+
+Harness note: a later combined artifact check initially used `path` as a zsh loop variable, which rewrote zsh's special `PATH` array and made subsequent `jq`, `git`, and `stat` lookups exit 127. Renaming the variable to `artifact_path` made the same unchanged checks pass; no product or fixture mutation occurred. The reusable lesson is recorded in `.agents/worklog/codex/learn/20260816_140100_learn.md`.
+
+3. FULL UNIT TEST GATE
+----------------------
+Command:
+  UV_CACHE_DIR=/private/tmp/t58-uv-cache make unit-test
+
+Output tail:
+  ----------------------------------------------------------------------
+  Ran 280 tests in 42.083s
+
+  OK
+
+Result: PASS; 280 total, 13 new T58 cases (12 remover plus one doctor taxonomy test) over the accepted 267-test baseline.
+
+4. ASSET VALIDATION GATE
+------------------------
+Command:
+  make validate-agent-assets
+
+Output:
+  uv run --with pyyaml scripts/validate-agent-assets.py
+  agent asset validation ok
+
+Result: PASS. An earlier isolated-empty-cache attempt could not resolve PyYAML because network access was unavailable; rerunning the exact required command with the existing uv cache passed and made no dependency change.
+
+5. FAKE-HOME GUARD TRANSCRIPTS
+------------------------------
+Fixture root:
+  /private/tmp/t58-fake-home.clbfM0
+
+Default dry run (target and manifest unchanged):
+  CASE corrected-default-dry-run
+  DRY-RUN: rm -rf -- /private/tmp/t58-fake-home.clbfM0/home/.agents/cache/keep
+  DRY-RUN: remove manifest step dry_demo
+  target_after_dry_run=yes manifest_has_step=true manifest_mode=600
+
+Explicit --yes (only selected target/step removed; sibling retained):
+  CASE explicit-yes
+  REMOVE: rm -rf -- /private/tmp/t58-fake-home.clbfM0/home/.agents/cache/remove-me
+  REMOVE: manifest step remove_demo
+  target_after_yes=no sibling_after_yes=yes manifest_mode=600
+  remaining step: tampered
+
+Tampered path outside fixed roots:
+  CASE tampered-prefix
+  ERROR: refusing path outside allowed asset roots: /private/tmp/t58-fake-home.clbfM0/outside
+  exit=1 outside_after_refusal=yes
+
+Unknown step:
+  CASE unknown-step
+  ERROR: unknown manifest step: absent
+  Known steps: tampered
+  exit=1
+
+Additional unit-pinned guards:
+  test_all_paths_are_preflighted_before_any_deletion ... ok
+  test_recorded_symlink_is_removed_without_following_target ... ok
+
+The first proves a safe-first/unsafe-second entry cannot partially delete. The second proves the final recorded link is removed while its external target file remains.
+
+Doctor taxonomy fixture output:
+  WARN: orphaned agent asset: /private/tmp/t58-fake-home.clbfM0/doctor-home/.agents/orphan-root; manual review required
+  WARN: stale agent asset: /private/tmp/t58-fake-home.clbfM0/doctor-home/.agents/stale-root; suggested: remove-agent-asset install_stale_root
+  WARN: orphaned agent asset: /private/tmp/t58-fake-home.clbfM0/doctor-home/.agents/skills/orphan-skill; manual review required
+  WARN: stale agent asset: /private/tmp/t58-fake-home.clbfM0/doctor-home/.agents/skills/stale-skill; suggested: remove-agent-asset install_stale_skill
+
+Source-managed skill, source-managed plugins, Understand-Anything, and compactiondb fixtures were silent.
+
+6. DIFF SCOPE
+-------------
+T58 product/test status:
+   M scripts/check-agent-runtime.py
+   M tests/unit/test_check_agent_runtime.py
+  ?? home/dot_local/bin/common/executable_remove-agent-asset
+  ?? tests/unit/test_remove_agent_asset.py
+
+Tracked diff stat (the checker also contains accepted T56 baseline work):
+  scripts/check-agent-runtime.py         | 123 ++++++++++++++++++++++++++++++++-
+  tests/unit/test_check_agent_runtime.py |  50 ++++++++++++++
+  2 files changed, 172 insertions(+), 1 deletion(-)
+
+New authorized files:
+  home/dot_local/bin/common/executable_remove-agent-asset (482 lines, executable)
+  tests/unit/test_remove_agent_asset.py (340 lines)
+
+T58 writes are limited to these authorized product/test files, its five artifacts, and ignored worklog review/plan/todo evidence. Existing accepted T54-T57 changes were preserved. In particular, T58 did not edit scripts/update-agent-assets.sh or scripts/lib/asset-manifest.sh.
+
+7. REVIEW AND MEMORY GATES
+--------------------------
+Crit data:
+  .agents/worklog/codex/review/20260816_135544_T58_crit-comments.json
+
+Receipt:
+  .agents/worklog/codex/review/20260816_135544_T58_receipt.md
+
+Resolved approval:
+  r_439f43
+
+Command:
+  AGENT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/review/20260816_135544_T58_receipt.md make require-crit-review
+
+Output:
+  Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+
+Memory command:
+  python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "Installed agent assets are reversible: remove-agent-asset executes the manifest-recorded inverse per step (dry-run default, --yes required, prefix-guarded to manifest paths only), and doctor lists orphaned assets with removal suggestions but never deletes."
+
+Output:
+  5ed9d1d9-34ac-443b-8eeb-1cbda7ce47a2
+
+No Bats, commit, push, chezmoi apply, dependency change, live install/remove cycle, or real-HOME destructive test occurred.

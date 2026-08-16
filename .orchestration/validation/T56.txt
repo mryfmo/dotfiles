@@ -1,0 +1,174 @@
+T56 validation
+Generated: 2026-08-16T12:28:58+09:00
+
+1. DISCOVERY EVIDENCE
+---------------------
+Public Claude plugin cache version directories observed:
+  ~/.claude/plugins/cache/understand-anything/understand-anything/2.9.4
+  ~/.claude/plugins/cache/ponytail/ponytail/4.8.4
+  ~/.claude/plugins/cache/ponytail/ponytail/4.9.0
+  ~/.claude/plugins/cache/crit/crit/1.8.1
+  ~/.claude/plugins/cache/crit/crit/1.8.2
+  ~/.claude/plugins/cache/crit/crit/1.8.6
+  ~/.claude/plugins/cache/crit/crit/1.8.7
+  ~/.claude/plugins/cache/claude-plugins-official/superpowers/6.2.0
+  ~/.claude/plugins/cache/claude-plugins-official/superpowers/6.3.0
+
+Public managed roots observed:
+  ~/.agents/compactiondb
+  ~/.agents/skills
+  ~/.agents/plugins
+
+The detector reads directory/file names and mtimes only. No harness session state or undocumented harness file was read.
+
+2. TEST-FIRST EVIDENCE
+----------------------
+Before implementation:
+  uv run python -m unittest tests.unit.test_agent_session_staleness -v
+
+Result:
+  Ran 6 tests in 0.823s
+  FAILED (failures=4, errors=2)
+  Expected causes: new executable absent and doctor delegation function absent.
+
+After implementation and exclusion coverage:
+  uv run python -m unittest tests.unit.test_agent_session_staleness -v
+
+Result:
+  Ran 7 tests in 1.351s
+  OK
+
+The 6,000-file fixture asserts the scanner subprocess completes below the 5-second wall limit. Runtime state/spool/health, SQLite, and agmsg runtime paths are also pinned as excluded.
+
+3. REQUIRED VALIDATE-AGENT-ASSETS GATE
+---------------------------------------
+Command:
+  make validate-agent-assets
+
+Output:
+  uv run --with pyyaml scripts/validate-agent-assets.py
+  agent asset validation ok
+
+Result:
+  PASS. T55 hook composition accepts the appended async SessionStart entry; existing order and synchronous budgets remain valid.
+
+4. REQUIRED UNIT TEST GATE
+--------------------------
+Command:
+  make unit-test
+
+Output tail:
+  ----------------------------------------------------------------------
+  Ran 262 tests in 54.211s
+
+  OK
+
+Result:
+  PASS; 262 total, 7 new.
+
+5. REQUIRED FORMAT AND PYTHON STYLE GATES
+------------------------------------------
+Command:
+  make format
+
+Output:
+  shfmt --indent 4 --space-redirects --diff .
+
+Result:
+  exit=0; no diff output.
+
+Command:
+  /opt/homebrew/bin/ruff check home/dot_local/bin/common/executable_agent-session-staleness scripts/check-agent-runtime.py tests/unit/test_agent_session_staleness.py
+
+Output:
+  All checks passed!
+
+Command:
+  uv run --with pyyaml scripts/generate-agent-configs.py --check
+
+Output:
+  generated agent configs are up to date
+
+Command:
+  git diff --check -- <T56 product/test paths>
+
+Result:
+  exit=0; no output.
+
+Python was chosen, so the task's conditional bash/shdoc gates do not apply.
+
+6. FAKE-HOME TRANSCRIPTS
+------------------------
+Fixture:
+  /private/tmp/t56-fake-home.QoQKhE
+  Contains one skills file, one plugins file, and ~/.claude/settings.json.
+
+Clean case:
+  HOME=<fixture> <uv-managed-python> executable_agent-session-staleness check --since 4102444800
+
+Output:
+  <empty>
+Exit:
+  0
+
+Detected case:
+  HOME=<fixture> <uv-managed-python> executable_agent-session-staleness check --since 0
+
+Output:
+  restart recommended: claude-settings (~/.claude/settings.json)
+  restart recommended: plugins (~/.agents/plugins/demo/plugin.json)
+  restart recommended: skills (~/.agents/skills/demo/SKILL.md)
+Exit:
+  0
+
+Failure-isolated case:
+  HOME=<fixture> <uv-managed-python> executable_agent-session-staleness check --since invalid
+
+Stdout:
+  <empty>
+Stderr:
+  agent-session-staleness: could not convert string to float: 'invalid'
+Exit:
+  0
+
+No-argument debug case:
+  2026-08-16T03:25:04.964438Z claude-settings ~/.claude/settings.json
+  2026-08-16T03:25:04.964406Z plugins ~/.agents/plugins/demo/plugin.json
+  2026-08-16T03:25:04.964366Z skills ~/.agents/skills/demo/SKILL.md
+Exit:
+  0
+
+Validation harness note: the first fake-HOME attempt used `HOME=<fixture> uv run ...`; mise rejected its now-untrusted config under the substituted HOME and exited 1 before the product script ran. Re-running with the absolute interpreter selected by `uv run` isolated HOME only for the product, producing the transcripts above. This was a validation-command issue, not a product defect.
+
+7. GENERATION AND HOOK SCOPE
+----------------------------
+Manifest append:
+  command={{ .chezmoi.homeDir }}/.local/bin/common/agent-session-staleness check --since "$(date +%s)"
+  async=true
+  timeout=5
+
+It follows the existing herdr SessionStart entry. The generator required no source edit because render_claude_settings already emits the complete session_start list. Only the managed Claude settings JSON was regenerated.
+
+8. T56 DIFF SCOPE
+------------------
+Tracked diff stat:
+  home/.chezmoitemplates/claude-settings-managed.json | 11 +++++++++++
+  home/dot_agents/agent-config.yaml                   |  6 ++++++
+  scripts/check-agent-runtime.py                      | 18 +++++++++++++++++-
+  3 files changed, 34 insertions(+), 1 deletion(-)
+
+New authorized files are untracked and therefore absent from ordinary diff stat:
+  home/dot_local/bin/common/executable_agent-session-staleness (195 lines, mode 0755)
+  tests/unit/test_agent_session_staleness.py (180 lines)
+
+Worker-authored product/test changes are limited to these five authorized paths. Worker-authored evidence is limited to the five T56 artifacts. Existing accepted T54/T55 worktree changes and their orchestration artifacts were present at the T56 baseline and were not modified by T56.
+
+9. COMPACTIONDB DECISION RECORD
+-------------------------------
+Command:
+  python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "Sessions detect their own staleness: an async SessionStart hook and a doctor mode compare managed-asset update times against session start and print a restart recommendation; detection is an approximation from mtimes/plugin-cache versions, never from harness internals."
+
+Output:
+  d48ba5d1-4395-4820-9fe3-7b4dff8d33da
+
+No Bats, commit, push, chezmoi apply, dependency change, internal-state parsing, synchronous hook registration, or hook reordering occurred. Live installed-session warning verification is deferred to T61 E2E-2' by task contract.

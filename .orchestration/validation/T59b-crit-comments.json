@@ -1,0 +1,321 @@
+[
+  {
+    "scope": "review",
+    "id": "r_8348a3",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Adversarial-review follow-up: remove the hard-coded home path from the agent manifest, drop a dead config key, and de-duplicate the agmsg slash command. Reviewed in a separate context on the review profile; four findings raised and all addressed before completion.",
+    "author": "Claude Code",
+    "created_at": "2026-08-05T07:05:26Z",
+    "updated_at": "2026-08-05T07:05:49Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_b2d89f",
+        "body": "All four findings addressed. Gates: make unit-test 245 passed, make validate-agent-assets ok, generator --check no drift, CI-scope shfmt/shellcheck clean, make doctor tools=passed runtime=passed. Bats not run locally per AGENTS.md Test Policy. Remaining out-of-scope item recorded: four hard-coded /Users/mryfmo paths in home/Library/LaunchAgents/com.mryfmo.dotfiles.usage-snapshot.plist.",
+        "author": "Claude Code",
+        "created_at": "2026-08-05T07:05:49Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_65c419",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review scope approval: reviewed the current generated mise manifest and lock diff after make upgrade. Version pins and lock entries agree; changes are upgrade-only, git diff --check passes, and installed Codex/Claude versions match their pins. No repository-code finding.",
+    "author": "Codex",
+    "created_at": "2026-08-10T07:28:53Z",
+    "updated_at": "2026-08-10T07:29:01Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_f2b62f",
+        "body": "Approved after scoped review; no changes requested.",
+        "author": "Codex",
+        "created_at": "2026-08-10T07:29:01Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_9d84ab",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "T51 orchestrator review (CompactionDB research integration, T45-T51a): adversarial acceptance was performed per task — full-diff reads, independent gate re-runs (vendor unittest 74, validate 10/10, repo unit-test 250, validate-agent-assets, make format), and live E2E (recovery injection E2E-1, codex notify ingest E2E-2 fresh+restore). Evidence: .orchestration/acceptance/T45..T51a and .orchestration/validation/T51-e2e.txt. Approving the change-set for PR.",
+    "author": "Claude Code",
+    "created_at": "2026-08-16T01:02:33Z",
+    "updated_at": "2026-08-16T01:02:47Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_f5ffec",
+        "body": "Verified at acceptance; evidence in .orchestration. Resolving as review-scope record.",
+        "author": "Claude Code",
+        "created_at": "2026-08-16T01:02:47Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_392351",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Finding (fixed in-flight): T48 wired a chezmoi template placeholder into modify_ scripts whose output is never template-rendered; the literal '{{ .chezmoi.homeDir }}' reached ~/.codex/deep.config.toml. Caught by live deployment (E2E principle), fixed by T48c apply-time Path.home() expansion, re-verified end-to-end (ledger rows 18/19 ingested_from=codex).",
+    "author": "Claude Code",
+    "created_at": "2026-08-16T01:02:33Z",
+    "updated_at": "2026-08-16T01:02:47Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_941b14",
+        "body": "Verified at acceptance; evidence in .orchestration. Resolving as review-scope record.",
+        "author": "Claude Code",
+        "created_at": "2026-08-16T01:02:47Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_434b8f",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Finding (fixed in-flight): vendored ingest could not attribute sources (drain stamped the spool filename), blocking T48; fixed by T48b --ingested-from with dual validation and quarantine on tampered tokens, default path byte-identical (pinned by tests).",
+    "author": "Claude Code",
+    "created_at": "2026-08-16T01:02:33Z",
+    "updated_at": "2026-08-16T01:02:47Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_6691d6",
+        "body": "Verified at acceptance; evidence in .orchestration. Resolving as review-scope record.",
+        "author": "Claude Code",
+        "created_at": "2026-08-16T01:02:47Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_3e5654",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "T57 review-scope approval: reviewed scripts/update-agent-assets.sh, scripts/lib/asset-manifest.sh, tests/unit/test_asset_manifest.py, and the test fixture update for atomicity, failure isolation, exact 11-step coverage, fake-HOME safety, and unchanged install command ordering; no unresolved finding remains.",
+    "author": "Codex",
+    "created_at": "2026-08-16T03:42:50Z",
+    "updated_at": "2026-08-16T03:42:57Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_29a188",
+        "body": "Review complete after targeted and full validation; approval record resolved for the T57 evidence receipt.",
+        "author": "Codex",
+        "created_at": "2026-08-16T03:42:57Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_439f43",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "T58 review scope approved: verified dry-run default and explicit --yes, normalized fixed-root plus manifest-prefix deletion guards with final-symlink preservation, preflight-before-delete behavior, kind-specific inverse commands, atomic 0600 manifest update, doctor WARN-only taxonomy, and fake-HOME/unit coverage. No unresolved findings.",
+    "author": "Codex",
+    "created_at": "2026-08-16T04:55:37Z",
+    "updated_at": "2026-08-16T04:55:44Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_8fa04c",
+        "body": "Review complete; targeted and full validations are green, so this approval record is resolved as required evidence.",
+        "author": "Codex",
+        "created_at": "2026-08-16T04:55:44Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_71a072",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "T59 review scope approved: verified report-only output parity, detected-only missing/content/execute/manifest-path repairs, fixed step whitelist and mise identity reconstruction, sourced updater main isolation under strict mode, one-round convergence failure, warning-only STALE/ORPHAN behavior, absent-step/version-mismatch exclusions, and native Make REPAIR propagation. No unresolved findings.",
+    "author": "Codex",
+    "created_at": "2026-08-16T05:12:13Z",
+    "updated_at": "2026-08-16T05:12:20Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_a7d099",
+        "body": "Review complete after targeted, full-suite, fake-HOME, static, and asset validation; approval record resolved for T59 evidence.",
+        "author": "Codex",
+        "created_at": "2026-08-16T05:12:20Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_68fe8d",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "T60 review scope approved: verified the existing v1 RESULT field block is unchanged, effects is optional and limited to persistent out-of-repository side effects, allowed-files edits are excluded, all three reverse-mapping forms align with T57/T58, acceptance verification is ordered before the existing acceptance step, the rule adds exactly one matching bullet, and T45 memory-marker wording remains unchanged. No unresolved findings.",
+    "author": "Codex",
+    "created_at": "2026-08-16T05:19:05Z",
+    "updated_at": "2026-08-16T05:19:14Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_394279",
+        "body": "Review complete after full-diff, four-way H6 consistency, backward-compatibility, asset-validation, and scope checks; approval record resolved for T60 evidence.",
+        "author": "Codex",
+        "created_at": "2026-08-16T05:19:14Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_05a5cf",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "T56b review scope approval: inspected the staleness hook implementation, manifest/generated command, and dedicated regression tests. The persisted epoch is keyed safely by hashed session_id, created with 0700/0600 permissions under a file lock, reused through the existing check path, pruned on a bounded seven-day scan, and all hook input/failure paths remain silent exit 0. Doctor/check semantics and hook order are unchanged; targeted, full-unit, generator, format, Ruff, asset-composition, adversarial-input, and fake-HOME two-call checks passed.",
+    "author": "Codex",
+    "created_at": "2026-08-16T05:36:22Z",
+    "updated_at": "2026-08-16T05:36:30Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_3e910b",
+        "body": "Review complete after inspecting the exact T56b implementation and all required validation evidence; no change requested.",
+        "author": "Codex",
+        "created_at": "2026-08-16T05:36:30Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_30e59b",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "T59b review scope approved: verified every generated chezmoi repair action uses the fixed single-target apply --force prefix, the existing shared-skill missing-files parser now converges for a deleted executable skill in fake HOME, only the three exact agmsg-root legacy database filenames are ignored, neighboring unexpected files still fail, and report-only, chmod, asset-step, warning, one-round convergence, and stray-file non-mutation contracts remain unchanged. Targeted 26 tests, full 298 tests, asset validation, format, Ruff, whitespace, and fake-HOME argv transcript passed.",
+    "author": "Codex",
+    "created_at": "2026-08-16T05:46:52Z",
+    "updated_at": "2026-08-16T05:47:03Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_bcffd2",
+        "body": "Review complete after exact-scope and adversarial validation; no change requested.",
+        "author": "Codex",
+        "created_at": "2026-08-16T05:47:03Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "file",
+    "path": "home/dot_agents/agent-config.yaml",
+    "id": "c_98f222",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "C-1 (Critical): the initial fix changed the SessionStart hook to bash \"$HOME/...\" session. That breaks the byte-exact contract documented in .orchestration/tasks/T3-agent-config-herdr-hook.md:33 -- herdr integration install no-ops only on an exact string match, so `make update` would append a duplicate entry every run and the hook would fire twice. Addressed: use bash '{{ .chezmoi.homeDir }}/...' session, which render_managed_template expands to the same absolute single-quoted string. Verified with chezmoi cat that ~/.claude/settings.json is now byte-identical and no longer appears in chezmoi status.",
+    "author": "Claude Code",
+    "created_at": "2026-08-05T07:05:26Z",
+    "updated_at": "2026-08-05T07:05:49Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_c00509",
+        "body": "Addressed. Manifest now uses bash '{{ .chezmoi.homeDir }}/.claude/hooks/herdr-agent-state.sh' session, which render_managed_template expands to the byte-identical string herdr writes. Verified: ~/.claude/settings.json dropped out of chezmoi status and check-agent-runtime.py reports runtime=passed. The interim modify_private_settings.json stale-strip was reverted as unnecessary and prone to oscillating against herdr's ensure step.",
+        "author": "Claude Code",
+        "created_at": "2026-08-05T07:05:49Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "file",
+    "path": "scripts/validate-agent-assets.py",
+    "id": "c_50afb6",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "M-1 (Medium): the first guard scanned lines for /Users/ only. It missed Linux /home/\u003cuser\u003e/ paths (the exact portability case the change targets), false-positived on flow-style projects mappings and trailing comments, and mis-tracked nested projects blocks. Addressed: match /(Users|home)/\u003cname\u003e/, only open the exemption when not already inside one, reset on dedent, and initialise projects_indent to None so there is no conditionally-undefined name. Six tests cover reject-macOS, reject-linux, allow-homeDir, flow-style, subtree-only exemption, and duplicate detection.",
+    "author": "Claude Code",
+    "created_at": "2026-08-05T07:05:26Z",
+    "updated_at": "2026-08-05T07:05:49Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_8685ab",
+        "body": "Addressed. Guard now matches /(?:Users|home)/\u003cname\u003e/, opens the projects exemption only when not already inside one, resets on dedent, and initialises projects_indent to None. Kept as a text scan because make unit-test does not install PyYAML; the YAML variant made three tests error and two reject-tests pass for the wrong reason. Six tests cover macOS reject, Linux reject, homeDir allow, flow-style projects, subtree-only exemption, and duplicate detection.",
+        "author": "Claude Code",
+        "created_at": "2026-08-05T07:05:49Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "file",
+    "path": "scripts/validate-agent-assets.py",
+    "id": "c_c8de43",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "M-2 (Medium): the Python post-edit formatter reflowed both touched files, producing 289/64 line churn for ~40 lines of substance and moving tomllib out of the stdlib import block. Addressed: reverted each file to HEAD and re-applied only the additions without the formatter, so the diff is now 41/0 and 110/0 pure additions with tomllib untouched.",
+    "author": "Claude Code",
+    "created_at": "2026-08-05T07:05:26Z",
+    "updated_at": "2026-08-05T07:05:49Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_8d1c1f",
+        "body": "Addressed. Both files reverted to HEAD and the additions re-applied without the formatter. scripts/validate-agent-assets.py is now +41/-0 and tests/unit/test_validate_agent_assets.py +110/-0, with tomllib left in the stdlib import block.",
+        "author": "Claude Code",
+        "created_at": "2026-08-05T07:05:49Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "file",
+    "path": "scripts/validate-agent-assets.py",
+    "id": "c_b6e11b",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "L-1 (Low): validate_claude_command_parity compared only the symlink target string, so renaming or deleting cmd.claude-code.md would leave a dangling link that no check catches (commands/ is outside check-agent-runtime.py's scope). Addressed: assert the resolved template is an existing file, covered by test_claude_command_parity_rejects_dangling_target.",
+    "author": "Claude Code",
+    "created_at": "2026-08-05T07:05:26Z",
+    "updated_at": "2026-08-05T07:05:49Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_39502f",
+        "body": "Addressed. validate_claude_command_parity now asserts the resolved template is an existing file, covered by test_claude_command_parity_rejects_dangling_target.",
+        "author": "Claude Code",
+        "created_at": "2026-08-05T07:05:49Z",
+        "review_round": 1
+      }
+    ]
+  }
+]

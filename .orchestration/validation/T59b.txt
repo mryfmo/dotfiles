@@ -1,0 +1,153 @@
+T59b validation
+Generated: 2026-08-16T14:47:27+09:00
+
+1. TEST-FIRST EVIDENCE
+----------------------
+Command:
+  UV_CACHE_DIR=/private/tmp/t59b-uv-cache uv run python -m unittest tests.unit.test_check_agent_runtime -v
+
+Before implementation:
+  Ran 26 tests in 0.164s
+  FAILED (failures=4)
+
+Expected failing areas:
+  test_deleted_shared_skill_file_repair_converges
+    generated plain `chezmoi apply <target>` instead of the required forced argv.
+  test_every_generated_chezmoi_repair_action_is_forced
+    all four generated chezmoi mappings lacked `--force`.
+  test_only_exact_agmsg_root_legacy_database_names_are_ignored
+    all three legacy database files were reported as unexpected.
+  test_repair_actions_map_only_detected_file_drift
+    existing missing/content/directory expectations now require `--force`.
+
+After implementation:
+  Ran 26 tests in 0.172s
+  OK
+
+2. REQUIRED FULL UNIT GATE
+--------------------------
+Command:
+  UV_CACHE_DIR=/private/tmp/t59b-uv-cache make unit-test
+
+Output tail:
+  ----------------------------------------------------------------------
+  Ran 298 tests in 25.241s
+
+  OK
+
+Result: PASS; 298 total, 26 checker tests, 3 new T59b test methods over the accepted 295-test T56b baseline.
+
+3. FORMAT, PYTHON, ASSET, AND WHITESPACE GATES
+----------------------------------------------
+Commands:
+  make format
+  /opt/homebrew/bin/ruff check scripts/check-agent-runtime.py tests/unit/test_check_agent_runtime.py
+  UV_CACHE_DIR=/private/tmp/t56b-uv-cache make validate-agent-assets
+  git diff --check
+
+Outputs:
+  shfmt --indent 4 --space-redirects --diff .
+  All checks passed!
+  uv run --with pyyaml scripts/validate-agent-assets.py
+  agent asset validation ok
+  git diff --check: empty
+
+Result: PASS. Ruff format was not applied because it would mechanically reflow the accepted aggregate T59 Python diff; repository `make format` and Ruff lint are the established T59 gates.
+
+4. FAKE-HOME DELETED-FILE CONVERGENCE
+--------------------------------------
+Command:
+  UV_CACHE_DIR=/private/tmp/t59b-uv-cache uv run python /private/tmp/t59b_fake_home.py
+
+The harness used the real checker mapper and `main([])`. Only `execute_repair` was replaced with an exact argv spy that copied the source file inside fake HOME; real chezmoi was never invoked.
+
+Transcript:
+  fixture=/var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/t59b-fake-home-67pg1z8m
+  initial_stderr:
+  ERROR: shared skill directory is missing files: agmsg/scripts/history.sh
+  stdout:
+  repaired: missing file .../home/.agents/skills/agmsg/scripts/history.sh (chezmoi apply --force .../home/.agents/skills/agmsg/scripts/history.sh)
+  active agent runtime files match this chezmoi source tree
+  stub_argv=chezmoi apply --force .../home/.agents/skills/agmsg/scripts/history.sh
+  post_scan=clean
+  target_mode=755
+  legacy_runtime_files_preserved=3
+  exit=0
+
+Result: PASS. One action, one target, forced headless argv, second scan clean.
+
+5. EXACT TOLERANCE AND ACTION BOUNDARY
+--------------------------------------
+Accepted exact runtime paths:
+  agmsg/messages.db
+  agmsg/messages.db-wal
+  agmsg/messages.db-shm
+
+Rejected neighboring path pinned by test:
+  agmsg/messages.db.backup
+
+Static generated chezmoi action sites:
+  scripts/check-agent-runtime.py: shared/Claude tree `is missing files` mapping
+  scripts/check-agent-runtime.py: ordinary missing/content/directory mapping
+
+Both expand `(*CHEZMOI_APPLY_COMMAND, str(target))`, where the constant is exactly:
+  ("chezmoi", "apply", "--force")
+
+chmod and asset-step actions do not call chezmoi and are unchanged. Unexpected files produce no repair action.
+
+6. SCOPE
+--------
+T59b product/test writes:
+  scripts/check-agent-runtime.py
+  tests/unit/test_check_agent_runtime.py
+
+T59b evidence writes:
+  .orchestration/reports/T59b.md
+  .orchestration/validation/T59b.txt
+  .orchestration/sandboxes/T59b.md
+  .orchestration/learning/T59b.md
+  .orchestration/autoskill/runs/T59b.md
+  .orchestration/validation/T59b-crit-comments.json
+  .orchestration/validation/T59b-crit-receipt.md
+
+The shared worktree already contains accepted earlier tasks and orchestrator T61 evidence. T59b did not modify them. No Makefile, updater, manifest, guard, HOME runtime, or stray database file changed.
+
+7. PLAN QUALITY AND CRIT REVIEW
+-------------------------------
+Plan-quality entry points checked and unavailable:
+  docs/workflows/plan-quality-gate.md
+  plans/AGENTS.md
+  plans/TEMPLATE.md
+  .claude/agents/plan-quality-reviewer.md
+  .claude/hooks/plan-quality-gate.sh
+  scripts/validate_plan_quality.py / Make target / CI
+
+The AGENTS worklog schema and manual checklist were used.
+
+Crit data:
+  .orchestration/validation/T59b-crit-comments.json
+
+Receipt:
+  .orchestration/validation/T59b-crit-receipt.md
+
+Resolved approval:
+  r_30e59b
+
+Command:
+  AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/validation/T59b-crit-receipt.md make require-crit-review
+
+Output:
+  Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+
+8. COMPACTIONDB FAILURE RECORD AND EFFECTS
+------------------------------------------
+Command:
+  python3 .claude/hooks/contextdb_cli.py memory add --kind failure --scope project --content 'Live REPAIR verification exposed three gaps: shared-skill missing-file findings had no repair mapping (deleted files stayed missing -> non-convergent), plain `chezmoi apply` prompts for a TTY on deleted targets (headless repair fails), and legacy agmsg runtime files at the skill root (messages.db, 2026-08-07) are flagged as ERROR instead of tolerated runtime.'
+
+Output:
+  44303ba5-b1ac-42bc-9748-0b8813ab1662
+
+Declaration:
+  effects=none
+
+No Bats, real chezmoi apply, stray database access, commit, push, dependency change, guard weakening, real-HOME write, global install, or external service registration occurred.

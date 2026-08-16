@@ -1,0 +1,224 @@
+T66 validation transcript
+=========================
+
+Pinned upstream evidence
+------------------------
+source: https://github.com/earendil-works/pi/blob/v0.84.2/packages/coding-agent/src/core/extensions/loader.ts#L455-L508
+evidence: the loader imports the default export, requires a function, and invokes factory(api).
+
+source: https://github.com/earendil-works/pi/blob/v0.84.2/packages/coding-agent/src/core/extensions/types.ts#L1518-L1519
+evidence: ExtensionFactory is (pi: ExtensionAPI) => void | Promise<void>.
+
+source: https://github.com/earendil-works/pi/blob/v0.84.2/packages/coding-agent/src/core/extensions/types.ts#L853-L912
+source: https://github.com/earendil-works/pi/blob/v0.84.2/packages/coding-agent/src/core/extensions/types.ts#L1071-L1074
+evidence: tool_call includes the seven built-ins and may return block/reason.
+
+source: https://github.com/earendil-works/pi/blob/v0.84.2/packages/coding-agent/src/core/extensions/types.ts#L305-L313
+evidence: ExtensionMode is tui|rpc|json|print and hasUI is true for both TUI and RPC.
+decision: only ctx.mode=tui plus ctx.hasUI may confirm; RPC/JSON/print deny.
+
+Decision protocol
+-----------------
+transport: stdin
+producer input: permgate pi reads exactly one normalized object:
+- bash: {"tool":"bash","command":"..."}
+- write/edit: {"tool":"write|edit","path":"..."}
+producer success: exactly one compact JSON line {"decision":"allow|deny|ask"} and exit 0
+producer failure: nonzero; stdout unspecified
+consumer timeout: 7000 ms
+consumer failure mapping: nonzero, timeout, missing stdin, malformed bytes, invalid gated input, and non-TUI ask all return {block:true,reason:"blocked by policy"}
+
+Test-first evidence
+-------------------
+command: uv run python -m unittest <T66 initial focused set> -v
+before implementation: 7 failures across missing Pi CLI output/nonzero behavior, missing extension/hash asset, Node import, and tsc target; the Claude/Codex golden test already passed.
+after implementation: focused permgate, extension, and Pi hash set ran 40 tests; OK.
+
+Review correction
+-----------------
+finding: test_typescript_contract unconditionally invoked a developer-global tsc, which is not pinned in repository dependencies and could fail CI.
+fix: node --check now always runs; tsc --noEmit runs when shutil.which("tsc") finds it and otherwise skips with the Node syntax fallback already green.
+verification: wrapper tests cover Node behavior, Node syntax, and local TypeScript 5.9.3 type checking.
+
+Required gates (final state)
+----------------------------
+command: make format
+result: exit 0; shfmt reported no diff
+
+command: make unit-test
+result: Ran 322 tests in 31.797s; OK
+
+command: make validate-agent-assets
+result: agent asset validation ok
+
+command: node --check home/dot_pi/agent/extensions/permgate.ts
+result: exit 0
+
+command: tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --skipLibCheck tests/unit/pi_permgate_extension_types.d.ts home/dot_pi/agent/extensions/permgate.ts
+result: exit 0 with locally available TypeScript 5.9.3; no dependency added
+
+command: shasum -a 256 home/dot_pi/agent/extensions/permgate.ts
+result: e3591dcba2be96dad59174de4649fca702213dadd0d8217c4b2d9535445c43d6; matches validator constant
+
+command: git diff --check
+result: exit 0
+
+Optional diagnostic
+-------------------
+command: uvx ruff check <T66 Python files>
+result: non-gate repository-wide selection reports legacy import/file-mode/style findings already documented by T65. T66-specific BLE001, ISC004, and new-wrapper I001 checks pass.
+
+Full executable_permgate diff
+-----------------------------
+```diff
+diff --git a/home/dot_local/bin/common/executable_permgate b/home/dot_local/bin/common/executable_permgate
+index bab6af1..722a4c6 100755
+--- a/home/dot_local/bin/common/executable_permgate
++++ b/home/dot_local/bin/common/executable_permgate
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env -S uv run --no-cache --script
+-"""Deterministic-first PermissionRequest gate for Claude Code and Codex."""
++"""Deterministic-first permission gate for Claude Code, Codex, and Pi."""
+ 
+ from __future__ import annotations
+ 
+@@ -120,6 +120,13 @@ def load_policy() -> dict[str, Any]:
+             raise ValueError(f"{name} minimum_confidence must be between zero and one")
+     if not providers["claude"]["model"].startswith("claude-haiku-4-5-20"):
+         raise ValueError("claude classifier must use a dated Haiku model ID")
++    pi = policy.get("pi")
++    if not isinstance(pi, dict):
++        raise TypeError("pi policy must be an object")
++    if pi.get("decision_layers") != ["deny_patterns", "allow_patterns"]:
++        raise ValueError("pi must reuse the deterministic deny and allow layers")
++    if pi.get("llm_enabled") is not False:
++        raise ValueError("pi llm classifier must remain disabled")
+     categories = policy.get("categories")
+     if not isinstance(categories, list) or not all(
+         isinstance(item, str) for item in categories
+@@ -470,7 +477,8 @@ def decide(
+                     output = hook_output("allow")
+                     break
+         if (
+-            output is None
++            agent in policy["providers"]
++            and output is None
+             and safe_single_action
+             and not contains_sensitive_input(tool_input)
+         ):
+@@ -504,6 +512,39 @@ def decide(
+     return output, record
+ 
+ 
++def pi_payload(action: dict[str, Any]) -> dict[str, Any]:
++    tool = action.get("tool")
++    field = "command" if tool == "bash" else "path"
++    expected = {"tool", field}
++    if tool not in {"bash", "write", "edit"} or set(action) != expected:
++        raise ValueError("invalid normalized Pi action")
++    value = action.get(field)
++    if not isinstance(value, str):
++        raise TypeError("normalized Pi action value must be a string")
++    return {
++        "tool_name": {"bash": "Bash", "write": "Write", "edit": "Edit"}[tool],
++        "tool_input": {field: value},
++    }
++
++
++def run_pi(raw_input: str) -> int:
++    try:
++        action = json.loads(raw_input)
++        if not isinstance(action, dict):
++            raise TypeError("Pi action must be an object")
++        payload = pi_payload(action)
++        policy = load_policy()
++        _, record = decide("pi", payload, policy)
++        append_log(record)
++        decision = record["decision"]
++        if decision not in {"allow", "deny", "ask"}:
++            raise ValueError("invalid Pi decision")
++    except (OSError, KeyError, TypeError, ValueError, re.error):
++        return 1
++    print(json.dumps({"decision": decision}, separators=(",", ":")))
++    return 0
++
++
+ def run_bench(policy: dict[str, Any]) -> int:
+     fixtures = [
+         ("Bash", {"command": "gh issue list"}),
+@@ -560,6 +601,8 @@ def main() -> int:
+             return 0
+         return run_bench(policy)
+     agent = sys.argv[1]
++    if agent == "pi":
++        return run_pi(sys.stdin.read())
+     if agent not in {"claude", "codex"}:
+         return 0
+     raw_input = sys.stdin.read()
+```
+
+Scope status
+------------
+command: git status --porcelain
+```text
+ M home/dot_agents/permgate-policy.yaml
+ M home/dot_local/bin/common/executable_permgate
+ M scripts/validate-agent-assets.py
+ M tests/unit/test_permgate.py
+ M tests/unit/test_validate_agent_assets.py
+?? .orchestration/acceptance/T65.md
+?? .orchestration/autoskill/runs/T65.md
+?? .orchestration/autoskill/runs/T66.md
+?? .orchestration/learning/T65.md
+?? .orchestration/learning/T66.md
+?? .orchestration/reports/T65.md
+?? .orchestration/reports/T66.md
+?? .orchestration/sandboxes/T65.md
+?? .orchestration/sandboxes/T66.md
+?? .orchestration/tasks/T65-pi-install-base.md
+?? .orchestration/tasks/T66-permgate-pi.md
+?? .orchestration/validation/T65.txt
+?? .orchestration/validation/T66.txt
+?? home/dot_pi/
+?? tests/unit/pi_permgate_extension.test.mjs
+?? tests/unit/pi_permgate_extension_types.d.ts
+?? tests/unit/test_pi_permgate_extension.py
+```
+
+command: git diff --stat
+```text
+ home/dot_agents/permgate-policy.yaml          |  4 ++
+ home/dot_local/bin/common/executable_permgate | 47 +++++++++++++++-
+ scripts/validate-agent-assets.py              | 37 +++++++++++++
+ tests/unit/test_permgate.py                   | 79 +++++++++++++++++++++++++++
+ tests/unit/test_validate_agent_assets.py      | 61 +++++++++++++++++++++
+ 5 files changed, 226 insertions(+), 2 deletions(-)
+```
+
+Interpretation: all T66 product/test changes are within the task allowlist. The accepted T65 skeleton/artifacts and orchestrator-authored T65/T66 task files remain untracked in the shared worktree and were preserved. Ignored worklog/review evidence does not appear in status. git diff --stat excludes untracked files by Git design.
+
+Plan quality
+------------
+Repository validator/Make target, hook, reviewer definition, template, and CI entrypoints are absent. Manual fallback passed exact scope, explicit stdin protocol, pinned upstream assumptions, trust-boundary validation, concrete positive/adversarial tests, failure STOP conditions, and measured acceptance evidence.
+entrypoint check: docs/workflows/plan-quality-gate.md, plans/AGENTS.md, plans/TEMPLATE.md, .claude/agents/plan-quality-reviewer.md, .claude/hooks/plan-quality-gate.sh, and scripts/validate_plan_quality.py are all absent; no Make/CI plan-quality route exists.
+
+Project memory
+--------------
+command: python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '<T66 decision fact>'
+result: 0f59309c-cbe8-4a0f-826b-df5854cbed69
+
+Review receipt
+--------------
+review_surface: crit-data
+reviewer: codex
+review_source: .agents/worklog/codex/review/T66-crit-comments.json
+review_outcome: approved
+review_notes: Resolved approval r_8b57d3 records the full permission-boundary review and the fixed CI tsc portability finding.
+gate: AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/validation/T66.txt make require-crit-review passed.
+
+Scope and forbidden-action confirmation
+---------------------------------------
+- No real Pi execution, install, dependency change, Bats, chezmoi apply, commit, push, deployment, browser review, or extension network/state access.
+- Full executable_permgate diff is included above.
+- Live gate verification is deferred to T72 E2E-π2.
+- effects=none.

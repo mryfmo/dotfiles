@@ -128,6 +128,73 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.module.load_yaml = lambda _path: manifest
         return manifest
 
+    def write_pi_assets(
+        self, *, trust: str | None = "never", version: str = "0.84.1"
+    ) -> None:
+        settings = {} if trust is None else {"defaultProjectTrust": trust}
+        self.write_text_file(
+            "home/dot_pi/agent/settings.json", json.dumps(settings)
+        )
+        (self.temp_dir / "home/dot_pi/agent/extensions").mkdir(parents=True)
+        extension_source = ROOT / "home/dot_pi/agent/extensions/permgate.ts"
+        if extension_source.exists():
+            shutil.copy2(
+                extension_source,
+                self.temp_dir / "home/dot_pi/agent/extensions/permgate.ts",
+            )
+        self.write_text_file(
+            "home/dot_mise/config.toml",
+            '[tools]\n"npm:@earendil-works/pi-coding-agent" = '
+            f'"{version}"\n',
+        )
+
+    def test_pi_assets_accept_deny_trust_and_exact_pin(self) -> None:
+        self.write_pi_assets()
+
+        self.module.validate_pi_assets()
+
+    def test_pi_assets_reject_missing_default_project_trust(self) -> None:
+        self.write_pi_assets(trust=None)
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_pi_assets()
+
+    def test_pi_assets_reject_version_range(self) -> None:
+        self.write_text_file(
+            "home/dot_mise/config.toml",
+            '[tools]\n"npm:@earendil-works/pi-coding-agent" = "^0.84.1"\n',
+        )
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_pi_assets()
+
+    def test_pi_assets_reject_newer_exact_pin_during_cooldown(self) -> None:
+        self.write_pi_assets(version="0.84.2")
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_pi_assets()
+
+    def test_pi_assets_accept_absent_deferred_pin(self) -> None:
+        self.write_text_file("home/dot_mise/config.toml", "[tools]\n")
+
+        self.module.validate_pi_assets()
+
+    def test_pi_assets_accept_matching_permgate_extension_hash(self) -> None:
+        self.write_pi_assets()
+        extension_path = self.temp_dir / "home/dot_pi/agent/extensions/permgate.ts"
+        self.assertTrue(extension_path.exists())
+
+        self.module.validate_pi_assets()
+
+    def test_pi_assets_reject_tampered_permgate_extension(self) -> None:
+        self.write_pi_assets()
+        extension_path = self.temp_dir / "home/dot_pi/agent/extensions/permgate.ts"
+        self.assertTrue(extension_path.exists())
+        extension_path.write_text(extension_path.read_text() + "// tampered\n")
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_pi_assets()
+
     def test_agent_manifest_accepts_exact_security_profile_set(self) -> None:
         self.write_valid_agent_manifest()
 

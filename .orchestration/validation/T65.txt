@@ -1,0 +1,73 @@
+T65 validation transcript
+=========================
+
+Pinned upstream evidence
+------------------------
+source: https://github.com/earendil-works/pi/blob/v0.84.2/packages/coding-agent/src/core/settings-manager.ts#L63
+evidence: DefaultProjectTrust is exactly "ask" | "always" | "never".
+
+source: https://github.com/earendil-works/pi/blob/v0.84.2/packages/coding-agent/docs/security.md#L22
+quote: `defaultProjectTrust: "ask"` and `"never"` ignore such resources, while `"always"` trusts them.
+decision: use explicit deny value "never" for the global non-interactive baseline.
+
+Test-first evidence
+-------------------
+command: uv run python -m unittest <three initial Pi asset tests>
+before implementation: 3 errors because validate_pi_assets did not exist
+after implementation and spec correction: four focused tests passed, covering valid exact pin, missing trust rejection, absent deferred pin acceptance, and range rejection independent of skeleton presence
+
+Spec correction evidence
+------------------------
+initial make unit-test: Ran 311 tests; one failure in test_mise_lock_matches_config_and_supported_platforms because the config-only Pi pin had no lock entry
+AGMSG update: orchestrator identified its spec defect and required atomic config+lock movement; config edit reverted, no global test exception added, distribution chore deferred until before T67
+
+Required gates (final state)
+----------------------------
+command: make format
+result: exit 0; shfmt reported no diff
+
+command: make unit-test
+result: Ran 312 tests in 33.695s; OK
+
+command: make validate-agent-assets
+result: agent asset validation ok
+
+command: python3 -m json.tool home/dot_pi/agent/settings.json
+result: valid object JSON with only defaultProjectTrust="never"
+
+command: git diff --check
+result: exit 0
+
+command: git diff --exit-code -- home/dot_mise/config.toml home/dot_mise/mise.lock
+result: exit 0; both evidence-pair files unchanged
+
+Optional diagnostic
+-------------------
+command: uvx ruff check scripts/validate-agent-assets.py tests/unit/test_validate_agent_assets.py
+result: non-gate exit 1 with seven pre-existing findings (file mode, import order, and legacy style findings); no finding points to the T65 additions
+
+Project memory
+--------------
+command: python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '<corrected T65 decision>'
+result: 127e89bb-0580-41e9-92b0-6fe77dfb432f
+
+Plan quality
+------------
+Repository validator/Make target, hook, reviewer definition, template, and CI entrypoints are absent. Manual fallback passed exact scope, pinned-source assumptions, concrete commands, positive/adversarial tests, STOP conditions, and measured acceptance evidence.
+entrypoint check: for artifact_path in docs/workflows/plan-quality-gate.md plans/AGENTS.md plans/TEMPLATE.md .claude/agents/plan-quality-reviewer.md .claude/hooks/plan-quality-gate.sh scripts/validate_plan_quality.py; do test -e "$artifact_path"; done; rg -n 'plan-quality|validate-plan|plan quality' Makefile .github
+
+Review receipt
+--------------
+review_surface: crit-data
+reviewer: codex
+review_source: .agents/worklog/codex/review/T65-crit-comments.json
+review_outcome: approved
+review_notes: Resolved scope approval r_3b8dc0 covers pinned trust semantics, skeleton assets, conditional validator boundaries, atomic config+lock correction, focused/full validation, and no side effects.
+gate: AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/validation/T65.txt make require-crit-review passed.
+
+Scope and forbidden-action confirmation
+---------------------------------------
+- Product changes: home/dot_pi/agent/settings.json, home/dot_pi/agent/extensions/.gitkeep, scripts/validate-agent-assets.py, and tests/unit/test_validate_agent_assets.py only.
+- Orchestrator-authored Pi plan, analysis, and task files remain present and untouched.
+- No home/dot_mise config or lock delta, Pi execution/install, dependency change, Bats, chezmoi apply, commit, push, or deployment.
+- effects=none.

@@ -1,0 +1,323 @@
+#!/usr/bin/env bash
+
+# @file pi-model-access-check
+# @brief Verify pinned Pi model access through JSON and RPC one-shot requests.
+# @description
+#   Uses an already-installed Pi 0.84.1 and a provider/model selected through
+#   PI_CHECK_PROVIDER and PI_CHECK_MODEL. The script checks only whether the
+#   provider's documented credential environment variable exists; it never
+#   reads, prints, or forwards credential content explicitly.
+
+set -uo pipefail
+
+readonly EXPECTED_PI_VERSION="0.84.1"
+readonly PROMPT="Reply with exactly OK"
+readonly PERMGATE_EXTENSION="${HOME}/.pi/agent/extensions/permgate.ts"
+
+FAILURES=0
+PI_BIN=""
+
+#
+# @description Print one successful verification step.
+# @arg $1 string Step name.
+# @arg $2 string Result detail.
+#
+function pass() {
+    printf 'PASS %s: %s\n' "$1" "$2"
+}
+
+#
+# @description Print one skipped verification step.
+# @arg $1 string Step name.
+# @arg $2 string Skip reason.
+#
+function skip() {
+    printf 'SKIP %s: %s\n' "$1" "$2"
+}
+
+#
+# @description Print one failed verification step and record failure.
+# @arg $1 string Step name.
+# @arg $2 string Failure reason.
+#
+function fail() {
+    printf 'FAIL %s: %s\n' "$1" "$2"
+    FAILURES=$((FAILURES + 1))
+}
+
+#
+# @description Print the documented credential variable for a supported provider.
+# @arg $1 string Pi provider identifier.
+# @stdout Credential environment-variable name.
+# @exitcode 1 Provider has no supported single-variable mapping.
+#
+function credential_env_for_provider() {
+    case "$1" in
+    anthropic) printf 'ANTHROPIC_API_KEY\n' ;;
+    ant-ling) printf 'ANT_LING_API_KEY\n' ;;
+    azure-openai-responses) printf 'AZURE_OPENAI_API_KEY\n' ;;
+    openai) printf 'OPENAI_API_KEY\n' ;;
+    deepseek) printf 'DEEPSEEK_API_KEY\n' ;;
+    nvidia) printf 'NVIDIA_API_KEY\n' ;;
+    google) printf 'GEMINI_API_KEY\n' ;;
+    amazon-bedrock) printf 'AWS_BEARER_TOKEN_BEDROCK\n' ;;
+    mistral) printf 'MISTRAL_API_KEY\n' ;;
+    groq) printf 'GROQ_API_KEY\n' ;;
+    cerebras) printf 'CEREBRAS_API_KEY\n' ;;
+    cloudflare-ai-gateway | cloudflare-workers-ai) printf 'CLOUDFLARE_API_KEY\n' ;;
+    xai) printf 'XAI_API_KEY\n' ;;
+    openrouter) printf 'OPENROUTER_API_KEY\n' ;;
+    vercel-ai-gateway) printf 'AI_GATEWAY_API_KEY\n' ;;
+    zai) printf 'ZAI_API_KEY\n' ;;
+    zai-coding-cn) printf 'ZAI_CODING_CN_API_KEY\n' ;;
+    opencode) printf 'OPENCODE_API_KEY\n' ;;
+    opencode-go) printf 'OPENCODE_API_KEY\n' ;;
+    radius) printf 'RADIUS_API_KEY\n' ;;
+    huggingface) printf 'HF_TOKEN\n' ;;
+    fireworks) printf 'FIREWORKS_API_KEY\n' ;;
+    together) printf 'TOGETHER_API_KEY\n' ;;
+    baseten) printf 'BASETEN_API_KEY\n' ;;
+    kimi-coding) printf 'KIMI_API_KEY\n' ;;
+    minimax) printf 'MINIMAX_API_KEY\n' ;;
+    minimax-cn) printf 'MINIMAX_CN_API_KEY\n' ;;
+    qwen-token-plan | qwen-token-plan-individual) printf 'QWEN_TOKEN_PLAN_API_KEY\n' ;;
+    qwen-token-plan-cn) printf 'QWEN_TOKEN_PLAN_CN_API_KEY\n' ;;
+    xiaomi) printf 'XIAOMI_API_KEY\n' ;;
+    xiaomi-token-plan-cn) printf 'XIAOMI_TOKEN_PLAN_CN_API_KEY\n' ;;
+    xiaomi-token-plan-ams) printf 'XIAOMI_TOKEN_PLAN_AMS_API_KEY\n' ;;
+    xiaomi-token-plan-sgp) printf 'XIAOMI_TOKEN_PLAN_SGP_API_KEY\n' ;;
+    *) return 1 ;;
+    esac
+}
+
+#
+# @description Return success when JSON output ends with an exact assistant OK.
+# @arg $1 path Pi JSON event-stream file.
+#
+function json_answer_is_ok() {
+    python3 - "$1" << 'PY'
+import json
+import sys
+
+answer = None
+with open(sys.argv[1], encoding="utf-8") as stream:
+    for line in stream:
+        event = json.loads(line)
+        message = event.get("message", {})
+        if event.get("type") != "message_end" or message.get("role") != "assistant":
+            continue
+        content = message.get("content", [])
+        answer = "".join(
+            part.get("text", "")
+            for part in content
+            if isinstance(part, dict) and part.get("type") == "text"
+        )
+raise SystemExit(0 if answer == "OK" else 1)
+PY
+}
+
+#
+# @description Run one RPC prompt through agent_end and record envelope kinds.
+# @arg $1 path Pi executable.
+# @arg $2 string Pi provider identifier.
+# @arg $3 string Pi model identifier.
+# @arg $4 path Explicit permgate extension path.
+# @arg $5 path RPC JSONL output file.
+# @arg $6 path RPC stderr file.
+# @arg $7 path Ordered envelope-kind output file.
+# @exitcode 0 agent_end arrived with an exact assistant OK.
+#
+function run_rpc_check() {
+    python3 - "$@" << 'PY'
+import json
+import selectors
+import subprocess
+import sys
+import time
+
+pi_bin, provider, model, extension, output_path, error_path, kinds_path = sys.argv[1:]
+with open(error_path, "wb") as errors, open(output_path, "wb") as output:
+    process = subprocess.Popen(
+        [
+            pi_bin,
+            "--mode", "rpc",
+            "--provider", provider,
+            "--model", model,
+            "--no-session",
+            "--extension", extension,
+        ],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=errors,
+        bufsize=0,
+    )
+    assert process.stdin is not None
+    assert process.stdout is not None
+    process.stdin.write(json.dumps({
+        "id": "t67-check",
+        "type": "prompt",
+        "message": "Reply with exactly OK",
+    }).encode("utf-8") + b"\n")
+    process.stdin.flush()
+
+    selector = selectors.DefaultSelector()
+    selector.register(process.stdout, selectors.EVENT_READ)
+    deadline = time.monotonic() + 120
+    kinds = []
+    answer = None
+    received_agent_end = False
+    invalid_json = False
+
+    while time.monotonic() < deadline and not received_agent_end:
+        if not selector.select(timeout=min(1, deadline - time.monotonic())):
+            if process.poll() is not None:
+                break
+            continue
+        line = process.stdout.readline()
+        if not line:
+            break
+        output.write(line)
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            kinds.append("invalid_json")
+            invalid_json = True
+            break
+        kind = event.get("type")
+        if isinstance(kind, str) and kind not in kinds:
+            kinds.append(kind)
+        message = event.get("message", {})
+        if kind == "message_end" and message.get("role") == "assistant":
+            answer = "".join(
+                part.get("text", "")
+                for part in message.get("content", [])
+                if isinstance(part, dict) and part.get("type") == "text"
+            )
+        received_agent_end = kind == "agent_end"
+
+    with open(kinds_path, "w", encoding="utf-8") as kinds_file:
+        kinds_file.write(",".join(kinds))
+
+    process.stdin.close()
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        process.terminate()
+        process.wait(timeout=5)
+
+if invalid_json:
+    raise SystemExit(4)
+if not received_agent_end:
+    raise SystemExit(3)
+if process.returncode != 0:
+    raise SystemExit(2)
+raise SystemExit(0 if answer == "OK" else 5)
+PY
+}
+
+if ! PI_BIN="$(command -v pi 2> /dev/null)"; then
+    fail version "pi is not installed"
+    skip json "exact Pi version unavailable"
+    skip rpc "exact Pi version unavailable"
+    skip extension "exact Pi version unavailable"
+    exit 1
+fi
+
+if ! PI_VERSION="$("${PI_BIN}" --version 2>&1)"; then
+    fail version "pi --version failed"
+    skip json "exact Pi version unavailable"
+    skip rpc "exact Pi version unavailable"
+    skip extension "exact Pi version unavailable"
+    exit 1
+fi
+if [ "${PI_VERSION}" != "${EXPECTED_PI_VERSION}" ]; then
+    fail version "expected ${EXPECTED_PI_VERSION}, got ${PI_VERSION}"
+    skip json "exact Pi version unavailable"
+    skip rpc "exact Pi version unavailable"
+    skip extension "exact Pi version unavailable"
+    exit 1
+fi
+pass version "pi ${PI_VERSION}"
+
+PROVIDER="${PI_CHECK_PROVIDER:-}"
+MODEL="${PI_CHECK_MODEL:-}"
+PREREQUISITE_ERROR=""
+if [ -z "${PROVIDER}" ] || [ -z "${MODEL}" ]; then
+    PREREQUISITE_ERROR="set PI_CHECK_PROVIDER and PI_CHECK_MODEL"
+else
+    CREDENTIAL_ENV="$(credential_env_for_provider "${PROVIDER}")" ||
+        PREREQUISITE_ERROR="provider ${PROVIDER} has no documented single-key mapping"
+    if [ -z "${PREREQUISITE_ERROR}" ] && ! printenv "${CREDENTIAL_ENV}" > /dev/null 2>&1; then
+        PREREQUISITE_ERROR="${CREDENTIAL_ENV} is not set"
+    fi
+fi
+
+if [ -n "${PREREQUISITE_ERROR}" ]; then
+    skip json "${PREREQUISITE_ERROR}"
+    skip rpc "${PREREQUISITE_ERROR}"
+    skip extension "model-access prerequisites unavailable"
+    exit 0
+fi
+
+if [ ! -f "${PERMGATE_EXTENSION}" ]; then
+    skip json "permgate extension is unavailable"
+    skip rpc "permgate extension is unavailable"
+    fail extension "missing ${PERMGATE_EXTENSION}"
+    exit 1
+fi
+
+if ! command -v python3 > /dev/null 2>&1; then
+    fail json "python3 is required to validate Pi JSON"
+    fail rpc "python3 is required to drive Pi RPC"
+    fail extension "explicit permgate.ts load was not confirmed"
+    exit 1
+fi
+
+WORK_DIR="$(mktemp -d)"
+trap 'rm -rf -- "${WORK_DIR}"' EXIT
+
+JSON_OUTPUT="${WORK_DIR}/print.jsonl"
+JSON_ERROR="${WORK_DIR}/print.stderr"
+if "${PI_BIN}" \
+    -p "${PROMPT}" \
+    --mode json \
+    --provider "${PROVIDER}" \
+    --model "${MODEL}" \
+    --no-session \
+    --extension "${PERMGATE_EXTENSION}" \
+    > "${JSON_OUTPUT}" 2> "${JSON_ERROR}"; then
+    if json_answer_is_ok "${JSON_OUTPUT}"; then
+        pass json "assistant replied exactly OK"
+    else
+        fail json "assistant response was not exactly OK"
+    fi
+else
+    fail json "pi print invocation failed"
+fi
+
+RPC_OUTPUT="${WORK_DIR}/rpc.jsonl"
+RPC_ERROR="${WORK_DIR}/rpc.stderr"
+RPC_KINDS="${WORK_DIR}/rpc-kinds.txt"
+if run_rpc_check \
+    "${PI_BIN}" \
+    "${PROVIDER}" \
+    "${MODEL}" \
+    "${PERMGATE_EXTENSION}" \
+    "${RPC_OUTPUT}" \
+    "${RPC_ERROR}" \
+    "${RPC_KINDS}"; then
+    pass rpc "agent_end received"
+    printf 'RPC envelope KINDS: %s\n' "$(< "${RPC_KINDS}")"
+    pass extension "permgate.ts loaded via --extension"
+else
+    fail rpc "agent_end not received"
+    if [ -s "${RPC_KINDS}" ]; then
+        printf 'RPC envelope KINDS: %s\n' "$(< "${RPC_KINDS}")"
+    fi
+    fail extension "explicit permgate.ts load was not confirmed"
+fi
+
+if [ "${FAILURES}" -gt 0 ]; then
+    exit 1
+fi
+exit 0

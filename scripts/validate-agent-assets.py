@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import configparser
+import hashlib
 import json
 import re
 import subprocess
@@ -18,6 +19,8 @@ except ImportError:  # pragma: no cover - CI installs PyYAML for this script.
     yaml = None
 
 ROOT = Path(__file__).resolve().parents[1]
+# Regenerate with: shasum -a 256 home/dot_pi/agent/extensions/permgate.ts
+PI_PERMGATE_EXTENSION_SHA256 = "e3591dcba2be96dad59174de4649fca702213dadd0d8217c4b2d9535445c43d6"
 SECRET_PATTERN = re.compile(
     r"""(?ix)
     (
@@ -671,6 +674,39 @@ def validate_understand_anything_assets() -> None:
             fail(f"README.md must document Understand-Anything lifecycle token {token!r}")
 
 
+def validate_pi_assets() -> None:
+    pi_root = ROOT / "home/dot_pi"
+    if pi_root.exists():
+        settings_path = pi_root / "agent/settings.json"
+        if not settings_path.is_file():
+            fail(f"{settings_path} is missing")
+        try:
+            settings = json.loads(settings_path.read_text())
+        except json.JSONDecodeError:
+            fail(f"{settings_path} must contain valid JSON")
+        if not isinstance(settings, dict) or settings.get("defaultProjectTrust") != "never":
+            fail(f'{settings_path} must set defaultProjectTrust to "never"')
+
+        extensions_path = pi_root / "agent/extensions"
+        if not extensions_path.is_dir():
+            fail(f"{extensions_path} is missing")
+        permgate_extension = extensions_path / "permgate.ts"
+        if not permgate_extension.is_file():
+            fail(f"{permgate_extension} is missing")
+        extension_hash = hashlib.sha256(permgate_extension.read_bytes()).hexdigest()
+        if extension_hash != PI_PERMGATE_EXTENSION_SHA256:
+            fail(f"{permgate_extension} content hash does not match the managed asset")
+
+    mise_path = ROOT / "home/dot_mise/config.toml"
+    try:
+        mise = tomllib.loads(mise_path.read_text())
+    except (FileNotFoundError, tomllib.TOMLDecodeError):
+        fail(f"{mise_path} must contain valid TOML")
+    pi_version = mise.get("tools", {}).get("npm:@earendil-works/pi-coding-agent")
+    if pi_version is not None and pi_version != "0.84.1":
+        fail(f"{mise_path} must pin npm:@earendil-works/pi-coding-agent to 0.84.1")
+
+
 def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
     codex_path = ROOT / "home/.chezmoitemplates/codex-config-managed.toml"
     codex_text = render_template_text(codex_path)
@@ -889,6 +925,7 @@ def main() -> None:
     validate_crit_install_assets()
     validate_ponytail_assets(manifest, codex)
     validate_understand_anything_assets()
+    validate_pi_assets()
     validate_model_profile_assets(manifest)
     validate_git_config()
     validate_no_removed_claude_skill()

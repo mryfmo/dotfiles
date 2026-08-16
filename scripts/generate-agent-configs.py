@@ -449,17 +449,28 @@ def render_codex_profile(name: str, profile: dict[str, Any]) -> str:
         "",
         f"model = {quote_toml(codex['model'])}",
         f"model_reasoning_effort = {quote_toml(codex['model_reasoning_effort'])}",
+    ]
+    if notify := codex.get("notify"):
+        lines.append(f"notify = {quote_toml(notify)}")
+    lines.extend([
         "",
         "[features]",
         "hooks = true",
         "",
         "[hooks.state]",
-    ]
+    ])
     return "\n".join(lines) + "\n"
 
 
 def render_codex_profile_modify(name: str, profile: dict[str, Any]) -> str:
     managed = render_codex_profile(name, profile)
+    render_helper = ""
+    managed_source = "MANAGED"
+    if "{{ .chezmoi.homeDir }}" in managed:
+        render_helper = '''\n\ndef render_managed_paths(text: str) -> str:
+    return text.replace("{{ .chezmoi.homeDir }}", str(Path.home()))
+'''
+        managed_source = "render_managed_paths(MANAGED)"
     return f'''#!/usr/bin/env python3
 """Merge the managed Codex {name} profile with Codex-owned runtime state."""
 
@@ -471,7 +482,7 @@ import re
 
 RUNTIME_PREFIXES = {RUNTIME_PREFIXES!r}
 MANAGED = {managed!r}
-
+{render_helper}
 
 def table_name(header: str) -> str | None:
     stripped = header.strip()
@@ -545,7 +556,7 @@ def trusted_hash(chunk: str) -> str | None:
 
 def merge_config(current: str) -> str:
     """Keep profile trust authoritative and only warn when base trust diverges."""
-    managed_chunks = split_chunks(MANAGED)
+    managed_chunks = split_chunks({managed_source})
     current_chunks = split_chunks(current) if current.strip() else []
     current_by_name: dict[str, list[str]] = {{}}
     current_by_runtime_prefix: dict[str, list[tuple[int, str, str]]] = {{}}

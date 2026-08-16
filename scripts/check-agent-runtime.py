@@ -12,10 +12,12 @@ import argparse
 import json
 import os
 import re
+import shlex
 import stat
 import subprocess
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "home"
@@ -28,6 +30,52 @@ AGMSG_RUNTIME_IGNORES = (
     Path("agmsg/run"),
     Path("agmsg/teams"),
 )
+AGMSG_LEGACY_RUNTIME_FILES = {
+    Path("agmsg/messages.db"),
+    Path("agmsg/messages.db-shm"),
+    Path("agmsg/messages.db-wal"),
+}
+AGENT_ROOT_ALLOWLIST = {"compactiondb", "db", "run", "teams", "worklog"}
+UNDERSTAND_SKILL_ALLOWLIST = {
+    "understand",
+    "understand-chat",
+    "understand-dashboard",
+    "understand-diff",
+    "understand-domain",
+    "understand-explain",
+    "understand-figma",
+    "understand-knowledge",
+    "understand-onboard",
+}
+ASSET_STEP_FUNCTIONS = {
+    "ensure_herdr_integrations",
+    "ensure_mise_npm_agent_cli",
+    "update_claude_crit",
+    "update_claude_ponytail",
+    "update_claude_superpowers",
+    "update_claude_understand_anything",
+    "update_codex_crit",
+    "update_codex_ponytail",
+    "update_codex_superpowers",
+    "update_codex_understand_anything",
+    "update_compactiondb",
+}
+UPDATER_SOURCE_COMMAND = (
+    'source "$1"; export PATH="$HOME/.local/share/mise/shims:$PATH"; shift; "$@"'
+)
+CHEZMOI_APPLY_COMMAND = ("chezmoi", "apply", "--force")
+
+
+class RepairAction(NamedTuple):
+    category: str
+    target: Path
+    command: tuple[str, ...]
+
+
+class AssetFinding(NamedTuple):
+    step: str
+    missing_paths: tuple[Path, ...]
+    entry: dict[str, object]
 
 
 def render_template(path: Path) -> str:
@@ -72,7 +120,7 @@ def same_modified(source: Path, target: Path, json_target: bool = False) -> bool
 
 
 def is_ignored_runtime_path(rel: Path) -> bool:
-    return any(
+    return rel in AGMSG_LEGACY_RUNTIME_FILES or any(
         rel == ignored
         or ignored in rel.parents
         or (ignored == Path("agmsg/db") and str(rel).startswith("agmsg/db-"))
@@ -222,6 +270,274 @@ def check_executable_hook(source: Path, target: Path, label: str) -> list[str]:
     return failures
 
 
+def normalized_path(path: Path) -> Path:
+    return Path(os.path.abspath(os.path.normpath(path)))
+
+
+def paths_overlap(left: Path, right: Path) -> bool:
+    left = normalized_path(left)
+    right = normalized_path(right)
+    return left == right or left in right.parents or right in left.parents
+
+
+def manifest_path_owners(manifest_path: Path) -> dict[str, list[Path]]:
+    try:
+        manifest = json.loads(manifest_path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if manifest.get("version") != 1 or not isinstance(manifest.get("steps"), dict):
+        return {}
+
+    owners: dict[str, list[Path]] = {}
+    for step, entry in manifest["steps"].items():
+        if not isinstance(step, str) or not isinstance(entry, dict):
+            continue
+        paths = entry.get("paths")
+        if not isinstance(paths, list) or not all(isinstance(path, str) for path in paths):
+            continue
+        owners[step] = [normalized_path(Path(path).expanduser()) for path in paths]
+    return owners
+
+
+def manifest_asset_findings(home: Path | None = None) -> list[AssetFinding]:
+    home = HOME if home is None else home
+    try:
+        manifest = json.loads((home / ".agents/.installed-manifest.json").read_text())
+    except (OSError, json.JSONDecodeError):
+        return []
+    if manifest.get("version") != 1 or not isinstance(manifest.get("steps"), dict):
+        return []
+
+    findings: list[AssetFinding] = []
+    for step, entry in sorted(manifest["steps"].items()):
+        if not isinstance(step, str) or not isinstance(entry, dict):
+            continue
+        paths = entry.get("paths")
+        if not isinstance(paths, list) or not all(isinstance(path, str) for path in paths):
+            continue
+        missing = tuple(
+            normalized_path(Path(recorded).expanduser())
+            for recorded in paths
+            if not Path(recorded).expanduser().exists()
+        )
+        if missing:
+            findings.append(AssetFinding(step, missing, entry))
+    return findings
+
+
+def asset_failure_message(finding: AssetFinding) -> str:
+    return (
+        f"asset manifest step {finding.step!r} has missing paths: "
+        + ", ".join(str(path) for path in finding.missing_paths)
+    )
+
+
+def mise_step_arguments(entry: dict[str, object]) -> tuple[str, str] | None:
+    commands = entry.get("commands")
+    if not isinstance(commands, list):
+        return None
+    identities = {
+        ("claude", "npm:@anthropic-ai/claude-code")
+        for command in commands
+        if isinstance(command, str)
+        and command.endswith("mise install --force --locked npm:@anthropic-ai/claude-code")
+    } | {
+        ("codex", "npm:@openai/codex")
+        for command in commands
+        if isinstance(command, str)
+        and command.endswith("mise install --force --locked npm:@openai/codex")
+    }
+    return next(iter(identities)) if len(identities) == 1 else None
+
+
+def asset_repair_action(
+    finding: AssetFinding, updater: Path | None = None
+) -> RepairAction | None:
+    if finding.step not in ASSET_STEP_FUNCTIONS:
+        return None
+    arguments: tuple[str, ...] = ()
+    if finding.step == "ensure_mise_npm_agent_cli":
+        identity = mise_step_arguments(finding.entry)
+        if identity is None:
+            return None
+        arguments = identity
+    updater = ROOT / "scripts/update-agent-assets.sh" if updater is None else updater
+    return RepairAction(
+        "asset step missing",
+        finding.missing_paths[0],
+        (
+            "bash",
+            "-c",
+            UPDATER_SOURCE_COMMAND,
+            "bash",
+            str(updater),
+            finding.step,
+            *arguments,
+        ),
+    )
+
+
+def source_derived_directory_names(source_root: Path) -> tuple[set[str], set[str]]:
+    agents_source = source_root / "dot_agents"
+    root_names = {
+        deployed_relative_path(path.relative_to(agents_source)).parts[0]
+        for path in agents_source.iterdir()
+        if path.is_dir()
+    } if agents_source.is_dir() else set()
+    skills_source = agents_source / "skills"
+    skill_names = {
+        deployed_relative_path(path.relative_to(skills_source)).parts[0]
+        for path in skills_source.iterdir()
+        if path.is_dir() or path.is_symlink()
+    } if skills_source.is_dir() else set()
+    return root_names, skill_names
+
+
+def direct_asset_directories(root: Path) -> list[Path]:
+    if not root.is_dir():
+        return []
+    return sorted(
+        path for path in root.iterdir() if path.is_dir() or path.is_symlink()
+    )
+
+
+def orphaned_asset_warnings(
+    home: Path | None = None, source_root: Path | None = None
+) -> list[str]:
+    home = HOME if home is None else home
+    source_root = SOURCE_ROOT if source_root is None else source_root
+    agents_root = home / ".agents"
+    skills_root = agents_root / "skills"
+    source_root_names, source_skill_names = source_derived_directory_names(source_root)
+    owners = manifest_path_owners(agents_root / ".installed-manifest.json")
+    warnings: list[str] = []
+
+    candidates = [
+        (path, source_root_names, AGENT_ROOT_ALLOWLIST)
+        for path in direct_asset_directories(agents_root)
+    ] + [
+        (path, source_skill_names, UNDERSTAND_SKILL_ALLOWLIST | {"db", "run", "teams"})
+        for path in direct_asset_directories(skills_root)
+    ]
+    for path, source_names, allowlist in candidates:
+        if path.name in source_names or path.name in allowlist:
+            continue
+        matching_steps = sorted(
+            step
+            for step, recorded_paths in owners.items()
+            if any(paths_overlap(path, recorded_path) for recorded_path in recorded_paths)
+        )
+        if matching_steps:
+            for step in matching_steps:
+                warnings.append(
+                    f"WARN: stale agent asset: {path}; suggested: remove-agent-asset {shlex.quote(step)}"
+                )
+        else:
+            warnings.append(
+                f"WARN: orphaned agent asset: {path}; manual review required"
+            )
+    return warnings
+
+
+def deployed_target_path(value: str, home: Path) -> Path:
+    if value == "~":
+        return home
+    if value.startswith("~/"):
+        return home / value[2:]
+    return Path(value)
+
+
+def repair_actions(
+    failures: list[str], home: Path | None = None
+) -> list[RepairAction]:
+    home = HOME if home is None else home
+    actions: list[RepairAction] = []
+    tree_roots = {
+        "shared skill directory": home / ".agents/skills",
+        "Claude shared-skill tree": home / ".claude/skills",
+    }
+
+    for failure in failures:
+        if is_warning(failure):
+            continue
+        if " is missing files: " in failure:
+            label, _, values = failure.partition(" is missing files: ")
+            root = tree_roots.get(label)
+            if root is not None:
+                for value in values.split(", "):
+                    target = root / value
+                    actions.append(
+                        RepairAction(
+                            "missing file",
+                            target,
+                            (*CHEZMOI_APPLY_COMMAND, str(target)),
+                        )
+                    )
+            continue
+
+        target_value = ""
+        category = ""
+        command_name = "chezmoi"
+        for marker in (
+            " differs or is missing: ",
+            " managed keys differ or profile is missing: ",
+            " directory is missing: ",
+            " is missing: ",
+        ):
+            if marker in failure:
+                _, _, target_value = failure.partition(marker)
+                target = deployed_target_path(target_value, home)
+                category = (
+                    "content differs"
+                    if target.exists() or target.is_symlink()
+                    else "missing file"
+                )
+                break
+        if not target_value and " differs: " in failure:
+            _, _, target_value = failure.partition(" differs: ")
+            category = "content differs"
+        if not target_value and " is not executable: " in failure:
+            _, _, target_value = failure.partition(" is not executable: ")
+            category = "executable bit missing"
+            command_name = "chmod"
+        if target_value:
+            target = deployed_target_path(target_value, home)
+            command = (
+                ("chmod", "+x", str(target))
+                if command_name == "chmod"
+                else (*CHEZMOI_APPLY_COMMAND, str(target))
+            )
+            actions.append(RepairAction(category, target, command))
+
+    failure_set = set(failures)
+    for finding in manifest_asset_findings(home):
+        if asset_failure_message(finding) not in failure_set:
+            continue
+        action = asset_repair_action(finding)
+        if action is not None:
+            actions.append(action)
+
+    unique: list[RepairAction] = []
+    commands: set[tuple[str, ...]] = set()
+    for action in actions:
+        if action.command not in commands:
+            unique.append(action)
+            commands.add(action.command)
+    return unique
+
+
+def execute_repair(action: RepairAction) -> bool:
+    return subprocess.run(action.command, check=False).returncode == 0
+
+
+def print_failures(failures: list[str]) -> None:
+    for failure in failures:
+        if is_warning(failure):
+            print(failure)
+        else:
+            print(f"ERROR: {failure}", file=sys.stderr)
+
+
 def check() -> list[str]:
     failures: list[str] = []
     checks = [
@@ -286,19 +602,47 @@ def check() -> list[str]:
             "Claude format-edited-files hook",
         )
     )
+    failures.extend(
+        asset_failure_message(finding) for finding in manifest_asset_findings()
+    )
+    failures.extend(orphaned_asset_warnings())
     return failures
 
 
-def main() -> int:
+def run_session_staleness(epoch: str | None) -> int:
+    command = [str(HOME / ".local/bin/common/agent-session-staleness")]
+    if epoch is not None:
+        command.extend(["check", "--since", epoch])
+    return subprocess.run(command, check=False).returncode
+
+
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.parse_args()
+    parser.add_argument(
+        "--session-staleness",
+        nargs="?",
+        const="",
+        metavar="EPOCH",
+        help="show recent managed-asset updates, or compare them with EPOCH",
+    )
+    args = parser.parse_args(argv)
+    if args.session_staleness is not None:
+        return run_session_staleness(args.session_staleness or None)
     failures = check()
+    print_failures(failures)
+    if os.environ.get("REPAIR") == "1":
+        for action in repair_actions(failures):
+            if execute_repair(action):
+                print(
+                    f"repaired: {action.category} {action.target} "
+                    f"({shlex.join(action.command)})"
+                )
+        remaining = check()
+        if repair_actions(remaining):
+            print("non-convergent after repair", file=sys.stderr)
+            return 1
+        failures = remaining
     errors = [failure for failure in failures if not is_warning(failure)]
-    for failure in failures:
-        if is_warning(failure):
-            print(failure)
-        else:
-            print(f"ERROR: {failure}", file=sys.stderr)
     if errors:
         return 1
     print("active agent runtime files match this chezmoi source tree")

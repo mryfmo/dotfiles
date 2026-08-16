@@ -39,6 +39,8 @@ AGMSG-RESULT v1 task_id=<id> status=ready_for_review|blocked
 report=<path> validation=<path> sandbox=<path> learning=<path> autoskill=<path>
 ```
 
+Tasks that create persistent side effects outside the repository working tree, such as global asset installs, writes under `$HOME`, or external service registrations, include the optional field `effects=<semicolon-list-of-short-ids>`. In-repository edits within `allowed_files` are not effects. For each declared effect, the report must state its reverse mapping: a named `~/.agents/.installed-manifest.json` step removable with `remove-agent-asset`, a documented removal procedure, or an `irreversible:` statement with rationale.
+
 RESULT reports must mark durable facts with the same CompactionDB marker contract. In CompactionDB-opted-in projects, the worker runs `python3 .claude/hooks/contextdb_cli.py memory add` before completion and includes the exact command or commands in the RESULT report.
 
 `AGMSG-ACCEPTANCE v1` fields:
@@ -77,7 +79,8 @@ AGMSG-PONG v1 task_id=<id> status=alive|blocked note=<short-note>
 6. Send `AGMSG-TASK v1` with the exact artifact paths and `done_signal=AGMSG-RESULT`.
 7. Track `max_turns`. Use `AGMSG-PING` for liveness if a worker stalls.
 8. On `AGMSG-RESULT`, read the task file and every referenced artifact before deciding.
-9. Send `AGMSG-ACCEPTANCE v1 status=accepted` when done, or `status=revise` with a narrow `reason` and `next_action` when more work is required.
+9. For a RESULT carrying `effects`, verify that every declared effect has the report's stated reverse mapping before acceptance; record any irreversible effect in the acceptance note.
+10. Send `AGMSG-ACCEPTANCE v1 status=accepted` when done, or `status=revise` with a narrow `reason` and `next_action` when more work is required.
 
 ## Worker Playbook
 

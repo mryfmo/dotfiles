@@ -1,0 +1,482 @@
+#!/usr/bin/env bash
+
+# @file remove-agent-asset
+# @brief Remove one installed agent asset step from its recorded manifest entry.
+# @description
+#   Defaults to a non-mutating dry run. Actual removal requires `--yes`, and
+#   file deletion is limited to normalized paths recorded by the selected step
+#   under fixed agent-asset roots. Final symlinks are removed without following
+#   their targets.
+# @arg $1 string Manifest step name.
+# @option --dry-run Print exact inverse operations without executing them.
+# @option --yes Execute the guarded inverse operations and remove the step record.
+
+set -Eeuo pipefail
+
+readonly MANIFEST_PATH="${HOME}/.agents/.installed-manifest.json"
+readonly CODEX_ASSET_ROOT="${CODEX_HOME:-${HOME}/.codex}"
+
+declare -a RECORDED_PATHS=()
+declare -a RECORDED_COMMANDS=()
+ENTRY=""
+MODE="dry-run"
+STEP=""
+
+#
+# @description Print command usage.
+#
+function usage() {
+    printf 'Usage: remove-agent-asset <step-name> [--dry-run|--yes]\n' >&2
+}
+
+#
+# @description Print an error and return failure.
+# @arg $@ string Error message words.
+#
+function fail() {
+    printf 'ERROR: %s\n' "$*" >&2
+    return 1
+}
+
+#
+# @description Return success when a command is available.
+# @arg $1 string Command name.
+#
+function has_command() {
+    command -v "$1" > /dev/null 2>&1
+}
+
+#
+# @description Normalize a path while leaving its final symlink unresolved.
+# @arg $1 path Absolute path to normalize.
+#
+function normalize_action_path() {
+    python3 - "$1" << 'PY'
+import os
+import sys
+
+path = os.path.abspath(os.path.expanduser(sys.argv[1]))
+print(os.path.join(os.path.realpath(os.path.dirname(path)), os.path.basename(path)))
+PY
+}
+
+#
+# @description Resolve a trusted directory root including its final symlink.
+# @arg $1 path Directory root to normalize.
+#
+function normalize_root_path() {
+    python3 - "$1" << 'PY'
+import os
+import sys
+
+print(os.path.realpath(os.path.abspath(os.path.expanduser(sys.argv[1]))))
+PY
+}
+
+#
+# @description Return success when a path equals or descends from a prefix.
+# @arg $1 path Normalized candidate path.
+# @arg $2 path Normalized prefix path.
+#
+function path_has_prefix() {
+    [ "$1" = "$2" ] || [[ "$1" == "$2/"* ]]
+}
+
+#
+# @description Return success when a normalized path is under a fixed removable asset root.
+# @arg $1 path Normalized candidate path.
+#
+function path_is_in_safe_root() {
+    local candidate="$1"
+    local root
+
+    for root in \
+        "${HOME}/.agents" \
+        "${HOME}/.claude/plugins/cache" \
+        "${CODEX_ASSET_ROOT}/plugins/cache" \
+        "${CODEX_ASSET_ROOT}/.tmp/plugins/plugins" \
+        "${HOME}/.local/share/mise/installs"; do
+        root="$(normalize_root_path "${root}")" || return 1
+        if [ "${candidate}" != "${root}" ] && path_has_prefix "${candidate}" "${root}"; then
+            return 0
+        fi
+    done
+
+    for root in \
+        "${CODEX_ASSET_ROOT}/plugins/crit" \
+        "${HOME}/.understand-anything/repo"; do
+        root="$(normalize_root_path "${root}")" || return 1
+        if path_has_prefix "${candidate}" "${root}"; then
+            return 0
+        fi
+    done
+
+    for root in \
+        "${HOME}/.claude/hooks/herdr-agent-state.sh" \
+        "${CODEX_ASSET_ROOT}/herdr-agent-state.sh"; do
+        [ "${candidate}" = "$(normalize_action_path "${root}")" ] && return 0
+    done
+    return 1
+}
+
+#
+# @description Return success when a deletion path stays inside a recorded prefix and a fixed safe root.
+# @arg $1 path Candidate deletion path.
+# @stdout Prints the normalized deletion path on success.
+#
+function guard_deletion_path() {
+    local candidate recorded normalized_recorded
+    candidate="$(normalize_action_path "$1")" || return 1
+
+    if ! path_is_in_safe_root "${candidate}"; then
+        fail "refusing path outside allowed asset roots: ${candidate}"
+        return 1
+    fi
+    for recorded in "${RECORDED_PATHS[@]}"; do
+        normalized_recorded="$(normalize_action_path "${recorded}")" || continue
+        if path_has_prefix "${candidate}" "${normalized_recorded}"; then
+            printf '%s\n' "${candidate}"
+            return 0
+        fi
+    done
+    fail "refusing path outside recorded manifest prefixes: ${candidate}"
+}
+
+#
+# @description Print and optionally execute one inverse command.
+# @arg $@ string Command and arguments.
+#
+function run_operation() {
+    if [ "${MODE}" = "dry-run" ]; then
+        printf 'DRY-RUN:'
+    else
+        printf 'REMOVE:'
+    fi
+    printf ' %q' "$@"
+    printf '\n'
+    [ "${MODE}" = "dry-run" ] || "$@"
+}
+
+#
+# @description Remove one guarded manifest-recorded filesystem path.
+# @arg $1 path Recorded target path.
+#
+function remove_recorded_path() {
+    local target
+    target="$(guard_deletion_path "$1")" || return 1
+    if [ -L "${target}" ] || [ -f "${target}" ]; then
+        run_operation rm -f -- "${target}"
+    else
+        run_operation rm -rf -- "${target}"
+    fi
+}
+
+#
+# @description Validate every filesystem path before the first destructive operation.
+# @arg $@ path Recorded target paths.
+#
+function preflight_deletion_paths() {
+    local path
+    for path in "$@"; do
+        guard_deletion_path "${path}" > /dev/null
+    done
+}
+
+#
+# @description Remove a preflighted list of manifest-recorded paths.
+# @arg $@ path Recorded target paths.
+#
+function remove_recorded_paths() {
+    local path
+    preflight_deletion_paths "$@"
+    for path in "$@"; do
+        remove_recorded_path "${path}"
+    done
+}
+
+#
+# @description Return success when a recorded path is plugin cache or plugin data, not shared config.
+# @arg $1 path Recorded path.
+#
+function is_plugin_data_path() {
+    local candidate root
+    candidate="$(normalize_action_path "$1")" || return 1
+    for root in \
+        "${HOME}/.claude/plugins/cache" \
+        "${CODEX_ASSET_ROOT}/plugins/cache" \
+        "${CODEX_ASSET_ROOT}/.tmp/plugins/plugins"; do
+        root="$(normalize_root_path "${root}")" || return 1
+        if [ "${candidate}" != "${root}" ] && path_has_prefix "${candidate}" "${root}"; then
+            return 0
+        fi
+    done
+    root="$(normalize_root_path "${CODEX_ASSET_ROOT}/plugins/crit")" || return 1
+    path_has_prefix "${candidate}" "${root}"
+}
+
+#
+# @description Return success for shared plugin config files that must never be removed wholesale.
+# @arg $1 path Recorded path.
+#
+function is_plugin_config_path() {
+    local candidate
+    candidate="$(normalize_action_path "$1")" || return 1
+    [ "${candidate}" = "$(normalize_action_path "${HOME}/.claude/settings.json")" ] ||
+        [ "${candidate}" = "$(normalize_action_path "${CODEX_ASSET_ROOT}/config.toml")" ]
+}
+
+#
+# @description Remove guarded plugin data when the owning CLI has no usable uninstall.
+#
+function remove_plugin_data_paths() {
+    local path
+    local -a data_paths=()
+    for path in "${RECORDED_PATHS[@]}"; do
+        if is_plugin_data_path "${path}"; then
+            data_paths+=("${path}")
+        elif ! is_plugin_config_path "${path}"; then
+            fail "plugin entry contains an unrecognized fallback path: ${path}"
+            return 1
+        fi
+    done
+    [ "${#data_paths[@]}" -gt 0 ] || {
+        fail "plugin entry has no guarded cache/data fallback: ${STEP}"
+        return 1
+    }
+    remove_recorded_paths "${data_paths[@]}"
+}
+
+#
+# @description Execute the inverse for a plugin manifest entry.
+#
+function remove_plugin() {
+    local command owner="" plugin_id="" candidate_owner candidate_id
+
+    for command in "${RECORDED_COMMANDS[@]}"; do
+        candidate_owner=""
+        candidate_id=""
+        case "${command}" in
+        "claude plugin install "*)
+            candidate_owner="claude"
+            candidate_id="${command#claude plugin install }"
+            ;;
+        "claude plugin update "*)
+            candidate_owner="claude"
+            candidate_id="${command#claude plugin update }"
+            ;;
+        "codex plugin add "*)
+            candidate_owner="codex"
+            candidate_id="${command#codex plugin add }"
+            ;;
+        "crit install codex-plugin" | "crit install codex-plugin "*)
+            candidate_owner="crit"
+            candidate_id="codex-plugin"
+            ;;
+        esac
+        [ -n "${candidate_owner}" ] || continue
+        if [ -n "${owner}" ] && { [ "${owner}" != "${candidate_owner}" ] || [ "${plugin_id}" != "${candidate_id}" ]; }; then
+            fail "ambiguous plugin owner or id for step: ${STEP}"
+            return 1
+        fi
+        owner="${candidate_owner}"
+        plugin_id="${candidate_id}"
+    done
+
+    [[ "${plugin_id}" =~ ^[A-Za-z0-9_.@/+:-]+$ ]] || {
+        fail "missing or unsafe plugin id for step: ${STEP}"
+        return 1
+    }
+    case "${owner}" in
+    claude)
+        if has_command claude; then
+            run_operation claude plugin uninstall "${plugin_id}"
+        else
+            remove_plugin_data_paths
+        fi
+        ;;
+    codex)
+        if has_command codex; then
+            run_operation codex plugin remove "${plugin_id}"
+        else
+            remove_plugin_data_paths
+        fi
+        ;;
+    crit)
+        # Crit exposes install but no uninstall command; remove only its recorded data root.
+        remove_plugin_data_paths
+        ;;
+    *)
+        fail "unknown plugin owner for step: ${STEP}"
+        return 1
+        ;;
+    esac
+}
+
+#
+# @description Execute the inverse for a Brew manifest entry.
+#
+function remove_brew() {
+    local command formula="" candidate
+    for command in "${RECORDED_COMMANDS[@]}"; do
+        case "${command}" in
+        "brew install "*)
+            candidate="${command#brew install }"
+            if [ -n "${formula}" ] && [ "${formula}" != "${candidate}" ]; then
+                fail "ambiguous brew formula for step: ${STEP}"
+                return 1
+            fi
+            formula="${candidate}"
+            ;;
+        esac
+    done
+    [[ "${formula}" =~ ^[A-Za-z0-9@+._-]+$ ]] || {
+        fail "missing or unsafe brew formula for step: ${STEP}"
+        return 1
+    }
+    if [ "${MODE}" = "yes" ] && ! has_command brew; then
+        fail "brew command not found"
+        return 1
+    fi
+    run_operation brew uninstall "${formula}"
+}
+
+#
+# @description Execute the inverse for a Herdr integration manifest entry.
+#
+function remove_integration() {
+    local command integration
+    local -a integrations=()
+    for command in "${RECORDED_COMMANDS[@]}"; do
+        case "${command}" in
+        "herdr integration install "*)
+            integration="${command#herdr integration install }"
+            [[ "${integration}" =~ ^[A-Za-z0-9._-]+$ ]] || {
+                fail "unsafe Herdr integration name for step: ${STEP}"
+                return 1
+            }
+            integrations+=("${integration}")
+            ;;
+        esac
+    done
+    if [ "${#integrations[@]}" -gt 0 ] && has_command herdr && herdr integration uninstall --help > /dev/null 2>&1; then
+        for integration in "${integrations[@]}"; do
+            run_operation herdr integration uninstall "${integration}"
+        done
+        return 0
+    fi
+    [ "${#RECORDED_PATHS[@]}" -gt 0 ] || {
+        fail "integration entry has no guarded fallback paths: ${STEP}"
+        return 1
+    }
+    remove_recorded_paths "${RECORDED_PATHS[@]}"
+}
+
+#
+# @description Atomically remove the completed step from the manifest.
+#
+function remove_manifest_step() {
+    if [ "${MODE}" = "dry-run" ]; then
+        printf 'DRY-RUN: remove manifest step %s\n' "${STEP}"
+        return 0
+    fi
+
+    local temporary_path
+    temporary_path="$(mktemp "${MANIFEST_PATH}.tmp.XXXXXX")"
+    chmod 600 "${temporary_path}"
+    if ! jq --arg step "${STEP}" 'del(.steps[$step])' "${MANIFEST_PATH}" > "${temporary_path}"; then
+        rm -f "${temporary_path}"
+        return 1
+    fi
+    if ! mv "${temporary_path}" "${MANIFEST_PATH}"; then
+        rm -f "${temporary_path}"
+        return 1
+    fi
+    printf 'REMOVE: manifest step %s\n' "${STEP}"
+}
+
+#
+# @description Load and validate the selected manifest entry.
+#
+function load_entry() {
+    [ -f "${MANIFEST_PATH}" ] || {
+        fail "installed asset manifest not found: ${MANIFEST_PATH}"
+        return 1
+    }
+    jq -e '.version == 1 and (.steps | type == "object")' "${MANIFEST_PATH}" > /dev/null || {
+        fail "invalid installed asset manifest: ${MANIFEST_PATH}"
+        return 1
+    }
+    if ! ENTRY="$(jq -ce --arg step "${STEP}" '.steps[$step] // empty' "${MANIFEST_PATH}")"; then
+        ENTRY=""
+    fi
+    if [ -z "${ENTRY}" ]; then
+        printf 'ERROR: unknown manifest step: %s\n' "${STEP}" >&2
+        printf 'Known steps: %s\n' "$(jq -r '.steps | keys | join(", ")' "${MANIFEST_PATH}")" >&2
+        return 1
+    fi
+    printf '%s\n' "${ENTRY}" | jq -e '
+        (.kind | type == "string") and
+        (.paths | type == "array" and all(.[]; type == "string")) and
+        (.commands | type == "array" and all(.[]; type == "string"))
+    ' > /dev/null || {
+        fail "invalid manifest entry: ${STEP}"
+        return 1
+    }
+
+    local value
+    while IFS= read -r value; do
+        [ -n "${value}" ] && RECORDED_PATHS+=("${value}")
+    done < <(printf '%s\n' "${ENTRY}" | jq -r '.paths[]')
+    while IFS= read -r value; do
+        [ -n "${value}" ] && RECORDED_COMMANDS+=("${value}")
+    done < <(printf '%s\n' "${ENTRY}" | jq -r '.commands[]')
+}
+
+#
+# @description Parse arguments and perform the selected inverse operation.
+# @arg $@ string Command-line arguments.
+#
+function main() {
+    if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+        usage
+        return 2
+    fi
+    STEP="$1"
+    case "${2:---dry-run}" in
+    --dry-run) MODE="dry-run" ;;
+    --yes) MODE="yes" ;;
+    *)
+        usage
+        return 2
+        ;;
+    esac
+
+    load_entry
+    local kind
+    kind="$(printf '%s\n' "${ENTRY}" | jq -r '.kind')"
+    case "${kind}" in
+    plugin)
+        remove_plugin
+        ;;
+    rsync | installer)
+        [ "${#RECORDED_PATHS[@]}" -gt 0 ] || {
+            fail "manifest step has no removal paths: ${STEP}"
+            return 1
+        }
+        remove_recorded_paths "${RECORDED_PATHS[@]}"
+        ;;
+    brew)
+        remove_brew
+        ;;
+    integration)
+        remove_integration
+        ;;
+    *)
+        fail "unsupported manifest kind for step ${STEP}: ${kind}"
+        return 1
+        ;;
+    esac
+    remove_manifest_step
+}
+
+main "$@"

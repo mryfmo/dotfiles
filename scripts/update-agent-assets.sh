@@ -10,6 +10,9 @@
 
 set -Eeuo pipefail
 
+readonly AGENT_ASSET_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${AGENT_ASSET_SCRIPT_DIR}/lib/asset-manifest.sh"
+
 readonly CLAUDE_SUPERPOWERS_PLUGIN="superpowers@claude-plugins-official"
 readonly CLAUDE_SUPERPOWERS_MARKETPLACE="anthropics/claude-plugins-official"
 readonly CLAUDE_CRIT_PLUGIN="crit@crit"
@@ -81,6 +84,7 @@ function ensure_mise_npm_agent_cli() {
         mise install --force --locked "${mise_tool}"
     hash -r
     "${cli}" --version > /dev/null
+    manifest_record "ensure_mise_npm_agent_cli" installer "$("${cli}" --version 2> /dev/null || printf 'unknown\n')" "$(mise where "${mise_tool}" 2> /dev/null || command -v "${cli}")" -- "MISE_NPM_PACKAGE_MANAGER=npm npm_config_min_release_age=0 mise install --force --locked ${mise_tool}"
 }
 
 #
@@ -335,6 +339,7 @@ function ensure_herdr_integrations() {
     section "herdr integrations"
     herdr integration install claude
     herdr integration install codex
+    manifest_record "ensure_herdr_integrations" integration "$(herdr --version 2> /dev/null | awk 'NF { version = $NF } END { print version ? version : "unknown" }')" "${HOME}/.claude/hooks/herdr-agent-state.sh" "${HOME}/.codex/herdr-agent-state.sh" -- "herdr integration install claude" "herdr integration install codex"
 }
 
 #
@@ -356,6 +361,7 @@ function update_claude_superpowers() {
     else
         claude plugin install "${CLAUDE_SUPERPOWERS_PLUGIN}" || true
     fi
+    manifest_record "update_claude_superpowers" plugin "$(manifest_claude_plugin_version "${CLAUDE_SUPERPOWERS_PLUGIN}")" "${HOME}/.claude/plugins/cache/claude-plugins-official/superpowers" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_SUPERPOWERS_MARKETPLACE}" "claude plugin marketplace update claude-plugins-official" "claude plugin install ${CLAUDE_SUPERPOWERS_PLUGIN}" "claude plugin update ${CLAUDE_SUPERPOWERS_PLUGIN}"
 }
 
 #
@@ -385,6 +391,7 @@ function update_claude_crit() {
     else
         claude plugin enable "${CLAUDE_CRIT_PLUGIN}" || true
     fi
+    manifest_record "update_claude_crit" plugin "$(manifest_claude_plugin_version "${CLAUDE_CRIT_PLUGIN}")" "${HOME}/.claude/plugins/cache/crit/crit" "${HOME}/.claude/settings.json" -- "brew install crit" "claude plugin marketplace add ${CLAUDE_CRIT_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_CRIT_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_CRIT_PLUGIN}" "claude plugin update ${CLAUDE_CRIT_PLUGIN}" "claude plugin enable ${CLAUDE_CRIT_PLUGIN}"
 }
 
 #
@@ -412,6 +419,7 @@ function update_claude_ponytail() {
         claude plugin enable "${CLAUDE_PONYTAIL_PLUGIN}" || true
     fi
     printf 'Ponytail default mode is %s. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.\n' "${PONYTAIL_DEFAULT_MODE:-full}"
+    manifest_record "update_claude_ponytail" plugin "$(manifest_claude_plugin_version "${CLAUDE_PONYTAIL_PLUGIN}")" "${HOME}/.claude/plugins/cache/ponytail/ponytail" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_PONYTAIL_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_PONYTAIL_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_PONYTAIL_PLUGIN}" "claude plugin update ${CLAUDE_PONYTAIL_PLUGIN}" "claude plugin enable ${CLAUDE_PONYTAIL_PLUGIN}"
 }
 
 #
@@ -438,6 +446,7 @@ function update_claude_understand_anything() {
     else
         claude plugin enable "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" || true
     fi
+    manifest_record "update_claude_understand_anything" plugin "$(manifest_claude_plugin_version "${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}")" "${HOME}/.claude/plugins/cache/understand-anything/understand-anything" "${HOME}/.claude/settings.json" -- "claude plugin marketplace add ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin update ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}" "claude plugin enable ${CLAUDE_UNDERSTAND_ANYTHING_PLUGIN}"
 }
 
 #
@@ -462,6 +471,7 @@ function update_codex_superpowers() {
     else
         codex plugin add "${CODEX_SUPERPOWERS_PLUGIN}" || true
     fi
+    manifest_record "update_codex_superpowers" plugin "$(manifest_codex_plugin_version "${CODEX_SUPERPOWERS_PLUGIN}")" "${CODEX_HOME:-${HOME}/.codex}/.tmp/plugins/plugins/superpowers" "${CODEX_HOME:-${HOME}/.codex}/config.toml" -- "codex plugin marketplace upgrade openai-curated" "codex plugin add ${CODEX_SUPERPOWERS_PLUGIN}"
 }
 
 #
@@ -511,6 +521,7 @@ function update_codex_ponytail() {
     fi
     printf 'Review and trust Ponytail lifecycle hooks in Codex with /hooks, then start a new thread.\n'
     printf 'Ponytail default mode is %s. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.\n' "${PONYTAIL_DEFAULT_MODE:-full}"
+    manifest_record "update_codex_ponytail" plugin "$(manifest_codex_plugin_version "${CODEX_PONYTAIL_PLUGIN}")" "${CODEX_HOME:-${HOME}/.codex}/plugins/cache/ponytail/ponytail" "${CODEX_HOME:-${HOME}/.codex}/config.toml" -- "codex plugin marketplace add ${CODEX_PONYTAIL_MARKETPLACE}" "codex plugin marketplace upgrade ${CODEX_PONYTAIL_MARKETPLACE_NAME}" "codex plugin add ${CODEX_PONYTAIL_PLUGIN}"
 }
 
 #
@@ -530,6 +541,7 @@ function update_codex_crit() {
         cd "${HOME}"
         crit install codex-plugin --force
     ) || true
+    manifest_record "update_codex_crit" plugin "$(manifest_brew_formula_version crit)" "${CODEX_HOME:-${HOME}/.codex}/plugins/crit" "${CODEX_HOME:-${HOME}/.codex}/config.toml" -- "brew install crit" "crit install codex-plugin --force"
 }
 
 #
@@ -621,6 +633,7 @@ function update_codex_understand_anything() {
         # shellcheck disable=SC2016 # $understand is the literal Codex skill invocation, not a variable.
         printf 'Invoke Understand-Anything in Codex with $understand after restarting the CLI.\n'
     ) || true
+    manifest_record "update_codex_understand_anything" installer "${CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT}" "${HOME}/.understand-anything/repo" "${HOME}/.agents/skills/understand" "${HOME}/.agents/skills/understand-chat" "${HOME}/.agents/skills/understand-dashboard" "${HOME}/.agents/skills/understand-diff" "${HOME}/.agents/skills/understand-domain" "${HOME}/.agents/skills/understand-explain" "${HOME}/.agents/skills/understand-figma" "${HOME}/.agents/skills/understand-knowledge" "${HOME}/.agents/skills/understand-onboard" -- "curl -fsSL ${CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL}" "shasum -a 256 <installer>" "bash <installer> codex"
 }
 
 #
@@ -630,6 +643,7 @@ function update_compactiondb() {
     local source_root
     source_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/vendor/compactiondb/"
     rsync -a --delete --exclude '.claude/contextdb/state/' --exclude '.claude/contextdb/spool/' --exclude '.claude/contextdb/health/' --exclude '.claude/contextdb/contextdb.sqlite3*' "${source_root}" "${HOME}/.agents/compactiondb/" || true
+    manifest_record "update_compactiondb" rsync "$(awk '/^## / { print $2; exit }' "${source_root}CHANGELOG.md")" "${HOME}/.agents/compactiondb" -- "rsync -a --delete --exclude .claude/contextdb/state/ --exclude .claude/contextdb/spool/ --exclude .claude/contextdb/health/ --exclude .claude/contextdb/contextdb.sqlite3* ${source_root} ${HOME}/.agents/compactiondb/"
 }
 
 #

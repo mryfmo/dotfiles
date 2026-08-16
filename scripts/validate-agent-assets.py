@@ -39,6 +39,18 @@ REQUIRED_AGMSG_WRITABLE_ROOTS = {
     "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/teams",
     "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/run",
 }
+SYNC_TIMEOUT_BUDGET_S = 30  # PLAN H3 pins the per-source, per-event synchronous budget.
+HOOK_COMPOSITION_SOURCES = {
+    "claude": (Path("home/.chezmoitemplates/claude-settings-managed.json"), "json"),
+    "codex": (Path("home/.chezmoitemplates/codex-config-managed.toml"), "toml"),
+    "compactiondb": (Path("vendor/compactiondb/.claude/settings.fragment.json"), "json"),
+}
+# PLAN H3 pins the current relative SessionStart order across managed sources.
+SESSIONSTART_EXPECTED_COMMAND_SUBSTRINGS = {
+    "claude": ("herdr-agent-state.sh",),
+    "codex": (),
+    "compactiondb": ("contextdb_hook.py", "contextdb_recover.py"),
+}
 
 
 def fail(message: str) -> None:
@@ -62,6 +74,69 @@ def render_template_text(path: Path) -> str:
     text = text.replace("{{ .chezmoi.sourceDir }}", str(ROOT / "home"))
     text = re.sub(r"\{\{/\*.*?\*/\}\}", "", text, flags=re.DOTALL)
     return text
+
+
+def hook_command_string(hook: dict[str, Any]) -> str:
+    parts = [str(hook.get("command") or "")]
+    args = hook.get("args") or []
+    if isinstance(args, list):
+        parts.extend(str(arg) for arg in args)
+    return " ".join(part for part in parts if part)
+
+
+def managed_hook_inventory() -> dict[tuple[str, str], list[dict[str, Any]]]:
+    inventory: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for source, (relative_path, file_type) in HOOK_COMPOSITION_SOURCES.items():
+        text = render_template_text(ROOT / relative_path)
+        data = tomllib.loads(text) if file_type == "toml" else json.loads(text)
+        for event, groups in data.get("hooks", {}).items():
+            if not isinstance(groups, list):
+                continue
+            entries = inventory.setdefault((source, event), [])
+            for group in groups:
+                for hook in group.get("hooks", []):
+                    if hook.get("type") == "command":
+                        entries.append(hook)
+    return inventory
+
+
+def validate_hook_composition() -> None:
+    inventory = managed_hook_inventory()
+    findings: list[str] = []
+    for (source, event), hooks in inventory.items():
+        seen: set[str] = set()
+        for hook in hooks:
+            command = hook_command_string(hook)
+            if command in seen:
+                findings.append(f"duplicate-command source={source} event={event} command={command!r}")
+            seen.add(command)
+
+        commands = [hook_command_string(hook) for hook in hooks]
+        if event == "PermissionRequest" and any("permgate" in command for command in commands):
+            if not commands or "permgate" not in commands[0]:
+                findings.append(f"permgate-first source={source} event={event} first={commands[0]!r}")
+
+        sync_timeout = sum(hook.get("timeout", 0) for hook in hooks if not hook.get("async", False))
+        if sync_timeout > SYNC_TIMEOUT_BUDGET_S:
+            findings.append(
+                f"sync-timeout-budget source={source} event={event} "
+                f"total={sync_timeout}s limit={SYNC_TIMEOUT_BUDGET_S}s"
+            )
+
+    for source, expected in SESSIONSTART_EXPECTED_COMMAND_SUBSTRINGS.items():
+        commands = [hook_command_string(hook) for hook in inventory.get((source, "SessionStart"), [])]
+        position = 0
+        for substring in expected:
+            match = next((index for index in range(position, len(commands)) if substring in commands[index]), None)
+            if match is None:
+                findings.append(
+                    f"sessionstart-order source={source} expected={list(expected)!r} actual={commands!r}"
+                )
+                break
+            position = match + 1
+
+    if findings:
+        fail("hook composition violations:\n- " + "\n- ".join(findings))
 
 
 def read_frontmatter(path: Path) -> dict[str, Any]:
@@ -791,6 +866,7 @@ def validate_no_obvious_secrets() -> None:
 def main() -> None:
     manifest = validate_agent_manifest()
     validate_generated_agent_configs()
+    validate_hook_composition()
     validate_skills()
     validate_claude_skill_parity()
     validate_claude_command_parity()

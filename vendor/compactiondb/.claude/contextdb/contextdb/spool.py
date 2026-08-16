@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import sqlite3
 import time
@@ -14,6 +15,14 @@ from .config import load_config
 from .paths import ProjectPaths
 from .storage import ContextStore
 from .util import append_jsonl, safe_chmod, utc_iso, write_json_exclusive
+
+_INGESTION_SOURCE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,31}$")
+
+
+def validate_ingestion_source(value: Any) -> str:
+    if not isinstance(value, str) or not _INGESTION_SOURCE.fullmatch(value):
+        raise ValueError("invalid ingestion source; expected ^[a-z0-9][a-z0-9_-]{0,31}$")
+    return value
 
 
 @dataclass
@@ -105,7 +114,7 @@ def record_error(paths: ProjectPaths, stage: str, exc: BaseException | str, **co
         pass
 
 
-def spool_event(paths: ProjectPaths, event: dict[str, Any]) -> Path:
+def spool_event(paths: ProjectPaths, event: dict[str, Any], *, ingested_from: str | None = None) -> Path:
     paths.ensure()
     name = f"{int(time.time() * 1_000_000):020d}-{os.getpid():08d}-{uuid.uuid4().hex}.json"
     destination = paths.incoming_dir / name
@@ -114,6 +123,8 @@ def spool_event(paths: ProjectPaths, event: dict[str, Any]) -> Path:
         "spooled_at_utc": utc_iso(),
         "event": event,
     }
+    if ingested_from is not None:
+        envelope["ingested_from"] = validate_ingestion_source(ingested_from)
     write_json_exclusive(destination, envelope, 0o600)
     return destination
 
@@ -160,6 +171,9 @@ def drain_spool(
                     event = envelope.get("event")
                     if not isinstance(event, dict) or not event.get("event_uuid"):
                         raise ValueError("spool envelope has no valid event")
+                    ingested_from = source.name
+                    if "ingested_from" in envelope:
+                        ingested_from = validate_ingestion_source(envelope["ingested_from"])
                 except (OSError, json.JSONDecodeError, ValueError) as exc:
                     _quarantine(paths, source, f"invalid spool record: {exc}")
                     result.processed += 1
@@ -167,7 +181,7 @@ def drain_spool(
                     continue
                 try:
                     with conn:
-                        inserted = store.insert_event(conn, event, ingested_from=source.name)
+                        inserted = store.insert_event(conn, event, ingested_from=ingested_from)
                 except sqlite3.Error as exc:
                     result.error = str(exc)
                     record_error(paths, "drain-sqlite", exc, spool_file=source.name)

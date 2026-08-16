@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import json
 import os
 import unittest
 
-from tests.support import TempProject
 from contextdb.normalize import normalize_hook_payload
 from contextdb.spool import WriterLock, drain_spool, spool_event
+
+from tests.support import TempProject
 
 
 class SpoolTests(unittest.TestCase):
@@ -86,6 +88,36 @@ class SpoolTests(unittest.TestCase):
         self.assertEqual(1, result.quarantined)
         self.assertFalse(bad.exists())
         self.assertTrue((self.p.paths.quarantine_dir / "bad.json").exists())
+
+    def test_spool_without_source_keeps_filename_attribution(self) -> None:
+        event_path = spool_event(self.p.paths, self._event("default-source"))
+        envelope = json.loads(event_path.read_text(encoding="utf-8"))
+        self.assertNotIn("ingested_from", envelope)
+
+        result = drain_spool(self.p.paths, self.p.config, blocking_lock=True)
+
+        self.assertEqual(1, result.inserted)
+        conn = self.p.store.connect()
+        try:
+            row = conn.execute(
+                "SELECT ingested_from FROM events WHERE event_uuid='default-source'"
+            ).fetchone()
+        finally:
+            conn.close()
+        self.assertEqual(event_path.name, row["ingested_from"])
+
+    def test_invalid_envelope_source_is_quarantined(self) -> None:
+        event_path = spool_event(self.p.paths, self._event("tampered-source"))
+        envelope = json.loads(event_path.read_text(encoding="utf-8"))
+        envelope["ingested_from"] = "Codex!"
+        event_path.write_text(json.dumps(envelope), encoding="utf-8")
+
+        result = drain_spool(self.p.paths, self.p.config, blocking_lock=True)
+
+        self.assertEqual(1, result.quarantined)
+        self.assertEqual(0, self.p.count("events"))
+        self.assertTrue((self.p.paths.quarantine_dir / event_path.name).exists())
+        self.assertIn("invalid ingestion source", self.p.paths.error_log_path.read_text(encoding="utf-8"))
 
     @unittest.skipIf(os.name == "nt", "POSIX permission bits are not authoritative on Windows")
     def test_private_file_modes(self) -> None:

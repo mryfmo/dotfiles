@@ -5,8 +5,9 @@ import json
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 
-from tests.support import TempProject
 from contextdb.cli import main
+
+from tests.support import TempProject
 
 
 class CliTests(unittest.TestCase):
@@ -45,3 +46,37 @@ class CliTests(unittest.TestCase):
         self.assertEqual(0, code, err)
         value = json.loads(out)
         self.assertEqual("ok", value["integrity"])
+
+    def test_ingest_records_explicit_source(self) -> None:
+        source = self.p.root / "codex-turn.json"
+        source.write_text(
+            json.dumps(
+                {
+                    "hook_event_name": "Stop",
+                    "session_id": "codex-thread",
+                    "cwd": str(self.p.root),
+                    "last_assistant_message": "done",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        code, out, err = self.invoke(["ingest", str(source), "--ingested-from", "codex"])
+
+        self.assertEqual(0, code, err)
+        self.assertIn("pending=0", out)
+        conn = self.p.store.connect()
+        try:
+            row = conn.execute(
+                "SELECT ingested_from FROM events WHERE session_id='codex-thread'"
+            ).fetchone()
+        finally:
+            conn.close()
+        self.assertEqual("codex", row["ingested_from"])
+
+    def test_ingest_rejects_invalid_source(self) -> None:
+        code, out, err = self.invoke(["ingest", "missing.json", "--ingested-from", "Codex!"])
+
+        self.assertEqual(2, code)
+        self.assertEqual("", out)
+        self.assertIn("invalid ingestion source", err)

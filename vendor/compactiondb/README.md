@@ -81,6 +81,38 @@ Compaction直後には、同一 `session_id` の次の情報だけを復旧packe
 
 古いproject memoryは再構築可能な階層summary cacheへまとめ、最近の記憶は原文に近い粒度で残します。これは一般的な「追記型正本＋再構築可能な投影＋読込予算」という設計原則をクリーンルームで実装したもので、OptMemのソースコードは取り込んでいません。
 
+recovery packetは次の固定順で毎回ledgerから再構築します。空sectionも見出しを省略せず `(none)` を出力し、Compact summaryは最後にreference materialとして配置します。summaryと矛盾する場合はledger由来sectionが正です。
+
+```text
+[CompactionDB recovery]
+project_id=... session_id=...
+... historical-evidence disclaimer and verification commands ...
+
+## Goal
+- First prompt: Update the local cache.
+
+## File modifications
+src/cache.py (edit, 2x)
+
+## Recent activity
+... recent prompts, events, and referenced files ...
+
+## Decisions
+- M1 [project/decision]: Keep SQLite as the local store.
+
+## Open tasks
+(none)
+
+## Failures
+(none)
+
+## Compact summary
+Reference material:
+... Claude-generated summary ...
+```
+
+File modificationsは同一sessionのwrite/editだけをpath単位で集約し、最新操作、操作回数、最新操作順を決定論的に表示します。専用budgetを超えた場合は古いentryを落とし、`contextdb files` への案内を末尾に付けます。read/searchはこのsectionには含めません。
+
 ## 対応hook
 
 - `SessionStart`
@@ -172,6 +204,29 @@ python3 .claude/hooks/contextdb_cli.py show <event_id> --session <session_id>
 ```
 
 安全上、raw event commandはsession scopeがdefaultです。project全体を読む場合だけ `--scope project` を明示します。
+
+### recovery probes
+
+台帳からrecall / artifact / decision / continuationの質問とground truthを決定論的に生成します。対象データがない型は出力しません。
+
+```bash
+python3 .claude/hooks/contextdb_cli.py probe --session <session_id> --json
+```
+
+採点はreview profileのlow effortを使い、CLIとは別contextで実行します。
+採点するのはrecovery logicを変更した場合だけです。
+
+### query-conditioned recall
+
+FTS5のevent/memory検索と、保存済みmemory embeddingがある場合だけsemantic similarityを融合し、関連eventのtool use・隣接・共有fileも取得します。既定は上位5件、`rho=0.6`です。
+
+```bash
+python3 .claude/hooks/contextdb_cli.py recall "authentication failure" --session <session_id>
+python3 .claude/hooks/contextdb_cli.py recall "src/cache.py" --session <session_id> --k 10 --json
+```
+
+- workerはタスク開始時に、対象sessionの過去contextを再取得するために使います。
+- orchestratorはacceptance時に、過去failureと今回の結果を照合するために使います。
 
 ### durable memory
 

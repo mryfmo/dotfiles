@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.0.0+dotfiles.4
+
+- Raised the default recovery packet budget to 12,000 characters.
+- Added a configurable 2,000-character file-section budget.
+- Rebuilt recovery packets as fixed-order sections with ledger-derived evidence authoritative over compact summaries.
+- Added a deterministic write/edit artifact trail and active-task projection without LLM calls.
+- Added validated local-source attribution for CLI-ingested events without changing hook-spool defaults.
+- Added read-only deterministic recovery probes with ledger-derived ground truth.
+- Added read-only query-conditioned recall with lexical/semantic fusion and event closure.
+
 ## 2.0.0+dotfiles.3
 
 - Preserved sentence boundaries when removing inline explicit memory markers.

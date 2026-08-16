@@ -8,7 +8,6 @@ from typing import Any
 from .paths import ProjectPaths
 from .util import atomic_write_text, pretty_json, safe_chmod
 
-
 DEFAULT_CONFIG: dict[str, Any] = {
     "version": 1,
     "storage": {
@@ -56,12 +55,17 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "context_items": 24,
     },
     "recovery": {
-        "max_chars": 8500,
+        "max_chars": 12000,
+        "files_budget_chars": 2000,
         "recent_events": 12,
         "recent_prompts": 4,
         "recent_files": 12,
         "recent_failures": 5,
         "include_project_memories": True,
+    },
+    "recall": {
+        "rho": 0.6,
+        "k": 5,
     },
     "semantic": {
         "enabled": False,
@@ -86,15 +90,15 @@ def _merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-
-
 def _require_int(config: dict[str, Any], section: str, key: str, *, minimum: int) -> None:
     value = config.get(section, {}).get(key)
     if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
         raise ValueError(f"ContextDB config {section}.{key} must be an integer >= {minimum}")
 
 
-def _require_number(config: dict[str, Any], section: str, key: str, *, minimum: float, maximum: float | None = None) -> None:
+def _require_number(
+    config: dict[str, Any], section: str, key: str, *, minimum: float, maximum: float | None = None
+) -> None:
     value = config.get(section, {}).get(key)
     if isinstance(value, bool) or not isinstance(value, (int, float)) or float(value) < minimum:
         raise ValueError(f"ContextDB config {section}.{key} must be a number >= {minimum}")
@@ -124,8 +128,11 @@ def validate_config(config: dict[str, Any]) -> dict[str, Any]:
     _require_int(config, "memory", "recent_raw_count", minimum=0)
     _require_int(config, "memory", "context_items", minimum=1)
     _require_int(config, "recovery", "max_chars", minimum=1000)
+    _require_int(config, "recovery", "files_budget_chars", minimum=0)
     for key in ("recent_events", "recent_prompts", "recent_files", "recent_failures"):
         _require_int(config, "recovery", key, minimum=0)
+    _require_number(config, "recall", "rho", minimum=0.0, maximum=1.0)
+    _require_int(config, "recall", "k", minimum=0)
     semantic = config.get("semantic", {})
     if not isinstance(semantic.get("command", []), list):
         raise ValueError("ContextDB config semantic.command must be a JSON array")

@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "gitCommitHash": "b0f30b50c93489dce442a69f1c2efafbfb0ac1ac",
-  "generatedAt": "2026-08-11T12:08:53.263Z",
+  "gitCommitHash": "84c8d18e63f1aa37b75abc83fdd54fd6d04de910",
+  "generatedAt": "2026-08-16T01:20:15.675Z",
   "files": {
     ".chezmoiroot": {
       "filePath": ".chezmoiroot",
@@ -9481,7 +9481,7 @@
     },
     "scripts/validate-agent-assets.py": {
       "filePath": "scripts/validate-agent-assets.py",
-      "contentHash": "00fd0056bb1d86808846b8be6f5991c6cd1405010062fdb88278d76aaf4a8920",
+      "contentHash": "984665ebb4e14dce561b88336e51e3ec1ca34ccb7eb0ff35053af6f5cbe10fb5",
       "functions": [
         {
           "name": "fail",
@@ -9649,15 +9649,6 @@
           "lineCount": 26
         },
         {
-          "name": "validate_cognee_install_assets",
-          "params": [
-            "manifest"
-          ],
-          "returnType": "None",
-          "exported": true,
-          "lineCount": 31
-        },
-        {
           "name": "validate_crit_install_assets",
           "params": [],
           "returnType": "None",
@@ -9679,7 +9670,7 @@
           "params": [],
           "returnType": "None",
           "exported": true,
-          "lineCount": 43
+          "lineCount": 55
         },
         {
           "name": "validate_model_profile_assets",
@@ -9725,14 +9716,14 @@
           "params": [],
           "returnType": "None",
           "exported": true,
-          "lineCount": 18
+          "lineCount": 27
         },
         {
           "name": "main",
           "params": [],
           "returnType": "None",
           "exported": true,
-          "lineCount": 23
+          "lineCount": 22
         }
       ],
       "classes": [],
@@ -9807,7 +9798,6 @@
         "validate_mcp_parity",
         "validate_codex_modify_script",
         "validate_codex_profile_modify_scripts",
-        "validate_cognee_install_assets",
         "validate_crit_install_assets",
         "validate_ponytail_assets",
         "validate_understand_anything_assets",
@@ -9819,7 +9809,7 @@
         "validate_no_obvious_secrets",
         "main"
       ],
-      "totalLines": 830,
+      "totalLines": 817,
       "hasStructuralAnalysis": true
     },
     "setup.sh": {
@@ -11094,7 +11084,7 @@
     },
     "tests/unit/test_runtime_health.py": {
       "filePath": "tests/unit/test_runtime_health.py",
-      "contentHash": "1a54ad832da4ffc9d410741e80b9ec11ee6c381dffd7d1940538d83e6cb8b139",
+      "contentHash": "090b2d95a585b4085d85a7d9166df0830b6cef60a3a93a32c570f7d8c6f4091b",
       "functions": [],
       "classes": [
         {
@@ -11119,13 +11109,14 @@
             "upgrade_fixture",
             "test_upgrade_required_failures_are_nonzero_and_independent",
             "test_upgrade_skips_unavailable_mise_self_update",
+            "test_upgrade_uses_current_mise_node_after_runtime_replacement",
             "test_upgrade_github_extensions_are_warning_only",
             "test_upgrade_skips_ccr_notice_when_gh_is_unavailable",
             "test_upgrade_reports_ccr_adoption_gate_values"
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 699
+          "lineCount": 740
         }
       ],
       "imports": [
@@ -11181,7 +11172,7 @@
       "exports": [
         "RuntimeHealthTest"
       ],
-      "totalLines": 722,
+      "totalLines": 763,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_statusline_tools.py": {

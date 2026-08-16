@@ -28,8 +28,8 @@
       "GitHub Actions"
     ],
     "description": "Personal dotfiles managed with chezmoi.",
-    "analyzedAt": "2026-08-11T12:08:23.560Z",
-    "gitCommitHash": "b0f30b50c93489dce442a69f1c2efafbfb0ac1ac"
+    "analyzedAt": "2026-08-16T01:20:15.675Z",
+    "gitCommitHash": "84c8d18e63f1aa37b75abc83fdd54fd6d04de910"
   },
   "nodes": [
     {
@@ -13663,546 +13663,6 @@
       "complexity": "simple"
     },
     {
-      "id": "file:scripts/validate-agent-assets.py",
-      "type": "file",
-      "name": "validate-agent-assets.py",
-      "filePath": "scripts/validate-agent-assets.py",
-      "summary": "Validates generated agent configuration, plugin, skill, and security-policy assets against the manifest.",
-      "tags": [
-        "dotfiles",
-        "configuration",
-        "environment"
-      ],
-      "complexity": "complex"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:fail",
-      "type": "function",
-      "name": "fail",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        44,
-        46
-      ],
-      "summary": "Implements the fail operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:load_yaml",
-      "type": "function",
-      "name": "load_yaml",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        49,
-        55
-      ],
-      "summary": "Implements the load_yaml operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:render_template_text",
-      "type": "function",
-      "name": "render_template_text",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        58,
-        64
-      ],
-      "summary": "Implements the render_template_text operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:read_frontmatter",
-      "type": "function",
-      "name": "read_frontmatter",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        67,
-        79
-      ],
-      "summary": "Implements the read_frontmatter operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:shared_skill_names",
-      "type": "function",
-      "name": "shared_skill_names",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        82,
-        84
-      ],
-      "summary": "Implements the shared_skill_names operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:validate_skills",
-      "type": "function",
-      "name": "validate_skills",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        87,
-        105
-      ],
-      "summary": "Implements the validate_skills operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:validate_claude_skill_parity",
-      "type": "function",
-      "name": "validate_claude_skill_parity",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        108,
-        118
-      ],
-      "summary": "Implements the validate_claude_skill_parity operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:validate_claude_command_parity",
-      "type": "function",
-      "name": "validate_claude_command_parity",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        121,
-        131
-      ],
-      "summary": "Implements the validate_claude_command_parity operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:validate_manifest_home_paths",
-      "type": "function",
-      "name": "validate_manifest_home_paths",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        137,
-        160
-      ],
-      "summary": "Implements the validate_manifest_home_paths operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:validate_codex_plugins",
-      "type": "function",
-      "name": "validate_codex_plugins",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        163,
-        189
-      ],
-      "summary": "Implements the validate_codex_plugins operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:validate_exact_keys",
-      "type": "function",
-      "name": "validate_exact_keys",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        192,
-        199
-      ],
-      "summary": "Implements the validate_exact_keys operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:validate_agmsg_script_modes",
-      "type": "function",
-      "name": "validate_agmsg_script_modes",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        202,
-        210
-      ],
-      "summary": "Implements the validate_agmsg_script_modes operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:validate_codex_agmsg_writable_roots",
-      "type": "function",
-      "name": "validate_codex_agmsg_writable_roots",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        213,
-        217
-      ],
-      "summary": "Implements the validate_codex_agmsg_writable_roots operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:validate_claude_settings",
-      "type": "function",
-      "name": "validate_claude_settings",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        220,
-        243
-      ],
-      "summary": "Implements the validate_claude_settings operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:validate_codex_config",
-      "type": "function",
-      "name": "validate_codex_config",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        246,
-        315
-      ],
-      "summary": "Implements the validate_codex_config operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:validate_claude_mcp_config",
-      "type": "function",
-      "name": "validate_claude_mcp_config",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        318,
-        329
-      ],
-      "summary": "Implements the validate_claude_mcp_config operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:validate_agent_manifest",
-      "type": "function",
-      "name": "validate_agent_manifest",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        332,
-        381
-      ],
-      "summary": "Implements the validate_agent_manifest operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:validate_mcp_parity",
-      "type": "function",
-      "name": "validate_mcp_parity",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        384,
-        393
-      ],
-      "summary": "Implements the validate_mcp_parity operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:validate_codex_modify_script",
-      "type": "function",
-      "name": "validate_codex_modify_script",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        396,
-        405
-      ],
-      "summary": "Implements the validate_codex_modify_script operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:validate_codex_profile_modify_scripts",
-      "type": "function",
-      "name": "validate_codex_profile_modify_scripts",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        408,
-        433
-      ],
-      "summary": "Implements the validate_codex_profile_modify_scripts operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:validate_cognee_install_assets",
-      "type": "function",
-      "name": "validate_cognee_install_assets",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        436,
-        466
-      ],
-      "summary": "Implements the validate_cognee_install_assets operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:validate_crit_install_assets",
-      "type": "function",
-      "name": "validate_crit_install_assets",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        469,
-        509
-      ],
-      "summary": "Implements the validate_crit_install_assets operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:validate_ponytail_assets",
-      "type": "function",
-      "name": "validate_ponytail_assets",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        512,
-        564
-      ],
-      "summary": "Implements the validate_ponytail_assets operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:validate_understand_anything_assets",
-      "type": "function",
-      "name": "validate_understand_anything_assets",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        567,
-        609
-      ],
-      "summary": "Implements the validate_understand_anything_assets operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:validate_model_profile_assets",
-      "type": "function",
-      "name": "validate_model_profile_assets",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        612,
-        711
-      ],
-      "summary": "Implements the validate_model_profile_assets operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:validate_git_config",
-      "type": "function",
-      "name": "validate_git_config",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        714,
-        738
-      ],
-      "summary": "Implements the validate_git_config operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:validate_generated_agent_configs",
-      "type": "function",
-      "name": "validate_generated_agent_configs",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        741,
-        751
-      ],
-      "summary": "Implements the validate_generated_agent_configs operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:validate_no_removed_claude_skill",
-      "type": "function",
-      "name": "validate_no_removed_claude_skill",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        754,
-        765
-      ],
-      "summary": "Implements the validate_no_removed_claude_skill operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:read_scannable_text",
-      "type": "function",
-      "name": "read_scannable_text",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        768,
-        780
-      ],
-      "summary": "Implements the read_scannable_text operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:validate_no_obvious_secrets",
-      "type": "function",
-      "name": "validate_no_obvious_secrets",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        783,
-        800
-      ],
-      "summary": "Implements the validate_no_obvious_secrets operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/validate-agent-assets.py:main",
-      "type": "function",
-      "name": "main",
-      "filePath": "scripts/validate-agent-assets.py",
-      "lineRange": [
-        803,
-        825
-      ],
-      "summary": "Implements the main operation for validate-agent-assets.py.",
-      "tags": [
-        "utility",
-        "automation",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
       "id": "file:tests/files/common.bats",
       "type": "file",
       "name": "common.bats",
@@ -14870,36 +14330,6 @@
       "complexity": "complex"
     },
     {
-      "id": "file:tests/unit/test_runtime_health.py",
-      "type": "file",
-      "name": "test_runtime_health.py",
-      "filePath": "tests/unit/test_runtime_health.py",
-      "summary": "Test file that verifies test runtime health  behavior.",
-      "tags": [
-        "test",
-        "validation",
-        "automation"
-      ],
-      "complexity": "complex"
-    },
-    {
-      "id": "class:tests/unit/test_runtime_health.py:RuntimeHealthTest",
-      "type": "class",
-      "name": "RuntimeHealthTest",
-      "filePath": "tests/unit/test_runtime_health.py",
-      "lineRange": [
-        19,
-        717
-      ],
-      "summary": "Test case class covering RuntimeHealth behavior.",
-      "tags": [
-        "test",
-        "validation",
-        "automation"
-      ],
-      "complexity": "complex"
-    },
-    {
       "id": "file:tests/unit/test_statusline_tools.py",
       "type": "file",
       "name": "test_statusline_tools.py",
@@ -15150,6 +14580,564 @@
         "automation"
       ],
       "complexity": "moderate"
+    },
+    {
+      "id": "file:scripts/validate-agent-assets.py",
+      "type": "file",
+      "name": "validate-agent-assets.py",
+      "filePath": "scripts/validate-agent-assets.py",
+      "summary": "Central validation entry point for synchronized Codex and Claude assets, covering shared manifests, generated configuration, plugins, skills, MCP parity, signing, and committed-secret hygiene.",
+      "tags": [
+        "entry-point",
+        "validation",
+        "agent-config",
+        "security"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Uses small fail-fast top-level validators coordinated by main, with standard-library parsers plus optional PyYAML."
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:fail",
+      "type": "function",
+      "name": "fail",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        44,
+        46
+      ],
+      "summary": "Prints a validation error to stderr and terminates the validator with a failing status.",
+      "tags": [
+        "error-reporting",
+        "validation",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:load_yaml",
+      "type": "function",
+      "name": "load_yaml",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        49,
+        55
+      ],
+      "summary": "Loads a YAML file as a mapping and rejects missing parser support or non-mapping content.",
+      "tags": [
+        "serialization",
+        "validation",
+        "yaml"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:render_template_text",
+      "type": "function",
+      "name": "render_template_text",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        58,
+        64
+      ],
+      "summary": "Renders the repository-specific chezmoi source-directory token and removes template comments before parsing managed configuration.",
+      "tags": [
+        "chezmoi",
+        "template-rendering",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:read_frontmatter",
+      "type": "function",
+      "name": "read_frontmatter",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        67,
+        79
+      ],
+      "summary": "Extracts and validates YAML frontmatter from a skill document.",
+      "tags": [
+        "frontmatter",
+        "validation",
+        "yaml"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:shared_skill_names",
+      "type": "function",
+      "name": "shared_skill_names",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        82,
+        84
+      ],
+      "summary": "Returns the canonical set of shared skill directory names managed under the agent asset tree.",
+      "tags": [
+        "skills",
+        "discovery",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:validate_skills",
+      "type": "function",
+      "name": "validate_skills",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        87,
+        105
+      ],
+      "summary": "Checks every shared skill for required files, matching frontmatter metadata, and valid optional OpenAI configuration.",
+      "tags": [
+        "skills",
+        "validation",
+        "configuration"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:validate_claude_skill_parity",
+      "type": "function",
+      "name": "validate_claude_skill_parity",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        108,
+        118
+      ],
+      "summary": "Ensures Claude exposes exactly the canonical shared skills through the expected chezmoi symlink templates.",
+      "tags": [
+        "claude-code",
+        "skills",
+        "parity"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:validate_claude_command_parity",
+      "type": "function",
+      "name": "validate_claude_command_parity",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        121,
+        131
+      ],
+      "summary": "Verifies the Claude agmsg command symlink targets the shared template and that no duplicate command file exists.",
+      "tags": [
+        "claude-code",
+        "agmsg",
+        "parity"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:validate_manifest_home_paths",
+      "type": "function",
+      "name": "validate_manifest_home_paths",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        137,
+        160
+      ],
+      "summary": "Scans the shared agent manifest for machine-specific home paths while allowing Codex runtime-owned project keys.",
+      "tags": [
+        "portability",
+        "manifest",
+        "validation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:validate_codex_plugins",
+      "type": "function",
+      "name": "validate_codex_plugins",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        163,
+        189
+      ],
+      "summary": "Validates the personal Codex marketplace and each local plugin manifest, including portable paths and shared skill exposure.",
+      "tags": [
+        "codex",
+        "plugins",
+        "validation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:validate_exact_keys",
+      "type": "function",
+      "name": "validate_exact_keys",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        192,
+        199
+      ],
+      "summary": "Requires an actual configuration mapping to have exactly the expected key set.",
+      "tags": [
+        "configuration",
+        "validation",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:validate_agmsg_script_modes",
+      "type": "function",
+      "name": "validate_agmsg_script_modes",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        202,
+        210
+      ],
+      "summary": "Checks agmsg shell entrypoints use chezmoi executable naming and retain executable mode bits.",
+      "tags": [
+        "agmsg",
+        "permissions",
+        "validation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:validate_codex_agmsg_writable_roots",
+      "type": "function",
+      "name": "validate_codex_agmsg_writable_roots",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        213,
+        217
+      ],
+      "summary": "Ensures Codex workspace-write sandbox configuration includes every required agmsg state directory.",
+      "tags": [
+        "codex",
+        "agmsg",
+        "sandbox"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:validate_claude_settings",
+      "type": "function",
+      "name": "validate_claude_settings",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        220,
+        243
+      ],
+      "summary": "Validates generated Claude settings for schema, model profile, hook, plugin, and Crit integration consistency.",
+      "tags": [
+        "claude-code",
+        "configuration",
+        "validation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:validate_codex_config",
+      "type": "function",
+      "name": "validate_codex_config",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        246,
+        315
+      ],
+      "summary": "Parses the rendered Codex configuration and checks model profiles, sandbox boundaries, plugins, marketplaces, hooks, project trust, and disabled MCP defaults against the shared manifest.",
+      "tags": [
+        "codex",
+        "configuration",
+        "validation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:validate_claude_mcp_config",
+      "type": "function",
+      "name": "validate_claude_mcp_config",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        318,
+        329
+      ],
+      "summary": "Validates rendered Claude MCP servers are present, disabled by default, and complete for their transport.",
+      "tags": [
+        "claude-code",
+        "mcp",
+        "validation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:validate_agent_manifest",
+      "type": "function",
+      "name": "validate_agent_manifest",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        332,
+        381
+      ],
+      "summary": "Validates the shared agent manifest schema, target agents, model profiles, plugin requirements, and MCP transport policy.",
+      "tags": [
+        "manifest",
+        "agent-config",
+        "validation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:validate_mcp_parity",
+      "type": "function",
+      "name": "validate_mcp_parity",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        384,
+        393
+      ],
+      "summary": "Requires the shared manifest, Codex config, and Claude config to expose identical MCP server names.",
+      "tags": [
+        "mcp",
+        "parity",
+        "validation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:validate_codex_modify_script",
+      "type": "function",
+      "name": "validate_codex_modify_script",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        396,
+        405
+      ],
+      "summary": "Checks the Codex configuration modifier exists, is executable, and preserves required runtime-owned tables.",
+      "tags": [
+        "codex",
+        "configuration",
+        "validation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:validate_codex_profile_modify_scripts",
+      "type": "function",
+      "name": "validate_codex_profile_modify_scripts",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        408,
+        433
+      ],
+      "summary": "Executes each generated Codex profile modifier and verifies its model, reasoning effort, feature, and hook state output.",
+      "tags": [
+        "codex",
+        "model-profiles",
+        "validation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:validate_crit_install_assets",
+      "type": "function",
+      "name": "validate_crit_install_assets",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        436,
+        476
+      ],
+      "summary": "Checks updater, agent instructions, review guard, and README assets contain the required Crit lifecycle and evidence contracts.",
+      "tags": [
+        "crit",
+        "review",
+        "validation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:validate_ponytail_assets",
+      "type": "function",
+      "name": "validate_ponytail_assets",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        479,
+        531
+      ],
+      "summary": "Validates Ponytail installation tokens, enabled plugin configuration, trusted hooks, shared rules, symlinks, and documentation.",
+      "tags": [
+        "ponytail",
+        "plugins",
+        "validation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:validate_understand_anything_assets",
+      "type": "function",
+      "name": "validate_understand_anything_assets",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        534,
+        588
+      ],
+      "summary": "Validates Understand-Anything updater support, Codex and Claude rules, symlink wiring, runtime provisioning, and documentation.",
+      "tags": [
+        "understand-anything",
+        "knowledge-graph",
+        "validation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:validate_model_profile_assets",
+      "type": "function",
+      "name": "validate_model_profile_assets",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        591,
+        690
+      ],
+      "summary": "Checks model-profile governance across permission hooks, fail-closed provider policy, generated environment fragments, launchers, and agent documentation.",
+      "tags": [
+        "model-profiles",
+        "permission-gate",
+        "validation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:validate_git_config",
+      "type": "function",
+      "name": "validate_git_config",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        693,
+        717
+      ],
+      "summary": "Validates managed Git configuration uses SSH commit signing and that GitHub setup registers the signing key.",
+      "tags": [
+        "git",
+        "commit-signing",
+        "validation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:validate_generated_agent_configs",
+      "type": "function",
+      "name": "validate_generated_agent_configs",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        720,
+        730
+      ],
+      "summary": "Runs the agent configuration generator in check mode and fails when generated assets are stale.",
+      "tags": [
+        "generated-config",
+        "validation",
+        "subprocess"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:validate_no_removed_claude_skill",
+      "type": "function",
+      "name": "validate_no_removed_claude_skill",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        733,
+        744
+      ],
+      "summary": "Scans repository text to ensure references to a removed Claude skill do not remain.",
+      "tags": [
+        "claude-code",
+        "cleanup",
+        "validation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:read_scannable_text",
+      "type": "function",
+      "name": "read_scannable_text",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        747,
+        759
+      ],
+      "summary": "Reads UTF-8 or BOM-marked UTF-16 text while rejecting binary and undecodable files.",
+      "tags": [
+        "text-decoding",
+        "security",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:validate_no_obvious_secrets",
+      "type": "function",
+      "name": "validate_no_obvious_secrets",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        762,
+        788
+      ],
+      "summary": "Scans eligible repository files for credential-like patterns while honoring explicit placeholders and redaction fixtures.",
+      "tags": [
+        "security",
+        "secret-scanning",
+        "validation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/validate-agent-assets.py:main",
+      "type": "function",
+      "name": "main",
+      "filePath": "scripts/validate-agent-assets.py",
+      "lineRange": [
+        791,
+        812
+      ],
+      "summary": "Runs the complete agent asset validation sequence and reports success only after every consistency and security check passes.",
+      "tags": [
+        "entry-point",
+        "orchestration",
+        "validation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:tests/unit/test_runtime_health.py",
+      "type": "file",
+      "name": "test_runtime_health.py",
+      "filePath": "tests/unit/test_runtime_health.py",
+      "summary": "Integration-style unittest suite that builds isolated filesystem and PATH fixtures to verify privacy, model-profile routing, doctor failure propagation, and tool-upgrade behavior.",
+      "tags": [
+        "test",
+        "runtime-health",
+        "agent-tooling",
+        "integration-test"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Uses unittest with temporary directories and executable command stubs to exercise shell workflows without mutating the real runtime."
+    },
+    {
+      "id": "class:tests/unit/test_runtime_health.py:RuntimeHealthTest",
+      "type": "class",
+      "name": "RuntimeHealthTest",
+      "filePath": "tests/unit/test_runtime_health.py",
+      "lineRange": [
+        19,
+        758
+      ],
+      "summary": "Exercises agent fanout security, managed asset repair, doctor status handling, and resilient multi-tool upgrade flows through isolated command stubs.",
+      "tags": [
+        "test",
+        "runtime-health",
+        "subprocess",
+        "security"
+      ],
+      "complexity": "complex"
     }
   ],
   "edges": [
@@ -18780,440 +18768,6 @@
       "weight": 0.8
     },
     {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:fail",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:fail",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:load_yaml",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:load_yaml",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:render_template_text",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:render_template_text",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:read_frontmatter",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:read_frontmatter",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:shared_skill_names",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:shared_skill_names",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_skills",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_skills",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_claude_skill_parity",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_claude_skill_parity",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_claude_command_parity",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_claude_command_parity",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_manifest_home_paths",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_manifest_home_paths",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_codex_plugins",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_codex_plugins",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_exact_keys",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_exact_keys",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_agmsg_script_modes",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_agmsg_script_modes",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_codex_agmsg_writable_roots",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_codex_agmsg_writable_roots",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_claude_settings",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_claude_settings",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_codex_config",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_codex_config",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_claude_mcp_config",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_claude_mcp_config",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_agent_manifest",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_agent_manifest",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_mcp_parity",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_mcp_parity",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_codex_modify_script",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_codex_modify_script",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_codex_profile_modify_scripts",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_codex_profile_modify_scripts",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_cognee_install_assets",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_cognee_install_assets",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_crit_install_assets",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_crit_install_assets",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_ponytail_assets",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_ponytail_assets",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_understand_anything_assets",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_understand_anything_assets",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_model_profile_assets",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_model_profile_assets",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_git_config",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_git_config",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_generated_agent_configs",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_generated_agent_configs",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_no_removed_claude_skill",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_no_removed_claude_skill",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:read_scannable_text",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:read_scannable_text",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_no_obvious_secrets",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:validate_no_obvious_secrets",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:main",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/validate-agent-assets.py",
-      "target": "function:scripts/validate-agent-assets.py:main",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
       "source": "file:tests/files/helpers.bash",
       "target": "function:tests/files/helpers.bash:assert_idempotent_apply",
       "type": "contains",
@@ -19403,20 +18957,6 @@
       "weight": 0.8
     },
     {
-      "source": "file:tests/unit/test_runtime_health.py",
-      "target": "class:tests/unit/test_runtime_health.py:RuntimeHealthTest",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:tests/unit/test_runtime_health.py",
-      "target": "class:tests/unit/test_runtime_health.py:RuntimeHealthTest",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
       "source": "file:tests/unit/test_statusline_tools.py",
       "target": "class:tests/unit/test_statusline_tools.py:StatuslineToolsTest",
       "type": "contains",
@@ -19576,6 +19116,440 @@
       "type": "documents",
       "direction": "forward",
       "weight": 0.5
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:fail",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:fail",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:load_yaml",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:load_yaml",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:render_template_text",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:render_template_text",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:read_frontmatter",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:read_frontmatter",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:shared_skill_names",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:shared_skill_names",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_skills",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_skills",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_claude_skill_parity",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_claude_skill_parity",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_claude_command_parity",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_claude_command_parity",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_manifest_home_paths",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_manifest_home_paths",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_codex_plugins",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_codex_plugins",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_exact_keys",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_exact_keys",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_agmsg_script_modes",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_agmsg_script_modes",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_codex_agmsg_writable_roots",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_codex_agmsg_writable_roots",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_claude_settings",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_claude_settings",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_codex_config",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_codex_config",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_claude_mcp_config",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_claude_mcp_config",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_agent_manifest",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_agent_manifest",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_mcp_parity",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_mcp_parity",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_codex_modify_script",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_codex_modify_script",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_codex_profile_modify_scripts",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_codex_profile_modify_scripts",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_crit_install_assets",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_crit_install_assets",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_ponytail_assets",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_ponytail_assets",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_understand_anything_assets",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_understand_anything_assets",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_model_profile_assets",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_model_profile_assets",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_git_config",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_git_config",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_generated_agent_configs",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_generated_agent_configs",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_no_removed_claude_skill",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_no_removed_claude_skill",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:read_scannable_text",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:read_scannable_text",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_no_obvious_secrets",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:validate_no_obvious_secrets",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:main",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/validate-agent-assets.py",
+      "target": "function:scripts/validate-agent-assets.py:main",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:tests/unit/test_runtime_health.py",
+      "target": "class:tests/unit/test_runtime_health.py:RuntimeHealthTest",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:tests/unit/test_runtime_health.py",
+      "target": "class:tests/unit/test_runtime_health.py:RuntimeHealthTest",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
     }
   ],
   "layers": [

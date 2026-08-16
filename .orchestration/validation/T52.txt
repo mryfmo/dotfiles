@@ -1,0 +1,132 @@
+T52 validation
+Generated: 2026-08-16T10:20:53+09:00
+
+1. BASELINE
+-----------
+Previous meta gitCommitHash:
+  b0f30b50c93489dce442a69f1c2efafbfb0ac1ac
+
+Current HEAD:
+  84c8d18e63f1aa37b75abc83fdd54fd6d04de910
+
+Before counts:
+  nodes=1022
+  edges=632
+  layers=7
+  tour=9
+  analyzedFiles=689
+  fingerprints=689
+
+2. CHANGE FILTERING AND CLASSIFICATION
+--------------------------------------
+Source paths after extension filtering:
+  total=45
+
+Canonical ignore-filter result:
+  .understandignore: kept 5/45 (removed 40)
+
+Kept:
+  scripts/generate-agent-configs.py
+  scripts/require-crit-review.py
+  scripts/validate-agent-assets.py
+  tests/unit/test_require_crit_review.py
+  tests/unit/test_runtime_health.py
+
+Deterministic fingerprint decision:
+  action=PARTIAL_UPDATE
+  structural=2
+  cosmetic=3
+  new=0
+  deleted=0
+  rerunArchitecture=false
+  rerunTour=false
+
+Structural files:
+  scripts/validate-agent-assets.py
+    - removed function: validate_cognee_install_assets
+    - exports changed
+  tests/unit/test_runtime_health.py
+    - methods changed: RuntimeHealthTest
+
+Cosmetic-only files:
+  scripts/generate-agent-configs.py
+  scripts/require-crit-review.py
+  tests/unit/test_require_crit_review.py
+
+3. TARGETED ANALYSIS AND MERGE
+------------------------------
+file-analyzer batch result:
+  batch-1.json
+  nodes=33
+  edges=62
+  skipped=0
+  invalid paths=0
+  duplicate node IDs=0
+  dangling batch edges=0
+
+Merge result:
+  nodes: 1022 -> 1021
+  edges: 632 -> 630
+  removed target nodes=34
+  fresh target nodes=33
+  fresh target edges=62
+  fingerprints: 689 -> 689
+  analyzedFiles=689
+
+4. FINAL JSON AND GRAPH VALIDATION
+----------------------------------
+Commands:
+  python3 -c json.load for .ua/knowledge-graph.json
+  python3 -c json.load for .ua/meta.json
+  python3 -c json.load for .ua/fingerprints.json
+
+Result:
+  PASS: all three files parse as JSON
+
+Hash equality:
+  git rev-parse HEAD = 84c8d18e63f1aa37b75abc83fdd54fd6d04de910
+  meta gitCommitHash = 84c8d18e63f1aa37b75abc83fdd54fd6d04de910
+  graph project.gitCommitHash = 84c8d18e63f1aa37b75abc83fdd54fd6d04de910
+  fingerprints gitCommitHash = 84c8d18e63f1aa37b75abc83fdd54fd6d04de910
+
+Final counts and invariants:
+  nodes=1021
+  edges=630
+  layers=7
+  tour=9
+  fingerprints=689
+  analyzedFiles=689
+  duplicate node IDs=0
+  dangling edges=0
+  unassigned file nodes=0
+  multiply-assigned file nodes=0
+
+Semantic scope check against HEAD graph:
+  changed non-target nodes=0
+  non-target edges preserved=true
+  layers preserved=true
+  tour preserved=true
+
+Command:
+  git diff --check -- .ua/knowledge-graph.json .ua/meta.json .ua/fingerprints.json
+
+Result:
+  exit=0, no output
+
+5. STATUS SCOPE
+---------------
+T52-owned tracked changes:
+  M .ua/fingerprints.json
+  M .ua/knowledge-graph.json
+  M .ua/meta.json
+
+T52 artifacts:
+  .orchestration/reports/T52.md
+  .orchestration/validation/T52.txt
+  .orchestration/sandboxes/T52.md
+  .orchestration/learning/T52.md
+  .orchestration/autoskill/runs/T52.md
+
+The shared worktree also contains pre-existing unrelated modifications to `home/dot_mise/config.toml` and `home/dot_mise/mise.lock`, plus the orchestrator-created `.orchestration/tasks/T52-ua-graph-update.md`. They were present outside T52's write scope and were preserved unchanged. No T52 write occurred outside `.ua/**` and the five artifact paths.
+
+Local Bats was not run, as required.

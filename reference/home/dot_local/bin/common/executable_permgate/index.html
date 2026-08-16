@@ -14,7 +14,7 @@
         <link rel="prev" href="../executable_herdr-session/">
       
       
-        <link rel="next" href="../executable_remove-agent-asset/">
+        <link rel="next" href="../executable_pi-model-access-check/">
       
       
         
@@ -1418,6 +1418,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_pi-model-access-check/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pi-model-access-check
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -3481,7 +3509,7 @@
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env -S uv run --no-cache --script</span>
-<span class="s2">&quot;&quot;&quot;Deterministic-first PermissionRequest gate for Claude Code and Codex.&quot;&quot;&quot;</span>
+<span class="s2">&quot;&quot;&quot;Deterministic-first permission gate for Claude Code, Codex, and Pi.&quot;&quot;&quot;</span>
 
 from<span class="w"> </span>__future__<span class="w"> </span>import<span class="w"> </span>annotations
 
@@ -3602,6 +3630,13 @@ def<span class="w"> </span>load_policy<span class="o">()</span><span class="w"> 
 <span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span>f<span class="s2">&quot;{name} minimum_confidence must be between zero and one&quot;</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>providers<span class="o">[</span><span class="s2">&quot;claude&quot;</span><span class="o">][</span><span class="s2">&quot;model&quot;</span><span class="o">]</span>.startswith<span class="o">(</span><span class="s2">&quot;claude-haiku-4-5-20&quot;</span><span class="o">)</span>:
 <span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;claude classifier must use a dated Haiku model ID&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">pi</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">&quot;pi&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>pi,<span class="w"> </span>dict<span class="o">)</span>:
+<span class="w">        </span>raise<span class="w"> </span>TypeError<span class="o">(</span><span class="s2">&quot;pi policy must be an object&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>pi.get<span class="o">(</span><span class="s2">&quot;decision_layers&quot;</span><span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="o">[</span><span class="s2">&quot;deny_patterns&quot;</span>,<span class="w"> </span><span class="s2">&quot;allow_patterns&quot;</span><span class="o">]</span>:
+<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;pi must reuse the deterministic deny and allow layers&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>pi.get<span class="o">(</span><span class="s2">&quot;llm_enabled&quot;</span><span class="o">)</span><span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>False:
+<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;pi llm classifier must remain disabled&quot;</span><span class="o">)</span>
 <span class="w">    </span><span class="nv">categories</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">&quot;categories&quot;</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>categories,<span class="w"> </span>list<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>all<span class="o">(</span>
 <span class="w">        </span>isinstance<span class="o">(</span>item,<span class="w"> </span>str<span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>item<span class="w"> </span><span class="k">in</span><span class="w"> </span>categories
@@ -3952,7 +3987,8 @@ def<span class="w"> </span>decide<span class="o">(</span>
 <span class="w">                    </span><span class="nv">output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>hook_output<span class="o">(</span><span class="s2">&quot;allow&quot;</span><span class="o">)</span>
 <span class="w">                    </span><span class="k">break</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">(</span>
-<span class="w">            </span>output<span class="w"> </span>is<span class="w"> </span>None
+<span class="w">            </span>agent<span class="w"> </span><span class="k">in</span><span class="w"> </span>policy<span class="o">[</span><span class="s2">&quot;providers&quot;</span><span class="o">]</span>
+<span class="w">            </span>and<span class="w"> </span>output<span class="w"> </span>is<span class="w"> </span>None
 <span class="w">            </span>and<span class="w"> </span>safe_single_action
 <span class="w">            </span>and<span class="w"> </span>not<span class="w"> </span>contains_sensitive_input<span class="o">(</span>tool_input<span class="o">)</span>
 <span class="w">        </span><span class="o">)</span>:
@@ -3984,6 +4020,39 @@ def<span class="w"> </span>decide<span class="o">(</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>classification<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
 <span class="w">        </span>record.update<span class="o">(</span>classification<span class="o">)</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span>output,<span class="w"> </span>record
+
+
+def<span class="w"> </span>pi_payload<span class="o">(</span>action:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">])</span><span class="w"> </span>-&gt;<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span>:
+<span class="w">    </span><span class="nv">tool</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>action.get<span class="o">(</span><span class="s2">&quot;tool&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">field</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;command&quot;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nv">tool</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;bash&quot;</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">&quot;path&quot;</span>
+<span class="w">    </span><span class="nv">expected</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{</span><span class="s2">&quot;tool&quot;</span>,<span class="w"> </span>field<span class="o">}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>tool<span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">{</span><span class="s2">&quot;bash&quot;</span>,<span class="w"> </span><span class="s2">&quot;write&quot;</span>,<span class="w"> </span><span class="s2">&quot;edit&quot;</span><span class="o">}</span><span class="w"> </span>or<span class="w"> </span>set<span class="o">(</span>action<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>expected:
+<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;invalid normalized Pi action&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>action.get<span class="o">(</span>field<span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>value,<span class="w"> </span>str<span class="o">)</span>:
+<span class="w">        </span>raise<span class="w"> </span>TypeError<span class="o">(</span><span class="s2">&quot;normalized Pi action value must be a string&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="s2">&quot;tool_name&quot;</span>:<span class="w"> </span><span class="o">{</span><span class="s2">&quot;bash&quot;</span>:<span class="w"> </span><span class="s2">&quot;Bash&quot;</span>,<span class="w"> </span><span class="s2">&quot;write&quot;</span>:<span class="w"> </span><span class="s2">&quot;Write&quot;</span>,<span class="w"> </span><span class="s2">&quot;edit&quot;</span>:<span class="w"> </span><span class="s2">&quot;Edit&quot;</span><span class="o">}[</span>tool<span class="o">]</span>,
+<span class="w">        </span><span class="s2">&quot;tool_input&quot;</span>:<span class="w"> </span><span class="o">{</span>field:<span class="w"> </span>value<span class="o">}</span>,
+<span class="w">    </span><span class="o">}</span>
+
+
+def<span class="w"> </span>run_pi<span class="o">(</span>raw_input:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>int:
+<span class="w">    </span>try:
+<span class="w">        </span><span class="nv">action</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>json.loads<span class="o">(</span>raw_input<span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>action,<span class="w"> </span>dict<span class="o">)</span>:
+<span class="w">            </span>raise<span class="w"> </span>TypeError<span class="o">(</span><span class="s2">&quot;Pi action must be an object&quot;</span><span class="o">)</span>
+<span class="w">        </span><span class="nv">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>pi_payload<span class="o">(</span>action<span class="o">)</span>
+<span class="w">        </span><span class="nv">policy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>load_policy<span class="o">()</span>
+<span class="w">        </span>_,<span class="w"> </span><span class="nv">record</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>decide<span class="o">(</span><span class="s2">&quot;pi&quot;</span>,<span class="w"> </span>payload,<span class="w"> </span>policy<span class="o">)</span>
+<span class="w">        </span>append_log<span class="o">(</span>record<span class="o">)</span>
+<span class="w">        </span><span class="nv">decision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>record<span class="o">[</span><span class="s2">&quot;decision&quot;</span><span class="o">]</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>decision<span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">{</span><span class="s2">&quot;allow&quot;</span>,<span class="w"> </span><span class="s2">&quot;deny&quot;</span>,<span class="w"> </span><span class="s2">&quot;ask&quot;</span><span class="o">}</span>:
+<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;invalid Pi decision&quot;</span><span class="o">)</span>
+<span class="w">    </span>except<span class="w"> </span><span class="o">(</span>OSError,<span class="w"> </span>KeyError,<span class="w"> </span>TypeError,<span class="w"> </span>ValueError,<span class="w"> </span>re.error<span class="o">)</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>print<span class="o">(</span>json.dumps<span class="o">({</span><span class="s2">&quot;decision&quot;</span>:<span class="w"> </span>decision<span class="o">}</span>,<span class="w"> </span><span class="nv">separators</span><span class="o">=(</span><span class="s2">&quot;,&quot;</span>,<span class="w"> </span><span class="s2">&quot;:&quot;</span><span class="o">)))</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 
 
 def<span class="w"> </span>run_bench<span class="o">(</span>policy:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">])</span><span class="w"> </span>-&gt;<span class="w"> </span>int:
@@ -4042,6 +4111,8 @@ def<span class="w"> </span>main<span class="o">()</span><span class="w"> </span>
 <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span>run_bench<span class="o">(</span>policy<span class="o">)</span>
 <span class="w">    </span><span class="nv">agent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>sys.argv<span class="o">[</span><span class="m">1</span><span class="o">]</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">agent</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;pi&quot;</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>run_pi<span class="o">(</span>sys.stdin.read<span class="o">())</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>agent<span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">{</span><span class="s2">&quot;claude&quot;</span>,<span class="w"> </span><span class="s2">&quot;codex&quot;</span><span class="o">}</span>:
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="nv">raw_input</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>sys.stdin.read<span class="o">()</span>

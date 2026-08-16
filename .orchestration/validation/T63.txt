@@ -1,0 +1,48 @@
+T63 validation transcript
+=========================
+
+Scope
+-----
+model-selection.md: one added bullet
+agmsg-orchestration.md: one added bullet beside the live-E2E clause
+code/generated files changed: none
+
+Rendered profile reference
+--------------------------
+home/dot_agents/model-profiles.env:6:
+  MODEL_PROFILE_EXPRESS_CLAUDE_ARGS="--model haiku --effort low"
+home/dot_agents/model-profiles.env:7:
+  MODEL_PROFILE_EXPRESS_CODEX_ARGS="--profile express"
+
+The rules name the two environment variables and `express` profile, not either model ID. Both explicitly prohibit ad-hoc `--model` flags.
+
+Required validation
+-------------------
+command: make validate-agent-assets
+attempt 1: sandbox could not initialize /Users/mryfmo/.cache/uv (Operation not permitted); no validation ran
+attempt 2: same command with existing uv cache access
+result: agent asset validation ok
+
+command: git diff --check
+result: exit 0
+
+command: full git diff for the two allowed rule files
+result: exactly two added bullet lines; no deletions or other edits
+
+command: git status --porcelain
+result: the two allowed rule files and T63 task/artifacts; concurrently supplied `.orchestration/tasks/T64-security-profile.md` is orchestrator-authored and untouched
+
+Review gate
+-----------
+review_surface: crit-data
+reviewer: codex
+review_source: .agents/worklog/codex/review/T63-crit-comments.json
+review_outcome: approved
+review_notes: Resolved scope approval r_963693 covers exact two-bullet scope, placement, rendered variable names, model-ID exclusion, ad-hoc flag prohibition, and validator success.
+gate: `AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/validation/T63.txt make require-crit-review` passed.
+
+Forbidden-action confirmation
+-----------------------------
+- No code or generated-file change.
+- No Bats, chezmoi apply, commit, push, or dependency change.
+- effects=none.

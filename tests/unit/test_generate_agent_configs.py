@@ -179,6 +179,52 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             self.temp_dir / "home/dot_codex/standard.config.toml", outputs
         )
 
+    def test_security_profile_renders_launcher_and_expanded_notify(self) -> None:
+        manifest = sample_manifest()
+        manifest["model_profiles"]["security"] = {
+            "claude": {"model": "claude-fable-5", "effort": "high"},
+            "codex": {
+                "model": "gpt-daybreak-blue-latest",
+                "model_reasoning_effort": "high",
+                "notify": [
+                    "{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify"
+                ],
+            },
+        }
+        outputs = self.module.expected_outputs(manifest)
+        security_profile = (
+            self.temp_dir / "home/dot_codex/modify_security.config.toml"
+        )
+        self.module.write_outputs(outputs)
+
+        home = self.temp_dir / "target-home"
+        result = subprocess.run(
+            [str(security_profile)],
+            input="",
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env={**os.environ, "HOME": str(home)},
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('model = "gpt-daybreak-blue-latest"', result.stdout)
+        self.assertIn('model_reasoning_effort = "high"', result.stdout)
+        self.assertIn(
+            f'notify = ["{home}/.local/bin/common/contextdb-codex-notify"]',
+            result.stdout,
+        )
+        self.assertNotIn("{{", result.stdout)
+        env = outputs[self.temp_dir / "home/dot_agents/model-profiles.env"]
+        self.assertIn(
+            'MODEL_PROFILE_SECURITY_CLAUDE_ARGS="--model claude-fable-5 --effort high"',
+            env,
+        )
+        self.assertIn(
+            'MODEL_PROFILE_SECURITY_CODEX_ARGS="--profile security"', env
+        )
+
     def test_profile_modify_scripts_are_byte_idempotent_with_runtime_state(self) -> None:
         outputs = self.module.expected_outputs(sample_manifest())
         standard_profile = (

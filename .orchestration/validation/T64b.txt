@@ -1,0 +1,57 @@
+T64b validation transcript
+==========================
+
+Required validation
+-------------------
+command: make validate-agent-assets
+result: agent asset validation ok
+
+command: git diff --check
+result: exit 0
+
+Security-routing audit
+----------------------
+| Surface | Statement | Post-fix profile |
+| --- | --- | --- |
+| home/dot_config/codex/AGENTS.md:103 | /security-review, permgate policy, redaction/secret handling, trust-boundary code audits | security (`--profile security`) |
+| home/dot_config/codex/AGENTS.md:103 | non-audit cross-cutting design and unknown failures | deep (`--profile deep`) |
+| home/dot_config/claude/rules/model-selection.md:8 | the same four pending-change security-audit scenarios | security |
+| home/dot_config/claude/rules/model-selection.md:9 | cross-cutting design and unknown failures | deep |
+
+Other security-related matches were audited and are not model-routing statements:
+- Codex AGENTS.md:102 and Claude model-selection.md:3 pin the permgate classifier separately from interactive profiles.
+- Codex AGENTS.md:105 and Claude model-selection.md:10 specify permgate deterministic-first/fail-closed behavior.
+- Claude agmsg-orchestration.md:8 lists security as an adversarial review dimension.
+- Codex AGENTS.md:110 and Claude ponytail.md:4 protect trust-boundary validation and other safety requirements.
+
+Full T64b diff
+--------------
+- home/dot_config/codex/AGENTS.md: one routing sentence replaced; four audit scenarios now name --profile security and deep is explicitly non-audit only.
+- home/dot_config/claude/rules/model-selection.md: one existing T64 sentence narrowed from “cross-cutting design, unknown failures, or security-sensitive work” to “cross-cutting design or unknown failures.”
+- No other rule, code, model-profile, or generated-file delta belongs to T64b.
+
+Project memory
+--------------
+command: python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '<task-specified fact>'
+result: 69c391ae-aa08-4a43-995f-8f4f6e3dbe8c
+
+Plan quality
+------------
+Repository validator/Make target, hook, reviewer definition, template, and CI entrypoints are absent. Manual fallback passed exact scope, assumptions, concrete audit commands, positive/adversarial checks, STOP conditions, and measured acceptance evidence.
+entrypoint check: for artifact_path in docs/workflows/plan-quality-gate.md plans/AGENTS.md plans/TEMPLATE.md .claude/agents/plan-quality-reviewer.md .claude/hooks/plan-quality-gate.sh scripts/validate_plan_quality.py; do test -e "$artifact_path"; done; rg -n 'plan-quality|validate-plan|plan quality' Makefile .github
+
+Review receipt
+--------------
+review_surface: crit-data
+reviewer: codex
+review_source: .agents/worklog/codex/review/T64b-crit-comments.json
+review_outcome: approved
+review_notes: Resolved scope approval r_790f61 covers both routing corrections, every remaining security-related match, permitted scope, and green validation.
+gate: AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/validation/T64b.txt make require-crit-review passed.
+
+Scope and forbidden-action confirmation
+---------------------------------------
+- T64b changes are confined to the two allowed guidance files and five artifacts.
+- Pre-existing accepted T63/T64 changes and orchestrator-authored task/acceptance files remain present and untouched.
+- No code, model-profile, generated-file, Bats, chezmoi apply, dependency change, commit, push, install, or deployment.
+- effects=none.

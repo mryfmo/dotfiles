@@ -1,0 +1,68 @@
+T64 validation transcript
+=========================
+
+Test-first evidence
+-------------------
+command: uv run --with pyyaml python -m unittest <four focused T64 tests>
+before validator implementation: 2 passed, 2 failed because missing-security and wrong-model inputs were not rejected
+after implementation: 4 tests passed
+
+Required validation
+-------------------
+command: uv run --with pyyaml scripts/generate-agent-configs.py --check
+result: generated agent configs are up to date
+
+command: make validate-agent-assets
+result: agent asset validation ok
+
+command: make unit-test
+first run: 307/308 passed; the new positive validator test incorrectly depended on PyYAML in the dependency-free unit target
+fix: injected the in-memory manifest through the validator's existing load boundary
+final result: Ran 308 tests in 31.501s; OK
+
+command: make format
+result: exit 0; shfmt reported no diff
+
+command: git diff --check
+result: exit 0
+
+Local render proof
+------------------
+input: existing [hooks.state] table with trusted=true
+modifier: home/dot_codex/modify_security.config.toml
+result: model=gpt-daybreak-blue-latest, model_reasoning_effort=high, notify=/tmp/t64-security-home/.local/bin/common/contextdb-codex-notify, runtime state preserved, no '{{' residue
+mode: executable (-rwxr-xr-x)
+
+Manifest/profile proof
+----------------------
+- model_profiles contains exactly express, standard, review, deep, security.
+- security Claude args: --model claude-fable-5 --effort high
+- security Codex args: --profile security
+- interactive_profile remains deep.
+- Existing four profile model IDs and efforts are unchanged.
+
+Project memory
+--------------
+command: python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '<task-specified fact>'
+result: 7017934b-6a52-4238-8641-d2ff84359f57
+
+Plan quality
+------------
+Repository validator/Make target, hook, reviewer definition, template, and CI entrypoints are absent. Manual fallback passed exact scope, assumptions, design, positive/adversarial tests, STOP conditions, and measured acceptance evidence.
+entrypoint check: for artifact_path in docs/workflows/plan-quality-gate.md plans/AGENTS.md plans/TEMPLATE.md .claude/agents/plan-quality-reviewer.md .claude/hooks/plan-quality-gate.sh scripts/validate_plan_quality.py; do test -e "$artifact_path"; done; rg -n 'plan-quality|validate-plan|plan quality' Makefile .github
+
+Review receipt
+--------------
+review_surface: crit-data
+reviewer: codex
+review_source: .agents/worklog/codex/review/T64-crit-comments.json
+review_outcome: approved
+review_notes: Resolved scope approval r_9631cb covers canonical/generated ownership, exact profile constraints, apply-time path expansion, unchanged existing tiers, executable mode, and all required validation.
+gate: AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/validation/T64.txt make require-crit-review passed.
+
+Scope and forbidden-action confirmation
+---------------------------------------
+- T64 changes are confined to allowed manifest, generated outputs, validator, one rule bullet, matching unit modules, and five artifacts.
+- Pre-existing accepted T63 changes and the orchestrator-authored T64 task file remain present and untouched.
+- No hand-edited generated output, interactive-profile change, existing-tier model/effort change, Bats, chezmoi apply, dependency change, commit, push, or deployment.
+- effects=none.

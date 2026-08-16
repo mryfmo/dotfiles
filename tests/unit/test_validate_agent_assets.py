@@ -106,6 +106,47 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             self.module.validate_hook_composition()
         self.assertIn(finding, stderr.getvalue())
 
+    def write_valid_agent_manifest(self) -> dict:
+        profiles = {
+            name: {
+                "claude": {"model": "claude-model", "effort": "high"},
+                "codex": {"model": "codex-model", "model_reasoning_effort": "high"},
+            }
+            for name in ("express", "standard", "review", "deep", "security")
+        }
+        profiles["security"]["codex"]["model"] = "gpt-daybreak-blue-latest"
+        manifest = {
+            "schema_version": 1,
+            "target_agents": ["codex", "claude"],
+            "skills": {"canonical_dir": "~/.agents/skills"},
+            "model_profiles": profiles,
+            "interactive_profile": "deep",
+            "claude": {},
+            "codex": {"plugins": {"crit@mryfmo-personal-plugins": {"enabled": True}}},
+            "mcp_servers": {},
+        }
+        self.module.load_yaml = lambda _path: manifest
+        return manifest
+
+    def test_agent_manifest_accepts_exact_security_profile_set(self) -> None:
+        self.write_valid_agent_manifest()
+
+        self.module.validate_agent_manifest()
+
+    def test_agent_manifest_rejects_missing_security_profile(self) -> None:
+        manifest = self.write_valid_agent_manifest()
+        del manifest["model_profiles"]["security"]
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_agent_manifest()
+
+    def test_agent_manifest_rejects_wrong_security_codex_model(self) -> None:
+        manifest = self.write_valid_agent_manifest()
+        manifest["model_profiles"]["security"]["codex"]["model"] = "gpt-5.6-sol"
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_agent_manifest()
+
     def test_hook_composition_accepts_managed_source_fixture(self) -> None:
         self.copy_managed_hook_sources()
 

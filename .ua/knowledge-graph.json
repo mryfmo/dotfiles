@@ -8147,6 +8147,40 @@
       "languageNotes": "Uses strict Bash mode with CLI capability checks, pinned installer verification, and manifest recording after each managed update."
     },
     {
+      "id": "function:scripts/update-agent-assets.sh:section",
+      "type": "function",
+      "name": "section",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        46,
+        48
+      ],
+      "summary": "Prints a formatted section heading for the updater's progress output.",
+      "tags": [
+        "cli-output",
+        "formatting",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/update-agent-assets.sh:has_command",
+      "type": "function",
+      "name": "has_command",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        54,
+        56
+      ],
+      "summary": "Checks whether a named command is available on the current PATH.",
+      "tags": [
+        "command-detection",
+        "validation",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
       "id": "function:scripts/update-agent-assets.sh:remove_node_global_agent_cli_shadows",
       "type": "function",
       "name": "remove_node_global_agent_cli_shadows",
@@ -8181,6 +8215,40 @@
       "complexity": "moderate"
     },
     {
+      "id": "function:scripts/update-agent-assets.sh:is_macos",
+      "type": "function",
+      "name": "is_macos",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        97,
+        99
+      ],
+      "summary": "Checks whether the updater is running on macOS.",
+      "tags": [
+        "platform-detection",
+        "macos",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/update-agent-assets.sh:command_output_contains",
+      "type": "function",
+      "name": "command_output_contains",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        106,
+        111
+      ],
+      "summary": "Runs a command with stderr suppressed and checks its output for a fixed string.",
+      "tags": [
+        "command-execution",
+        "validation",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
       "id": "function:scripts/update-agent-assets.sh:codex_marketplace_is_configured_git_marketplace",
       "type": "function",
       "name": "codex_marketplace_is_configured_git_marketplace",
@@ -8196,6 +8264,23 @@
         "validation"
       ],
       "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/update-agent-assets.sh:codex_marketplace_root",
+      "type": "function",
+      "name": "codex_marketplace_root",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        141,
+        145
+      ],
+      "summary": "Looks up and prints the local root path for a configured Codex marketplace.",
+      "tags": [
+        "codex",
+        "marketplace",
+        "path-lookup"
+      ],
+      "complexity": "simple"
     },
     {
       "id": "function:scripts/update-agent-assets.sh:git_remote_origin_matches",
@@ -8232,6 +8317,23 @@
       "complexity": "simple"
     },
     {
+      "id": "function:scripts/update-agent-assets.sh:ensure_claude_superpowers_marketplace",
+      "type": "function",
+      "name": "ensure_claude_superpowers_marketplace",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        188,
+        194
+      ],
+      "summary": "Ensures the official Claude Code plugin marketplace is configured before Superpowers installation.",
+      "tags": [
+        "claude-code",
+        "superpowers",
+        "marketplace"
+      ],
+      "complexity": "simple"
+    },
+    {
       "id": "function:scripts/update-agent-assets.sh:ensure_crit_cli",
       "type": "function",
       "name": "ensure_crit_cli",
@@ -8247,6 +8349,57 @@
         "install-script"
       ],
       "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/update-agent-assets.sh:ensure_claude_crit_marketplace",
+      "type": "function",
+      "name": "ensure_claude_crit_marketplace",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        218,
+        224
+      ],
+      "summary": "Ensures the Crit marketplace is configured for Claude Code plugin installation.",
+      "tags": [
+        "claude-code",
+        "crit",
+        "marketplace"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/update-agent-assets.sh:ensure_claude_ponytail_marketplace",
+      "type": "function",
+      "name": "ensure_claude_ponytail_marketplace",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        229,
+        235
+      ],
+      "summary": "Ensures the Ponytail marketplace is configured for Claude Code plugin installation.",
+      "tags": [
+        "claude-code",
+        "ponytail",
+        "marketplace"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/update-agent-assets.sh:ensure_claude_understand_anything_marketplace",
+      "type": "function",
+      "name": "ensure_claude_understand_anything_marketplace",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        240,
+        246
+      ],
+      "summary": "Ensures the Understand-Anything marketplace is configured for Claude Code plugin installation.",
+      "tags": [
+        "claude-code",
+        "understand-anything",
+        "marketplace"
+      ],
+      "complexity": "simple"
     },
     {
       "id": "function:scripts/update-agent-assets.sh:claude_crit_plugin_is_enabled",
@@ -8486,6 +8639,24 @@
         "checksum"
       ],
       "complexity": "complex"
+    },
+    {
+      "id": "function:scripts/update-agent-assets.sh:update_compactiondb",
+      "type": "function",
+      "name": "update_compactiondb",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        646,
+        651
+      ],
+      "summary": "Synchronizes the vendored CompactionDB tree into the shared agent assets while preserving project runtime state, then records the install in the asset manifest.",
+      "tags": [
+        "compactiondb",
+        "rsync",
+        "asset-manifest",
+        "agent-tooling"
+      ],
+      "complexity": "moderate"
     },
     {
       "id": "function:scripts/update-agent-assets.sh:main",
@@ -19715,6 +19886,20 @@
     },
     {
       "source": "file:scripts/update-agent-assets.sh",
+      "target": "function:scripts/update-agent-assets.sh:section",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "function:scripts/update-agent-assets.sh:has_command",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
       "target": "function:scripts/update-agent-assets.sh:remove_node_global_agent_cli_shadows",
       "type": "contains",
       "direction": "forward",
@@ -19729,7 +19914,28 @@
     },
     {
       "source": "file:scripts/update-agent-assets.sh",
+      "target": "function:scripts/update-agent-assets.sh:is_macos",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "function:scripts/update-agent-assets.sh:command_output_contains",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
       "target": "function:scripts/update-agent-assets.sh:codex_marketplace_is_configured_git_marketplace",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "function:scripts/update-agent-assets.sh:codex_marketplace_root",
       "type": "contains",
       "direction": "forward",
       "weight": 1
@@ -19750,7 +19956,35 @@
     },
     {
       "source": "file:scripts/update-agent-assets.sh",
+      "target": "function:scripts/update-agent-assets.sh:ensure_claude_superpowers_marketplace",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
       "target": "function:scripts/update-agent-assets.sh:ensure_crit_cli",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "function:scripts/update-agent-assets.sh:ensure_claude_crit_marketplace",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "function:scripts/update-agent-assets.sh:ensure_claude_ponytail_marketplace",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "function:scripts/update-agent-assets.sh:ensure_claude_understand_anything_marketplace",
       "type": "contains",
       "direction": "forward",
       "weight": 1
@@ -19849,6 +20083,13 @@
     {
       "source": "file:scripts/update-agent-assets.sh",
       "target": "function:scripts/update-agent-assets.sh:update_codex_understand_anything",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "function:scripts/update-agent-assets.sh:update_compactiondb",
       "type": "contains",
       "direction": "forward",
       "weight": 1

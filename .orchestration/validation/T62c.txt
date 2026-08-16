@@ -1,0 +1,100 @@
+T62c validation transcript
+===========================
+
+PR context
+----------
+command: gh pr view 130 --repo mryfmo/dotfiles
+result: OPEN PR #130, branch chore/ua-shell-sources, checks successful at inspection
+
+command: gh api graphql reviewThreads for PR #130
+result: unresolved, non-outdated thread PRRT_kwDOSMyAV86ZlcnH at .ua/knowledge-graph.json; requests update_compactiondb node and contains edge
+
+Baseline
+--------
+HEAD: 03621422f732c6be0eb318a137ff572ebeee47c8
+before: 1180 nodes, 932 edges, 21 updater functions, 21 updater contains edges
+source declarations: 31
+missing before: 10
+  section
+  has_command
+  is_macos
+  command_output_contains
+  codex_marketplace_root
+  ensure_claude_superpowers_marketplace
+  ensure_claude_crit_marketplace
+  ensure_claude_ponytail_marketplace
+  ensure_claude_understand_anything_marketplace
+  update_compactiondb
+
+Full function-node audit after fix
+----------------------------------
+function                                      source  graph   status
+section                                       46-48   46-48   ok
+has_command                                   54-56   54-56   ok
+remove_node_global_agent_cli_shadows          61-70   61-70   ok
+ensure_mise_npm_agent_cli                     77-92   77-92   ok
+is_macos                                      97-99   97-99   ok
+command_output_contains                       106-111 106-111 ok
+codex_marketplace_is_configured_git_marketplace 117-135 117-135 ok
+codex_marketplace_root                        141-145 141-145 ok
+git_remote_origin_matches                     152-165 152-165 ok
+codex_marketplace_has_source                  172-183 172-183 ok
+ensure_claude_superpowers_marketplace         188-194 188-194 ok
+ensure_crit_cli                               199-213 199-213 ok
+ensure_claude_crit_marketplace                218-224 218-224 ok
+ensure_claude_ponytail_marketplace            229-235 229-235 ok
+ensure_claude_understand_anything_marketplace 240-246 240-246 ok
+claude_crit_plugin_is_enabled                 251-275 251-275 ok
+claude_ponytail_plugin_is_enabled             280-304 280-304 ok
+claude_understand_anything_plugin_is_enabled  309-333 309-333 ok
+ensure_herdr_integrations                     338-347 338-347 ok
+update_claude_superpowers                     352-369 352-369 ok
+update_claude_crit                            374-399 374-399 ok
+update_claude_ponytail                        404-427 404-427 ok
+update_claude_understand_anything             432-454 432-454 ok
+update_codex_superpowers                      459-479 459-479 ok
+ensure_codex_ponytail_marketplace             484-505 484-505 ok
+update_codex_ponytail                         510-529 510-529 ok
+update_codex_crit                             534-549 534-549 ok
+provision_codex_understand_anything_runtime   555-603 555-603 ok
+update_codex_understand_anything              612-641 612-641 ok
+update_compactiondb                           646-651 646-651 ok
+main                                          657-677 657-677 ok
+
+audit totals: source=31 graph=31 contains=31 missing=0 extra=0
+update_compactiondb node count=1, contains edge count=1
+
+Graph validation
+----------------
+after: 1190 nodes, 942 edges, 8 layers, 12 tour steps, 715 fingerprints
+
+command: core validateGraph plus deterministic graph invariants
+result:
+  schemaSuccess=true, schemaError=null, issues=[]
+  fileLevelNodes=730, assignedFileNodes=730
+  unique node IDs; no dangling edge/layer/tour references
+
+command: python3 json.load on knowledge-graph.json, fingerprints.json, meta.json
+result: json-load: ok
+
+command: graph/meta/fingerprint HEAD and count assertions
+result: all hashes equal current HEAD; meta analyzedFiles=715; fingerprints=715
+
+command: git diff --check
+result: exit 0
+
+Review gate
+-----------
+review_surface: crit-data
+reviewer: codex
+review_source: .agents/worklog/codex/review/T62c-crit-comments.json
+review_outcome: approved
+review_notes: Resolved scope approval r_20a49e covers 31/31 enumeration, ten node/edge additions, exact ranges, unchanged file-level topology, and official/deterministic validation.
+gate: `AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/validation/T62c.txt make require-crit-review` passed.
+
+Scope
+-----
+- Worker change: .ua/knowledge-graph.json plus five T62c artifacts and ignored worklog/review evidence.
+- Existing T62b .ua changes/artifacts and orchestrator acceptance were preserved.
+- No Bats, chezmoi apply, dependency change, commit, push, or GitHub mutation.
+- effects=none.

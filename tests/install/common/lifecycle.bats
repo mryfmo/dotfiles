@@ -27,12 +27,12 @@ function run_update_fixture() {
         "${fixture}/home/.config/chezmoi-private"
     touch "${fixture}/home/.config/chezmoi-private/chezmoi.yaml"
     cp Makefile "${fixture}/Makefile"
-    cat > "${fixture}/bin/chezmoi" <<EOF
+    cat > "${fixture}/bin/chezmoi" << EOF
 #!/usr/bin/env bash
 printf 'chezmoi %s\n' "\$*" >> "${fixture}/calls"
 exit ${apply_exit}
 EOF
-    cat > "${fixture}/bin/mise" <<EOF
+    cat > "${fixture}/bin/mise" << EOF
 #!/usr/bin/env bash
 printf 'mise %s\n' "\$*" >> "${fixture}/calls"
 if [ -n '${mise_fail_args}' ] && [ "\$*" = '${mise_fail_args}' ]; then
@@ -40,12 +40,12 @@ if [ -n '${mise_fail_args}' ] && [ "\$*" = '${mise_fail_args}' ]; then
 fi
 exit 0
 EOF
-    cat > "${fixture}/scripts/update-agent-assets.sh" <<EOF
+    cat > "${fixture}/scripts/update-agent-assets.sh" << EOF
 #!/usr/bin/env bash
 printf 'assets\n' >> "${fixture}/calls"
 exit ${assets_exit}
 EOF
-    cat > "${fixture}/bin/herdr" <<EOF
+    cat > "${fixture}/bin/herdr" << EOF
 #!/usr/bin/env bash
 printf 'herdr %s\n' "\$*" >> "${fixture}/calls"
 if [[ \$1 == status ]]; then
@@ -424,7 +424,7 @@ herdr server reload-config" ]
     git init -q "${repo_root}"
     expected_root="$(cd "${repo_root}" && pwd -P)"
 
-    cat > "${tmpdir}/bin/chezmoi" <<'CHEZMOI'
+    cat > "${tmpdir}/bin/chezmoi" << 'CHEZMOI'
 #!/usr/bin/env bash
 set -euo pipefail
 

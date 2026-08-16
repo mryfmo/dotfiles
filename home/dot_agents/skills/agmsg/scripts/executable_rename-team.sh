@@ -12,8 +12,8 @@ OLD_TEAM="${1:?Usage: rename-team.sh <old_team> <new_team>}"
 NEW_TEAM="${2:?Missing new team name}"
 
 if [ "$OLD_TEAM" = "$NEW_TEAM" ]; then
-  echo "Old and new team names are the same: $OLD_TEAM"
-  exit 1
+    echo "Old and new team names are the same: $OLD_TEAM"
+    exit 1
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -24,13 +24,13 @@ OLD_DIR="$TEAMS_DIR/$OLD_TEAM"
 NEW_DIR="$TEAMS_DIR/$NEW_TEAM"
 
 if [ ! -d "$OLD_DIR" ]; then
-  echo "Team not found: $OLD_TEAM"
-  exit 1
+    echo "Team not found: $OLD_TEAM"
+    exit 1
 fi
 
 if [ -e "$NEW_DIR" ]; then
-  echo "Team already exists: $NEW_TEAM"
-  exit 1
+    echo "Team already exists: $NEW_TEAM"
+    exit 1
 fi
 
 # --- Move directory ---
@@ -39,15 +39,15 @@ mv "$OLD_DIR" "$NEW_DIR"
 # --- Update name in config.json ---
 NEW_CONFIG="$NEW_DIR/config.json"
 if [ -f "$NEW_CONFIG" ]; then
-  CONFIG_ESCAPED=$(sed "s/'/''/g" "$NEW_CONFIG")
-  UPDATED=$(sqlite3 :memory: ".param set :json '$CONFIG_ESCAPED'" \
-    "SELECT json_set(:json, '\$.name', '$NEW_TEAM');")
-  echo "$UPDATED" > "$NEW_CONFIG"
+    CONFIG_ESCAPED=$(sed "s/'/''/g" "$NEW_CONFIG")
+    UPDATED=$(sqlite3 :memory: ".param set :json '$CONFIG_ESCAPED'" \
+        "SELECT json_set(:json, '\$.name', '$NEW_TEAM');")
+    echo "$UPDATED" > "$NEW_CONFIG"
 fi
 
 # --- Update messages in DB ---
 if [ -f "$DB" ]; then
-  sqlite3 "$DB" "UPDATE messages SET team='$NEW_TEAM' WHERE team='$OLD_TEAM';"
+    sqlite3 "$DB" "UPDATE messages SET team='$NEW_TEAM' WHERE team='$OLD_TEAM';"
 fi
 
 echo "Renamed team $OLD_TEAM → $NEW_TEAM"

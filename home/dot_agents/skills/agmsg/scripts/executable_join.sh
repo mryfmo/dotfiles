@@ -15,8 +15,11 @@ PROJECT_PATH="${4:?Missing project_path}"
 # here. Allowing arbitrary strings silently mis-registers an agent and
 # makes monitor mode fail with a confusing "no joined teams" message.
 case "$AGENT_TYPE" in
-  claude-code|codex|gemini|antigravity|copilot) ;;
-  *) echo "Unknown agent type: '$AGENT_TYPE' (supported: claude-code, codex, gemini, antigravity, copilot)" >&2; exit 1 ;;
+claude-code | codex | gemini | antigravity | copilot) ;;
+*)
+    echo "Unknown agent type: '$AGENT_TYPE' (supported: claude-code, codex, gemini, antigravity, copilot)" >&2
+    exit 1
+    ;;
 esac
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -26,14 +29,14 @@ TEAM_CONFIG="$TEAMS_DIR/$TEAM/config.json"
 # --- Ensure team config exists ---
 mkdir -p "$TEAMS_DIR/$TEAM"
 if [ ! -f "$TEAM_CONFIG" ]; then
-  cat > "$TEAM_CONFIG" <<EOF
+    cat > "$TEAM_CONFIG" << EOF
 {
   "name": "$TEAM",
   "agents": {},
   "created_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
 EOF
-  echo "Created team: $TEAM"
+    echo "Created team: $TEAM"
 fi
 
 # --- Add or extend agent registrations ---
@@ -42,13 +45,13 @@ REGISTRATION="{\"type\":\"$AGENT_TYPE\",\"project\":\"$PROJECT_PATH\"}"
 REGISTRATION_ESCAPED=$(printf '%s' "$REGISTRATION" | sed "s/'/''/g")
 
 EXISTING=$(sqlite3 :memory: ".param set :json '$CONFIG_ESCAPED'" \
-  "SELECT json_extract(:json, '$.agents.$AGENT_ID');")
+    "SELECT json_extract(:json, '$.agents.$AGENT_ID');")
 
 if [ -z "$EXISTING" ] || [ "$EXISTING" = "null" ]; then
-  AGENT_OBJ="{\"registrations\":[${REGISTRATION}]}"
+    AGENT_OBJ="{\"registrations\":[${REGISTRATION}]}"
 else
-  EXISTING_ESCAPED=$(printf '%s' "$EXISTING" | sed "s/'/''/g")
-  NORMALIZED=$(sqlite3 :memory: "
+    EXISTING_ESCAPED=$(printf '%s' "$EXISTING" | sed "s/'/''/g")
+    NORMALIZED=$(sqlite3 :memory: "
     WITH agent(a) AS (SELECT '$EXISTING_ESCAPED')
     SELECT CASE
       WHEN json_type(json_extract(a, '\$.registrations')) = 'array' THEN a
@@ -62,9 +65,9 @@ else
     END
     FROM agent;
   ")
-  NORMALIZED_ESCAPED=$(printf '%s' "$NORMALIZED" | sed "s/'/''/g")
+    NORMALIZED_ESCAPED=$(printf '%s' "$NORMALIZED" | sed "s/'/''/g")
 
-  HAS_REGISTRATION=$(sqlite3 :memory: "
+    HAS_REGISTRATION=$(sqlite3 :memory: "
     SELECT EXISTS(
       SELECT 1
       FROM json_each(json_extract('$NORMALIZED_ESCAPED', '\$.registrations'))
@@ -73,22 +76,22 @@ else
     );
   ")
 
-  if [ "$HAS_REGISTRATION" = "1" ]; then
-    AGENT_OBJ="$NORMALIZED"
-  else
-    AGENT_OBJ=$(sqlite3 :memory: "
+    if [ "$HAS_REGISTRATION" = "1" ]; then
+        AGENT_OBJ="$NORMALIZED"
+    else
+        AGENT_OBJ=$(sqlite3 :memory: "
       SELECT json_set(
         '$NORMALIZED_ESCAPED',
         '\$.registrations[' || json_array_length(json_extract('$NORMALIZED_ESCAPED', '\$.registrations')) || ']',
         json('$REGISTRATION_ESCAPED')
       );
     ")
-  fi
+    fi
 fi
 
 UPDATED=$(sqlite3 :memory: \
-  ".param set :json '$CONFIG_ESCAPED'" \
-  "SELECT json_set(:json, '$.agents.$AGENT_ID', json('$(printf '%s' "$AGENT_OBJ" | sed "s/'/''/g")'));")
+    ".param set :json '$CONFIG_ESCAPED'" \
+    "SELECT json_set(:json, '$.agents.$AGENT_ID', json('$(printf '%s' "$AGENT_OBJ" | sed "s/'/''/g")'));")
 echo "$UPDATED" > "$TEAM_CONFIG"
 
 echo "Joined team $TEAM as $AGENT_ID"

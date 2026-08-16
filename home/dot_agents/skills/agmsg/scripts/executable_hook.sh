@@ -17,7 +17,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 echo "agmsg: hook.sh is deprecated; use 'delivery.sh set <mode>' or '/agmsg mode <mode>' instead." >&2
 
 case "$ACTION" in
-  on)  exec "$SCRIPT_DIR/delivery.sh" set turn "$@" ;;
-  off) exec "$SCRIPT_DIR/delivery.sh" set off  "$@" ;;
-  *)   echo "Unknown action: $ACTION (use on|off)" >&2; exit 1 ;;
+on) exec "$SCRIPT_DIR/delivery.sh" set turn "$@" ;;
+off) exec "$SCRIPT_DIR/delivery.sh" set off "$@" ;;
+*)
+    echo "Unknown action: $ACTION (use on|off)" >&2
+    exit 1
+    ;;
 esac

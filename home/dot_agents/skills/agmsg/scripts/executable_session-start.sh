@@ -34,49 +34,49 @@ RUN_DIR="$SKILL_DIR/run"
 source "$SCRIPT_DIR/lib/actas-lock.sh"
 
 # Identity sanity check — no point launching a watcher with an empty pair set.
-PAIRS=$("$SCRIPT_DIR/identities.sh" "$PROJECT" "$TYPE" 2>/dev/null || true)
+PAIRS=$("$SCRIPT_DIR/identities.sh" "$PROJECT" "$TYPE" 2> /dev/null || true)
 [ -n "$PAIRS" ] || exit 0
 
 # Read hook input JSON from stdin. session_id field is sent for SessionStart.
-INPUT=$(cat 2>/dev/null || true)
+INPUT=$(cat 2> /dev/null || true)
 SESSION_ID=""
 if [ -n "$INPUT" ]; then
-  SESSION_ID=$(printf '%s' "$INPUT" \
-    | sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
-    | head -1)
+    SESSION_ID=$(printf '%s' "$INPUT" |
+        sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' |
+        head -1)
 fi
 # Fallback so the instruction is still actionable even outside CC's hook flow.
 [ -z "$SESSION_ID" ] && SESSION_ID="unknown-$$"
 
-mkdir -p "$RUN_DIR" 2>/dev/null || true
+mkdir -p "$RUN_DIR" 2> /dev/null || true
 
 # --- Identify the enclosing Claude Code process. ---
 # Walk the parent chain looking for a process whose argv contains "claude".
 # Stop at PID 1 or after a bounded number of hops. Returns empty when no
 # match — in that case we skip the dedup step entirely.
 find_cc_pid() {
-  local pid="$$"
-  local hops=0
-  while [ "$pid" -gt 1 ] && [ "$hops" -lt 20 ]; do
-    pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')
-    [ -z "$pid" ] && return 1
-    [ "$pid" = "0" ] && return 1
-    local cmd
-    cmd=$(ps -o args= -p "$pid" 2>/dev/null || true)
-    # Match the actual claude binary, not e.g. "/bin/zsh -c '...claude...'"
-    # by requiring the basename of the first token to be exactly "claude".
-    local first
-    first=$(printf '%s' "$cmd" | awk '{print $1}')
-    if [ "$(basename -- "${first:-}")" = "claude" ]; then
-      echo "$pid"
-      return 0
-    fi
-    hops=$((hops + 1))
-  done
-  return 1
+    local pid="$$"
+    local hops=0
+    while [ "$pid" -gt 1 ] && [ "$hops" -lt 20 ]; do
+        pid=$(ps -o ppid= -p "$pid" 2> /dev/null | tr -d ' ')
+        [ -z "$pid" ] && return 1
+        [ "$pid" = "0" ] && return 1
+        local cmd
+        cmd=$(ps -o args= -p "$pid" 2> /dev/null || true)
+        # Match the actual claude binary, not e.g. "/bin/zsh -c '...claude...'"
+        # by requiring the basename of the first token to be exactly "claude".
+        local first
+        first=$(printf '%s' "$cmd" | awk '{print $1}')
+        if [ "$(basename -- "${first:-}")" = "claude" ]; then
+            echo "$pid"
+            return 0
+        fi
+        hops=$((hops + 1))
+    done
+    return 1
 }
 
-CC_PID=$(find_cc_pid 2>/dev/null || true)
+CC_PID=$(find_cc_pid 2> /dev/null || true)
 
 # --- Cleanup of stale cc-instance files and their orphan watchers. ---
 # A cc-instance.<pid> whose CC pid is dead is left over from a previous CC.
@@ -89,42 +89,42 @@ CC_PID=$(find_cc_pid 2>/dev/null || true)
 # First pass: collect session_ids that are still referenced by a LIVE CC.
 live_sids=""
 for f in "$RUN_DIR"/cc-instance.*; do
-  [ -f "$f" ] || continue
-  pid=${f##*.}
-  case "$pid" in ''|*[!0-9]*) continue ;; esac
-  if kill -0 "$pid" 2>/dev/null; then
-    s=$(cat "$f" 2>/dev/null || true)
-    [ -n "$s" ] && live_sids="$live_sids|$s"
-  fi
+    [ -f "$f" ] || continue
+    pid=${f##*.}
+    case "$pid" in '' | *[!0-9]*) continue ;; esac
+    if kill -0 "$pid" 2> /dev/null; then
+        s=$(cat "$f" 2> /dev/null || true)
+        [ -n "$s" ] && live_sids="$live_sids|$s"
+    fi
 done
 
 # Second pass: clean each dead cc-instance, killing its bound watcher only
 # when no live CC still references that session_id.
 for f in "$RUN_DIR"/cc-instance.*; do
-  [ -f "$f" ] || continue
-  pid=${f##*.}
-  case "$pid" in ''|*[!0-9]*) continue ;; esac
-  kill -0 "$pid" 2>/dev/null && continue
-  dead_sid=$(cat "$f" 2>/dev/null || true)
-  if [ -n "$dead_sid" ] \
-      && ! printf '%s\n' "$live_sids" | tr '|' '\n' | grep -Fxq "$dead_sid"; then
-    orphan_pidfile="$RUN_DIR/watch.$dead_sid.pid"
-    if [ -f "$orphan_pidfile" ]; then
-      orphan_pid=$(cat "$orphan_pidfile" 2>/dev/null || true)
-      if [ -n "$orphan_pid" ] && kill -0 "$orphan_pid" 2>/dev/null; then
-        # Defensive: only kill if the pid's command line actually matches
-        # our watch.sh. Defends against pid recycling — a stale pidfile
-        # could point at an unrelated process that took the same pid.
-        cmd=$(ps -o args= -p "$orphan_pid" 2>/dev/null || true)
-        case "$cmd" in
-          *"$SKILL_DIR/scripts/watch.sh"*) kill "$orphan_pid" 2>/dev/null || true ;;
-          *) ;;  # not our watcher anymore; leave it alone
-        esac
-      fi
-      rm -f "$orphan_pidfile"
+    [ -f "$f" ] || continue
+    pid=${f##*.}
+    case "$pid" in '' | *[!0-9]*) continue ;; esac
+    kill -0 "$pid" 2> /dev/null && continue
+    dead_sid=$(cat "$f" 2> /dev/null || true)
+    if [ -n "$dead_sid" ] &&
+        ! printf '%s\n' "$live_sids" | tr '|' '\n' | grep -Fxq "$dead_sid"; then
+        orphan_pidfile="$RUN_DIR/watch.$dead_sid.pid"
+        if [ -f "$orphan_pidfile" ]; then
+            orphan_pid=$(cat "$orphan_pidfile" 2> /dev/null || true)
+            if [ -n "$orphan_pid" ] && kill -0 "$orphan_pid" 2> /dev/null; then
+                # Defensive: only kill if the pid's command line actually matches
+                # our watch.sh. Defends against pid recycling — a stale pidfile
+                # could point at an unrelated process that took the same pid.
+                cmd=$(ps -o args= -p "$orphan_pid" 2> /dev/null || true)
+                case "$cmd" in
+                *"$SKILL_DIR/scripts/watch.sh"*) kill "$orphan_pid" 2> /dev/null || true ;;
+                *) ;; # not our watcher anymore; leave it alone
+                esac
+            fi
+            rm -f "$orphan_pidfile"
+        fi
     fi
-  fi
-  rm -f "$f"
+    rm -f "$f"
 done
 
 # Same defensive pass for stale watcher pidfiles. A pidfile whose recorded
@@ -132,43 +132,42 @@ done
 # trap — usually an edge case like SIGKILL or a synthesized session_id
 # that SessionEnd's lookup couldn't match.
 for f in "$RUN_DIR"/watch.*.pid; do
-  [ -f "$f" ] || continue
-  pid=$(cat "$f" 2>/dev/null || true)
-  if [ -z "$pid" ]; then
-    rm -f "$f"
-    continue
-  fi
-  kill -0 "$pid" 2>/dev/null || rm -f "$f"
+    [ -f "$f" ] || continue
+    pid=$(cat "$f" 2> /dev/null || true)
+    if [ -z "$pid" ]; then
+        rm -f "$f"
+        continue
+    fi
+    kill -0 "$pid" 2> /dev/null || rm -f "$f"
 done
 
 # Garbage-collect actas exclusivity locks whose owner session_id no longer
 # maps to a live cc-instance. Must run after the dead cc-instance cleanup
 # above, since the liveness check enumerates the remaining cc-instance.*
 # files. See #62.
-actas_lock_gc_stale >/dev/null 2>&1 || true
-
+actas_lock_gc_stale > /dev/null 2>&1 || true
 
 # --- Dedup against the previous watcher in this CC instance. ---
 if [ -n "$CC_PID" ]; then
-  STATE="$RUN_DIR/cc-instance.$CC_PID"
-  if [ -f "$STATE" ]; then
-    prev=$(cat "$STATE" 2>/dev/null || true)
-    if [ -n "$prev" ] && [ "$prev" != "$SESSION_ID" ]; then
-      prev_pidfile="$RUN_DIR/watch.$prev.pid"
-      if [ -f "$prev_pidfile" ]; then
-        prev_pid=$(cat "$prev_pidfile" 2>/dev/null || true)
-        if [ -n "$prev_pid" ] && kill -0 "$prev_pid" 2>/dev/null; then
-          kill "$prev_pid" 2>/dev/null || true
+    STATE="$RUN_DIR/cc-instance.$CC_PID"
+    if [ -f "$STATE" ]; then
+        prev=$(cat "$STATE" 2> /dev/null || true)
+        if [ -n "$prev" ] && [ "$prev" != "$SESSION_ID" ]; then
+            prev_pidfile="$RUN_DIR/watch.$prev.pid"
+            if [ -f "$prev_pidfile" ]; then
+                prev_pid=$(cat "$prev_pidfile" 2> /dev/null || true)
+                if [ -n "$prev_pid" ] && kill -0 "$prev_pid" 2> /dev/null; then
+                    kill "$prev_pid" 2> /dev/null || true
+                fi
+            fi
         fi
-      fi
     fi
-  fi
-  printf '%s\n' "$SESSION_ID" > "$STATE"
+    printf '%s\n' "$SESSION_ID" > "$STATE"
 fi
 
 WATCH="$SKILL_DIR/scripts/watch.sh"
 
-cat <<EOF
+cat << EOF
 AGMSG monitor mode: invoke the Monitor tool now with the following parameters,
 before any other action in this session.
 

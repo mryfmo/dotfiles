@@ -22,14 +22,14 @@ TEAMS_DIR="$SCRIPT_DIR/../teams"
 [ -d "$TEAMS_DIR" ] || exit 0
 
 for config_file in "$TEAMS_DIR"/*/config.json; do
-  [ -f "$config_file" ] || continue
-  CONFIG_ESCAPED=$(sed "s/'/''/g" "$config_file")
-  TEAM_NAME=$(sqlite3 :memory: ".param set :json '$CONFIG_ESCAPED'" \
-    "SELECT json_extract(:json, '\$.name');")
-  [ -z "$TEAM_NAME" ] && continue
-  [ "$TEAM_NAME" = "null" ] && continue
+    [ -f "$config_file" ] || continue
+    CONFIG_ESCAPED=$(sed "s/'/''/g" "$config_file")
+    TEAM_NAME=$(sqlite3 :memory: ".param set :json '$CONFIG_ESCAPED'" \
+        "SELECT json_extract(:json, '\$.name');")
+    [ -z "$TEAM_NAME" ] && continue
+    [ "$TEAM_NAME" = "null" ] && continue
 
-  sqlite3 -separator $'\t' :memory: ".param set :json '$CONFIG_ESCAPED'" "
+    sqlite3 -separator $'\t' :memory: ".param set :json '$CONFIG_ESCAPED'" "
     WITH agents AS (
       SELECT
         key AS name,

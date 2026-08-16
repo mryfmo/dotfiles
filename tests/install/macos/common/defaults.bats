@@ -47,14 +47,14 @@ function setup() {
 
     persistent_apps="$(defaults read com.apple.dock persistent-apps)"
     app_path_count="$(
-        { grep -Eo '(/Applications/Google Chrome\.app|/System/Applications/System (Settings|Preferences)\.app/)' <<<"${persistent_apps}" || true; } \
-            | wc -l \
-            | tr -d ' '
+        { grep -Eo '(/Applications/Google Chrome\.app|/System/Applications/System (Settings|Preferences)\.app/)' <<< "${persistent_apps}" || true; } |
+            wc -l |
+            tr -d ' '
     )"
     [ "${app_path_count}" -eq 2 ]
-    grep -q '/Applications/Google Chrome.app' <<<"${persistent_apps}"
-    grep -Eq '/System/Applications/System (Settings|Preferences)\.app/' <<<"${persistent_apps}"
-    ! grep -q '/Applications/Visual Studio Code.app' <<<"${persistent_apps}"
-    ! grep -q '/Applications/Slack.app' <<<"${persistent_apps}"
-    ! grep -q '/Applications/iTerm.app' <<<"${persistent_apps}"
+    grep -q '/Applications/Google Chrome.app' <<< "${persistent_apps}"
+    grep -Eq '/System/Applications/System (Settings|Preferences)\.app/' <<< "${persistent_apps}"
+    ! grep -q '/Applications/Visual Studio Code.app' <<< "${persistent_apps}"
+    ! grep -q '/Applications/Slack.app' <<< "${persistent_apps}"
+    ! grep -q '/Applications/iTerm.app' <<< "${persistent_apps}"
 }

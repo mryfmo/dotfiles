@@ -22,40 +22,40 @@ TEAMS_DIR="$SKILL_DIR/teams"
 source "$SCRIPT_DIR/lib/actas-lock.sh"
 
 if [ -z "$TARGET_AGENT" ]; then
-  WHOAMI=$(bash "$SCRIPT_DIR/whoami.sh" "$PROJECT_PATH" "$AGENT_TYPE")
-  if echo "$WHOAMI" | grep -q '^agent='; then
-    TARGET_AGENT=$(echo "$WHOAMI" | sed -n 's/.*agent=\([^ ]*\).*/\1/p')
-  elif echo "$WHOAMI" | grep -q '^multiple=true'; then
-    echo "Multiple identities match this project/type. Pass an agent_id explicitly." >&2
-    exit 1
-  else
-    echo "No registered identity found for this project/type." >&2
-    exit 1
-  fi
+    WHOAMI=$(bash "$SCRIPT_DIR/whoami.sh" "$PROJECT_PATH" "$AGENT_TYPE")
+    if echo "$WHOAMI" | grep -q '^agent='; then
+        TARGET_AGENT=$(echo "$WHOAMI" | sed -n 's/.*agent=\([^ ]*\).*/\1/p')
+    elif echo "$WHOAMI" | grep -q '^multiple=true'; then
+        echo "Multiple identities match this project/type. Pass an agent_id explicitly." >&2
+        exit 1
+    else
+        echo "No registered identity found for this project/type." >&2
+        exit 1
+    fi
 fi
 
 if [ ! -d "$TEAMS_DIR" ]; then
-  echo "No team registrations found."
-  exit 0
+    echo "No team registrations found."
+    exit 0
 fi
 
 REMOVED=0
 TOUCHED_TEAMS=0
 
 for TEAM_CONFIG in "$TEAMS_DIR"/*/config.json; do
-  [ -f "$TEAM_CONFIG" ] || continue
-  TEAM_DIR="$(dirname "$TEAM_CONFIG")"
-  TEAM_NAME="$(basename "$TEAM_DIR")"
-  CONFIG_ESCAPED=$(sed "s/'/''/g" "$TEAM_CONFIG")
+    [ -f "$TEAM_CONFIG" ] || continue
+    TEAM_DIR="$(dirname "$TEAM_CONFIG")"
+    TEAM_NAME="$(basename "$TEAM_DIR")"
+    CONFIG_ESCAPED=$(sed "s/'/''/g" "$TEAM_CONFIG")
 
-  AGENT_JSON=$(sqlite3 :memory: ".param set :json '$CONFIG_ESCAPED'" \
-    "SELECT json_extract(:json, '$.agents.$TARGET_AGENT');")
-  if [ -z "$AGENT_JSON" ] || [ "$AGENT_JSON" = "null" ]; then
-    continue
-  fi
+    AGENT_JSON=$(sqlite3 :memory: ".param set :json '$CONFIG_ESCAPED'" \
+        "SELECT json_extract(:json, '$.agents.$TARGET_AGENT');")
+    if [ -z "$AGENT_JSON" ] || [ "$AGENT_JSON" = "null" ]; then
+        continue
+    fi
 
-  AGENT_ESCAPED=$(printf '%s' "$AGENT_JSON" | sed "s/'/''/g")
-  NORMALIZED=$(sqlite3 :memory: "
+    AGENT_ESCAPED=$(printf '%s' "$AGENT_JSON" | sed "s/'/''/g")
+    NORMALIZED=$(sqlite3 :memory: "
     WITH agent(a) AS (SELECT '$AGENT_ESCAPED')
     SELECT CASE
       WHEN json_type(json_extract(a, '\$.registrations')) = 'array' THEN a
@@ -69,19 +69,19 @@ for TEAM_CONFIG in "$TEAMS_DIR"/*/config.json; do
     END
     FROM agent;
   ")
-  NORMALIZED_ESCAPED=$(printf '%s' "$NORMALIZED" | sed "s/'/''/g")
+    NORMALIZED_ESCAPED=$(printf '%s' "$NORMALIZED" | sed "s/'/''/g")
 
-  MATCH_COUNT=$(sqlite3 :memory: "
+    MATCH_COUNT=$(sqlite3 :memory: "
     SELECT count(*)
     FROM json_each(json_extract('$NORMALIZED_ESCAPED', '\$.registrations'))
     WHERE json_extract(value, '\$.type') = '$AGENT_TYPE'
       AND json_extract(value, '\$.project') = '$PROJECT_PATH';
   ")
-  if [ "$MATCH_COUNT" -eq 0 ]; then
-    continue
-  fi
+    if [ "$MATCH_COUNT" -eq 0 ]; then
+        continue
+    fi
 
-  FILTERED=$(sqlite3 :memory: "
+    FILTERED=$(sqlite3 :memory: "
     SELECT json_object(
       'registrations',
       COALESCE((
@@ -94,44 +94,44 @@ for TEAM_CONFIG in "$TEAMS_DIR"/*/config.json; do
       ), json('[]'))
     );
   ")
-  FILTERED_ESCAPED=$(printf '%s' "$FILTERED" | sed "s/'/''/g")
-  REMAINING=$(sqlite3 :memory: "
+    FILTERED_ESCAPED=$(printf '%s' "$FILTERED" | sed "s/'/''/g")
+    REMAINING=$(sqlite3 :memory: "
     SELECT json_array_length(json_extract('$FILTERED_ESCAPED', '\$.registrations'));
   ")
 
-  if [ "$REMAINING" -eq 0 ]; then
-    UPDATED=$(sqlite3 :memory: ".param set :json '$CONFIG_ESCAPED'" \
-      "SELECT json_remove(:json, '$.agents.$TARGET_AGENT');")
-  else
-    UPDATED=$(sqlite3 :memory: ".param set :json '$CONFIG_ESCAPED'" \
-      "SELECT json_set(:json, '$.agents.$TARGET_AGENT', json('$FILTERED_ESCAPED'));")
-  fi
+    if [ "$REMAINING" -eq 0 ]; then
+        UPDATED=$(sqlite3 :memory: ".param set :json '$CONFIG_ESCAPED'" \
+            "SELECT json_remove(:json, '$.agents.$TARGET_AGENT');")
+    else
+        UPDATED=$(sqlite3 :memory: ".param set :json '$CONFIG_ESCAPED'" \
+            "SELECT json_set(:json, '$.agents.$TARGET_AGENT', json('$FILTERED_ESCAPED'));")
+    fi
 
-  AGENT_COUNT=$(sqlite3 :memory: "
+    AGENT_COUNT=$(sqlite3 :memory: "
     SELECT count(*)
     FROM json_each(json_extract('$(printf '%s' "$UPDATED" | sed "s/'/''/g")', '\$.agents'));
   ")
 
-  if [ "$AGENT_COUNT" -eq 0 ]; then
-    rm -f "$TEAM_CONFIG"
-    rmdir "$TEAM_DIR" 2>/dev/null || true
-  else
-    echo "$UPDATED" > "$TEAM_CONFIG"
-  fi
+    if [ "$AGENT_COUNT" -eq 0 ]; then
+        rm -f "$TEAM_CONFIG"
+        rmdir "$TEAM_DIR" 2> /dev/null || true
+    else
+        echo "$UPDATED" > "$TEAM_CONFIG"
+    fi
 
-  REMOVED=$((REMOVED + MATCH_COUNT))
-  TOUCHED_TEAMS=$((TOUCHED_TEAMS + 1))
-  echo "Cleared $MATCH_COUNT registration(s) for $TARGET_AGENT from $TEAM_NAME"
+    REMOVED=$((REMOVED + MATCH_COUNT))
+    TOUCHED_TEAMS=$((TOUCHED_TEAMS + 1))
+    echo "Cleared $MATCH_COUNT registration(s) for $TARGET_AGENT from $TEAM_NAME"
 
-  # Release the actas lock for this (team, agent) pair so peer sessions can
-  # claim it without waiting for owner-session-end / stale GC.
-  if [ -n "$SESSION_ID" ]; then
-    actas_lock_release "$TEAM_NAME" "$TARGET_AGENT" "$SESSION_ID" 2>/dev/null || true
-  fi
+    # Release the actas lock for this (team, agent) pair so peer sessions can
+    # claim it without waiting for owner-session-end / stale GC.
+    if [ -n "$SESSION_ID" ]; then
+        actas_lock_release "$TEAM_NAME" "$TARGET_AGENT" "$SESSION_ID" 2> /dev/null || true
+    fi
 done
 
 if [ "$REMOVED" -eq 0 ]; then
-  echo "No registrations removed."
+    echo "No registrations removed."
 else
-  echo "Reset complete: removed $REMOVED registration(s) across $TOUCHED_TEAMS team(s)"
+    echo "Reset complete: removed $REMOVED registration(s) across $TOUCHED_TEAMS team(s)"
 fi

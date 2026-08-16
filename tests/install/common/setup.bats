@@ -199,7 +199,7 @@ create_chezmoi_release_fixture() {
 
     tmpdir="$(mktemp -d)"
     mkdir -p "${tmpdir}/bin" "${tmpdir}/home/fakebrew/bin" "${tmpdir}/release"
-    cat > "${tmpdir}/release/chezmoi" <<'EOF'
+    cat > "${tmpdir}/release/chezmoi" << 'EOF'
 #!/usr/bin/env bash
 echo "chezmoi $*" >> "${HOME}/log"
 case "${1:-}" in
@@ -212,7 +212,7 @@ EOF
     chmod +x "${tmpdir}/release/chezmoi"
     create_chezmoi_release_fixture "${tmpdir}" darwin arm64
 
-    cat > "${tmpdir}/home/fakebrew/bin/brew" <<'EOF'
+    cat > "${tmpdir}/home/fakebrew/bin/brew" << 'EOF'
 #!/usr/bin/env bash
 case "${1:-}" in
     --prefix) printf '%s\n' "${HOME}/fakebrew" ;;
@@ -221,13 +221,13 @@ esac
 EOF
     chmod +x "${tmpdir}/home/fakebrew/bin/brew"
 
-    cat > "${tmpdir}/bin/uname" <<'EOF'
+    cat > "${tmpdir}/bin/uname" << 'EOF'
 #!/usr/bin/env bash
 if [ "${1:-}" = -m ]; then printf 'arm64\n'; else printf 'Darwin\n'; fi
 EOF
     chmod +x "${tmpdir}/bin/uname"
 
-    cat > "${tmpdir}/bin/curl" <<'EOF'
+    cat > "${tmpdir}/bin/curl" << 'EOF'
 #!/usr/bin/env bash
 while [ "$#" -gt 0 ]; do
     if [ "$1" = -o ]; then output="$2"; shift 2; else url="$1"; shift; fi
@@ -265,7 +265,7 @@ EOF
         before_sentinel_hash="$(cksum "${tmpdir}/home/sentinel")"
         before_mode="$(stat -c '%a' "${tmpdir}/home/managed" "${tmpdir}/home/sentinel" 2> /dev/null || stat -f '%Lp' "${tmpdir}/home/managed" "${tmpdir}/home/sentinel")"
 
-        cat > "${tmpdir}/release/chezmoi" <<'EOF'
+        cat > "${tmpdir}/release/chezmoi" << 'EOF'
 #!/bin/bash
 printf 'chezmoi %s\n' "$*" >> "${HOME}/log"
 case "${1:-}" in
@@ -307,11 +307,11 @@ EOF
             ln -s "$(command -v "${command_path}")" "${tmpdir}/bin/${command_path}"
         done
 
-        cat > "${tmpdir}/bin/uname" <<'EOF'
+        cat > "${tmpdir}/bin/uname" << 'EOF'
 #!/bin/bash
 if [ "${1:-}" = -m ]; then printf 'x86_64\n'; else printf 'Linux\n'; fi
 EOF
-        cat > "${tmpdir}/bin/wget" <<'EOF'
+        cat > "${tmpdir}/bin/wget" << 'EOF'
 #!/bin/bash
 while [ "$#" -gt 0 ]; do
     if [ "$1" = -qO ]; then output="$2"; shift 2; else url="$1"; shift; fi
@@ -362,20 +362,20 @@ EOF
 
 @test "[common] setup.sh resolves Homebrew fallback prefixes behaviorally" {
     (
-    local tmpdir
-    local prefix
+        local tmpdir
+        local prefix
 
-    tmpdir="$(mktemp -d)"
-    mkdir -p "${tmpdir}/bin" "${tmpdir}/arm/bin" "${tmpdir}/intel/bin"
+        tmpdir="$(mktemp -d)"
+        mkdir -p "${tmpdir}/bin" "${tmpdir}/arm/bin" "${tmpdir}/intel/bin"
 
-    cat > "${tmpdir}/bin/curl" <<'EOF'
+        cat > "${tmpdir}/bin/curl" << 'EOF'
 #!/usr/bin/env bash
 printf ':\n'
 EOF
-    chmod +x "${tmpdir}/bin/curl"
+        chmod +x "${tmpdir}/bin/curl"
 
-    for prefix in "${tmpdir}/arm" "${tmpdir}/intel"; do
-        cat > "${prefix}/bin/brew" <<EOF
+        for prefix in "${tmpdir}/arm" "${tmpdir}/intel"; do
+            cat > "${prefix}/bin/brew" << EOF
 #!/usr/bin/env bash
 case "\${1:-}" in
     --prefix)
@@ -389,20 +389,20 @@ case "\${1:-}" in
         ;;
 esac
 EOF
-        chmod +x "${prefix}/bin/brew"
-    done
+            chmod +x "${prefix}/bin/brew"
+        done
 
-    # shellcheck source=/dev/null
-    source ./setup.sh
-    sha256_file() { printf '%s\n' "${HOMEBREW_INSTALL_SHA256}"; }
+        # shellcheck source=/dev/null
+        source ./setup.sh
+        sha256_file() { printf '%s\n' "${HOMEBREW_INSTALL_SHA256}"; }
 
-    for prefix in "${tmpdir}/arm" "${tmpdir}/intel"; do
-        HOMEBREW_TEST_PREFIX=""
-        PATH="${tmpdir}/bin:/usr/bin:/bin"
-        CI=true
-        HOMEBREW_PREFIX_CANDIDATES="${prefix}"
-        initialize_os_macos
-        [ "${HOMEBREW_TEST_PREFIX}" = "${prefix}" ]
-    done
+        for prefix in "${tmpdir}/arm" "${tmpdir}/intel"; do
+            HOMEBREW_TEST_PREFIX=""
+            PATH="${tmpdir}/bin:/usr/bin:/bin"
+            CI=true
+            HOMEBREW_PREFIX_CANDIDATES="${prefix}"
+            initialize_os_macos
+            [ "${HOMEBREW_TEST_PREFIX}" = "${prefix}" ]
+        done
     )
 }

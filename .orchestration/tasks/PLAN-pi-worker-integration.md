@@ -67,6 +67,13 @@
   `home/dot_agents/permgate-policy.yaml`(pi 節: claude/codex と同一の決定論層を参照、
   LLM は shadow のまま)、`home/dot_pi/agent/extensions/permgate.ts`(新規)、
   validate-agent-assets(拡張の内容ハッシュ検査)、tests/unit、成果物パス。
+- **決定プロトコル(PR #132 レビューで確定)**: 現行 permgate は ask と内部失敗の
+  どちらでも stdout 無し・exit 0 であり、拡張側で区別できない。T66 は permgate の
+  `pi` プロバイダ経路に**機械可読決定**を追加する: stdout に 1 行 JSON
+  `{"decision":"allow"|"deny"|"ask"}`(正常時 exit 0)、内部失敗(設定・パース・
+  決定・ログ書込の例外)は**非 0 exit**。Claude/Codex のフック出力経路は不変。
+  拡張は allow→続行、deny→ブロック、ask→対話 confirm / 非対話 deny、
+  非 0 exit・タイムアウト・JSON 不正→deny(fail-closed)。4 決定+失敗系をテスト固定。
 - 拡張仕様(固定): `tool_call` イベントで `bash`/`write`/`edit` を捕捉し、
   ツール名+主要引数を正規化して `permgate pi` を子プロセス実行(タイムアウト 7s)。
   戻り deny → ブロック(モデルへのエラー結果は「blocked by policy」1 行)、
@@ -97,6 +104,10 @@
 
 - 担当: Codex ワーカー。依存: T66(拡張は必ずロード)・T67(e)。
 - 許可: `home/dot_local/bin/common/executable_agmsg-pi-worker`(新規ブリッジ)、
+  `home/dot_agents/skills/agmsg/scripts/`(**登録系スクリプトへの `pi` 型追加** —
+  join.sh の型ホワイトリスト等に `pi` を追加。既存型の挙動はバイト同一維持、
+  shdoc+shfmt 準拠。PR #132 レビューで判明: 現行 join.sh は claude-code/codex/
+  gemini/antigravity/copilot 以外を拒否するため、これなしでは pi ワーカーが登録不能)、
   `home/dot_agents/agent-config.yaml`(model_profiles に pi 実験節 —
   既存 claude/codex 節の変更禁止。検証器の profile 期待は「pi 節は任意・存在時は
   スキーマ検査」とする最小変更)、agmsg スキル文書(pi ワーカーの identity 規約

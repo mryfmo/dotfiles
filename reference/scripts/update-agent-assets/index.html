@@ -1017,6 +1017,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../home/dot_local/bin/common/executable_agent-session-staleness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_agent-session-staleness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../home/dot_local/bin/common/executable_cdgwq/" class="md-nav__link">
         
   
@@ -1305,6 +1333,34 @@
     
   
     home/dot_local/bin/common/executable_permgate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../home/dot_local/bin/common/executable_remove-agent-asset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_remove-agent-asset
   
 
     
@@ -3121,6 +3177,89 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_4_8" id="__nav_4_4_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lib
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Lib
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lib/asset-manifest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/asset-manifest.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -3404,6 +3543,13 @@
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
+<span class="nv">AGENT_ASSET_SCRIPT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span>AGENT_ASSET_SCRIPT_DIR
+<span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">declare</span><span class="w"> </span>-F<span class="w"> </span>manifest_record<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="c1"># shellcheck source=scripts/lib/asset-manifest.sh</span>
+<span class="w">    </span><span class="nb">source</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">AGENT_ASSET_SCRIPT_DIR</span><span class="si">}</span><span class="s2">/lib/asset-manifest.sh&quot;</span>
+<span class="k">fi</span>
+
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CLAUDE_SUPERPOWERS_PLUGIN</span><span class="o">=</span><span class="s2">&quot;superpowers@claude-plugins-official&quot;</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CLAUDE_SUPERPOWERS_MARKETPLACE</span><span class="o">=</span><span class="s2">&quot;anthropics/claude-plugins-official&quot;</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CLAUDE_CRIT_PLUGIN</span><span class="o">=</span><span class="s2">&quot;crit@crit&quot;</span>
@@ -3475,6 +3621,7 @@
 <span class="w">        </span>mise<span class="w"> </span>install<span class="w"> </span>--force<span class="w"> </span>--locked<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="w">    </span><span class="nb">hash</span><span class="w"> </span>-r
 <span class="w">    </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">cli</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--version<span class="w"> </span>&gt;<span class="w"> </span>/dev/null
+<span class="w">    </span>manifest_record<span class="w"> </span><span class="s2">&quot;ensure_mise_npm_agent_cli:</span><span class="si">${</span><span class="nv">cli</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>installer<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">cli</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--version<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;unknown\n&#39;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>mise<span class="w"> </span>where<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">cli</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>--<span class="w"> </span><span class="s2">&quot;MISE_NPM_PACKAGE_MANAGER=npm npm_config_min_release_age=0 mise install --force --locked </span><span class="si">${</span><span class="nv">mise_tool</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3729,6 +3876,7 @@
 <span class="w">    </span>section<span class="w"> </span><span class="s2">&quot;herdr integrations&quot;</span>
 <span class="w">    </span>herdr<span class="w"> </span>integration<span class="w"> </span>install<span class="w"> </span>claude
 <span class="w">    </span>herdr<span class="w"> </span>integration<span class="w"> </span>install<span class="w"> </span>codex
+<span class="w">    </span>manifest_record<span class="w"> </span><span class="s2">&quot;ensure_herdr_integrations&quot;</span><span class="w"> </span>integration<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>herdr<span class="w"> </span>--version<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;NF { version = $NF } END { print version ? version : &quot;unknown&quot; }&#39;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.claude/hooks/herdr-agent-state.sh&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.codex/herdr-agent-state.sh&quot;</span><span class="w"> </span>--<span class="w"> </span><span class="s2">&quot;herdr integration install claude&quot;</span><span class="w"> </span><span class="s2">&quot;herdr integration install codex&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3750,6 +3898,7 @@
 <span class="w">    </span><span class="k">else</span>
 <span class="w">        </span>claude<span class="w"> </span>plugin<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_SUPERPOWERS_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 <span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>manifest_record<span class="w"> </span><span class="s2">&quot;update_claude_superpowers&quot;</span><span class="w"> </span>plugin<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>manifest_claude_plugin_version<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_SUPERPOWERS_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.claude/plugins/cache/claude-plugins-official/superpowers&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.claude/settings.json&quot;</span><span class="w"> </span>--<span class="w"> </span><span class="s2">&quot;claude plugin marketplace add </span><span class="si">${</span><span class="nv">CLAUDE_SUPERPOWERS_MARKETPLACE</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;claude plugin marketplace update claude-plugins-official&quot;</span><span class="w"> </span><span class="s2">&quot;claude plugin install </span><span class="si">${</span><span class="nv">CLAUDE_SUPERPOWERS_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;claude plugin update </span><span class="si">${</span><span class="nv">CLAUDE_SUPERPOWERS_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3779,6 +3928,7 @@
 <span class="w">    </span><span class="k">else</span>
 <span class="w">        </span>claude<span class="w"> </span>plugin<span class="w"> </span><span class="nb">enable</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_CRIT_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 <span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>manifest_record<span class="w"> </span><span class="s2">&quot;update_claude_crit&quot;</span><span class="w"> </span>plugin<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>manifest_claude_plugin_version<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_CRIT_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.claude/plugins/cache/crit/crit&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.claude/settings.json&quot;</span><span class="w"> </span>--<span class="w"> </span><span class="s2">&quot;brew install crit&quot;</span><span class="w"> </span><span class="s2">&quot;claude plugin marketplace add </span><span class="si">${</span><span class="nv">CLAUDE_CRIT_MARKETPLACE</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;claude plugin marketplace update </span><span class="si">${</span><span class="nv">CLAUDE_CRIT_MARKETPLACE_NAME</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;claude plugin install </span><span class="si">${</span><span class="nv">CLAUDE_CRIT_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;claude plugin update </span><span class="si">${</span><span class="nv">CLAUDE_CRIT_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;claude plugin enable </span><span class="si">${</span><span class="nv">CLAUDE_CRIT_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3806,6 +3956,7 @@
 <span class="w">        </span>claude<span class="w"> </span>plugin<span class="w"> </span><span class="nb">enable</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_PONYTAIL_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Ponytail default mode is %s. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PONYTAIL_DEFAULT_MODE</span><span class="k">:-</span><span class="nv">full</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span>manifest_record<span class="w"> </span><span class="s2">&quot;update_claude_ponytail&quot;</span><span class="w"> </span>plugin<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>manifest_claude_plugin_version<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_PONYTAIL_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.claude/plugins/cache/ponytail/ponytail&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.claude/settings.json&quot;</span><span class="w"> </span>--<span class="w"> </span><span class="s2">&quot;claude plugin marketplace add </span><span class="si">${</span><span class="nv">CLAUDE_PONYTAIL_MARKETPLACE</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;claude plugin marketplace update </span><span class="si">${</span><span class="nv">CLAUDE_PONYTAIL_MARKETPLACE_NAME</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;claude plugin install </span><span class="si">${</span><span class="nv">CLAUDE_PONYTAIL_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;claude plugin update </span><span class="si">${</span><span class="nv">CLAUDE_PONYTAIL_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;claude plugin enable </span><span class="si">${</span><span class="nv">CLAUDE_PONYTAIL_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3832,6 +3983,7 @@
 <span class="w">    </span><span class="k">else</span>
 <span class="w">        </span>claude<span class="w"> </span>plugin<span class="w"> </span><span class="nb">enable</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 <span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>manifest_record<span class="w"> </span><span class="s2">&quot;update_claude_understand_anything&quot;</span><span class="w"> </span>plugin<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>manifest_claude_plugin_version<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.claude/plugins/cache/understand-anything/understand-anything&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.claude/settings.json&quot;</span><span class="w"> </span>--<span class="w"> </span><span class="s2">&quot;claude plugin marketplace add </span><span class="si">${</span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;claude plugin marketplace update </span><span class="si">${</span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;claude plugin install </span><span class="si">${</span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;claude plugin update </span><span class="si">${</span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;claude plugin enable </span><span class="si">${</span><span class="nv">CLAUDE_UNDERSTAND_ANYTHING_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3856,6 +4008,7 @@
 <span class="w">    </span><span class="k">else</span>
 <span class="w">        </span>codex<span class="w"> </span>plugin<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CODEX_SUPERPOWERS_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 <span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>manifest_record<span class="w"> </span><span class="s2">&quot;update_codex_superpowers&quot;</span><span class="w"> </span>plugin<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>manifest_codex_plugin_version<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CODEX_SUPERPOWERS_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CODEX_HOME</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/.codex</span><span class="si">}</span><span class="s2">/.tmp/plugins/plugins/superpowers&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CODEX_HOME</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/.codex</span><span class="si">}</span><span class="s2">/config.toml&quot;</span><span class="w"> </span>--<span class="w"> </span><span class="s2">&quot;codex plugin marketplace upgrade openai-curated&quot;</span><span class="w"> </span><span class="s2">&quot;codex plugin add </span><span class="si">${</span><span class="nv">CODEX_SUPERPOWERS_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3905,6 +4058,7 @@
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Review and trust Ponytail lifecycle hooks in Codex with /hooks, then start a new thread.\n&#39;</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Ponytail default mode is %s. Set PONYTAIL_DEFAULT_MODE=lite|full|ultra|off to override.\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PONYTAIL_DEFAULT_MODE</span><span class="k">:-</span><span class="nv">full</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span>manifest_record<span class="w"> </span><span class="s2">&quot;update_codex_ponytail&quot;</span><span class="w"> </span>plugin<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>manifest_codex_plugin_version<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CODEX_PONYTAIL_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CODEX_HOME</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/.codex</span><span class="si">}</span><span class="s2">/plugins/cache/ponytail/ponytail&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CODEX_HOME</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/.codex</span><span class="si">}</span><span class="s2">/config.toml&quot;</span><span class="w"> </span>--<span class="w"> </span><span class="s2">&quot;codex plugin marketplace add </span><span class="si">${</span><span class="nv">CODEX_PONYTAIL_MARKETPLACE</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;codex plugin marketplace upgrade </span><span class="si">${</span><span class="nv">CODEX_PONYTAIL_MARKETPLACE_NAME</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;codex plugin add </span><span class="si">${</span><span class="nv">CODEX_PONYTAIL_PLUGIN</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3924,6 +4078,7 @@
 <span class="w">        </span><span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="w">        </span>crit<span class="w"> </span>install<span class="w"> </span>codex-plugin<span class="w"> </span>--force
 <span class="w">    </span><span class="o">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span>manifest_record<span class="w"> </span><span class="s2">&quot;update_codex_crit&quot;</span><span class="w"> </span>plugin<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>manifest_brew_formula_version<span class="w"> </span>crit<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CODEX_HOME</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/.codex</span><span class="si">}</span><span class="s2">/plugins/crit&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CODEX_HOME</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/.codex</span><span class="si">}</span><span class="s2">/config.toml&quot;</span><span class="w"> </span>--<span class="w"> </span><span class="s2">&quot;brew install crit&quot;</span><span class="w"> </span><span class="s2">&quot;crit install codex-plugin --force&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -4015,6 +4170,7 @@
 <span class="w">        </span><span class="c1"># shellcheck disable=SC2016 # $understand is the literal Codex skill invocation, not a variable.</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Invoke Understand-Anything in Codex with $understand after restarting the CLI.\n&#39;</span>
 <span class="w">    </span><span class="o">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span>manifest_record<span class="w"> </span><span class="s2">&quot;update_codex_understand_anything&quot;</span><span class="w"> </span>installer<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.understand-anything/repo&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/understand&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/understand-chat&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/understand-dashboard&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/understand-diff&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/understand-domain&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/understand-explain&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/understand-figma&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/understand-knowledge&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/understand-onboard&quot;</span><span class="w"> </span>--<span class="w"> </span><span class="s2">&quot;curl -fsSL </span><span class="si">${</span><span class="nv">CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;shasum -a 256 &lt;installer&gt;&quot;</span><span class="w"> </span><span class="s2">&quot;bash &lt;installer&gt; codex&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -4024,6 +4180,7 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>source_root
 <span class="w">    </span><span class="nv">source_root</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">/..&quot;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/vendor/compactiondb/&quot;</span>
 <span class="w">    </span>rsync<span class="w"> </span>-a<span class="w"> </span>--delete<span class="w"> </span>--exclude<span class="w"> </span><span class="s1">&#39;.claude/contextdb/state/&#39;</span><span class="w"> </span>--exclude<span class="w"> </span><span class="s1">&#39;.claude/contextdb/spool/&#39;</span><span class="w"> </span>--exclude<span class="w"> </span><span class="s1">&#39;.claude/contextdb/health/&#39;</span><span class="w"> </span>--exclude<span class="w"> </span><span class="s1">&#39;.claude/contextdb/contextdb.sqlite3*&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_root</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/compactiondb/&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span>manifest_record<span class="w"> </span><span class="s2">&quot;update_compactiondb&quot;</span><span class="w"> </span>rsync<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>awk<span class="w"> </span><span class="s1">&#39;/^## / { print $2; exit }&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_root</span><span class="si">}</span><span class="s2">CHANGELOG.md&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/compactiondb&quot;</span><span class="w"> </span>--<span class="w"> </span><span class="s2">&quot;rsync -a --delete --exclude .claude/contextdb/state/ --exclude .claude/contextdb/spool/ --exclude .claude/contextdb/health/ --exclude .claude/contextdb/contextdb.sqlite3* </span><span class="si">${</span><span class="nv">source_root</span><span class="si">}</span><span class="s2"> </span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/compactiondb/&quot;</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.0+dotfiles.5
+
+- Recorded each injected recovery packet as a best-effort `recovery_injected` spool event so model-visible recovery context is replayable from the ledger without adding a synchronous database write.
+
 ## 2.0.0+dotfiles.4
 
 - Raised the default recovery packet budget to 12,000 characters.

@@ -28,8 +28,8 @@
       "GitHub Actions"
     ],
     "description": "Personal dotfiles managed with chezmoi.",
-    "analyzedAt": "2026-08-16T07:04:45.592Z",
-    "gitCommitHash": "cc977bf723004d972e1af46d551051fbbaf80003"
+    "analyzedAt": "2026-08-16T07:27:54.965Z",
+    "gitCommitHash": "03621422f732c6be0eb318a137ff572ebeee47c8"
   },
   "nodes": [
     {
@@ -8136,14 +8136,15 @@
       "type": "file",
       "name": "update-agent-assets.sh",
       "filePath": "scripts/update-agent-assets.sh",
-      "summary": "Installs and refreshes shared AI-agent plugins and skills for Codex and Claude Code, keeping their marketplaces and plugin sets aligned with the dotfiles-managed skill tree for CLI-managed items that cannot be represented as plain files.",
+      "summary": "Installs and refreshes shared AI-agent CLIs, plugins, integrations, CompactionDB, and the Codex Understand-Anything runtime for Claude Code and Codex. Each managed step records its provenance and inverse operations through the shared asset manifest helper.",
       "tags": [
         "agent-tooling",
-        "claude-code",
-        "codex",
-        "plugin-management"
+        "plugin-management",
+        "asset-manifest",
+        "orchestration"
       ],
-      "complexity": "complex"
+      "complexity": "complex",
+      "languageNotes": "Uses strict Bash mode with CLI capability checks, pinned installer verification, and manifest recording after each managed update."
     },
     {
       "id": "function:scripts/update-agent-assets.sh:remove_node_global_agent_cli_shadows",
@@ -8151,8 +8152,8 @@
       "name": "remove_node_global_agent_cli_shadows",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        54,
-        63
+        61,
+        70
       ],
       "summary": "Removes globally installed npm agent CLIs that would shadow the mise-managed versions.",
       "tags": [
@@ -8168,10 +8169,10 @@
       "name": "ensure_mise_npm_agent_cli",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        70,
-        84
+        77,
+        92
       ],
-      "summary": "Ensures a given agent CLI npm package is installed through mise rather than a global npm install.",
+      "summary": "Repairs an unavailable agent CLI through the locked mise npm backend and records the resulting installation in the asset manifest.",
       "tags": [
         "npm",
         "mise",
@@ -8185,10 +8186,10 @@
       "name": "codex_marketplace_is_configured_git_marketplace",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        109,
-        127
+        117,
+        135
       ],
-      "summary": "Checks whether a Codex marketplace entry is configured as a git-backed marketplace matching the expected source.",
+      "summary": "Checks whether a Codex marketplace resolves to a configured Git working tree rather than the built-in temporary plugin cache.",
       "tags": [
         "codex",
         "marketplace",
@@ -8202,13 +8203,14 @@
       "name": "git_remote_origin_matches",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        144,
-        157
+        152,
+        165
       ],
-      "summary": "Checks whether a local git repository's origin remote matches an expected URL.",
+      "summary": "Checks whether a local Git repository origin matches the expected HTTPS or SSH source URL.",
       "tags": [
         "git",
-        "validation"
+        "validation",
+        "marketplace"
       ],
       "complexity": "simple"
     },
@@ -8218,10 +8220,10 @@
       "name": "codex_marketplace_has_source",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        164,
-        175
+        172,
+        183
       ],
-      "summary": "Checks whether the Codex marketplace configuration already registers a given source.",
+      "summary": "Confirms that a configured Codex marketplace has the expected Git origin.",
       "tags": [
         "codex",
         "marketplace",
@@ -8235,12 +8237,13 @@
       "name": "ensure_crit_cli",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        191,
-        205
+        199,
+        213
       ],
-      "summary": "Ensures the crit CLI review tool is installed and available.",
+      "summary": "Ensures the Crit CLI is available, using Homebrew on macOS when possible and otherwise skipping Crit integrations.",
       "tags": [
         "crit",
+        "homebrew",
         "install-script"
       ],
       "complexity": "moderate"
@@ -8251,10 +8254,10 @@
       "name": "claude_crit_plugin_is_enabled",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        243,
-        267
+        251,
+        275
       ],
-      "summary": "Checks whether the Claude Code Crit plugin is currently enabled in the user's Claude settings.",
+      "summary": "Parses the Claude plugin inventory to check whether the Crit plugin is installed and enabled.",
       "tags": [
         "claude-code",
         "crit",
@@ -8268,10 +8271,10 @@
       "name": "claude_ponytail_plugin_is_enabled",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        272,
-        296
+        280,
+        304
       ],
-      "summary": "Checks whether the Claude Code Ponytail plugin is currently enabled in the user's Claude settings.",
+      "summary": "Parses the Claude plugin inventory to check whether the Ponytail plugin is installed and enabled.",
       "tags": [
         "claude-code",
         "ponytail",
@@ -8285,10 +8288,10 @@
       "name": "claude_understand_anything_plugin_is_enabled",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        301,
-        325
+        309,
+        333
       ],
-      "summary": "Checks whether the Claude Code Understand-Anything plugin is currently enabled in the user's Claude settings.",
+      "summary": "Parses the Claude plugin inventory to check whether the Understand-Anything plugin is installed and enabled.",
       "tags": [
         "claude-code",
         "understand-anything",
@@ -8297,17 +8300,35 @@
       "complexity": "moderate"
     },
     {
+      "id": "function:scripts/update-agent-assets.sh:ensure_herdr_integrations",
+      "type": "function",
+      "name": "ensure_herdr_integrations",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        338,
+        347
+      ],
+      "summary": "Installs Claude and Codex Herdr integrations when the CLI is available and records both generated hook paths.",
+      "tags": [
+        "herdr",
+        "integration",
+        "asset-manifest"
+      ],
+      "complexity": "simple"
+    },
+    {
       "id": "function:scripts/update-agent-assets.sh:update_claude_superpowers",
       "type": "function",
       "name": "update_claude_superpowers",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        343,
-        359
+        352,
+        369
       ],
-      "summary": "Updates the Claude Code Superpowers marketplace plugin to its latest version.",
+      "summary": "Installs or updates the official Claude Superpowers plugin and records its cache and settings paths.",
       "tags": [
         "claude-code",
+        "superpowers",
         "plugin-management"
       ],
       "complexity": "moderate"
@@ -8318,10 +8339,10 @@
       "name": "update_claude_crit",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        364,
-        388
+        374,
+        399
       ],
-      "summary": "Ensures the Claude Code Crit marketplace and plugin are configured and up to date.",
+      "summary": "Ensures the Claude Crit marketplace and CLI, updates or installs and enables the plugin, and records its managed assets.",
       "tags": [
         "claude-code",
         "crit",
@@ -8335,10 +8356,10 @@
       "name": "update_claude_ponytail",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        393,
-        415
+        404,
+        427
       ],
-      "summary": "Ensures the Claude Code Ponytail marketplace and plugin are configured and up to date.",
+      "summary": "Ensures the Claude Ponytail marketplace, updates or installs and enables the plugin, and records its managed assets.",
       "tags": [
         "claude-code",
         "ponytail",
@@ -8352,10 +8373,10 @@
       "name": "update_claude_understand_anything",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        420,
-        441
+        432,
+        454
       ],
-      "summary": "Ensures the Claude Code Understand-Anything marketplace and plugin are configured and up to date.",
+      "summary": "Ensures the Claude Understand-Anything marketplace, updates or installs and enables the plugin, and records its managed assets.",
       "tags": [
         "claude-code",
         "understand-anything",
@@ -8369,12 +8390,13 @@
       "name": "update_codex_superpowers",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        446,
-        465
+        459,
+        479
       ],
-      "summary": "Updates the Codex Superpowers marketplace plugin clone to its latest version.",
+      "summary": "Updates the configured Codex marketplace when eligible, installs Superpowers if missing, and records the managed plugin assets.",
       "tags": [
         "codex",
+        "superpowers",
         "plugin-management"
       ],
       "complexity": "moderate"
@@ -8385,10 +8407,10 @@
       "name": "ensure_codex_ponytail_marketplace",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        470,
-        491
+        484,
+        505
       ],
-      "summary": "Ensures the Codex Ponytail marketplace is registered and cloned locally.",
+      "summary": "Ensures Codex registers the Ponytail marketplace with its expected Git source and rejects conflicting registrations.",
       "tags": [
         "codex",
         "ponytail",
@@ -8402,10 +8424,10 @@
       "name": "update_codex_ponytail",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        496,
-        514
+        510,
+        529
       ],
-      "summary": "Ensures the Codex Ponytail marketplace and plugin are configured and up to date.",
+      "summary": "Updates the Codex Ponytail marketplace, installs the plugin if absent, and records its managed cache and configuration paths.",
       "tags": [
         "codex",
         "ponytail",
@@ -8419,10 +8441,10 @@
       "name": "update_codex_crit",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        519,
-        533
+        534,
+        549
       ],
-      "summary": "Ensures the Codex Crit marketplace and plugin are configured and up to date.",
+      "summary": "Installs the Codex Crit plugin through its CLI integration and records the plugin and configuration paths.",
       "tags": [
         "codex",
         "crit",
@@ -8431,21 +8453,39 @@
       "complexity": "moderate"
     },
     {
+      "id": "function:scripts/update-agent-assets.sh:provision_codex_understand_anything_runtime",
+      "type": "function",
+      "name": "provision_codex_understand_anything_runtime",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        555,
+        603
+      ],
+      "summary": "Finds a Claude Understand-Anything release matching the installed Codex plugin version and copies its built core runtime and dependencies into the Codex plugin tree.",
+      "tags": [
+        "codex",
+        "understand-anything",
+        "runtime-provisioning"
+      ],
+      "complexity": "complex"
+    },
+    {
       "id": "function:scripts/update-agent-assets.sh:update_codex_understand_anything",
       "type": "function",
       "name": "update_codex_understand_anything",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        542,
-        569
+        612,
+        641
       ],
-      "summary": "Ensures the Codex Understand-Anything marketplace and plugin are configured and up to date.",
+      "summary": "Downloads and verifies a pinned Understand-Anything installer, installs Codex skills, provisions matching runtime files, and records all managed paths.",
       "tags": [
         "codex",
         "understand-anything",
-        "plugin-management"
+        "installer",
+        "checksum"
       ],
-      "complexity": "moderate"
+      "complexity": "complex"
     },
     {
       "id": "function:scripts/update-agent-assets.sh:main",
@@ -8453,10 +8493,10 @@
       "name": "main",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        575,
-        594
+        657,
+        677
       ],
-      "summary": "Orchestrates all Codex and Claude Code marketplace/plugin update steps and the shared CLI tool checks in sequence.",
+      "summary": "Orchestrates CLI repair, Claude and Codex plugin updates, CompactionDB synchronization, and Herdr integration installation in sequence.",
       "tags": [
         "entry-point",
         "orchestration",
@@ -17380,6 +17420,392 @@
         "manifest-validation"
       ],
       "complexity": "complex"
+    },
+    {
+      "id": "file:home/dot_local/bin/common/executable_agent-session-staleness",
+      "type": "file",
+      "name": "executable_agent-session-staleness",
+      "filePath": "home/dot_local/bin/common/executable_agent-session-staleness",
+      "summary": "Approximates whether an agent session is stale by comparing a caller-supplied epoch with public plugin-cache, managed-asset, and rendered-settings mtimes. It also supports a bounded fail-open hook mode with per-session baseline state.",
+      "tags": [
+        "agent-tooling",
+        "monitoring",
+        "session-staleness",
+        "filesystem"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Uses pathlib, bounded os.scandir traversal, file locking, and SIGALRM to keep hook latency and state access controlled."
+    },
+    {
+      "id": "function:home/dot_local/bin/common/executable_agent-session-staleness:excluded",
+      "type": "function",
+      "name": "excluded",
+      "filePath": "home/dot_local/bin/common/executable_agent-session-staleness",
+      "lineRange": [
+        69,
+        80
+      ],
+      "summary": "Filters generated caches, runtime state, SQLite files, and agmsg operational directories out of managed-asset scans.",
+      "tags": [
+        "filesystem",
+        "filtering",
+        "validation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:home/dot_local/bin/common/executable_agent-session-staleness:scan_files",
+      "type": "function",
+      "name": "scan_files",
+      "filePath": "home/dot_local/bin/common/executable_agent-session-staleness",
+      "lineRange": [
+        83,
+        104
+      ],
+      "summary": "Traverses a managed asset root without following directory symlinks, yielding file mtimes within strict entry and deadline bounds.",
+      "tags": [
+        "filesystem",
+        "generator",
+        "bounded-scan"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:home/dot_local/bin/common/executable_agent-session-staleness:plugin_cache_updates",
+      "type": "function",
+      "name": "plugin_cache_updates",
+      "filePath": "home/dot_local/bin/common/executable_agent-session-staleness",
+      "lineRange": [
+        107,
+        155
+      ],
+      "summary": "Finds Claude plugin cache releases that are newer than the session baseline, comparing version-like directory names to avoid false staleness from older cache entries.",
+      "tags": [
+        "plugin-cache",
+        "versioning",
+        "session-staleness"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:home/dot_local/bin/common/executable_agent-session-staleness:collect_updates",
+      "type": "function",
+      "name": "collect_updates",
+      "filePath": "home/dot_local/bin/common/executable_agent-session-staleness",
+      "lineRange": [
+        158,
+        173
+      ],
+      "summary": "Combines plugin releases, managed asset trees, and Claude/Codex settings into one timestamped update list.",
+      "tags": [
+        "aggregation",
+        "agent-assets",
+        "monitoring"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:home/dot_local/bin/common/executable_agent-session-staleness:prune_state_files",
+      "type": "function",
+      "name": "prune_state_files",
+      "filePath": "home/dot_local/bin/common/executable_agent-session-staleness",
+      "lineRange": [
+        176,
+        192
+      ],
+      "summary": "Best-effort prunes expired per-session baseline files while respecting scan-count and wall-clock bounds.",
+      "tags": [
+        "cleanup",
+        "state-management",
+        "bounded-scan"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:home/dot_local/bin/common/executable_agent-session-staleness:run_hook",
+      "type": "function",
+      "name": "run_hook",
+      "filePath": "home/dot_local/bin/common/executable_agent-session-staleness",
+      "lineRange": [
+        195,
+        231
+      ],
+      "summary": "Processes bounded hook JSON, initializes or reads a locked session baseline, and runs the staleness check while failing open on malformed input or runtime errors.",
+      "tags": [
+        "hook",
+        "state-management",
+        "file-locking",
+        "fail-open"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:home/dot_local/bin/common/executable_agent-session-staleness:run",
+      "type": "function",
+      "name": "run",
+      "filePath": "home/dot_local/bin/common/executable_agent-session-staleness",
+      "lineRange": [
+        234,
+        267
+      ],
+      "summary": "Implements list, hook, and epoch-based check modes and emits a bounded set of restart recommendations grouped by asset category.",
+      "tags": [
+        "cli",
+        "entry-point",
+        "session-staleness"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:home/dot_local/bin/common/executable_agent-session-staleness:guarded_main",
+      "type": "function",
+      "name": "guarded_main",
+      "filePath": "home/dot_local/bin/common/executable_agent-session-staleness",
+      "lineRange": [
+        270,
+        289
+      ],
+      "summary": "Wraps command execution in a five-second alarm, selects the target home, restores signal state, and converts errors to non-blocking diagnostics.",
+      "tags": [
+        "entry-point",
+        "timeout",
+        "error-handling"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:home/dot_local/bin/common/executable_remove-agent-asset",
+      "type": "file",
+      "name": "executable_remove-agent-asset",
+      "filePath": "home/dot_local/bin/common/executable_remove-agent-asset",
+      "summary": "Removes one installed agent asset from its recorded manifest entry, defaulting to a transparent dry run. It validates all deletion paths against both recorded prefixes and fixed safe roots before dispatching kind-specific inverse operations.",
+      "tags": [
+        "agent-tooling",
+        "cleanup",
+        "manifest",
+        "security"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Uses strict Bash mode, normalized path boundaries, and preflight validation before any destructive operation."
+    },
+    {
+      "id": "function:home/dot_local/bin/common/executable_remove-agent-asset:path_is_in_safe_root",
+      "type": "function",
+      "name": "path_is_in_safe_root",
+      "filePath": "home/dot_local/bin/common/executable_remove-agent-asset",
+      "lineRange": [
+        89,
+        120
+      ],
+      "summary": "Checks a normalized candidate against the fixed agent asset directories and exact integration files that removal is allowed to touch.",
+      "tags": [
+        "security",
+        "path-validation",
+        "guard"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:home/dot_local/bin/common/executable_remove-agent-asset:guard_deletion_path",
+      "type": "function",
+      "name": "guard_deletion_path",
+      "filePath": "home/dot_local/bin/common/executable_remove-agent-asset",
+      "lineRange": [
+        127,
+        143
+      ],
+      "summary": "Normalizes and approves a deletion target only when it lies within both a fixed safe root and a path prefix recorded in the selected manifest step.",
+      "tags": [
+        "security",
+        "path-validation",
+        "manifest"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:home/dot_local/bin/common/executable_remove-agent-asset:run_operation",
+      "type": "function",
+      "name": "run_operation",
+      "filePath": "home/dot_local/bin/common/executable_remove-agent-asset",
+      "lineRange": [
+        149,
+        158
+      ],
+      "summary": "Prints a shell-escaped inverse command and executes it only when explicit removal mode is enabled.",
+      "tags": [
+        "dry-run",
+        "command-execution",
+        "safety"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:home/dot_local/bin/common/executable_remove-agent-asset:is_plugin_data_path",
+      "type": "function",
+      "name": "is_plugin_data_path",
+      "filePath": "home/dot_local/bin/common/executable_remove-agent-asset",
+      "lineRange": [
+        201,
+        215
+      ],
+      "summary": "Identifies recorded plugin cache and data paths that may be removed when a plugin CLI lacks an uninstall command.",
+      "tags": [
+        "plugin-management",
+        "path-validation",
+        "fallback"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:home/dot_local/bin/common/executable_remove-agent-asset:remove_plugin_data_paths",
+      "type": "function",
+      "name": "remove_plugin_data_paths",
+      "filePath": "home/dot_local/bin/common/executable_remove-agent-asset",
+      "lineRange": [
+        231,
+        247
+      ],
+      "summary": "Builds a guarded plugin-data removal list while preserving shared settings and rejecting unrecognized fallback paths.",
+      "tags": [
+        "plugin-management",
+        "cleanup",
+        "security"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:home/dot_local/bin/common/executable_remove-agent-asset:remove_plugin",
+      "type": "function",
+      "name": "remove_plugin",
+      "filePath": "home/dot_local/bin/common/executable_remove-agent-asset",
+      "lineRange": [
+        252,
+        313
+      ],
+      "summary": "Derives a single safe plugin owner and identifier from recorded commands, then uses the owning CLI uninstall or a guarded data-only fallback.",
+      "tags": [
+        "plugin-management",
+        "dispatch",
+        "validation"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:home/dot_local/bin/common/executable_remove-agent-asset:remove_brew",
+      "type": "function",
+      "name": "remove_brew",
+      "filePath": "home/dot_local/bin/common/executable_remove-agent-asset",
+      "lineRange": [
+        318,
+        341
+      ],
+      "summary": "Extracts and validates one Homebrew formula from recorded install commands before invoking the uninstall operation.",
+      "tags": [
+        "homebrew",
+        "cleanup",
+        "validation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:home/dot_local/bin/common/executable_remove-agent-asset:remove_integration",
+      "type": "function",
+      "name": "remove_integration",
+      "filePath": "home/dot_local/bin/common/executable_remove-agent-asset",
+      "lineRange": [
+        346,
+        372
+      ],
+      "summary": "Uninstalls validated Herdr integrations through the CLI when available, otherwise removes only their guarded recorded paths.",
+      "tags": [
+        "herdr",
+        "integration",
+        "cleanup"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:home/dot_local/bin/common/executable_remove-agent-asset:remove_manifest_step",
+      "type": "function",
+      "name": "remove_manifest_step",
+      "filePath": "home/dot_local/bin/common/executable_remove-agent-asset",
+      "lineRange": [
+        377,
+        395
+      ],
+      "summary": "Atomically deletes the completed step record from the installed asset manifest, or reports the planned change in dry-run mode.",
+      "tags": [
+        "manifest",
+        "atomic-write",
+        "cleanup"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:home/dot_local/bin/common/executable_remove-agent-asset:load_entry",
+      "type": "function",
+      "name": "load_entry",
+      "filePath": "home/dot_local/bin/common/executable_remove-agent-asset",
+      "lineRange": [
+        400,
+        433
+      ],
+      "summary": "Loads the selected manifest step, validates its schema, and populates the recorded path and command arrays used by removal handlers.",
+      "tags": [
+        "manifest",
+        "validation",
+        "deserialization"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:home/dot_local/bin/common/executable_remove-agent-asset:main",
+      "type": "function",
+      "name": "main",
+      "filePath": "home/dot_local/bin/common/executable_remove-agent-asset",
+      "lineRange": [
+        439,
+        480
+      ],
+      "summary": "Parses dry-run or confirmed removal arguments, dispatches the selected manifest kind, and removes the manifest step after a successful inverse operation.",
+      "tags": [
+        "entry-point",
+        "cli",
+        "dispatch"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:scripts/lib/asset-manifest.sh",
+      "type": "file",
+      "name": "asset-manifest.sh",
+      "filePath": "scripts/lib/asset-manifest.sh",
+      "summary": "Provides shared shell helpers that record installed agent assets and their inverse commands in a private, atomically replaced JSON manifest. It also queries installed Claude, Codex, and Homebrew versions for provenance.",
+      "tags": [
+        "utility",
+        "manifest",
+        "install-state",
+        "atomic-write"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/lib/asset-manifest.sh:_manifest_record",
+      "type": "function",
+      "name": "_manifest_record",
+      "filePath": "scripts/lib/asset-manifest.sh",
+      "lineRange": [
+        49,
+        127
+      ],
+      "summary": "Validates one install-step record and atomically inserts its kind, paths, commands, version, and timestamp into the private JSON asset manifest.",
+      "tags": [
+        "manifest",
+        "validation",
+        "atomic-write",
+        "serialization"
+      ],
+      "complexity": "complex"
     }
   ],
   "edges": [
@@ -19352,6 +19778,13 @@
     },
     {
       "source": "file:scripts/update-agent-assets.sh",
+      "target": "function:scripts/update-agent-assets.sh:ensure_herdr_integrations",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
       "target": "function:scripts/update-agent-assets.sh:update_claude_superpowers",
       "type": "contains",
       "direction": "forward",
@@ -19408,6 +19841,13 @@
     },
     {
       "source": "file:scripts/update-agent-assets.sh",
+      "target": "function:scripts/update-agent-assets.sh:provision_codex_understand_anything_runtime",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
       "target": "function:scripts/update-agent-assets.sh:update_codex_understand_anything",
       "type": "contains",
       "direction": "forward",
@@ -19419,6 +19859,13 @@
       "type": "contains",
       "direction": "forward",
       "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "file:scripts/lib/asset-manifest.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
     },
     {
       "source": "file:scripts/upgrade-tools.sh",
@@ -23745,6 +24192,146 @@
       "type": "exports",
       "direction": "forward",
       "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_local/bin/common/executable_agent-session-staleness",
+      "target": "function:home/dot_local/bin/common/executable_agent-session-staleness:excluded",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:home/dot_local/bin/common/executable_agent-session-staleness",
+      "target": "function:home/dot_local/bin/common/executable_agent-session-staleness:scan_files",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:home/dot_local/bin/common/executable_agent-session-staleness",
+      "target": "function:home/dot_local/bin/common/executable_agent-session-staleness:plugin_cache_updates",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:home/dot_local/bin/common/executable_agent-session-staleness",
+      "target": "function:home/dot_local/bin/common/executable_agent-session-staleness:collect_updates",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:home/dot_local/bin/common/executable_agent-session-staleness",
+      "target": "function:home/dot_local/bin/common/executable_agent-session-staleness:prune_state_files",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:home/dot_local/bin/common/executable_agent-session-staleness",
+      "target": "function:home/dot_local/bin/common/executable_agent-session-staleness:run_hook",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:home/dot_local/bin/common/executable_agent-session-staleness",
+      "target": "function:home/dot_local/bin/common/executable_agent-session-staleness:run",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:home/dot_local/bin/common/executable_agent-session-staleness",
+      "target": "function:home/dot_local/bin/common/executable_agent-session-staleness:guarded_main",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:home/dot_local/bin/common/executable_remove-agent-asset",
+      "target": "function:home/dot_local/bin/common/executable_remove-agent-asset:path_is_in_safe_root",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:home/dot_local/bin/common/executable_remove-agent-asset",
+      "target": "function:home/dot_local/bin/common/executable_remove-agent-asset:guard_deletion_path",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:home/dot_local/bin/common/executable_remove-agent-asset",
+      "target": "function:home/dot_local/bin/common/executable_remove-agent-asset:run_operation",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:home/dot_local/bin/common/executable_remove-agent-asset",
+      "target": "function:home/dot_local/bin/common/executable_remove-agent-asset:is_plugin_data_path",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:home/dot_local/bin/common/executable_remove-agent-asset",
+      "target": "function:home/dot_local/bin/common/executable_remove-agent-asset:remove_plugin_data_paths",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:home/dot_local/bin/common/executable_remove-agent-asset",
+      "target": "function:home/dot_local/bin/common/executable_remove-agent-asset:remove_plugin",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:home/dot_local/bin/common/executable_remove-agent-asset",
+      "target": "function:home/dot_local/bin/common/executable_remove-agent-asset:remove_brew",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:home/dot_local/bin/common/executable_remove-agent-asset",
+      "target": "function:home/dot_local/bin/common/executable_remove-agent-asset:remove_integration",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:home/dot_local/bin/common/executable_remove-agent-asset",
+      "target": "function:home/dot_local/bin/common/executable_remove-agent-asset:remove_manifest_step",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:home/dot_local/bin/common/executable_remove-agent-asset",
+      "target": "function:home/dot_local/bin/common/executable_remove-agent-asset:load_entry",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:home/dot_local/bin/common/executable_remove-agent-asset",
+      "target": "function:home/dot_local/bin/common/executable_remove-agent-asset:main",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/lib/asset-manifest.sh",
+      "target": "function:scripts/lib/asset-manifest.sh:_manifest_record",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
     }
   ],
   "layers": [
@@ -23990,7 +24577,9 @@
         "file:home/dot_zshrc",
         "file:home/private_dot_gnupg/gpg-agent.conf.tmpl",
         "file:home/private_dot_ssh/private_config",
-        "file:home/symlink_dot_bashrc.tmpl"
+        "file:home/symlink_dot_bashrc.tmpl",
+        "file:home/dot_local/bin/common/executable_agent-session-staleness",
+        "file:home/dot_local/bin/common/executable_remove-agent-asset"
       ]
     },
     {
@@ -24051,7 +24640,6 @@
         "file:scripts/generate-docs.sh",
         "file:scripts/run_benchmark.sh",
         "file:scripts/run_unit_test.sh",
-        "file:scripts/update-agent-assets.sh",
         "file:scripts/upgrade-tools.sh",
         "file:scripts/usage-snapshot.sh",
         "file:scripts/check-agent-runtime.py",
@@ -24061,7 +24649,9 @@
         "file:scripts/require-crit-review.py",
         "file:scripts/run_bashcov_unit_test.rb",
         "file:scripts/usage-report.py",
-        "file:scripts/validate-agent-assets.py"
+        "file:scripts/validate-agent-assets.py",
+        "file:scripts/lib/asset-manifest.sh",
+        "file:scripts/update-agent-assets.sh"
       ]
     },
     {

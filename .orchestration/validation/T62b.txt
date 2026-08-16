@@ -1,0 +1,64 @@
+T62b validation transcript
+===========================
+
+Baseline
+--------
+current HEAD: 03621422f732c6be0eb318a137ff572ebeee47c8
+graph snapshot hash before: cc977bf723004d972e1af46d551051fbbaf80003
+before: 1155 nodes, 909 edges, 8 layers, 12 tour steps, 712 fingerprints
+updater old fingerprint: c27b3c053a416058ab1169bdc4bafc342257f1b2847c88f41488667ca0b45ba7
+
+Targeted analysis and merge
+---------------------------
+bundled file analyzer: 4 files, 45 nodes, 42 edges, 2 extractor skips manually supplemented per the analyzer prompt
+replacement: 20 stale updater-owned nodes removed, 45 current nodes added
+edge merge: 19 stale updater-owned outgoing edges removed, 42 current edges added; existing incoming edges retained
+after: 1180 nodes, 932 edges, 8 layers, 12 tour steps, 715 fingerprints
+
+Fingerprint proof
+-----------------
+bundled builder output: Fingerprints baseline: 4 files
+updater new fingerprint: 5849b4ad7fb7de03810f714a1a8f7578064e16b90a8d630ec6c06ca50da7e093
+old != new: true
+LOAD-PATCH-SAVE count: 712 -> 715
+
+Required validation
+-------------------
+command: python3 json.load on knowledge-graph.json, fingerprints.json, meta.json
+result: json-load: ok
+
+command: exact jq graph-node and fingerprint lookup for all four task paths
+result:
+  home/dot_local/bin/common/executable_agent-session-staleness: graph+fingerprint ok
+  home/dot_local/bin/common/executable_remove-agent-asset: graph+fingerprint ok
+  scripts/lib/asset-manifest.sh: graph+fingerprint ok
+  scripts/update-agent-assets.sh: graph+fingerprint ok
+
+command: core validateGraph plus deterministic graph invariants
+result:
+  schemaSuccess=true, schemaError=null, issues=[]
+  nodes=1180, edges=932, layers=8, tour=12
+  fileLevelNodes=730, assignedFileNodes=730, fingerprints=715
+  unique node IDs; no dangling edge/layer/tour references
+
+command: compare graph/meta/fingerprint hashes with git rev-parse HEAD
+result: all equal 03621422f732c6be0eb318a137ff572ebeee47c8
+
+command: git diff --check
+result: exit 0
+
+Review gate
+-----------
+review_surface: crit-data
+reviewer: codex
+review_source: .agents/worklog/codex/review/T62b-crit-comments.json
+review_outcome: approved
+review_notes: Resolved scope approval r_cf53e7 covers exact graph replacement, incoming-edge preservation, bundled fingerprints, layer coverage, HEAD coherence, and official/deterministic validation.
+gate: `AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/validation/T62b.txt make require-crit-review` passed.
+
+Forbidden-action confirmation
+-----------------------------
+- No plugin procedure/cache file changed.
+- No source/product file outside .ua changed.
+- No Bats, chezmoi apply, dependency change, commit, push, or GitHub mutation.
+- effects=none.

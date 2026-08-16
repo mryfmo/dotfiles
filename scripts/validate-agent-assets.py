@@ -420,9 +420,17 @@ def validate_agent_manifest() -> dict[str, Any]:
         fail(f"{manifest_path} must enable the Crit Codex plugin")
     claude = manifest.get("claude", {})
     profiles = manifest.get("model_profiles", {})
-    for required in ("express", "standard", "review", "deep"):
-        if required not in profiles:
-            fail(f"{manifest_path} must define model profile {required}")
+    required_profiles = {"express", "standard", "review", "deep", "security"}
+    if set(profiles) != required_profiles:
+        fail(
+            f"{manifest_path} must define exactly model profiles "
+            f"{sorted(required_profiles)}"
+        )
+    if profiles["security"].get("codex", {}).get("model") != "gpt-daybreak-blue-latest":
+        fail(
+            f"{manifest_path} security Codex profile must use "
+            "gpt-daybreak-blue-latest"
+        )
     if manifest.get("interactive_profile") not in profiles:
         fail(f"{manifest_path} interactive_profile must name a defined model profile")
     for name, profile in profiles.items():

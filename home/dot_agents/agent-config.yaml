@@ -45,6 +45,13 @@ model_profiles:
       model: gpt-5.6-sol
       model_reasoning_effort: high
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
+  security:
+    # Security-audit tier: specialist model for auditing pending changes.
+    claude: { model: claude-fable-5, effort: high }
+    codex:
+      model: gpt-daybreak-blue-latest
+      model_reasoning_effort: high
+      notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
 interactive_profile: deep
 
 codex:

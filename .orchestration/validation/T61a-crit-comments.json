@@ -1,0 +1,23 @@
+[
+  {
+    "scope": "review",
+    "id": "r_bbf9a8",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "T61a review scope approved: verified chezmoi library-before-updater include order, direct-execution fallback source, inlined-function guard, targeted ShellCheck suppressions, preserved 11-step manifest recording semantics, and fake-HOME concatenated-rendering coverage. ShellCheck, syntax, formatting, 299 unit tests, and agent asset validation pass; no unresolved findings.",
+    "author": "Codex",
+    "created_at": "2026-08-16T06:06:53Z",
+    "updated_at": "2026-08-16T06:07:03Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_5afe2c",
+        "body": "Review complete after targeted and full validation; approval record resolved for the T61a evidence receipt.",
+        "author": "Codex",
+        "created_at": "2026-08-16T06:07:03Z",
+        "review_round": 1
+      }
+    ]
+  }
+]

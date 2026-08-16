@@ -1,0 +1,134 @@
+T61a validation transcript
+==========================
+
+PR inspection
+-------------
+command:
+  gh pr view 128 --json number,url,title,headRefName,headRefOid,baseRefName,state,statusCheckRollup
+result:
+  url=https://github.com/mryfmo/dotfiles/pull/128
+  head=feat/harness-composability@af0e6d2f9d96fac070d1eb74afef24fdd5bc1284
+  public-bootstrap (ubuntu-latest, client)=FAILURE
+  test (macos-14, client)=FAILURE
+
+command:
+  gh run view 31930057392 --job 95123387052 --log-failed
+observed:
+  /tmp/3297009363.06-install-agent-assets.sh: line 14: /tmp/lib/asset-manifest.sh: No such file or directory
+  chezmoi: .chezmoiscripts/common/06-install-agent-assets.sh: exit status 1
+
+command:
+  gh run view 31930057408 --job 95123402102 --log-failed
+observed:
+  scripts/lib/asset-manifest.sh:98 SC2016
+  scripts/update-agent-assets.sh:13 SC2155
+  scripts/update-agent-assets.sh:14 SC1091
+
+Regression-first evidence
+-------------------------
+command before fix:
+  python3 -m unittest tests.unit.test_asset_manifest.AssetManifestTest.test_cheezmoi_rendered_updater_uses_inlined_manifest_library
+result: FAILED
+stderr:
+  06-install-agent-assets.sh: line 157: .../lib/asset-manifest.sh: No such file or directory
+
+The test name typo was corrected to `test_chezmoi_rendered_updater_uses_inlined_manifest_library` before final validation.
+
+Required validation
+-------------------
+command:
+  shellcheck -x scripts/lib/asset-manifest.sh scripts/update-agent-assets.sh
+result: exit 0; stdout/stderr empty (clean)
+
+command:
+  make format
+output:
+  shfmt --indent 4 --space-redirects --diff .
+result: exit 0
+
+command:
+  bash -n scripts/lib/asset-manifest.sh scripts/update-agent-assets.sh
+result: exit 0; stdout/stderr empty
+
+command:
+  python3 -m unittest -v tests.unit.test_asset_manifest.AssetManifestTest.test_chezmoi_rendered_updater_uses_inlined_manifest_library
+output:
+  test_chezmoi_rendered_updater_uses_inlined_manifest_library ... ok
+  Ran 1 test in 0.052s
+  OK
+
+command:
+  make unit-test
+output tail:
+  Ran 299 tests in 29.979s
+  OK
+result: exit 0
+
+command:
+  make validate-agent-assets
+output:
+  uv run --with pyyaml scripts/validate-agent-assets.py
+  agent asset validation ok
+result: exit 0
+
+command:
+  git diff --check
+result: exit 0; stdout/stderr empty
+
+Review gate
+-----------
+command:
+  make require-crit-review
+result: expected exit 2; native agent review required for the shared broad diff
+
+command:
+  crit status --json
+result:
+  review_file=/Users/mryfmo/.crit/reviews/dfcf30aea611/review.json
+  unresolved=0 before T61a approval creation
+
+command:
+  crit comments --all --json /Users/mryfmo/.crit/reviews/dfcf30aea611/review.json
+result:
+  T61a approval r_bbf9a8 present with resolved=true and reply rp_5afe2c
+
+command:
+  AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/validation/T61a-crit-receipt.md make require-crit-review
+output:
+  Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+result: exit 0
+
+Scope
+-----
+command:
+  git status --short -- home/.chezmoiscripts/common/run_once_after_06-install-agent-assets.sh.tmpl scripts/update-agent-assets.sh scripts/lib/asset-manifest.sh tests/unit/test_asset_manifest.py
+output:
+   M home/.chezmoiscripts/common/run_once_after_06-install-agent-assets.sh.tmpl
+   M scripts/update-agent-assets.sh
+  ?? scripts/lib/asset-manifest.sh
+  ?? tests/unit/test_asset_manifest.py
+
+The library and test module were pre-existing untracked T57 paths at T61a start; T61a changed only the targeted SC2016 directive and matching regression/count assertions inside them. The shared full worktree contains accepted T54–T61 work, so the scoped status is the authoritative T61a boundary.
+
+Optional Python skill audit
+---------------------------
+command:
+  uvx ruff check tests/unit/test_asset_manifest.py
+  uvx ruff format --check tests/unit/test_asset_manifest.py
+result: exit 1 from pre-existing T57 whole-file EXE001, I001, and format findings; no T61a line-specific Ruff finding. Not changed because T61a requires the repository `make format` shfmt gate and forbids unrelated changes.
+
+Memory
+------
+command:
+  python3 .claude/hooks/contextdb_cli.py memory add --kind failure --scope project --content 'update-agent-assets.sh is executed both from the repository and as a chezmoi-rendered temporary script via run_once_after_06-install-agent-assets.sh.tmpl; a BASH_SOURCE-relative source of scripts/lib/asset-manifest.sh resolves under /tmp and breaks bootstrap unless the wrapper inlines the library before the updater and the updater skips sourcing when manifest_record is already defined.'
+output:
+  ba076825-a6c1-4598-aba2-e5393f01a367
+
+Forbidden-action confirmation
+-----------------------------
+- Bats: not run.
+- chezmoi apply: not run.
+- Dependencies: unchanged.
+- T57 semantics: unchanged; 11 recording calls remain.
+- Git commit/push: not run.
+- effects=none.

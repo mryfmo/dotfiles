@@ -346,4 +346,15 @@ T60 受入。以後のタスク発行文に effects 契約を適用。
 
 ## 実装中の裁定記録(AGMSG-TASK-UPDATE の写し)
 
+- T59: 修復可能なステップ drift は「マニフェストに記載済みかつ記録パスが(部分的にでも)
+  欠けているステップ」のみ — 該当ステップの再実行で修復。マニフェスト不在ステップは
+  drift ではない(導入は make update のオプトイン領分)。source_version 不一致も drift では
+  ない(アップグレードは make update、staleness 報告は T56 の領分)。doctor REPAIR は
+  「壊れたものを直す」だけで、導入も更新もしない。3除外をテスト固定。
+- T58: doctor の検出は三分類に確定 — ACCOUNTED(ソース由来 or 許容リスト、
+  先祖/子孫マッチ含む)は無出力、STALE(マニフェスト記載だがソース非由来 —
+  Cognee 型のソース撤去済み資産)は `remove-agent-asset <step>` を提案する WARN、
+  ORPHAN(ソース・マニフェスト・許容いずれにも無い)は manual review の WARN。
+  当初仕様の2文はこの2クラスを混同していた(ワーカー指摘により裁定)。
+
 (実装開始後に追記)

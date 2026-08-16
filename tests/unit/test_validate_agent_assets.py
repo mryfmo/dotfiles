@@ -90,6 +90,81 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         path.write_text(content)
         return path
 
+    def copy_managed_hook_sources(self) -> None:
+        for relative_path, _file_type in self.module.HOOK_COMPOSITION_SOURCES.values():
+            self.write_text_file(str(relative_path), (ROOT / relative_path).read_text())
+
+    def update_json_hook_source(self, relative_path: str, event: str, groups: list[dict]) -> None:
+        path = self.temp_dir / relative_path
+        data = json.loads(path.read_text())
+        data["hooks"][event] = groups
+        path.write_text(json.dumps(data))
+
+    def assert_hook_composition_fails(self, finding: str) -> None:
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_hook_composition()
+        self.assertIn(finding, stderr.getvalue())
+
+    def test_hook_composition_accepts_managed_source_fixture(self) -> None:
+        self.copy_managed_hook_sources()
+
+        self.module.validate_hook_composition()
+
+    def test_hook_composition_rejects_duplicate_command(self) -> None:
+        self.copy_managed_hook_sources()
+        duplicate = {"type": "command", "command": "audit-hook", "timeout": 5}
+        self.update_json_hook_source(
+            "home/.chezmoitemplates/claude-settings-managed.json",
+            "Stop",
+            [{"hooks": [duplicate, duplicate]}],
+        )
+
+        self.assert_hook_composition_fails("duplicate-command source=claude event=Stop")
+
+    def test_hook_composition_requires_permgate_first(self) -> None:
+        self.copy_managed_hook_sources()
+        self.update_json_hook_source(
+            "home/.chezmoitemplates/claude-settings-managed.json",
+            "PermissionRequest",
+            [
+                {
+                    "hooks": [
+                        {"type": "command", "command": "audit-hook", "timeout": 5},
+                        {"type": "command", "command": "permgate claude", "timeout": 10},
+                    ]
+                }
+            ],
+        )
+
+        self.assert_hook_composition_fails("permgate-first source=claude event=PermissionRequest")
+
+    def test_hook_composition_rejects_sync_timeout_over_budget(self) -> None:
+        self.copy_managed_hook_sources()
+        self.update_json_hook_source(
+            "home/.chezmoitemplates/claude-settings-managed.json",
+            "Stop",
+            [
+                {
+                    "hooks": [
+                        {"type": "command", "command": "first", "timeout": 20},
+                        {"type": "command", "command": "second", "timeout": 11},
+                    ]
+                }
+            ],
+        )
+
+        self.assert_hook_composition_fails("sync-timeout-budget source=claude event=Stop total=31s limit=30s")
+
+    def test_hook_composition_pins_sessionstart_order(self) -> None:
+        self.copy_managed_hook_sources()
+        path = self.temp_dir / "vendor/compactiondb/.claude/settings.fragment.json"
+        data = json.loads(path.read_text())
+        data["hooks"]["SessionStart"].reverse()
+        path.write_text(json.dumps(data))
+
+        self.assert_hook_composition_fails("sessionstart-order source=compactiondb")
+
     def test_codex_sandbox_workspace_write_must_match_manifest(self) -> None:
         self.write_codex_config("network_access = false")
         manifest = {

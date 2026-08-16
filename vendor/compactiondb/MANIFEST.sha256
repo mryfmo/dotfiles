@@ -4,11 +4,11 @@ baf20daff42bf95369a4087d42f6ce4b10d2fefe94b9893990a4c1acf134976b  ./.claude/cont
 632debb79660f90209a8d089ec243c02c953dce65a83e22623cb351d87d2fa27  ./.claude/contextdb/contextdb/config.py
 087ffab41381e628ffe80b4f3d95bc028ae873b9acaa73793f31680ffa7cb541  ./.claude/contextdb/contextdb/hook.py
 e845da0aa6f920d6ad6327bb88624785ffc7d3b69812a794dc96d784ccff0d74  ./.claude/contextdb/contextdb/memory.py
-b0bb33c29dabb0fdbec96f5b9f9e249a6c05f680b91e1457252c7a4b718aae9c  ./.claude/contextdb/contextdb/normalize.py
+74bd5045f587978537bd2b8d45247d18c760bafd353e14c04a0e25ed16c315b4  ./.claude/contextdb/contextdb/normalize.py
 1639f37801a79e06207e204a7144390b86f3858644ba6e0f196c4a1d04224853  ./.claude/contextdb/contextdb/paths.py
 4a8b76db1a40a482db6db7722e894da0707838d288f8d0e411e8ea1120b46eb8  ./.claude/contextdb/contextdb/probe.py
 c9053c949c0acb9d3f9fc42ddb10f27cb1f128424ad8ef33a32d0ca8c99b386c  ./.claude/contextdb/contextdb/recall.py
-7da081984d2a2146566ebf8ad69743ad74cfdcd7b9c64f7acbef6e2147de04ca  ./.claude/contextdb/contextdb/recover_hook.py
+8b630ce662254b992b8d84a78b1e7366598061cc7e2e769b43df8de8fa371e06  ./.claude/contextdb/contextdb/recover_hook.py
 4e0b15c915957d10430110d64bd5d3503cd3475cb96bd07890271d7cf395f321  ./.claude/contextdb/contextdb/recovery.py
 7401b7c006133210a2e92d6cb9213d3cb6f8f51132792ccb17da326f19e4372a  ./.claude/contextdb/contextdb/redaction.py
 213d3146b6062f0bc82140ac06fbbfb5ae0e83338aa2e963c3e1b955140c4cf6  ./.claude/contextdb/contextdb/semantic.py
@@ -28,7 +28,7 @@ effdd198b6763ddfe5c3e348f2cdd1ff2d8563bbf15627d120778f3c9f0d374a  ./.claude/sett
 0ecadb479ae250061801c0760d90f31b71e41c99781c57d4c3ed4e3216f062ad  ./.claude/settings.windows.example.json
 1cd332835a12a16327249cebdce090eadade9d825cb3cb15fa495f0a7382f748  ./.gitignore
 33ce5a14884b9e4e9ccd19a1562792fc56b75fc7c13e641252027fa17668b198  ./AGENTS.md
-5db73510a8b2022506e972efac2f893bde406dc16fc9ff7641ac5340de963268  ./CHANGELOG.md
+27b83f7912c6a490eb6033b567f98ca4fe619d4af6cdaba84cb66de0733f7e28  ./CHANGELOG.md
 9a2af01f513559cd4177759d8d42153fb63e676ed0c4f1a4c482c918403f9a48  ./CLAUDE.md
 277464a1db8b58f33b71e5580ba3df0a89b6d8a59024bfcff81f211e7019e11a  ./LICENSE
 75dece81d35a24f497f52040035a1866033bc051bcd008bd0460ab601988a5d2  ./Makefile
@@ -36,7 +36,7 @@ effdd198b6763ddfe5c3e348f2cdd1ff2d8563bbf15627d120778f3c9f0d374a  ./.claude/sett
 135e6feb640b1f9ca4b35558b1137e451ec8bb8dfe3aaf7d8ca9777062c7d06e  ./README.md
 d04efac69e30d9927eb1d03d2a6c1173ca7f693916897e91cacb4d1d5ffdad77  ./docs/ARCHITECTURE.md
 99e14e21dd93df54c2634076a1d8525816641459d42437bed2365d55bdc44d15  ./docs/DATA_MODEL.md
-4c0e16b29899b48e5168ee6a8fddcd241e5b9cfc08ed5b28192bb788975a5497  ./docs/HOOKS.md
+fe192286c514f43290547fa3efc0b154981cdbb24d486dd84c04e309823fb60c  ./docs/HOOKS.md
 e10956ca7bf70225888bd37e379151334608a5fb5be621181c226eaa39fe927e  ./docs/KNOWN_LIMITATIONS.md
 951a25a639b3525ed30d4b3cbc743b1ff82b9e9971a2bf81aaafedf409e4864e  ./docs/MIGRATION.md
 4aae1373ab611015ff3fa2462dba8e6296cb34c3602d71cc4edc13a56a557517  ./docs/OPERATIONS.md
@@ -60,6 +60,7 @@ bbbe13ad9ff92730b38243c692af304fa4b447a14560352cf64db587718c2fb1  ./tests/test_c
 60116fdacd7c78062815f475624cac7a2f1ec5d4a0314cb4065a3528e2ff9fe8  ./tests/test_paths.py
 4ba87d9230c435376727099c37afd5cdee562aada2aaa1613324684281ded578  ./tests/test_probe.py
 d1d4dadf7b7a352a8e4ffd0f556398b1eef3dbf0cfecb6f9b3a75bf704cffbc8  ./tests/test_recall.py
+316ef8a31e2e5be4d7ee3b4985243f8598cc7d0a37b9eedd26d74362d1cde53a  ./tests/test_recover_hook.py
 182c70db90ce1f23c513513d81366dc2078ed47d8f945c1ef0e39714bfb13f2e  ./tests/test_recovery.py
 fad4ec7b45015cce9518d872413d038123d49201c63f413b5e728afee739b3d8  ./tests/test_redaction.py
 9bbd84f1d4743b91371496d02bc3554b52ea818971dd1ae644f6d56a0cd16e23  ./tests/test_semantic.py

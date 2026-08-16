@@ -1,0 +1,153 @@
+T56b validation
+Generated: 2026-08-16T14:36:04+09:00
+
+1. TEST-FIRST EVIDENCE
+----------------------
+Command:
+  uv run python -m unittest tests.unit.test_agent_session_staleness -v
+
+Before implementation:
+  Ran 11 tests in 1.147s
+  FAILED (failures=3, errors=2)
+
+Expected causes:
+  - `hook` was not a recognized mode.
+  - No state directory/file was created.
+  - Invalid hook input flowed to the ordinary argparse stderr path.
+  - Pruning and second-call baseline detection were absent.
+
+After implementation and formatting:
+  Ran 11 tests in 1.166s
+  OK
+
+Coverage added:
+  - first-call silent baseline plus 0700/0600 modes and traversal-resistant name;
+  - second-call detection with an asset mtime between calls and unchanged baseline;
+  - stale state prune with current state preservation;
+  - missing, garbage, and oversized stdin silent exit 0.
+
+2. REQUIRED ASSET / COMPOSITION VALIDATION
+------------------------------------------
+Final command:
+  UV_CACHE_DIR=/private/tmp/t56b-uv-cache make validate-agent-assets
+
+Output:
+  uv run --with pyyaml scripts/validate-agent-assets.py
+  agent asset validation ok
+
+Result: PASS; exit 0. T55 composition accepts the existing order, async=true, and timeout=5.
+
+The first final-cache attempt was sandboxed and could not resolve pypi.org for PyYAML. It changed no repository file. The same required command was rerun with approved network access and passed; an earlier default-cache run also passed before the 64 KiB input-bound addition.
+
+3. REQUIRED FULL UNIT GATE
+--------------------------
+Command:
+  UV_CACHE_DIR=/private/tmp/t56b-uv-cache make unit-test
+
+Output tail:
+  ----------------------------------------------------------------------
+  Ran 295 tests in 26.247s
+
+  OK
+
+Result: PASS; 295 total, 11 staleness tests, 4 new test methods.
+
+4. FORMAT, PYTHON STYLE, AND GENERATION
+---------------------------------------
+Commands:
+  make format
+  /opt/homebrew/bin/ruff check home/dot_local/bin/common/executable_agent-session-staleness tests/unit/test_agent_session_staleness.py
+  /opt/homebrew/bin/ruff format --check home/dot_local/bin/common/executable_agent-session-staleness tests/unit/test_agent_session_staleness.py
+  uv run --with pyyaml scripts/generate-agent-configs.py --check
+  git diff --check
+
+Outputs:
+  shfmt --indent 4 --space-redirects --diff .
+  All checks passed!
+  2 files already formatted
+  generated agent configs are up to date
+  git diff --check: empty
+
+Result: PASS. The executable is Python, so shell shdoc/bash syntax gates do not apply.
+
+5. FAKE-HOME TWO-CALL TRANSCRIPT
+--------------------------------
+Fixture:
+  /private/tmp/t56b-fake-home.EOSYpH
+
+Invocation mechanism:
+  The absolute interpreter returned by `uv run python -c 'import sys; print(sys.executable)'` executed the source script with HOME set only for the product process.
+
+Output:
+  first_stdout=<empty>
+  baseline=1786858423.697553
+  state_dir_mode=700 state_file_mode=600
+  second_stdout=restart recommended: skills (~/.agents/skills/live/SKILL.md)
+
+The asset was touched after the first invocation and before the second `source=compact` invocation. The state file retained the original baseline.
+
+An initial direct-shebang transcript attempt stopped before product execution because fake HOME made the ambient mise shim treat the real mise config as untrusted. Switching only the interpreter invocation, as already documented by T56, isolated the fixture correctly; this was a validation harness issue, not a product failure.
+
+6. COMPATIBILITY AND SCOPE
+--------------------------
+Hook source/generated command:
+  {{ .chezmoi.homeDir }}/.local/bin/common/agent-session-staleness hook
+  async=true
+  timeout=5
+
+T56b product/test writes:
+  home/dot_local/bin/common/executable_agent-session-staleness
+  home/dot_agents/agent-config.yaml
+  home/.chezmoitemplates/claude-settings-managed.json
+  tests/unit/test_agent_session_staleness.py
+
+T56b evidence writes:
+  .orchestration/reports/T56b.md
+  .orchestration/validation/T56b.txt
+  .orchestration/sandboxes/T56b.md
+  .orchestration/learning/T56b.md
+  .orchestration/autoskill/runs/T56b.md
+  .orchestration/validation/T56b-crit-comments.json
+  .orchestration/validation/T56b-crit-receipt.md
+
+The shared worktree already contained accepted T54-T60 files plus orchestrator-owned T61 evidence. T56b did not modify them. `scripts/check-agent-runtime.py` and its `check --since` delegation are unchanged by T56b. Existing hook order is unchanged.
+
+7. PLAN QUALITY AND CRIT REVIEW
+-------------------------------
+Plan-quality entry points checked and unavailable:
+  docs/workflows/plan-quality-gate.md
+  plans/AGENTS.md
+  plans/TEMPLATE.md
+  .claude/agents/plan-quality-reviewer.md
+  .claude/hooks/plan-quality-gate.sh
+  scripts/validate_plan_quality.py / Make target / CI
+
+The AGENTS worklog schema and manual checklist were used.
+
+Crit data:
+  .orchestration/validation/T56b-crit-comments.json
+
+Receipt:
+  .orchestration/validation/T56b-crit-receipt.md
+
+Resolved approval:
+  r_05a5cf
+
+Command:
+  AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/validation/T56b-crit-receipt.md make require-crit-review
+
+Output:
+  Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+
+8. COMPACTIONDB FAILURE RECORD AND EFFECTS
+------------------------------------------
+Command:
+  python3 .claude/hooks/contextdb_cli.py memory add --kind failure --scope project --content 'Passing $(date +%s) at hook time made staleness detection vacuous: every SessionStart fire compared against "now", so startup sees no future updates and compact-refires miss all mid-session updates. The baseline must be the session'"'"'s FIRST SessionStart epoch, persisted per session_id.'
+
+Output:
+  c9e154b4-aa39-4775-92ac-f793e092b199
+
+Declaration:
+  effects=none
+
+No Bats, commit, push, chezmoi apply, dependency change, check/doctor semantic change, hook reorder, real-HOME asset write, global install, or external service registration occurred.

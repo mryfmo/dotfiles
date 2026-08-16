@@ -1,0 +1,293 @@
+#!/usr/bin/env python3
+"""Approximate session staleness from public managed-asset mtimes.
+
+This command never reads undocumented harness or session state. It compares a
+caller-provided session epoch with public plugin-cache directories, managed
+asset roots, and rendered settings. Detection is intentionally approximate.
+"""
+
+from __future__ import annotations
+
+import argparse
+import fcntl
+import hashlib
+import json
+import math
+import os
+import re
+import signal
+import sys
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Iterator
+
+WALL_LIMIT_S = 5
+MAX_SCAN_ENTRIES = 10_000
+MAX_HOOK_PAYLOAD_BYTES = 64 * 1024
+MAX_STATE_FILES = 1_000
+MAX_OUTPUT_LINES = 5
+STATE_MAX_AGE_S = 7 * 24 * 60 * 60
+EXCLUDED_DIR_NAMES = {
+    ".git",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".venv",
+    "__pycache__",
+    "health",
+    "spool",
+    "state",
+}
+MANAGED_ROOTS = (
+    ("compactiondb", Path(".agents/compactiondb")),
+    ("skills", Path(".agents/skills")),
+    ("plugins", Path(".agents/plugins")),
+)
+
+Update = tuple[float, str, Path]
+
+
+class QuietParser(argparse.ArgumentParser):
+    def error(self, message: str) -> None:
+        raise ValueError(message)
+
+
+def version_key(version: str) -> tuple[tuple[int, int | str], ...]:
+    return tuple(
+        (0, int(token)) if token.isdigit() else (1, token.lower())
+        for token in re.split(r"(\d+)", version)
+    )
+
+
+def display_path(path: Path, home: Path) -> str:
+    try:
+        return "~/" + str(path.relative_to(home))
+    except ValueError:
+        return str(path)
+
+
+def excluded(path: Path, home: Path) -> bool:
+    relative = path.relative_to(home)
+    if any(part in EXCLUDED_DIR_NAMES for part in relative.parts):
+        return True
+    if ".sqlite" in path.name.lower():
+        return True
+    parts = relative.parts
+    return (
+        len(parts) >= 4
+        and parts[:3] == (".agents", "skills", "agmsg")
+        and (parts[3] in {"db", "run", "teams"} or parts[3].startswith("db-"))
+    )
+
+
+def scan_files(root: Path, home: Path, deadline: float) -> Iterator[tuple[Path, float]]:
+    if not root.is_dir():
+        return
+    pending = [root]
+    scanned = 0
+    while pending:
+        if time.monotonic() >= deadline:
+            raise TimeoutError("managed asset scan exceeded 5 seconds")
+        directory = pending.pop()
+        with os.scandir(directory) as entries:
+            for entry in entries:
+                scanned += 1
+                # ponytail: bounded scan favors hook latency; raise only if 10k entries miss real updates.
+                if scanned > MAX_SCAN_ENTRIES:
+                    return
+                path = Path(entry.path)
+                if excluded(path, home):
+                    continue
+                if entry.is_dir(follow_symlinks=False):
+                    pending.append(path)
+                elif entry.is_file(follow_symlinks=False) or entry.is_symlink():
+                    yield path, entry.stat(follow_symlinks=False).st_mtime
+
+
+def plugin_cache_updates(
+    home: Path, since: float | None, deadline: float
+) -> list[Update]:
+    cache = home / ".claude/plugins/cache"
+    if not cache.is_dir():
+        return []
+    updates: list[Update] = []
+    scanned = 0
+    for marketplace in os.scandir(cache):
+        if not marketplace.is_dir(follow_symlinks=False):
+            continue
+        for plugin in os.scandir(marketplace.path):
+            if not plugin.is_dir(follow_symlinks=False):
+                continue
+            versions: list[tuple[str, float, Path]] = []
+            for version in os.scandir(plugin.path):
+                scanned += 1
+                if scanned > MAX_SCAN_ENTRIES or time.monotonic() >= deadline:
+                    raise TimeoutError("plugin cache scan exceeded its bound")
+                if version.is_dir(follow_symlinks=False):
+                    stat_result = version.stat(follow_symlinks=False)
+                    versions.append(
+                        (version.name, stat_result.st_mtime, Path(version.path))
+                    )
+            if since is None:
+                updates.extend(
+                    (mtime, f"claude-plugin:{marketplace.name}/{plugin.name}", path)
+                    for _, mtime, path in versions
+                )
+                continue
+            highest = max(versions, key=lambda item: version_key(item[0]), default=None)
+            older = [item for item in versions if item[1] <= since]
+            baseline = max(older, key=lambda item: version_key(item[0]), default=None)
+            if (
+                highest
+                and highest[1] > since
+                and (
+                    baseline is None
+                    or version_key(highest[0]) > version_key(baseline[0])
+                )
+            ):
+                updates.append(
+                    (
+                        highest[1],
+                        f"claude-plugin:{marketplace.name}/{plugin.name}",
+                        highest[2],
+                    )
+                )
+    return updates
+
+
+def collect_updates(home: Path, since: float | None, deadline: float) -> list[Update]:
+    updates = plugin_cache_updates(home, since, deadline)
+    for label, relative_root in MANAGED_ROOTS:
+        for path, mtime in scan_files(home / relative_root, home, deadline):
+            if since is None or mtime > since:
+                updates.append((mtime, label, path))
+    settings = [("claude-settings", home / ".claude/settings.json")]
+    codex_root = home / ".codex"
+    if codex_root.is_dir():
+        settings.extend(("codex-settings", path) for path in codex_root.glob("*.toml"))
+    for label, path in settings:
+        if path.is_file():
+            mtime = path.stat().st_mtime
+            if since is None or mtime > since:
+                updates.append((mtime, label, path))
+    return updates
+
+
+def prune_state_files(state_dir: Path, deadline: float) -> None:
+    cutoff = time.time() - STATE_MAX_AGE_S
+    try:
+        with os.scandir(state_dir) as entries:
+            for index, entry in enumerate(entries):
+                if index >= MAX_STATE_FILES or time.monotonic() >= deadline:
+                    return
+                try:
+                    if (
+                        entry.is_file(follow_symlinks=False)
+                        and entry.stat(follow_symlinks=False).st_mtime < cutoff
+                    ):
+                        os.unlink(entry.path)
+                except OSError:
+                    pass
+    except OSError:
+        pass
+
+
+def run_hook(home: Path, deadline: float) -> int:
+    try:
+        raw_payload = sys.stdin.read(MAX_HOOK_PAYLOAD_BYTES + 1)
+        if len(raw_payload) > MAX_HOOK_PAYLOAD_BYTES:
+            return 0
+        payload = json.loads(raw_payload)
+        if not isinstance(payload, dict):
+            return 0
+        session_id = payload.get("session_id")
+        source = payload.get("source")
+        if (
+            not isinstance(session_id, str)
+            or not session_id
+            or (source is not None and not isinstance(source, str))
+        ):
+            return 0
+
+        state_dir = home / ".local/state/agent-staleness"
+        state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        state_dir.chmod(0o700)
+        prune_state_files(state_dir, deadline)
+        state_file = (
+            state_dir / f"{hashlib.sha256(session_id.encode()).hexdigest()}.epoch"
+        )
+        flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+        descriptor = os.open(state_file, flags, 0o600)
+        os.fchmod(descriptor, 0o600)
+        with os.fdopen(descriptor, "r+") as baseline_file:
+            fcntl.flock(baseline_file, fcntl.LOCK_EX)
+            baseline = baseline_file.read().strip()
+            if not baseline:
+                baseline_file.write(f"{time.time()}\n")
+                baseline_file.flush()
+                return 0
+        return run(["check", "--since", baseline], home, deadline)
+    except Exception:
+        return 0
+
+
+def run(argv: list[str], home: Path, deadline: float) -> int:
+    if not argv:
+        updates = sorted(collect_updates(home, None, deadline), reverse=True)[:10]
+        for mtime, label, path in updates:
+            timestamp = (
+                datetime.fromtimestamp(mtime, timezone.utc)
+                .isoformat()
+                .replace("+00:00", "Z")
+            )
+            print(f"{timestamp} {label} {display_path(path, home)}")
+        return 0
+
+    if argv[0] == "hook":
+        return run_hook(home, deadline) if len(argv) == 1 else 0
+
+    parser = QuietParser(description=__doc__)
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    check = subparsers.add_parser("check")
+    check.add_argument("--since", required=True)
+    args = parser.parse_args(argv)
+    since = float(args.since)
+    if not math.isfinite(since) or since < 0:
+        raise ValueError("--since must be a finite non-negative epoch")
+
+    latest_by_label: dict[str, Update] = {}
+    for update in collect_updates(home, since, deadline):
+        current = latest_by_label.get(update[1])
+        if current is None or update[0] > current[0]:
+            latest_by_label[update[1]] = update
+    for _mtime, label, path in sorted(latest_by_label.values(), reverse=True)[
+        :MAX_OUTPUT_LINES
+    ]:
+        print(f"restart recommended: {label} ({display_path(path, home)})")
+    return 0
+
+
+def guarded_main(argv: list[str] | None = None, *, home: Path | None = None) -> int:
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    target_home = (
+        Path(os.environ.get("HOME", str(Path.home()))) if home is None else home
+    )
+    previous_handler = signal.getsignal(signal.SIGALRM)
+
+    def timeout_handler(_signum: int, _frame: object) -> None:
+        raise TimeoutError("wall limit exceeded")
+
+    signal.signal(signal.SIGALRM, timeout_handler)
+    signal.setitimer(signal.ITIMER_REAL, WALL_LIMIT_S)
+    try:
+        return run(arguments, target_home, time.monotonic() + WALL_LIMIT_S)
+    except Exception as error:
+        print(f"agent-session-staleness: {error}", file=sys.stderr)
+        return 0
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
+
+
+if __name__ == "__main__":
+    raise SystemExit(guarded_main())

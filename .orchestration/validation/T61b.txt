@@ -1,0 +1,102 @@
+T61b validation transcript
+==========================
+
+PR review findings
+------------------
+PR: https://github.com/mryfmo/dotfiles/pull/128
+head: feat/harness-composability@af0e6d2f9d96fac070d1eb74afef24fdd5bc1284
+
+Read-only GraphQL inspection found exactly two unresolved, non-outdated threads:
+- PRRT_kwDOSMyAV86ZlAnw at scripts/update-agent-assets.sh:87: mise identities overwrite one shared manifest key.
+- PRRT_kwDOSMyAV86ZlAny at scripts/check-agent-runtime.py:304-309: invalid installed manifest is silently treated as empty.
+
+Regression-first evidence
+-------------------------
+Before the fix, the selected five-test run failed in three root-cause assertions:
+- the same-run updater recorded only the bare mise function key;
+- parameterized repair returned no action;
+- invalid doctor manifest reached a manifest-dependent scan.
+The two remover regressions passed before the fix, confirming its generic full-key lookup and invalid-schema rejection already held.
+
+Targeted fake-HOME transcript
+-----------------------------
+command:
+  uv run python -m unittest -v tests.unit.test_asset_manifest.AssetManifestTest.test_same_run_mise_repairs_preserve_both_identity_steps tests.unit.test_check_agent_runtime.CheckAgentRuntimeTest.test_parameterized_mise_step_uses_key_identity tests.unit.test_check_agent_runtime.CheckAgentRuntimeTest.test_invalid_manifest_is_one_error_and_skips_dependent_checks tests.unit.test_remove_agent_asset.RemoveAgentAssetTest.test_parameterized_step_removal_preserves_sibling_identity tests.unit.test_remove_agent_asset.RemoveAgentAssetTest.test_invalid_manifest_is_rejected
+result:
+  five tests passed; two identity keys survived, REPAIR used the base function and suffix identity, doctor emitted one integrity error and skipped dependent scans, parameterized removal preserved its sibling, and all invalid remover fixtures exited 1.
+
+Required validation
+-------------------
+command:
+  make unit-test
+result:
+  Ran 304 tests in 31.279s
+  OK
+
+command:
+  make validate-agent-assets
+output:
+  agent asset validation ok
+result: exit 0
+
+command:
+  shellcheck -x scripts/update-agent-assets.sh scripts/lib/asset-manifest.sh home/dot_local/bin/common/executable_remove-agent-asset
+result: exit 0; stdout/stderr empty
+
+command:
+  bash -n scripts/update-agent-assets.sh scripts/lib/asset-manifest.sh home/dot_local/bin/common/executable_remove-agent-asset
+result: exit 0; stdout/stderr empty
+
+command:
+  make format
+output:
+  shfmt --indent 4 --space-redirects --diff .
+result: exit 0
+
+command:
+  uvx ruff check --select PIE807 scripts/check-agent-runtime.py tests/unit/test_check_agent_runtime.py tests/unit/test_remove_agent_asset.py
+output:
+  All checks passed!
+result: exit 0
+
+command:
+  git diff --check
+result: exit 0; stdout/stderr empty
+
+Optional whole-file Ruff audit
+------------------------------
+command:
+  uvx ruff check scripts/check-agent-runtime.py tests/unit/test_check_agent_runtime.py tests/unit/test_remove_agent_asset.py
+result: exit 1 with nine pre-existing accepted findings: UP022, EXE001, I001, and SIM117. No finding points at T61b logic or its new tests after the targeted PIE807 cleanup; bulk formatting/chmod is outside scope.
+
+Review gate
+-----------
+command:
+  make require-crit-review
+result: expected exit 2; shared broad diff requires native agent review
+
+command:
+  crit status --json
+result:
+  review_file=/Users/mryfmo/.crit/reviews/dfcf30aea611/review.json
+
+command:
+  crit comments --all --json /Users/mryfmo/.crit/reviews/dfcf30aea611/review.json
+result:
+  T61b approval r_b430f5 is resolved=true with reply rp_e81d70; scoped output saved in .orchestration/validation/T61b-crit-comments.json.
+
+Memory
+------
+command:
+  python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content <T61b decision>
+output:
+  3e5bb65b-4548-4a5e-8197-b5445b24d6bb
+
+Scope and forbidden-action confirmation
+---------------------------------------
+- Product logic changed only scripts/update-agent-assets.sh and scripts/check-agent-runtime.py.
+- Matching tests changed only tests/unit/test_asset_manifest.py, tests/unit/test_check_agent_runtime.py, and tests/unit/test_remove_agent_asset.py.
+- scripts/lib/asset-manifest.sh and remove-agent-asset needed no product-code change because their exact-key jq operations are already generic; their behavior is pinned by tests.
+- Shared accepted T54-T61a dirty/untracked paths remain intact and are not T61b writes.
+- No Bats, chezmoi apply, dependency edit, GitHub write, commit, or push.
+- effects=none.

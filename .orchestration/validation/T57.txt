@@ -1,0 +1,159 @@
+T57 validation
+Generated: 2026-08-16T12:49:28+09:00
+
+1. TEST-FIRST EVIDENCE
+----------------------
+Before implementation:
+  uv run python -m unittest tests.unit.test_asset_manifest -v
+
+Result:
+  Ran 5 tests
+  FAILED (failures=4, errors=1)
+
+Expected causes: scripts/lib/asset-manifest.sh did not exist and the updater had no recording calls.
+
+After implementation:
+  UV_CACHE_DIR=/private/tmp/t57-uv-cache uv run python -m unittest tests.unit.test_asset_manifest -v
+
+Result:
+  Ran 5 tests in 0.254s
+  OK
+
+2. REQUIRED FORMAT AND SHELL GATES
+-----------------------------------
+Command:
+  make format
+
+Output:
+  shfmt --indent 4 --space-redirects --diff .
+
+Result: PASS; exit 0, no diff output.
+
+Command:
+  bash -n scripts/update-agent-assets.sh scripts/lib/asset-manifest.sh
+
+Result: PASS; exit 0, no output.
+
+Command:
+  git diff --check -- scripts/update-agent-assets.sh scripts/lib/asset-manifest.sh tests/unit/test_asset_manifest.py tests/unit/test_runtime_health.py
+
+Result: PASS; exit 0, no output.
+
+Additional Python check:
+  /opt/homebrew/bin/ruff check --select F tests/unit/test_asset_manifest.py
+  All checks passed!
+
+3. REQUIRED UNIT TEST GATE
+--------------------------
+Command:
+  make unit-test
+
+Output tail:
+  ----------------------------------------------------------------------
+  Ran 267 tests in 27.054s
+
+  OK
+
+Result: PASS; 267 total, 5 new T57 tests (the preceding accepted baseline had 262).
+
+4. REQUIRED ASSET VALIDATION GATE
+----------------------------------
+Command:
+  make validate-agent-assets
+
+Output:
+  uv run --with pyyaml scripts/validate-agent-assets.py
+  agent asset validation ok
+
+Result: PASS.
+
+5. FAKE-HOME FUNCTION TRANSCRIPT
+--------------------------------
+Fixture:
+  /private/tmp/t57-fake-home.lrcNrT
+
+The two real updater functions were sourced and called directly. `rsync` and `herdr` were shell-function stubs, so no network or real install occurred. Direct `/opt/homebrew/bin/jq` was selected because changing HOME around the mise jq shim triggers mise trust checks before the product runs.
+
+Commands invoked by the functions:
+  stub rsync -a --delete --exclude .claude/contextdb/state/ --exclude .claude/contextdb/spool/ --exclude .claude/contextdb/health/ --exclude .claude/contextdb/contextdb.sqlite3* /Users/mryfmo/Workspace/dotfiles/vendor/compactiondb/ /private/tmp/t57-fake-home.lrcNrT/.agents/compactiondb/
+  stub herdr integration install claude
+  stub herdr integration install codex
+
+Manifest mode:
+  600
+
+Resulting manifest:
+{
+  "version": 1,
+  "steps": {
+    "update_compactiondb": {
+      "installed_at": "2026-08-16T03:42:23Z",
+      "kind": "rsync",
+      "paths": [
+        "/private/tmp/t57-fake-home.lrcNrT/.agents/compactiondb"
+      ],
+      "commands": [
+        "rsync -a --delete --exclude .claude/contextdb/state/ --exclude .claude/contextdb/spool/ --exclude .claude/contextdb/health/ --exclude .claude/contextdb/contextdb.sqlite3* /Users/mryfmo/Workspace/dotfiles/vendor/compactiondb/ /private/tmp/t57-fake-home.lrcNrT/.agents/compactiondb/"
+      ],
+      "source_version": "2.0.0+dotfiles.5"
+    },
+    "ensure_herdr_integrations": {
+      "installed_at": "2026-08-16T03:42:23Z",
+      "kind": "integration",
+      "paths": [
+        "/private/tmp/t57-fake-home.lrcNrT/.claude/hooks/herdr-agent-state.sh",
+        "/private/tmp/t57-fake-home.lrcNrT/.codex/herdr-agent-state.sh"
+      ],
+      "commands": [
+        "herdr integration install claude",
+        "herdr integration install codex"
+      ],
+      "source_version": "9.9.9"
+    }
+  }
+}
+
+6. DIFF SCOPE
+-------------
+T57 product/test status:
+   M scripts/update-agent-assets.sh
+   M tests/unit/test_runtime_health.py
+  ?? scripts/lib/asset-manifest.sh
+  ?? tests/unit/test_asset_manifest.py
+
+Tracked T57 numstat:
+  14  0  scripts/update-agent-assets.sh
+  10  0  tests/unit/test_runtime_health.py
+
+New authorized files:
+  scripts/lib/asset-manifest.sh (143 lines)
+  tests/unit/test_asset_manifest.py (186 lines)
+
+`git diff --unified=0 -- scripts/update-agent-assets.sh | rg '^[-+][^-+]'` showed only 14 added lines: two source-layout lines, one blank separator, and exactly eleven `manifest_record` calls. There are zero deletions, so no existing install command, ordering, or output changed.
+
+The overall worktree also contains accepted T54/T55/T56 product changes and their artifacts. They were present at T57 baseline and were preserved. T57 writes are limited to the four authorized product/test paths plus its five artifacts and ignored worklog evidence.
+
+7. REVIEW AND MEMORY GATES
+--------------------------
+Crit data:
+  .agents/worklog/codex/review/20260816_124300_T57_crit-comments.json
+
+Receipt:
+  .agents/worklog/codex/review/20260816_124300_T57_receipt.md
+
+Resolved approval:
+  r_3e5654
+
+Command:
+  AGENT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/review/20260816_124300_T57_receipt.md make require-crit-review
+
+Output:
+  Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+
+Memory command:
+  python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "Every update-agent-assets install step records what it installed (paths, commands, source version) into the atomic ~/.agents/.installed-manifest.json; recording is additive-only and never changes install behavior."
+
+Output:
+  f0fb7bde-20e5-4dad-a87a-066f6eb83488
+
+No Bats, commit, push, chezmoi apply, dependency change, make update, network install, or real-HOME install step occurred.

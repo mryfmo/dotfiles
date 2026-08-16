@@ -1,0 +1,113 @@
+T60 validation
+Generated: 2026-08-16T14:24:00+09:00
+
+1. REQUIRED ASSET VALIDATION
+----------------------------
+Command:
+  make validate-agent-assets
+
+Output:
+  uv run --with pyyaml scripts/validate-agent-assets.py
+  agent asset validation ok
+
+Result: PASS; exit 0.
+
+2. FULL TWO-FILE DIFF
+---------------------
+Command:
+  git diff -- home/dot_agents/skills/agmsg-orchestration/SKILL.md home/dot_config/claude/rules/agmsg-orchestration.md
+
+Substantive diff:
+  SKILL RESULT section:
+    + Tasks creating persistent side effects outside the repository working tree include optional `effects=<semicolon-list-of-short-ids>`.
+    + Allowed-files edits are excluded.
+    + Every effect maps to a named installed-manifest step removable by `remove-agent-asset`, a documented removal procedure, or `irreversible:` with rationale.
+
+  SKILL Orchestrator Playbook:
+    + New step 9 verifies every declared mapping before acceptance and records irreversible effects in the acceptance note.
+    ~ Existing acceptance step renumbered from 9 to 10 with wording unchanged.
+
+  Claude rule:
+    + Exactly one bullet mirrors the acceptance obligation.
+
+Numstat:
+  4  1  home/dot_agents/skills/agmsg-orchestration/SKILL.md
+  1  0  home/dot_config/claude/rules/agmsg-orchestration.md
+
+The existing required RESULT block remains byte-identical:
+  AGMSG-RESULT v1 task_id=<id> status=ready_for_review|blocked
+  report=<path> validation=<path> sandbox=<path> learning=<path> autoskill=<path>
+
+The optional paragraph follows the block; no required field was inserted, removed, renamed, or reordered.
+
+3. FOUR-WAY CONSISTENCY
+-----------------------
+Command:
+  rg -n "effects=|reverse mapping|reverse-mapping|irreversible:|persistent.*side effect|リポジトリ外への永続的副作用|逆写像|coeffect" home/dot_agents/skills/agmsg-orchestration/SKILL.md home/dot_config/claude/rules/agmsg-orchestration.md .orchestration/tasks/PLAN-harness-composability-integration.md .orchestration/analysis/harness-composability-research.md
+
+SKILL:
+  line 42 defines persistent out-of-repository effects, the optional field, allowed-files exclusion, and all three reverse-map forms.
+  line 82 requires acceptance-time verification and irreversible-note recording.
+
+Rule:
+  line 9 mirrors the verification and irreversible-note obligation in one English bullet.
+
+Plan:
+  lines 267-276 require optional effects for persistent outside-repo side effects, report reverse mappings, exclude repository edits, and verify them at acceptance.
+
+Analysis:
+  line 156 defines H6 as a RESULT effects declaration whose reverse mapping is verified through H1.
+
+Result: PASS; no contradiction with T58 removal or T45 memory-marker semantics.
+
+4. SCOPE AND WHITESPACE
+-----------------------
+Commands:
+  git status --porcelain -- home/dot_agents/skills/agmsg-orchestration/SKILL.md home/dot_config/claude/rules/agmsg-orchestration.md home/dot_claude/skills/agmsg-orchestration
+  git diff --check
+
+Output:
+   M home/dot_agents/skills/agmsg-orchestration/SKILL.md
+   M home/dot_config/claude/rules/agmsg-orchestration.md
+
+Result: PASS. The Claude skill symlink template was untouched. T60 product writes are exactly the two allowed documents plus its five artifacts and ignored worklog evidence. No code file changed.
+
+5. PLAN-QUALITY AND REVIEW GATES
+--------------------------------
+Plan-quality entry points checked and unavailable:
+  docs/workflows/plan-quality-gate.md
+  plans/AGENTS.md
+  plans/TEMPLATE.md
+  .claude/agents/plan-quality-reviewer.md
+  .claude/hooks/plan-quality-gate.sh
+  scripts/validate_plan_quality.py / Make target / CI
+
+The AGENTS worklog schema and manual checklist were used. The plan includes the required headings, positive/adversarial checks, backward-compatibility invariant, exact file boundary, and no open ambiguity.
+
+Crit data:
+  .agents/worklog/codex/review/20260816_141917_T60_crit-comments.json
+
+Receipt:
+  .agents/worklog/codex/review/20260816_141917_T60_receipt.md
+
+Resolved approval:
+  r_68fe8d
+
+Command:
+  AGENT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/review/20260816_141917_T60_receipt.md make require-crit-review
+
+Output:
+  Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+
+6. MEMORY AND EFFECTS
+---------------------
+Memory command:
+  python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "AGMSG RESULTs for tasks with persistent out-of-repo side effects declare them in an optional effects field, and the report states each effect's reverse mapping (installed-manifest step, removal procedure, or explicitly irreversible); the orchestrator verifies this at acceptance."
+
+Output:
+  61c32e49-81ec-44c0-8bdb-5bd70d527b92
+
+Dogfood declaration:
+  effects=none
+
+No code test was required by this docs-only task. No code, Bats, commit, push, chezmoi apply, real-HOME write, global asset install, external registration, or other out-of-repository effect occurred.

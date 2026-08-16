@@ -1,0 +1,164 @@
+T59 validation
+Generated: 2026-08-16T14:15:00+09:00
+
+1. TEST-FIRST EVIDENCE
+----------------------
+Before implementation:
+  UV_CACHE_DIR=/private/tmp/t59-uv-cache uv run python -m unittest tests.unit.test_check_agent_runtime tests.unit.test_runtime_health.RuntimeHealthTest.test_make_doctor_passes_repair_variable_to_runtime_check -v
+
+Result:
+  Ran 21 tests in 0.256s
+  FAILED (errors=7)
+
+Expected causes: RepairAction, AssetFinding, repair action mapping/execution, asset drift detection, and repair-mode convergence did not yet exist. The Make propagation fixture already passed, proving a Makefile edit was unnecessary.
+
+Final targeted command:
+  UV_CACHE_DIR=/private/tmp/t59-uv-cache uv run python -m unittest tests.unit.test_check_agent_runtime tests.unit.test_runtime_health.RuntimeHealthTest.test_make_doctor_passes_repair_variable_to_runtime_check -v
+
+Result:
+  Ran 24 tests in 0.261s
+  OK
+
+The command contains all 23 checker tests (10 new T59 cases) and one new Make doctor propagation test.
+
+2. REQUIRED FORMAT, SYNTAX, AND PYTHON GATES
+---------------------------------------------
+Commands:
+  make format
+  bash -n scripts/update-agent-assets.sh
+  /opt/homebrew/bin/ruff check --select F scripts/check-agent-runtime.py tests/unit/test_check_agent_runtime.py tests/unit/test_runtime_health.py
+  git diff --check
+
+Results:
+  shfmt --indent 4 --space-redirects --diff .
+  All checks passed!
+  Every command exited 0. T59 changed no shell file; the Bash syntax check validates the existing updater that repair mode sources.
+
+3. FULL UNIT TEST GATE
+----------------------
+Command:
+  UV_CACHE_DIR=/private/tmp/t59-uv-cache make unit-test
+
+Output tail:
+  ----------------------------------------------------------------------
+  Ran 291 tests in 24.606s
+
+  OK
+
+Result: PASS; 291 total, 11 new T59 cases over the accepted 280-test baseline.
+
+4. ASSET VALIDATION GATE
+------------------------
+Command:
+  make validate-agent-assets
+
+Output:
+  uv run --with pyyaml scripts/validate-agent-assets.py
+  agent asset validation ok
+
+Result: PASS.
+
+5. FAKE-HOME TRANSCRIPTS
+------------------------
+Fixture:
+  /private/tmp/t59-fake-home-0s3d2eky/home
+
+External actions were stubbed. The real repair mapper and `main([])` were used; stubs changed only this fake HOME.
+
+CASE repair-converges exit=0
+STDERR:
+  ERROR: Claude MCP config differs or is missing: /private/tmp/t59-fake-home-0s3d2eky/home/.claude/mcp.json
+  ERROR: model profile fragment differs or is missing: /private/tmp/t59-fake-home-0s3d2eky/home/.agents/model-profiles.env
+  ERROR: Claude enforce-uv hook is not executable: /private/tmp/t59-fake-home-0s3d2eky/home/.claude/hooks/enforce-uv.sh
+  ERROR: asset manifest step 'update_compactiondb' has missing paths: /private/tmp/t59-fake-home-0s3d2eky/home/.agents/compactiondb
+STDOUT:
+  WARN: orphaned agent asset: /private/tmp/t59-fake-home-0s3d2eky/home/.agents/orphan; manual review required
+  repaired: missing file /private/tmp/t59-fake-home-0s3d2eky/home/.claude/mcp.json (chezmoi apply /private/tmp/t59-fake-home-0s3d2eky/home/.claude/mcp.json)
+  repaired: content differs /private/tmp/t59-fake-home-0s3d2eky/home/.agents/model-profiles.env (chezmoi apply /private/tmp/t59-fake-home-0s3d2eky/home/.agents/model-profiles.env)
+  repaired: executable bit missing /private/tmp/t59-fake-home-0s3d2eky/home/.claude/hooks/enforce-uv.sh (chmod +x /private/tmp/t59-fake-home-0s3d2eky/home/.claude/hooks/enforce-uv.sh)
+  repaired: asset step missing /private/tmp/t59-fake-home-0s3d2eky/home/.agents/compactiondb (bash -c 'source "$1"; export PATH="$HOME/.local/share/mise/shims:$PATH"; shift; "$@"' bash /Users/mryfmo/Workspace/dotfiles/scripts/update-agent-assets.sh update_compactiondb)
+  active agent runtime files match this chezmoi source tree
+
+Exact stub calls (one each):
+  chezmoi apply /private/tmp/t59-fake-home-0s3d2eky/home/.claude/mcp.json
+  chezmoi apply /private/tmp/t59-fake-home-0s3d2eky/home/.agents/model-profiles.env
+  chmod +x /private/tmp/t59-fake-home-0s3d2eky/home/.claude/hooks/enforce-uv.sh
+  bash -c 'source "$1"; export PATH="$HOME/.local/share/mise/shims:$PATH"; shift; "$@"' bash /Users/mryfmo/Workspace/dotfiles/scripts/update-agent-assets.sh update_compactiondb
+
+The ORPHAN warning remained suggestion-only and produced no action. The re-scan found no repairable errors.
+
+CASE repair-non-convergent exit=1
+STDERR:
+  ERROR: Claude MCP config differs or is missing: /private/tmp/t59-fake-home-0s3d2eky/home/.claude/mcp.json
+  non-convergent after repair
+STDOUT:
+  repaired: missing file /private/tmp/t59-fake-home-0s3d2eky/home/.claude/mcp.json (chezmoi apply /private/tmp/t59-fake-home-0s3d2eky/home/.claude/mcp.json)
+
+The stub returned success without mutating, and doctor stopped after exactly two scans (initial plus one convergence scan).
+
+CASE repair-unset exit=1
+STDERR:
+  ERROR: Claude MCP config differs or is missing: /private/tmp/t59-fake-home-0s3d2eky/home/.claude/mcp.json
+STDOUT: empty
+  mutations-without-repair=0
+
+This matches the pre-T59 report-only contract byte-for-byte for the fixture.
+
+6. MANIFEST EXCLUSION AND SOURCE-SAFETY EVIDENCE
+-------------------------------------------------
+  test_manifest_drift_requires_recorded_step_with_missing_path ... ok
+  test_mise_step_identity_comes_only_from_recorded_command ... ok
+  test_sourced_asset_repair_runs_no_main_or_sibling_step ... ok
+  test_repair_mode_never_acts_on_stale_or_orphan_warnings ... ok
+
+These pin: manifest-present missing-path only; no install for absent steps; no repair for version mismatch; ambiguous mise identity refusal; strict source without `main`/sibling execution; no STALE/ORPHAN mutation.
+
+7. DIFF SCOPE
+-------------
+T59 authorized product/test status:
+   M scripts/check-agent-runtime.py
+   M tests/unit/test_check_agent_runtime.py
+   M tests/unit/test_runtime_health.py
+
+Current tracked aggregate stat for those paths (includes accepted T56-T58/T57 baseline portions):
+  scripts/check-agent-runtime.py         | 352 ++++++++++++++++++++++++++++++-
+  tests/unit/test_check_agent_runtime.py | 368 +++++++++++++++++++++++++++++++++
+  tests/unit/test_runtime_health.py      |  34 +++
+  3 files changed, 747 insertions(+), 7 deletions(-)
+
+T59 did not edit Makefile because native GNU make propagation already meets the contract. `scripts/update-agent-assets.sh` remains dirty from accepted T57 work but was not edited by T59. T59 writes are limited to the allowed checker/tests, its five artifacts, and ignored worklog review/plan/todo evidence.
+
+8. PLAN-QUALITY, REVIEW, AND MEMORY GATES
+------------------------------------------
+Plan-quality entry points checked and unavailable:
+  docs/workflows/plan-quality-gate.md
+  plans/AGENTS.md
+  plans/TEMPLATE.md
+  .claude/agents/plan-quality-reviewer.md
+  .claude/hooks/plan-quality-gate.sh
+  scripts/validate_plan_quality.py / Make target / CI
+
+The AGENTS worklog schema and manual checklist were used instead; the plan contains Goal, Scope, Assumptions, Design, Tests, Open Questions, concrete positive/adversarial checks, safety invariants, and resolved STOP ambiguity.
+
+Crit data:
+  .agents/worklog/codex/review/20260816_141232_T59_crit-comments.json
+
+Receipt:
+  .agents/worklog/codex/review/20260816_141232_T59_receipt.md
+
+Resolved approval:
+  r_71a072
+
+Command:
+  AGENT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/review/20260816_141232_T59_receipt.md make require-crit-review
+
+Output:
+  Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+
+Memory command:
+  python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "make doctor REPAIR=1 repairs only detected drift with the least-disruptive action per category (single-target chezmoi apply, chmod, step-scoped reinstall), verifies convergence with a re-scan, and never auto-removes STALE/ORPHAN assets."
+
+Output:
+  fe63d701-0b1b-4cb8-a250-5f2c02e8dcae
+
+No Bats, commit, push, dependency change, real-HOME repair, asset removal, updater edit, or live repair cycle occurred.

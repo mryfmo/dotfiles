@@ -5,10 +5,28 @@ import sys
 from typing import Any
 
 from .config import load_config
-from .paths import project_paths
+from .normalize import normalize_hook_payload
+from .paths import ProjectPaths, project_paths
 from .recovery import build_recovery_context
-from .spool import drain_spool, record_error
+from .spool import drain_spool, record_error, spool_event
 from .storage import ContextStore
+
+
+def _record_recovery_injected(paths: ProjectPaths, config: dict[str, Any], session_id: str, context: str) -> None:
+    try:
+        event = normalize_hook_payload(
+            {
+                "hook_event_name": "RecoveryInjected",
+                "session_id": session_id,
+                "cwd": str(paths.root),
+                "recovery_packet": context,
+            },
+            paths,
+            config,
+        )
+        spool_event(paths, event)
+    except Exception as exc:
+        record_error(paths, "recover-hook-recording", exc, session_id=session_id)
 
 
 def recovery_output(payload: dict[str, Any], *, project_root: str | None = None) -> dict[str, Any]:
@@ -33,6 +51,7 @@ def recovery_output(payload: dict[str, Any], *, project_root: str | None = None)
                 )
         finally:
             conn.close()
+    _record_recovery_injected(paths, config, session_id, context)
     return {
         "hookSpecificOutput": {
             "hookEventName": "SessionStart",

@@ -1,0 +1,63 @@
+T61 live E2E evidence (harness composability plan)
+==================================================
+
+Distribution (PASS) — 2026-08-16
+--------------------------------
+./scripts/update-agent-assets.sh exit 0; FIRST real manifest written:
+~/.agents/.installed-manifest.json with 10 steps (skipped steps correctly
+unrecorded). Targeted chezmoi apply: agent-session-staleness,
+remove-agent-asset, ~/.claude/settings.json (staleness hook),
+~/.agents/skills. Doctor then exit 0 with the new taxonomy surfacing four
+genuine pre-existing ORPHAN warns (crit, crit-cli, find-skills, improve).
+
+E2E-1' recovery_injected (PASS)
+-------------------------------
+Scratch project ~/Workspace/compactiondb-e2e2 (dotfiles.5 runtime
+verified: RecoveryInjected token present). Real claude session: Write+Edit
+util.py -> /compact -> ledger rows:
+  10 pre_compact | 14 recovery_injected | 15 post_compact
+recovery_injected detail: 3425 chars, detail_sha256 present, contains
+"File modifications" and "util.py" — the injected packet is replayable
+from the ledger (model-visible = logged).
+
+E2E-2' staleness (PASS after T56b)
+-----------------------------------------------------
+Deployed hook passes --since "$(date +%s)" evaluated at hook time: every
+SessionStart fire compares against "now", so startup sees no future
+updates and compact/clear refires miss all mid-session updates — the
+warning can never trigger. Fix T56b: persist the per-session_id
+first-seen epoch under ~/.local/state/agent-staleness/ and compare
+subsequent fires against it. RERUN PASSED: startup fire silently wrote the
+baseline; after touching ~/.agents/skills/agmsg/SKILL.md a compact-source
+fire emitted `restart recommended: skills (~/.agents/skills/agmsg/SKILL.md)`.
+
+E2E-3' reversibility
+--------------------
+(a) REPAIR convergence (PASS after T59b):
+    rm ~/.agents/skills/agmsg/scripts/history.sh -> REPAIR=1 repaired an
+    unrelated codex-config drift but not the deleted file (shared-skill
+    missing-file category unmapped) -> "non-convergent after repair"
+    exit 2. Restoring manually required `chezmoi apply --force` (plain
+    apply prompts for TTY on deleted targets — headless repair breaks).
+    Also surfaced: legacy ~/.agents/skills/agmsg/messages.db (mtime
+    2026-08-07, predates db/ relocation) flagged ERROR as unexpected
+    file; T59b adds an exact-name runtime tolerance; the stray file is
+    left untouched pending operator decision. RERUN PASSED: deleted
+    history.sh -> REPAIR=1 repaired it via single-target `chezmoi apply
+    --force` -> converged exit 0 -> file restored; no messages.db error.
+(b) remove cycle (PASS): remove-agent-asset update_codex_ponytail
+    dry-run printed the exact ops; --yes ran `codex plugin remove
+    ponytail@ponytail` and cleared the manifest step; codex plugin list
+    showed "not installed" (marketplace registration intentionally
+    retained — the manifest recorded the install, not the marketplace
+    add); rerunning update-agent-assets reinstalled 4.9.0 enabled and
+    re-recorded the step. Full install -> remove -> reinstall loop
+    proven on a real asset.
+
+E2E-4' effects retro-check (PASS)
+---------------------------------
+T54-T60 RESULTs created no out-of-repo effects during development (fake
+HOME testing); T60 dogfooded the first explicit `effects=none`
+declaration. Real out-of-repo distribution effects in this phase were
+performed by the orchestrator (T61) and are manifest-recorded — the
+reverse mapping exists for every step (verified by E2E-3'b).

@@ -30,6 +30,7 @@ _EVENT_MAP = {
     "SessionEnd": "session_end",
     "PostToolBatch": "tool_batch",
     "FileChanged": "file_changed",
+    "RecoveryInjected": "recovery_injected",
 }
 
 
@@ -223,6 +224,10 @@ def normalize_hook_payload(payload: dict[str, Any], paths: ProjectPaths, config:
     elif event_type == "session_end":
         summary = one_line(f"SessionEnd ({sanitized_payload.get('reason') or 'unknown'})", max_summary)
         normalized_detail = {"reason": sanitized_payload.get("reason")}
+    elif event_type == "recovery_injected":
+        packet = str(sanitized_payload.get("recovery_packet") or "")
+        summary = one_line(packet, max_summary)
+        normalized_detail = {"recovery_packet": packet}
     elif event_type in {"turn_stop", "subagent_stop"}:
         message = str(sanitized_payload.get("last_assistant_message") or "")
         summary = one_line(f"{hook_name}: {message}", max_summary)

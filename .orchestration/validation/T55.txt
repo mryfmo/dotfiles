@@ -1,0 +1,129 @@
+T55 validation
+Generated: 2026-08-16T12:17:33+09:00
+
+1. CURRENT TREE CHECK BEFORE UNIT TEST AUTHORING
+------------------------------------------------
+Command:
+  make validate-agent-assets
+
+Output:
+  uv run --with pyyaml scripts/validate-agent-assets.py
+  agent asset validation ok
+
+Result:
+  PASS. This run occurred after the new category was implemented and before its tests were added.
+
+2. TARGETED NEW TESTS
+---------------------
+Command:
+  uv run python -m unittest tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_accepts_managed_source_fixture tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_duplicate_command tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_requires_permgate_first tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_sync_timeout_over_budget tests.unit.test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_pins_sessionstart_order -v
+
+Result:
+  Ran 5 tests in 0.064s
+  OK
+
+Coverage:
+  - fixture copied from all three real managed sources passes
+  - duplicate-command finding
+  - permgate-first finding
+  - sync-timeout-budget finding (31s > 30s)
+  - sessionstart-order finding
+
+3. MANAGED INVENTORY EVIDENCE
+-----------------------------
+Parser:
+  Existing render_template_text(), then stdlib json.loads/tomllib.loads; no chezmoi subprocess.
+
+SessionStart commands:
+  claude: bash '{{ .chezmoi.homeDir }}/.claude/hooks/herdr-agent-state.sh' session
+  codex: none
+  compactiondb:
+    python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py
+    python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_recover.py
+
+PermissionRequest:
+  claude: permgate first, synchronous timeout 10s
+  codex: permgate first, synchronous timeout 10s
+
+Maximum observed synchronous per-event total:
+  compactiondb:SessionStart = 15s
+  All source/event totals are <= 30s.
+
+4. REQUIRED VALIDATE-AGENT-ASSETS GATE
+---------------------------------------
+Command:
+  make validate-agent-assets
+
+Output tail:
+  uv run --with pyyaml scripts/validate-agent-assets.py
+  agent asset validation ok
+
+Result:
+  PASS
+
+5. REQUIRED UNIT TEST GATE
+--------------------------
+Command:
+  make unit-test
+
+Output tail:
+  ----------------------------------------------------------------------
+  Ran 255 tests in 26.585s
+
+  OK
+
+Result:
+  PASS; 255 total, 5 new.
+
+6. REQUIRED FORMAT GATE
+-----------------------
+Command:
+  make format
+
+Output:
+  shfmt --indent 4 --space-redirects --diff .
+
+Result:
+  exit=0; no diff output.
+
+7. PERFORMANCE AND STATIC CHECKS
+--------------------------------
+Direct validate_hook_composition timing through uv:
+  hook_composition_seconds=0.000936
+
+Result:
+  PASS; added runtime is below 1 second.
+
+Command:
+  /opt/homebrew/bin/ruff check scripts/validate-agent-assets.py tests/unit/test_validate_agent_assets.py
+
+Output:
+  All checks passed!
+
+Command:
+  git diff --check -- scripts/validate-agent-assets.py tests/unit/test_validate_agent_assets.py
+
+Result:
+  exit=0; no output.
+
+8. T55 DIFF SCOPE
+------------------
+Command:
+  git diff --stat -- scripts/validate-agent-assets.py tests/unit/test_validate_agent_assets.py
+
+Output:
+  scripts/validate-agent-assets.py         | 76 ++++++++++++++++++++++++++++++++
+  tests/unit/test_validate_agent_assets.py | 75 +++++++++++++++++++++++++++++++
+  2 files changed, 151 insertions(+)
+
+Worker-authored product changes are limited to the two authorized files above. Worker-authored evidence is limited to the five T55 artifact paths. Existing T54 changes and acceptance/task artifacts were already present at the T55 baseline and were not modified by T55.
+
+9. COMPACTIONDB DECISION RECORD
+-------------------------------
+Command:
+  python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "Hook composition across the managed Claude/Codex settings is a validated invariant: no duplicate command per event, permgate first on PermissionRequest, per-event synchronous timeout budget <= 30s, and the intended SessionStart ordering is pinned; violations fail validate-agent-assets."
+
+Output:
+  9660682a-f328-4c4a-8f79-d25e987d5262
+
+No Bats, commit, push, chezmoi apply, dependency change, hook-source edit, or existing-validation relaxation occurred.

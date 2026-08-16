@@ -1,0 +1,179 @@
+T54 validation
+Generated: 2026-08-16T12:10:15+09:00
+
+1. TARGETED TEST-FIRST CHECK
+----------------------------
+Pre-implementation:
+  PYTHONPATH=.claude/contextdb uv run python -m unittest tests.test_recover_hook -v
+
+Result:
+  4 tests discovered; the unchanged-envelope test passed and the three tests requiring recovery_injected recording failed as expected.
+
+Post-implementation:
+  PYTHONPATH=.claude/contextdb uv run python -m unittest tests.test_recover_hook -v
+
+Result:
+  Ran 4 tests; OK.
+
+Recovery/hook regression:
+  PYTHONPATH=.claude/contextdb uv run python -m unittest tests.test_recovery tests.test_recover_hook tests.test_hooks -v
+
+Result:
+  Ran 17 tests; OK.
+
+New test coverage:
+  - exactly one spooled event, then exactly one persisted recovery_injected event after an explicit later drain
+  - packet detail and stored-detail SHA-256
+  - spool failure preserves response and writes one health error
+  - response envelope remains unchanged
+  - a second recovery can include the first event without self-recursion
+
+2. REQUIRED FULL TEST SUITE
+---------------------------
+Command:
+  make -C vendor/compactiondb clean && make -C vendor/compactiondb test
+
+Result:
+  Ran 78 tests in 3.684s
+  OK
+  New tests: 4
+
+3. REQUIRED VALIDATION HARNESS
+------------------------------
+Command:
+  make -C vendor/compactiondb clean && make -C vendor/compactiondb validate
+
+Result:
+  status=pass
+  passed=10
+  failed=0
+  skipped=0
+  unittest_suite: 78 tests passed with ResourceWarning promoted to error
+  release_tree_clean: pass
+
+4. MANIFEST AND STATIC CHECKS
+-----------------------------
+Command:
+  shasum -a 256 -c MANIFEST.sha256
+
+Result:
+  All 69 entries OK, including tests/test_recover_hook.py.
+
+Command:
+  git diff --check
+
+Result:
+  exit=0, no output.
+
+Command:
+  /opt/homebrew/bin/ruff check tests/test_recover_hook.py
+
+Result:
+  All checks passed!
+
+An optional Ruff run over the touched runtime files also reported pre-existing formatting findings in normalize.py and recover_hook.py (long lines and import formatting); no unrelated formatting churn was introduced.
+
+5. FINAL STATUS SCOPE
+---------------------
+Worker-authored vendor changes are limited to:
+  M vendor/compactiondb/.claude/contextdb/contextdb/normalize.py
+  M vendor/compactiondb/.claude/contextdb/contextdb/recover_hook.py
+  M vendor/compactiondb/CHANGELOG.md
+  M vendor/compactiondb/MANIFEST.sha256
+  M vendor/compactiondb/docs/HOOKS.md
+  ?? vendor/compactiondb/tests/test_recover_hook.py
+
+Worker-authored orchestration evidence is limited to the five T54 artifacts. The untracked T54 task file was orchestrator-provided and was not edited by this worker. The plan and analysis documents were also untracked at the T54 baseline, then became tracked when the shared worktree advanced to the T54-0 commit during execution; this worker did not edit them.
+
+Tracked diff stat before evidence files:
+  normalize.py     |  5 +++++
+  recover_hook.py  | 23 ++++++++++++++++++++--
+  CHANGELOG.md     |  4 ++++
+  MANIFEST.sha256  |  9 +++++----
+  docs/HOOKS.md    |  5 +++++
+  5 files changed, 40 insertions(+), 6 deletions(-)
+
+The dedicated new test file contains 4 tests and is untracked, so ordinary git diff --stat does not count it until staged; it was not staged per task constraints.
+
+Final `git status --porcelain` contains only the six authorized vendor paths, the five T54 evidence paths, and the orchestrator-provided T54 task file.
+
+6. FULL RUNTIME DIFF (recover_hook.py + token admission)
+--------------------------------------------------------
+diff --git a/vendor/compactiondb/.claude/contextdb/contextdb/normalize.py b/vendor/compactiondb/.claude/contextdb/contextdb/normalize.py
+index a7cfcf1..49046c0 100644
+--- a/vendor/compactiondb/.claude/contextdb/contextdb/normalize.py
++++ b/vendor/compactiondb/.claude/contextdb/contextdb/normalize.py
+@@ -30,6 +30,7 @@ _EVENT_MAP = {
+     "SessionEnd": "session_end",
+     "PostToolBatch": "tool_batch",
+     "FileChanged": "file_changed",
++    "RecoveryInjected": "recovery_injected",
+ }
+ 
+ 
+@@ -223,6 +224,10 @@ def normalize_hook_payload(payload: dict[str, Any], paths: ProjectPaths, config:
+     elif event_type == "session_end":
+         summary = one_line(f"SessionEnd ({sanitized_payload.get('reason') or 'unknown'})", max_summary)
+         normalized_detail = {"reason": sanitized_payload.get("reason")}
++    elif event_type == "recovery_injected":
++        packet = str(sanitized_payload.get("recovery_packet") or "")
++        summary = one_line(packet, max_summary)
++        normalized_detail = {"recovery_packet": packet}
+     elif event_type in {"turn_stop", "subagent_stop"}:
+         message = str(sanitized_payload.get("last_assistant_message") or "")
+         summary = one_line(f"{hook_name}: {message}", max_summary)
+diff --git a/vendor/compactiondb/.claude/contextdb/contextdb/recover_hook.py b/vendor/compactiondb/.claude/contextdb/contextdb/recover_hook.py
+index eb9fd7e..4aaac1f 100644
+--- a/vendor/compactiondb/.claude/contextdb/contextdb/recover_hook.py
++++ b/vendor/compactiondb/.claude/contextdb/contextdb/recover_hook.py
+@@ -5,12 +5,30 @@ import sys
+ from typing import Any
+ 
+ from .config import load_config
+-from .paths import project_paths
++from .normalize import normalize_hook_payload
++from .paths import ProjectPaths, project_paths
+ from .recovery import build_recovery_context
+-from .spool import drain_spool, record_error
++from .spool import drain_spool, record_error, spool_event
+ from .storage import ContextStore
+ 
+ 
++def _record_recovery_injected(paths: ProjectPaths, config: dict[str, Any], session_id: str, context: str) -> None:
++    try:
++        event = normalize_hook_payload(
++            {
++                "hook_event_name": "RecoveryInjected",
++                "session_id": session_id,
++                "cwd": str(paths.root),
++                "recovery_packet": context,
++            },
++            paths,
++            config,
++        )
++        spool_event(paths, event)
++    except Exception as exc:
++        record_error(paths, "recover-hook-recording", exc, session_id=session_id)
++
++
+ def recovery_output(payload: dict[str, Any], *, project_root: str | None = None) -> dict[str, Any]:
+     paths = project_paths(payload, project_root)
+     config = load_config(paths)
+@@ -33,6 +51,7 @@ def recovery_output(payload: dict[str, Any], *, project_root: str | None = None)
+                 )
+         finally:
+             conn.close()
++    _record_recovery_injected(paths, config, session_id, context)
+     return {
+         "hookSpecificOutput": {
+             "hookEventName": "SessionStart",
+
+7. COMPACTIONDB DECISION RECORD
+-------------------------------
+Command:
+  python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "Every recovery packet CompactionDB injects after compaction is recorded as a recovery_injected ledger event (summary, bounded full detail, and stored-detail SHA-256), best-effort and non-blocking, so model-visible recovery context is replayable."
+
+Output:
+  02e08ff6-824f-41ba-ad4b-9338175a5d9c
+
+No Bats, commit, push, chezmoi apply, dependency installation/change, envelope change, synchronous database write, or recovery redaction weakening occurred.

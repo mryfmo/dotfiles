@@ -99,6 +99,11 @@ class RuntimeHealthTest(unittest.TestCase):
             ROOT / "scripts/update-agent-assets.sh",
             repo / "scripts/update-agent-assets.sh",
         )
+        (repo / "scripts/lib").mkdir()
+        shutil.copy(
+            ROOT / "scripts/lib/asset-manifest.sh",
+            repo / "scripts/lib/asset-manifest.sh",
+        )
         self.executable(
             bin_dir / "npm",
             """
@@ -145,6 +150,11 @@ class RuntimeHealthTest(unittest.TestCase):
         shutil.copy(
             ROOT / "scripts/update-agent-assets.sh",
             repo / "scripts/update-agent-assets.sh",
+        )
+        (repo / "scripts/lib").mkdir()
+        shutil.copy(
+            ROOT / "scripts/lib/asset-manifest.sh",
+            repo / "scripts/lib/asset-manifest.sh",
         )
         self.executable(bin_dir / "npm", "exit 1\n")
         self.executable(
@@ -495,6 +505,30 @@ EOF
         self.assertNotEqual(0, result.returncode)
         self.assertIn("missing runtime root", result.stderr)
         self.assertIn("Doctor summary: tools=passed; runtime=failed", result.stdout)
+
+    def test_make_doctor_passes_repair_variable_to_runtime_check(self) -> None:
+        repo = self.temp_dir / "doctor-repair-repo"
+        home = self.temp_dir / "doctor-repair-home"
+        (repo / "scripts").mkdir(parents=True)
+        (repo / "home/dot_agents").mkdir(parents=True)
+        (repo / "home/dot_claude").mkdir()
+        (repo / "home/dot_codex").mkdir()
+        home.mkdir()
+        shutil.copy(ROOT / "Makefile", repo / "Makefile")
+        shutil.copy(ROOT / "scripts/check-tools.sh", repo / "scripts/check-tools.sh")
+        self.executable(
+            repo / "scripts/check-agent-runtime.py",
+            "printf 'repair=%s\\n' \"${REPAIR:-unset}\"\n",
+        )
+        env = self.doctor_environment()
+        env["HOME"] = str(home)
+
+        result = self.run_test_command(
+            ["make", "doctor", "REPAIR=1"], cwd=repo, env=env
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("repair=1", result.stdout)
 
     def upgrade_fixture(
         self, fail_phase: str, os_name: str = "Linux"

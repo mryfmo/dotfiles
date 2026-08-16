@@ -489,6 +489,10 @@ backend = "npm:@anthropic-ai/claude-code"
 [tools."npm:@anthropic-ai/claude-code".options]
 allow_builds = '["@anthropic-ai/claude-code"]'
 
+[[tools."npm:@earendil-works/pi-coding-agent"]]
+version = "0.84.1"
+backend = "npm:@earendil-works/pi-coding-agent"
+
 [[tools."npm:@openai/codex"]]
 version = "0.147.0"
 backend = "npm:@openai/codex"

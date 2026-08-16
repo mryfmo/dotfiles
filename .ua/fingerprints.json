@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "gitCommitHash": "84c8d18e63f1aa37b75abc83fdd54fd6d04de910",
-  "generatedAt": "2026-08-16T01:20:15.675Z",
+  "gitCommitHash": "cc977bf723004d972e1af46d551051fbbaf80003",
+  "generatedAt": "2026-08-16T07:04:46.634Z",
   "files": {
     ".chezmoiroot": {
       "filePath": ".chezmoiroot",
@@ -7632,7 +7632,7 @@
     },
     "scripts/check-agent-runtime.py": {
       "filePath": "scripts/check-agent-runtime.py",
-      "contentHash": "3f17e07f2a2b782f80d8e13f3acb056071e48cb3ee81e14a3fea9ec1a934d1d5",
+      "contentHash": "ef2e1be3be295f19bf1c559d37f526324f10096de332205d8ea4519f82658f1f",
       "functions": [
         {
           "name": "render_template",
@@ -7765,21 +7765,186 @@
           "lineCount": 9
         },
         {
+          "name": "normalized_path",
+          "params": [
+            "path"
+          ],
+          "returnType": "Path",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "paths_overlap",
+          "params": [
+            "left",
+            "right"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "installed_manifest_error",
+          "params": [
+            "manifest_path"
+          ],
+          "returnType": "str | None",
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "manifest_path_owners",
+          "params": [
+            "manifest_path"
+          ],
+          "returnType": "dict[str, list[Path]]",
+          "exported": true,
+          "lineCount": 17
+        },
+        {
+          "name": "manifest_asset_findings",
+          "params": [
+            "home"
+          ],
+          "returnType": "list[AssetFinding]",
+          "exported": true,
+          "lineCount": 24
+        },
+        {
+          "name": "asset_failure_message",
+          "params": [
+            "finding"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "asset_repair_action",
+          "params": [
+            "finding",
+            "updater"
+          ],
+          "returnType": "RepairAction | None",
+          "exported": true,
+          "lineCount": 28
+        },
+        {
+          "name": "source_derived_directory_names",
+          "params": [
+            "source_root"
+          ],
+          "returnType": "tuple[set[str], set[str]]",
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "direct_asset_directories",
+          "params": [
+            "root"
+          ],
+          "returnType": "list[Path]",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "orphaned_asset_warnings",
+          "params": [
+            "home",
+            "source_root"
+          ],
+          "returnType": "list[str]",
+          "exported": true,
+          "lineCount": 36
+        },
+        {
+          "name": "deployed_target_path",
+          "params": [
+            "value",
+            "home"
+          ],
+          "returnType": "Path",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "repair_actions",
+          "params": [
+            "failures",
+            "home"
+          ],
+          "returnType": "list[RepairAction]",
+          "exported": true,
+          "lineCount": 77
+        },
+        {
+          "name": "execute_repair",
+          "params": [
+            "action"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "print_failures",
+          "params": [
+            "failures"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
           "name": "check",
           "params": [],
           "returnType": "list[str]",
           "exported": true,
-          "lineCount": 65
+          "lineCount": 76
+        },
+        {
+          "name": "run_session_staleness",
+          "params": [
+            "epoch"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 5
         },
         {
           "name": "main",
-          "params": [],
+          "params": [
+            "argv"
+          ],
           "returnType": "int",
           "exported": true,
-          "lineCount": 14
+          "lineCount": 31
         }
       ],
-      "classes": [],
+      "classes": [
+        {
+          "name": "RepairAction",
+          "methods": [],
+          "properties": [
+            "category",
+            "target",
+            "command"
+          ],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "AssetFinding",
+          "methods": [],
+          "properties": [
+            "step",
+            "missing_paths",
+            "entry"
+          ],
+          "exported": true,
+          "lineCount": 4
+        }
+      ],
       "imports": [
         {
           "source": "argparse",
@@ -7806,6 +7971,12 @@
           ]
         },
         {
+          "source": "shlex",
+          "specifiers": [
+            "shlex"
+          ]
+        },
+        {
           "source": "stat",
           "specifiers": [
             "stat"
@@ -7828,9 +7999,17 @@
           "specifiers": [
             "Path"
           ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "NamedTuple"
+          ]
         }
       ],
       "exports": [
+        "RepairAction",
+        "AssetFinding",
         "render_template",
         "same_text",
         "same_modified",
@@ -7845,10 +8024,25 @@
         "compare_shared_skills",
         "compare_claude_skills",
         "check_executable_hook",
+        "normalized_path",
+        "paths_overlap",
+        "installed_manifest_error",
+        "manifest_path_owners",
+        "manifest_asset_findings",
+        "asset_failure_message",
+        "asset_repair_action",
+        "source_derived_directory_names",
+        "direct_asset_directories",
+        "orphaned_asset_warnings",
+        "deployed_target_path",
+        "repair_actions",
+        "execute_repair",
+        "print_failures",
         "check",
+        "run_session_staleness",
         "main"
       ],
-      "totalLines": 310,
+      "totalLines": 668,
       "hasStructuralAnalysis": true
     },
     "scripts/check-statusline-tools.py": {
@@ -9481,7 +9675,7 @@
     },
     "scripts/validate-agent-assets.py": {
       "filePath": "scripts/validate-agent-assets.py",
-      "contentHash": "984665ebb4e14dce561b88336e51e3ec1ca34ccb7eb0ff35053af6f5cbe10fb5",
+      "contentHash": "86631be2b58b5e6f49ddc6615d8635de4c1a423a8284bfa6d9fd734a344d0742",
       "functions": [
         {
           "name": "fail",
@@ -9509,6 +9703,29 @@
           "returnType": "str",
           "exported": true,
           "lineCount": 7
+        },
+        {
+          "name": "hook_command_string",
+          "params": [
+            "hook"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "managed_hook_inventory",
+          "params": [],
+          "returnType": "dict[tuple[str, str], list[dict[str, Any]]]",
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "validate_hook_composition",
+          "params": [],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 37
         },
         {
           "name": "read_frontmatter",
@@ -9723,7 +9940,7 @@
           "params": [],
           "returnType": "None",
           "exported": true,
-          "lineCount": 22
+          "lineCount": 23
         }
       ],
       "classes": [],
@@ -9781,6 +9998,9 @@
         "fail",
         "load_yaml",
         "render_template_text",
+        "hook_command_string",
+        "managed_hook_inventory",
+        "validate_hook_composition",
         "read_frontmatter",
         "shared_skill_names",
         "validate_skills",
@@ -9809,7 +10029,7 @@
         "validate_no_obvious_secrets",
         "main"
       ],
-      "totalLines": 817,
+      "totalLines": 893,
       "hasStructuralAnalysis": true
     },
     "setup.sh": {
@@ -10310,7 +10530,7 @@
     },
     "tests/unit/test_check_agent_runtime.py": {
       "filePath": "tests/unit/test_check_agent_runtime.py",
-      "contentHash": "94f971bb6c4d46249e6c7122553a4fd063c37c274657af1fdf43aea0bd52eb28",
+      "contentHash": "db942683bfaa39b8f5200bc890ffbbcc4000508c760575358962557d59cb04f9",
       "functions": [],
       "classes": [
         {
@@ -10326,24 +10546,64 @@
             "test_private_prefix_is_compared_against_deployed_name",
             "test_agmsg_runtime_paths_are_ignored_on_both_sides",
             "test_agmsg_separate_store_prefix_is_ignored",
+            "test_only_exact_agmsg_root_legacy_database_names_are_ignored",
             "test_unexpected_non_runtime_file_still_fails",
             "test_unmanaged_top_level_skill_dir_warns",
             "test_managed_top_level_extra_still_fails_with_unmanaged_warning_mode",
             "test_content_drift_still_fails",
             "test_json_modifier_accepts_cosmetic_reserialization",
             "test_json_modifier_rejects_real_value_drift",
-            "test_check_uses_same_modified_for_codex_profiles"
+            "test_check_uses_same_modified_for_codex_profiles",
+            "test_orphan_detection_classifies_accounted_stale_and_orphan",
+            "test_repair_actions_map_only_detected_file_drift",
+            "test_execute_repair_calls_each_mapped_command_once",
+            "test_every_generated_chezmoi_repair_action_is_forced",
+            "test_deleted_shared_skill_file_repair_converges",
+            "test_manifest_drift_requires_recorded_step_with_missing_path",
+            "test_asset_repair_invokes_only_the_detected_step",
+            "test_sourced_asset_repair_runs_no_main_or_sibling_step",
+            "test_parameterized_mise_step_uses_key_identity",
+            "test_installed_manifest_integrity_reasons",
+            "test_invalid_manifest_is_one_error_and_skips_dependent_checks",
+            "test_repair_mode_converges_once_and_reports_each_action",
+            "test_repair_mode_fails_after_one_non_convergent_round",
+            "test_repair_unset_is_byte_identical_and_never_mutates",
+            "test_repair_mode_never_acts_on_stale_or_orphan_warnings"
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 165
+          "lineCount": 679
         }
       ],
       "imports": [
         {
+          "source": "contextlib",
+          "specifiers": [
+            "contextlib"
+          ]
+        },
+        {
           "source": "importlib.util",
           "specifiers": [
             "importlib.util"
+          ]
+        },
+        {
+          "source": "io",
+          "specifiers": [
+            "io"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
           ]
         },
         {
@@ -10369,12 +10629,18 @@
           "specifiers": [
             "Path"
           ]
+        },
+        {
+          "source": "unittest",
+          "specifiers": [
+            "mock"
+          ]
         }
       ],
       "exports": [
         "CheckAgentRuntimeTest"
       ],
-      "totalLines": 186,
+      "totalLines": 705,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_claude_settings_merge.py": {
@@ -11084,7 +11350,7 @@
     },
     "tests/unit/test_runtime_health.py": {
       "filePath": "tests/unit/test_runtime_health.py",
-      "contentHash": "090b2d95a585b4085d85a7d9166df0830b6cef60a3a93a32c570f7d8c6f4091b",
+      "contentHash": "138e4786f299980cd948dc2c3f38c67d58eea0799207d4c57a6700ad7b76e908",
       "functions": [],
       "classes": [
         {
@@ -11106,6 +11372,7 @@
             "test_doctor_required_optional_and_healthy_statuses",
             "test_make_doctor_propagates_runtime_drift_after_tool_checks",
             "test_make_doctor_does_not_skip_runtime_check_when_deployed_root_is_missing",
+            "test_make_doctor_passes_repair_variable_to_runtime_check",
             "upgrade_fixture",
             "test_upgrade_required_failures_are_nonzero_and_independent",
             "test_upgrade_skips_unavailable_mise_self_update",
@@ -11116,7 +11383,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 740
+          "lineCount": 774
         }
       ],
       "imports": [
@@ -11172,7 +11439,7 @@
       "exports": [
         "RuntimeHealthTest"
       ],
-      "totalLines": 763,
+      "totalLines": 797,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_statusline_tools.py": {
@@ -11449,7 +11716,7 @@
     },
     "tests/unit/test_validate_agent_assets.py": {
       "filePath": "tests/unit/test_validate_agent_assets.py",
-      "contentHash": "beaf2272044e7771a2c383aba81a5f7d40a631e511ac42dbaa493742a008a02a",
+      "contentHash": "6907aabbc04d643d9e9e18cc861883400d9f0ccf20b4d391b44ba41437c4ecb3",
       "functions": [
         {
           "name": "load_validator",
@@ -11468,6 +11735,14 @@
             "test_codex_modify_script_requires_executable_source",
             "write_agmsg_script",
             "write_text_file",
+            "copy_managed_hook_sources",
+            "update_json_hook_source",
+            "assert_hook_composition_fails",
+            "test_hook_composition_accepts_managed_source_fixture",
+            "test_hook_composition_rejects_duplicate_command",
+            "test_hook_composition_requires_permgate_first",
+            "test_hook_composition_rejects_sync_timeout_over_budget",
+            "test_hook_composition_pins_sessionstart_order",
             "test_codex_sandbox_workspace_write_must_match_manifest",
             "test_codex_sandbox_workspace_write_accepts_matching_manifest",
             "test_codex_sandbox_workspace_write_requires_all_agmsg_roots",
@@ -11495,7 +11770,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 326
+          "lineCount": 401
         }
       ],
       "imports": [
@@ -11558,7 +11833,7 @@
         "load_validator",
         "ValidateAgentAssetsTest"
       ],
-      "totalLines": 361,
+      "totalLines": 436,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_workflow_security.py": {
@@ -11638,6 +11913,2441 @@
         "WorkflowSecurityTest"
       ],
       "totalLines": 210,
+      "hasStructuralAnalysis": true
+    },
+    ".claude/contextdb/contextdb/__init__.py": {
+      "filePath": ".claude/contextdb/contextdb/__init__.py",
+      "contentHash": "298d9058c8a79aec100cc7dae777975fd398fa60113725a19b33ad386b5127d8",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 5,
+      "hasStructuralAnalysis": true
+    },
+    ".claude/contextdb/contextdb/cli.py": {
+      "filePath": ".claude/contextdb/contextdb/cli.py",
+      "contentHash": "2c6f07ec12318a10fef5c11209099c988a502657144e79699f89640ec2a16782",
+      "functions": [
+        {
+          "name": "_add_scope",
+          "params": [
+            "parser",
+            "default"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "build_parser",
+          "params": [],
+          "returnType": "argparse.ArgumentParser",
+          "exported": true,
+          "lineCount": 104
+        },
+        {
+          "name": "_format_event",
+          "params": [
+            "row"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "_resolve_session",
+          "params": [
+            "store",
+            "conn",
+            "requested",
+            "scope"
+          ],
+          "returnType": "str | None",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "_rows_json",
+          "params": [
+            "rows"
+          ],
+          "returnType": "list[dict[str, Any]]",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "_print_json_or_lines",
+          "params": [
+            "args",
+            "value",
+            "lines"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "run",
+          "params": [
+            "args"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 204
+        },
+        {
+          "name": "_run_memory",
+          "params": [
+            "args",
+            "store",
+            "conn"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 90
+        },
+        {
+          "name": "main",
+          "params": [
+            "argv"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 8
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "sqlite3",
+          "specifiers": [
+            "sqlite3"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Sequence"
+          ]
+        },
+        {
+          "source": ".config",
+          "specifiers": [
+            "load_config"
+          ]
+        },
+        {
+          "source": ".hook",
+          "specifiers": [
+            "process_payload"
+          ]
+        },
+        {
+          "source": ".paths",
+          "specifiers": [
+            "project_paths"
+          ]
+        },
+        {
+          "source": ".probe",
+          "specifiers": [
+            "generate_probes"
+          ]
+        },
+        {
+          "source": ".recall",
+          "specifiers": [
+            "recall"
+          ]
+        },
+        {
+          "source": ".recovery",
+          "specifiers": [
+            "build_recovery_context"
+          ]
+        },
+        {
+          "source": ".spool",
+          "specifiers": [
+            "drain_spool",
+            "validate_ingestion_source"
+          ]
+        },
+        {
+          "source": ".storage",
+          "specifiers": [
+            "ContextStore"
+          ]
+        },
+        {
+          "source": ".util",
+          "specifiers": [
+            "atomic_write_text",
+            "canonical_json",
+            "one_line",
+            "pretty_json"
+          ]
+        }
+      ],
+      "exports": [
+        "_add_scope",
+        "build_parser",
+        "_format_event",
+        "_resolve_session",
+        "_rows_json",
+        "_print_json_or_lines",
+        "run",
+        "_run_memory",
+        "main"
+      ],
+      "totalLines": 472,
+      "hasStructuralAnalysis": true
+    },
+    ".claude/contextdb/contextdb/config.py": {
+      "filePath": ".claude/contextdb/contextdb/config.py",
+      "contentHash": "632debb79660f90209a8d089ec243c02c953dce65a83e22623cb351d87d2fa27",
+      "functions": [
+        {
+          "name": "_merge",
+          "params": [
+            "base",
+            "override"
+          ],
+          "returnType": "dict[str, Any]",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "_require_int",
+          "params": [
+            "config",
+            "section",
+            "key",
+            "minimum"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "_require_number",
+          "params": [
+            "config",
+            "section",
+            "key",
+            "minimum",
+            "maximum"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "validate_config",
+          "params": [
+            "config"
+          ],
+          "returnType": "dict[str, Any]",
+          "exported": true,
+          "lineCount": 33
+        },
+        {
+          "name": "load_config",
+          "params": [
+            "paths",
+            "create_if_missing"
+          ],
+          "returnType": "dict[str, Any]",
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "write_default_config",
+          "params": [
+            "path"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 2
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "copy",
+          "specifiers": [
+            "copy"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any"
+          ]
+        },
+        {
+          "source": ".paths",
+          "specifiers": [
+            "ProjectPaths"
+          ]
+        },
+        {
+          "source": ".util",
+          "specifiers": [
+            "atomic_write_text",
+            "pretty_json",
+            "safe_chmod"
+          ]
+        }
+      ],
+      "exports": [
+        "_merge",
+        "_require_int",
+        "_require_number",
+        "validate_config",
+        "load_config",
+        "write_default_config"
+      ],
+      "totalLines": 160,
+      "hasStructuralAnalysis": true
+    },
+    ".claude/contextdb/contextdb/hook.py": {
+      "filePath": ".claude/contextdb/contextdb/hook.py",
+      "contentHash": "087ffab41381e628ffe80b4f3d95bc028ae873b9acaa73793f31680ffa7cb541",
+      "functions": [
+        {
+          "name": "process_payload",
+          "params": [
+            "payload",
+            "project_root",
+            "ingested_from"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 44
+        },
+        {
+          "name": "main",
+          "params": [],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 15
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timedelta",
+            "timezone"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any"
+          ]
+        },
+        {
+          "source": ".config",
+          "specifiers": [
+            "load_config"
+          ]
+        },
+        {
+          "source": ".normalize",
+          "specifiers": [
+            "normalize_hook_payload"
+          ]
+        },
+        {
+          "source": ".paths",
+          "specifiers": [
+            "project_paths"
+          ]
+        },
+        {
+          "source": ".spool",
+          "specifiers": [
+            "drain_spool",
+            "record_error",
+            "spool_event"
+          ]
+        }
+      ],
+      "exports": [
+        "process_payload",
+        "main"
+      ],
+      "totalLines": 80,
+      "hasStructuralAnalysis": true
+    },
+    ".claude/contextdb/contextdb/memory.py": {
+      "filePath": ".claude/contextdb/contextdb/memory.py",
+      "contentHash": "e845da0aa6f920d6ad6327bb88624785ffc7d3b69812a794dc96d784ccff0d74",
+      "functions": [
+        {
+          "name": "_sentences",
+          "params": [
+            "text"
+          ],
+          "returnType": "list[str]",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "extract_candidates",
+          "params": [
+            "event"
+          ],
+          "returnType": "list[MemoryCandidate]",
+          "exported": true,
+          "lineCount": 117
+        },
+        {
+          "name": "compress_lines",
+          "params": [
+            "lines",
+            "limit"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 21
+        }
+      ],
+      "classes": [
+        {
+          "name": "MemoryCandidate",
+          "methods": [
+            "fingerprint"
+          ],
+          "properties": [
+            "kind",
+            "content",
+            "scope",
+            "confidence",
+            "salience",
+            "reason",
+            "explicit"
+          ],
+          "exported": true,
+          "lineCount": 12
+        }
+      ],
+      "imports": [
+        {
+          "source": "re",
+          "specifiers": [
+            "re"
+          ]
+        },
+        {
+          "source": "collections.abc",
+          "specifiers": [
+            "Iterable"
+          ]
+        },
+        {
+          "source": "dataclasses",
+          "specifiers": [
+            "dataclass"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any"
+          ]
+        },
+        {
+          "source": ".util",
+          "specifiers": [
+            "normalize_for_fingerprint",
+            "one_line",
+            "sha256_text",
+            "truncate_middle"
+          ]
+        }
+      ],
+      "exports": [
+        "MemoryCandidate",
+        "_sentences",
+        "extract_candidates",
+        "compress_lines"
+      ],
+      "totalLines": 217,
+      "hasStructuralAnalysis": true
+    },
+    ".claude/contextdb/contextdb/normalize.py": {
+      "filePath": ".claude/contextdb/contextdb/normalize.py",
+      "contentHash": "b0bb33c29dabb0fdbec96f5b9f9e249a6c05f680b91e1457252c7a4b718aae9c",
+      "functions": [
+        {
+          "name": "_stringify",
+          "params": [
+            "value"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "_tool_summary",
+          "params": [
+            "tool_name",
+            "tool_input",
+            "success",
+            "error"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 19
+        },
+        {
+          "name": "_relative_path",
+          "params": [
+            "root",
+            "raw"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "_extract_file_refs",
+          "params": [
+            "root",
+            "event_type",
+            "tool_name",
+            "sanitized_payload"
+          ],
+          "returnType": "list[dict[str, str]]",
+          "exported": true,
+          "lineCount": 28
+        },
+        {
+          "name": "encode_detail",
+          "params": [
+            "value",
+            "max_chars"
+          ],
+          "returnType": "tuple[dict[str, Any], str]",
+          "exported": true,
+          "lineCount": 47
+        },
+        {
+          "name": "normalize_hook_payload",
+          "params": [
+            "payload",
+            "paths",
+            "config"
+          ],
+          "returnType": "dict[str, Any]",
+          "exported": true,
+          "lineCount": 156
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "uuid",
+          "specifiers": [
+            "uuid"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "timedelta"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any"
+          ]
+        },
+        {
+          "source": ".memory",
+          "specifiers": [
+            "extract_candidates"
+          ]
+        },
+        {
+          "source": ".paths",
+          "specifiers": [
+            "ProjectPaths"
+          ]
+        },
+        {
+          "source": ".redaction",
+          "specifiers": [
+            "find_paths",
+            "is_sensitive_path",
+            "sanitize_payload"
+          ]
+        },
+        {
+          "source": ".util",
+          "specifiers": [
+            "canonical_json",
+            "epoch_ms",
+            "one_line",
+            "sha256_text",
+            "truncate_middle",
+            "utc_iso",
+            "utc_now"
+          ]
+        }
+      ],
+      "exports": [
+        "_stringify",
+        "_tool_summary",
+        "_relative_path",
+        "_extract_file_refs",
+        "encode_detail",
+        "normalize_hook_payload"
+      ],
+      "totalLines": 314,
+      "hasStructuralAnalysis": true
+    },
+    ".claude/contextdb/contextdb/paths.py": {
+      "filePath": ".claude/contextdb/contextdb/paths.py",
+      "contentHash": "1639f37801a79e06207e204a7144390b86f3858644ba6e0f196c4a1d04224853",
+      "functions": [
+        {
+          "name": "resolve_project_root",
+          "params": [
+            "payload",
+            "explicit"
+          ],
+          "returnType": "Path",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "_load_or_create_project_id",
+          "params": [
+            "path"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 32
+        },
+        {
+          "name": "project_paths",
+          "params": [
+            "payload",
+            "explicit"
+          ],
+          "returnType": "ProjectPaths",
+          "exported": true,
+          "lineCount": 22
+        }
+      ],
+      "classes": [
+        {
+          "name": "ProjectPaths",
+          "methods": [
+            "ensure"
+          ],
+          "properties": [
+            "root",
+            "base",
+            "package_dir",
+            "state_dir",
+            "spool_dir",
+            "incoming_dir",
+            "quarantine_dir",
+            "health_dir",
+            "db_path",
+            "config_path",
+            "lock_path",
+            "error_log_path",
+            "project_id_path",
+            "project_id"
+          ],
+          "exported": true,
+          "lineCount": 26
+        }
+      ],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "re",
+          "specifiers": [
+            "re"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "uuid",
+          "specifiers": [
+            "uuid"
+          ]
+        },
+        {
+          "source": "dataclasses",
+          "specifiers": [
+            "dataclass",
+            "replace"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any"
+          ]
+        },
+        {
+          "source": ".util",
+          "specifiers": [
+            "ensure_dir",
+            "safe_chmod",
+            "write_text_exclusive"
+          ]
+        }
+      ],
+      "exports": [
+        "ProjectPaths",
+        "resolve_project_root",
+        "_load_or_create_project_id",
+        "project_paths"
+      ],
+      "totalLines": 108,
+      "hasStructuralAnalysis": true
+    },
+    ".claude/contextdb/contextdb/probe.py": {
+      "filePath": ".claude/contextdb/contextdb/probe.py",
+      "contentHash": "4a8b76db1a40a482db6db7722e894da0707838d288f8d0e411e8ea1120b46eb8",
+      "functions": [
+        {
+          "name": "generate_probes",
+          "params": [
+            "store",
+            "conn",
+            "session_id"
+          ],
+          "returnType": "list[dict[str, str]]",
+          "exported": true,
+          "lineCount": 100
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "sqlite3",
+          "specifiers": [
+            "sqlite3"
+          ]
+        },
+        {
+          "source": ".recovery",
+          "specifiers": [
+            "_detail",
+            "_modified_files"
+          ]
+        },
+        {
+          "source": ".storage",
+          "specifiers": [
+            "ContextStore"
+          ]
+        },
+        {
+          "source": ".util",
+          "specifiers": [
+            "one_line"
+          ]
+        }
+      ],
+      "exports": [
+        "generate_probes"
+      ],
+      "totalLines": 110,
+      "hasStructuralAnalysis": true
+    },
+    ".claude/contextdb/contextdb/recall.py": {
+      "filePath": ".claude/contextdb/contextdb/recall.py",
+      "contentHash": "c9053c949c0acb9d3f9fc42ddb10f27cb1f128424ad8ef33a32d0ca8c99b386c",
+      "functions": [
+        {
+          "name": "normalize_scores",
+          "params": [
+            "scores"
+          ],
+          "returnType": "dict[str, float]",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "_key",
+          "params": [
+            "row"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "_event",
+          "params": [
+            "row"
+          ],
+          "returnType": "dict[str, Any]",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "_memory",
+          "params": [
+            "row"
+          ],
+          "returnType": "dict[str, Any]",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "_lexical",
+          "params": [
+            "store",
+            "conn",
+            "query",
+            "session_id"
+          ],
+          "returnType": "tuple[dict[str, dict[str, Any]], dict[str, float]]",
+          "exported": true,
+          "lineCount": 61
+        },
+        {
+          "name": "_semantic",
+          "params": [
+            "store",
+            "conn",
+            "query",
+            "session_id"
+          ],
+          "returnType": "tuple[dict[str, dict[str, Any]], dict[str, float]]",
+          "exported": true,
+          "lineCount": 33
+        },
+        {
+          "name": "_closure",
+          "params": [
+            "conn",
+            "parent",
+            "session_id"
+          ],
+          "returnType": "list[tuple[str, dict[str, Any]]]",
+          "exported": true,
+          "lineCount": 66
+        },
+        {
+          "name": "recall",
+          "params": [
+            "store",
+            "conn",
+            "query",
+            "session_id",
+            "k",
+            "rho"
+          ],
+          "returnType": "list[dict[str, Any]]",
+          "exported": true,
+          "lineCount": 61
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "sqlite3",
+          "specifiers": [
+            "sqlite3"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any"
+          ]
+        },
+        {
+          "source": ".semantic",
+          "specifiers": [
+            "semantic_config"
+          ]
+        },
+        {
+          "source": ".storage",
+          "specifiers": [
+            "ContextStore"
+          ]
+        }
+      ],
+      "exports": [
+        "normalize_scores",
+        "_key",
+        "_event",
+        "_memory",
+        "_lexical",
+        "_semantic",
+        "_closure",
+        "recall"
+      ],
+      "totalLines": 265,
+      "hasStructuralAnalysis": true
+    },
+    ".claude/contextdb/contextdb/recover_hook.py": {
+      "filePath": ".claude/contextdb/contextdb/recover_hook.py",
+      "contentHash": "7da081984d2a2146566ebf8ad69743ad74cfdcd7b9c64f7acbef6e2147de04ca",
+      "functions": [
+        {
+          "name": "recovery_output",
+          "params": [
+            "payload",
+            "project_root"
+          ],
+          "returnType": "dict[str, Any]",
+          "exported": true,
+          "lineCount": 28
+        },
+        {
+          "name": "main",
+          "params": [],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 25
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any"
+          ]
+        },
+        {
+          "source": ".config",
+          "specifiers": [
+            "load_config"
+          ]
+        },
+        {
+          "source": ".paths",
+          "specifiers": [
+            "project_paths"
+          ]
+        },
+        {
+          "source": ".recovery",
+          "specifiers": [
+            "build_recovery_context"
+          ]
+        },
+        {
+          "source": ".spool",
+          "specifiers": [
+            "drain_spool",
+            "record_error"
+          ]
+        },
+        {
+          "source": ".storage",
+          "specifiers": [
+            "ContextStore"
+          ]
+        }
+      ],
+      "exports": [
+        "recovery_output",
+        "main"
+      ],
+      "totalLines": 73,
+      "hasStructuralAnalysis": true
+    },
+    ".claude/contextdb/contextdb/recovery.py": {
+      "filePath": ".claude/contextdb/contextdb/recovery.py",
+      "contentHash": "4e0b15c915957d10430110d64bd5d3503cd3475cb96bd07890271d7cf395f321",
+      "functions": [
+        {
+          "name": "_detail",
+          "params": [
+            "row"
+          ],
+          "returnType": "dict[str, Any]",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "_modified_files",
+          "params": [
+            "conn",
+            "project_id",
+            "session_id",
+            "maximum"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 41
+        },
+        {
+          "name": "_render_packet",
+          "params": [
+            "header",
+            "bodies",
+            "maximum",
+            "files_budget"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 25
+        },
+        {
+          "name": "build_recovery_context",
+          "params": [
+            "store",
+            "conn",
+            "session_id"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 148
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "shlex",
+          "specifiers": [
+            "shlex"
+          ]
+        },
+        {
+          "source": "sqlite3",
+          "specifiers": [
+            "sqlite3"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any"
+          ]
+        },
+        {
+          "source": ".storage",
+          "specifiers": [
+            "ContextStore"
+          ]
+        },
+        {
+          "source": ".util",
+          "specifiers": [
+            "one_line",
+            "truncate_middle"
+          ]
+        }
+      ],
+      "exports": [
+        "_detail",
+        "_modified_files",
+        "_render_packet",
+        "build_recovery_context"
+      ],
+      "totalLines": 248,
+      "hasStructuralAnalysis": true
+    },
+    ".claude/contextdb/contextdb/redaction.py": {
+      "filePath": ".claude/contextdb/contextdb/redaction.py",
+      "contentHash": "7401b7c006133210a2e92d6cb9213d3cb6f8f51132792ccb17da326f19e4372a",
+      "functions": [
+        {
+          "name": "is_sensitive_path",
+          "params": [
+            "path"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 17
+        },
+        {
+          "name": "_replacement",
+          "params": [
+            "template",
+            "kind"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "redact_text",
+          "params": [
+            "text",
+            "report",
+            "replacement_template"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "_key_is_sensitive",
+          "params": [
+            "key",
+            "sensitive_keys"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "find_paths",
+          "params": [
+            "value"
+          ],
+          "returnType": "list[str]",
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "redact_value",
+          "params": [
+            "value",
+            "report",
+            "sensitive_keys",
+            "replacement_template",
+            "suppress_content",
+            "suppress_reason",
+            "max_string_chars"
+          ],
+          "returnType": "Any",
+          "exported": true,
+          "lineCount": 67
+        },
+        {
+          "name": "sanitize_payload",
+          "params": [
+            "value",
+            "config",
+            "max_string_chars"
+          ],
+          "returnType": "tuple[Any, RedactionReport]",
+          "exported": true,
+          "lineCount": 25
+        }
+      ],
+      "classes": [
+        {
+          "name": "RedactionReport",
+          "methods": [
+            "mark"
+          ],
+          "properties": [
+            "count",
+            "categories",
+            "sensitive_path"
+          ],
+          "exported": true,
+          "lineCount": 8
+        }
+      ],
+      "imports": [
+        {
+          "source": "copy",
+          "specifiers": [
+            "copy"
+          ]
+        },
+        {
+          "source": "re",
+          "specifiers": [
+            "re"
+          ]
+        },
+        {
+          "source": "dataclasses",
+          "specifiers": [
+            "dataclass",
+            "field"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "PurePath"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any"
+          ]
+        },
+        {
+          "source": ".util",
+          "specifiers": [
+            "canonical_json",
+            "sha256_text",
+            "truncate_middle"
+          ]
+        }
+      ],
+      "exports": [
+        "RedactionReport",
+        "is_sensitive_path",
+        "_replacement",
+        "redact_text",
+        "_key_is_sensitive",
+        "find_paths",
+        "redact_value",
+        "sanitize_payload"
+      ],
+      "totalLines": 256,
+      "hasStructuralAnalysis": true
+    },
+    ".claude/contextdb/contextdb/semantic.py": {
+      "filePath": ".claude/contextdb/contextdb/semantic.py",
+      "contentHash": "213d3146b6062f0bc82140ac06fbbfb5ae0e83338aa2e963c3e1b955140c4cf6",
+      "functions": [
+        {
+          "name": "semantic_config",
+          "params": [
+            "config"
+          ],
+          "returnType": "SemanticConfig",
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "embed_texts",
+          "params": [
+            "texts",
+            "config"
+          ],
+          "returnType": "tuple[str, list[list[float]]]",
+          "exported": true,
+          "lineCount": 48
+        },
+        {
+          "name": "cosine_similarity",
+          "params": [
+            "left",
+            "right"
+          ],
+          "returnType": "float",
+          "exported": true,
+          "lineCount": 9
+        }
+      ],
+      "classes": [
+        {
+          "name": "SemanticConfig",
+          "methods": [],
+          "properties": [
+            "enabled",
+            "command",
+            "model",
+            "timeout_seconds",
+            "batch_size"
+          ],
+          "exported": true,
+          "lineCount": 6
+        }
+      ],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "math",
+          "specifiers": [
+            "math"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "dataclasses",
+          "specifiers": [
+            "dataclass"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any"
+          ]
+        }
+      ],
+      "exports": [
+        "SemanticConfig",
+        "semantic_config",
+        "embed_texts",
+        "cosine_similarity"
+      ],
+      "totalLines": 93,
+      "hasStructuralAnalysis": true
+    },
+    ".claude/contextdb/contextdb/spool.py": {
+      "filePath": ".claude/contextdb/contextdb/spool.py",
+      "contentHash": "dfa291fd2b70ec5f20deeeff812cab0ab8cc0a0eca8ef231bfb8149b3bb8a689",
+      "functions": [
+        {
+          "name": "validate_ingestion_source",
+          "params": [
+            "value"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "record_error",
+          "params": [
+            "paths",
+            "stage",
+            "exc"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "spool_event",
+          "params": [
+            "paths",
+            "event",
+            "ingested_from"
+          ],
+          "returnType": "Path",
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "_quarantine",
+          "params": [
+            "paths",
+            "source",
+            "reason"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "drain_spool",
+          "params": [
+            "paths",
+            "config",
+            "max_files",
+            "blocking_lock"
+          ],
+          "returnType": "DrainResult",
+          "exported": true,
+          "lineCount": 73
+        }
+      ],
+      "classes": [
+        {
+          "name": "DrainResult",
+          "methods": [],
+          "properties": [
+            "acquired",
+            "processed",
+            "inserted",
+            "duplicates",
+            "quarantined",
+            "remaining",
+            "error"
+          ],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "WriterLock",
+          "methods": [
+            "__init__",
+            "acquire",
+            "release",
+            "__enter__",
+            "__exit__"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 59
+        }
+      ],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "re",
+          "specifiers": [
+            "re"
+          ]
+        },
+        {
+          "source": "shutil",
+          "specifiers": [
+            "shutil"
+          ]
+        },
+        {
+          "source": "sqlite3",
+          "specifiers": [
+            "sqlite3"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "uuid",
+          "specifiers": [
+            "uuid"
+          ]
+        },
+        {
+          "source": "dataclasses",
+          "specifiers": [
+            "dataclass"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any"
+          ]
+        },
+        {
+          "source": ".config",
+          "specifiers": [
+            "load_config"
+          ]
+        },
+        {
+          "source": ".paths",
+          "specifiers": [
+            "ProjectPaths"
+          ]
+        },
+        {
+          "source": ".storage",
+          "specifiers": [
+            "ContextStore"
+          ]
+        },
+        {
+          "source": ".util",
+          "specifiers": [
+            "append_jsonl",
+            "safe_chmod",
+            "utc_iso",
+            "write_json_exclusive"
+          ]
+        }
+      ],
+      "exports": [
+        "validate_ingestion_source",
+        "DrainResult",
+        "WriterLock",
+        "record_error",
+        "spool_event",
+        "_quarantine",
+        "drain_spool"
+      ],
+      "totalLines": 214,
+      "hasStructuralAnalysis": true
+    },
+    ".claude/contextdb/contextdb/storage.py": {
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "contentHash": "05b1b42fc6d41ada326b2e4f833de50b3505f5bbdb5197b301c383b828cf5ce5",
+      "functions": [],
+      "classes": [
+        {
+          "name": "ContextStore",
+          "methods": [
+            "__init__",
+            "connect",
+            "secure_storage_files",
+            "ensure_schema",
+            "_ensure_fts",
+            "insert_event",
+            "_upsert_session",
+            "_fts_insert_event",
+            "_fts_insert_memory",
+            "fts_tokenizer",
+            "_insert_candidates",
+            "add_memory",
+            "retract_memory",
+            "current_memories",
+            "rebuild_memory_blocks",
+            "_insert_block",
+            "hierarchical_memory_context",
+            "latest_session_id",
+            "recent_events",
+            "recent_prompts",
+            "recent_failures",
+            "recent_files",
+            "latest_compact_summary",
+            "sessions",
+            "search_events",
+            "search_memories",
+            "promote_candidate",
+            "index_memory_embeddings",
+            "semantic_search_memories",
+            "health",
+            "verify_hashes",
+            "prune_expired",
+            "export_events"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 892
+        }
+      ],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "math",
+          "specifiers": [
+            "math"
+          ]
+        },
+        {
+          "source": "sqlite3",
+          "specifiers": [
+            "sqlite3"
+          ]
+        },
+        {
+          "source": "uuid",
+          "specifiers": [
+            "uuid"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "timedelta"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Iterable"
+          ]
+        },
+        {
+          "source": ".",
+          "specifiers": [
+            "SCHEMA_VERSION"
+          ]
+        },
+        {
+          "source": ".memory",
+          "specifiers": [
+            "MemoryCandidate",
+            "compress_lines"
+          ]
+        },
+        {
+          "source": ".paths",
+          "specifiers": [
+            "ProjectPaths"
+          ]
+        },
+        {
+          "source": ".semantic",
+          "specifiers": [
+            "cosine_similarity",
+            "embed_texts",
+            "semantic_config"
+          ]
+        },
+        {
+          "source": ".util",
+          "specifiers": [
+            "canonical_json",
+            "normalize_for_fingerprint",
+            "one_line",
+            "safe_chmod",
+            "sha256_text",
+            "stable_id",
+            "utc_iso",
+            "utc_now"
+          ]
+        }
+      ],
+      "exports": [
+        "ContextStore"
+      ],
+      "totalLines": 1076,
+      "hasStructuralAnalysis": true
+    },
+    ".claude/contextdb/contextdb/util.py": {
+      "filePath": ".claude/contextdb/contextdb/util.py",
+      "contentHash": "7ff258323ef1d1a98aab414aa53f19ab307eba55171e7e671981b2096a95d5ab",
+      "functions": [
+        {
+          "name": "utc_now",
+          "params": [],
+          "returnType": "datetime",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "utc_iso",
+          "params": [
+            "dt"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "epoch_ms",
+          "params": [
+            "dt"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "canonical_json",
+          "params": [
+            "value"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "pretty_json",
+          "params": [
+            "value"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "sha256_text",
+          "params": [
+            "value"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "stable_id",
+          "params": [
+            "length"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "one_line",
+          "params": [
+            "value",
+            "limit"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "truncate_middle",
+          "params": [
+            "value",
+            "limit",
+            "marker"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "normalize_for_fingerprint",
+          "params": [
+            "text"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "ensure_dir",
+          "params": [
+            "path",
+            "mode"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "safe_chmod",
+          "params": [
+            "path",
+            "mode"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "_write_all",
+          "params": [
+            "fd",
+            "data"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "_fsync_directory",
+          "params": [
+            "path"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "write_text_exclusive",
+          "params": [
+            "path",
+            "text",
+            "mode"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "write_json_exclusive",
+          "params": [
+            "path",
+            "value",
+            "mode"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "atomic_write_text",
+          "params": [
+            "path",
+            "text",
+            "mode"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 18
+        },
+        {
+          "name": "append_jsonl",
+          "params": [
+            "path",
+            "value",
+            "mode"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "parse_utc",
+          "params": [
+            "value"
+          ],
+          "returnType": "datetime | None",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "chunks",
+          "params": [
+            "items",
+            "size"
+          ],
+          "returnType": "Iterable[list[Any]]",
+          "exported": true,
+          "lineCount": 9
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "hashlib",
+          "specifiers": [
+            "hashlib"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "re",
+          "specifiers": [
+            "re"
+          ]
+        },
+        {
+          "source": "uuid",
+          "specifiers": [
+            "uuid"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timezone"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Iterable"
+          ]
+        }
+      ],
+      "exports": [
+        "utc_now",
+        "utc_iso",
+        "epoch_ms",
+        "canonical_json",
+        "pretty_json",
+        "sha256_text",
+        "stable_id",
+        "one_line",
+        "truncate_middle",
+        "normalize_for_fingerprint",
+        "ensure_dir",
+        "safe_chmod",
+        "_write_all",
+        "_fsync_directory",
+        "write_text_exclusive",
+        "write_json_exclusive",
+        "atomic_write_text",
+        "append_jsonl",
+        "parse_utc",
+        "chunks"
+      ],
+      "totalLines": 170,
+      "hasStructuralAnalysis": true
+    },
+    ".claude/hooks/contextdb_cli.py": {
+      "filePath": ".claude/hooks/contextdb_cli.py",
+      "contentHash": "e8109673573b5e1c870ff232b644260e62fe46aa7086007f6affe78fb4044a85",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "contextdb.cli",
+          "specifiers": [
+            "main"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 14,
+      "hasStructuralAnalysis": true
+    },
+    ".claude/hooks/contextdb_hook.py": {
+      "filePath": ".claude/hooks/contextdb_hook.py",
+      "contentHash": "d8ab1f1799d8f1b0a0907675bd920c62ee6472a3e32b09261634e6c52a3de4e1",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "contextdb.hook",
+          "specifiers": [
+            "main"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 14,
+      "hasStructuralAnalysis": true
+    },
+    ".claude/hooks/contextdb_recover.py": {
+      "filePath": ".claude/hooks/contextdb_recover.py",
+      "contentHash": "d66805ddae41b50dc822ab5534e5d4f63dabf5391c61e970086dea8f45c16195",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "contextdb.recover_hook",
+          "specifiers": [
+            "main"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 14,
+      "hasStructuralAnalysis": true
+    },
+    ".claude/hooks/query_log.py": {
+      "filePath": ".claude/hooks/query_log.py",
+      "contentHash": "18b9f213f6be7d993019a46779b0c49071f0e4abb5d806ffc99fb1035f7136b0",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "contextdb.cli",
+          "specifiers": [
+            "main"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 15,
+      "hasStructuralAnalysis": true
+    },
+    "tests/unit/test_agent_session_staleness.py": {
+      "filePath": "tests/unit/test_agent_session_staleness.py",
+      "contentHash": "5d51a305973a633871f4aa71d711f801e7c79e4c5200f063ae4c055668746aef",
+      "functions": [
+        {
+          "name": "load_script",
+          "params": [],
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "load_checker",
+          "params": [],
+          "exported": true,
+          "lineCount": 8
+        }
+      ],
+      "classes": [
+        {
+          "name": "AgentSessionStalenessTest",
+          "methods": [
+            "setUp",
+            "tearDown",
+            "touch",
+            "plugin_version",
+            "run_script",
+            "test_hook_first_call_writes_private_baseline_and_is_silent",
+            "test_hook_second_call_detects_asset_updated_after_baseline",
+            "test_hook_prunes_state_files_older_than_seven_days",
+            "test_hook_missing_or_garbage_stdin_is_silent_success",
+            "test_check_is_silent_when_assets_predate_session",
+            "test_check_reports_new_versions_and_mtimes_deduplicated_by_root",
+            "test_internal_failure_is_silent_success_with_one_stderr_line",
+            "test_runtime_state_and_sqlite_files_are_excluded",
+            "test_bounded_scan_finishes_under_wall_limit",
+            "test_no_arguments_prints_ten_recent_updates",
+            "test_doctor_delegates_session_staleness_to_installed_script"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 210
+        }
+      ],
+      "imports": [
+        {
+          "source": "contextlib",
+          "specifiers": [
+            "contextlib"
+          ]
+        },
+        {
+          "source": "importlib.util",
+          "specifiers": [
+            "importlib.util"
+          ]
+        },
+        {
+          "source": "io",
+          "specifiers": [
+            "io"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "stat",
+          "specifiers": [
+            "stat"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "tempfile",
+          "specifiers": [
+            "tempfile"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "importlib.machinery",
+          "specifiers": [
+            "SourceFileLoader"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "unittest",
+          "specifiers": [
+            "mock"
+          ]
+        }
+      ],
+      "exports": [
+        "load_script",
+        "load_checker",
+        "AgentSessionStalenessTest"
+      ],
+      "totalLines": 260,
+      "hasStructuralAnalysis": true
+    },
+    "tests/unit/test_asset_manifest.py": {
+      "filePath": "tests/unit/test_asset_manifest.py",
+      "contentHash": "f85e19c7813030fc78f5fbab83acea7d299fd1d35ad3072fde0513546a42f43b",
+      "functions": [],
+      "classes": [
+        {
+          "name": "AssetManifestTest",
+          "methods": [
+            "setUp",
+            "tearDown",
+            "run_bash",
+            "manifest",
+            "test_records_schema_two_steps_and_replaces_one_whole_entry",
+            "test_failed_atomic_commit_leaves_previous_manifest_intact",
+            "test_unwritable_destination_warns_once_without_failing",
+            "test_two_real_install_steps_record_under_fake_home",
+            "test_same_run_mise_repairs_preserve_both_identity_steps",
+            "test_updater_has_one_recording_call_for_each_install_step",
+            "test_chezmoi_rendered_updater_uses_inlined_manifest_library",
+            "_executable"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 240
+        }
+      ],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "shutil",
+          "specifiers": [
+            "shutil"
+          ]
+        },
+        {
+          "source": "stat",
+          "specifiers": [
+            "stat"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "tempfile",
+          "specifiers": [
+            "tempfile"
+          ]
+        },
+        {
+          "source": "textwrap",
+          "specifiers": [
+            "textwrap"
+          ]
+        },
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        }
+      ],
+      "exports": [
+        "AssetManifestTest"
+      ],
+      "totalLines": 266,
+      "hasStructuralAnalysis": true
+    },
+    "tests/unit/test_remove_agent_asset.py": {
+      "filePath": "tests/unit/test_remove_agent_asset.py",
+      "contentHash": "d6a54975c6bd8e4cbaaa188801fe3cbcacc94ce2068ebd3ded77e0ec11cf6fa4",
+      "functions": [],
+      "classes": [
+        {
+          "name": "RemoveAgentAssetTest",
+          "methods": [
+            "setUp",
+            "tearDown",
+            "manifest_path",
+            "write_manifest",
+            "manifest",
+            "run_remover",
+            "step",
+            "test_default_and_explicit_dry_run_print_without_mutating",
+            "test_yes_removes_only_recorded_path_and_preserves_other_steps",
+            "test_parameterized_step_removal_preserves_sibling_identity",
+            "test_invalid_manifest_is_rejected",
+            "test_tampered_manifest_outside_safe_roots_is_refused",
+            "test_all_paths_are_preflighted_before_any_deletion",
+            "test_unknown_step_lists_known_steps_without_guessing",
+            "test_recorded_symlink_is_removed_without_following_target",
+            "test_plugin_uses_verified_claude_uninstall",
+            "test_crit_plugin_falls_back_to_data_path_but_not_config",
+            "test_plugin_uses_verified_codex_remove",
+            "test_brew_uses_uninstall_for_unambiguous_formula",
+            "test_brew_refuses_ambiguous_formula",
+            "test_integration_uses_verified_herdr_uninstall",
+            "executable"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 360
+        }
+      ],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "shutil",
+          "specifiers": [
+            "shutil"
+          ]
+        },
+        {
+          "source": "stat",
+          "specifiers": [
+            "stat"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "tempfile",
+          "specifiers": [
+            "tempfile"
+          ]
+        },
+        {
+          "source": "textwrap",
+          "specifiers": [
+            "textwrap"
+          ]
+        },
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        }
+      ],
+      "exports": [
+        "RemoveAgentAssetTest"
+      ],
+      "totalLines": 385,
       "hasStructuralAnalysis": true
     }
   }

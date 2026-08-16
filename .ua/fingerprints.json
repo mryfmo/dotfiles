@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "gitCommitHash": "cc977bf723004d972e1af46d551051fbbaf80003",
-  "generatedAt": "2026-08-16T07:04:46.634Z",
+  "gitCommitHash": "03621422f732c6be0eb318a137ff572ebeee47c8",
+  "generatedAt": "2026-08-16T07:27:54.965Z",
   "files": {
     ".chezmoiroot": {
       "filePath": ".chezmoiroot",
@@ -9100,7 +9100,7 @@
     },
     "scripts/update-agent-assets.sh": {
       "filePath": "scripts/update-agent-assets.sh",
-      "contentHash": "c27b3c053a416058ab1169bdc4bafc342257f1b2847c88f41488667ca0b45ba7",
+      "contentHash": "5849b4ad7fb7de03810f714a1a8f7578064e16b90a8d630ec6c06ca50da7e093",
       "functions": [
         {
           "name": "section",
@@ -9124,7 +9124,7 @@
           "name": "ensure_mise_npm_agent_cli",
           "params": [],
           "exported": false,
-          "lineCount": 15
+          "lineCount": 16
         },
         {
           "name": "is_macos",
@@ -9214,37 +9214,37 @@
           "name": "ensure_herdr_integrations",
           "params": [],
           "exported": false,
-          "lineCount": 9
+          "lineCount": 10
         },
         {
           "name": "update_claude_superpowers",
           "params": [],
           "exported": false,
-          "lineCount": 17
+          "lineCount": 18
         },
         {
           "name": "update_claude_crit",
           "params": [],
           "exported": false,
-          "lineCount": 25
+          "lineCount": 26
         },
         {
           "name": "update_claude_ponytail",
           "params": [],
           "exported": false,
-          "lineCount": 23
+          "lineCount": 24
         },
         {
           "name": "update_claude_understand_anything",
           "params": [],
           "exported": false,
-          "lineCount": 22
+          "lineCount": 23
         },
         {
           "name": "update_codex_superpowers",
           "params": [],
           "exported": false,
-          "lineCount": 20
+          "lineCount": 21
         },
         {
           "name": "ensure_codex_ponytail_marketplace",
@@ -9256,31 +9256,43 @@
           "name": "update_codex_ponytail",
           "params": [],
           "exported": false,
-          "lineCount": 19
+          "lineCount": 20
         },
         {
           "name": "update_codex_crit",
           "params": [],
           "exported": false,
-          "lineCount": 15
+          "lineCount": 16
+        },
+        {
+          "name": "provision_codex_understand_anything_runtime",
+          "params": [],
+          "exported": false,
+          "lineCount": 49
         },
         {
           "name": "update_codex_understand_anything",
           "params": [],
           "exported": false,
-          "lineCount": 28
+          "lineCount": 30
+        },
+        {
+          "name": "update_compactiondb",
+          "params": [],
+          "exported": false,
+          "lineCount": 6
         },
         {
           "name": "main",
           "params": [],
           "exported": false,
-          "lineCount": 20
+          "lineCount": 21
         }
       ],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 599,
+      "totalLines": 682,
       "hasStructuralAnalysis": true
     },
     "scripts/upgrade-tools.sh": {
@@ -14348,6 +14360,67 @@
         "RemoveAgentAssetTest"
       ],
       "totalLines": 385,
+      "hasStructuralAnalysis": true
+    },
+    "home/dot_local/bin/common/executable_agent-session-staleness": {
+      "filePath": "home/dot_local/bin/common/executable_agent-session-staleness",
+      "contentHash": "9602e118434273dfd76ad5b85150349c307d0df2fa0eb65a9bd5191672f1623a",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 294,
+      "hasStructuralAnalysis": false
+    },
+    "home/dot_local/bin/common/executable_remove-agent-asset": {
+      "filePath": "home/dot_local/bin/common/executable_remove-agent-asset",
+      "contentHash": "ecd5f2a43e18716ba549302473ad3d37e250b6e0ede489a3dbdf58e7776bc03e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 483,
+      "hasStructuralAnalysis": false
+    },
+    "scripts/lib/asset-manifest.sh": {
+      "filePath": "scripts/lib/asset-manifest.sh",
+      "contentHash": "3652448ef34dcc4430a895edd36e4764ce067d4a93a21c0ee1fe9d80ad5d086b",
+      "functions": [
+        {
+          "name": "manifest_claude_plugin_version",
+          "params": [],
+          "exported": false,
+          "lineCount": 7
+        },
+        {
+          "name": "manifest_codex_plugin_version",
+          "params": [],
+          "exported": false,
+          "lineCount": 7
+        },
+        {
+          "name": "manifest_brew_formula_version",
+          "params": [],
+          "exported": false,
+          "lineCount": 7
+        },
+        {
+          "name": "_manifest_record",
+          "params": [],
+          "exported": false,
+          "lineCount": 79
+        },
+        {
+          "name": "manifest_record",
+          "params": [],
+          "exported": false,
+          "lineCount": 8
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 145,
       "hasStructuralAnalysis": true
     }
   }

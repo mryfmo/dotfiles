@@ -8,7 +8,7 @@ DB_DIR="$(dirname "$DB")"
 mkdir -p "$DB_DIR"
 
 if [ ! -f "$DB" ]; then
-  sqlite3 "$DB" <<'SQL'
+    sqlite3 "$DB" << 'SQL'
 PRAGMA journal_mode=WAL;
 
 CREATE TABLE messages (
@@ -24,5 +24,5 @@ CREATE TABLE messages (
 CREATE INDEX idx_unread ON messages(team, to_agent, read_at) WHERE read_at IS NULL;
 CREATE INDEX idx_history ON messages(team, created_at DESC);
 SQL
-  echo "DB initialized: $DB"
+    echo "DB initialized: $DB"
 fi

@@ -12,12 +12,17 @@ from .paths import project_paths
 from .spool import drain_spool, record_error, spool_event
 
 
-def process_payload(payload: dict[str, Any], *, project_root: str | None = None) -> None:
+def process_payload(
+    payload: dict[str, Any],
+    *,
+    project_root: str | None = None,
+    ingested_from: str | None = None,
+) -> None:
     paths = project_paths(payload, project_root)
     try:
         config = load_config(paths)
         event = normalize_hook_payload(payload, paths, config)
-        spool_event(paths, event)
+        spool_event(paths, event, ingested_from=ingested_from)
         # Non-blocking lock: another hook may already be the single writer.
         # The durable spool remains the source of truth until a later drain succeeds.
         drain_spool(paths, config, blocking_lock=False)

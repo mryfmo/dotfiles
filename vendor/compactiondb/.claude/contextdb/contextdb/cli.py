@@ -10,8 +10,10 @@ from typing import Any, Sequence
 from .config import load_config
 from .hook import process_payload
 from .paths import project_paths
+from .probe import generate_probes
+from .recall import recall
 from .recovery import build_recovery_context
-from .spool import drain_spool
+from .spool import drain_spool, validate_ingestion_source
 from .storage import ContextStore
 from .util import atomic_write_text, canonical_json, one_line, pretty_json
 
@@ -61,6 +63,16 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("recover", help="render the same recovery context used after compaction")
     p.add_argument("--session", required=True)
 
+    p = sub.add_parser("probe", help="generate deterministic recovery probes with ground truth")
+    p.add_argument("--session", required=True)
+    p.add_argument("--json", action="store_true", default=argparse.SUPPRESS)
+
+    p = sub.add_parser("recall", help="retrieve fused lexical and optional semantic context")
+    p.add_argument("query")
+    p.add_argument("--session")
+    p.add_argument("--k", type=int)
+    p.add_argument("--json", action="store_true", default=argparse.SUPPRESS)
+
     sub.add_parser("health", help="database, spool, and integrity summary")
     sub.add_parser("drain", help="drain pending spool records")
     sub.add_parser("verify", help="verify SQLite and event detail hashes")
@@ -75,6 +87,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("ingest", help="ingest one hook-compatible JSON object from a file or stdin")
     p.add_argument("source", nargs="?", default="-", help="JSON file or - for stdin")
+    p.add_argument("--ingested-from", help="trusted local ingestion source token")
 
     memory = sub.add_parser("memory", help="durable-memory operations")
     memsub = memory.add_subparsers(dest="memory_command", required=True)
@@ -152,11 +165,12 @@ def run(args: argparse.Namespace) -> int:
     store = ContextStore(paths, config)
 
     if args.command == "ingest":
+        ingested_from = validate_ingestion_source(args.ingested_from) if args.ingested_from is not None else None
         raw = sys.stdin.read() if args.source == "-" else Path(args.source).read_text(encoding="utf-8")
         payload = json.loads(raw)
         if not isinstance(payload, dict):
             raise ValueError("ingest input must be a JSON object")
-        process_payload(payload, project_root=str(paths.root))
+        process_payload(payload, project_root=str(paths.root), ingested_from=ingested_from)
         result = drain_spool(paths, config, blocking_lock=True)
         _print_json_or_lines(args, result.__dict__, [f"ingested={result.inserted} pending={result.remaining}"])
         return 0
@@ -170,6 +184,51 @@ def run(args: argparse.Namespace) -> int:
                 f"acquired={result.acquired} processed={result.processed} inserted={result.inserted} ",
                 f"duplicates={result.duplicates} quarantined={result.quarantined} remaining={result.remaining}",
             ],
+        )
+        return 0
+
+    if args.command == "probe":
+        conn = store.connect(initialize=False)
+        try:
+            result = {"probes": generate_probes(store, conn, session_id=args.session)}
+        finally:
+            conn.close()
+        _print_json_or_lines(
+            args,
+            result,
+            [
+                f"[{probe['type']}] {probe['question']}\n{probe['ground_truth']}"
+                for probe in result["probes"]
+            ]
+            or ["No probes."],
+        )
+        return 0
+
+    if args.command == "recall":
+        recall_config = config["recall"]
+        limit = int(recall_config["k"] if args.k is None else args.k)
+        if limit < 0:
+            raise ValueError("recall --k must be an integer >= 0")
+        conn = store.connect(initialize=False)
+        try:
+            results = recall(
+                store,
+                conn,
+                args.query,
+                session_id=args.session,
+                k=limit,
+                rho=float(recall_config["rho"]),
+            )
+        finally:
+            conn.close()
+        _print_json_or_lines(
+            args,
+            results,
+            [
+                f"{row['score']:.6f} {row['ts']} {row['kind']} {row['summary']}"
+                for row in results
+            ]
+            or ["No matches."],
         )
         return 0
 

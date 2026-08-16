@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+# @file home/dot_local/bin/common/executable_contextdb-codex-notify
+# @brief Ingest a Codex turn-complete notification into an opted-in project's CompactionDB.
+
+if ! command -v python3 > /dev/null 2>&1; then
+    printf '%s\n' 'contextdb-codex-notify: ingest failed' >&2
+    exit 0
+fi
+
+if ! python3 - "${1-}" 2> /dev/null << 'PY'; then
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+try:
+    payload = sys.argv[1]
+    event = json.loads(payload)
+    if not isinstance(event, dict):
+        raise ValueError("notify payload must be an object")
+    cwd = event.get("cwd")
+    if cwd is not None and not isinstance(cwd, str):
+        raise ValueError("notify cwd must be a string")
+    project_dir = (Path(cwd) if cwd else Path.cwd()).resolve()
+    cli = project_dir / ".claude" / "hooks" / "contextdb_cli.py"
+    if not cli.is_file():
+        raise SystemExit(0)
+    subprocess.run(
+        ["python3", str(cli), "ingest", "--ingested-from", "codex"],
+        input=payload,
+        text=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        timeout=5,
+        check=True,
+        cwd=project_dir,
+    )
+except Exception:
+    raise SystemExit(1)
+PY
+    printf '%s\n' 'contextdb-codex-notify: ingest failed' >&2
+fi
+
+exit 0

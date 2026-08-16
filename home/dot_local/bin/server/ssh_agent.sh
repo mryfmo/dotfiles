@@ -17,7 +17,7 @@ function _dotfiles_start_ssh_agent() {
     eval "$(ssh-agent)" > /dev/null 2>&1 || return 0
 
     if [[ -r "${default_ssh_key}" ]]; then
-        ssh-add "${default_ssh_key}" > /dev/null 2>&1 || \
+        ssh-add "${default_ssh_key}" > /dev/null 2>&1 ||
             printf 'Failed to add default SSH key: %s\n' "${default_ssh_key}" >&2
     else
         printf 'Default SSH key not found: %s\n' "${default_ssh_key}" >&2

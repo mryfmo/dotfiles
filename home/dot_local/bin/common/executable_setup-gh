@@ -30,7 +30,7 @@ function ssh_key_comment() {
         return 0
     fi
 
-    printf '%s@%s\n' "${USER:-user}" "$(hostname -s 2>/dev/null || hostname)"
+    printf '%s@%s\n' "${USER:-user}" "$(hostname -s 2> /dev/null || hostname)"
 }
 
 # @description Create the default SSH key through ssh-keygen when it is missing.

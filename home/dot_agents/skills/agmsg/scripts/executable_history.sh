@@ -13,14 +13,14 @@ source "$SCRIPT_DIR/lib/storage.sh"
 DB="$(agmsg_db_path)"
 
 if [ ! -f "$DB" ]; then
-  echo "No messages (DB not initialized)"
-  exit 0
+    echo "No messages (DB not initialized)"
+    exit 0
 fi
 
 if [ -n "$AGENT" ]; then
-  WHERE="WHERE team='$TEAM' AND (from_agent='$AGENT' OR to_agent='$AGENT')"
+    WHERE="WHERE team='$TEAM' AND (from_agent='$AGENT' OR to_agent='$AGENT')"
 else
-  WHERE="WHERE team='$TEAM'"
+    WHERE="WHERE team='$TEAM'"
 fi
 
 # Escape newlines/tabs in body, use unit separator between fields
@@ -30,12 +30,12 @@ RESULT=$(sqlite3 "$DB" "
 ")
 
 if [ -z "$RESULT" ]; then
-  echo "No message history."
-  exit 0
+    echo "No message history."
+    exit 0
 fi
 
 # Reverse order (oldest first) and display
-REVERSED=$(echo "$RESULT" | tail -r 2>/dev/null || echo "$RESULT" | tac 2>/dev/null || echo "$RESULT" | awk '{a[NR]=$0} END{for(i=NR;i>=1;i--)print a[i]}')
+REVERSED=$(echo "$RESULT" | tail -r 2> /dev/null || echo "$RESULT" | tac 2> /dev/null || echo "$RESULT" | awk '{a[NR]=$0} END{for(i=NR;i>=1;i--)print a[i]}')
 while IFS=$'\x1f' read -r from to body ts status; do
-  echo "  $status [$ts] $from → $to: $body"
+    echo "  $status [$ts] $from → $to: $body"
 done <<< "$REVERSED"

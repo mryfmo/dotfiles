@@ -25,42 +25,42 @@ RUN_DIR="$SKILL_DIR/run"
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/lib/actas-lock.sh"
 
-INPUT=$(cat 2>/dev/null || true)
+INPUT=$(cat 2> /dev/null || true)
 SESSION_ID=""
 if [ -n "$INPUT" ]; then
-  SESSION_ID=$(printf '%s' "$INPUT" \
-    | sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
-    | head -1)
+    SESSION_ID=$(printf '%s' "$INPUT" |
+        sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' |
+        head -1)
 fi
 [ -z "$SESSION_ID" ] && exit 0
 
 PIDFILE="$RUN_DIR/watch.$SESSION_ID.pid"
 if [ -f "$PIDFILE" ]; then
-  pid=$(cat "$PIDFILE" 2>/dev/null || true)
-  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-    # Defensive: only kill if the pid's command line still looks like our
-    # watch.sh. Pids can be recycled — a stale pidfile could point at an
-    # unrelated process that took the same pid.
-    cmd=$(ps -o args= -p "$pid" 2>/dev/null || true)
-    case "$cmd" in
-      *"$SKILL_DIR/scripts/watch.sh"*) kill "$pid" 2>/dev/null || true ;;
-      *) ;;
-    esac
-  fi
-  rm -f "$PIDFILE"
+    pid=$(cat "$PIDFILE" 2> /dev/null || true)
+    if [ -n "$pid" ] && kill -0 "$pid" 2> /dev/null; then
+        # Defensive: only kill if the pid's command line still looks like our
+        # watch.sh. Pids can be recycled — a stale pidfile could point at an
+        # unrelated process that took the same pid.
+        cmd=$(ps -o args= -p "$pid" 2> /dev/null || true)
+        case "$cmd" in
+        *"$SKILL_DIR/scripts/watch.sh"*) kill "$pid" 2> /dev/null || true ;;
+        *) ;;
+        esac
+    fi
+    rm -f "$PIDFILE"
 fi
 
 # Clean cc-instance entries that still point at this session_id. The
 # enclosing CC process may itself be exiting (matcher=logout/etc.), in which
 # case its cc-instance.<pid> file would otherwise be left stale.
 for f in "$RUN_DIR"/cc-instance.*; do
-  [ -f "$f" ] || continue
-  state=$(cat "$f" 2>/dev/null || true)
-  [ "$state" = "$SESSION_ID" ] && rm -f "$f"
+    [ -f "$f" ] || continue
+    state=$(cat "$f" 2> /dev/null || true)
+    [ "$state" = "$SESSION_ID" ] && rm -f "$f"
 done
 
 # Release any actas exclusivity locks owned by this session so peers can
 # reclaim those identities on their next watcher cycle. See #62.
-actas_lock_release_all "$SESSION_ID" 2>/dev/null || true
+actas_lock_release_all "$SESSION_ID" 2> /dev/null || true
 
 exit 0

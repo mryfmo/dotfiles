@@ -1,0 +1,68 @@
+T48 validation
+Generated: 2026-08-16T09:21:43+0900
+
+DISCOVERY
+- Official Codex configuration reference defines notify as an array of command arguments and profile configuration at $CODEX_HOME/<name>.config.toml:
+  https://developers.openai.com/codex/config-reference
+- Installed CLI: codex-cli 0.147.0.
+- Installed binary strings include the legacy notification fields:
+  agent-turn-complete, thread-id, turn-id, cwd, client, input-messages, last-assistant-message.
+- The receiver passes its first argument unchanged to stdin of the project-local CompactionDB CLI.
+
+STATIC CHECKS
+$ bash -n home/dot_local/bin/common/executable_contextdb-codex-notify
+exit=0
+
+$ shfmt --indent 4 --space-redirects --diff home/dot_local/bin/common/executable_contextdb-codex-notify
+exit=0, no output
+
+$ make validate-agent-assets
+exit=0
+agent asset validation ok
+
+$ uv run --with pyyaml scripts/generate-agent-configs.py --check
+exit=0
+generated agent assets are up to date
+
+$ git diff --check -- home/dot_local/bin/common/executable_contextdb-codex-notify home/dot_agents/agent-config.yaml scripts/generate-agent-configs.py home/dot_codex/modify_standard.config.toml home/dot_codex/modify_deep.config.toml home/dot_config/codex/AGENTS.md
+exit=0, no output
+
+$ make format
+exit=2
+The repo-wide formatter reports pre-existing shfmt drift outside T48's allowed files; the first reported hunk is home/dot_agents/skills/agmsg/scripts/executable_actas-claim.sh. The orchestrator independently reproduced the failure on main and ruled that T48 may use the clean scoped bash-n/shfmt results above. The repo-wide drift is deferred to T51.
+
+GENERATED PROFILE RESULT
+express=none
+standard=["{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify"]
+review=none
+deep=["{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify"]
+template_home=/Users/mryfmo
+
+INTEGRATION CHECK
+Scratch root: /private/tmp/t48-notify-final.hShPSj
+
+Installed vendor CompactionDB into the opted-in scratch project, then invoked the receiver with a synthetic agent-turn-complete payload.
+
+valid_exit=0 stdout_bytes=0 stderr_bytes=0 row=codex|unknown|/private/tmp/t48-notify-final.hShPSj/opted
+nonopted_exit=0 stdout_bytes=0 stderr_bytes=0 db_exists=no
+broken_exit=0 stdout_bytes=0 stderr_lines=1 stderr=contextdb-codex-notify: ingest failed
+
+Additional behavior checks:
+fallback_exit=0 codex_rows=2 stdout_bytes=0 stderr_bytes=0
+timeout_exit=0 elapsed_seconds=5 stdout_bytes=0 stderr_lines=1 stderr=contextdb-codex-notify: ingest failed
+
+The fallback check omitted cwd and ran from the opted-in directory. The timeout check used a temporary project-local CLI that slept for 30 seconds. All assertions passed. No .claude/contextdb directory remains in the repository.
+
+IMPLEMENTATION DIFF
+- home/dot_agents/agent-config.yaml: adds the notify command only to standard.codex and deep.codex.
+- scripts/generate-agent-configs.py: renders an optional root-level notify array using the existing TOML quoting helper.
+- home/dot_codex/modify_standard.config.toml and modify_deep.config.toml: generated notify entries.
+- home/dot_config/codex/AGENTS.md: two CompactionDB usage bullets.
+- home/dot_local/bin/common/executable_contextdb-codex-notify: new 45-line receiver.
+
+Receiver command executed for opted-in projects:
+python3 <project>/.claude/hooks/contextdb_cli.py ingest --ingested-from codex
+
+SCOPE
+Only the six T48 source/generated files above and the five required T48 orchestration artifacts are attributable to this task. Other worktree changes belong to accepted or concurrent tasks and were preserved.
+

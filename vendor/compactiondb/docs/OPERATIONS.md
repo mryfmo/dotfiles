@@ -48,6 +48,49 @@ python3 .claude/hooks/contextdb_cli.py prune --days 0
 
 これはraw eventだけを削除し、durable memoryは残します。memoryの撤回は `memory retract` を使用します。
 
+## recovery config
+
+`.claude/contextdb/config.json` の `recovery` sectionには次のキーがあります。
+
+| key | default | purpose |
+|---|---:|---|
+| `max_chars` | 12000 | recovery packet全体の最大文字数 |
+| `files_budget_chars` | 2000 | file sectionの最大文字数 |
+| `recent_events` | 12 | 取得する直近event数 |
+| `recent_prompts` | 4 | 取得する直近prompt数 |
+| `recent_files` | 12 | 取得する直近file数 |
+| `recent_failures` | 5 | 取得する直近failure数 |
+| `include_project_memories` | `true` | project memoryを含めるか |
+
+## deterministic recovery probes
+
+`probe` は指定sessionの台帳を読み、利用可能なrecall / artifact / decision / continuation probeだけをground truth付きで返します。LLM・network・DB writeは実行しません。
+
+```bash
+python3 .claude/hooks/contextdb_cli.py probe --session <session_id> --json
+```
+
+JSON schema:
+
+```json
+{"probes":[{"type":"artifact","question":"Which files were modified in this session?","ground_truth":"src/app.py (edit, 2x)"}]}
+```
+
+## query-conditioned recall
+
+```bash
+python3 .claude/hooks/contextdb_cli.py recall "query" --session <session_id> --k 5 --json
+```
+
+`recall.rho`はlexical scoreの重み、`recall.k`は既定出力件数です。semantic embeddingが無効または未保存なら、外部commandを呼ばずlexical scoreだけを使います。recall自体はDBへ書き込みません。
+
+| key | default | constraint |
+|---|---:|---|
+| `recall.rho` | 0.6 | 0以上1以下のnumber |
+| `recall.k` | 5 | 0以上のinteger |
+
+workerはタスク開始時のcontext再取得に使い、orchestratorはacceptance時の過去failure照合に使います。
+
 ## backup
 
 Claude Code停止後、次をbackupできます。

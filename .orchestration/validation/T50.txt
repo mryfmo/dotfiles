@@ -1,0 +1,138 @@
+T50 validation
+Generated: 2026-08-16T09:37:41+0900
+
+1. TEST-FIRST EVIDENCE
+----------------------
+Initial targeted command (vendor/compactiondb cwd):
+  PYTHONPATH=.claude/contextdb python3 -W error::ResourceWarning -m unittest tests/test_recall.py -v
+
+Initial result:
+  exit 1: ModuleNotFoundError: No module named 'contextdb.recall'
+
+Final targeted result:
+  Ran 7 tests in 0.169s
+  OK
+
+Pinned coverage:
+  - lexical-only deterministic BM25 ranking
+  - fake-command semantic fusion and exact rho math
+  - single/all-equal/absent min-max cases
+  - tool_use_id, adjacent, and shared_file closure; dedup and half-score inheritance
+  - exact-session event and session-memory isolation with project-memory visibility
+  - CLI database SHA-256 unchanged
+  - rho/k config load and validation; CLI k override
+
+2. REQUIRED VENDOR TEST GATE
+----------------------------
+Command:
+  make -C vendor/compactiondb clean && make -C vendor/compactiondb test
+
+Result:
+  Ran 74 tests in 3.250s
+  OK
+
+3. REQUIRED RELEASE VALIDATION GATE
+-----------------------------------
+Command:
+  make -C vendor/compactiondb clean && make -C vendor/compactiondb validate
+
+Result:
+  status: pass
+  passed: 10
+  failed: 0
+  skipped: 0
+  python_syntax: AST parsed 40 Python files
+  unittest_suite: 74 tests passed with ResourceWarning promoted to error
+  installed_project_smoke: pass (2 events)
+  release_tree_clean: pass
+
+4. SCORING AND READ-ONLY DECISIONS
+----------------------------------
+The orchestrator approved:
+  - lexical relevance = -bm25 before min-max normalization
+  - via labels closure:tool_use_id, closure:adjacent, closure:shared_file
+  - when the semantic view is unavailable, final score is normalized lexical score without rho scaling
+
+The recall CLI branch runs before `drain_spool`, opens the existing store with `initialize=False`, and executes SELECT queries only. The only permitted external process is the existing semantic adapter for a query embedding, and it is attempted only when configured-model vectors already exist. Recall never creates or updates embeddings.
+
+5. THREE POPULATED-FIXTURE EXAMPLES
+-----------------------------------
+Exact file path:
+  query: src/cache.py
+  session: files
+  output:
+    1.000000 2026-08-16T00:37:05.373Z tool_success Edit succeeded: file_path=src/cache.py
+  exit=0
+
+Japanese phrase:
+  query: 認証方式
+  session: ja
+  output:
+    1.000000 2026-08-16T00:37:05.387Z user_prompt 認証方式はOAuth2に統一する
+    0.000000 2026-08-16T00:37:05.389Z decision 認証方式はOAuth2に統一する
+  exit=0
+
+English phrase:
+  query: rollback procedure
+  session: en
+  output:
+    1.000000 2026-08-16T00:37:05.392Z user_prompt Document the deployment rollback procedure
+  exit=0
+
+6. PERFORMANCE SMOKE
+--------------------
+Fixture generation:
+  - 10,000 normalized UserPromptSubmit events
+  - one SQLite transaction
+  - exact session filter `perf`
+  - unique query `performance needle`
+
+Measured recall-only output:
+  events=10000 results=2 elapsed_seconds=0.000957 target_lt_1s=True
+  1.000000 lexical user_prompt performance needle event 9999
+  0.500000 closure:adjacent user_prompt routine ledger event 9998
+
+7. MANIFEST, LINT, AND WHITESPACE
+---------------------------------
+Manifest regeneration command (vendor/compactiondb cwd):
+
+  t50_manifest_tmp=$(mktemp)
+  { cut -c67- MANIFEST.sha256; printf '%s\n' './.claude/contextdb/contextdb/recall.py' './tests/test_recall.py'; } \
+    | LC_ALL=C sort -u \
+    | while IFS= read -r manifest_entry; do shasum -a 256 "$manifest_entry"; done \
+    > "$t50_manifest_tmp"
+  mv "$t50_manifest_tmp" MANIFEST.sha256
+
+Integrity:
+  shasum -a 256 -c MANIFEST.sha256
+  all 68 entries: OK
+
+Targeted lint:
+  /opt/homebrew/bin/ruff check .claude/contextdb/contextdb/recall.py tests/test_recall.py .claude/contextdb/contextdb/config.py
+  All checks passed!
+
+Syntax/whitespace:
+  python3 -m py_compile .claude/contextdb/contextdb/cli.py .claude/contextdb/contextdb/recall.py .claude/contextdb/contextdb/config.py tests/test_recall.py
+  git diff --check -- <all T50 source/doc/manifest paths>
+  exit 0, no output
+
+8. GIT SCOPE
+------------
+T50-attributable paths:
+  vendor/compactiondb/.claude/contextdb/contextdb/cli.py
+  vendor/compactiondb/.claude/contextdb/contextdb/recall.py
+  vendor/compactiondb/.claude/contextdb/contextdb/config.py
+  vendor/compactiondb/.claude/contextdb/config.json
+  vendor/compactiondb/tests/test_recall.py
+  vendor/compactiondb/README.md
+  vendor/compactiondb/docs/OPERATIONS.md
+  vendor/compactiondb/CHANGELOG.md
+  vendor/compactiondb/MANIFEST.sha256
+  .orchestration/reports/T50.md
+  .orchestration/validation/T50.txt
+  .orchestration/sandboxes/T50.md
+  .orchestration/learning/T50.md
+  .orchestration/autoskill/runs/T50.md
+
+All are permitted by T50. Repository-wide status/stat also contain accepted T46-T49, T48 wiring, orchestration, and pre-existing mise changes in the shared worktree; T50 preserved them.
+

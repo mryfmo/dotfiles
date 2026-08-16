@@ -13,7 +13,7 @@ set -Eeuo pipefail
 
 # @description Return success when at least one GnuPG secret key exists.
 function has_gpg_secret_key() {
-    gpg --batch --list-secret-keys --with-colons 2>/dev/null | grep -q '^sec:'
+    gpg --batch --list-secret-keys --with-colons 2> /dev/null | grep -q '^sec:'
 }
 
 # @description Create a GnuPG secret key through the standard interactive flow.

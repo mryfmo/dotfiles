@@ -123,7 +123,8 @@
 
 ## CompactionDB
 
-- Codex は同じ project DB に対して `python3 .claude/hooks/contextdb_cli.py memory add/search` と `recent --session <id>` を使います。自動 hook capture は Claude 側のみです。worker は `memory add --kind decision --scope project` で決定を記録します。
+- CompactionDB 導入済み project では、Codex standard/deep profile の turn 完了が同じ project DB へ自動記録されます。
+- 永続的な決定は従来どおり `python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project` で明示記録します。
 
 - Crit は自分(エージェント)自身のレビューにのみ使う: `crit comment` / `crit share` 等の CLI でコメントを起票・返信・解決し、JSON 証跡を `.orchestration/` または `.agents/worklog/` に保存する。
 - ブラウザ Crit レビューを開いたり、人間のユーザーにレビューを依頼する目的で Crit を使うことは禁止(2026-07-18 操作者指示)。

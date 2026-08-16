@@ -8,7 +8,11 @@ from pathlib import Path
 import re
 
 RUNTIME_PREFIXES = ('hooks.state', 'marketplaces', 'tui.model_availability_nux', 'projects')
-MANAGED = '# Codex model profile "standard"; launch with: codex --profile standard\n# Generated from home/dot_agents/agent-config.yaml by scripts/generate-agent-configs.py.\n\nmodel = "gpt-5.6-terra"\nmodel_reasoning_effort = "medium"\n\n[features]\nhooks = true\n\n[hooks.state]\n'
+MANAGED = '# Codex model profile "standard"; launch with: codex --profile standard\n# Generated from home/dot_agents/agent-config.yaml by scripts/generate-agent-configs.py.\n\nmodel = "gpt-5.6-terra"\nmodel_reasoning_effort = "medium"\nnotify = ["{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify"]\n\n[features]\nhooks = true\n\n[hooks.state]\n'
+
+
+def render_managed_paths(text: str) -> str:
+    return text.replace("{{ .chezmoi.homeDir }}", str(Path.home()))
 
 
 def table_name(header: str) -> str | None:
@@ -83,7 +87,7 @@ def trusted_hash(chunk: str) -> str | None:
 
 def merge_config(current: str) -> str:
     """Keep profile trust authoritative and only warn when base trust diverges."""
-    managed_chunks = split_chunks(MANAGED)
+    managed_chunks = split_chunks(render_managed_paths(MANAGED))
     current_chunks = split_chunks(current) if current.strip() else []
     current_by_name: dict[str, list[str]] = {}
     current_by_runtime_prefix: dict[str, list[tuple[int, str, str]]] = {}

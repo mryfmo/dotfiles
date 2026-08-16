@@ -125,7 +125,7 @@ T45 受入完了。以降のタスク発行文に T45 で規約化した RESULT 
   5. 未知キー・型不正時の挙動が既存実装(無視 or エラー)と同一であることをテストで固定。
   6. ユニットテスト: (a) デフォルト値 12000/2000 の読込、(b) 明示指定の上書き、
      (c) 型不正時の既存例外系。
-  7. CHANGELOG に `2.0.0+dotfiles.3` 節を起こし config 変更を記載。MANIFEST.sha256 再生成。
+  7. CHANGELOG に `2.0.0+dotfiles.4` 節を起こし config 変更を記載。MANIFEST.sha256 再生成。
 - 検証条件: 既存全テストが無改変で通る(後方互換)。新設キー未指定の旧 config.json でも
   動作する。インストール済みプロジェクトの既存 config を壊さない(install.py は既存
   config.json を上書きしない仕様の維持)。
@@ -177,7 +177,7 @@ T45 受入完了。以降のタスク発行文に T45 で規約化した RESULT 
      テスト内コメントで 1 行説明)、
      (f) TaskCreated/TaskCompleted 差分の Open tasks 反映。
   5. docs(ARCHITECTURE.md のリカバリ経路図・README のパケット例)を新形式に更新。
-  6. CHANGELOG `2.0.0+dotfiles.3` 節に追記。MANIFEST 再生成。
+  6. CHANGELOG `2.0.0+dotfiles.4` 節に追記。MANIFEST 再生成。
 - 検証条件:
   - パケット総文字数が予算内(境界値テストで固定)。
   - redaction 済みデータのみがパケットに載る(既存の redaction 経路を迂回しない —
@@ -275,7 +275,7 @@ T48 受入完了。レシーバと notify 設定が chezmoi ソースに存在�
      probe 節に 2 行で明記)。
   4. ユニットテスト: 4 型それぞれ (a) 正常生成、(b) 対象 0 件時スキップ、(c) JSON スキーマ
      (キー名・型)固定、(d) 他セッションのデータが ground truth に混入しない。
-  5. CHANGELOG 追記(`2.0.0+dotfiles.3` 節)、MANIFEST 再生成、`--help` 文言追加。
+  5. CHANGELOG 追記(`2.0.0+dotfiles.4` 節)、MANIFEST 再生成、`--help` 文言追加。
 - 検証条件: probe 実行が DB を一切書き換えない(read-only。実行前後で
   `sqlite3 ... "PRAGMA data_version"` 相当またはファイル mtime/内容ハッシュ不変)。
   T47 のセクション導出と probe の ground truth が同一クエリ由来で一致する。
@@ -399,6 +399,26 @@ T51 の完了条件に同じ。
 | 11  | ライブ E2E                      | E2E-1(リカバリ注入)/ E2E-2(notify ingest, fresh+restore)/ E2E-3(AGMSG 契約一巡)                                                                                    | 3 件とも合格記録が `.orchestration/validation/` に存在 |
 | 12  | レビュー                        | `make require-crit-review`(crit JSON 証跡+receipt)                                                                                                                 | グリーン                                               |
 | 13  | 証跡                            | `.orchestration` zero-tail(untracked なし)+ACCEPTANCE 全件                                                                                                         | `git status --porcelain` で確認                        |
+
+## 実装中の裁定記録(AGMSG-TASK-UPDATE の写し)
+
+- T45: SKILL.md の kind 別名は vendor README への汎用参照とし列挙しない(重複ドリフト防止)。
+- T46: CHANGELOG は新設 `2.0.0+dotfiles.4` 節(`.3` は PR #119 使用済み。本書の版数表記は
+  修正済み)。recovery config 文書は docs/OPERATIONS.md に新設。MANIFEST は既存ファイルの
+  パス・形式・順序から導出して再生成し、`shasum -c`+`make validate` で証明。
+- T47: Recent activity(第 4 節)は既存の recent prompts → recent events → recent files の
+  3 レンダリングを内容無変更でこの順に収容(Goal の初回プロンプトとの重複は許容)。既存の
+  Verification-commands ブロックがある場合は Header 末尾に無変更で維持。
+  `files_budget_chars` は第 3 節 File modifications のみに適用。Compact summary は最後尾。
+- T48: discovery で正当ブロック(リスク節の想定どおり)。現行 `ingest` は
+  `drain_spool` がスプールファイル名を `ingested_from` に刻み、CLI に source 指定手段が
+  ない。前提タスク T48b(`--ingested-from` トークンを spool エンベロープ経由で
+  `insert_event` へ伝搬、無指定時は現行挙動をバイト同一維持、不正トークンは quarantine)
+  を発行し、T48b 受入後に T48 を元のタスクファイルのまま再開する。
+- T48(再開後): `make format` の repo-wide 失敗は main 既存の
+  `home/dot_agents/skills/agmsg/scripts/executable_actas-claim.sh` 1 ハンクのドリフトで
+  T48 範囲外(オーケストレータが独立確認)。T48 はレシーバ限定の shfmt/bash-n クリーンで
+  合格とし、repo-wide ドリフトは T51 のオールグリーン工程で修正する。
 
 ## リスクと対処(実装時の判断固定)
 

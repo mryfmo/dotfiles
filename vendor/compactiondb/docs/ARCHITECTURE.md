@@ -61,16 +61,20 @@ sequenceDiagram
 flowchart TD
     A[SessionStart source=compact] --> B[blocking drain]
     B --> C{same session_id}
-    C --> D[latest PostCompact summary]
-    C --> E[recent prompts/events/files/failures]
-    C --> F[session memories]
+    C --> D[first prompt and recent activity]
+    C --> E[write/edit artifact trail and task difference]
+    C --> F[session decisions/open tasks/failures]
     G[project durable memories only] --> H[hierarchical projection]
-    D --> I[character budget planner]
-    E --> I
-    F --> I
-    H --> I
-    I --> J[additionalContext <= configured budget]
+    C --> I[latest PostCompact summary as reference]
+    D --> J[fixed-order section renderer]
+    E --> J
+    F --> J
+    H --> J
+    I --> J
+    J --> K[additionalContext <= configured budget]
 ```
+
+packetは Header / Goal / File modifications / Recent activity / Decisions / Open tasks / Failures / Compact summary の固定順で、ledgerから毎回決定論的に再構築します。空sectionも見出しと `(none)` を出力し、compact summaryと矛盾する場合はledger由来sectionを正とします。File modificationsは同一sessionのwrite/editだけをpath単位で集約し、最新操作順と専用文字数budgetを適用します。recovery pathからLLMや外部processは呼び出しません。
 
 raw eventは必ず同一sessionに限定します。heuristicとPostCompact由来のmemoryも既定ではsession scopeです。異なるsessionから利用できるのは、明示markerまたは手動承認でproject scopeへ昇格したdurable memoryだけです。
 
@@ -88,6 +92,8 @@ raw eventは必ず同一sessionに限定します。heuristicとPostCompact由�
 ## vendor independence
 
 Claude固有なのはhook input adapterとSessionStart outputだけです。SQLite schema、spool、memory、search、CLIは独立しており、他agentは `contextdb_cli.py ingest` と `memory add/search` を利用できます。
+
+`ingest --ingested-from <token>` は、信頼済みのlocal adapterが保存元を明示するための入力です。tokenは `^[a-z0-9][a-z0-9_-]{0,31}$` に制限され、spool envelopeからSQLiteの `ingested_from` へ渡されます。通常のhookはこのkeyを設定できず、従来どおりspool filenameを保存元に使います。
 
 ## project identity
 

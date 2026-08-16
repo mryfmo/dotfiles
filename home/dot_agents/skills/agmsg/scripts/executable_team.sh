@@ -10,8 +10,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG="$SCRIPT_DIR/../teams/$TEAM/config.json"
 
 if [ ! -f "$CONFIG" ]; then
-  echo "Team not found: $TEAM"
-  exit 1
+    echo "Team not found: $TEAM"
+    exit 1
 fi
 
 echo "Team: $TEAM"
@@ -19,15 +19,15 @@ echo ""
 
 COUNT=0
 while IFS='	' read -r name types project registrations; do
-  if [ "${registrations:-0}" -gt 1 ]; then
-    echo "  $name ($types) — $project (+$((registrations - 1)) more)"
-  else
-    echo "  $name ($types) — $project"
-  fi
-  COUNT=$((COUNT + 1))
+    if [ "${registrations:-0}" -gt 1 ]; then
+        echo "  $name ($types) — $project (+$((registrations - 1)) more)"
+    else
+        echo "  $name ($types) — $project"
+    fi
+    COUNT=$((COUNT + 1))
 done < <(sqlite3 -separator '	' :memory: \
-  ".param set :json '$(sed "s/'/''/g" "$CONFIG")'" \
-  "WITH agents AS (
+    ".param set :json '$(sed "s/'/''/g" "$CONFIG")'" \
+    "WITH agents AS (
      SELECT
        key AS name,
        CASE

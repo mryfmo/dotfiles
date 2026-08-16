@@ -51,12 +51,17 @@
     "context_items": 24
   },
   "recovery": {
-    "max_chars": 8500,
+    "max_chars": 12000,
+    "files_budget_chars": 2000,
     "recent_events": 12,
     "recent_prompts": 4,
     "recent_files": 12,
     "recent_failures": 5,
     "include_project_memories": true
+  },
+  "recall": {
+    "rho": 0.6,
+    "k": 5
   },
   "operations": {
     "error_log_retention_days": 30

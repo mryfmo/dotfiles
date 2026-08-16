@@ -1,0 +1,81 @@
+T48c validation
+Generated: 2026-08-16T09:53:27+09:00
+
+1. DEFECT REPRODUCTION
+----------------------
+Commands:
+  python3 home/dot_codex/modify_deep.config.toml < "$HOME/.codex/deep.config.toml" | rg -n '^notify|\{\{'
+  python3 home/dot_codex/modify_standard.config.toml < "$HOME/.codex/standard.config.toml" | rg -n '^notify|\{\{'
+
+Pre-fix result:
+  both outputs contained notify = ["{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify"]
+
+2. GENERATION CHECK
+-------------------
+Command:
+  uv run --with pyyaml scripts/generate-agent-configs.py
+
+Result:
+  generated agent configs updated
+
+Command:
+  uv run --with pyyaml scripts/generate-agent-configs.py --check
+
+Result:
+  generated agent configs are up to date
+
+3. LIVE PROFILE INPUT CHECK
+---------------------------
+Each current profile under "$HOME/.codex" was piped through its regenerated modify script.
+
+Results:
+  PASS deep: notify=/Users/mryfmo/.local/bin/common/contextdb-codex-notify; template_markers=0
+  PASS standard: notify=/Users/mryfmo/.local/bin/common/contextdb-codex-notify; template_markers=0
+  PASS express: notify=absent
+  PASS review: notify=absent
+
+4. REPOSITORY VALIDATION
+------------------------
+Command:
+  make validate-agent-assets
+
+Result:
+  agent asset validation ok
+
+Command:
+  make format
+
+Result:
+  exit=0
+  shfmt --indent 4 --space-redirects --diff .
+  no formatting diff output
+
+5. DIFF AND STATUS REVIEW
+-------------------------
+Command:
+  git diff --check -- scripts/generate-agent-configs.py home/dot_codex/modify_deep.config.toml home/dot_codex/modify_standard.config.toml home/dot_codex/modify_express.config.toml home/dot_codex/modify_review.config.toml
+
+Result:
+  exit=0, no output
+
+Command:
+  git diff --exit-code -- home/dot_codex/modify_express.config.toml home/dot_codex/modify_review.config.toml
+
+Result:
+  exit=0, both files byte-identical to HEAD
+
+Scoped source diff stat:
+  home/dot_codex/modify_deep.config.toml     |  8 ++++++--
+  home/dot_codex/modify_standard.config.toml |  8 ++++++--
+  scripts/generate-agent-configs.py          | 17 ++++++++++++++---
+  3 files changed, 26 insertions(+), 7 deletions(-)
+
+Scoped status before artifact creation:
+   M home/dot_agents/agent-config.yaml
+   M home/dot_codex/modify_deep.config.toml
+   M home/dot_codex/modify_standard.config.toml
+   M scripts/generate-agent-configs.py
+
+The manifest modification belongs to accepted T48 and was not changed by T48c. The full scoped source diff was inspected; T48c adds apply-time rendering on top of T48's accepted notify emission. The shared worktree contains other accepted task changes, all preserved.
+
+Note: one sandboxed uv attempt could not access the existing user cache; the identical approved command succeeded outside the workspace sandbox. No dependency was added or changed.

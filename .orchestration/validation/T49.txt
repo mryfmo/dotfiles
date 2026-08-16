@@ -1,0 +1,133 @@
+T49 validation
+Generated: 2026-08-16T09:29:18+0900
+
+1. TEST-FIRST EVIDENCE
+----------------------
+Initial targeted command:
+  PYTHONPATH=vendor/compactiondb/.claude/contextdb python3 -W error::ResourceWarning -m unittest vendor/compactiondb/tests/test_probe.py -v
+
+Initial result:
+  exit 1: ModuleNotFoundError: No module named 'contextdb.probe'
+
+After implementation, from vendor/compactiondb:
+  PYTHONPATH=.claude/contextdb python3 -W error::ResourceWarning -m unittest tests/test_probe.py -v
+
+Result:
+  7 tests passed
+  - all four populated probe types
+  - empty-source skipping
+  - JSON keys and string types
+  - cross-session isolation
+  - first PostToolUseFailure priority and general-failure fallback
+  - artifact/recovery section byte equality
+  - database SHA-256 unchanged by the CLI probe
+
+2. REQUIRED VENDOR TEST GATE
+----------------------------
+Command:
+  make -C vendor/compactiondb clean && make -C vendor/compactiondb test
+
+Result:
+  Ran 67 tests in 3.428s
+  OK
+
+3. REQUIRED RELEASE VALIDATION GATE
+-----------------------------------
+Command:
+  make -C vendor/compactiondb clean && make -C vendor/compactiondb validate
+
+Result:
+  status: pass
+  passed: 10
+  failed: 0
+  skipped: 0
+  python_syntax: AST parsed 38 Python files
+  unittest_suite: 67 tests passed with ResourceWarning promoted to error
+  installed_project_smoke: pass (2 events)
+  release_tree_clean: pass
+
+4. MANIFEST, LINT, AND WHITESPACE
+---------------------------------
+Manifest regeneration command (vendor/compactiondb cwd):
+
+  t49_manifest_tmp=$(mktemp)
+  { cut -c67- MANIFEST.sha256; printf '%s\n' './.claude/contextdb/contextdb/probe.py' './tests/test_probe.py'; } \
+    | LC_ALL=C sort -u \
+    | while IFS= read -r manifest_entry; do shasum -a 256 "$manifest_entry"; done \
+    > "$t49_manifest_tmp"
+  mv "$t49_manifest_tmp" MANIFEST.sha256
+
+Integrity command:
+  shasum -a 256 -c MANIFEST.sha256
+
+Result:
+  all 66 entries: OK
+
+Targeted lint:
+  /opt/homebrew/bin/ruff check .claude/contextdb/contextdb/probe.py tests/test_probe.py
+
+Result:
+  All checks passed!
+
+Syntax/whitespace:
+  python3 -m py_compile .claude/contextdb/contextdb/cli.py .claude/contextdb/contextdb/probe.py tests/test_probe.py
+  git diff --check -- <all T49 source/doc/manifest paths>
+
+Result:
+  exit 0, no output
+
+5. FULL POPULATED FIXTURE OUTPUT
+--------------------------------
+{
+  "probes": [
+    {
+      "type": "recall",
+      "question": "What was the first error in this session?",
+      "ground_truth": "Bash failed: make | compile failed"
+    },
+    {
+      "type": "artifact",
+      "question": "Which files were modified in this session?",
+      "ground_truth": "src/a.py (edit, 2x)\nsrc/b.py (edit, 1x)"
+    },
+    {
+      "type": "decision",
+      "question": "What decisions were made?",
+      "ground_truth": "[session/decision] Use SQLite for local state.\n[project/decision] Keep the ledger append-only."
+    },
+    {
+      "type": "continuation",
+      "question": "What remains to be done?",
+      "ground_truth": "[session/open_task] Add the recovery smoke test.\nDocument the probe CLI (task-open)"
+    }
+  ]
+}
+
+The artifact string exactly matches the T47 File modifications section body for the same fixture.
+
+6. READ-ONLY AND ISOLATION
+--------------------------
+- The probe branch runs before the shared `drain_spool` call.
+- It opens `ContextStore.connect(initialize=False)` and executes only SELECT queries.
+- No INSERT, UPDATE, DELETE, LLM, embedding, network, or grading call exists in probe.py.
+- `test_probe_cli_does_not_change_database_content` hashes context.db before and after CLI execution and requires equality.
+- Other-session failure, file, session decision, open-task memory, and task-event sentinels are absent from all ground truth.
+
+7. GIT SCOPE
+------------
+T49-attributable paths:
+  vendor/compactiondb/.claude/contextdb/contextdb/cli.py
+  vendor/compactiondb/.claude/contextdb/contextdb/probe.py
+  vendor/compactiondb/tests/test_probe.py
+  vendor/compactiondb/README.md
+  vendor/compactiondb/docs/OPERATIONS.md
+  vendor/compactiondb/CHANGELOG.md
+  vendor/compactiondb/MANIFEST.sha256
+  .orchestration/reports/T49.md
+  .orchestration/validation/T49.txt
+  .orchestration/sandboxes/T49.md
+  .orchestration/learning/T49.md
+  .orchestration/autoskill/runs/T49.md
+
+All are permitted by T49. Repository-wide `git status --porcelain` and `git diff --stat` also show accepted T46/T47/T48b, T48 wiring, orchestration, and pre-existing mise changes in the shared worktree; T49 did not modify or revert those changes.
+

@@ -6,5 +6,5 @@
 - Delegate read-heavy exploration (searches, file location, log digests) to the `express-explorer` subagent instead of spending the main model on it.
 - Run reviews in a separate context from the implementer on the `review` profile: one capability tier above the worker at reduced effort.
 - Run security audits of pending changes (`/security-review`, permgate policy, redaction or secret handling, and trust-boundary work) with a Codex worker on the `security` profile, using identity `codex-security-<project-suffix>`; acceptance remains orchestrator-side.
-- Escalate to `deep` only for cross-cutting design, unknown failures, or security-sensitive work, and return to `standard` afterward. Model strength never justifies wider permissions, and a cheap model never justifies auto-approving risky actions.
+- Escalate to `deep` only for cross-cutting design or unknown failures, and return to `standard` afterward. Model strength never justifies wider permissions, and a cheap model never justifies auto-approving risky actions.
 - permgate evaluates PermissionRequest hooks deterministic-first and fails closed to the native prompt. Claude and Codex requests use their own authenticated official CLI with only normalized action metadata; both providers remain shadow-only until reviewed outcomes and successful p50/p95 benchmarks justify enabling one provider.

@@ -184,8 +184,8 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             self.module.same_modified = lambda source, *args, **kwargs: (
                 modified_sources.append(source) or True
             )
-            self.module.compare_shared_skills = lambda: []
-            self.module.compare_claude_skills = lambda: []
+            self.module.compare_shared_skills = list
+            self.module.compare_claude_skills = list
             self.module.check_executable_hook = lambda *args, **kwargs: []
 
             self.module.check()
@@ -224,7 +224,9 @@ class CheckAgentRuntimeTest(unittest.TestCase):
                 "install_stale_skill": {
                     "paths": [str(skills / "stale-skill/payload")]
                 },
-                "install_stale_root": {"paths": [str(agents / "stale-root")]},
+                "ensure_mise_npm_agent_cli:claude": {
+                    "paths": [str(agents / "stale-root")]
+                },
             },
         }
         (agents / ".installed-manifest.json").write_text(json.dumps(manifest))
@@ -234,7 +236,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertEqual(
             [
                 f"WARN: orphaned agent asset: {agents / 'orphan-root'}; manual review required",
-                f"WARN: stale agent asset: {agents / 'stale-root'}; suggested: remove-agent-asset install_stale_root",
+                f"WARN: stale agent asset: {agents / 'stale-root'}; suggested: remove-agent-asset ensure_mise_npm_agent_cli:claude",
                 f"WARN: orphaned agent asset: {skills / 'orphan-skill'}; manual review required",
                 f"WARN: stale agent asset: {skills / 'stale-skill'}; suggested: remove-agent-asset install_stale_skill",
             ],
@@ -483,20 +485,15 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertTrue(result)
         self.assertEqual("selected\n", log.read_text())
 
-    def test_mise_step_identity_comes_only_from_recorded_command(self) -> None:
+    def test_parameterized_mise_step_uses_key_identity(self) -> None:
         missing = self.target_root / "missing-cli"
         claude = self.module.AssetFinding(
-            "ensure_mise_npm_agent_cli",
+            "ensure_mise_npm_agent_cli:claude",
             (missing,),
-            {
-                "commands": [
-                    "MISE_NPM_PACKAGE_MANAGER=npm npm_config_min_release_age=0 "
-                    "mise install --force --locked npm:@anthropic-ai/claude-code"
-                ]
-            },
+            {"commands": []},
         )
         ambiguous = self.module.AssetFinding(
-            "ensure_mise_npm_agent_cli",
+            "ensure_mise_npm_agent_cli:unknown",
             (missing,),
             {
                 "commands": [
@@ -513,6 +510,73 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             action.command[-3:],
         )
         self.assertIsNone(self.module.asset_repair_action(ambiguous))
+
+    def test_installed_manifest_integrity_reasons(self) -> None:
+        missing = self.temp_dir / "missing-manifest.json"
+        self.assertIsNone(self.module.installed_manifest_error(missing))
+
+        cases = {
+            "root": ([], "root must be an object"),
+            "version": ({"version": 2, "steps": {}}, "version must be 1"),
+            "steps": ({"version": 1, "steps": []}, "steps must be an object"),
+        }
+        for name, (manifest, expected) in cases.items():
+            with self.subTest(name=name):
+                manifest_path = self.temp_dir / f"{name}-manifest.json"
+                manifest_path.write_text(json.dumps(manifest))
+                self.assertEqual(
+                    expected, self.module.installed_manifest_error(manifest_path)
+                )
+
+        unreadable = self.temp_dir / "directory-manifest.json"
+        unreadable.mkdir()
+        self.assertRegex(
+            self.module.installed_manifest_error(unreadable), r"^unreadable: "
+        )
+
+    def test_invalid_manifest_is_one_error_and_skips_dependent_checks(self) -> None:
+        agents = self.target_root / ".agents"
+        agents.mkdir()
+        manifest_path = agents / ".installed-manifest.json"
+        manifest_path.write_text("{truncated")
+        original_home = self.module.HOME
+        original_same_text = self.module.same_text
+        original_same_modified = self.module.same_modified
+        original_shared = self.module.compare_shared_skills
+        original_claude = self.module.compare_claude_skills
+        original_hook = self.module.check_executable_hook
+        original_findings = self.module.manifest_asset_findings
+        original_orphans = self.module.orphaned_asset_warnings
+        try:
+            self.module.HOME = self.target_root
+            self.module.same_text = lambda *args, **kwargs: True
+            self.module.same_modified = lambda *args, **kwargs: True
+            self.module.compare_shared_skills = list
+            self.module.compare_claude_skills = list
+            self.module.check_executable_hook = lambda *args, **kwargs: []
+            self.module.manifest_asset_findings = lambda *args, **kwargs: self.fail(
+                "manifest findings must be skipped"
+            )
+            self.module.orphaned_asset_warnings = lambda *args, **kwargs: self.fail(
+                "manifest orphan checks must be skipped"
+            )
+
+            failures = self.module.check()
+        finally:
+            self.module.HOME = original_home
+            self.module.same_text = original_same_text
+            self.module.same_modified = original_same_modified
+            self.module.compare_shared_skills = original_shared
+            self.module.compare_claude_skills = original_claude
+            self.module.check_executable_hook = original_hook
+            self.module.manifest_asset_findings = original_findings
+            self.module.orphaned_asset_warnings = original_orphans
+
+        self.assertEqual(1, len(failures))
+        self.assertRegex(
+            failures[0],
+            rf"^installed manifest unreadable or invalid: {manifest_path} \(invalid JSON:",
+        )
 
     def test_repair_mode_converges_once_and_reports_each_action(self) -> None:
         target = self.target_root / "missing.json"

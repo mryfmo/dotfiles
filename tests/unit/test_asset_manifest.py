@@ -156,10 +156,66 @@ class AssetManifestTest(unittest.TestCase):
             data["steps"]["ensure_herdr_integrations"]["commands"],
         )
 
+    def test_same_run_mise_repairs_preserve_both_identity_steps(self) -> None:
+        bin_dir = self.temp_dir / "bin"
+        bin_dir.mkdir()
+        jq = shutil.which("jq")
+        self.assertIsNotNone(jq, "jq is required for asset manifest tests")
+        (bin_dir / "jq").symlink_to(jq)
+        state = self.temp_dir / "state"
+        state.mkdir()
+        for cli in ("claude", "codex"):
+            self._executable(
+                bin_dir / cli,
+                f"""
+                if [[ -f "$TEST_STATE/{cli}" ]]; then
+                    printf '{cli} 1.0.0\n'
+                    exit 0
+                fi
+                exit 1
+                """,
+            )
+        self._executable(
+            bin_dir / "mise",
+            """
+            case "$1" in
+            install)
+                case "$*" in
+                *claude-code) touch "$TEST_STATE/claude" ;;
+                *openai/codex) touch "$TEST_STATE/codex" ;;
+                esac
+                ;;
+            where)
+                printf '%s/install/%s\n' "$HOME" "$2"
+                ;;
+            esac
+            """,
+        )
+
+        result = self.run_bash(
+            f"""
+            source {UPDATER}
+            ensure_mise_npm_agent_cli claude npm:@anthropic-ai/claude-code
+            ensure_mise_npm_agent_cli codex npm:@openai/codex
+            """,
+            env={
+                "PATH": f"{bin_dir}:/usr/bin:/bin",
+                "TEST_STATE": str(state),
+            },
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual(
+            {
+                "ensure_mise_npm_agent_cli:claude",
+                "ensure_mise_npm_agent_cli:codex",
+            },
+            set(self.manifest()["steps"]),
+        )
+
     def test_updater_has_one_recording_call_for_each_install_step(self) -> None:
         updater = UPDATER.read_text()
         steps = (
-            "ensure_mise_npm_agent_cli",
             "ensure_herdr_integrations",
             "update_claude_superpowers",
             "update_claude_crit",
@@ -172,9 +228,32 @@ class AssetManifestTest(unittest.TestCase):
             "update_compactiondb",
         )
 
-        self.assertEqual(11, updater.count("manifest_record "))
+        self.assertEqual(11, updater.count('manifest_record "'))
+        self.assertEqual(
+            1,
+            updater.count('manifest_record "ensure_mise_npm_agent_cli:${cli}"'),
+        )
         for step in steps:
             self.assertEqual(1, updater.count(f'manifest_record "{step}"'), step)
+
+    def test_chezmoi_rendered_updater_uses_inlined_manifest_library(self) -> None:
+        rendered = self.temp_dir / "06-install-agent-assets.sh"
+        rendered.write_text(LIBRARY.read_text() + UPDATER.read_text())
+
+        syntax = subprocess.run(
+            ["bash", "-n", str(rendered)],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(0, syntax.returncode, syntax.stderr)
+
+        result = self.run_bash(
+            f'source {rendered}; manifest_record rendered plugin 1 "$HOME/rendered" -- "render install"'
+        )
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("1", self.manifest()["steps"]["rendered"]["source_version"])
 
     @staticmethod
     def _executable(path: Path, body: str) -> None:

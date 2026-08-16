@@ -95,6 +95,7 @@ function _manifest_record() {
         --argjson commands "${commands_json}"
         --arg source_version "${source_version}"
     )
+    # shellcheck disable=SC2016 # jq expands these jq variables; the shell must not expand them.
     local jq_filter='
         if type != "object" or ((.steps // {}) | type) != "object" then error("invalid manifest") else . end
         | .version = 1

@@ -60,6 +60,10 @@ ASSET_STEP_FUNCTIONS = {
     "update_codex_understand_anything",
     "update_compactiondb",
 }
+MISE_STEP_IDENTITIES = {
+    "claude": "npm:@anthropic-ai/claude-code",
+    "codex": "npm:@openai/codex",
+}
 UPDATER_SOURCE_COMMAND = (
     'source "$1"; export PATH="$HOME/.local/share/mise/shims:$PATH"; shift; "$@"'
 )
@@ -280,6 +284,24 @@ def paths_overlap(left: Path, right: Path) -> bool:
     return left == right or left in right.parents or right in left.parents
 
 
+def installed_manifest_error(manifest_path: Path) -> str | None:
+    if not manifest_path.exists() and not manifest_path.is_symlink():
+        return None
+    try:
+        manifest = json.loads(manifest_path.read_text())
+    except OSError as error:
+        return f"unreadable: {error}"
+    except json.JSONDecodeError as error:
+        return f"invalid JSON: {error.msg}"
+    if not isinstance(manifest, dict):
+        return "root must be an object"
+    if type(manifest.get("version")) is not int or manifest["version"] != 1:
+        return "version must be 1"
+    if not isinstance(manifest.get("steps"), dict):
+        return "steps must be an object"
+    return None
+
+
 def manifest_path_owners(manifest_path: Path) -> dict[str, list[Path]]:
     try:
         manifest = json.loads(manifest_path.read_text())
@@ -332,35 +354,20 @@ def asset_failure_message(finding: AssetFinding) -> str:
     )
 
 
-def mise_step_arguments(entry: dict[str, object]) -> tuple[str, str] | None:
-    commands = entry.get("commands")
-    if not isinstance(commands, list):
-        return None
-    identities = {
-        ("claude", "npm:@anthropic-ai/claude-code")
-        for command in commands
-        if isinstance(command, str)
-        and command.endswith("mise install --force --locked npm:@anthropic-ai/claude-code")
-    } | {
-        ("codex", "npm:@openai/codex")
-        for command in commands
-        if isinstance(command, str)
-        and command.endswith("mise install --force --locked npm:@openai/codex")
-    }
-    return next(iter(identities)) if len(identities) == 1 else None
-
-
 def asset_repair_action(
     finding: AssetFinding, updater: Path | None = None
 ) -> RepairAction | None:
-    if finding.step not in ASSET_STEP_FUNCTIONS:
+    step, separator, identity = finding.step.partition(":")
+    if step not in ASSET_STEP_FUNCTIONS:
         return None
     arguments: tuple[str, ...] = ()
-    if finding.step == "ensure_mise_npm_agent_cli":
-        identity = mise_step_arguments(finding.entry)
-        if identity is None:
+    if step == "ensure_mise_npm_agent_cli":
+        mise_tool = MISE_STEP_IDENTITIES.get(identity) if separator else None
+        if mise_tool is None:
             return None
-        arguments = identity
+        arguments = (identity, mise_tool)
+    elif separator:
+        return None
     updater = ROOT / "scripts/update-agent-assets.sh" if updater is None else updater
     return RepairAction(
         "asset step missing",
@@ -371,7 +378,7 @@ def asset_repair_action(
             UPDATER_SOURCE_COMMAND,
             "bash",
             str(updater),
-            finding.step,
+            step,
             *arguments,
         ),
     )
@@ -602,10 +609,17 @@ def check() -> list[str]:
             "Claude format-edited-files hook",
         )
     )
-    failures.extend(
-        asset_failure_message(finding) for finding in manifest_asset_findings()
-    )
-    failures.extend(orphaned_asset_warnings())
+    manifest_path = HOME / ".agents/.installed-manifest.json"
+    manifest_error = installed_manifest_error(manifest_path)
+    if manifest_error is not None:
+        failures.append(
+            f"installed manifest unreadable or invalid: {manifest_path} ({manifest_error})"
+        )
+    else:
+        failures.extend(
+            asset_failure_message(finding) for finding in manifest_asset_findings()
+        )
+        failures.extend(orphaned_asset_warnings())
     return failures
 
 

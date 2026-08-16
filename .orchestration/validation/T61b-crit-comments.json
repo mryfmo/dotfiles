@@ -1,0 +1,23 @@
+[
+  {
+    "scope": "review",
+    "id": "r_b430f5",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "T61b review scope approved: verified per-identity mise manifest keys prevent sibling overwrite, repair dispatch uses the key suffix and fixed identity mapping, full-key stale/removal behavior remains generic, and existing invalid manifests produce one doctor ERROR while skipping dependent checks and are rejected by removal. Targeted fake-HOME checks, 304 unit tests, shell static checks, formatting, and agent asset validation pass; no unresolved finding remains.",
+    "author": "Codex",
+    "created_at": "2026-08-16T06:36:22Z",
+    "updated_at": "2026-08-16T06:36:28Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_e81d70",
+        "body": "Review complete after root-cause and adversarial validation; no change requested.",
+        "author": "Codex",
+        "created_at": "2026-08-16T06:36:28Z",
+        "review_round": 1
+      }
+    ]
+  }
+]

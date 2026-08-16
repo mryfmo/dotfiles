@@ -114,6 +114,50 @@ class RemoveAgentAssetTest(unittest.TestCase):
         self.assertEqual(other, self.manifest()["steps"]["other"])
         self.assertEqual(0o600, stat.S_IMODE(self.manifest_path.stat().st_mode))
 
+    def test_parameterized_step_removal_preserves_sibling_identity(self) -> None:
+        claude = self.home / ".local/share/mise/installs/claude"
+        codex = self.home / ".local/share/mise/installs/codex"
+        claude.mkdir(parents=True)
+        codex.mkdir(parents=True)
+        codex_entry = self.step("installer", [codex])
+        self.write_manifest(
+            {
+                "ensure_mise_npm_agent_cli:claude": self.step(
+                    "installer", [claude]
+                ),
+                "ensure_mise_npm_agent_cli:codex": codex_entry,
+            }
+        )
+
+        result = self.run_remover("ensure_mise_npm_agent_cli:claude", "--yes")
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertFalse(claude.exists())
+        self.assertTrue(codex.is_dir())
+        self.assertEqual(
+            {"ensure_mise_npm_agent_cli:codex"}, set(self.manifest()["steps"])
+        )
+        self.assertEqual(
+            codex_entry,
+            self.manifest()["steps"]["ensure_mise_npm_agent_cli:codex"],
+        )
+
+    def test_invalid_manifest_is_rejected(self) -> None:
+        cases = {
+            "truncated": "{",
+            "wrong-version": json.dumps({"version": 2, "steps": {}}),
+            "wrong-steps": json.dumps({"version": 1, "steps": []}),
+        }
+        for name, content in cases.items():
+            with self.subTest(name=name):
+                self.manifest_path.parent.mkdir(parents=True, exist_ok=True)
+                self.manifest_path.write_text(content)
+
+                result = self.run_remover("ensure_mise_npm_agent_cli:claude")
+
+                self.assertEqual(1, result.returncode)
+                self.assertIn("invalid installed asset manifest", result.stderr)
+
     def test_tampered_manifest_outside_safe_roots_is_refused(self) -> None:
         outside = self.temp_dir / "outside"
         outside.mkdir()

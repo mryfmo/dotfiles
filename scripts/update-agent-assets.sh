@@ -10,8 +10,12 @@
 
 set -Eeuo pipefail
 
-readonly AGENT_ASSET_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${AGENT_ASSET_SCRIPT_DIR}/lib/asset-manifest.sh"
+AGENT_ASSET_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly AGENT_ASSET_SCRIPT_DIR
+if ! declare -F manifest_record > /dev/null 2>&1; then
+    # shellcheck source=scripts/lib/asset-manifest.sh
+    source "${AGENT_ASSET_SCRIPT_DIR}/lib/asset-manifest.sh"
+fi
 
 readonly CLAUDE_SUPERPOWERS_PLUGIN="superpowers@claude-plugins-official"
 readonly CLAUDE_SUPERPOWERS_MARKETPLACE="anthropics/claude-plugins-official"
@@ -84,7 +88,7 @@ function ensure_mise_npm_agent_cli() {
         mise install --force --locked "${mise_tool}"
     hash -r
     "${cli}" --version > /dev/null
-    manifest_record "ensure_mise_npm_agent_cli" installer "$("${cli}" --version 2> /dev/null || printf 'unknown\n')" "$(mise where "${mise_tool}" 2> /dev/null || command -v "${cli}")" -- "MISE_NPM_PACKAGE_MANAGER=npm npm_config_min_release_age=0 mise install --force --locked ${mise_tool}"
+    manifest_record "ensure_mise_npm_agent_cli:${cli}" installer "$("${cli}" --version 2> /dev/null || printf 'unknown\n')" "$(mise where "${mise_tool}" 2> /dev/null || command -v "${cli}")" -- "MISE_NPM_PACKAGE_MANAGER=npm npm_config_min_release_age=0 mise install --force --locked ${mise_tool}"
 }
 
 #

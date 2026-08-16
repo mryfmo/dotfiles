@@ -1137,6 +1137,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../executable_contextdb-codex-notify/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_contextdb-codex-notify
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../executable_dev/" class="md-nav__link">
         
   
@@ -3376,7 +3404,7 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s@%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">USER</span><span class="k">:-</span><span class="nv">user</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>hostname<span class="w"> </span>-s<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span>hostname<span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s@%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">USER</span><span class="k">:-</span><span class="nv">user</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>hostname<span class="w"> </span>-s<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span>hostname<span class="k">)</span><span class="s2">&quot;</span>
 <span class="o">}</span>
 
 <span class="c1"># @description Create the default SSH key through ssh-keygen when it is missing.</span>

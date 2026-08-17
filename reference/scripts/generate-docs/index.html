@@ -3545,17 +3545,17 @@
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">DOCS_DIR</span><span class="o">=</span><span class="s2">&quot;docs&quot;</span>
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">REFERENCE_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DOCS_DIR</span><span class="si">}</span><span class="s2">/reference&quot;</span>
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">LANDING_PAGE</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DOCS_DIR</span><span class="si">}</span><span class="s2">/index.md&quot;</span>
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">CATALOG_PAGE</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DOCS_DIR</span><span class="si">}</span><span class="s2">/catalog.md&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">DOCS_DIR</span><span class="o">=</span><span class="s2">"docs"</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">REFERENCE_DIR</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">DOCS_DIR</span><span class="si">}</span><span class="s2">/reference"</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">LANDING_PAGE</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">DOCS_DIR</span><span class="si">}</span><span class="s2">/index.md"</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">CATALOG_PAGE</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">DOCS_DIR</span><span class="si">}</span><span class="s2">/catalog.md"</span>
 <span class="c1"># CATALOG_HREF is emitted from docs/index.md. Use the rendered directory path</span>
 <span class="c1"># because MkDocs does not rewrite links inside raw HTML attributes.</span>
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">CATALOG_HREF</span><span class="o">=</span><span class="s2">&quot;catalog/&quot;</span>
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">TEMPLATE_MAPPING_PAGE</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">REFERENCE_DIR</span><span class="si">}</span><span class="s2">/chezmoi-templates.md&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">CATALOG_HREF</span><span class="o">=</span><span class="s2">"catalog/"</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">TEMPLATE_MAPPING_PAGE</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">REFERENCE_DIR</span><span class="si">}</span><span class="s2">/chezmoi-templates.md"</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">LANDING_PREVIEW_LIMIT</span><span class="o">=</span><span class="m">6</span>
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">SHDOC_PLUGIN_NAME</span><span class="o">=</span><span class="s2">&quot;shdoc&quot;</span>
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">SHDOC_PLUGIN_REPOSITORY</span><span class="o">=</span><span class="s2">&quot;https://github.com/mryfmo/mise-shdoc.git&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">SHDOC_PLUGIN_NAME</span><span class="o">=</span><span class="s2">"shdoc"</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">SHDOC_PLUGIN_REPOSITORY</span><span class="o">=</span><span class="s2">"https://github.com/mryfmo/mise-shdoc.git"</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Regenerate every public docs page under `docs/`.</span>
@@ -3574,23 +3574,23 @@
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>ensure_shdoc_plugin_installed<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>mise<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;info: mise is unavailable; generated docs will use fallback rendering.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'info: mise is unavailable; generated docs will use fallback rendering.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span>
 <span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span>mise<span class="w"> </span>trust<span class="w"> </span>--yes
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>mise<span class="w"> </span>plugins<span class="w"> </span>ls<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-qx<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SHDOC_PLUGIN_NAME</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>mise<span class="w"> </span>plugins<span class="w"> </span>ls<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-qx<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">SHDOC_PLUGIN_NAME</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="k">return</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CI</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;true&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;info: optional shdoc plugin is not preinstalled in CI; generated docs will use fallback rendering.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CI</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"true"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'info: optional shdoc plugin is not preinstalled in CI; generated docs will use fallback rendering.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>mise<span class="w"> </span>plugins<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SHDOC_PLUGIN_NAME</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SHDOC_PLUGIN_REPOSITORY</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;info: optional shdoc plugin is unavailable; generated docs will use fallback rendering.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>mise<span class="w"> </span>plugins<span class="w"> </span>install<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">SHDOC_PLUGIN_NAME</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">SHDOC_PLUGIN_REPOSITORY</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'info: optional shdoc plugin is unavailable; generated docs will use fallback rendering.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
@@ -3598,9 +3598,9 @@
 <span class="c1"># @description Remove stale generated docs before a new generation pass.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>clean_generated_docs<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>rm<span class="w"> </span>-rf<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">REFERENCE_DIR</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">    </span>rm<span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">LANDING_PAGE</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CATALOG_PAGE</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">REFERENCE_DIR</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span>rm<span class="w"> </span>-rf<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">REFERENCE_DIR</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span>rm<span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">LANDING_PAGE</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CATALOG_PAGE</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">REFERENCE_DIR</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3609,34 +3609,34 @@
 <span class="k">function</span><span class="w"> </span>collect_source_files<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>git<span class="w"> </span>rev-parse<span class="w"> </span>--is-inside-work-tree<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span>git<span class="w"> </span>ls-files<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
-<span class="w">            </span><span class="s2">&quot;:(glob)install/**/*.sh&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">            </span><span class="s2">&quot;:(glob)scripts/**/*.sh&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">            </span><span class="s2">&quot;:(glob)home/dot_local/bin/**&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">            </span><span class="s2">&quot;:(glob)home/dot_claude/hooks/**&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">            </span><span class="s2">&quot;:(glob)home/dot_config/alias/*.sh&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>source_path<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">            </span><span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">            </span><span class="s2">":(glob)install/**/*.sh"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">            </span><span class="s2">":(glob)scripts/**/*.sh"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">            </span><span class="s2">":(glob)home/dot_local/bin/**"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">            </span><span class="s2">":(glob)home/dot_claude/hooks/**"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">            </span><span class="s2">":(glob)home/dot_config/alias/*.sh"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>source_path<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">            </span><span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">done</span>
 <span class="w">        </span><span class="k">return</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">&quot;install&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>find<span class="w"> </span><span class="s2">&quot;install&quot;</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s2">&quot;*.sh&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"install"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>find<span class="w"> </span><span class="s2">"install"</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s2">"*.sh"</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">&quot;scripts&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>find<span class="w"> </span><span class="s2">&quot;scripts&quot;</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s2">&quot;*.sh&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"scripts"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>find<span class="w"> </span><span class="s2">"scripts"</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s2">"*.sh"</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">&quot;home/dot_local/bin&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>find<span class="w"> </span><span class="s2">&quot;home/dot_local/bin&quot;</span><span class="w"> </span>-type<span class="w"> </span>f
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"home/dot_local/bin"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>find<span class="w"> </span><span class="s2">"home/dot_local/bin"</span><span class="w"> </span>-type<span class="w"> </span>f
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">&quot;home/dot_claude/hooks&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>find<span class="w"> </span><span class="s2">&quot;home/dot_claude/hooks&quot;</span><span class="w"> </span>-type<span class="w"> </span>f
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"home/dot_claude/hooks"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>find<span class="w"> </span><span class="s2">"home/dot_claude/hooks"</span><span class="w"> </span>-type<span class="w"> </span>f
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">&quot;home/dot_config/alias&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>find<span class="w"> </span><span class="s2">&quot;home/dot_config/alias&quot;</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s2">&quot;*.sh&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"home/dot_config/alias"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>find<span class="w"> </span><span class="s2">"home/dot_config/alias"</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s2">"*.sh"</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
@@ -3645,12 +3645,12 @@
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>collect_template_files<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>git<span class="w"> </span>rev-parse<span class="w"> </span>--is-inside-work-tree<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>git<span class="w"> </span>ls-files<span class="w"> </span>--<span class="w"> </span><span class="s2">&quot;:(glob)home/.chezmoiscripts/**/*.tmpl&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">LC_ALL</span><span class="o">=</span>C<span class="w"> </span>sort
+<span class="w">        </span>git<span class="w"> </span>ls-files<span class="w"> </span>--<span class="w"> </span><span class="s2">":(glob)home/.chezmoiscripts/**/*.tmpl"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">LC_ALL</span><span class="o">=</span>C<span class="w"> </span>sort
 <span class="w">        </span><span class="k">return</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">&quot;home/.chezmoiscripts&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>find<span class="w"> </span><span class="s2">&quot;home/.chezmoiscripts&quot;</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s2">&quot;*.tmpl&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">LC_ALL</span><span class="o">=</span>C<span class="w"> </span>sort
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"home/.chezmoiscripts"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>find<span class="w"> </span><span class="s2">"home/.chezmoiscripts"</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s2">"*.tmpl"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">LC_ALL</span><span class="o">=</span>C<span class="w"> </span>sort
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
@@ -3659,16 +3659,16 @@
 <span class="c1"># @arg $1 path Source file path relative to the repository root.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>output_path_for_source<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">output_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">REFERENCE_DIR</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">output_path</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">REFERENCE_DIR</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">output_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>*.sh<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nv">output_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">output_path</span><span class="p">%.sh</span><span class="si">}</span><span class="s2">.md&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">output_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>*.sh<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">output_path</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">output_path</span><span class="p">%.sh</span><span class="si">}</span><span class="s2">.md"</span>
 <span class="w">    </span><span class="k">else</span>
-<span class="w">        </span><span class="nv">output_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">output_path</span><span class="si">}</span><span class="s2">.md&quot;</span>
+<span class="w">        </span><span class="nv">output_path</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">output_path</span><span class="si">}</span><span class="s2">.md"</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;%s\n&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">output_path</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"%s\n"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">output_path</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3676,26 +3676,26 @@
 <span class="c1"># @arg $1 path Source file path relative to the repository root.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>source_group_for_path<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 
-<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
 <span class="w">    </span>install/*<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;install\n&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"install\n"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>scripts/*<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;scripts\n&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"scripts\n"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>home/dot_local/bin/*<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;commands\n&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"commands\n"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>home/dot_claude/hooks/*<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;hooks\n&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"hooks\n"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>home/dot_config/alias/*<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;aliases\n&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"aliases\n"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>*<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;other\n&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"other\n"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span><span class="k">esac</span>
 <span class="o">}</span>
@@ -3707,26 +3707,26 @@
 <span class="k">function</span><span class="w"> </span>source_category_for_path<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>group
 
-<span class="w">    </span><span class="nv">group</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>source_group_for_path<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">group</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>source_group_for_path<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 
-<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">group</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">group</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
 <span class="w">    </span>install<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;install script\n&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"install script\n"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>scripts<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;repository script\n&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"repository script\n"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>commands<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;shell executable\n&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"shell executable\n"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>hooks<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;Claude hook\n&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"Claude hook\n"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>aliases<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;shell aliases\n&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"shell aliases\n"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>*<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;shell source\n&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"shell source\n"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span><span class="k">esac</span>
 <span class="o">}</span>
@@ -3736,26 +3736,26 @@
 <span class="c1"># @arg $1 string Stable group slug.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>source_group_title<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">group</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">group</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 
-<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">group</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">group</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
 <span class="w">    </span>install<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;Install Scripts\n&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"Install Scripts\n"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>scripts<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;Repository Scripts\n&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"Repository Scripts\n"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>commands<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;Local Commands\n&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"Local Commands\n"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>hooks<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;Claude Hooks\n&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"Claude Hooks\n"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>aliases<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;Alias Bundles\n&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"Alias Bundles\n"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>*<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;Other Sources\n&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"Other Sources\n"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span><span class="k">esac</span>
 <span class="o">}</span>
@@ -3766,26 +3766,26 @@
 <span class="c1"># shellcheck disable=SC2016 # Markdown backticks are intentional literal output in this renderer.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>source_group_description<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">group</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">group</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 
-<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">group</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">group</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
 <span class="w">    </span>install<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Bootstrap and application setup flows stored under `install/**`.\n&#39;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Bootstrap and application setup flows stored under `install/**`.\n'</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>scripts<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Repository maintenance and verification helpers under `scripts/**`.\n&#39;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Repository maintenance and verification helpers under `scripts/**`.\n'</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>commands<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Executable helpers published from `home/dot_local/bin/**`.\n&#39;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Executable helpers published from `home/dot_local/bin/**`.\n'</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>hooks<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;Claude Code hook scripts that enforce local automation policies.\n&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"Claude Code hook scripts that enforce local automation policies.\n"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>aliases<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;Shell alias collections for common, client, and server profiles.\n&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"Shell alias collections for common, client, and server profiles.\n"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>*<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;Additional generated shell references.\n&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"Additional generated shell references.\n"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span><span class="k">esac</span>
 <span class="o">}</span>
@@ -3795,12 +3795,12 @@
 <span class="c1"># @arg $1 path Source file path relative to the repository root.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>extract_summary<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>base_name
 
-<span class="w">    </span><span class="nv">base_name</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>basename<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">base_name</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>basename<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 
-<span class="w">    </span>awk<span class="w"> </span>-v<span class="w"> </span><span class="nv">base_name</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">base_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s1">&#39;</span>
+<span class="w">    </span>awk<span class="w"> </span>-v<span class="w"> </span><span class="nv">base_name</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">base_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'</span>
 <span class="s1">        NR == 1 &amp;&amp; /^#!/ { next }</span>
 <span class="s1">        /^[[:space:]]*$/ {</span>
 <span class="s1">            if (capturing) {</span>
@@ -3812,12 +3812,12 @@
 <span class="s1">        }</span>
 <span class="s1">        /^[[:space:]]*#/ {</span>
 <span class="s1">            line = $0</span>
-<span class="s1">            sub(/^[[:space:]]*#[[:space:]]?/, &quot;&quot;, line)</span>
-<span class="s1">            gsub(/[[:space:]]+/, &quot; &quot;, line)</span>
-<span class="s1">            sub(/^[[:space:]]+/, &quot;&quot;, line)</span>
-<span class="s1">            gsub(/[[:space:]]+$/, &quot;&quot;, line)</span>
+<span class="s1">            sub(/^[[:space:]]*#[[:space:]]?/, "", line)</span>
+<span class="s1">            gsub(/[[:space:]]+/, " ", line)</span>
+<span class="s1">            sub(/^[[:space:]]+/, "", line)</span>
+<span class="s1">            gsub(/[[:space:]]+$/, "", line)</span>
 
-<span class="s1">            if (line == &quot;&quot; || line == base_name || line ~ /^[-_#=*[:space:]]+$/) {</span>
+<span class="s1">            if (line == "" || line == base_name || line ~ /^[-_#=*[:space:]]+$/) {</span>
 <span class="s1">                if (capturing) {</span>
 <span class="s1">                    print summary</span>
 <span class="s1">                    printed = 1</span>
@@ -3836,7 +3836,7 @@
 <span class="s1">            }</span>
 
 <span class="s1">            if (capturing) {</span>
-<span class="s1">                summary = summary &quot; &quot; line</span>
+<span class="s1">                summary = summary " " line</span>
 <span class="s1">            } else {</span>
 <span class="s1">                summary = line</span>
 <span class="s1">                capturing = 1</span>
@@ -3855,7 +3855,7 @@
 <span class="s1">                print summary</span>
 <span class="s1">            }</span>
 <span class="s1">        }</span>
-<span class="s1">    &#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="s1">    '</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3864,23 +3864,23 @@
 <span class="c1"># @arg $2 int Maximum character count before truncation.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>short_summary_for_source<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">max_length</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">max_length</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>summary
 
-<span class="w">    </span><span class="nv">summary</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>extract_summary<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">summary</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>extract_summary<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">summary</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;\n&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">summary</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"\n"</span>
 <span class="w">        </span><span class="k">return</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${#</span><span class="nv">summary</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>-le<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">max_length</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;%s\n&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">summary</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${#</span><span class="nv">summary</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-le<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">max_length</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"%s\n"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">summary</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">return</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;%s...\n&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">summary</span><span class="p">:</span><span class="nv">0</span><span class="p">:</span><span class="k">$((</span><span class="nv">max_length</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="m">3</span><span class="k">))</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"%s...\n"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">summary</span><span class="p">:</span><span class="nv">0</span><span class="p">:</span><span class="k">$((</span><span class="nv">max_length</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="m">3</span><span class="k">))</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3888,23 +3888,23 @@
 <span class="c1"># @arg $1 path Source file path relative to the repository root.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>extract_function_names<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 
-<span class="w">    </span>awk<span class="w"> </span><span class="s1">&#39;</span>
+<span class="w">    </span>awk<span class="w"> </span><span class="s1">'</span>
 <span class="s1">        /^[[:space:]]*function[[:space:]]+[[:alpha:]_][[:alnum:]_]*[[:space:]]*\(\)[[:space:]]*\{/ {</span>
 <span class="s1">            name = $0</span>
-<span class="s1">            sub(/^[[:space:]]*function[[:space:]]+/, &quot;&quot;, name)</span>
-<span class="s1">            sub(/[[:space:]]*\(\)[[:space:]]*\{[[:space:]]*$/, &quot;&quot;, name)</span>
+<span class="s1">            sub(/^[[:space:]]*function[[:space:]]+/, "", name)</span>
+<span class="s1">            sub(/[[:space:]]*\(\)[[:space:]]*\{[[:space:]]*$/, "", name)</span>
 <span class="s1">            print name</span>
 <span class="s1">            next</span>
 <span class="s1">        }</span>
 <span class="s1">        /^[[:space:]]*[[:alpha:]_][[:alnum:]_]*[[:space:]]*\(\)[[:space:]]*\{/ {</span>
 <span class="s1">            name = $0</span>
-<span class="s1">            sub(/^[[:space:]]*/, &quot;&quot;, name)</span>
-<span class="s1">            sub(/[[:space:]]*\(\)[[:space:]]*\{[[:space:]]*$/, &quot;&quot;, name)</span>
+<span class="s1">            sub(/^[[:space:]]*/, "", name)</span>
+<span class="s1">            sub(/[[:space:]]*\(\)[[:space:]]*\{[[:space:]]*$/, "", name)</span>
 <span class="s1">            print name</span>
 <span class="s1">        }</span>
-<span class="s1">    &#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">LC_ALL</span><span class="o">=</span>C<span class="w"> </span>sort<span class="w"> </span>-u
+<span class="s1">    '</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">LC_ALL</span><span class="o">=</span>C<span class="w"> </span>sort<span class="w"> </span>-u
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3915,25 +3915,25 @@
 <span class="c1"># shellcheck disable=SC2016 # Markdown backticks are intentional literal output in this renderer.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>print_page_header<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">category</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">renderer</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$3</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">summary</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">category</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">renderer</span><span class="o">=</span><span class="s2">"</span><span class="nv">$3</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">summary</span><span class="o">=</span><span class="s2">""</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">renderer</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">&quot;shdoc&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nv">summary</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>extract_summary<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">renderer</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"shdoc"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">summary</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>extract_summary<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;# %s\n\n&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"# %s\n\n"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">summary</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;%s\n\n&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">summary</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">summary</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"%s\n\n"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">summary</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;## Metadata\n\n&#39;</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span>--<span class="w"> </span><span class="s1">&#39;- Source: `%s`\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span>--<span class="w"> </span><span class="s1">&#39;- Category: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">category</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span>--<span class="w"> </span><span class="s1">&#39;- Renderer: `%s`\n\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">renderer</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'## Metadata\n\n'</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span>--<span class="w"> </span><span class="s1">'- Source: `%s`\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span>--<span class="w"> </span><span class="s1">'- Category: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">category</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span>--<span class="w"> </span><span class="s1">'- Renderer: `%s`\n\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">renderer</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3941,12 +3941,12 @@
 <span class="c1"># @arg $1 path Source file path.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>print_source_block<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;## Source\n\n&#39;</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;```bash\n&#39;</span>
-<span class="w">    </span>cat<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;\n```\n&#39;</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'## Source\n\n'</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'```bash\n'</span>
+<span class="w">    </span>cat<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'\n```\n'</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3956,14 +3956,14 @@
 <span class="c1"># shellcheck disable=SC2016 # Markdown backticks are intentional literal output in this renderer.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>render_shell_page<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">category</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">category</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>shdoc_output
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">shdoc_output</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>mise<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>shdoc<span class="w"> </span>--<span class="w"> </span>shdoc<span class="w"> </span>&lt;<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">shdoc_output</span><span class="p">//[[:</span><span class="nv">space</span><span class="p">:]]/</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>print_page_header<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">category</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;shdoc&quot;</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;## Generated Reference\n\n&#39;</span>
-<span class="w">        </span>awk<span class="w"> </span><span class="s1">&#39;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">shdoc_output</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mise<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>shdoc<span class="w"> </span>--<span class="w"> </span>shdoc<span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">shdoc_output</span><span class="p">//[[:</span><span class="nv">space</span><span class="p">:]]/</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>print_page_header<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">category</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"shdoc"</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'## Generated Reference\n\n'</span>
+<span class="w">        </span>awk<span class="w"> </span><span class="s1">'</span>
 <span class="s1">            NR == 1 &amp;&amp; /^# / { next }</span>
 <span class="s1">            in_index {</span>
 <span class="s1">                if (/^## /) {</span>
@@ -3977,30 +3977,30 @@
 <span class="s1">                next</span>
 <span class="s1">            }</span>
 <span class="s1">            { print }</span>
-<span class="s1">        &#39;</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">shdoc_output</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="s1">        '</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">shdoc_output</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">return</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span>print_page_header<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">category</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;shell-fallback&quot;</span>
+<span class="w">    </span>print_page_header<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">category</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"shell-fallback"</span>
 
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">function_count</span><span class="o">=</span><span class="m">0</span>
 
 <span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>function_name<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">function_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">function_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
 
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">function_count</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;## Functions\n\n&#39;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">function_count</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'## Functions\n\n'</span>
 <span class="w">        </span><span class="k">fi</span>
 
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span>--<span class="w"> </span><span class="s1">&#39;- `%s`\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">function_name</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span>--<span class="w"> </span><span class="s1">'- `%s`\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">function_name</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="nv">function_count</span><span class="o">=</span><span class="k">$((</span><span class="nv">function_count</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>
-<span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>extract_function_names<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>extract_function_names<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">function_count</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;\n&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">function_count</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"\n"</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span>print_source_block<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span>print_source_block<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -4010,30 +4010,30 @@
 <span class="c1"># shellcheck disable=SC2016 # Markdown backticks are intentional literal output in this renderer.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>render_alias_page<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">category</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">category</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">found_aliases</span><span class="o">=</span><span class="nb">false</span>
 
-<span class="w">    </span>print_page_header<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">category</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;alias-fallback&quot;</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;## Aliases\n\n&#39;</span>
+<span class="w">    </span>print_page_header<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">category</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"alias-fallback"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'## Aliases\n\n'</span>
 
 <span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>line<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>alias<span class="se">\ </span>*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>alias<span class="se">\ </span>*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
 
-<span class="w">        </span><span class="nb">local</span><span class="w"> </span><span class="nv">alias_definition</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">line</span><span class="p">#alias </span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">        </span><span class="nb">local</span><span class="w"> </span><span class="nv">alias_name</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">alias_definition</span><span class="p">%%=*</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">        </span><span class="nb">local</span><span class="w"> </span><span class="nv">alias_value</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">alias_definition</span><span class="p">#*=</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="nb">local</span><span class="w"> </span><span class="nv">alias_definition</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="p">#alias </span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nb">local</span><span class="w"> </span><span class="nv">alias_name</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">alias_definition</span><span class="p">%%=*</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nb">local</span><span class="w"> </span><span class="nv">alias_value</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">alias_definition</span><span class="p">#*=</span><span class="si">}</span><span class="s2">"</span>
 
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span>--<span class="w"> </span><span class="s1">&#39;- `%s`: `%s`\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">alias_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">alias_value</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span>--<span class="w"> </span><span class="s1">'- `%s`: `%s`\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">alias_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">alias_value</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="nv">found_aliases</span><span class="o">=</span><span class="nb">true</span>
-<span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">found_aliases</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;No aliases were detected.\n&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">found_aliases</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"No aliases were detected.\n"</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;\n&quot;</span>
-<span class="w">    </span>print_source_block<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"\n"</span>
+<span class="w">    </span>print_source_block<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -4041,20 +4041,20 @@
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>generate_reference_pages<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>source_path<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
 
 <span class="w">        </span><span class="nb">local</span><span class="w"> </span>output_path
 <span class="w">        </span><span class="nb">local</span><span class="w"> </span>category
 
-<span class="w">        </span><span class="nv">output_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>output_path_for_source<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
-<span class="w">        </span><span class="nv">category</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>source_category_for_path<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="nv">output_path</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>output_path_for_source<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">category</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>source_category_for_path<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 
-<span class="w">        </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">output_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">        </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">output_path</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>home/dot_config/alias/*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span>render_alias_page<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">category</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">output_path</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>home/dot_config/alias/*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span>render_alias_page<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">category</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">output_path</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">else</span>
-<span class="w">            </span>render_shell_page<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">category</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">output_path</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">            </span>render_shell_page<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">category</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">output_path</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>collect_source_files<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">LC_ALL</span><span class="o">=</span>C<span class="w"> </span>sort<span class="o">)</span>
 <span class="o">}</span>
@@ -4064,9 +4064,9 @@
 <span class="c1"># @arg $1 path Template file path.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>resolve_template_target<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">template_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">template_path</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 
-<span class="w">    </span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;s@.*{{[[:space:]]*include[[:space:]]*&quot;\.\./\(install/[^&quot;]*\)&quot;[[:space:]]*}}.*@\1@p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">template_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'s@.*{{[[:space:]]*include[[:space:]]*"\.\./\(install/[^"]*\)"[[:space:]]*}}.*@\1@p'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">template_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -4074,11 +4074,11 @@
 <span class="c1"># @arg $1 path Source file path.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>link_for_source_page<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>output_path
 
-<span class="w">    </span><span class="nv">output_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>output_path_for_source<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;%s\n&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">output_path</span><span class="p">#</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">REFERENCE_DIR</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">/</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">output_path</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>output_path_for_source<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"%s\n"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">output_path</span><span class="p">#</span><span class="s2">"</span><span class="si">${</span><span class="nv">REFERENCE_DIR</span><span class="si">}</span><span class="s2">"</span><span class="p">/</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -4086,7 +4086,7 @@
 <span class="c1"># @arg $1 path Source file path.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>docs_link_for_source_page<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;reference/%s\n&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>link_for_source_page<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"reference/%s\n"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>link_for_source_page<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -4097,31 +4097,31 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">found_template</span><span class="o">=</span><span class="nb">false</span>
 
 <span class="w">    </span><span class="o">{</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;# home/.chezmoiscripts Template Mapping\n\n&#39;</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;This page maps `home/.chezmoiscripts/**/*.tmpl` wrappers to the source scripts they include.\n\n&#39;</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;## Mappings\n\n&#39;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'# home/.chezmoiscripts Template Mapping\n\n'</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'This page maps `home/.chezmoiscripts/**/*.tmpl` wrappers to the source scripts they include.\n\n'</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'## Mappings\n\n'</span>
 
 <span class="w">        </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>template_path<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">            </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">template_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">            </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">template_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
 
 <span class="w">            </span><span class="nb">local</span><span class="w"> </span>target_path
 <span class="w">            </span><span class="nb">local</span><span class="w"> </span>target_link
 
-<span class="w">            </span><span class="nv">target_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>resolve_template_target<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">template_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
-<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">target_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">target_path</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>resolve_template_target<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">template_path</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">                </span><span class="k">continue</span>
 <span class="w">            </span><span class="k">fi</span>
 
-<span class="w">            </span><span class="nv">target_link</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>link_for_source_page<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">target_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
-<span class="w">            </span><span class="nb">printf</span><span class="w"> </span>--<span class="w"> </span><span class="s1">&#39;- `%s` -&gt; [`%s`](%s)\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">template_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">target_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">target_link</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">            </span><span class="nv">target_link</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>link_for_source_page<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target_path</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span>--<span class="w"> </span><span class="s1">'- `%s` -&gt; [`%s`](%s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">template_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target_link</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">            </span><span class="nv">found_template</span><span class="o">=</span><span class="nb">true</span>
 <span class="w">        </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>collect_template_files<span class="o">)</span>
 
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">found_template</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;No template wrappers were found.\n&quot;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">found_template</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"No template wrappers were found.\n"</span>
 <span class="w">        </span><span class="k">fi</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;\n&quot;</span>
-<span class="w">    </span><span class="o">}</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">TEMPLATE_MAPPING_PAGE</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"\n"</span>
+<span class="w">    </span><span class="o">}</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">TEMPLATE_MAPPING_PAGE</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -4130,19 +4130,19 @@
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>generate_catalog_placeholder<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="o">{</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;# Catalog\n\n&#39;</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;This page is regenerated automatically by `mkdocs-toc-md` during `make docs`, `make serve`, or `make deploy`.\n&#39;</span>
-<span class="w">    </span><span class="o">}</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CATALOG_PAGE</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'# Catalog\n\n'</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'This page is regenerated automatically by `mkdocs-toc-md` during `make docs`, `make serve`, or `make deploy`.\n'</span>
+<span class="w">    </span><span class="o">}</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CATALOG_PAGE</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Count non-empty input lines from stdin.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>count_lines<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>awk<span class="w"> </span><span class="s1">&#39;</span>
+<span class="w">    </span>awk<span class="w"> </span><span class="s1">'</span>
 <span class="s1">        NF { count++ }</span>
 <span class="s1">        END { print count + 0 }</span>
-<span class="s1">    &#39;</span>
+<span class="s1">    '</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -4157,18 +4157,18 @@
 <span class="c1"># @arg $1 string Stable group slug.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>count_sources_for_group<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">group</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">group</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">count</span><span class="o">=</span><span class="m">0</span>
 
 <span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>source_path<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
 
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>source_group_for_path<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">group</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>source_group_for_path<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source_path</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">group</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="nv">count</span><span class="o">=</span><span class="k">$((</span><span class="nv">count</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>collect_source_files<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">LC_ALL</span><span class="o">=</span>C<span class="w"> </span>sort<span class="o">)</span>
 
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;%s\n&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">count</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"%s\n"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">count</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -4178,14 +4178,14 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">count</span><span class="o">=</span><span class="m">0</span>
 
 <span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>template_path<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">template_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">template_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
 
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>resolve_template_target<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">template_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>resolve_template_target<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">template_path</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="nv">count</span><span class="o">=</span><span class="k">$((</span><span class="nv">count</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>collect_template_files<span class="o">)</span>
 
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;%s\n&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">count</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"%s\n"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">count</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -4195,25 +4195,25 @@
 <span class="c1"># @arg $3 string Supplemental detail line.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>print_landing_stat<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">value</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">label</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">note</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$3</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">value</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">label</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">note</span><span class="o">=</span><span class="s2">"</span><span class="nv">$3</span><span class="s2">"</span>
 
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;&lt;div class=&quot;landing-stat&quot;&gt;\n&#39;</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;  &lt;span class=&quot;landing-stat__value&quot;&gt;%s&lt;/span&gt;\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">value</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;  &lt;span class=&quot;landing-stat__label&quot;&gt;%s&lt;/span&gt;\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">label</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;  &lt;span class=&quot;landing-stat__note&quot;&gt;%s&lt;/span&gt;\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">note</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;&lt;/div&gt;\n&#39;</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'&lt;div class="landing-stat"&gt;\n'</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'  &lt;span class="landing-stat__value"&gt;%s&lt;/span&gt;\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">value</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'  &lt;span class="landing-stat__label"&gt;%s&lt;/span&gt;\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">label</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'  &lt;span class="landing-stat__note"&gt;%s&lt;/span&gt;\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">note</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'&lt;/div&gt;\n'</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Print the quick-start card shown on the landing page.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>print_quickstart_card<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>cat<span class="w"> </span>&lt;&lt;<span class="w"> </span><span class="s1">&#39;EOF&#39;</span>
-&lt;div<span class="w"> </span><span class="nv">class</span><span class="o">=</span><span class="s2">&quot;landing-card landing-card--command&quot;</span><span class="w"> </span><span class="nv">markdown</span><span class="o">=</span><span class="s2">&quot;1&quot;</span>&gt;
+<span class="w">    </span>cat<span class="w"> </span>&lt;&lt;<span class="w"> </span><span class="s1">'EOF'</span>
+&lt;div<span class="w"> </span><span class="nv">class</span><span class="o">=</span><span class="s2">"landing-card landing-card--command"</span><span class="w"> </span><span class="nv">markdown</span><span class="o">=</span><span class="s2">"1"</span>&gt;
 
-&lt;p<span class="w"> </span><span class="nv">class</span><span class="o">=</span><span class="s2">&quot;landing-kicker&quot;</span>&gt;Quick<span class="w"> </span>Start&lt;/p&gt;
+&lt;p<span class="w"> </span><span class="nv">class</span><span class="o">=</span><span class="s2">"landing-kicker"</span>&gt;Quick<span class="w"> </span>Start&lt;/p&gt;
 
 <span class="c1">### Build, preview, deploy</span>
 
@@ -4274,39 +4274,39 @@ EOF
 <p>function print_template_mapping_card() {
     local mapped_count
     local shown_count=0</p>
-<div class="highlight"><pre><span></span><code>mapped_count=&quot;$(count_mapped_templates)&quot;
+<div class="highlight"><pre><span></span><code>mapped_count="$(count_mapped_templates)"
 
-printf &#39;&lt;div class=&quot;landing-card&quot; markdown=&quot;1&quot;&gt;\n\n&#39;
-printf &#39;&lt;p class=&quot;landing-kicker&quot;&gt;Chezmoi&lt;/p&gt;\n\n&#39;
-printf &#39;### Template Mapping\n\n&#39;
-printf &#39;Wrapper templates under `home/.chezmoiscripts` are linked back to the source scripts they include.\n\n&#39;
-printf &#39;_%s mapped wrappers_\n\n&#39; &quot;${mapped_count}&quot;
-printf -- &#39;- [Open template mapping](reference/chezmoi-templates.md)\n&#39;
+printf '&lt;div class="landing-card" markdown="1"&gt;\n\n'
+printf '&lt;p class="landing-kicker"&gt;Chezmoi&lt;/p&gt;\n\n'
+printf '### Template Mapping\n\n'
+printf 'Wrapper templates under `home/.chezmoiscripts` are linked back to the source scripts they include.\n\n'
+printf '_%s mapped wrappers_\n\n' "${mapped_count}"
+printf -- '- [Open template mapping](reference/chezmoi-templates.md)\n'
 
 while IFS= read -r template_path; do
-    [[ -n &quot;${template_path}&quot; ]] || continue
+    [[ -n "${template_path}" ]] || continue
 
     local target_path
 
-    target_path=&quot;$(resolve_template_target &quot;${template_path}&quot;)&quot;
-    [[ -n &quot;${target_path}&quot; ]] || continue
+    target_path="$(resolve_template_target "${template_path}")"
+    [[ -n "${target_path}" ]] || continue
 
-    if [[ &quot;${shown_count}&quot; -ge &quot;${LANDING_PREVIEW_LIMIT}&quot; ]]; then
+    if [[ "${shown_count}" -ge "${LANDING_PREVIEW_LIMIT}" ]]; then
         continue
     fi
 
-    printf -- &#39;- `%s` -&gt; [`%s`](%s)\n&#39; \
-        &quot;${template_path}&quot; \
-        &quot;${target_path}&quot; \
-        &quot;$(docs_link_for_source_page &quot;${target_path}&quot;)&quot;
+    printf -- '- `%s` -&gt; [`%s`](%s)\n' \
+        "${template_path}" \
+        "${target_path}" \
+        "$(docs_link_for_source_page "${target_path}")"
     shown_count=$((shown_count + 1))
 done &lt; &lt;(collect_template_files)
 
-if [[ &quot;${mapped_count}&quot; -gt &quot;${shown_count}&quot; ]]; then
-    printf &#39;\n[%s more mappings](reference/chezmoi-templates.md)\n&#39; &quot;$((mapped_count - shown_count))&quot;
+if [[ "${mapped_count}" -gt "${shown_count}" ]]; then
+    printf '\n[%s more mappings](reference/chezmoi-templates.md)\n' "$((mapped_count - shown_count))"
 fi
 
-printf &#39;\n&lt;/div&gt;\n&#39;
+printf '\n&lt;/div&gt;\n'
 </code></pre></div>
 <p>}</p>
 <h1 id="_7"><a class="headerlink" href="#_7" title="Permanent link">&para;</a></h1>
@@ -4322,54 +4322,54 @@ printf &#39;\n&lt;/div&gt;\n&#39;
     local description
     local total_count
     local shown_count=0</p>
-<div class="highlight"><pre><span></span><code>title=&quot;$(source_group_title &quot;${group}&quot;)&quot;
-description=&quot;$(source_group_description &quot;${group}&quot;)&quot;
-total_count=&quot;$(count_sources_for_group &quot;${group}&quot;)&quot;
+<div class="highlight"><pre><span></span><code>title="$(source_group_title "${group}")"
+description="$(source_group_description "${group}")"
+total_count="$(count_sources_for_group "${group}")"
 
-if [[ &quot;${total_count}&quot; -eq 0 ]]; then
+if [[ "${total_count}" -eq 0 ]]; then
     return
 fi
 
-printf &#39;&lt;div class=&quot;landing-card&quot; markdown=&quot;1&quot;&gt;\n\n&#39;
-printf &#39;&lt;p class=&quot;landing-kicker&quot;&gt;%s&lt;/p&gt;\n\n&#39; &quot;${title}&quot;
-printf &#39;### %s\n\n&#39; &quot;${title}&quot;
-printf &#39;%s\n\n&#39; &quot;${description}&quot;
-printf &#39;_%s documented entries_\n\n&#39; &quot;${total_count}&quot;
+printf '&lt;div class="landing-card" markdown="1"&gt;\n\n'
+printf '&lt;p class="landing-kicker"&gt;%s&lt;/p&gt;\n\n' "${title}"
+printf '### %s\n\n' "${title}"
+printf '%s\n\n' "${description}"
+printf '_%s documented entries_\n\n' "${total_count}"
 
 while IFS= read -r source_path; do
-    [[ -n &quot;${source_path}&quot; ]] || continue
+    [[ -n "${source_path}" ]] || continue
 
-    if [[ &quot;$(source_group_for_path &quot;${source_path}&quot;)&quot; != &quot;${group}&quot; ]]; then
+    if [[ "$(source_group_for_path "${source_path}")" != "${group}" ]]; then
         continue
     fi
 
-    if [[ &quot;${shown_count}&quot; -ge &quot;${preview_limit}&quot; ]]; then
+    if [[ "${shown_count}" -ge "${preview_limit}" ]]; then
         continue
     fi
 
     local summary
 
-    summary=&quot;$(short_summary_for_source &quot;${source_path}&quot; 120)&quot;
+    summary="$(short_summary_for_source "${source_path}" 120)"
 
-    if [[ -n &quot;${summary}&quot; ]]; then
-        printf -- &#39;- [`%s`](%s): %s\n&#39; \
-            &quot;${source_path}&quot; \
-            &quot;$(docs_link_for_source_page &quot;${source_path}&quot;)&quot; \
-            &quot;${summary}&quot;
+    if [[ -n "${summary}" ]]; then
+        printf -- '- [`%s`](%s): %s\n' \
+            "${source_path}" \
+            "$(docs_link_for_source_page "${source_path}")" \
+            "${summary}"
     else
-        printf -- &#39;- [`%s`](%s)\n&#39; \
-            &quot;${source_path}&quot; \
-            &quot;$(docs_link_for_source_page &quot;${source_path}&quot;)&quot;
+        printf -- '- [`%s`](%s)\n' \
+            "${source_path}" \
+            "$(docs_link_for_source_page "${source_path}")"
     fi
 
     shown_count=$((shown_count + 1))
 done &lt; &lt;(collect_source_files | LC_ALL=C sort)
 
-if [[ &quot;${total_count}&quot; -gt &quot;${shown_count}&quot; ]]; then
-    printf &#39;\n[%s more entries in the full catalog](%s)\n&#39; &quot;$((total_count - shown_count))&quot; &quot;${CATALOG_HREF}&quot;
+if [[ "${total_count}" -gt "${shown_count}" ]]; then
+    printf '\n[%s more entries in the full catalog](%s)\n' "$((total_count - shown_count))" "${CATALOG_HREF}"
 fi
 
-printf &#39;\n&lt;/div&gt;\n&#39;
+printf '\n&lt;/div&gt;\n'
 </code></pre></div>
 <p>}</p>
 <h1 id="_9"><a class="headerlink" href="#_9" title="Permanent link">&para;</a></h1>
@@ -4384,53 +4384,53 @@ printf &#39;\n&lt;/div&gt;\n&#39;
     local hook_count
     local alias_count
     local template_count</p>
-<div class="highlight"><pre><span></span><code>source_count=&quot;$(count_source_files)&quot;
-install_count=&quot;$(count_sources_for_group &quot;install&quot;)&quot;
-script_count=&quot;$(count_sources_for_group &quot;scripts&quot;)&quot;
-command_count=&quot;$(count_sources_for_group &quot;commands&quot;)&quot;
-hook_count=&quot;$(count_sources_for_group &quot;hooks&quot;)&quot;
-alias_count=&quot;$(count_sources_for_group &quot;aliases&quot;)&quot;
-template_count=&quot;$(count_mapped_templates)&quot;
+<div class="highlight"><pre><span></span><code>source_count="$(count_source_files)"
+install_count="$(count_sources_for_group "install")"
+script_count="$(count_sources_for_group "scripts")"
+command_count="$(count_sources_for_group "commands")"
+hook_count="$(count_sources_for_group "hooks")"
+alias_count="$(count_sources_for_group "aliases")"
+template_count="$(count_mapped_templates)"
 
 {
-    printf &#39;&lt;div class=&quot;landing-hero&quot; markdown=&quot;1&quot;&gt;\n\n&#39;
-    printf &#39;&lt;p class=&quot;landing-hero__eyebrow&quot;&gt;Generated with shdoc, MkDocs Material, toc-md, and uv&lt;/p&gt;\n\n&#39;
-    printf &#39;# Dotfiles Shell Automation Docs\n\n&#39;
-    printf &#39;Reference for installation flows, local commands, aliases, Claude hooks, and chezmoi wrappers maintained in this repository.\n\n&#39;
-    printf &#39;&lt;div class=&quot;landing-actions&quot; markdown=&quot;1&quot;&gt;\n\n&#39;
-    printf &#39;&lt;a class=&quot;md-button md-button--primary&quot; href=&quot;%s&quot;&gt;Browse Full Catalog&lt;/a&gt;\n&#39; &quot;${CATALOG_HREF}&quot;
-    printf &#39;[View Template Mapping](reference/chezmoi-templates.md){ .md-button }\n&#39;
-    printf &#39;\n&lt;/div&gt;\n\n&#39;
-    printf &#39;&lt;/div&gt;\n\n&#39;
+    printf '&lt;div class="landing-hero" markdown="1"&gt;\n\n'
+    printf '&lt;p class="landing-hero__eyebrow"&gt;Generated with shdoc, MkDocs Material, toc-md, and uv&lt;/p&gt;\n\n'
+    printf '# Dotfiles Shell Automation Docs\n\n'
+    printf 'Reference for installation flows, local commands, aliases, Claude hooks, and chezmoi wrappers maintained in this repository.\n\n'
+    printf '&lt;div class="landing-actions" markdown="1"&gt;\n\n'
+    printf '&lt;a class="md-button md-button--primary" href="%s"&gt;Browse Full Catalog&lt;/a&gt;\n' "${CATALOG_HREF}"
+    printf '[View Template Mapping](reference/chezmoi-templates.md){ .md-button }\n'
+    printf '\n&lt;/div&gt;\n\n'
+    printf '&lt;/div&gt;\n\n'
 
-    printf &#39;&lt;div class=&quot;landing-stats&quot;&gt;\n&#39;
-    print_landing_stat &quot;${source_count}&quot; &quot;source docs&quot; &quot;tracked shell assets&quot;
-    print_landing_stat &quot;${install_count}&quot; &quot;install scripts&quot; &quot;bootstrap and app setup&quot;
-    print_landing_stat &quot;${script_count}&quot; &quot;repo scripts&quot; &quot;maintenance and checks&quot;
-    print_landing_stat &quot;${command_count}&quot; &quot;local commands&quot; &quot;helpers under home/dot_local/bin&quot;
-    print_landing_stat &quot;${hook_count}&quot; &quot;Claude hooks&quot; &quot;local automation policies&quot;
-    print_landing_stat &quot;${alias_count}&quot; &quot;alias bundles&quot; &quot;common, client, server&quot;
-    print_landing_stat &quot;${template_count}&quot; &quot;template mappings&quot; &quot;chezmoi wrappers&quot;
-    printf &#39;&lt;/div&gt;\n\n&#39;
+    printf '&lt;div class="landing-stats"&gt;\n'
+    print_landing_stat "${source_count}" "source docs" "tracked shell assets"
+    print_landing_stat "${install_count}" "install scripts" "bootstrap and app setup"
+    print_landing_stat "${script_count}" "repo scripts" "maintenance and checks"
+    print_landing_stat "${command_count}" "local commands" "helpers under home/dot_local/bin"
+    print_landing_stat "${hook_count}" "Claude hooks" "local automation policies"
+    print_landing_stat "${alias_count}" "alias bundles" "common, client, server"
+    print_landing_stat "${template_count}" "template mappings" "chezmoi wrappers"
+    printf '&lt;/div&gt;\n\n'
 
-    printf &#39;## Quick Start\n\n&#39;
-    printf &#39;&lt;div class=&quot;landing-grid landing-grid--summary&quot;&gt;\n&#39;
+    printf '## Quick Start\n\n'
+    printf '&lt;div class="landing-grid landing-grid--summary"&gt;\n'
     print_quickstart_card
     print_pipeline_card
-    print_catalog_card &quot;${source_count}&quot; &quot;${template_count}&quot;
+    print_catalog_card "${source_count}" "${template_count}"
     print_template_mapping_card
-    printf &#39;&lt;/div&gt;\n\n&#39;
+    printf '&lt;/div&gt;\n\n'
 
-    printf &#39;## Browse By Area\n\n&#39;
-    printf &#39;Each section links to generated reference pages. Update source comments, then rerun `make docs` to refresh the site.\n\n&#39;
-    printf &#39;&lt;div class=&quot;landing-grid landing-grid--catalog&quot;&gt;\n&#39;
-    print_category_card &quot;install&quot; &quot;${LANDING_PREVIEW_LIMIT}&quot;
-    print_category_card &quot;scripts&quot; &quot;${LANDING_PREVIEW_LIMIT}&quot;
-    print_category_card &quot;commands&quot; &quot;${LANDING_PREVIEW_LIMIT}&quot;
-    print_category_card &quot;hooks&quot; &quot;${LANDING_PREVIEW_LIMIT}&quot;
-    print_category_card &quot;aliases&quot; &quot;${LANDING_PREVIEW_LIMIT}&quot;
-    printf &#39;&lt;/div&gt;\n&#39;
-} &gt; &quot;${LANDING_PAGE}&quot;
+    printf '## Browse By Area\n\n'
+    printf 'Each section links to generated reference pages. Update source comments, then rerun `make docs` to refresh the site.\n\n'
+    printf '&lt;div class="landing-grid landing-grid--catalog"&gt;\n'
+    print_category_card "install" "${LANDING_PREVIEW_LIMIT}"
+    print_category_card "scripts" "${LANDING_PREVIEW_LIMIT}"
+    print_category_card "commands" "${LANDING_PREVIEW_LIMIT}"
+    print_category_card "hooks" "${LANDING_PREVIEW_LIMIT}"
+    print_category_card "aliases" "${LANDING_PREVIEW_LIMIT}"
+    printf '&lt;/div&gt;\n'
+} &gt; "${LANDING_PAGE}"
 </code></pre></div>
 <p>}</p>
 <p>main "$@"</p>

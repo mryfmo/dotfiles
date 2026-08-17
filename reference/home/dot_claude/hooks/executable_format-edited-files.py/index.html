@@ -3479,12 +3479,12 @@
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env python3</span>
-<span class="s2">&quot;&quot;&quot;Format files reported by Claude Code hook JSON input.</span>
+<span class="s2">"""Format files reported by Claude Code hook JSON input.</span>
 
 <span class="s2">The hook reads the complete JSON event from stdin, extracts every edited file path</span>
 <span class="s2">from common Write/Edit/MultiEdit payload shapes, filters by suffix, and invokes</span>
 <span class="s2">configured format/check commands without going through a shell.</span>
-<span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">"""</span>
 
 from<span class="w"> </span>__future__<span class="w"> </span>import<span class="w"> </span>annotations
 
@@ -3496,12 +3496,12 @@ from<span class="w"> </span>pathlib<span class="w"> </span>import<span class="w"
 from<span class="w"> </span>typing<span class="w"> </span>import<span class="w"> </span>Any
 
 <span class="nv">PYTHON_COMMANDS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>
-<span class="w">    </span><span class="o">[</span><span class="s2">&quot;uvx&quot;</span>,<span class="w"> </span><span class="s2">&quot;ruff&quot;</span>,<span class="w"> </span><span class="s2">&quot;format&quot;</span><span class="o">]</span>,
-<span class="w">    </span><span class="o">[</span><span class="s2">&quot;uvx&quot;</span>,<span class="w"> </span><span class="s2">&quot;ruff&quot;</span>,<span class="w"> </span><span class="s2">&quot;check&quot;</span>,<span class="w"> </span><span class="s2">&quot;--fix&quot;</span><span class="o">]</span>,
-<span class="w">    </span><span class="o">[</span><span class="s2">&quot;uvx&quot;</span>,<span class="w"> </span><span class="s2">&quot;ty&quot;</span>,<span class="w"> </span><span class="s2">&quot;check&quot;</span><span class="o">]</span>,
+<span class="w">    </span><span class="o">[</span><span class="s2">"uvx"</span>,<span class="w"> </span><span class="s2">"ruff"</span>,<span class="w"> </span><span class="s2">"format"</span><span class="o">]</span>,
+<span class="w">    </span><span class="o">[</span><span class="s2">"uvx"</span>,<span class="w"> </span><span class="s2">"ruff"</span>,<span class="w"> </span><span class="s2">"check"</span>,<span class="w"> </span><span class="s2">"--fix"</span><span class="o">]</span>,
+<span class="w">    </span><span class="o">[</span><span class="s2">"uvx"</span>,<span class="w"> </span><span class="s2">"ty"</span>,<span class="w"> </span><span class="s2">"check"</span><span class="o">]</span>,
 <span class="o">]</span>
 <span class="nv">MARKDOWN_COMMANDS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>
-<span class="w">    </span><span class="o">[</span><span class="s2">&quot;npx&quot;</span>,<span class="w"> </span><span class="s2">&quot;prettier@2&quot;</span>,<span class="w"> </span><span class="s2">&quot;--write&quot;</span><span class="o">]</span>,
+<span class="w">    </span><span class="o">[</span><span class="s2">"npx"</span>,<span class="w"> </span><span class="s2">"prettier@2"</span>,<span class="w"> </span><span class="s2">"--write"</span><span class="o">]</span>,
 <span class="o">]</span>
 
 
@@ -3509,7 +3509,7 @@ def<span class="w"> </span>collect_paths<span class="o">(</span>value:<span clas
 <span class="w">    </span>paths:<span class="w"> </span>set<span class="o">[</span>Path<span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>set<span class="o">()</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>value,<span class="w"> </span>dict<span class="o">)</span>:
 <span class="w">        </span><span class="k">for</span><span class="w"> </span>key,<span class="w"> </span>item<span class="w"> </span><span class="k">in</span><span class="w"> </span>value.items<span class="o">()</span>:
-<span class="w">            </span><span class="k">if</span><span class="w"> </span>key<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">{</span><span class="s2">&quot;file_path&quot;</span>,<span class="w"> </span><span class="s2">&quot;path&quot;</span><span class="o">}</span><span class="w"> </span>and<span class="w"> </span>isinstance<span class="o">(</span>item,<span class="w"> </span>str<span class="o">)</span>:
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>key<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">{</span><span class="s2">"file_path"</span>,<span class="w"> </span><span class="s2">"path"</span><span class="o">}</span><span class="w"> </span>and<span class="w"> </span>isinstance<span class="o">(</span>item,<span class="w"> </span>str<span class="o">)</span>:
 <span class="w">                </span>paths.add<span class="o">(</span>Path<span class="o">(</span>item<span class="o">))</span>
 <span class="w">            </span><span class="k">else</span>:
 <span class="w">                </span>paths.update<span class="o">(</span>collect_paths<span class="o">(</span>item<span class="o">))</span>
@@ -3537,12 +3537,12 @@ def<span class="w"> </span>main<span class="o">()</span><span class="w"> </span>
 <span class="w">    </span>try:
 <span class="w">        </span><span class="nv">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>json.loads<span class="o">(</span>raw<span class="o">)</span>
 <span class="w">    </span>except<span class="w"> </span>json.JSONDecodeError<span class="w"> </span>as<span class="w"> </span>error:
-<span class="w">        </span>print<span class="o">(</span>f<span class="s2">&quot;failed to parse Claude hook input: {error}&quot;</span>,<span class="w"> </span><span class="nv">file</span><span class="o">=</span>sys.stderr<span class="o">)</span>
+<span class="w">        </span>print<span class="o">(</span>f<span class="s2">"failed to parse Claude hook input: {error}"</span>,<span class="w"> </span><span class="nv">file</span><span class="o">=</span>sys.stderr<span class="o">)</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 
-<span class="w">    </span><span class="nv">paths</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>sorted<span class="o">(</span>path<span class="w"> </span><span class="k">for</span><span class="w"> </span>path<span class="w"> </span><span class="k">in</span><span class="w"> </span>collect_paths<span class="o">(</span>payload.get<span class="o">(</span><span class="s2">&quot;tool_input&quot;</span>,<span class="w"> </span>payload<span class="o">))</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>path.exists<span class="o">())</span>
-<span class="w">    </span><span class="nv">python_files</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>path<span class="w"> </span><span class="k">for</span><span class="w"> </span>path<span class="w"> </span><span class="k">in</span><span class="w"> </span>paths<span class="w"> </span><span class="k">if</span><span class="w"> </span>path.suffix<span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;.py&quot;</span><span class="o">]</span>
-<span class="w">    </span><span class="nv">markdown_files</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>path<span class="w"> </span><span class="k">for</span><span class="w"> </span>path<span class="w"> </span><span class="k">in</span><span class="w"> </span>paths<span class="w"> </span><span class="k">if</span><span class="w"> </span>path.suffix<span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;.md&quot;</span><span class="o">]</span>
+<span class="w">    </span><span class="nv">paths</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>sorted<span class="o">(</span>path<span class="w"> </span><span class="k">for</span><span class="w"> </span>path<span class="w"> </span><span class="k">in</span><span class="w"> </span>collect_paths<span class="o">(</span>payload.get<span class="o">(</span><span class="s2">"tool_input"</span>,<span class="w"> </span>payload<span class="o">))</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>path.exists<span class="o">())</span>
+<span class="w">    </span><span class="nv">python_files</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>path<span class="w"> </span><span class="k">for</span><span class="w"> </span>path<span class="w"> </span><span class="k">in</span><span class="w"> </span>paths<span class="w"> </span><span class="k">if</span><span class="w"> </span>path.suffix<span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">".py"</span><span class="o">]</span>
+<span class="w">    </span><span class="nv">markdown_files</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>path<span class="w"> </span><span class="k">for</span><span class="w"> </span>path<span class="w"> </span><span class="k">in</span><span class="w"> </span>paths<span class="w"> </span><span class="k">if</span><span class="w"> </span>path.suffix<span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">".md"</span><span class="o">]</span>
 
 <span class="w">    </span><span class="nv">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="nv">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>max<span class="o">(</span>status,<span class="w"> </span>run_commands<span class="o">(</span>PYTHON_COMMANDS,<span class="w"> </span>python_files<span class="o">))</span>
@@ -3550,7 +3550,7 @@ def<span class="w"> </span>main<span class="o">()</span><span class="w"> </span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span>status
 
 
-<span class="k">if</span><span class="w"> </span><span class="nv">__name__</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;__main__&quot;</span>:
+<span class="k">if</span><span class="w"> </span><span class="nv">__name__</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"__main__"</span>:
 <span class="w">    </span>raise<span class="w"> </span>SystemExit<span class="o">(</span>main<span class="o">())</span>
 </code></pre></div>
 

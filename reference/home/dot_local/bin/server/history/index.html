@@ -3494,20 +3494,20 @@
 <span class="c1"># @description Reverse lines from stdin or files using `sed`.</span>
 <span class="c1"># @arg $@ Optional file paths to reverse. When omitted, stdin is read.</span>
 <span class="k">function</span><span class="w"> </span>tac<span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">exec</span><span class="w"> </span>sed<span class="w"> </span><span class="s1">&#39;1!G;h;$!d&#39;</span><span class="w"> </span><span class="si">${</span><span class="p">@+</span><span class="s2">&quot;</span><span class="nv">$@</span><span class="s2">&quot;</span><span class="si">}</span>
+<span class="w">    </span><span class="nb">exec</span><span class="w"> </span>sed<span class="w"> </span><span class="s1">'1!G;h;$!d'</span><span class="w"> </span><span class="si">${</span><span class="p">@+</span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span><span class="si">}</span>
 <span class="o">}</span>
 
 <span class="c1"># @description Merge the current bash session history back into `~/.bash_history`.</span>
 <span class="k">function</span><span class="w"> </span>share_history<span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">history</span><span class="w"> </span>-a
-<span class="w">    </span>tac<span class="w"> </span>~/.bash_history<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;!a[$0]++&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tac<span class="w"> </span>&gt;<span class="w"> </span>~/.bash_history.tmp
+<span class="w">    </span>tac<span class="w"> </span>~/.bash_history<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'!a[$0]++'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tac<span class="w"> </span>&gt;<span class="w"> </span>~/.bash_history.tmp
 
 <span class="w">    </span><span class="o">[</span><span class="w"> </span>-f<span class="w"> </span>~/.bash_history.tmp<span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span>
 <span class="w">        </span>mv<span class="w"> </span>~/.bash_history<span class="o">{</span>.tmp,<span class="o">}</span><span class="w"> </span><span class="o">&amp;&amp;</span>
 <span class="w">        </span><span class="nb">history</span><span class="w"> </span>-c<span class="w"> </span><span class="o">&amp;&amp;</span>
 <span class="w">        </span><span class="nb">history</span><span class="w"> </span>-r
 <span class="o">}</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">PROMPT_COMMAND</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PROMPT_COMMAND</span><span class="s2"> share_history;&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PROMPT_COMMAND</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PROMPT_COMMAND</span><span class="s2"> share_history;"</span>
 </code></pre></div>
 
 

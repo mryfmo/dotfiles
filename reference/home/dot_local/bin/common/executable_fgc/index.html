@@ -3518,10 +3518,10 @@
 
 <span class="c1"># @description Checkout a branch selected from the local branch list.</span>
 <span class="k">function</span><span class="w"> </span>fgc<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>git<span class="w"> </span>checkout<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>git<span class="w"> </span><span class="k">for</span>-each-ref<span class="w"> </span>refs/heads/<span class="w"> </span>--format<span class="o">=</span><span class="s1">&#39;%(refname:short)&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>fzf<span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span>git<span class="w"> </span>checkout<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>for-each-ref<span class="w"> </span>refs/heads/<span class="w"> </span>--format<span class="o">=</span><span class="s1">'%(refname:short)'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>fzf<span class="k">)</span><span class="s2">"</span>
 <span class="o">}</span>
 
-<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">$SHELL</span><span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;echo </span><span class="si">${</span><span class="nv">ZSH_VERSION</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nv">$SHELL</span><span class="w"> </span>-c<span class="w"> </span><span class="s2">"echo </span><span class="si">${</span><span class="nv">ZSH_VERSION</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>fgc
 <span class="k">fi</span>
 </code></pre></div>

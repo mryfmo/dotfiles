@@ -3520,7 +3520,7 @@
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
-<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nb">set</span><span class="w"> </span>-x
 <span class="k">fi</span>
 
@@ -3547,9 +3547,9 @@
 <span class="c1"># @arg $1 string Package or cask name.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>is_brew_package_installed<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">package</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">package</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 
-<span class="w">    </span>brew<span class="w"> </span>list<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">&amp;</span>&gt;<span class="w"> </span>/dev/null
+<span class="w">    </span>brew<span class="w"> </span>list<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">&amp;</span>&gt;<span class="w"> </span>/dev/null
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3558,17 +3558,17 @@
 <span class="k">function</span><span class="w"> </span>install_brew_packages<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">missing_packages</span><span class="o">=()</span>
 
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>package<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BREW_PACKAGES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>is_brew_package_installed<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nv">missing_packages</span><span class="o">+=(</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>package<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BREW_PACKAGES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>is_brew_package_installed<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">missing_packages</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">done</span>
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${#</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CI</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;true&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span>brew<span class="w"> </span>info<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CI</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"true"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span>brew<span class="w"> </span>info<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">else</span>
-<span class="w">            </span>brew<span class="w"> </span>install<span class="w"> </span>--force<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">            </span>brew<span class="w"> </span>install<span class="w"> </span>--force<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
@@ -3579,17 +3579,17 @@
 <span class="k">function</span><span class="w"> </span>install_brew_cask_packages<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">missing_packages</span><span class="o">=()</span>
 
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>package<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CASK_PACKAGES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>is_brew_package_installed<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nv">missing_packages</span><span class="o">+=(</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>package<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CASK_PACKAGES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>is_brew_package_installed<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">missing_packages</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">done</span>
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${#</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CI</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;true&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span>brew<span class="w"> </span>info<span class="w"> </span>--cask<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CI</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"true"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span>brew<span class="w"> </span>info<span class="w"> </span>--cask<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">else</span>
-<span class="w">            </span>brew<span class="w"> </span>install<span class="w"> </span>--cask<span class="w"> </span>--force<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">            </span>brew<span class="w"> </span>install<span class="w"> </span>--cask<span class="w"> </span>--force<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
@@ -3599,23 +3599,23 @@
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>install_additional_brew_packages<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="c1"># Restrict personal packages to the primary user account.</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>whoami<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">&quot;mryfmo&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>whoami<span class="k">)</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"mryfmo"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">missing_packages</span><span class="o">=()</span>
 
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>package<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">ADDITIONAL_BREW_PACKAGES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>is_brew_package_installed<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nv">missing_packages</span><span class="o">+=(</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>package<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">ADDITIONAL_BREW_PACKAGES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>is_brew_package_installed<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">missing_packages</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">done</span>
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${#</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CI</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;true&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span>brew<span class="w"> </span>info<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CI</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"true"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span>brew<span class="w"> </span>info<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">else</span>
-<span class="w">            </span>brew<span class="w"> </span>install<span class="w"> </span>--force<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">            </span>brew<span class="w"> </span>install<span class="w"> </span>--force<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
@@ -3624,7 +3624,7 @@
 <span class="c1"># @description Open Google Chrome and prompt it to become the default browser.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>setup_google_chrome<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>open<span class="w"> </span><span class="s2">&quot;/Applications/Google Chrome.app&quot;</span><span class="w"> </span>--args<span class="w"> </span>--make-default-browser
+<span class="w">    </span>open<span class="w"> </span><span class="s2">"/Applications/Google Chrome.app"</span><span class="w"> </span>--args<span class="w"> </span>--make-default-browser
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3638,7 +3638,7 @@
 <span class="w">    </span><span class="c1"># setup_google_chrome</span>
 <span class="o">}</span>
 
-<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>main
 <span class="k">fi</span>
 </code></pre></div>

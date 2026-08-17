@@ -3481,7 +3481,7 @@
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env -S uv run --no-cache --script</span>
-<span class="s2">&quot;&quot;&quot;Deterministic-first permission gate for Claude Code, Codex, and CLI.&quot;&quot;&quot;</span>
+<span class="s2">"""Deterministic-first permission gate for Claude Code, Codex, and CLI."""</span>
 
 from<span class="w"> </span>__future__<span class="w"> </span>import<span class="w"> </span>annotations
 
@@ -3502,131 +3502,131 @@ from<span class="w"> </span>pathlib<span class="w"> </span>import<span class="w"
 from<span class="w"> </span>typing<span class="w"> </span>import<span class="w"> </span>Any
 
 
-<span class="nv">SENTINEL_ENV</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;PERMGATE_INNER&quot;</span>
-<span class="nv">SHELL_CONTROL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">&quot;[;&amp;|&gt;&lt;`\n]|\$\(&quot;</span><span class="o">)</span>
-<span class="nv">SHELL_EXPANSION</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">&quot;[</span><span class="nv">$*</span><span class="s2">?\[\]{}~]&quot;</span><span class="o">)</span>
+<span class="nv">SENTINEL_ENV</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"PERMGATE_INNER"</span>
+<span class="nv">SHELL_CONTROL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"[;&amp;|&gt;&lt;`\n]|\$\("</span><span class="o">)</span>
+<span class="nv">SHELL_EXPANSION</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"[</span><span class="nv">$*</span><span class="s2">?\[\]{}~]"</span><span class="o">)</span>
 <span class="nv">SECRET_MARKER</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>
-<span class="w">    </span>r<span class="s2">&quot;(?i)(?:(?:api[_-]?key|authorization|cookie|password|secret|token)\s*[:=]&quot;</span>
-<span class="w">    </span>r<span class="s2">&quot;|bearer\s+\S+|://[^\s/@:]+:[^\s/@]+@)&quot;</span>
+<span class="w">    </span>r<span class="s2">"(?i)(?:(?:api[_-]?key|authorization|cookie|password|secret|token)\s*[:=]"</span>
+<span class="w">    </span>r<span class="s2">"|bearer\s+\S+|://[^\s/@:]+:[^\s/@]+@)"</span>
 <span class="o">)</span>
 <span class="nv">SENSITIVE_KEY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>
-<span class="w">    </span>r<span class="s2">&quot;(?i)(?:api[_-]?key|authorization|credential|password|private[_-]?key|secret|token)&quot;</span>
+<span class="w">    </span>r<span class="s2">"(?i)(?:api[_-]?key|authorization|credential|password|private[_-]?key|secret|token)"</span>
 <span class="o">)</span>
 <span class="nv">UNSAFE_READ_OPTIONS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="s2">&quot;--ext-diff&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;--hostname-bin&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;--no-index&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;--open-files-in-pager&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;--output&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;--pre&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;--textconv&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;--watch&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;--web&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;-O&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;-w&quot;</span>,
+<span class="w">    </span><span class="s2">"--ext-diff"</span>,
+<span class="w">    </span><span class="s2">"--hostname-bin"</span>,
+<span class="w">    </span><span class="s2">"--no-index"</span>,
+<span class="w">    </span><span class="s2">"--open-files-in-pager"</span>,
+<span class="w">    </span><span class="s2">"--output"</span>,
+<span class="w">    </span><span class="s2">"--pre"</span>,
+<span class="w">    </span><span class="s2">"--textconv"</span>,
+<span class="w">    </span><span class="s2">"--watch"</span>,
+<span class="w">    </span><span class="s2">"--web"</span>,
+<span class="w">    </span><span class="s2">"-O"</span>,
+<span class="w">    </span><span class="s2">"-w"</span>,
 <span class="o">}</span>
-<span class="nv">ACTION_NAME</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">&quot;[A-Za-z0-9_.:-]{1,128}&quot;</span><span class="o">)</span>
+<span class="nv">ACTION_NAME</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"[A-Za-z0-9_.:-]{1,128}"</span><span class="o">)</span>
 <span class="nv">CLASSIFIABLE_ACTIONS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="s2">&quot;gh.issue.list&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;gh.issue.view&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;gh.pr.checks&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;gh.pr.diff&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;gh.pr.view&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;gh.repo.view&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;gh.run.list&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;gh.run.view&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;git.status&quot;</span>,
+<span class="w">    </span><span class="s2">"gh.issue.list"</span>,
+<span class="w">    </span><span class="s2">"gh.issue.view"</span>,
+<span class="w">    </span><span class="s2">"gh.pr.checks"</span>,
+<span class="w">    </span><span class="s2">"gh.pr.diff"</span>,
+<span class="w">    </span><span class="s2">"gh.pr.view"</span>,
+<span class="w">    </span><span class="s2">"gh.repo.view"</span>,
+<span class="w">    </span><span class="s2">"gh.run.list"</span>,
+<span class="w">    </span><span class="s2">"gh.run.view"</span>,
+<span class="w">    </span><span class="s2">"git.status"</span>,
 <span class="o">}</span>
 <span class="nv">SUMMARY_COMMANDS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="s2">&quot;ccgate&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;chezmoi&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;claude&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;codex&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;crit&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;gh&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;git&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;herdr&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;jq&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;make&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;mise&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;npm&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;node&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;pgrep&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;pnpm&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;ps&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;python3&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;rg&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;sysctl&quot;</span>,
-<span class="w">    </span><span class="s2">&quot;uv&quot;</span>,
+<span class="w">    </span><span class="s2">"ccgate"</span>,
+<span class="w">    </span><span class="s2">"chezmoi"</span>,
+<span class="w">    </span><span class="s2">"claude"</span>,
+<span class="w">    </span><span class="s2">"codex"</span>,
+<span class="w">    </span><span class="s2">"crit"</span>,
+<span class="w">    </span><span class="s2">"gh"</span>,
+<span class="w">    </span><span class="s2">"git"</span>,
+<span class="w">    </span><span class="s2">"herdr"</span>,
+<span class="w">    </span><span class="s2">"jq"</span>,
+<span class="w">    </span><span class="s2">"make"</span>,
+<span class="w">    </span><span class="s2">"mise"</span>,
+<span class="w">    </span><span class="s2">"npm"</span>,
+<span class="w">    </span><span class="s2">"node"</span>,
+<span class="w">    </span><span class="s2">"pgrep"</span>,
+<span class="w">    </span><span class="s2">"pnpm"</span>,
+<span class="w">    </span><span class="s2">"ps"</span>,
+<span class="w">    </span><span class="s2">"python3"</span>,
+<span class="w">    </span><span class="s2">"rg"</span>,
+<span class="w">    </span><span class="s2">"sysctl"</span>,
+<span class="w">    </span><span class="s2">"uv"</span>,
 <span class="o">}</span>
 
 
 def<span class="w"> </span>policy_path<span class="o">()</span><span class="w"> </span>-&gt;<span class="w"> </span>Path:
-<span class="w">    </span><span class="nv">override</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.environ.get<span class="o">(</span><span class="s2">&quot;PERMGATE_POLICY_PATH&quot;</span><span class="o">)</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span>Path<span class="o">(</span>override<span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>override<span class="w"> </span><span class="k">else</span><span class="w"> </span>Path.home<span class="o">()</span><span class="w"> </span>/<span class="w"> </span><span class="s2">&quot;.agents/permgate-policy.yaml&quot;</span>
+<span class="w">    </span><span class="nv">override</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.environ.get<span class="o">(</span><span class="s2">"PERMGATE_POLICY_PATH"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>Path<span class="o">(</span>override<span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>override<span class="w"> </span><span class="k">else</span><span class="w"> </span>Path.home<span class="o">()</span><span class="w"> </span>/<span class="w"> </span><span class="s2">".agents/permgate-policy.yaml"</span>
 
 
 def<span class="w"> </span>state_path<span class="o">()</span><span class="w"> </span>-&gt;<span class="w"> </span>Path:
-<span class="w">    </span><span class="nv">override</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.environ.get<span class="o">(</span><span class="s2">&quot;PERMGATE_STATE_PATH&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">override</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.environ.get<span class="o">(</span><span class="s2">"PERMGATE_STATE_PATH"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>override:
 <span class="w">        </span><span class="k">return</span><span class="w"> </span>Path<span class="o">(</span>override<span class="o">)</span>
-<span class="w">    </span><span class="nv">state_home</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Path<span class="o">(</span>os.environ.get<span class="o">(</span><span class="s2">&quot;XDG_STATE_HOME&quot;</span>,<span class="w"> </span>Path.home<span class="o">()</span><span class="w"> </span>/<span class="w"> </span><span class="s2">&quot;.local/state&quot;</span><span class="o">))</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span>state_home<span class="w"> </span>/<span class="w"> </span><span class="s2">&quot;permgate/decisions.jsonl&quot;</span>
+<span class="w">    </span><span class="nv">state_home</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Path<span class="o">(</span>os.environ.get<span class="o">(</span><span class="s2">"XDG_STATE_HOME"</span>,<span class="w"> </span>Path.home<span class="o">()</span><span class="w"> </span>/<span class="w"> </span><span class="s2">".local/state"</span><span class="o">))</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>state_home<span class="w"> </span>/<span class="w"> </span><span class="s2">"permgate/decisions.jsonl"</span>
 
 
 def<span class="w"> </span>load_policy<span class="o">()</span><span class="w"> </span>-&gt;<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span>:
 <span class="w">    </span><span class="nv">policy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>json.loads<span class="o">(</span>policy_path<span class="o">()</span>.read_text<span class="o">())</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">&quot;schema_version&quot;</span><span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="m">2</span>:
-<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;unsupported policy schema&quot;</span><span class="o">)</span>
-<span class="w">    </span><span class="nv">providers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">&quot;providers&quot;</span><span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>providers,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>set<span class="o">(</span>providers<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="o">{</span><span class="s2">&quot;claude&quot;</span>,<span class="w"> </span><span class="s2">&quot;codex&quot;</span><span class="o">}</span>:
-<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;providers must define claude and codex&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">"schema_version"</span><span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="m">2</span>:
+<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">"unsupported policy schema"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">providers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">"providers"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>providers,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>set<span class="o">(</span>providers<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="o">{</span><span class="s2">"claude"</span>,<span class="w"> </span><span class="s2">"codex"</span><span class="o">}</span>:
+<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">"providers must define claude and codex"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>name,<span class="w"> </span>provider<span class="w"> </span><span class="k">in</span><span class="w"> </span>providers.items<span class="o">()</span>:
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>provider,<span class="w"> </span>dict<span class="o">)</span>:
-<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span>f<span class="s2">&quot;{name} provider must be an object&quot;</span><span class="o">)</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>provider.get<span class="o">(</span><span class="s2">&quot;llm_enabled&quot;</span><span class="o">)</span>,<span class="w"> </span>bool<span class="o">)</span>:
-<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span>f<span class="s2">&quot;{name} llm_enabled must be boolean&quot;</span><span class="o">)</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>provider.get<span class="o">(</span><span class="s2">&quot;workspace_write&quot;</span>,<span class="w"> </span>False<span class="o">)</span><span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>False:
-<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span>f<span class="s2">&quot;{name} workspace_write must remain false&quot;</span><span class="o">)</span>
-<span class="w">        </span><span class="nv">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>provider.get<span class="o">(</span><span class="s2">&quot;timeout_seconds&quot;</span><span class="o">)</span>
+<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span>f<span class="s2">"{name} provider must be an object"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>provider.get<span class="o">(</span><span class="s2">"llm_enabled"</span><span class="o">)</span>,<span class="w"> </span>bool<span class="o">)</span>:
+<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span>f<span class="s2">"{name} llm_enabled must be boolean"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>provider.get<span class="o">(</span><span class="s2">"workspace_write"</span>,<span class="w"> </span>False<span class="o">)</span><span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>False:
+<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span>f<span class="s2">"{name} workspace_write must remain false"</span><span class="o">)</span>
+<span class="w">        </span><span class="nv">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>provider.get<span class="o">(</span><span class="s2">"timeout_seconds"</span><span class="o">)</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>timeout,<span class="w"> </span>bool<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>timeout,<span class="w"> </span><span class="o">(</span>int,<span class="w"> </span>float<span class="o">))</span>:
-<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span>f<span class="s2">&quot;{name} timeout_seconds must be numeric&quot;</span><span class="o">)</span>
+<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span>f<span class="s2">"{name} timeout_seconds must be numeric"</span><span class="o">)</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span><span class="m">0</span><span class="w"> </span>&lt;<span class="w"> </span>timeout<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span><span class="m">8</span>:
-<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span>f<span class="s2">&quot;{name} timeout_seconds must leave hook headroom&quot;</span><span class="o">)</span>
-<span class="w">        </span><span class="nv">model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>provider.get<span class="o">(</span><span class="s2">&quot;model&quot;</span><span class="o">)</span>
+<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span>f<span class="s2">"{name} timeout_seconds must leave hook headroom"</span><span class="o">)</span>
+<span class="w">        </span><span class="nv">model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>provider.get<span class="o">(</span><span class="s2">"model"</span><span class="o">)</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>model,<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>model:
-<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span>f<span class="s2">&quot;{name} model must be a non-empty string&quot;</span><span class="o">)</span>
-<span class="w">        </span><span class="nv">minimum_confidence</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>provider.get<span class="o">(</span><span class="s2">&quot;minimum_confidence&quot;</span><span class="o">)</span>
+<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span>f<span class="s2">"{name} model must be a non-empty string"</span><span class="o">)</span>
+<span class="w">        </span><span class="nv">minimum_confidence</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>provider.get<span class="o">(</span><span class="s2">"minimum_confidence"</span><span class="o">)</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">(</span>
 <span class="w">            </span>isinstance<span class="o">(</span>minimum_confidence,<span class="w"> </span>bool<span class="o">)</span>
 <span class="w">            </span>or<span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>minimum_confidence,<span class="w"> </span><span class="o">(</span>int,<span class="w"> </span>float<span class="o">))</span>
 <span class="w">            </span>or<span class="w"> </span>not<span class="w"> </span><span class="m">0</span><span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span>minimum_confidence<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span><span class="m">1</span>
 <span class="w">        </span><span class="o">)</span>:
-<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span>f<span class="s2">&quot;{name} minimum_confidence must be between zero and one&quot;</span><span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>providers<span class="o">[</span><span class="s2">&quot;claude&quot;</span><span class="o">][</span><span class="s2">&quot;model&quot;</span><span class="o">]</span>.startswith<span class="o">(</span><span class="s2">&quot;claude-haiku-4-5-20&quot;</span><span class="o">)</span>:
-<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;claude classifier must use a dated Haiku model ID&quot;</span><span class="o">)</span>
-<span class="w">    </span><span class="nv">cli</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">&quot;cli&quot;</span><span class="o">)</span>
+<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span>f<span class="s2">"{name} minimum_confidence must be between zero and one"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>providers<span class="o">[</span><span class="s2">"claude"</span><span class="o">][</span><span class="s2">"model"</span><span class="o">]</span>.startswith<span class="o">(</span><span class="s2">"claude-haiku-4-5-20"</span><span class="o">)</span>:
+<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">"claude classifier must use a dated Haiku model ID"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">cli</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">"cli"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>cli,<span class="w"> </span>dict<span class="o">)</span>:
-<span class="w">        </span>raise<span class="w"> </span>TypeError<span class="o">(</span><span class="s2">&quot;cli policy must be an object&quot;</span><span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>cli.get<span class="o">(</span><span class="s2">&quot;decision_layers&quot;</span><span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="o">[</span>
-<span class="w">        </span><span class="s2">&quot;deny_patterns&quot;</span>,
-<span class="w">        </span><span class="s2">&quot;workspace_write&quot;</span>,
-<span class="w">        </span><span class="s2">&quot;allow_patterns&quot;</span>,
+<span class="w">        </span>raise<span class="w"> </span>TypeError<span class="o">(</span><span class="s2">"cli policy must be an object"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>cli.get<span class="o">(</span><span class="s2">"decision_layers"</span><span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="o">[</span>
+<span class="w">        </span><span class="s2">"deny_patterns"</span>,
+<span class="w">        </span><span class="s2">"workspace_write"</span>,
+<span class="w">        </span><span class="s2">"allow_patterns"</span>,
 <span class="w">    </span><span class="o">]</span>:
-<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;cli must apply deny, workspace, then allow layers&quot;</span><span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>cli.get<span class="o">(</span><span class="s2">&quot;llm_enabled&quot;</span><span class="o">)</span><span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>False:
-<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;cli llm classifier must remain disabled&quot;</span><span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>cli.get<span class="o">(</span><span class="s2">&quot;workspace_write&quot;</span><span class="o">)</span><span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>True:
-<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;cli workspace_write must be enabled&quot;</span><span class="o">)</span>
-<span class="w">    </span><span class="nv">read_deny_patterns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>cli.get<span class="o">(</span><span class="s2">&quot;read_deny_patterns&quot;</span><span class="o">)</span>
+<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">"cli must apply deny, workspace, then allow layers"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>cli.get<span class="o">(</span><span class="s2">"llm_enabled"</span><span class="o">)</span><span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>False:
+<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">"cli llm classifier must remain disabled"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>cli.get<span class="o">(</span><span class="s2">"workspace_write"</span><span class="o">)</span><span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>True:
+<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">"cli workspace_write must be enabled"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">read_deny_patterns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>cli.get<span class="o">(</span><span class="s2">"read_deny_patterns"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>read_deny_patterns,<span class="w"> </span>list<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>read_deny_patterns:
-<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;cli read_deny_patterns must be a non-empty list&quot;</span><span class="o">)</span>
+<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">"cli read_deny_patterns must be a non-empty list"</span><span class="o">)</span>
 <span class="w">    </span>read_deny_ids:<span class="w"> </span>set<span class="o">[</span>str<span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>set<span class="o">()</span>
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>pattern<span class="w"> </span><span class="k">in</span><span class="w"> </span>read_deny_patterns:
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>pattern,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>set<span class="o">(</span>pattern<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="o">{</span><span class="s2">&quot;id&quot;</span>,<span class="w"> </span><span class="s2">&quot;regex&quot;</span><span class="o">}</span>:
-<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;cli read deny patterns must define only id and regex&quot;</span><span class="o">)</span>
-<span class="w">        </span><span class="nv">pattern_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>pattern<span class="o">[</span><span class="s2">&quot;id&quot;</span><span class="o">]</span>
-<span class="w">        </span><span class="nv">regex</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>pattern<span class="o">[</span><span class="s2">&quot;regex&quot;</span><span class="o">]</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>pattern,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>set<span class="o">(</span>pattern<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="o">{</span><span class="s2">"id"</span>,<span class="w"> </span><span class="s2">"regex"</span><span class="o">}</span>:
+<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">"cli read deny patterns must define only id and regex"</span><span class="o">)</span>
+<span class="w">        </span><span class="nv">pattern_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>pattern<span class="o">[</span><span class="s2">"id"</span><span class="o">]</span>
+<span class="w">        </span><span class="nv">regex</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>pattern<span class="o">[</span><span class="s2">"regex"</span><span class="o">]</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">(</span>
 <span class="w">            </span>not<span class="w"> </span>isinstance<span class="o">(</span>pattern_id,<span class="w"> </span>str<span class="o">)</span>
 <span class="w">            </span>or<span class="w"> </span>not<span class="w"> </span>pattern_id
@@ -3634,21 +3634,21 @@ def<span class="w"> </span>load_policy<span class="o">()</span><span class="w"> 
 <span class="w">            </span>or<span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>regex,<span class="w"> </span>str<span class="o">)</span>
 <span class="w">            </span>or<span class="w"> </span>not<span class="w"> </span>regex
 <span class="w">        </span><span class="o">)</span>:
-<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;cli read deny pattern ids and regexes must be unique strings&quot;</span><span class="o">)</span>
+<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">"cli read deny pattern ids and regexes must be unique strings"</span><span class="o">)</span>
 <span class="w">        </span>try:
 <span class="w">            </span>re.compile<span class="o">(</span>regex<span class="o">)</span>
 <span class="w">        </span>except<span class="w"> </span>re.error<span class="w"> </span>as<span class="w"> </span>error:
-<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;cli read deny pattern regex must compile&quot;</span><span class="o">)</span><span class="w"> </span>from<span class="w"> </span>error
+<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">"cli read deny pattern regex must compile"</span><span class="o">)</span><span class="w"> </span>from<span class="w"> </span>error
 <span class="w">        </span>read_deny_ids.add<span class="o">(</span>pattern_id<span class="o">)</span>
-<span class="w">    </span><span class="nv">categories</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">&quot;categories&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">categories</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">"categories"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>categories,<span class="w"> </span>list<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>all<span class="o">(</span>
 <span class="w">        </span>isinstance<span class="o">(</span>item,<span class="w"> </span>str<span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>item<span class="w"> </span><span class="k">in</span><span class="w"> </span>categories
 <span class="w">    </span><span class="o">)</span>:
-<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;categories must be strings&quot;</span><span class="o">)</span>
-<span class="w">    </span><span class="nv">prompt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">&quot;classifier_prompt&quot;</span><span class="o">)</span>
+<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">"categories must be strings"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">prompt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">"classifier_prompt"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>prompt,<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>prompt:
-<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;classifier_prompt must be a non-empty string&quot;</span><span class="o">)</span>
-<span class="w">    </span><span class="nv">actions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">&quot;classifier_actions&quot;</span><span class="o">)</span>
+<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">"classifier_prompt must be a non-empty string"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">actions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">"classifier_actions"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>actions,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>set<span class="o">(</span>actions<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>set<span class="o">(</span>categories<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>all<span class="o">(</span>
 <span class="w">        </span>isinstance<span class="o">(</span>category_actions,<span class="w"> </span>list<span class="o">)</span>
 <span class="w">        </span>and<span class="w"> </span>all<span class="o">(</span>
@@ -3657,44 +3657,44 @@ def<span class="w"> </span>load_policy<span class="o">()</span><span class="w"> 
 <span class="w">        </span><span class="o">)</span>
 <span class="w">        </span><span class="k">for</span><span class="w"> </span>category_actions<span class="w"> </span><span class="k">in</span><span class="w"> </span>actions.values<span class="o">()</span>
 <span class="w">    </span><span class="o">)</span>:
-<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;classifier_actions must map every category to actions&quot;</span><span class="o">)</span>
+<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">"classifier_actions must map every category to actions"</span><span class="o">)</span>
 <span class="w">    </span><span class="nv">flattened_actions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>action<span class="w"> </span><span class="k">for</span><span class="w"> </span>items<span class="w"> </span><span class="k">in</span><span class="w"> </span>actions.values<span class="o">()</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>action<span class="w"> </span><span class="k">in</span><span class="w"> </span>items<span class="o">]</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>flattened_actions<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>len<span class="o">(</span>set<span class="o">(</span>flattened_actions<span class="o">))</span>:
-<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;classifier actions must belong to exactly one category&quot;</span><span class="o">)</span>
+<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">"classifier actions must belong to exactly one category"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>set<span class="o">(</span>flattened_actions<span class="o">)</span><span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span>CLASSIFIABLE_ACTIONS:
-<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;classifier actions must be intrinsically read-only&quot;</span><span class="o">)</span>
-<span class="w">    </span><span class="nv">enablement</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">&quot;enablement&quot;</span><span class="o">)</span>
+<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">"classifier actions must be intrinsically read-only"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">enablement</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">"enablement"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>enablement,<span class="w"> </span>dict<span class="o">)</span>:
-<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;enablement must be an object&quot;</span><span class="o">)</span>
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>key<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">(</span><span class="s2">&quot;minimum_successes&quot;</span>,<span class="w"> </span><span class="s2">&quot;maximum_p50_ms&quot;</span>,<span class="w"> </span><span class="s2">&quot;maximum_p95_ms&quot;</span><span class="o">)</span>:
+<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">"enablement must be an object"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>key<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">(</span><span class="s2">"minimum_successes"</span>,<span class="w"> </span><span class="s2">"maximum_p50_ms"</span>,<span class="w"> </span><span class="s2">"maximum_p95_ms"</span><span class="o">)</span>:
 <span class="w">        </span><span class="nv">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>enablement.get<span class="o">(</span>key<span class="o">)</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>value,<span class="w"> </span>bool<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>value,<span class="w"> </span><span class="o">(</span>int,<span class="w"> </span>float<span class="o">))</span><span class="w"> </span>or<span class="w"> </span>value<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span><span class="m">0</span>:
-<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span>f<span class="s2">&quot;enablement {key} must be positive&quot;</span><span class="o">)</span>
+<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span>f<span class="s2">"enablement {key} must be positive"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span>policy
 
 
 def<span class="w"> </span>request_parts<span class="o">(</span>payload:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">])</span><span class="w"> </span>-&gt;<span class="w"> </span>tuple<span class="o">[</span>str,<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span>,<span class="w"> </span>str<span class="o">]</span>:
-<span class="w">    </span><span class="nv">tool</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>payload.get<span class="o">(</span><span class="s2">&quot;tool_name&quot;</span><span class="o">)</span>
-<span class="w">    </span><span class="nv">tool</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>tool<span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>tool,<span class="w"> </span>str<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">&quot;unknown&quot;</span>
-<span class="w">    </span><span class="nv">tool_input</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>payload.get<span class="o">(</span><span class="s2">&quot;tool_input&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">tool</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>payload.get<span class="o">(</span><span class="s2">"tool_name"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">tool</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>tool<span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>tool,<span class="w"> </span>str<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">"unknown"</span>
+<span class="w">    </span><span class="nv">tool_input</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>payload.get<span class="o">(</span><span class="s2">"tool_input"</span><span class="o">)</span>
 <span class="w">    </span><span class="nv">tool_input</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>tool_input<span class="w"> </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>tool_input,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">{}</span>
-<span class="w">    </span><span class="nb">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>tool_input.get<span class="o">(</span><span class="s2">&quot;command&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="nb">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>tool_input.get<span class="o">(</span><span class="s2">"command"</span><span class="o">)</span>
 <span class="w">    </span><span class="nv">match_text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span>
 <span class="w">        </span><span class="nb">command</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>command,<span class="w"> </span>str<span class="o">)</span>
-<span class="w">        </span><span class="k">else</span><span class="w"> </span>json.dumps<span class="o">(</span>tool_input,<span class="w"> </span><span class="nv">sort_keys</span><span class="o">=</span>True,<span class="w"> </span><span class="nv">separators</span><span class="o">=(</span><span class="s2">&quot;,&quot;</span>,<span class="w"> </span><span class="s2">&quot;:&quot;</span><span class="o">))</span>
+<span class="w">        </span><span class="k">else</span><span class="w"> </span>json.dumps<span class="o">(</span>tool_input,<span class="w"> </span><span class="nv">sort_keys</span><span class="o">=</span>True,<span class="w"> </span><span class="nv">separators</span><span class="o">=(</span><span class="s2">","</span>,<span class="w"> </span><span class="s2">":"</span><span class="o">))</span>
 <span class="w">    </span><span class="o">)</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span>tool,<span class="w"> </span>tool_input,<span class="w"> </span>match_text
 
 
 def<span class="w"> </span>input_summary<span class="o">(</span>tool:<span class="w"> </span>str,<span class="w"> </span>tool_input:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span>,<span class="w"> </span>match_text:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>str:
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>tool<span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">&quot;Bash&quot;</span>:
-<span class="w">        </span><span class="k">return</span><span class="w"> </span>f<span class="s2">&quot;{tool}:structured&quot;</span><span class="o">[</span>:160<span class="o">]</span>
-<span class="w">    </span><span class="nv">first</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.match<span class="o">(</span>r<span class="s2">&quot;\s*([^\s;&amp;|&gt;&lt;]+)&quot;</span>,<span class="w"> </span>match_text<span class="o">)</span>
-<span class="w">    </span><span class="nv">operation</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Path<span class="o">(</span>first.group<span class="o">(</span><span class="m">1</span><span class="o">))</span>.name<span class="w"> </span><span class="k">if</span><span class="w"> </span>first<span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">&quot;other&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>tool<span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"Bash"</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>f<span class="s2">"{tool}:structured"</span><span class="o">[</span>:160<span class="o">]</span>
+<span class="w">    </span><span class="nv">first</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.match<span class="o">(</span>r<span class="s2">"\s*([^\s;&amp;|&gt;&lt;]+)"</span>,<span class="w"> </span>match_text<span class="o">)</span>
+<span class="w">    </span><span class="nv">operation</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Path<span class="o">(</span>first.group<span class="o">(</span><span class="m">1</span><span class="o">))</span>.name<span class="w"> </span><span class="k">if</span><span class="w"> </span>first<span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">"other"</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>operation<span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span>SUMMARY_COMMANDS:
-<span class="w">        </span><span class="nv">operation</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;other&quot;</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span>f<span class="s2">&quot;{tool}:{operation}&quot;</span><span class="o">[</span>:160<span class="o">]</span>
+<span class="w">        </span><span class="nv">operation</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"other"</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>f<span class="s2">"{tool}:{operation}"</span><span class="o">[</span>:160<span class="o">]</span>
 
 
 def<span class="w"> </span>contains_sensitive_input<span class="o">(</span>value:<span class="w"> </span>Any<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>bool:
@@ -3709,8 +3709,8 @@ def<span class="w"> </span>contains_sensitive_input<span class="o">(</span>value
 
 
 def<span class="w"> </span>pattern_match<span class="o">(</span>pattern:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span>,<span class="w"> </span>tool:<span class="w"> </span>str,<span class="w"> </span>text:<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>bool:
-<span class="w">    </span><span class="k">return</span><span class="w"> </span>pattern.get<span class="o">(</span><span class="s2">&quot;tool&quot;</span><span class="o">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>tool<span class="w"> </span>and<span class="w"> </span>bool<span class="o">(</span>
-<span class="w">        </span>re.fullmatch<span class="o">(</span>str<span class="o">(</span>pattern.get<span class="o">(</span><span class="s2">&quot;regex&quot;</span>,<span class="w"> </span>r<span class="s2">&quot;(?!x)x&quot;</span><span class="o">))</span>,<span class="w"> </span>text<span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>pattern.get<span class="o">(</span><span class="s2">"tool"</span><span class="o">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>tool<span class="w"> </span>and<span class="w"> </span>bool<span class="o">(</span>
+<span class="w">        </span>re.fullmatch<span class="o">(</span>str<span class="o">(</span>pattern.get<span class="o">(</span><span class="s2">"regex"</span>,<span class="w"> </span>r<span class="s2">"(?!x)x"</span><span class="o">))</span>,<span class="w"> </span>text<span class="o">)</span>
 <span class="w">    </span><span class="o">)</span>
 
 
@@ -3720,7 +3720,7 @@ def<span class="w"> </span>has_unsafe_read_option<span class="o">(</span>command
 <span class="w">    </span>except<span class="w"> </span>ValueError:
 <span class="w">        </span><span class="k">return</span><span class="w"> </span>True
 <span class="w">    </span><span class="k">return</span><span class="w"> </span>any<span class="o">(</span>
-<span class="w">        </span>token.split<span class="o">(</span><span class="s2">&quot;=&quot;</span>,<span class="w"> </span><span class="m">1</span><span class="o">)[</span><span class="m">0</span><span class="o">]</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>UNSAFE_READ_OPTIONS<span class="w"> </span><span class="k">for</span><span class="w"> </span>token<span class="w"> </span><span class="k">in</span><span class="w"> </span>parts<span class="o">[</span><span class="m">1</span>:<span class="o">]</span>
+<span class="w">        </span>token.split<span class="o">(</span><span class="s2">"="</span>,<span class="w"> </span><span class="m">1</span><span class="o">)[</span><span class="m">0</span><span class="o">]</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>UNSAFE_READ_OPTIONS<span class="w"> </span><span class="k">for</span><span class="w"> </span>token<span class="w"> </span><span class="k">in</span><span class="w"> </span>parts<span class="o">[</span><span class="m">1</span>:<span class="o">]</span>
 <span class="w">    </span><span class="o">)</span>
 
 
@@ -3733,26 +3733,26 @@ def<span class="w"> </span>is_bounded_shell_command<span class="o">(</span>comma
 
 
 def<span class="w"> </span>hook_output<span class="o">(</span>behavior:<span class="w"> </span>str,<span class="w"> </span>message:<span class="w"> </span>str<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">None</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span>:
-<span class="w">    </span><span class="nv">decision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{</span><span class="s2">&quot;behavior&quot;</span>:<span class="w"> </span>behavior<span class="o">}</span>
+<span class="w">    </span><span class="nv">decision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{</span><span class="s2">"behavior"</span>:<span class="w"> </span>behavior<span class="o">}</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>message<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
-<span class="w">        </span>decision<span class="o">[</span><span class="s2">&quot;message&quot;</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>message
+<span class="w">        </span>decision<span class="o">[</span><span class="s2">"message"</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>message
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">{</span>
-<span class="w">        </span><span class="s2">&quot;hookSpecificOutput&quot;</span>:<span class="w"> </span><span class="o">{</span>
-<span class="w">            </span><span class="s2">&quot;hookEventName&quot;</span>:<span class="w"> </span><span class="s2">&quot;PermissionRequest&quot;</span>,
-<span class="w">            </span><span class="s2">&quot;decision&quot;</span>:<span class="w"> </span>decision,
+<span class="w">        </span><span class="s2">"hookSpecificOutput"</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="s2">"hookEventName"</span>:<span class="w"> </span><span class="s2">"PermissionRequest"</span>,
+<span class="w">            </span><span class="s2">"decision"</span>:<span class="w"> </span>decision,
 <span class="w">        </span><span class="o">}</span>
 <span class="w">    </span><span class="o">}</span>
 
 
 def<span class="w"> </span>classifier_schema<span class="o">(</span>categories:<span class="w"> </span>list<span class="o">[</span>str<span class="o">])</span><span class="w"> </span>-&gt;<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span>:
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">{</span>
-<span class="w">        </span><span class="s2">&quot;type&quot;</span>:<span class="w"> </span><span class="s2">&quot;object&quot;</span>,
-<span class="w">        </span><span class="s2">&quot;properties&quot;</span>:<span class="w"> </span><span class="o">{</span>
-<span class="w">            </span><span class="s2">&quot;category&quot;</span>:<span class="w"> </span><span class="o">{</span><span class="s2">&quot;type&quot;</span>:<span class="w"> </span><span class="s2">&quot;string&quot;</span>,<span class="w"> </span><span class="s2">&quot;enum&quot;</span>:<span class="w"> </span><span class="o">[</span>*categories,<span class="w"> </span><span class="s2">&quot;unknown&quot;</span><span class="o">]}</span>,
-<span class="w">            </span><span class="s2">&quot;confidence&quot;</span>:<span class="w"> </span><span class="o">{</span><span class="s2">&quot;type&quot;</span>:<span class="w"> </span><span class="s2">&quot;number&quot;</span>,<span class="w"> </span><span class="s2">&quot;minimum&quot;</span>:<span class="w"> </span><span class="m">0</span>,<span class="w"> </span><span class="s2">&quot;maximum&quot;</span>:<span class="w"> </span><span class="m">1</span><span class="o">}</span>,
+<span class="w">        </span><span class="s2">"type"</span>:<span class="w"> </span><span class="s2">"object"</span>,
+<span class="w">        </span><span class="s2">"properties"</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="s2">"category"</span>:<span class="w"> </span><span class="o">{</span><span class="s2">"type"</span>:<span class="w"> </span><span class="s2">"string"</span>,<span class="w"> </span><span class="s2">"enum"</span>:<span class="w"> </span><span class="o">[</span>*categories,<span class="w"> </span><span class="s2">"unknown"</span><span class="o">]}</span>,
+<span class="w">            </span><span class="s2">"confidence"</span>:<span class="w"> </span><span class="o">{</span><span class="s2">"type"</span>:<span class="w"> </span><span class="s2">"number"</span>,<span class="w"> </span><span class="s2">"minimum"</span>:<span class="w"> </span><span class="m">0</span>,<span class="w"> </span><span class="s2">"maximum"</span>:<span class="w"> </span><span class="m">1</span><span class="o">}</span>,
 <span class="w">        </span><span class="o">}</span>,
-<span class="w">        </span><span class="s2">&quot;required&quot;</span>:<span class="w"> </span><span class="o">[</span><span class="s2">&quot;category&quot;</span>,<span class="w"> </span><span class="s2">&quot;confidence&quot;</span><span class="o">]</span>,
-<span class="w">        </span><span class="s2">&quot;additionalProperties&quot;</span>:<span class="w"> </span>False,
+<span class="w">        </span><span class="s2">"required"</span>:<span class="w"> </span><span class="o">[</span><span class="s2">"category"</span>,<span class="w"> </span><span class="s2">"confidence"</span><span class="o">]</span>,
+<span class="w">        </span><span class="s2">"additionalProperties"</span>:<span class="w"> </span>False,
 <span class="w">    </span><span class="o">}</span>
 
 
@@ -3761,12 +3761,12 @@ def<span class="w"> </span>classification_subject<span class="o">(</span>
 <span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>None:
 <span class="w">    </span><span class="nv">allowed_actions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{</span>
 <span class="w">        </span>action
-<span class="w">        </span><span class="k">for</span><span class="w"> </span>actions<span class="w"> </span><span class="k">in</span><span class="w"> </span>policy<span class="o">[</span><span class="s2">&quot;classifier_actions&quot;</span><span class="o">]</span>.values<span class="o">()</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span>actions<span class="w"> </span><span class="k">in</span><span class="w"> </span>policy<span class="o">[</span><span class="s2">"classifier_actions"</span><span class="o">]</span>.values<span class="o">()</span>
 <span class="w">        </span><span class="k">for</span><span class="w"> </span>action<span class="w"> </span><span class="k">in</span><span class="w"> </span>actions
 <span class="w">    </span><span class="o">}</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>tool<span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">&quot;Bash&quot;</span>:
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="o">{</span><span class="s2">&quot;action&quot;</span>:<span class="w"> </span>tool<span class="o">}</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>tool<span class="w"> </span><span class="k">in</span><span class="w"> </span>allowed_actions<span class="w"> </span><span class="k">else</span><span class="w"> </span>None
-<span class="w">    </span><span class="nb">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>tool_input.get<span class="o">(</span><span class="s2">&quot;command&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>tool<span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"Bash"</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="o">{</span><span class="s2">"action"</span>:<span class="w"> </span>tool<span class="o">}</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>tool<span class="w"> </span><span class="k">in</span><span class="w"> </span>allowed_actions<span class="w"> </span><span class="k">else</span><span class="w"> </span>None
+<span class="w">    </span><span class="nb">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>tool_input.get<span class="o">(</span><span class="s2">"command"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>command,<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>is_bounded_shell_command<span class="o">(</span><span class="nb">command</span><span class="o">)</span>:
 <span class="w">        </span><span class="k">return</span><span class="w"> </span>None
 <span class="w">    </span>try:
@@ -3781,17 +3781,17 @@ def<span class="w"> </span>classification_subject<span class="o">(</span>
 <span class="w">    </span><span class="nv">action</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>next<span class="o">(</span>
 <span class="w">        </span><span class="o">(</span>
 <span class="w">            </span>candidate
-<span class="w">            </span><span class="k">for</span><span class="w"> </span>candidate<span class="w"> </span><span class="k">in</span><span class="w"> </span>sorted<span class="o">(</span>allowed_actions,<span class="w"> </span><span class="nv">key</span><span class="o">=</span>lambda<span class="w"> </span>item:<span class="w"> </span>-item.count<span class="o">(</span><span class="s2">&quot;.&quot;</span><span class="o">))</span>
-<span class="w">            </span><span class="k">if</span><span class="w"> </span>parts<span class="o">[</span>:<span class="w"> </span>len<span class="o">(</span>candidate.split<span class="o">(</span><span class="s2">&quot;.&quot;</span><span class="o">))]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>candidate.split<span class="o">(</span><span class="s2">&quot;.&quot;</span><span class="o">)</span>
+<span class="w">            </span><span class="k">for</span><span class="w"> </span>candidate<span class="w"> </span><span class="k">in</span><span class="w"> </span>sorted<span class="o">(</span>allowed_actions,<span class="w"> </span><span class="nv">key</span><span class="o">=</span>lambda<span class="w"> </span>item:<span class="w"> </span>-item.count<span class="o">(</span><span class="s2">"."</span><span class="o">))</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>parts<span class="o">[</span>:<span class="w"> </span>len<span class="o">(</span>candidate.split<span class="o">(</span><span class="s2">"."</span><span class="o">))]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>candidate.split<span class="o">(</span><span class="s2">"."</span><span class="o">)</span>
 <span class="w">        </span><span class="o">)</span>,
 <span class="w">        </span>None,
 <span class="w">    </span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>action<span class="w"> </span>is<span class="w"> </span>None:
 <span class="w">        </span><span class="k">return</span><span class="w"> </span>None
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">{</span>
-<span class="w">        </span><span class="s2">&quot;action&quot;</span>:<span class="w"> </span>action,
-<span class="w">        </span><span class="s2">&quot;option_count&quot;</span>:<span class="w"> </span>sum<span class="o">(</span>part.startswith<span class="o">(</span><span class="s2">&quot;-&quot;</span><span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>part<span class="w"> </span><span class="k">in</span><span class="w"> </span>parts<span class="o">[</span><span class="m">1</span>:<span class="o">])</span>,
-<span class="w">        </span><span class="s2">&quot;argument_count&quot;</span>:<span class="w"> </span>sum<span class="o">(</span>not<span class="w"> </span>part.startswith<span class="o">(</span><span class="s2">&quot;-&quot;</span><span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>part<span class="w"> </span><span class="k">in</span><span class="w"> </span>parts<span class="o">[</span><span class="m">1</span>:<span class="o">])</span>,
+<span class="w">        </span><span class="s2">"action"</span>:<span class="w"> </span>action,
+<span class="w">        </span><span class="s2">"option_count"</span>:<span class="w"> </span>sum<span class="o">(</span>part.startswith<span class="o">(</span><span class="s2">"-"</span><span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>part<span class="w"> </span><span class="k">in</span><span class="w"> </span>parts<span class="o">[</span><span class="m">1</span>:<span class="o">])</span>,
+<span class="w">        </span><span class="s2">"argument_count"</span>:<span class="w"> </span>sum<span class="o">(</span>not<span class="w"> </span>part.startswith<span class="o">(</span><span class="s2">"-"</span><span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>part<span class="w"> </span><span class="k">in</span><span class="w"> </span>parts<span class="o">[</span><span class="m">1</span>:<span class="o">])</span>,
 <span class="w">    </span><span class="o">}</span>
 
 
@@ -3804,20 +3804,20 @@ def<span class="w"> </span>parse_classification<span class="o">(</span>
 <span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>None:
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>data,<span class="w"> </span>dict<span class="o">)</span>:
 <span class="w">        </span><span class="k">return</span><span class="w"> </span>None
-<span class="w">    </span><span class="nv">classification</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>data.get<span class="o">(</span><span class="s2">&quot;structured_output&quot;</span>,<span class="w"> </span>data<span class="o">)</span>
+<span class="w">    </span><span class="nv">classification</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>data.get<span class="o">(</span><span class="s2">"structured_output"</span>,<span class="w"> </span>data<span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>classification,<span class="w"> </span>dict<span class="o">)</span>:
 <span class="w">        </span><span class="k">return</span><span class="w"> </span>None
-<span class="w">    </span><span class="nv">category</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>classification.get<span class="o">(</span><span class="s2">&quot;category&quot;</span><span class="o">)</span>
-<span class="w">    </span><span class="nv">confidence</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>classification.get<span class="o">(</span><span class="s2">&quot;confidence&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">category</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>classification.get<span class="o">(</span><span class="s2">"category"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">confidence</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>classification.get<span class="o">(</span><span class="s2">"confidence"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">(</span>
 <span class="w">        </span>category<span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span>categories
-<span class="w">        </span>or<span class="w"> </span>subject<span class="o">[</span><span class="s2">&quot;action&quot;</span><span class="o">]</span><span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span>actions.get<span class="o">(</span>str<span class="o">(</span>category<span class="o">)</span>,<span class="w"> </span><span class="o">[])</span>
+<span class="w">        </span>or<span class="w"> </span>subject<span class="o">[</span><span class="s2">"action"</span><span class="o">]</span><span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span>actions.get<span class="o">(</span>str<span class="o">(</span>category<span class="o">)</span>,<span class="w"> </span><span class="o">[])</span>
 <span class="w">        </span>or<span class="w"> </span>isinstance<span class="o">(</span>confidence,<span class="w"> </span>bool<span class="o">)</span>
 <span class="w">        </span>or<span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>confidence,<span class="w"> </span><span class="o">(</span>int,<span class="w"> </span>float<span class="o">))</span>
-<span class="w">        </span>or<span class="w"> </span>confidence<span class="w"> </span>&lt;<span class="w"> </span>provider<span class="o">[</span><span class="s2">&quot;minimum_confidence&quot;</span><span class="o">]</span>
+<span class="w">        </span>or<span class="w"> </span>confidence<span class="w"> </span>&lt;<span class="w"> </span>provider<span class="o">[</span><span class="s2">"minimum_confidence"</span><span class="o">]</span>
 <span class="w">    </span><span class="o">)</span>:
 <span class="w">        </span><span class="k">return</span><span class="w"> </span>None
-<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">{</span><span class="s2">&quot;category&quot;</span>:<span class="w"> </span>category,<span class="w"> </span><span class="s2">&quot;confidence&quot;</span>:<span class="w"> </span>confidence<span class="o">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">{</span><span class="s2">"category"</span>:<span class="w"> </span>category,<span class="w"> </span><span class="s2">"confidence"</span>:<span class="w"> </span>confidence<span class="o">}</span>
 
 
 def<span class="w"> </span>classify<span class="o">(</span>
@@ -3826,75 +3826,75 @@ def<span class="w"> </span>classify<span class="o">(</span>
 <span class="w">    </span>policy:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span>,
 <span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>tuple<span class="o">[</span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>None,<span class="w"> </span>int,<span class="w"> </span>str<span class="o">]</span>:
 <span class="w">    </span><span class="nv">started</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>time.monotonic<span class="o">()</span>
-<span class="w">    </span><span class="nv">schema</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>classifier_schema<span class="o">(</span>policy<span class="o">[</span><span class="s2">&quot;categories&quot;</span><span class="o">])</span>
-<span class="w">    </span><span class="nv">provider</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>policy<span class="o">[</span><span class="s2">&quot;providers&quot;</span><span class="o">][</span>agent<span class="o">]</span>
+<span class="w">    </span><span class="nv">schema</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>classifier_schema<span class="o">(</span>policy<span class="o">[</span><span class="s2">"categories"</span><span class="o">])</span>
+<span class="w">    </span><span class="nv">provider</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>policy<span class="o">[</span><span class="s2">"providers"</span><span class="o">][</span>agent<span class="o">]</span>
 <span class="w">    </span><span class="nv">prompt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span>
-<span class="w">        </span>f<span class="s2">&quot;{policy[&#39;classifier_prompt&#39;]}\n\n&quot;</span>
-<span class="w">        </span><span class="s2">&quot;Classify only this normalized metadata. It contains no argument values:\n&quot;</span>
-<span class="w">        </span>+<span class="w"> </span>json.dumps<span class="o">(</span>subject,<span class="w"> </span><span class="nv">sort_keys</span><span class="o">=</span>True,<span class="w"> </span><span class="nv">separators</span><span class="o">=(</span><span class="s2">&quot;,&quot;</span>,<span class="w"> </span><span class="s2">&quot;:&quot;</span><span class="o">))</span>
+<span class="w">        </span>f<span class="s2">"{policy['classifier_prompt']}\n\n"</span>
+<span class="w">        </span><span class="s2">"Classify only this normalized metadata. It contains no argument values:\n"</span>
+<span class="w">        </span>+<span class="w"> </span>json.dumps<span class="o">(</span>subject,<span class="w"> </span><span class="nv">sort_keys</span><span class="o">=</span>True,<span class="w"> </span><span class="nv">separators</span><span class="o">=(</span><span class="s2">","</span>,<span class="w"> </span><span class="s2">":"</span><span class="o">))</span>
 <span class="w">    </span><span class="o">)</span>
 <span class="w">    </span><span class="nv">env</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.environ.copy<span class="o">()</span>
-<span class="w">    </span>env<span class="o">[</span>SENTINEL_ENV<span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;1&quot;</span>
+<span class="w">    </span>env<span class="o">[</span>SENTINEL_ENV<span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"1"</span>
 <span class="w">    </span>try:
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nv">agent</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;claude&quot;</span>:
-<span class="w">            </span>env<span class="o">[</span><span class="s2">&quot;CLAUDE_CODE_DISABLE_AUTO_MEMORY&quot;</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;1&quot;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nv">agent</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"claude"</span>:
+<span class="w">            </span>env<span class="o">[</span><span class="s2">"CLAUDE_CODE_DISABLE_AUTO_MEMORY"</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"1"</span>
 <span class="w">            </span><span class="nv">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>subprocess.run<span class="o">(</span>
 <span class="w">                </span><span class="o">[</span>
-<span class="w">                    </span>os.environ.get<span class="o">(</span><span class="s2">&quot;PERMGATE_CLAUDE_COMMAND&quot;</span>,<span class="w"> </span><span class="s2">&quot;claude&quot;</span><span class="o">)</span>,
-<span class="w">                    </span><span class="s2">&quot;-p&quot;</span>,
-<span class="w">                    </span><span class="s2">&quot;--model&quot;</span>,
-<span class="w">                    </span>provider<span class="o">[</span><span class="s2">&quot;model&quot;</span><span class="o">]</span>,
-<span class="w">                    </span><span class="s2">&quot;--max-turns&quot;</span>,
-<span class="w">                    </span><span class="s2">&quot;1&quot;</span>,
-<span class="w">                    </span><span class="s2">&quot;--safe-mode&quot;</span>,
-<span class="w">                    </span><span class="s2">&quot;--tools&quot;</span>,
-<span class="w">                    </span><span class="s2">&quot;&quot;</span>,
-<span class="w">                    </span><span class="s2">&quot;--disable-slash-commands&quot;</span>,
-<span class="w">                    </span><span class="s2">&quot;--strict-mcp-config&quot;</span>,
-<span class="w">                    </span><span class="s2">&quot;--no-session-persistence&quot;</span>,
-<span class="w">                    </span><span class="s2">&quot;--output-format&quot;</span>,
-<span class="w">                    </span><span class="s2">&quot;json&quot;</span>,
-<span class="w">                    </span><span class="s2">&quot;--json-schema&quot;</span>,
-<span class="w">                    </span>json.dumps<span class="o">(</span>schema,<span class="w"> </span><span class="nv">separators</span><span class="o">=(</span><span class="s2">&quot;,&quot;</span>,<span class="w"> </span><span class="s2">&quot;:&quot;</span><span class="o">))</span>,
+<span class="w">                    </span>os.environ.get<span class="o">(</span><span class="s2">"PERMGATE_CLAUDE_COMMAND"</span>,<span class="w"> </span><span class="s2">"claude"</span><span class="o">)</span>,
+<span class="w">                    </span><span class="s2">"-p"</span>,
+<span class="w">                    </span><span class="s2">"--model"</span>,
+<span class="w">                    </span>provider<span class="o">[</span><span class="s2">"model"</span><span class="o">]</span>,
+<span class="w">                    </span><span class="s2">"--max-turns"</span>,
+<span class="w">                    </span><span class="s2">"1"</span>,
+<span class="w">                    </span><span class="s2">"--safe-mode"</span>,
+<span class="w">                    </span><span class="s2">"--tools"</span>,
+<span class="w">                    </span><span class="s2">""</span>,
+<span class="w">                    </span><span class="s2">"--disable-slash-commands"</span>,
+<span class="w">                    </span><span class="s2">"--strict-mcp-config"</span>,
+<span class="w">                    </span><span class="s2">"--no-session-persistence"</span>,
+<span class="w">                    </span><span class="s2">"--output-format"</span>,
+<span class="w">                    </span><span class="s2">"json"</span>,
+<span class="w">                    </span><span class="s2">"--json-schema"</span>,
+<span class="w">                    </span>json.dumps<span class="o">(</span>schema,<span class="w"> </span><span class="nv">separators</span><span class="o">=(</span><span class="s2">","</span>,<span class="w"> </span><span class="s2">":"</span><span class="o">))</span>,
 <span class="w">                </span><span class="o">]</span>,
 <span class="w">                </span><span class="nv">input</span><span class="o">=</span>prompt,
 <span class="w">                </span><span class="nv">text</span><span class="o">=</span>True,
 <span class="w">                </span><span class="nv">stdout</span><span class="o">=</span>subprocess.PIPE,
 <span class="w">                </span><span class="nv">stderr</span><span class="o">=</span>subprocess.PIPE,
 <span class="w">                </span><span class="nv">env</span><span class="o">=</span>env,
-<span class="w">                </span><span class="nv">timeout</span><span class="o">=</span>provider<span class="o">[</span><span class="s2">&quot;timeout_seconds&quot;</span><span class="o">]</span>,
+<span class="w">                </span><span class="nv">timeout</span><span class="o">=</span>provider<span class="o">[</span><span class="s2">"timeout_seconds"</span><span class="o">]</span>,
 <span class="w">                </span><span class="nv">check</span><span class="o">=</span>False,
 <span class="w">            </span><span class="o">)</span>
 <span class="w">            </span><span class="nv">raw_output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>result.stdout
 <span class="w">        </span><span class="k">else</span>:
-<span class="w">            </span>with<span class="w"> </span>tempfile.TemporaryDirectory<span class="o">(</span><span class="nv">prefix</span><span class="o">=</span><span class="s2">&quot;permgate-classifier-&quot;</span><span class="o">)</span><span class="w"> </span>as<span class="w"> </span>directory:
+<span class="w">            </span>with<span class="w"> </span>tempfile.TemporaryDirectory<span class="o">(</span><span class="nv">prefix</span><span class="o">=</span><span class="s2">"permgate-classifier-"</span><span class="o">)</span><span class="w"> </span>as<span class="w"> </span>directory:
 <span class="w">                </span><span class="nv">root</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Path<span class="o">(</span>directory<span class="o">)</span>
-<span class="w">                </span><span class="nv">schema_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>root<span class="w"> </span>/<span class="w"> </span><span class="s2">&quot;schema.json&quot;</span>
-<span class="w">                </span><span class="nv">output_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>root<span class="w"> </span>/<span class="w"> </span><span class="s2">&quot;result.json&quot;</span>
-<span class="w">                </span>schema_path.write_text<span class="o">(</span>json.dumps<span class="o">(</span>schema,<span class="w"> </span><span class="nv">separators</span><span class="o">=(</span><span class="s2">&quot;,&quot;</span>,<span class="w"> </span><span class="s2">&quot;:&quot;</span><span class="o">)))</span>
+<span class="w">                </span><span class="nv">schema_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>root<span class="w"> </span>/<span class="w"> </span><span class="s2">"schema.json"</span>
+<span class="w">                </span><span class="nv">output_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>root<span class="w"> </span>/<span class="w"> </span><span class="s2">"result.json"</span>
+<span class="w">                </span>schema_path.write_text<span class="o">(</span>json.dumps<span class="o">(</span>schema,<span class="w"> </span><span class="nv">separators</span><span class="o">=(</span><span class="s2">","</span>,<span class="w"> </span><span class="s2">":"</span><span class="o">)))</span>
 <span class="w">                </span><span class="nv">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>subprocess.run<span class="o">(</span>
 <span class="w">                    </span><span class="o">[</span>
-<span class="w">                        </span>os.environ.get<span class="o">(</span><span class="s2">&quot;PERMGATE_CODEX_COMMAND&quot;</span>,<span class="w"> </span><span class="s2">&quot;codex&quot;</span><span class="o">)</span>,
-<span class="w">                        </span><span class="s2">&quot;exec&quot;</span>,
-<span class="w">                        </span><span class="s2">&quot;--model&quot;</span>,
-<span class="w">                        </span>provider<span class="o">[</span><span class="s2">&quot;model&quot;</span><span class="o">]</span>,
-<span class="w">                        </span><span class="s2">&quot;--ignore-user-config&quot;</span>,
-<span class="w">                        </span><span class="s2">&quot;--ignore-rules&quot;</span>,
-<span class="w">                        </span><span class="s2">&quot;--ephemeral&quot;</span>,
-<span class="w">                        </span><span class="s2">&quot;--sandbox&quot;</span>,
-<span class="w">                        </span><span class="s2">&quot;read-only&quot;</span>,
-<span class="w">                        </span><span class="s2">&quot;--disable&quot;</span>,
-<span class="w">                        </span><span class="s2">&quot;hooks&quot;</span>,
-<span class="w">                        </span><span class="s2">&quot;--disable&quot;</span>,
-<span class="w">                        </span><span class="s2">&quot;shell_tool&quot;</span>,
-<span class="w">                        </span><span class="s2">&quot;--skip-git-repo-check&quot;</span>,
-<span class="w">                        </span><span class="s2">&quot;--color&quot;</span>,
-<span class="w">                        </span><span class="s2">&quot;never&quot;</span>,
-<span class="w">                        </span><span class="s2">&quot;--cd&quot;</span>,
+<span class="w">                        </span>os.environ.get<span class="o">(</span><span class="s2">"PERMGATE_CODEX_COMMAND"</span>,<span class="w"> </span><span class="s2">"codex"</span><span class="o">)</span>,
+<span class="w">                        </span><span class="s2">"exec"</span>,
+<span class="w">                        </span><span class="s2">"--model"</span>,
+<span class="w">                        </span>provider<span class="o">[</span><span class="s2">"model"</span><span class="o">]</span>,
+<span class="w">                        </span><span class="s2">"--ignore-user-config"</span>,
+<span class="w">                        </span><span class="s2">"--ignore-rules"</span>,
+<span class="w">                        </span><span class="s2">"--ephemeral"</span>,
+<span class="w">                        </span><span class="s2">"--sandbox"</span>,
+<span class="w">                        </span><span class="s2">"read-only"</span>,
+<span class="w">                        </span><span class="s2">"--disable"</span>,
+<span class="w">                        </span><span class="s2">"hooks"</span>,
+<span class="w">                        </span><span class="s2">"--disable"</span>,
+<span class="w">                        </span><span class="s2">"shell_tool"</span>,
+<span class="w">                        </span><span class="s2">"--skip-git-repo-check"</span>,
+<span class="w">                        </span><span class="s2">"--color"</span>,
+<span class="w">                        </span><span class="s2">"never"</span>,
+<span class="w">                        </span><span class="s2">"--cd"</span>,
 <span class="w">                        </span>directory,
-<span class="w">                        </span><span class="s2">&quot;--output-schema&quot;</span>,
+<span class="w">                        </span><span class="s2">"--output-schema"</span>,
 <span class="w">                        </span>str<span class="o">(</span>schema_path<span class="o">)</span>,
-<span class="w">                        </span><span class="s2">&quot;--output-last-message&quot;</span>,
+<span class="w">                        </span><span class="s2">"--output-last-message"</span>,
 <span class="w">                        </span>str<span class="o">(</span>output_path<span class="o">)</span>,
 <span class="w">                        </span>prompt,
 <span class="w">                    </span><span class="o">]</span>,
@@ -3902,37 +3902,37 @@ def<span class="w"> </span>classify<span class="o">(</span>
 <span class="w">                    </span><span class="nv">stdout</span><span class="o">=</span>subprocess.PIPE,
 <span class="w">                    </span><span class="nv">stderr</span><span class="o">=</span>subprocess.PIPE,
 <span class="w">                    </span><span class="nv">env</span><span class="o">=</span>env,
-<span class="w">                    </span><span class="nv">timeout</span><span class="o">=</span>provider<span class="o">[</span><span class="s2">&quot;timeout_seconds&quot;</span><span class="o">]</span>,
+<span class="w">                    </span><span class="nv">timeout</span><span class="o">=</span>provider<span class="o">[</span><span class="s2">"timeout_seconds"</span><span class="o">]</span>,
 <span class="w">                    </span><span class="nv">check</span><span class="o">=</span>False,
 <span class="w">                </span><span class="o">)</span>
-<span class="w">                </span><span class="nv">raw_output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>output_path.read_text<span class="o">()</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>output_path.exists<span class="o">()</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
+<span class="w">                </span><span class="nv">raw_output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>output_path.read_text<span class="o">()</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>output_path.exists<span class="o">()</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">""</span>
 <span class="w">    </span>except<span class="w"> </span>subprocess.TimeoutExpired:
-<span class="w">        </span><span class="k">return</span><span class="w"> </span>None,<span class="w"> </span>round<span class="o">((</span>time.monotonic<span class="o">()</span><span class="w"> </span>-<span class="w"> </span>started<span class="o">)</span><span class="w"> </span>*<span class="w"> </span><span class="m">1000</span><span class="o">)</span>,<span class="w"> </span><span class="s2">&quot;timeout&quot;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None,<span class="w"> </span>round<span class="o">((</span>time.monotonic<span class="o">()</span><span class="w"> </span>-<span class="w"> </span>started<span class="o">)</span><span class="w"> </span>*<span class="w"> </span><span class="m">1000</span><span class="o">)</span>,<span class="w"> </span><span class="s2">"timeout"</span>
 <span class="w">    </span>except<span class="w"> </span>OSError:
-<span class="w">        </span><span class="k">return</span><span class="w"> </span>None,<span class="w"> </span>round<span class="o">((</span>time.monotonic<span class="o">()</span><span class="w"> </span>-<span class="w"> </span>started<span class="o">)</span><span class="w"> </span>*<span class="w"> </span><span class="m">1000</span><span class="o">)</span>,<span class="w"> </span><span class="s2">&quot;unavailable&quot;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None,<span class="w"> </span>round<span class="o">((</span>time.monotonic<span class="o">()</span><span class="w"> </span>-<span class="w"> </span>started<span class="o">)</span><span class="w"> </span>*<span class="w"> </span><span class="m">1000</span><span class="o">)</span>,<span class="w"> </span><span class="s2">"unavailable"</span>
 <span class="w">    </span><span class="nv">latency_ms</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>round<span class="o">((</span>time.monotonic<span class="o">()</span><span class="w"> </span>-<span class="w"> </span>started<span class="o">)</span><span class="w"> </span>*<span class="w"> </span><span class="m">1000</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>result.returncode<span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="m">0</span>:
-<span class="w">        </span><span class="k">return</span><span class="w"> </span>None,<span class="w"> </span>latency_ms,<span class="w"> </span><span class="s2">&quot;error&quot;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None,<span class="w"> </span>latency_ms,<span class="w"> </span><span class="s2">"error"</span>
 <span class="w">    </span>try:
 <span class="w">        </span><span class="nv">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>json.loads<span class="o">(</span>raw_output<span class="o">)</span>
 <span class="w">    </span>except<span class="w"> </span>json.JSONDecodeError:
-<span class="w">        </span><span class="k">return</span><span class="w"> </span>None,<span class="w"> </span>latency_ms,<span class="w"> </span><span class="s2">&quot;malformed&quot;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None,<span class="w"> </span>latency_ms,<span class="w"> </span><span class="s2">"malformed"</span>
 <span class="w">    </span><span class="nv">classification</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>parse_classification<span class="o">(</span>
 <span class="w">        </span>data,
 <span class="w">        </span>provider,
-<span class="w">        </span>policy<span class="o">[</span><span class="s2">&quot;categories&quot;</span><span class="o">]</span>,
-<span class="w">        </span>policy<span class="o">[</span><span class="s2">&quot;classifier_actions&quot;</span><span class="o">]</span>,
+<span class="w">        </span>policy<span class="o">[</span><span class="s2">"categories"</span><span class="o">]</span>,
+<span class="w">        </span>policy<span class="o">[</span><span class="s2">"classifier_actions"</span><span class="o">]</span>,
 <span class="w">        </span>subject,
 <span class="w">    </span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>classification<span class="w"> </span>is<span class="w"> </span>None:
-<span class="w">        </span><span class="k">return</span><span class="w"> </span>None,<span class="w"> </span>latency_ms,<span class="w"> </span><span class="s2">&quot;rejected&quot;</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span>classification,<span class="w"> </span>latency_ms,<span class="w"> </span><span class="s2">&quot;classified&quot;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None,<span class="w"> </span>latency_ms,<span class="w"> </span><span class="s2">"rejected"</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>classification,<span class="w"> </span>latency_ms,<span class="w"> </span><span class="s2">"classified"</span>
 
 
 def<span class="w"> </span>append_log<span class="o">(</span>record:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">])</span><span class="w"> </span>-&gt;<span class="w"> </span>None:
 <span class="w">    </span><span class="nv">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>state_path<span class="o">()</span>
 <span class="w">    </span>path.parent.mkdir<span class="o">(</span><span class="nv">parents</span><span class="o">=</span>True,<span class="w"> </span><span class="nv">exist_ok</span><span class="o">=</span>True<span class="o">)</span>
-<span class="w">    </span><span class="nv">line</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span>json.dumps<span class="o">(</span>record,<span class="w"> </span><span class="nv">sort_keys</span><span class="o">=</span>True,<span class="w"> </span><span class="nv">separators</span><span class="o">=(</span><span class="s2">&quot;,&quot;</span>,<span class="w"> </span><span class="s2">&quot;:&quot;</span><span class="o">))</span><span class="w"> </span>+<span class="w"> </span><span class="s2">&quot;\n&quot;</span><span class="o">)</span>.encode<span class="o">()</span>
+<span class="w">    </span><span class="nv">line</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span>json.dumps<span class="o">(</span>record,<span class="w"> </span><span class="nv">sort_keys</span><span class="o">=</span>True,<span class="w"> </span><span class="nv">separators</span><span class="o">=(</span><span class="s2">","</span>,<span class="w"> </span><span class="s2">":"</span><span class="o">))</span><span class="w"> </span>+<span class="w"> </span><span class="s2">"\n"</span><span class="o">)</span>.encode<span class="o">()</span>
 <span class="w">    </span><span class="nv">descriptor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>os.open<span class="o">(</span>path,<span class="w"> </span>os.O_APPEND<span class="w"> </span><span class="p">|</span><span class="w"> </span>os.O_CREAT<span class="w"> </span><span class="p">|</span><span class="w"> </span>os.O_WRONLY,<span class="w"> </span>0o600<span class="o">)</span>
 <span class="w">    </span>try:
 <span class="w">        </span>os.write<span class="o">(</span>descriptor,<span class="w"> </span>line<span class="o">)</span>
@@ -3949,16 +3949,16 @@ def<span class="w"> </span>decision_record<span class="o">(</span>
 <span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span>:
 <span class="w">    </span>tool,<span class="w"> </span>tool_input,<span class="w"> </span><span class="nv">match_text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>request_parts<span class="o">(</span>payload<span class="o">)</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">{</span>
-<span class="w">        </span><span class="s2">&quot;ts&quot;</span>:<span class="w"> </span>datetime.now<span class="o">(</span>timezone.utc<span class="o">)</span>.isoformat<span class="o">()</span>,
-<span class="w">        </span><span class="s2">&quot;agent&quot;</span>:<span class="w"> </span>agent,
-<span class="w">        </span><span class="s2">&quot;tool&quot;</span>:<span class="w"> </span>tool,
-<span class="w">        </span><span class="s2">&quot;input_hash&quot;</span>:<span class="w"> </span>hashlib.sha256<span class="o">(</span>
-<span class="w">            </span>json.dumps<span class="o">(</span>payload,<span class="w"> </span><span class="nv">sort_keys</span><span class="o">=</span>True,<span class="w"> </span><span class="nv">separators</span><span class="o">=(</span><span class="s2">&quot;,&quot;</span>,<span class="w"> </span><span class="s2">&quot;:&quot;</span><span class="o">))</span>.encode<span class="o">()</span>
+<span class="w">        </span><span class="s2">"ts"</span>:<span class="w"> </span>datetime.now<span class="o">(</span>timezone.utc<span class="o">)</span>.isoformat<span class="o">()</span>,
+<span class="w">        </span><span class="s2">"agent"</span>:<span class="w"> </span>agent,
+<span class="w">        </span><span class="s2">"tool"</span>:<span class="w"> </span>tool,
+<span class="w">        </span><span class="s2">"input_hash"</span>:<span class="w"> </span>hashlib.sha256<span class="o">(</span>
+<span class="w">            </span>json.dumps<span class="o">(</span>payload,<span class="w"> </span><span class="nv">sort_keys</span><span class="o">=</span>True,<span class="w"> </span><span class="nv">separators</span><span class="o">=(</span><span class="s2">","</span>,<span class="w"> </span><span class="s2">":"</span><span class="o">))</span>.encode<span class="o">()</span>
 <span class="w">        </span><span class="o">)</span>.hexdigest<span class="o">()</span>,
-<span class="w">        </span><span class="s2">&quot;input_summary&quot;</span>:<span class="w"> </span>input_summary<span class="o">(</span>tool,<span class="w"> </span>tool_input,<span class="w"> </span>match_text<span class="o">)</span>,
-<span class="w">        </span><span class="s2">&quot;layer&quot;</span>:<span class="w"> </span>layer,
-<span class="w">        </span><span class="s2">&quot;decision&quot;</span>:<span class="w"> </span>decision,
-<span class="w">        </span><span class="s2">&quot;latency_ms&quot;</span>:<span class="w"> </span>latency_ms,
+<span class="w">        </span><span class="s2">"input_summary"</span>:<span class="w"> </span>input_summary<span class="o">(</span>tool,<span class="w"> </span>tool_input,<span class="w"> </span>match_text<span class="o">)</span>,
+<span class="w">        </span><span class="s2">"layer"</span>:<span class="w"> </span>layer,
+<span class="w">        </span><span class="s2">"decision"</span>:<span class="w"> </span>decision,
+<span class="w">        </span><span class="s2">"latency_ms"</span>:<span class="w"> </span>latency_ms,
 <span class="w">    </span><span class="o">}</span>
 
 
@@ -3977,7 +3977,7 @@ def<span class="w"> </span>strict_candidate_path<span class="o">(</span>
 <span class="w">        </span><span class="nv">candidate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Path<span class="o">(</span>path<span class="o">)</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>candidate.is_absolute<span class="o">()</span>:
 <span class="w">            </span><span class="nv">candidate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>resolved_cwd<span class="w"> </span>/<span class="w"> </span>candidate
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>candidate.name<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">{</span><span class="s2">&quot;&quot;</span>,<span class="w"> </span><span class="s2">&quot;..&quot;</span><span class="o">}</span>:
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>candidate.name<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">{</span><span class="s2">""</span>,<span class="w"> </span><span class="s2">".."</span><span class="o">}</span>:
 <span class="w">            </span><span class="k">return</span><span class="w"> </span>None
 <span class="w">        </span><span class="nv">resolved_parent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Path<span class="o">(</span>os.path.realpath<span class="o">(</span>candidate.parent,<span class="w"> </span><span class="nv">strict</span><span class="o">=</span>True<span class="o">))</span>
 <span class="w">        </span><span class="nv">resolved_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>resolved_parent<span class="w"> </span>/<span class="w"> </span>candidate.name
@@ -4016,36 +4016,36 @@ def<span class="w"> </span>cli_read_decision<span class="o">(</span>
 <span class="w">        </span>try:
 <span class="w">            </span><span class="nv">home</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Path<span class="o">(</span>os.path.realpath<span class="o">(</span>Path.home<span class="o">()</span>,<span class="w"> </span><span class="nv">strict</span><span class="o">=</span>True<span class="o">))</span>
 <span class="w">            </span><span class="nv">relative</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>resolved_path.relative_to<span class="o">(</span>home<span class="o">)</span>
-<span class="w">            </span>match_paths.append<span class="o">(</span>f<span class="s2">&quot;~/{relative.as_posix()}&quot;</span>.casefold<span class="o">())</span>
+<span class="w">            </span>match_paths.append<span class="o">(</span>f<span class="s2">"~/{relative.as_posix()}"</span>.casefold<span class="o">())</span>
 <span class="w">        </span>except<span class="w"> </span>ValueError:
 <span class="w">            </span>pass
 <span class="w">    </span>except<span class="w"> </span><span class="o">(</span>OSError,<span class="w"> </span>RuntimeError<span class="o">)</span>:
 <span class="w">        </span><span class="k">return</span><span class="w"> </span>None
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>any<span class="o">(</span>
-<span class="w">        </span>re.fullmatch<span class="o">(</span>pattern<span class="o">[</span><span class="s2">&quot;regex&quot;</span><span class="o">]</span>,<span class="w"> </span>match_path<span class="o">)</span>
+<span class="w">        </span>re.fullmatch<span class="o">(</span>pattern<span class="o">[</span><span class="s2">"regex"</span><span class="o">]</span>,<span class="w"> </span>match_path<span class="o">)</span>
 <span class="w">        </span><span class="k">for</span><span class="w"> </span>pattern<span class="w"> </span><span class="k">in</span><span class="w"> </span>patterns
 <span class="w">        </span><span class="k">for</span><span class="w"> </span>match_path<span class="w"> </span><span class="k">in</span><span class="w"> </span>match_paths
 <span class="w">    </span><span class="o">)</span>:
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="s2">&quot;deny&quot;</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s2">&quot;allow&quot;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="s2">"deny"</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s2">"allow"</span>
 
 
 def<span class="w"> </span>cli_workspace_decision<span class="o">(</span>
 <span class="w">    </span>agent:<span class="w"> </span>str,<span class="w"> </span>payload:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span>,<span class="w"> </span>policy:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span>
 <span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>str<span class="w"> </span><span class="p">|</span><span class="w"> </span>None:
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>agent<span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">&quot;cli&quot;</span><span class="w"> </span>or<span class="w"> </span>policy<span class="o">[</span><span class="s2">&quot;cli&quot;</span><span class="o">]</span>.get<span class="o">(</span><span class="s2">&quot;workspace_write&quot;</span><span class="o">)</span><span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>True:
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>agent<span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"cli"</span><span class="w"> </span>or<span class="w"> </span>policy<span class="o">[</span><span class="s2">"cli"</span><span class="o">]</span>.get<span class="o">(</span><span class="s2">"workspace_write"</span><span class="o">)</span><span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>True:
 <span class="w">        </span><span class="k">return</span><span class="w"> </span>None
 <span class="w">    </span>tool,<span class="w"> </span>tool_input,<span class="w"> </span><span class="nv">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>request_parts<span class="o">(</span>payload<span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">tool</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;Read&quot;</span>:
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">tool</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"Read"</span>:
 <span class="w">        </span><span class="k">return</span><span class="w"> </span>cli_read_decision<span class="o">(</span>
-<span class="w">            </span>payload.get<span class="o">(</span><span class="s2">&quot;cwd&quot;</span><span class="o">)</span>,
-<span class="w">            </span>tool_input.get<span class="o">(</span><span class="s2">&quot;path&quot;</span><span class="o">)</span>,
-<span class="w">            </span>policy<span class="o">[</span><span class="s2">&quot;cli&quot;</span><span class="o">][</span><span class="s2">&quot;read_deny_patterns&quot;</span><span class="o">]</span>,
+<span class="w">            </span>payload.get<span class="o">(</span><span class="s2">"cwd"</span><span class="o">)</span>,
+<span class="w">            </span>tool_input.get<span class="o">(</span><span class="s2">"path"</span><span class="o">)</span>,
+<span class="w">            </span>policy<span class="o">[</span><span class="s2">"cli"</span><span class="o">][</span><span class="s2">"read_deny_patterns"</span><span class="o">]</span>,
 <span class="w">        </span><span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>tool<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">{</span><span class="s2">&quot;Write&quot;</span>,<span class="w"> </span><span class="s2">&quot;Edit&quot;</span><span class="o">}</span>:
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>tool<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">{</span><span class="s2">"Write"</span>,<span class="w"> </span><span class="s2">"Edit"</span><span class="o">}</span>:
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="o">(</span>
-<span class="w">            </span><span class="s2">&quot;allow&quot;</span>
-<span class="w">            </span><span class="k">if</span><span class="w"> </span>workspace_path_allowed<span class="o">(</span>payload.get<span class="o">(</span><span class="s2">&quot;cwd&quot;</span><span class="o">)</span>,<span class="w"> </span>tool_input.get<span class="o">(</span><span class="s2">&quot;path&quot;</span><span class="o">))</span>
+<span class="w">            </span><span class="s2">"allow"</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>workspace_path_allowed<span class="o">(</span>payload.get<span class="o">(</span><span class="s2">"cwd"</span><span class="o">)</span>,<span class="w"> </span>tool_input.get<span class="o">(</span><span class="s2">"path"</span><span class="o">))</span>
 <span class="w">            </span><span class="k">else</span><span class="w"> </span>None
 <span class="w">        </span><span class="o">)</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span>None
@@ -4056,35 +4056,35 @@ def<span class="w"> </span>decide<span class="o">(</span>
 <span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>tuple<span class="o">[</span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>None,<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]]</span>:
 <span class="w">    </span><span class="nv">started</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>time.monotonic<span class="o">()</span>
 <span class="w">    </span>tool,<span class="w"> </span>tool_input,<span class="w"> </span><span class="nv">match_text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>request_parts<span class="o">(</span>payload<span class="o">)</span>
-<span class="w">    </span><span class="nv">layer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;fallthrough&quot;</span>
-<span class="w">    </span><span class="nv">decision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ask&quot;</span>
+<span class="w">    </span><span class="nv">layer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"fallthrough"</span>
+<span class="w">    </span><span class="nv">decision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"ask"</span>
 <span class="w">    </span>shadow_decision:<span class="w"> </span>str<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">None</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None
 <span class="w">    </span>classification:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">None</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None
 <span class="w">    </span>classification_status:<span class="w"> </span>str<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">None</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None
 <span class="w">    </span>output:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nv">None</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None
 
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>pattern<span class="w"> </span><span class="k">in</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">&quot;deny_patterns&quot;</span>,<span class="w"> </span><span class="o">[])</span>:
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>pattern<span class="w"> </span><span class="k">in</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">"deny_patterns"</span>,<span class="w"> </span><span class="o">[])</span>:
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>pattern_match<span class="o">(</span>pattern,<span class="w"> </span>tool,<span class="w"> </span>match_text<span class="o">)</span>:
-<span class="w">            </span><span class="nv">layer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;deterministic&quot;</span>
-<span class="w">            </span><span class="nv">decision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;deny&quot;</span>
-<span class="w">            </span><span class="nv">output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>hook_output<span class="o">(</span><span class="s2">&quot;deny&quot;</span>,<span class="w"> </span>str<span class="o">(</span>pattern<span class="o">[</span><span class="s2">&quot;message&quot;</span><span class="o">]))</span>
+<span class="w">            </span><span class="nv">layer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"deterministic"</span>
+<span class="w">            </span><span class="nv">decision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"deny"</span>
+<span class="w">            </span><span class="nv">output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>hook_output<span class="o">(</span><span class="s2">"deny"</span>,<span class="w"> </span>str<span class="o">(</span>pattern<span class="o">[</span><span class="s2">"message"</span><span class="o">]))</span>
 <span class="w">            </span><span class="k">break</span>
 <span class="w">    </span><span class="k">else</span>:
-<span class="w">        </span><span class="nv">safe_single_action</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>tool<span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">&quot;Bash&quot;</span><span class="w"> </span>or<span class="w"> </span>is_bounded_shell_command<span class="o">(</span>match_text<span class="o">)</span>
+<span class="w">        </span><span class="nv">safe_single_action</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>tool<span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"Bash"</span><span class="w"> </span>or<span class="w"> </span>is_bounded_shell_command<span class="o">(</span>match_text<span class="o">)</span>
 <span class="w">        </span><span class="nv">workspace_decision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>cli_workspace_decision<span class="o">(</span>agent,<span class="w"> </span>payload,<span class="w"> </span>policy<span class="o">)</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>workspace_decision<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
-<span class="w">            </span><span class="nv">layer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;workspace&quot;</span>
+<span class="w">            </span><span class="nv">layer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"workspace"</span>
 <span class="w">            </span><span class="nv">decision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>workspace_decision
 <span class="w">            </span><span class="nv">output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>hook_output<span class="o">(</span>workspace_decision<span class="o">)</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>output<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span>and<span class="w"> </span>safe_single_action:
-<span class="w">            </span><span class="k">for</span><span class="w"> </span>pattern<span class="w"> </span><span class="k">in</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">&quot;allow_patterns&quot;</span>,<span class="w"> </span><span class="o">[])</span>:
+<span class="w">            </span><span class="k">for</span><span class="w"> </span>pattern<span class="w"> </span><span class="k">in</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">"allow_patterns"</span>,<span class="w"> </span><span class="o">[])</span>:
 <span class="w">                </span><span class="k">if</span><span class="w"> </span>pattern_match<span class="o">(</span>pattern,<span class="w"> </span>tool,<span class="w"> </span>match_text<span class="o">)</span>:
-<span class="w">                    </span><span class="nv">layer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;deterministic&quot;</span>
-<span class="w">                    </span><span class="nv">decision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;allow&quot;</span>
-<span class="w">                    </span><span class="nv">output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>hook_output<span class="o">(</span><span class="s2">&quot;allow&quot;</span><span class="o">)</span>
+<span class="w">                    </span><span class="nv">layer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"deterministic"</span>
+<span class="w">                    </span><span class="nv">decision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"allow"</span>
+<span class="w">                    </span><span class="nv">output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>hook_output<span class="o">(</span><span class="s2">"allow"</span><span class="o">)</span>
 <span class="w">                    </span><span class="k">break</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">(</span>
-<span class="w">            </span>agent<span class="w"> </span><span class="k">in</span><span class="w"> </span>policy<span class="o">[</span><span class="s2">&quot;providers&quot;</span><span class="o">]</span>
+<span class="w">            </span>agent<span class="w"> </span><span class="k">in</span><span class="w"> </span>policy<span class="o">[</span><span class="s2">"providers"</span><span class="o">]</span>
 <span class="w">            </span>and<span class="w"> </span>output<span class="w"> </span>is<span class="w"> </span>None
 <span class="w">            </span>and<span class="w"> </span>safe_single_action
 <span class="w">            </span>and<span class="w"> </span>not<span class="w"> </span>contains_sensitive_input<span class="o">(</span>tool_input<span class="o">)</span>
@@ -4094,50 +4094,50 @@ def<span class="w"> </span>decide<span class="o">(</span>
 <span class="w">                </span>classification,<span class="w"> </span>classifier_latency,<span class="w"> </span><span class="nv">classification_status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>classify<span class="o">(</span>
 <span class="w">                    </span>agent,<span class="w"> </span>subject,<span class="w"> </span>policy
 <span class="w">                </span><span class="o">)</span>
-<span class="w">                </span><span class="nv">provider</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>policy<span class="o">[</span><span class="s2">&quot;providers&quot;</span><span class="o">][</span>agent<span class="o">]</span>
-<span class="w">                </span><span class="nv">layer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;llm-shadow&quot;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>provider<span class="o">[</span><span class="s2">&quot;llm_enabled&quot;</span><span class="o">]</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">&quot;llm&quot;</span>
-<span class="w">                </span><span class="nv">shadow_decision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;allow&quot;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>classification<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">&quot;ask&quot;</span>
-<span class="w">                </span><span class="k">if</span><span class="w"> </span>classification<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None<span class="w"> </span>and<span class="w"> </span>provider<span class="o">[</span><span class="s2">&quot;llm_enabled&quot;</span><span class="o">]</span>:
-<span class="w">                    </span><span class="nv">decision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;allow&quot;</span>
-<span class="w">                    </span><span class="nv">output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>hook_output<span class="o">(</span><span class="s2">&quot;allow&quot;</span><span class="o">)</span>
+<span class="w">                </span><span class="nv">provider</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>policy<span class="o">[</span><span class="s2">"providers"</span><span class="o">][</span>agent<span class="o">]</span>
+<span class="w">                </span><span class="nv">layer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"llm-shadow"</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>provider<span class="o">[</span><span class="s2">"llm_enabled"</span><span class="o">]</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">"llm"</span>
+<span class="w">                </span><span class="nv">shadow_decision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"allow"</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>classification<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">"ask"</span>
+<span class="w">                </span><span class="k">if</span><span class="w"> </span>classification<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None<span class="w"> </span>and<span class="w"> </span>provider<span class="o">[</span><span class="s2">"llm_enabled"</span><span class="o">]</span>:
+<span class="w">                    </span><span class="nv">decision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"allow"</span>
+<span class="w">                    </span><span class="nv">output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>hook_output<span class="o">(</span><span class="s2">"allow"</span><span class="o">)</span>
 <span class="w">                </span><span class="nv">latency_ms</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>classifier_latency
 <span class="w">            </span><span class="k">else</span>:
 <span class="w">                </span><span class="nv">latency_ms</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>round<span class="o">((</span>time.monotonic<span class="o">()</span><span class="w"> </span>-<span class="w"> </span>started<span class="o">)</span><span class="w"> </span>*<span class="w"> </span><span class="m">1000</span><span class="o">)</span>
 <span class="w">        </span><span class="k">else</span>:
 <span class="w">            </span><span class="nv">latency_ms</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>round<span class="o">((</span>time.monotonic<span class="o">()</span><span class="w"> </span>-<span class="w"> </span>started<span class="o">)</span><span class="w"> </span>*<span class="w"> </span><span class="m">1000</span><span class="o">)</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">layer</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;deterministic&quot;</span>:
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">layer</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"deterministic"</span>:
 <span class="w">        </span><span class="nv">latency_ms</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>round<span class="o">((</span>time.monotonic<span class="o">()</span><span class="w"> </span>-<span class="w"> </span>started<span class="o">)</span><span class="w"> </span>*<span class="w"> </span><span class="m">1000</span><span class="o">)</span>
 <span class="w">    </span><span class="nv">record</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>decision_record<span class="o">(</span>agent,<span class="w"> </span>payload,<span class="w"> </span>layer,<span class="w"> </span>decision,<span class="w"> </span>latency_ms<span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>shadow_decision<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
-<span class="w">        </span>record<span class="o">[</span><span class="s2">&quot;shadow_decision&quot;</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>shadow_decision
-<span class="w">        </span>record<span class="o">[</span><span class="s2">&quot;provider&quot;</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>agent
-<span class="w">        </span>record<span class="o">[</span><span class="s2">&quot;classification_status&quot;</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>classification_status
-<span class="w">        </span>record<span class="o">[</span><span class="s2">&quot;classification_action&quot;</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>subject<span class="o">[</span><span class="s2">&quot;action&quot;</span><span class="o">]</span>
+<span class="w">        </span>record<span class="o">[</span><span class="s2">"shadow_decision"</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>shadow_decision
+<span class="w">        </span>record<span class="o">[</span><span class="s2">"provider"</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>agent
+<span class="w">        </span>record<span class="o">[</span><span class="s2">"classification_status"</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>classification_status
+<span class="w">        </span>record<span class="o">[</span><span class="s2">"classification_action"</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>subject<span class="o">[</span><span class="s2">"action"</span><span class="o">]</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>classification<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
 <span class="w">        </span>record.update<span class="o">(</span>classification<span class="o">)</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span>output,<span class="w"> </span>record
 
 
 def<span class="w"> </span>cli_payload<span class="o">(</span>action:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">])</span><span class="w"> </span>-&gt;<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span>:
-<span class="w">    </span><span class="nv">tool</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>action.get<span class="o">(</span><span class="s2">&quot;tool&quot;</span><span class="o">)</span>
-<span class="w">    </span><span class="nv">field</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;command&quot;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nv">tool</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;bash&quot;</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">&quot;path&quot;</span>
-<span class="w">    </span><span class="nv">expected</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{</span><span class="s2">&quot;tool&quot;</span>,<span class="w"> </span>field,<span class="w"> </span><span class="s2">&quot;cwd&quot;</span><span class="o">}</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>tool<span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">{</span><span class="s2">&quot;bash&quot;</span>,<span class="w"> </span><span class="s2">&quot;read&quot;</span>,<span class="w"> </span><span class="s2">&quot;write&quot;</span>,<span class="w"> </span><span class="s2">&quot;edit&quot;</span><span class="o">}</span><span class="w"> </span>or<span class="w"> </span>set<span class="o">(</span>action<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>expected:
-<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;invalid normalized CLI action&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">tool</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>action.get<span class="o">(</span><span class="s2">"tool"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">field</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"command"</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nv">tool</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"bash"</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">"path"</span>
+<span class="w">    </span><span class="nv">expected</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{</span><span class="s2">"tool"</span>,<span class="w"> </span>field,<span class="w"> </span><span class="s2">"cwd"</span><span class="o">}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>tool<span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">{</span><span class="s2">"bash"</span>,<span class="w"> </span><span class="s2">"read"</span>,<span class="w"> </span><span class="s2">"write"</span>,<span class="w"> </span><span class="s2">"edit"</span><span class="o">}</span><span class="w"> </span>or<span class="w"> </span>set<span class="o">(</span>action<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>expected:
+<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">"invalid normalized CLI action"</span><span class="o">)</span>
 <span class="w">    </span><span class="nv">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>action.get<span class="o">(</span>field<span class="o">)</span>
-<span class="w">    </span><span class="nv">cwd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>action.get<span class="o">(</span><span class="s2">&quot;cwd&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">cwd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>action.get<span class="o">(</span><span class="s2">"cwd"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>value,<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>cwd,<span class="w"> </span>str<span class="o">)</span>:
-<span class="w">        </span>raise<span class="w"> </span>TypeError<span class="o">(</span><span class="s2">&quot;normalized CLI action value must be a string&quot;</span><span class="o">)</span>
+<span class="w">        </span>raise<span class="w"> </span>TypeError<span class="o">(</span><span class="s2">"normalized CLI action value must be a string"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">{</span>
-<span class="w">        </span><span class="s2">&quot;tool_name&quot;</span>:<span class="w"> </span><span class="o">{</span>
-<span class="w">            </span><span class="s2">&quot;bash&quot;</span>:<span class="w"> </span><span class="s2">&quot;Bash&quot;</span>,
-<span class="w">            </span><span class="s2">&quot;read&quot;</span>:<span class="w"> </span><span class="s2">&quot;Read&quot;</span>,
-<span class="w">            </span><span class="s2">&quot;write&quot;</span>:<span class="w"> </span><span class="s2">&quot;Write&quot;</span>,
-<span class="w">            </span><span class="s2">&quot;edit&quot;</span>:<span class="w"> </span><span class="s2">&quot;Edit&quot;</span>,
+<span class="w">        </span><span class="s2">"tool_name"</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="s2">"bash"</span>:<span class="w"> </span><span class="s2">"Bash"</span>,
+<span class="w">            </span><span class="s2">"read"</span>:<span class="w"> </span><span class="s2">"Read"</span>,
+<span class="w">            </span><span class="s2">"write"</span>:<span class="w"> </span><span class="s2">"Write"</span>,
+<span class="w">            </span><span class="s2">"edit"</span>:<span class="w"> </span><span class="s2">"Edit"</span>,
 <span class="w">        </span><span class="o">}[</span>tool<span class="o">]</span>,
-<span class="w">        </span><span class="s2">&quot;tool_input&quot;</span>:<span class="w"> </span><span class="o">{</span>field:<span class="w"> </span>value<span class="o">}</span>,
-<span class="w">        </span><span class="s2">&quot;cwd&quot;</span>:<span class="w"> </span>cwd,
+<span class="w">        </span><span class="s2">"tool_input"</span>:<span class="w"> </span><span class="o">{</span>field:<span class="w"> </span>value<span class="o">}</span>,
+<span class="w">        </span><span class="s2">"cwd"</span>:<span class="w"> </span>cwd,
 <span class="w">    </span><span class="o">}</span>
 
 
@@ -4145,30 +4145,30 @@ def<span class="w"> </span>run_cli<span class="o">(</span>raw_input:<span class=
 <span class="w">    </span>try:
 <span class="w">        </span><span class="nv">action</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>json.loads<span class="o">(</span>raw_input<span class="o">)</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>action,<span class="w"> </span>dict<span class="o">)</span>:
-<span class="w">            </span>raise<span class="w"> </span>TypeError<span class="o">(</span><span class="s2">&quot;CLI action must be an object&quot;</span><span class="o">)</span>
+<span class="w">            </span>raise<span class="w"> </span>TypeError<span class="o">(</span><span class="s2">"CLI action must be an object"</span><span class="o">)</span>
 <span class="w">        </span><span class="nv">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>cli_payload<span class="o">(</span>action<span class="o">)</span>
 <span class="w">        </span><span class="nv">policy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>load_policy<span class="o">()</span>
-<span class="w">        </span>_,<span class="w"> </span><span class="nv">record</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>decide<span class="o">(</span><span class="s2">&quot;cli&quot;</span>,<span class="w"> </span>payload,<span class="w"> </span>policy<span class="o">)</span>
+<span class="w">        </span>_,<span class="w"> </span><span class="nv">record</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>decide<span class="o">(</span><span class="s2">"cli"</span>,<span class="w"> </span>payload,<span class="w"> </span>policy<span class="o">)</span>
 <span class="w">        </span>append_log<span class="o">(</span>record<span class="o">)</span>
-<span class="w">        </span><span class="nv">decision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>record<span class="o">[</span><span class="s2">&quot;decision&quot;</span><span class="o">]</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>decision<span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">{</span><span class="s2">&quot;allow&quot;</span>,<span class="w"> </span><span class="s2">&quot;deny&quot;</span>,<span class="w"> </span><span class="s2">&quot;ask&quot;</span><span class="o">}</span>:
-<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;invalid CLI decision&quot;</span><span class="o">)</span>
+<span class="w">        </span><span class="nv">decision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>record<span class="o">[</span><span class="s2">"decision"</span><span class="o">]</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>decision<span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">{</span><span class="s2">"allow"</span>,<span class="w"> </span><span class="s2">"deny"</span>,<span class="w"> </span><span class="s2">"ask"</span><span class="o">}</span>:
+<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">"invalid CLI decision"</span><span class="o">)</span>
 <span class="w">    </span>except<span class="w"> </span><span class="o">(</span>OSError,<span class="w"> </span>KeyError,<span class="w"> </span>TypeError,<span class="w"> </span>ValueError,<span class="w"> </span>re.error<span class="o">)</span>:
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span>print<span class="o">(</span>json.dumps<span class="o">({</span><span class="s2">&quot;decision&quot;</span>:<span class="w"> </span>decision<span class="o">}</span>,<span class="w"> </span><span class="nv">separators</span><span class="o">=(</span><span class="s2">&quot;,&quot;</span>,<span class="w"> </span><span class="s2">&quot;:&quot;</span><span class="o">)))</span>
+<span class="w">    </span>print<span class="o">(</span>json.dumps<span class="o">({</span><span class="s2">"decision"</span>:<span class="w"> </span>decision<span class="o">}</span>,<span class="w"> </span><span class="nv">separators</span><span class="o">=(</span><span class="s2">","</span>,<span class="w"> </span><span class="s2">":"</span><span class="o">)))</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 
 
 def<span class="w"> </span>run_bench<span class="o">(</span>policy:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">])</span><span class="w"> </span>-&gt;<span class="w"> </span>int:
 <span class="w">    </span><span class="nv">fixtures</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>
-<span class="w">        </span><span class="o">(</span><span class="s2">&quot;Bash&quot;</span>,<span class="w"> </span><span class="o">{</span><span class="s2">&quot;command&quot;</span>:<span class="w"> </span><span class="s2">&quot;gh issue list&quot;</span><span class="o">})</span>,
-<span class="w">        </span><span class="o">(</span><span class="s2">&quot;Bash&quot;</span>,<span class="w"> </span><span class="o">{</span><span class="s2">&quot;command&quot;</span>:<span class="w"> </span><span class="s2">&quot;gh issue view 1&quot;</span><span class="o">})</span>,
-<span class="w">        </span><span class="o">(</span><span class="s2">&quot;Bash&quot;</span>,<span class="w"> </span><span class="o">{</span><span class="s2">&quot;command&quot;</span>:<span class="w"> </span><span class="s2">&quot;gh pr checks 1&quot;</span><span class="o">})</span>,
-<span class="w">        </span><span class="o">(</span><span class="s2">&quot;Bash&quot;</span>,<span class="w"> </span><span class="o">{</span><span class="s2">&quot;command&quot;</span>:<span class="w"> </span><span class="s2">&quot;gh run list&quot;</span><span class="o">})</span>,
-<span class="w">        </span><span class="o">(</span><span class="s2">&quot;Bash&quot;</span>,<span class="w"> </span><span class="o">{</span><span class="s2">&quot;command&quot;</span>:<span class="w"> </span><span class="s2">&quot;git status --short&quot;</span><span class="o">})</span>,
+<span class="w">        </span><span class="o">(</span><span class="s2">"Bash"</span>,<span class="w"> </span><span class="o">{</span><span class="s2">"command"</span>:<span class="w"> </span><span class="s2">"gh issue list"</span><span class="o">})</span>,
+<span class="w">        </span><span class="o">(</span><span class="s2">"Bash"</span>,<span class="w"> </span><span class="o">{</span><span class="s2">"command"</span>:<span class="w"> </span><span class="s2">"gh issue view 1"</span><span class="o">})</span>,
+<span class="w">        </span><span class="o">(</span><span class="s2">"Bash"</span>,<span class="w"> </span><span class="o">{</span><span class="s2">"command"</span>:<span class="w"> </span><span class="s2">"gh pr checks 1"</span><span class="o">})</span>,
+<span class="w">        </span><span class="o">(</span><span class="s2">"Bash"</span>,<span class="w"> </span><span class="o">{</span><span class="s2">"command"</span>:<span class="w"> </span><span class="s2">"gh run list"</span><span class="o">})</span>,
+<span class="w">        </span><span class="o">(</span><span class="s2">"Bash"</span>,<span class="w"> </span><span class="o">{</span><span class="s2">"command"</span>:<span class="w"> </span><span class="s2">"git status --short"</span><span class="o">})</span>,
 <span class="w">    </span><span class="o">]</span>
 <span class="w">    </span>result:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{}</span>
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>agent<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">(</span><span class="s2">&quot;claude&quot;</span>,<span class="w"> </span><span class="s2">&quot;codex&quot;</span><span class="o">)</span>:
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>agent<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">(</span><span class="s2">"claude"</span>,<span class="w"> </span><span class="s2">"codex"</span><span class="o">)</span>:
 <span class="w">        </span>latencies:<span class="w"> </span>list<span class="o">[</span>int<span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
 <span class="w">        </span><span class="nv">successes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0</span>
 <span class="w">        </span>status_counts:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>int<span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{}</span>
@@ -4180,24 +4180,24 @@ def<span class="w"> </span>run_bench<span class="o">(</span>policy:<span class="
 <span class="w">            </span>latencies.append<span class="o">(</span>latency_ms<span class="o">)</span>
 <span class="w">            </span><span class="nv">successes</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span>classification<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None
 <span class="w">            </span>status_counts<span class="o">[</span>status<span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>status_counts.get<span class="o">(</span>status,<span class="w"> </span><span class="m">0</span><span class="o">)</span><span class="w"> </span>+<span class="w"> </span><span class="m">1</span>
-<span class="w">        </span><span class="nv">enablement</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>policy<span class="o">[</span><span class="s2">&quot;enablement&quot;</span><span class="o">]</span>
+<span class="w">        </span><span class="nv">enablement</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>policy<span class="o">[</span><span class="s2">"enablement"</span><span class="o">]</span>
 <span class="w">        </span><span class="nv">ordered</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>sorted<span class="o">(</span>latencies<span class="o">)</span>
 <span class="w">        </span><span class="nv">p50</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>round<span class="o">(</span>statistics.median<span class="o">(</span>ordered<span class="o">))</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>ordered<span class="w"> </span><span class="k">else</span><span class="w"> </span>None
 <span class="w">        </span><span class="nv">p95</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>ordered<span class="o">[</span>math.ceil<span class="o">(</span><span class="m">0</span>.95<span class="w"> </span>*<span class="w"> </span>len<span class="o">(</span>ordered<span class="o">))</span><span class="w"> </span>-<span class="w"> </span><span class="m">1</span><span class="o">]</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>ordered<span class="w"> </span><span class="k">else</span><span class="w"> </span>None
 <span class="w">        </span>result<span class="o">[</span>agent<span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{</span>
-<span class="w">            </span><span class="s2">&quot;n&quot;</span>:<span class="w"> </span>len<span class="o">(</span>latencies<span class="o">)</span>,
-<span class="w">            </span><span class="s2">&quot;successful_classifications&quot;</span>:<span class="w"> </span>successes,
-<span class="w">            </span><span class="s2">&quot;status_counts&quot;</span>:<span class="w"> </span>status_counts,
-<span class="w">            </span><span class="s2">&quot;latency_ms&quot;</span>:<span class="w"> </span>latencies,
-<span class="w">            </span><span class="s2">&quot;p50_ms&quot;</span>:<span class="w"> </span>p50,
-<span class="w">            </span><span class="s2">&quot;p95_ms&quot;</span>:<span class="w"> </span>p95,
-<span class="w">            </span><span class="s2">&quot;ready_for_enablement&quot;</span>:<span class="w"> </span><span class="o">(</span>
+<span class="w">            </span><span class="s2">"n"</span>:<span class="w"> </span>len<span class="o">(</span>latencies<span class="o">)</span>,
+<span class="w">            </span><span class="s2">"successful_classifications"</span>:<span class="w"> </span>successes,
+<span class="w">            </span><span class="s2">"status_counts"</span>:<span class="w"> </span>status_counts,
+<span class="w">            </span><span class="s2">"latency_ms"</span>:<span class="w"> </span>latencies,
+<span class="w">            </span><span class="s2">"p50_ms"</span>:<span class="w"> </span>p50,
+<span class="w">            </span><span class="s2">"p95_ms"</span>:<span class="w"> </span>p95,
+<span class="w">            </span><span class="s2">"ready_for_enablement"</span>:<span class="w"> </span><span class="o">(</span>
 <span class="w">                </span>bool<span class="o">(</span>ordered<span class="o">)</span>
-<span class="w">                </span>and<span class="w"> </span>successes<span class="w"> </span>&gt;<span class="o">=</span><span class="w"> </span>enablement<span class="o">[</span><span class="s2">&quot;minimum_successes&quot;</span><span class="o">]</span>
-<span class="w">                </span>and<span class="w"> </span>p50<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span>enablement<span class="o">[</span><span class="s2">&quot;maximum_p50_ms&quot;</span><span class="o">]</span>
-<span class="w">                </span>and<span class="w"> </span>p95<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span>enablement<span class="o">[</span><span class="s2">&quot;maximum_p95_ms&quot;</span><span class="o">]</span>
+<span class="w">                </span>and<span class="w"> </span>successes<span class="w"> </span>&gt;<span class="o">=</span><span class="w"> </span>enablement<span class="o">[</span><span class="s2">"minimum_successes"</span><span class="o">]</span>
+<span class="w">                </span>and<span class="w"> </span>p50<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span>enablement<span class="o">[</span><span class="s2">"maximum_p50_ms"</span><span class="o">]</span>
+<span class="w">                </span>and<span class="w"> </span>p95<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span>enablement<span class="o">[</span><span class="s2">"maximum_p95_ms"</span><span class="o">]</span>
 <span class="w">            </span><span class="o">)</span>,
-<span class="w">            </span><span class="s2">&quot;llm_enabled&quot;</span>:<span class="w"> </span>policy<span class="o">[</span><span class="s2">&quot;providers&quot;</span><span class="o">][</span>agent<span class="o">][</span><span class="s2">&quot;llm_enabled&quot;</span><span class="o">]</span>,
+<span class="w">            </span><span class="s2">"llm_enabled"</span>:<span class="w"> </span>policy<span class="o">[</span><span class="s2">"providers"</span><span class="o">][</span>agent<span class="o">][</span><span class="s2">"llm_enabled"</span><span class="o">]</span>,
 <span class="w">        </span><span class="o">}</span>
 <span class="w">    </span>print<span class="o">(</span>json.dumps<span class="o">(</span>result,<span class="w"> </span><span class="nv">sort_keys</span><span class="o">=</span>True<span class="o">))</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
@@ -4208,34 +4208,34 @@ def<span class="w"> </span>main<span class="o">()</span><span class="w"> </span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>sys.argv<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="m">2</span>:
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>sys.argv<span class="o">[</span><span class="m">1</span><span class="o">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;bench&quot;</span>:
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>sys.argv<span class="o">[</span><span class="m">1</span><span class="o">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"bench"</span>:
 <span class="w">        </span>try:
 <span class="w">            </span><span class="nv">policy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>load_policy<span class="o">()</span>
 <span class="w">        </span>except<span class="w"> </span><span class="o">(</span>OSError,<span class="w"> </span>ValueError,<span class="w"> </span>TypeError,<span class="w"> </span>json.JSONDecodeError<span class="o">)</span>:
 <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span>run_bench<span class="o">(</span>policy<span class="o">)</span>
 <span class="w">    </span><span class="nv">agent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>sys.argv<span class="o">[</span><span class="m">1</span><span class="o">]</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">agent</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;cli&quot;</span>:
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">agent</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"cli"</span>:
 <span class="w">        </span><span class="k">return</span><span class="w"> </span>run_cli<span class="o">(</span>sys.stdin.read<span class="o">())</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>agent<span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">{</span><span class="s2">&quot;claude&quot;</span>,<span class="w"> </span><span class="s2">&quot;codex&quot;</span><span class="o">}</span>:
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>agent<span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">{</span><span class="s2">"claude"</span>,<span class="w"> </span><span class="s2">"codex"</span><span class="o">}</span>:
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="nv">raw_input</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>sys.stdin.read<span class="o">()</span>
 <span class="w">    </span>try:
 <span class="w">        </span><span class="nv">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>json.loads<span class="o">(</span>raw_input<span class="o">)</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>payload,<span class="w"> </span>dict<span class="o">)</span>:
-<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;hook input must be an object&quot;</span><span class="o">)</span>
+<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">"hook input must be an object"</span><span class="o">)</span>
 <span class="w">    </span>except<span class="w"> </span><span class="o">(</span>json.JSONDecodeError,<span class="w"> </span>ValueError<span class="o">)</span>:
 <span class="w">        </span>try:
 <span class="w">            </span>append_log<span class="o">(</span>
 <span class="w">                </span><span class="o">{</span>
-<span class="w">                    </span><span class="s2">&quot;ts&quot;</span>:<span class="w"> </span>datetime.now<span class="o">(</span>timezone.utc<span class="o">)</span>.isoformat<span class="o">()</span>,
-<span class="w">                    </span><span class="s2">&quot;agent&quot;</span>:<span class="w"> </span>agent,
-<span class="w">                    </span><span class="s2">&quot;tool&quot;</span>:<span class="w"> </span><span class="s2">&quot;unknown&quot;</span>,
-<span class="w">                    </span><span class="s2">&quot;input_hash&quot;</span>:<span class="w"> </span>hashlib.sha256<span class="o">(</span>raw_input.encode<span class="o">())</span>.hexdigest<span class="o">()</span>,
-<span class="w">                    </span><span class="s2">&quot;input_summary&quot;</span>:<span class="w"> </span><span class="s2">&quot;unknown:invalid-json&quot;</span>,
-<span class="w">                    </span><span class="s2">&quot;layer&quot;</span>:<span class="w"> </span><span class="s2">&quot;input-error&quot;</span>,
-<span class="w">                    </span><span class="s2">&quot;decision&quot;</span>:<span class="w"> </span><span class="s2">&quot;ask&quot;</span>,
-<span class="w">                    </span><span class="s2">&quot;latency_ms&quot;</span>:<span class="w"> </span><span class="m">0</span>,
+<span class="w">                    </span><span class="s2">"ts"</span>:<span class="w"> </span>datetime.now<span class="o">(</span>timezone.utc<span class="o">)</span>.isoformat<span class="o">()</span>,
+<span class="w">                    </span><span class="s2">"agent"</span>:<span class="w"> </span>agent,
+<span class="w">                    </span><span class="s2">"tool"</span>:<span class="w"> </span><span class="s2">"unknown"</span>,
+<span class="w">                    </span><span class="s2">"input_hash"</span>:<span class="w"> </span>hashlib.sha256<span class="o">(</span>raw_input.encode<span class="o">())</span>.hexdigest<span class="o">()</span>,
+<span class="w">                    </span><span class="s2">"input_summary"</span>:<span class="w"> </span><span class="s2">"unknown:invalid-json"</span>,
+<span class="w">                    </span><span class="s2">"layer"</span>:<span class="w"> </span><span class="s2">"input-error"</span>,
+<span class="w">                    </span><span class="s2">"decision"</span>:<span class="w"> </span><span class="s2">"ask"</span>,
+<span class="w">                    </span><span class="s2">"latency_ms"</span>:<span class="w"> </span><span class="m">0</span>,
 <span class="w">                </span><span class="o">}</span>
 <span class="w">            </span><span class="o">)</span>
 <span class="w">        </span>except<span class="w"> </span>OSError:
@@ -4245,7 +4245,7 @@ def<span class="w"> </span>main<span class="o">()</span><span class="w"> </span>
 <span class="w">        </span><span class="nv">policy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>load_policy<span class="o">()</span>
 <span class="w">    </span>except<span class="w"> </span><span class="o">(</span>OSError,<span class="w"> </span>ValueError,<span class="w"> </span>TypeError,<span class="w"> </span>json.JSONDecodeError<span class="o">)</span>:
 <span class="w">        </span>try:
-<span class="w">            </span>append_log<span class="o">(</span>decision_record<span class="o">(</span>agent,<span class="w"> </span>payload,<span class="w"> </span><span class="s2">&quot;config-error&quot;</span>,<span class="w"> </span><span class="s2">&quot;ask&quot;</span>,<span class="w"> </span><span class="m">0</span><span class="o">))</span>
+<span class="w">            </span>append_log<span class="o">(</span>decision_record<span class="o">(</span>agent,<span class="w"> </span>payload,<span class="w"> </span><span class="s2">"config-error"</span>,<span class="w"> </span><span class="s2">"ask"</span>,<span class="w"> </span><span class="m">0</span><span class="o">))</span>
 <span class="w">        </span>except<span class="w"> </span>OSError:
 <span class="w">            </span>pass
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
@@ -4253,17 +4253,17 @@ def<span class="w"> </span>main<span class="o">()</span><span class="w"> </span>
 <span class="w">        </span>output,<span class="w"> </span><span class="nv">record</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>decide<span class="o">(</span>agent,<span class="w"> </span>payload,<span class="w"> </span>policy<span class="o">)</span>
 <span class="w">    </span>except<span class="w"> </span><span class="o">(</span>KeyError,<span class="w"> </span>TypeError,<span class="w"> </span>ValueError,<span class="w"> </span>re.error<span class="o">)</span>:
 <span class="w">        </span><span class="nv">output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None
-<span class="w">        </span><span class="nv">record</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>decision_record<span class="o">(</span>agent,<span class="w"> </span>payload,<span class="w"> </span><span class="s2">&quot;config-error&quot;</span>,<span class="w"> </span><span class="s2">&quot;ask&quot;</span>,<span class="w"> </span><span class="m">0</span><span class="o">)</span>
+<span class="w">        </span><span class="nv">record</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>decision_record<span class="o">(</span>agent,<span class="w"> </span>payload,<span class="w"> </span><span class="s2">"config-error"</span>,<span class="w"> </span><span class="s2">"ask"</span>,<span class="w"> </span><span class="m">0</span><span class="o">)</span>
 <span class="w">    </span>try:
 <span class="w">        </span>append_log<span class="o">(</span>record<span class="o">)</span>
 <span class="w">    </span>except<span class="w"> </span>OSError:
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>output<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
-<span class="w">        </span>print<span class="o">(</span>json.dumps<span class="o">(</span>output,<span class="w"> </span><span class="nv">separators</span><span class="o">=(</span><span class="s2">&quot;,&quot;</span>,<span class="w"> </span><span class="s2">&quot;:&quot;</span><span class="o">)))</span>
+<span class="w">        </span>print<span class="o">(</span>json.dumps<span class="o">(</span>output,<span class="w"> </span><span class="nv">separators</span><span class="o">=(</span><span class="s2">","</span>,<span class="w"> </span><span class="s2">":"</span><span class="o">)))</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 
 
-<span class="k">if</span><span class="w"> </span><span class="nv">__name__</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;__main__&quot;</span>:
+<span class="k">if</span><span class="w"> </span><span class="nv">__name__</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"__main__"</span>:
 <span class="w">    </span>raise<span class="w"> </span>SystemExit<span class="o">(</span>main<span class="o">())</span>
 </code></pre></div>
 

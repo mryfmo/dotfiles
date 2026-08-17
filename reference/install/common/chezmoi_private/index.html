@@ -3511,15 +3511,15 @@
 <span class="c1"># @brief Initialize the private chezmoi repository.</span>
 <span class="c1"># @description</span>
 <span class="c1">#   Bootstraps `mryfmo/dotfiles-private` using the dedicated source and</span>
-<span class="c1">#   config paths under the current user&#39;s home directory.</span>
+<span class="c1">#   config paths under the current user's home directory.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
-<span class="nb">declare</span><span class="w"> </span>-r<span class="w"> </span><span class="nv">PRIVATE_DOTFILES_REPO_URL</span><span class="o">=</span><span class="s2">&quot;https://github.com/mryfmo/dotfiles-private&quot;</span>
-<span class="nb">declare</span><span class="w"> </span>-r<span class="w"> </span><span class="nv">PRIVATE_DOTFILES_PATH</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/share/chezmoi-private&quot;</span>
-<span class="nb">declare</span><span class="w"> </span>-r<span class="w"> </span><span class="nv">PRIVATE_DOTFILES_CONFIG_PATH</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.config/chezmoi-private/chezmoi.yaml&quot;</span>
+<span class="nb">declare</span><span class="w"> </span>-r<span class="w"> </span><span class="nv">PRIVATE_DOTFILES_REPO_URL</span><span class="o">=</span><span class="s2">"https://github.com/mryfmo/dotfiles-private"</span>
+<span class="nb">declare</span><span class="w"> </span>-r<span class="w"> </span><span class="nv">PRIVATE_DOTFILES_PATH</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/share/chezmoi-private"</span>
+<span class="nb">declare</span><span class="w"> </span>-r<span class="w"> </span><span class="nv">PRIVATE_DOTFILES_CONFIG_PATH</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.config/chezmoi-private/chezmoi.yaml"</span>
 
-<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nb">set</span><span class="w"> </span>-x
 <span class="k">fi</span>
 
@@ -3530,21 +3530,21 @@
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>chezmoi<span class="w"> </span>init<span class="w"> </span><span class="se">\</span>
 <span class="w">        </span>--apply<span class="w"> </span><span class="se">\</span>
 <span class="w">        </span>--ssh<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span>--source<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PRIVATE_DOTFILES_PATH</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">        </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PRIVATE_DOTFILES_CONFIG_PATH</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PRIVATE_DOTFILES_REPO_URL</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>--source<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PRIVATE_DOTFILES_PATH</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>--config<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PRIVATE_DOTFILES_CONFIG_PATH</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">PRIVATE_DOTFILES_REPO_URL</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Warning: Failed to initialize dotfiles-private. Skipping private dotfiles setup.&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"Warning: Failed to initialize dotfiles-private. Skipping private dotfiles setup."</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Remove the private chezmoi source and config paths.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>uninstall_chezmoi_private<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>rm<span class="w"> </span>-rfv<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PRIVATE_DOTFILES_PATH</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">    </span>rm<span class="w"> </span>-rfv<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PRIVATE_DOTFILES_CONFIG_PATH</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span>rm<span class="w"> </span>-rfv<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PRIVATE_DOTFILES_PATH</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span>rm<span class="w"> </span>-rfv<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PRIVATE_DOTFILES_CONFIG_PATH</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3554,7 +3554,7 @@
 <span class="w">    </span>install_chezmoi_private
 <span class="o">}</span>
 
-<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>main
 <span class="k">fi</span>
 </code></pre></div>

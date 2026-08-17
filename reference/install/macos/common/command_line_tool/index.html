@@ -3516,7 +3516,7 @@
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
-<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nb">set</span><span class="w"> </span>-x
 <span class="k">fi</span>
 
@@ -3524,14 +3524,14 @@
 <span class="c1"># @description Install Xcode Command Line Tools when `git` is not available.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>install_command_line_tool<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">git_cmd_path</span><span class="o">=</span><span class="s2">&quot;/Library/Developer/CommandLineTools/usr/bin/git&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">git_cmd_path</span><span class="o">=</span><span class="s2">"/Library/Developer/CommandLineTools/usr/bin/git"</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>!<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">git_cmd_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>!<span class="w"> </span>-e<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">git_cmd_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="c1"># Install command line developer tool</span>
 <span class="w">        </span>xcode-select<span class="w"> </span>--install
 <span class="w">        </span><span class="c1"># Want for user input</span>
-<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Press any key when the installation has completed.&quot;</span>
-<span class="w">        </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span><span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;&#39;</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"Press any key when the installation has completed."</span>
+<span class="w">        </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span><span class="w"> </span>-d<span class="w"> </span><span class="s1">''</span>
 <span class="w">        </span><span class="c1">#          │  │    └ The first character of DELIM is used to terminate the input line, rather than newline.</span>
 <span class="w">        </span><span class="c1">#          │  │</span>
 <span class="w">        </span><span class="c1">#          │  └ returns after reading NCHARS characters rather than waiting for a complete line of input.</span>
@@ -3540,7 +3540,7 @@
 <span class="w">        </span><span class="c1">#            The backslash is considered to be part of the line. In particular, a backslash-newline</span>
 <span class="w">        </span><span class="c1">#            pair may not be used as a line continuation.</span>
 <span class="w">    </span><span class="k">else</span>
-<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Command line developer tools are installed.&quot;</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"Command line developer tools are installed."</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
@@ -3551,7 +3551,7 @@
 <span class="w">    </span>install_command_line_tool
 <span class="o">}</span>
 
-<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>main
 <span class="k">fi</span>
 </code></pre></div>

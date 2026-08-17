@@ -3518,7 +3518,7 @@
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
-<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nb">set</span><span class="w"> </span>-x
 <span class="k">fi</span>
 
@@ -3527,9 +3527,9 @@
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>prepare_benchmark<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>tmp_dir
-<span class="w">    </span><span class="nv">tmp_dir</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="k">)</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;make temp directory to </span><span class="si">${</span><span class="nv">tmp_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">    </span><span class="nb">echo</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmp_dir</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">tmp_dir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"make temp directory to </span><span class="si">${</span><span class="nv">tmp_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmp_dir</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3538,28 +3538,28 @@
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>cleanup_result_dir<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">target_dir</span><span class="o">=</span><span class="nv">$1</span>
-<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;cleanup </span><span class="si">${</span><span class="nv">target_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">    </span>rm<span class="w"> </span>-rf<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">target_dir</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"cleanup </span><span class="si">${</span><span class="nv">target_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span>rm<span class="w"> </span>-rf<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target_dir</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Detect the current operating system in lowercase form.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>get_os<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nv">os</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>uname<span class="w"> </span>-s<span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">&#39;[:upper:]&#39;</span><span class="w"> </span><span class="s1">&#39;[:lower:]&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">echo</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">os</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">os</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-s<span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">'[:upper:]'</span><span class="w"> </span><span class="s1">'[:lower:]'</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">os</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Select the appropriate `time` command for the current platform.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>get_time_command<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>get_os<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>get_os<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
 <span class="w">    </span>darwin<span class="o">)</span>
-<span class="w">        </span><span class="nb">echo</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;gtime&quot;</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"gtime"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>linux<span class="o">)</span>
-<span class="w">        </span><span class="nb">echo</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;time&quot;</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"time"</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span><span class="k">esac</span>
 <span class="o">}</span>
@@ -3570,12 +3570,12 @@
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>measure_initial_startup_time<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">benchmark_result_dir</span><span class="o">=</span><span class="nv">$1</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">result_file</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">benchmark_result_dir</span><span class="si">}</span><span class="s2">/zsh-initial-startup-time.txt&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">result_file</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">benchmark_result_dir</span><span class="si">}</span><span class="s2">/zsh-initial-startup-time.txt"</span>
 
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>time_cmd
-<span class="w">    </span><span class="nv">time_cmd</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>get_time_command<span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">time_cmd</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>get_time_command<span class="k">)</span><span class="s2">"</span>
 
-<span class="w">    </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">time_cmd</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--format<span class="o">=</span><span class="s2">&quot;%e&quot;</span><span class="w"> </span>--output<span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">result_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>zsh<span class="w"> </span>-i<span class="w"> </span>-c<span class="w"> </span><span class="nb">exit</span>
+<span class="w">    </span><span class="s2">"</span><span class="si">${</span><span class="nv">time_cmd</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--format<span class="o">=</span><span class="s2">"%e"</span><span class="w"> </span>--output<span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">result_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>zsh<span class="w"> </span>-i<span class="w"> </span>-c<span class="w"> </span><span class="nb">exit</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3585,13 +3585,13 @@
 <span class="k">function</span><span class="w"> </span>measure_average_startup_time<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">benchmark_result_dir</span><span class="o">=</span><span class="nv">$1</span>
 
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">result_file</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">benchmark_result_dir</span><span class="si">}</span><span class="s2">/zsh-average-startup-time.txt&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">result_file</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">benchmark_result_dir</span><span class="si">}</span><span class="s2">/zsh-average-startup-time.txt"</span>
 
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>time_cmd
-<span class="w">    </span><span class="nv">time_cmd</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>get_time_command<span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">time_cmd</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>get_time_command<span class="k">)</span><span class="s2">"</span>
 
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>i<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">$(</span>seq<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">10</span><span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">time_cmd</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--format<span class="o">=</span><span class="s2">&quot;%e&quot;</span><span class="w"> </span>--output<span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">benchmark_result_dir</span><span class="si">}</span><span class="s2">/zsh-average-startup-time-</span><span class="si">${</span><span class="nv">i</span><span class="si">}</span><span class="s2">.txt&quot;</span><span class="w"> </span>zsh<span class="w"> </span>-i<span class="w"> </span>-c<span class="w"> </span><span class="nb">exit</span>
+<span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">time_cmd</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--format<span class="o">=</span><span class="s2">"%e"</span><span class="w"> </span>--output<span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">benchmark_result_dir</span><span class="si">}</span><span class="s2">/zsh-average-startup-time-</span><span class="si">${</span><span class="nv">i</span><span class="si">}</span><span class="s2">.txt"</span><span class="w"> </span>zsh<span class="w"> </span>-i<span class="w"> </span>-c<span class="w"> </span><span class="nb">exit</span>
 <span class="w">    </span><span class="k">done</span>
 <span class="o">}</span>
 
@@ -3602,24 +3602,24 @@
 <span class="k">function</span><span class="w"> </span>record_startup_time<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">benchmark_result_dir</span><span class="o">=</span><span class="nv">$1</span>
 
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">initial_file</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">benchmark_result_dir</span><span class="si">}</span><span class="s2">/zsh-initial-startup-time.txt&quot;</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">average_file</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">benchmark_result_dir</span><span class="si">}</span><span class="s2">/zsh-average-startup-time-*.txt&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">initial_file</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">benchmark_result_dir</span><span class="si">}</span><span class="s2">/zsh-initial-startup-time.txt"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">average_file</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">benchmark_result_dir</span><span class="si">}</span><span class="s2">/zsh-average-startup-time-*.txt"</span>
 
-<span class="w">    </span><span class="nv">initial_startup_time</span><span class="o">=</span><span class="k">$(</span>cat<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">initial_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span>
+<span class="w">    </span><span class="nv">initial_startup_time</span><span class="o">=</span><span class="k">$(</span>cat<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">initial_file</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span>
 <span class="w">    </span><span class="c1"># shellcheck disable=SC2086</span>
-<span class="w">    </span><span class="nv">average_startup_time</span><span class="o">=</span><span class="k">$(</span>cat<span class="w"> </span><span class="si">${</span><span class="nv">average_file</span><span class="si">}</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;{ total += $1 } END { print total/NR }&#39;</span><span class="k">)</span>
+<span class="w">    </span><span class="nv">average_startup_time</span><span class="o">=</span><span class="k">$(</span>cat<span class="w"> </span><span class="si">${</span><span class="nv">average_file</span><span class="si">}</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'{ total += $1 } END { print total/NR }'</span><span class="k">)</span>
 
 <span class="w">    </span>cat<span class="w"> </span><span class="s">&lt;&lt; EOJ</span>
 <span class="s">[</span>
 <span class="s">    {</span>
-<span class="s">        &quot;name&quot;: &quot;zsh average startup time&quot;,</span>
-<span class="s">        &quot;unit&quot;: &quot;Second&quot;,</span>
-<span class="s">        &quot;value&quot;: ${average_startup_time}</span>
+<span class="s">        "name": "zsh average startup time",</span>
+<span class="s">        "unit": "Second",</span>
+<span class="s">        "value": ${average_startup_time}</span>
 <span class="s">    },</span>
 <span class="s">    {</span>
-<span class="s">        &quot;name&quot;: &quot;zsh initial startup time&quot;,</span>
-<span class="s">        &quot;unit&quot;: &quot;Second&quot;,</span>
-<span class="s">        &quot;value&quot;: ${initial_startup_time}</span>
+<span class="s">        "name": "zsh initial startup time",</span>
+<span class="s">        "unit": "Second",</span>
+<span class="s">        "value": ${initial_startup_time}</span>
 <span class="s">    }</span>
 <span class="s">]</span>
 <span class="s">EOJ</span>
@@ -3633,14 +3633,14 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>tmp_dir
 <span class="w">    </span><span class="nv">tmp_dir</span><span class="o">=</span><span class="k">$(</span>prepare_benchmark<span class="k">)</span>
 
-<span class="w">    </span>measure_initial_startup_time<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmp_dir</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">    </span>measure_average_startup_time<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmp_dir</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span>measure_initial_startup_time<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmp_dir</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span>measure_average_startup_time<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmp_dir</span><span class="si">}</span><span class="s2">"</span>
 
-<span class="w">    </span>record_startup_time<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmp_dir</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">    </span>cleanup_result_dir<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmp_dir</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span>record_startup_time<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmp_dir</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span>cleanup_result_dir<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmp_dir</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
-<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>main
 <span class="k">fi</span>
 </code></pre></div>

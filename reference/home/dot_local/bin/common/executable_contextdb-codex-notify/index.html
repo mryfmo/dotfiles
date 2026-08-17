@@ -3483,14 +3483,14 @@
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
 
 <span class="c1"># @file home/dot_local/bin/common/executable_contextdb-codex-notify</span>
-<span class="c1"># @brief Ingest a Codex turn-complete notification into an opted-in project&#39;s CompactionDB.</span>
+<span class="c1"># @brief Ingest a Codex turn-complete notification into an opted-in project's CompactionDB.</span>
 
 <span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>python3<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s1">&#39;contextdb-codex-notify: ingest failed&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s1">'contextdb-codex-notify: ingest failed'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="k">fi</span>
 
-<span class="k">if</span><span class="w"> </span>!<span class="w"> </span>python3<span class="w"> </span>-<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">1</span><span class="p">-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="s">&lt;&lt; &#39;PY&#39;; then</span>
+<span class="k">if</span><span class="w"> </span>!<span class="w"> </span>python3<span class="w"> </span>-<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">1</span><span class="p">-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="s">&lt;&lt; 'PY'; then</span>
 <span class="s">import json</span>
 <span class="s">import subprocess</span>
 <span class="s">import sys</span>
@@ -3500,24 +3500,24 @@
 <span class="s">    payload = sys.argv[1]</span>
 <span class="s">    event = json.loads(payload)</span>
 <span class="s">    if not isinstance(event, dict):</span>
-<span class="s">        raise ValueError(&quot;notify payload must be an object&quot;)</span>
-<span class="s">    cwd = event.get(&quot;cwd&quot;)</span>
+<span class="s">        raise ValueError("notify payload must be an object")</span>
+<span class="s">    cwd = event.get("cwd")</span>
 <span class="s">    if cwd is not None and not isinstance(cwd, str):</span>
-<span class="s">        raise ValueError(&quot;notify cwd must be a string&quot;)</span>
+<span class="s">        raise ValueError("notify cwd must be a string")</span>
 <span class="s">    project_dir = (Path(cwd) if cwd else Path.cwd()).resolve()</span>
-<span class="s">    opt_in = project_dir / &quot;.claude&quot; / &quot;contextdb&quot;</span>
-<span class="s">    cli = Path.home() / &quot;.agents&quot; / &quot;compactiondb&quot; / &quot;.claude&quot; / &quot;hooks&quot; / &quot;contextdb_cli.py&quot;</span>
+<span class="s">    opt_in = project_dir / ".claude" / "contextdb"</span>
+<span class="s">    cli = Path.home() / ".agents" / "compactiondb" / ".claude" / "hooks" / "contextdb_cli.py"</span>
 <span class="s">    if not opt_in.is_dir() or not cli.is_file():</span>
 <span class="s">        raise SystemExit(0)</span>
 <span class="s">    subprocess.run(</span>
 <span class="s">        [</span>
 <span class="s">            sys.executable,</span>
 <span class="s">            str(cli),</span>
-<span class="s">            &quot;--project-root&quot;,</span>
+<span class="s">            "--project-root",</span>
 <span class="s">            str(project_dir),</span>
-<span class="s">            &quot;ingest&quot;,</span>
-<span class="s">            &quot;--ingested-from&quot;,</span>
-<span class="s">            &quot;codex&quot;,</span>
+<span class="s">            "ingest",</span>
+<span class="s">            "--ingested-from",</span>
+<span class="s">            "codex",</span>
 <span class="s">        ],</span>
 <span class="s">        input=payload,</span>
 <span class="s">        text=True,</span>
@@ -3530,7 +3530,7 @@
 <span class="s">except Exception:</span>
 <span class="s">    raise SystemExit(1)</span>
 <span class="s">PY</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s1">&#39;contextdb-codex-notify: ingest failed&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s1">'contextdb-codex-notify: ingest failed'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="k">fi</span>
 
 <span class="nb">exit</span><span class="w"> </span><span class="m">0</span>

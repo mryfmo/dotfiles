@@ -3513,7 +3513,7 @@
 <span class="c1"># @brief Format Python code with Ruff through `uvx`.</span>
 <span class="c1"># @description</span>
 <span class="c1">#   Runs Ruff formatting first and then fixes import ordering and selected</span>
-<span class="c1">#   issues through Ruff&#39;s check mode.</span>
+<span class="c1">#   issues through Ruff's check mode.</span>
 <span class="c1"># @example</span>
 <span class="c1">#   uv-format</span>
 
@@ -3523,7 +3523,7 @@
 <span class="w">    </span>uvx<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span>--fix<span class="w"> </span>--extend-select<span class="w"> </span>I
 <span class="o">}</span>
 
-<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">$SHELL</span><span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;echo </span><span class="si">${</span><span class="nv">ZSH_VERSION</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nv">$SHELL</span><span class="w"> </span>-c<span class="w"> </span><span class="s2">"echo </span><span class="si">${</span><span class="nv">ZSH_VERSION</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>uv_format
 <span class="k">fi</span>
 </code></pre></div>

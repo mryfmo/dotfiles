@@ -3513,13 +3513,13 @@
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
-<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nb">set</span><span class="w"> </span>-x
 <span class="k">fi</span>
 
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">BIN_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin&quot;</span>
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">MISE_BIN</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin/mise&quot;</span>
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">SHELDON_VERSION</span><span class="o">=</span><span class="s2">&quot;0.8.5&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">BIN_DIR</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin"</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">MISE_BIN</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin/mise"</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">SHELDON_VERSION</span><span class="o">=</span><span class="s2">"0.8.5"</span>
 <span class="c1"># crates.io API: https://crates.io/api/v1/crates/sheldon/0.8.5</span>
 <span class="c1"># Registry SHA-256: 43a2d8fc0be4474cfe2d603992c7e9765c9a0f87465aabcfc0603c1de4290b4d</span>
 
@@ -3527,23 +3527,23 @@
 <span class="c1"># @description Build and install the crates.io Sheldon release with locked dependencies.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>install_sheldon<span class="o">()</span><span class="w"> </span><span class="o">(</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">stage</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="w"> </span>tmpdir
-<span class="w">    </span><span class="nv">tmpdir</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">    </span><span class="nb">trap</span><span class="w"> </span><span class="s1">&#39;rm -rf &quot;${tmpdir}&quot;; [ -z &quot;${stage}&quot; ] || rm -f &quot;${stage}&quot;&#39;</span><span class="w"> </span>EXIT
-<span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BIN_DIR</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">    </span><span class="nv">stage</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>mktemp<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BIN_DIR</span><span class="si">}</span><span class="s2">/sheldon.tmp.XXXXXX&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">    </span><span class="nv">CARGO_INSTALL_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">MISE_BIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="nb">exec</span><span class="w"> </span>--locked<span class="w"> </span>--<span class="w"> </span>cargo<span class="w"> </span>install<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">stage</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span>tmpdir
+<span class="w">    </span><span class="nv">tmpdir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="nb">trap</span><span class="w"> </span><span class="s1">'rm -rf "${tmpdir}"; [ -z "${stage}" ] || rm -f "${stage}"'</span><span class="w"> </span>EXIT
+<span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BIN_DIR</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="nv">stage</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BIN_DIR</span><span class="si">}</span><span class="s2">/sheldon.tmp.XXXXXX"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span><span class="nv">CARGO_INSTALL_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_BIN</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="nb">exec</span><span class="w"> </span>--locked<span class="w"> </span>--<span class="w"> </span>cargo<span class="w"> </span>install<span class="w"> </span><span class="se">\</span>
 <span class="w">        </span>--locked<span class="w"> </span>--features<span class="w"> </span>vendored<span class="w"> </span>--registry<span class="w"> </span>crates-io<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span>--version<span class="w"> </span><span class="s2">&quot;=</span><span class="si">${</span><span class="nv">SHELDON_VERSION</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>sheldon<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">    </span>install<span class="w"> </span>-m<span class="w"> </span><span class="m">0755</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/bin/sheldon&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">stage</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">    </span>mv<span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">stage</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BIN_DIR</span><span class="si">}</span><span class="s2">/sheldon&quot;</span>
+<span class="w">        </span>--version<span class="w"> </span><span class="s2">"=</span><span class="si">${</span><span class="nv">SHELDON_VERSION</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>sheldon<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span>install<span class="w"> </span>-m<span class="w"> </span><span class="m">0755</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/bin/sheldon"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">stage</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
+<span class="w">    </span>mv<span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">stage</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BIN_DIR</span><span class="si">}</span><span class="s2">/sheldon"</span>
 <span class="o">)</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Remove the installed `sheldon` binary.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>uninstall_sheldon<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>rm<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BIN_DIR</span><span class="si">}</span><span class="s2">/sheldon&quot;</span>
+<span class="w">    </span>rm<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BIN_DIR</span><span class="si">}</span><span class="s2">/sheldon"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3553,7 +3553,7 @@
 <span class="w">    </span>install_sheldon
 <span class="o">}</span>
 
-<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>main
 <span class="k">fi</span>
 </code></pre></div>

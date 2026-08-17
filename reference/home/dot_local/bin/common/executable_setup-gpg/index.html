@@ -3524,32 +3524,32 @@
 
 <span class="c1"># @description Return success when at least one GnuPG secret key exists.</span>
 <span class="k">function</span><span class="w"> </span>has_gpg_secret_key<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>gpg<span class="w"> </span>--batch<span class="w"> </span>--list-secret-keys<span class="w"> </span>--with-colons<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-q<span class="w"> </span><span class="s1">&#39;^sec:&#39;</span>
+<span class="w">    </span>gpg<span class="w"> </span>--batch<span class="w"> </span>--list-secret-keys<span class="w"> </span>--with-colons<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-q<span class="w"> </span><span class="s1">'^sec:'</span>
 <span class="o">}</span>
 
 <span class="c1"># @description Create a GnuPG secret key through the standard interactive flow.</span>
 <span class="k">function</span><span class="w"> </span>generate_gpg_secret_key<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-t<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;No local GnuPG secret key was found.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Run `gpg --full-generate-key` interactively or restore keys from the private chezmoi source.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'No local GnuPG secret key was found.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Run `gpg --full-generate-key` interactively or restore keys from the private chezmoi source.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;No local GnuPG secret key was found. Starting interactive key generation.\n&#39;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'No local GnuPG secret key was found. Starting interactive key generation.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span>gpg<span class="w"> </span>--full-generate-key
 <span class="o">}</span>
 
 <span class="c1"># @description Run the GnuPG setup flow.</span>
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>has_gpg_secret_key<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;GnuPG secret key already exists. Nothing to do.\n&#39;</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'GnuPG secret key already exists. Nothing to do.\n'</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span>generate_gpg_secret_key
 <span class="o">}</span>
 
-<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>main
 <span class="k">fi</span>
 </code></pre></div>

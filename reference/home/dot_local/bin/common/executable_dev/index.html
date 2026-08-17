@@ -3522,25 +3522,25 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>selected_path
 <span class="w">    </span><span class="nv">selected_path</span><span class="o">=</span><span class="k">$(</span>ghq<span class="w"> </span>list<span class="w"> </span>--full-path<span class="w"> </span><span class="p">|</span><span class="w"> </span>fzf<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="nv">$selected_path</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$selected_path</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$selected_path</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1"># @description Change into a selected `ghq` repository and rename tmux session.</span>
 <span class="k">function</span><span class="w"> </span>dev<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>moveto
 <span class="w">    </span><span class="nv">moveto</span><span class="o">=</span><span class="k">$(</span>ghq-path<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$moveto</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="nv">$moveto</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
 
 <span class="w">    </span><span class="c1"># rename session if in tmux</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">TMUX</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">local</span><span class="w"> </span>repo_name
-<span class="w">        </span><span class="nv">repo_name</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">moveto</span><span class="p">##*/</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="nv">repo_name</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">moveto</span><span class="p">##*/</span><span class="si">}</span><span class="s2">"</span>
 
-<span class="w">        </span>tmux<span class="w"> </span>rename-session<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">repo_name</span><span class="p">//./-</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span>tmux<span class="w"> </span>rename-session<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_name</span><span class="p">//./-</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
-<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">$SHELL</span><span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;echo </span><span class="si">${</span><span class="nv">ZSH_VERSION</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nv">$SHELL</span><span class="w"> </span>-c<span class="w"> </span><span class="s2">"echo </span><span class="si">${</span><span class="nv">ZSH_VERSION</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>dev
 <span class="k">fi</span>
 </code></pre></div>

@@ -3530,7 +3530,7 @@
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
-<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nb">set</span><span class="w"> </span>-x
 <span class="k">fi</span>
 
@@ -3555,7 +3555,7 @@
 <span class="w">    </span><span class="c1"># Change Caps to Ctrl</span>
 <span class="w">    </span><span class="c1"># ref. https://stackoverflow.com/a/46460200</span>
 <span class="w">    </span>hidutil<span class="w"> </span>property<span class="w"> </span>--set<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="s1">&#39;{&quot;UserKeyMapping&quot;: [{&quot;HIDKeyboardModifierMappingSrc&quot;: 0x700000039, &quot;HIDKeyboardModifierMappingDst&quot;: 0x7000000e0 }] }&#39;</span>
+<span class="w">        </span><span class="s1">'{"UserKeyMapping": [{"HIDKeyboardModifierMappingSrc": 0x700000039, "HIDKeyboardModifierMappingDst": 0x7000000e0 }] }'</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3580,7 +3580,7 @@
 <span class="c1"># @description Expose Bluetooth in the macOS Control Center.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>defaults_controlcenter<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.controlcenter<span class="w"> </span><span class="s2">&quot;NSStatusItem Visible Bluetooth&quot;</span><span class="w"> </span>-bool<span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.controlcenter<span class="w"> </span><span class="s2">"NSStatusItem Visible Bluetooth"</span><span class="w"> </span>-bool<span class="w"> </span><span class="nb">true</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3595,13 +3595,13 @@
 <span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.dock<span class="w"> </span>mru-spaces<span class="w"> </span>-bool<span class="w"> </span><span class="nb">false</span>
 
 <span class="w">    </span><span class="c1"># Remove all the icons in the Dock</span>
-<span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.dock<span class="w"> </span>persistent-apps<span class="w"> </span>-array<span class="w"> </span><span class="s2">&quot;&quot;</span>
-<span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.dock<span class="w"> </span>recent-apps<span class="w"> </span>-array<span class="w"> </span><span class="s2">&quot;&quot;</span>
-<span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.dock<span class="w"> </span>persistent-others<span class="w"> </span>-array<span class="w"> </span><span class="s2">&quot;&quot;</span>
+<span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.dock<span class="w"> </span>persistent-apps<span class="w"> </span>-array<span class="w"> </span><span class="s2">""</span>
+<span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.dock<span class="w"> </span>recent-apps<span class="w"> </span>-array<span class="w"> </span><span class="s2">""</span>
+<span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.dock<span class="w"> </span>persistent-others<span class="w"> </span>-array<span class="w"> </span><span class="s2">""</span>
 
 <span class="w">    </span><span class="k">function</span><span class="w"> </span>dock_item<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">        </span><span class="nb">local</span><span class="w"> </span><span class="nv">app_file_path</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;</span>
+<span class="w">        </span><span class="nb">local</span><span class="w"> </span><span class="nv">app_file_path</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'</span>
 <span class="s1">        &lt;dict&gt;</span>
 <span class="s1">            &lt;key&gt;tile-data&lt;/key&gt;</span>
 <span class="s1">                &lt;dict&gt;</span>
@@ -3611,39 +3611,39 @@
 <span class="s1">                            &lt;key&gt;_CFURLStringType&lt;/key&gt;&lt;integer&gt;0&lt;/integer&gt;</span>
 <span class="s1">                        &lt;/dict&gt;</span>
 <span class="s1">                &lt;/dict&gt;</span>
-<span class="s1">        &lt;/dict&gt;&#39;</span>,<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">app_file_path</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="s1">        &lt;/dict&gt;'</span>,<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">app_file_path</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="o">}</span>
 
 <span class="w">    </span><span class="k">function</span><span class="w"> </span>get_system_app_path<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">        </span><span class="nb">local</span><span class="w"> </span><span class="nv">system_preferences_path</span><span class="o">=</span><span class="s2">&quot;/System/Applications/System Preferences.app/&quot;</span>
-<span class="w">        </span><span class="nb">local</span><span class="w"> </span><span class="nv">system_settings_path</span><span class="o">=</span><span class="s2">&quot;/System/Applications/System Settings.app/&quot;</span>
+<span class="w">        </span><span class="nb">local</span><span class="w"> </span><span class="nv">system_preferences_path</span><span class="o">=</span><span class="s2">"/System/Applications/System Preferences.app/"</span>
+<span class="w">        </span><span class="nb">local</span><span class="w"> </span><span class="nv">system_settings_path</span><span class="o">=</span><span class="s2">"/System/Applications/System Settings.app/"</span>
 
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">system_preferences_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">system_preferences_path</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">system_settings_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-e<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">system_preferences_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">system_preferences_path</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-e<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">system_settings_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="c1"># for Ventura</span>
-<span class="w">            </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">system_settings_path</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">            </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">system_settings_path</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">else</span>
-<span class="w">            </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Could not found system app </span><span class="si">${</span><span class="nv">system_preferences_path</span><span class="si">}</span><span class="s2"> and </span><span class="si">${</span><span class="nv">system_settings_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"Could not found system app </span><span class="si">${</span><span class="nv">system_preferences_path</span><span class="si">}</span><span class="s2"> and </span><span class="si">${</span><span class="nv">system_settings_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">            </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="o">}</span>
 
 <span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.dock<span class="w"> </span>persistent-apps<span class="w"> </span>-array<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="s2">&quot;</span><span class="k">$(</span>dock_item<span class="w"> </span>/Applications/Google<span class="se">\ </span>Chrome.app<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="s2">&quot;</span><span class="k">$(</span>dock_item<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>get_system_app_path<span class="k">)</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="s2">"</span><span class="k">$(</span>dock_item<span class="w"> </span>/Applications/Google<span class="se">\ </span>Chrome.app<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s2">"</span><span class="k">$(</span>dock_item<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>get_system_app_path<span class="k">)</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Configure input sources and keyboard shortcuts for IME switching.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>defaults_input_sources<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="c1"># Enable `Automatically switch to a document&#39;s input source&#39;`</span>
+<span class="w">    </span><span class="c1"># Enable `Automatically switch to a document's input source'`</span>
 <span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.HIToolbox<span class="w"> </span>AppleGlobalTextInputProperties<span class="w"> </span>-dict<span class="w"> </span>TextInputGlobalPropertyPerContextInput<span class="w"> </span>-bool<span class="w"> </span><span class="nb">true</span>
 
 <span class="w">    </span><span class="c1"># `Select the previous input source` as Command + `</span>
 <span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.symbolichotkeys<span class="w"> </span>AppleSymbolicHotKeys<span class="w"> </span>-dict-add<span class="w"> </span><span class="m">60</span><span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="s2">&quot;&lt;dict&gt;</span>
+<span class="w">        </span><span class="s2">"&lt;dict&gt;</span>
 <span class="s2">            &lt;key&gt;enabled&lt;/key&gt;&lt;true/&gt;</span>
 <span class="s2">            &lt;key&gt;value&lt;/key&gt;</span>
 <span class="s2">                &lt;dict&gt;</span>
@@ -3656,29 +3656,29 @@
 <span class="s2">                    &lt;key&gt;type&lt;/key&gt;</span>
 <span class="s2">                        &lt;string&gt;standard&lt;/string&gt;</span>
 <span class="s2">                &lt;/dict&gt;</span>
-<span class="s2">        &lt;/dict&gt;&quot;</span>
+<span class="s2">        &lt;/dict&gt;"</span>
 
 <span class="w">    </span><span class="c1"># Temporarily delete IME input language settings</span>
 <span class="w">    </span>defaults<span class="w"> </span>delete<span class="w"> </span>com.apple.HIToolbox<span class="w"> </span>AppleEnabledInputSources
 <span class="w">    </span><span class="c1"># Add US IME input source</span>
 <span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.HIToolbox<span class="w"> </span>AppleEnabledInputSources<span class="w"> </span>-array-add<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="s2">&quot;&lt;dict&gt;</span>
+<span class="w">        </span><span class="s2">"&lt;dict&gt;</span>
 <span class="s2">            &lt;key&gt;InputSourceKind&lt;/key&gt;&lt;string&gt;Keyboard Layout&lt;/string&gt;</span>
 <span class="s2">            &lt;key&gt;KeyboardLayout ID&lt;/key&gt;&lt;integer&gt;0&lt;/integer&gt;</span>
 <span class="s2">            &lt;key&gt;KeyboardLayout Name&lt;/key&gt;&lt;string&gt;U.S.&lt;/string&gt;</span>
-<span class="s2">        &lt;/dict&gt;&quot;</span>
+<span class="s2">        &lt;/dict&gt;"</span>
 <span class="w">    </span><span class="c1"># Add Google Japanese IME input source</span>
 <span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.HIToolbox<span class="w"> </span>AppleEnabledInputSources<span class="w"> </span>-array-add<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="s2">&quot;&lt;dict&gt;</span>
+<span class="w">        </span><span class="s2">"&lt;dict&gt;</span>
 <span class="s2">            &lt;key&gt;Bundle ID&lt;/key&gt;&lt;string&gt;com.google.inputmethod.Japanese&lt;/string&gt;</span>
 <span class="s2">            &lt;key&gt;Input Mode&lt;/key&gt;&lt;string&gt;com.apple.inputmethod.Japanese&lt;/string&gt;</span>
 <span class="s2">            &lt;key&gt;InputSourceKind&lt;/key&gt;&lt;string&gt;Input Mode&lt;/string&gt;</span>
-<span class="s2">        &lt;/dict&gt;&quot;</span>
+<span class="s2">        &lt;/dict&gt;"</span>
 <span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.HIToolbox<span class="w"> </span>AppleEnabledInputSources<span class="w"> </span>-array-add<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="s2">&quot;&lt;dict&gt;</span>
+<span class="w">        </span><span class="s2">"&lt;dict&gt;</span>
 <span class="s2">            &lt;key&gt;Bundle ID&lt;/key&gt;&lt;string&gt;com.google.inputmethod.Japanese&lt;/string&gt;</span>
 <span class="s2">            &lt;key&gt;InputSourceKind&lt;/key&gt;&lt;string&gt;Keyboard Input Method&lt;/string&gt;</span>
-<span class="s2">        &lt;/dict&gt;&quot;</span>
+<span class="s2">        &lt;/dict&gt;"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3687,8 +3687,8 @@
 <span class="k">function</span><span class="w"> </span>defaults_finder<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 
 <span class="w">    </span><span class="c1"># Set Home directory as the default location for new Finder windows</span>
-<span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.finder<span class="w"> </span>NewWindowTarget<span class="w"> </span>-string<span class="w"> </span><span class="s2">&quot;PfHm&quot;</span>
-<span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.finder<span class="w"> </span>NewWindowTargetPath<span class="w"> </span>-string<span class="w"> </span><span class="s2">&quot;file://</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/&quot;</span>
+<span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.finder<span class="w"> </span>NewWindowTarget<span class="w"> </span>-string<span class="w"> </span><span class="s2">"PfHm"</span>
+<span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.finder<span class="w"> </span>NewWindowTargetPath<span class="w"> </span>-string<span class="w"> </span><span class="s2">"file://</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/"</span>
 
 <span class="w">    </span><span class="c1"># Show all filename extensions</span>
 <span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>NSGlobalDomain<span class="w"> </span>AppleShowAllExtensions<span class="w"> </span>-bool<span class="w"> </span><span class="nb">true</span>
@@ -3699,8 +3699,8 @@
 <span class="w">    </span><span class="c1"># Show path bar</span>
 <span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.finder<span class="w"> </span>ShowPathbar<span class="w"> </span>-bool<span class="w"> </span><span class="nb">true</span>
 
-<span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.finder<span class="w"> </span>FXPreferredGroupBy<span class="w"> </span>-string<span class="w"> </span><span class="s2">&quot;Name&quot;</span>
-<span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.finder<span class="w"> </span>FXArrangeGroupViewBy<span class="w"> </span>-string<span class="w"> </span><span class="s2">&quot;Name&quot;</span>
+<span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.finder<span class="w"> </span>FXPreferredGroupBy<span class="w"> </span>-string<span class="w"> </span><span class="s2">"Name"</span>
+<span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.finder<span class="w"> </span>FXArrangeGroupViewBy<span class="w"> </span>-string<span class="w"> </span><span class="s2">"Name"</span>
 
 <span class="w">    </span><span class="c1"># Avoid creating .DS_Store files on network or USB volumes</span>
 <span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.desktopservices<span class="w"> </span>DSDontWriteNetworkStores<span class="w"> </span>-bool<span class="w"> </span><span class="nb">true</span>
@@ -3718,8 +3718,8 @@
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>defaults_screencapture<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="c1"># Save screenshots to ${HOME}/Pictures/</span>
-<span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.screencapture<span class="w"> </span>location<span class="w"> </span>-string<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/Pictures/&quot;</span>
-<span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.screencapture<span class="w"> </span>name<span class="w"> </span>-string<span class="w"> </span><span class="s2">&quot;Screen Shot&quot;</span>
+<span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.screencapture<span class="w"> </span>location<span class="w"> </span>-string<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/Pictures/"</span>
+<span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.screencapture<span class="w"> </span>name<span class="w"> </span>-string<span class="w"> </span><span class="s2">"Screen Shot"</span>
 
 <span class="w">    </span><span class="c1"># disable the floating screenshot thumbnail</span>
 <span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.screencapture<span class="w"> </span>show-thumbnail<span class="w"> </span>-bool<span class="w"> </span><span class="nb">false</span>
@@ -3729,7 +3729,7 @@
 <span class="c1"># @description Disable Siri and dictation defaults.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>defaults_assistant<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.assistant.support<span class="w"> </span><span class="s2">&quot;Assistant Enabled&quot;</span><span class="w"> </span>-bool<span class="w"> </span><span class="nb">false</span>
+<span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.assistant.support<span class="w"> </span><span class="s2">"Assistant Enabled"</span><span class="w"> </span>-bool<span class="w"> </span><span class="nb">false</span>
 <span class="w">    </span>defaults<span class="w"> </span>write<span class="w"> </span>com.apple.HIToolbox<span class="w"> </span>AppleDictationAutoEnable<span class="w"> </span>-bool<span class="w"> </span><span class="nb">false</span>
 <span class="o">}</span>
 
@@ -3748,22 +3748,22 @@
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>kill_affected_applications<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">apps</span><span class="o">=(</span>
-<span class="w">        </span><span class="s2">&quot;Activity Monitor&quot;</span>
-<span class="w">        </span><span class="s2">&quot;Calendar&quot;</span>
-<span class="w">        </span><span class="s2">&quot;cfprefsd&quot;</span>
-<span class="w">        </span><span class="s2">&quot;Dock&quot;</span>
-<span class="w">        </span><span class="s2">&quot;Finder&quot;</span>
-<span class="w">        </span><span class="c1"># &quot;Google Chrome Canary&quot;</span>
-<span class="w">        </span><span class="c1"># &quot;Google Chrome&quot;</span>
-<span class="w">        </span><span class="s2">&quot;SizeUp&quot;</span>
-<span class="w">        </span><span class="s2">&quot;Rectangle&quot;</span>
-<span class="w">        </span><span class="s2">&quot;SystemUIServer&quot;</span>
-<span class="w">        </span><span class="c1"># &quot;Terminal&quot; # disable because the setup script is running in the Terminal</span>
-<span class="w">        </span><span class="s2">&quot;Transmission&quot;</span>
-<span class="w">        </span><span class="s2">&quot;Twitter&quot;</span>
+<span class="w">        </span><span class="s2">"Activity Monitor"</span>
+<span class="w">        </span><span class="s2">"Calendar"</span>
+<span class="w">        </span><span class="s2">"cfprefsd"</span>
+<span class="w">        </span><span class="s2">"Dock"</span>
+<span class="w">        </span><span class="s2">"Finder"</span>
+<span class="w">        </span><span class="c1"># "Google Chrome Canary"</span>
+<span class="w">        </span><span class="c1"># "Google Chrome"</span>
+<span class="w">        </span><span class="s2">"SizeUp"</span>
+<span class="w">        </span><span class="s2">"Rectangle"</span>
+<span class="w">        </span><span class="s2">"SystemUIServer"</span>
+<span class="w">        </span><span class="c1"># "Terminal" # disable because the setup script is running in the Terminal</span>
+<span class="w">        </span><span class="s2">"Transmission"</span>
+<span class="w">        </span><span class="s2">"Twitter"</span>
 <span class="w">    </span><span class="o">)</span>
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>app<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">apps</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span>killall<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">app</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Process \`</span><span class="si">${</span><span class="nv">app</span><span class="si">}</span><span class="s2">\` was not running.&quot;</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>app<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">apps</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span>killall<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">app</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"Process \`</span><span class="si">${</span><span class="nv">app</span><span class="si">}</span><span class="s2">\` was not running."</span>
 <span class="w">    </span><span class="k">done</span>
 <span class="o">}</span>
 
@@ -3771,9 +3771,9 @@
 <span class="c1"># @description Re-open Rectangle after defaults have been applied.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>open_rectangle<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">app_path</span><span class="o">=</span><span class="s2">&quot;/Applications/Rectangle.app/&quot;</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">app_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>open<span class="w"> </span>-g<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">app_path</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">app_path</span><span class="o">=</span><span class="s2">"/Applications/Rectangle.app/"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-e<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">app_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>open<span class="w"> </span>-g<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">app_path</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
@@ -3804,7 +3804,7 @@
 <span class="w">    </span>open_killed_applications
 <span class="o">}</span>
 
-<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>main
 <span class="k">fi</span>
 </code></pre></div>

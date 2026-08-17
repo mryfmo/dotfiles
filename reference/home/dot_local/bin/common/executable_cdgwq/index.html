@@ -3521,14 +3521,14 @@
 <span class="k">function</span><span class="w"> </span>cdgwq<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="c1"># Require a Git worktree before reading `gwq` workspaces.</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>git<span class="w"> </span>rev-parse<span class="w"> </span>--is-inside-work-tree<span class="w"> </span><span class="p">&amp;</span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Not inside a git repository.&quot;</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"Not inside a git repository."</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="nv">moveto</span><span class="o">=</span><span class="k">$(</span>gwq<span class="w"> </span>list<span class="w"> </span>--json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">&#39;.[].path&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>fzf<span class="k">)</span>
+<span class="w">    </span><span class="nv">moveto</span><span class="o">=</span><span class="k">$(</span>gwq<span class="w"> </span>list<span class="w"> </span>--json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.[].path'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>fzf<span class="k">)</span>
 <span class="w">    </span><span class="nb">cd</span><span class="w"> </span><span class="nv">$moveto</span>
 <span class="o">}</span>
 
-<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="nv">$SHELL</span><span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;echo </span><span class="si">${</span><span class="nv">ZSH_VERSION</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nv">$SHELL</span><span class="w"> </span>-c<span class="w"> </span><span class="s2">"echo </span><span class="si">${</span><span class="nv">ZSH_VERSION</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>cdgwq
 <span class="k">fi</span>
 </code></pre></div>

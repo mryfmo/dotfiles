@@ -3518,7 +3518,7 @@
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
-<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nb">set</span><span class="w"> </span>-x
 <span class="k">fi</span>
 
@@ -3549,12 +3549,12 @@
 <span class="w">        </span>apt-get<span class="w"> </span>update
 <span class="w">        </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>sudo
 
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;update&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"update"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="k">return</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span>sudo<span class="w"> </span>--preserve-env<span class="o">=</span>http_proxy,https_proxy,no_proxy<span class="w"> </span>apt-get<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$@</span><span class="s2">&quot;</span>
+<span class="w">    </span>sudo<span class="w"> </span>--preserve-env<span class="o">=</span>http_proxy,https_proxy,no_proxy<span class="w"> </span>apt-get<span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3566,27 +3566,27 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>query_status
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>package_status
 
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>package<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PACKAGES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nv">package_status</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>dpkg-query<span class="w"> </span>-W<span class="w"> </span>-f<span class="o">=</span><span class="s1">&#39;${Status}&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">package_status</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;install ok installed&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>package<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PACKAGES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nv">package_status</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>dpkg-query<span class="w"> </span>-W<span class="w"> </span>-f<span class="o">=</span><span class="s1">'${Status}'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">package_status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"install ok installed"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">                </span><span class="k">continue</span>
 <span class="w">            </span><span class="k">fi</span>
 <span class="w">        </span><span class="k">else</span>
 <span class="w">            </span><span class="nv">query_status</span><span class="o">=</span><span class="nv">$?</span>
-<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">query_status</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>-ne<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">query_status</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">query_status</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-ne<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">query_status</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">            </span><span class="k">fi</span>
 <span class="w">        </span><span class="k">fi</span>
 
-<span class="w">        </span><span class="nv">missing_packages</span><span class="o">+=(</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">&quot;</span><span class="o">)</span>
+<span class="w">        </span><span class="nv">missing_packages</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">done</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${#</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${#</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span>run_apt_get<span class="w"> </span>update
-<span class="w">    </span>run_apt_get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span>run_apt_get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3596,17 +3596,17 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">removable_packages</span><span class="o">=()</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>package
 
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>package<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PACKAGES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">&quot;sudo&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">&quot;git&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nv">removable_packages</span><span class="o">+=(</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>package<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PACKAGES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"sudo"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"git"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">removable_packages</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">done</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${#</span><span class="nv">removable_packages</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${#</span><span class="nv">removable_packages</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span>run_apt_get<span class="w"> </span>remove<span class="w"> </span>-y<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">removable_packages</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span>run_apt_get<span class="w"> </span>remove<span class="w"> </span>-y<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">removable_packages</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3616,7 +3616,7 @@
 <span class="w">    </span>install_apt_packages
 <span class="o">}</span>
 
-<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>main
 <span class="k">fi</span>
 </code></pre></div>

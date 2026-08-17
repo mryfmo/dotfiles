@@ -3516,11 +3516,11 @@
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
-<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nb">set</span><span class="w"> </span>-x
 <span class="k">fi</span>
 
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">MISE_BIN</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin/mise&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">MISE_BIN</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin/mise"</span>
 
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">GH_EXTENSIONS</span><span class="o">=(</span>
 <span class="w">    </span>seachicken/gh-poi
@@ -3530,8 +3530,8 @@
 <span class="c1"># @description Activate `mise` so `gh` can resolve the expected toolchain.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>activate_mise<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-x<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">MISE_BIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">eval</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">MISE_BIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>activate<span class="w"> </span>bash<span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-x<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_BIN</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">eval</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_BIN</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>activate<span class="w"> </span>bash<span class="k">)</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
@@ -3548,8 +3548,8 @@
 <span class="c1"># @description Install every extension listed in `GH_EXTENSIONS`.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>install_gh_extensions<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>extension<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">GH_EXTENSIONS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span>gh<span class="w"> </span>extension<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">extension</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>extension<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">GH_EXTENSIONS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span>gh<span class="w"> </span>extension<span class="w"> </span>install<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">extension</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">done</span>
 <span class="o">}</span>
 
@@ -3562,7 +3562,7 @@
 <span class="w">    </span>install_gh_extensions
 <span class="o">}</span>
 
-<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>main
 <span class="k">fi</span>
 </code></pre></div>

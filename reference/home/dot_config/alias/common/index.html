@@ -3513,14 +3513,14 @@
 <span class="c1"># These aliases wrap common repository and local workflow commands.</span>
 
 <span class="c1"># Use eza for ls command</span>
-<span class="nb">alias</span><span class="w"> </span><span class="nv">ls</span><span class="o">=</span><span class="s2">&quot;eza --long --group --header --binary --time-style=long-iso --icons&quot;</span>
+<span class="nb">alias</span><span class="w"> </span><span class="nv">ls</span><span class="o">=</span><span class="s2">"eza --long --group --header --binary --time-style=long-iso --icons"</span>
 
 <span class="c1"># Alias for private chezmoi configuration</span>
 <span class="c1"># ref. https://www.chezmoi.io/user-guide/frequently-asked-questions/design/#can-chezmoi-support-multiple-sources-or-multiple-source-states</span>
-<span class="nb">alias</span><span class="w"> </span>chezmoi-private<span class="o">=</span><span class="s2">&quot;chezmoi --source ~/.local/share/chezmoi-private --config ~/.config/chezmoi-private/chezmoi.yaml&quot;</span>
+<span class="nb">alias</span><span class="w"> </span>chezmoi-private<span class="o">=</span><span class="s2">"chezmoi --source ~/.local/share/chezmoi-private --config ~/.config/chezmoi-private/chezmoi.yaml"</span>
 
 <span class="c1"># Alias to checkout the default branch in git</span>
-<span class="nb">alias</span><span class="w"> </span><span class="nv">gm</span><span class="o">=</span><span class="s1">&#39;git checkout $(git symbolic-ref refs/remotes/origin/HEAD | sed &quot;s@^refs/remotes/origin/@@&quot;)&#39;</span>
+<span class="nb">alias</span><span class="w"> </span><span class="nv">gm</span><span class="o">=</span><span class="s1">'git checkout $(git symbolic-ref refs/remotes/origin/HEAD | sed "s@^refs/remotes/origin/@@")'</span>
 </code></pre></div>
 
 

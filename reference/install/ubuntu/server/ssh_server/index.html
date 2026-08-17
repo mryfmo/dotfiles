@@ -3519,11 +3519,11 @@
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
-<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nb">set</span><span class="w"> </span>-x
 <span class="k">fi</span>
 
-<span class="nb">declare</span><span class="w"> </span>-r<span class="w"> </span><span class="nv">SSH_PORT</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DOTFILES_SERVER_SSH_PORT</span><span class="k">:-</span><span class="nv">22</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="nb">declare</span><span class="w"> </span>-r<span class="w"> </span><span class="nv">SSH_PORT</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">DOTFILES_SERVER_SSH_PORT</span><span class="k">:-</span><span class="nv">22</span><span class="si">}</span><span class="s2">"</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Install the Ubuntu OpenSSH server package and its prerequisites.</span>
@@ -3542,31 +3542,31 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>current<span class="w"> </span>add<span class="w"> </span>merged
 
 <span class="w">    </span><span class="c1"># Get existing AcceptEnv values (empty if not set)</span>
-<span class="w">    </span><span class="nv">current</span><span class="o">=</span><span class="k">$(</span>grep<span class="w"> </span><span class="s1">&#39;^AcceptEnv&#39;</span><span class="w"> </span>/etc/ssh/sshd_config<span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span><span class="s1">&#39;s/^AcceptEnv //&#39;</span><span class="k">)</span>
+<span class="w">    </span><span class="nv">current</span><span class="o">=</span><span class="k">$(</span>grep<span class="w"> </span><span class="s1">'^AcceptEnv'</span><span class="w"> </span>/etc/ssh/sshd_config<span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span><span class="s1">'s/^AcceptEnv //'</span><span class="k">)</span>
 
 <span class="w">    </span><span class="c1"># Variables to append</span>
-<span class="w">    </span><span class="nv">add</span><span class="o">=</span><span class="s2">&quot;HTTP_PROXY HTTPS_PROXY NO_PROXY http_proxy https_proxy no_proxy&quot;</span>
+<span class="w">    </span><span class="nv">add</span><span class="o">=</span><span class="s2">"HTTP_PROXY HTTPS_PROXY NO_PROXY http_proxy https_proxy no_proxy"</span>
 
 <span class="w">    </span><span class="c1"># Merge and remove duplicates</span>
-<span class="w">    </span><span class="nv">merged</span><span class="o">=</span><span class="k">$(</span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$current</span><span class="s2"> </span><span class="nv">$add</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">&#39; &#39;</span><span class="w"> </span><span class="s1">&#39;\n&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">&#39;\n&#39;</span><span class="w"> </span><span class="s1">&#39; &#39;</span><span class="k">)</span>
+<span class="w">    </span><span class="nv">merged</span><span class="o">=</span><span class="k">$(</span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="nv">$current</span><span class="s2"> </span><span class="nv">$add</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">' '</span><span class="w"> </span><span class="s1">'\n'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">'\n'</span><span class="w"> </span><span class="s1">' '</span><span class="k">)</span>
 
 <span class="w">    </span><span class="c1"># Remove existing entries and keep a single AcceptEnv line</span>
-<span class="w">    </span>sudo<span class="w"> </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s1">&#39;/^AcceptEnv/d&#39;</span><span class="w"> </span>/etc/ssh/sshd_config
-<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;AcceptEnv </span><span class="nv">$merged</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sudo<span class="w"> </span>tee<span class="w"> </span>-a<span class="w"> </span>/etc/ssh/sshd_config
+<span class="w">    </span>sudo<span class="w"> </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s1">'/^AcceptEnv/d'</span><span class="w"> </span>/etc/ssh/sshd_config
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"AcceptEnv </span><span class="nv">$merged</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sudo<span class="w"> </span>tee<span class="w"> </span>-a<span class="w"> </span>/etc/ssh/sshd_config
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Configure `sshd` for the repository&#39;s container-oriented setup.</span>
+<span class="c1"># @description Configure `sshd` for the repository's container-oriented setup.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>setup_sshd<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span>sudo<span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>/var/run/sshd
-<span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.ssh&quot;</span>
+<span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.ssh"</span>
 
-<span class="w">    </span>sudo<span class="w"> </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s1">&#39;s/^#PermitRootLogin prohibit-password/PermitRootLogin yes/&#39;</span><span class="w"> </span>/etc/ssh/sshd_config<span class="w"> </span><span class="o">&amp;&amp;</span>
-<span class="w">        </span>sudo<span class="w"> </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s2">&quot;s/^#\?Port .*/Port </span><span class="si">${</span><span class="nv">SSH_PORT</span><span class="si">}</span><span class="s2">/&quot;</span><span class="w"> </span>/etc/ssh/sshd_config<span class="w"> </span><span class="o">&amp;&amp;</span>
-<span class="w">        </span>sudo<span class="w"> </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s1">&#39;s/^#ListenAddress 0.0.0.0/ListenAddress 0.0.0.0/&#39;</span><span class="w"> </span>/etc/ssh/sshd_config<span class="w"> </span><span class="o">&amp;&amp;</span>
-<span class="w">        </span>sudo<span class="w"> </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s1">&#39;s/^#PubkeyAuthentication yes/PubkeyAuthentication yes/&#39;</span><span class="w"> </span>/etc/ssh/sshd_config<span class="w"> </span><span class="o">&amp;&amp;</span>
-<span class="w">        </span>sudo<span class="w"> </span>sed<span class="w"> </span><span class="s1">&#39;s@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g&#39;</span><span class="w"> </span>-i<span class="w"> </span>/etc/pam.d/sshd
+<span class="w">    </span>sudo<span class="w"> </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s1">'s/^#PermitRootLogin prohibit-password/PermitRootLogin yes/'</span><span class="w"> </span>/etc/ssh/sshd_config<span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">        </span>sudo<span class="w"> </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s2">"s/^#\?Port .*/Port </span><span class="si">${</span><span class="nv">SSH_PORT</span><span class="si">}</span><span class="s2">/"</span><span class="w"> </span>/etc/ssh/sshd_config<span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">        </span>sudo<span class="w"> </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s1">'s/^#ListenAddress 0.0.0.0/ListenAddress 0.0.0.0/'</span><span class="w"> </span>/etc/ssh/sshd_config<span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">        </span>sudo<span class="w"> </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s1">'s/^#PubkeyAuthentication yes/PubkeyAuthentication yes/'</span><span class="w"> </span>/etc/ssh/sshd_config<span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">        </span>sudo<span class="w"> </span>sed<span class="w"> </span><span class="s1">'s@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g'</span><span class="w"> </span>-i<span class="w"> </span>/etc/pam.d/sshd
 
 <span class="w">    </span>configure_accept_env
 
@@ -3574,7 +3574,7 @@
 <span class="w">    </span>sudo<span class="w"> </span>/usr/sbin/sshd<span class="w"> </span>-t
 
 <span class="w">    </span><span class="c1"># create .ssh/authorized_keys if not exists</span>
-<span class="w">    </span>touch<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.ssh/authorized_keys&quot;</span>
+<span class="w">    </span>touch<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.ssh/authorized_keys"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3594,8 +3594,8 @@
 <span class="w">    </span>run_sshd
 <span class="o">}</span>
 
-<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;/.dockerenv&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">"/.dockerenv"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span>main
 <span class="w">    </span><span class="k">fi</span>
 <span class="k">fi</span>

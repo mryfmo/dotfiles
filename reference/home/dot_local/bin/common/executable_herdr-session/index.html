@@ -3520,14 +3520,14 @@
 
 <span class="c1"># @description Print usage information.</span>
 <span class="k">function</span><span class="w"> </span>usage<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>cat<span class="w"> </span><span class="s">&lt;&lt; &#39;USAGE&#39;</span>
+<span class="w">    </span>cat<span class="w"> </span><span class="s">&lt;&lt; 'USAGE'</span>
 <span class="s">Usage: herdr-session</span>
 
 <span class="s">Attach to Herdr with a plain terminal; starting Claude adds agent panes lazily.</span>
 <span class="s">USAGE</span>
 <span class="o">}</span>
 
-<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;--help&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;-h&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"--help"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"-h"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>usage
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="k">fi</span>

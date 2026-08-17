@@ -1,5 +1,5 @@
 #!/usr/bin/env -S uv run --no-cache --script
-"""Deterministic-first permission gate for Claude Code, Codex, and Pi."""
+"""Deterministic-first permission gate for Claude Code, Codex, and CLI."""
 
 from __future__ import annotations
 
@@ -123,26 +123,26 @@ def load_policy() -> dict[str, Any]:
             raise ValueError(f"{name} minimum_confidence must be between zero and one")
     if not providers["claude"]["model"].startswith("claude-haiku-4-5-20"):
         raise ValueError("claude classifier must use a dated Haiku model ID")
-    pi = policy.get("pi")
-    if not isinstance(pi, dict):
-        raise TypeError("pi policy must be an object")
-    if pi.get("decision_layers") != [
+    cli = policy.get("cli")
+    if not isinstance(cli, dict):
+        raise TypeError("cli policy must be an object")
+    if cli.get("decision_layers") != [
         "deny_patterns",
         "workspace_write",
         "allow_patterns",
     ]:
-        raise ValueError("pi must apply deny, workspace, then allow layers")
-    if pi.get("llm_enabled") is not False:
-        raise ValueError("pi llm classifier must remain disabled")
-    if pi.get("workspace_write") is not True:
-        raise ValueError("pi workspace_write must be enabled")
-    read_deny_patterns = pi.get("read_deny_patterns")
+        raise ValueError("cli must apply deny, workspace, then allow layers")
+    if cli.get("llm_enabled") is not False:
+        raise ValueError("cli llm classifier must remain disabled")
+    if cli.get("workspace_write") is not True:
+        raise ValueError("cli workspace_write must be enabled")
+    read_deny_patterns = cli.get("read_deny_patterns")
     if not isinstance(read_deny_patterns, list) or not read_deny_patterns:
-        raise ValueError("pi read_deny_patterns must be a non-empty list")
+        raise ValueError("cli read_deny_patterns must be a non-empty list")
     read_deny_ids: set[str] = set()
     for pattern in read_deny_patterns:
         if not isinstance(pattern, dict) or set(pattern) != {"id", "regex"}:
-            raise ValueError("pi read deny patterns must define only id and regex")
+            raise ValueError("cli read deny patterns must define only id and regex")
         pattern_id = pattern["id"]
         regex = pattern["regex"]
         if (
@@ -152,11 +152,11 @@ def load_policy() -> dict[str, Any]:
             or not isinstance(regex, str)
             or not regex
         ):
-            raise ValueError("pi read deny pattern ids and regexes must be unique strings")
+            raise ValueError("cli read deny pattern ids and regexes must be unique strings")
         try:
             re.compile(regex)
         except re.error as error:
-            raise ValueError("pi read deny pattern regex must compile") from error
+            raise ValueError("cli read deny pattern regex must compile") from error
         read_deny_ids.add(pattern_id)
     categories = policy.get("categories")
     if not isinstance(categories, list) or not all(
@@ -522,7 +522,7 @@ def workspace_path_allowed(cwd: object, path: object) -> bool:
     return resolved_path != resolved_cwd and resolved_path.is_relative_to(resolved_cwd)
 
 
-def pi_read_decision(
+def cli_read_decision(
     cwd: object, path: object, patterns: list[dict[str, str]]
 ) -> str | None:
     resolved = strict_candidate_path(cwd, path, follow_final_symlink=True)
@@ -548,17 +548,17 @@ def pi_read_decision(
     return "allow"
 
 
-def pi_workspace_decision(
+def cli_workspace_decision(
     agent: str, payload: dict[str, Any], policy: dict[str, Any]
 ) -> str | None:
-    if agent != "pi" or policy["pi"].get("workspace_write") is not True:
+    if agent != "cli" or policy["cli"].get("workspace_write") is not True:
         return None
     tool, tool_input, _ = request_parts(payload)
     if tool == "Read":
-        return pi_read_decision(
+        return cli_read_decision(
             payload.get("cwd"),
             tool_input.get("path"),
-            policy["pi"]["read_deny_patterns"],
+            policy["cli"]["read_deny_patterns"],
         )
     if tool in {"Write", "Edit"}:
         return (
@@ -589,7 +589,7 @@ def decide(
             break
     else:
         safe_single_action = tool != "Bash" or is_bounded_shell_command(match_text)
-        workspace_decision = pi_workspace_decision(agent, payload, policy)
+        workspace_decision = cli_workspace_decision(agent, payload, policy)
         if workspace_decision is not None:
             layer = "workspace"
             decision = workspace_decision
@@ -637,16 +637,16 @@ def decide(
     return output, record
 
 
-def pi_payload(action: dict[str, Any]) -> dict[str, Any]:
+def cli_payload(action: dict[str, Any]) -> dict[str, Any]:
     tool = action.get("tool")
     field = "command" if tool == "bash" else "path"
     expected = {"tool", field, "cwd"}
     if tool not in {"bash", "read", "write", "edit"} or set(action) != expected:
-        raise ValueError("invalid normalized Pi action")
+        raise ValueError("invalid normalized CLI action")
     value = action.get(field)
     cwd = action.get("cwd")
     if not isinstance(value, str) or not isinstance(cwd, str):
-        raise TypeError("normalized Pi action value must be a string")
+        raise TypeError("normalized CLI action value must be a string")
     return {
         "tool_name": {
             "bash": "Bash",
@@ -659,18 +659,18 @@ def pi_payload(action: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def run_pi(raw_input: str) -> int:
+def run_cli(raw_input: str) -> int:
     try:
         action = json.loads(raw_input)
         if not isinstance(action, dict):
-            raise TypeError("Pi action must be an object")
-        payload = pi_payload(action)
+            raise TypeError("CLI action must be an object")
+        payload = cli_payload(action)
         policy = load_policy()
-        _, record = decide("pi", payload, policy)
+        _, record = decide("cli", payload, policy)
         append_log(record)
         decision = record["decision"]
         if decision not in {"allow", "deny", "ask"}:
-            raise ValueError("invalid Pi decision")
+            raise ValueError("invalid CLI decision")
     except (OSError, KeyError, TypeError, ValueError, re.error):
         return 1
     print(json.dumps({"decision": decision}, separators=(",", ":")))
@@ -733,8 +733,8 @@ def main() -> int:
             return 0
         return run_bench(policy)
     agent = sys.argv[1]
-    if agent == "pi":
-        return run_pi(sys.stdin.read())
+    if agent == "cli":
+        return run_cli(sys.stdin.read())
     if agent not in {"claude", "codex"}:
         return 0
     raw_input = sys.stdin.read()

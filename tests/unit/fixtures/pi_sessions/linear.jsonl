@@ -1,4 +1,0 @@
-{"type":"session","version":3,"id":"session-linear","timestamp":"2026-08-17T00:00:00.000Z","cwd":"/workspace/project"}
-{"type":"message","id":"u1","parentId":null,"timestamp":"2026-08-17T00:00:01.000Z","message":{"role":"user","content":"hello","timestamp":1}}
-{"type":"message","id":"a1","parentId":"u1","timestamp":"2026-08-17T00:00:02.000Z","message":{"role":"assistant","content":[{"type":"text","text":"hi"}],"provider":"openai","model":"gpt-test","usage":{"input":10,"output":4,"cacheRead":2,"cacheWrite":1,"totalTokens":17,"cost":{"input":0.01,"output":0.02,"cacheRead":0.001,"cacheWrite":0.002,"total":0.033}},"stopReason":"stop","timestamp":2}}
-{"type":"message","id":"t1","parentId":"a1","timestamp":"2026-08-17T00:00:03.000Z","message":{"role":"toolResult","toolCallId":"call-1","toolName":"read","content":[],"isError":false,"timestamp":3}}

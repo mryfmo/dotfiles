@@ -38,11 +38,71 @@ class AgmsgSendTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp.cleanup()
 
-    def test_single_quotes_round_trip_without_sql_injection(self) -> None:
+    def test_valid_identifiers_store_message(self) -> None:
+        values = ("a" + "_" * 63, "a", "to-agent_1", "plain body")
+
+        result = subprocess.run(
+            [str(SEND), *values],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env={**os.environ, "AGMSG_STORAGE_PATH": str(self.store)},
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, f"Sent to {values[2]} in team {values[0]}\n")
+        with sqlite3.connect(self.db) as conn:
+            self.assertEqual(conn.execute("SELECT COUNT(*) FROM messages").fetchone(), (1,))
+            self.assertEqual(
+                conn.execute(
+                    "SELECT team, from_agent, to_agent, body FROM messages"
+                ).fetchone(),
+                values,
+            )
+
+    def test_invalid_identifiers_fail_before_storage_access(self) -> None:
+        fields = ("team", "from", "to")
+        invalid_values = (
+            "bad'name",
+            "bad name",
+            "bad;name",
+            "Bad",
+            "_bad",
+            "a" * 65,
+        )
+
+        for field_index, field in enumerate(fields):
+            for case_index, invalid_value in enumerate(invalid_values):
+                storage = self.store / f"invalid-{field}-{case_index}"
+                values = ["team-1", "from_agent", "to-agent", "body"]
+                values[field_index] = invalid_value
+
+                result = subprocess.run(
+                    [str(SEND), *values],
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    env={**os.environ, "AGMSG_STORAGE_PATH": str(storage)},
+                    check=False,
+                )
+
+                with self.subTest(field=field, value=invalid_value):
+                    self.assertEqual(result.returncode, 1)
+                    self.assertEqual(result.stdout, "")
+                    self.assertEqual(
+                        result.stderr,
+                        "Usage: send.sh <team> <from> <to> <message> "
+                        "(identifiers must match "
+                        "^[a-z0-9][a-z0-9_-]{0,63}$)\n",
+                    )
+                    self.assertFalse(storage.exists())
+
+    def test_quote_bearing_body_round_trips(self) -> None:
         values = (
-            "team' OR 1=1 --",
-            "from'agent",
-            "to'agent",
+            "team-1",
+            "from_agent",
+            "to-agent",
             "body'); DROP TABLE messages; -- 'intact",
         )
 

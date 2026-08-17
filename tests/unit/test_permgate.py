@@ -98,7 +98,7 @@ class PermgateTest(unittest.TestCase):
                     "minimum_confidence": 0.9,
                 },
             },
-            "pi": {
+            "cli": {
                 "decision_layers": [
                     "deny_patterns",
                     "workspace_write",
@@ -278,7 +278,7 @@ class PermgateTest(unittest.TestCase):
                 decision = json.loads(result.stdout)["hookSpecificOutput"]["decision"]
                 self.assertEqual(set(decision), {"behavior", "message"})
 
-    def test_pi_protocol_emits_each_compact_decision(self) -> None:
+    def test_cli_protocol_emits_each_compact_decision(self) -> None:
         cwd = str(self.workspace)
         fixtures = (
             ({"tool": "bash", "command": "git status --short", "cwd": cwd}, "allow"),
@@ -287,15 +287,15 @@ class PermgateTest(unittest.TestCase):
         )
         for payload, decision in fixtures:
             with self.subTest(decision=decision):
-                result = self.run_gate("pi", payload)
+                result = self.run_gate("cli", payload)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(result.stdout, f'{{"decision":"{decision}"}}\n')
 
-    def test_pi_protocol_internal_failure_is_nonzero(self) -> None:
+    def test_cli_protocol_internal_failure_is_nonzero(self) -> None:
         self.policy_path.write_text("not-json\n")
 
         result = self.run_gate(
-            "pi",
+            "cli",
             {"tool": "bash", "command": "git status", "cwd": str(self.workspace)},
         )
 
@@ -304,12 +304,12 @@ class PermgateTest(unittest.TestCase):
         self.write_policy()
         self.state_path.mkdir()
         result = self.run_gate(
-            "pi",
+            "cli",
             {"tool": "bash", "command": "git status", "cwd": str(self.workspace)},
         )
         self.assertNotEqual(result.returncode, 0)
 
-    def test_pi_policy_pins_shared_layers_and_disables_llm(self) -> None:
+    def test_cli_policy_pins_shared_layers_and_disables_llm(self) -> None:
         base_policy = json.loads(self.policy_path.read_text())
         for key, value in (
             ("decision_layers", ["allow_patterns"]),
@@ -319,10 +319,10 @@ class PermgateTest(unittest.TestCase):
         ):
             with self.subTest(key=key):
                 policy = json.loads(json.dumps(base_policy))
-                policy["pi"][key] = value
+                policy["cli"][key] = value
                 self.policy_path.write_text(json.dumps(policy))
                 result = self.run_gate(
-                    "pi",
+                    "cli",
                     {
                         "tool": "bash",
                         "command": "git status",
@@ -332,10 +332,10 @@ class PermgateTest(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
 
         policy = json.loads(json.dumps(base_policy))
-        policy["pi"]["read_deny_patterns"][0]["regex"] = "("
+        policy["cli"]["read_deny_patterns"][0]["regex"] = "("
         self.policy_path.write_text(json.dumps(policy))
         result = self.run_gate(
-            "pi",
+            "cli",
             {"tool": "bash", "command": "git status", "cwd": str(self.workspace)},
         )
         self.assertNotEqual(result.returncode, 0)
@@ -346,7 +346,7 @@ class PermgateTest(unittest.TestCase):
                 policy["providers"][agent]["workspace_write"] = True
                 self.policy_path.write_text(json.dumps(policy))
                 result = self.run_gate(
-                    "pi",
+                    "cli",
                     {
                         "tool": "bash",
                         "command": "git status",
@@ -355,7 +355,7 @@ class PermgateTest(unittest.TestCase):
                 )
                 self.assertNotEqual(result.returncode, 0)
 
-    def test_pi_protocol_rejects_malformed_normalized_action(self) -> None:
+    def test_cli_protocol_rejects_malformed_normalized_action(self) -> None:
         for payload in (
             "not-json",
             {"tool": "bash", "command": 7, "cwd": str(self.workspace)},
@@ -369,10 +369,10 @@ class PermgateTest(unittest.TestCase):
             },
         ):
             with self.subTest(payload=payload):
-                result = self.run_gate("pi", payload)
+                result = self.run_gate("cli", payload)
                 self.assertNotEqual(result.returncode, 0)
 
-    def test_pi_workspace_allows_in_cwd_read_write_and_edit(self) -> None:
+    def test_cli_workspace_allows_in_cwd_read_write_and_edit(self) -> None:
         (self.workspace / "input.txt").write_text("input\n")
         (self.workspace / "nested").mkdir()
         for tool, path in (
@@ -382,19 +382,19 @@ class PermgateTest(unittest.TestCase):
         ):
             with self.subTest(tool=tool):
                 result = self.run_gate(
-                    "pi",
+                    "cli",
                     {"tool": tool, "path": path, "cwd": str(self.workspace)},
                 )
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(result.stdout, '{"decision":"allow"}\n')
                 self.assertEqual(self.read_log()[-1]["layer"], "workspace")
 
-    def test_pi_read_allows_plain_resolvable_path_outside_workspace(self) -> None:
+    def test_cli_read_allows_plain_resolvable_path_outside_workspace(self) -> None:
         path = self.outside / "contract.md"
         path.write_text("public contract\n")
 
         result = self.run_gate(
-            "pi",
+            "cli",
             {"tool": "read", "path": str(path), "cwd": str(self.workspace)},
         )
 
@@ -402,7 +402,7 @@ class PermgateTest(unittest.TestCase):
         self.assertEqual(result.stdout, '{"decision":"allow"}\n')
         self.assertEqual(self.read_log()[-1]["layer"], "workspace")
 
-    def test_pi_read_denies_each_sensitive_path_family(self) -> None:
+    def test_cli_read_denies_each_sensitive_path_family(self) -> None:
         paths = (
             self.outside / ".env.local",
             self.outside / "prod-credentials.json",
@@ -423,24 +423,24 @@ class PermgateTest(unittest.TestCase):
         for path in paths:
             with self.subTest(path=path):
                 result = self.run_gate(
-                    "pi",
+                    "cli",
                     {"tool": "read", "path": str(path), "cwd": str(self.workspace)},
                 )
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(result.stdout, '{"decision":"deny"}\n')
 
-    def test_pi_read_resolves_symlinks_and_asks_for_unresolvable_paths(self) -> None:
+    def test_cli_read_resolves_symlinks_and_asks_for_unresolvable_paths(self) -> None:
         secret = self.outside / ".env"
         secret.write_text("sensitive\n")
         link = self.workspace / "plain-name"
         link.symlink_to(secret)
 
         denied = self.run_gate(
-            "pi",
+            "cli",
             {"tool": "read", "path": str(link), "cwd": str(self.workspace)},
         )
         missing = self.run_gate(
-            "pi",
+            "cli",
             {
                 "tool": "read",
                 "path": str(self.outside / "missing.txt"),
@@ -451,7 +451,7 @@ class PermgateTest(unittest.TestCase):
         self.assertEqual(denied.stdout, '{"decision":"deny"}\n')
         self.assertEqual(missing.stdout, '{"decision":"ask"}\n')
 
-    def test_pi_workspace_rejects_path_escapes_root_and_symlink_escape(self) -> None:
+    def test_cli_workspace_rejects_path_escapes_root_and_symlink_escape(self) -> None:
         link = self.workspace / "outside-link"
         link.symlink_to(self.outside, target_is_directory=True)
         loop = self.workspace / "loop"
@@ -468,25 +468,25 @@ class PermgateTest(unittest.TestCase):
         for path, cwd in fixtures:
             with self.subTest(path=path, cwd=cwd):
                 result = self.run_gate(
-                    "pi", {"tool": "write", "path": path, "cwd": cwd}
+                    "cli", {"tool": "write", "path": path, "cwd": cwd}
                 )
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(result.stdout, '{"decision":"ask"}\n')
 
-    def test_pi_workspace_asks_for_looping_or_missing_parent(self) -> None:
+    def test_cli_workspace_asks_for_looping_or_missing_parent(self) -> None:
         loop = self.workspace / "parent-loop"
         loop.symlink_to(loop, target_is_directory=True)
 
         for path in ("parent-loop/file.txt", "missing-parent/file.txt"):
             with self.subTest(path=path):
                 result = self.run_gate(
-                    "pi",
+                    "cli",
                     {"tool": "write", "path": path, "cwd": str(self.workspace)},
                 )
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(result.stdout, '{"decision":"ask"}\n')
 
-    def test_pi_workspace_never_writes_through_final_symlink(self) -> None:
+    def test_cli_workspace_never_writes_through_final_symlink(self) -> None:
         target = self.workspace / "target.txt"
         target.write_text("existing\n")
         link = self.workspace / "write-link"
@@ -495,14 +495,14 @@ class PermgateTest(unittest.TestCase):
         for tool in ("write", "edit"):
             with self.subTest(tool=tool):
                 result = self.run_gate(
-                    "pi",
+                    "cli",
                     {"tool": tool, "path": str(link), "cwd": str(self.workspace)},
                 )
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(result.stdout, '{"decision":"ask"}\n')
 
     @unittest.skipUnless(sys.platform == "darwin", "macOS /var alias only")
-    def test_pi_workspace_resolves_macos_var_alias_identically(self) -> None:
+    def test_cli_workspace_resolves_macos_var_alias_identically(self) -> None:
         try:
             relative = self.workspace.resolve().relative_to("/private/var")
         except ValueError:
@@ -510,7 +510,7 @@ class PermgateTest(unittest.TestCase):
         alias_workspace = Path("/var") / relative
 
         result = self.run_gate(
-            "pi",
+            "cli",
             {
                 "tool": "write",
                 "path": str(alias_workspace / "alias-write.txt"),
@@ -521,25 +521,25 @@ class PermgateTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, '{"decision":"allow"}\n')
 
-    def test_pi_bash_send_lane_is_removed(self) -> None:
+    def test_cli_bash_send_lane_is_removed(self) -> None:
         prefix = f"{self.send_script} "
-        safe = prefix + "team pi-worker orchestrator 'AGMSG-RESULT v1 task_id=T'"
+        safe = prefix + "team cli-worker orchestrator 'AGMSG-RESULT v1 task_id=T'"
         tilde_safe = safe.replace(str(self.root), "~", 1)
         for command in (safe, tilde_safe, f"/bin/bash -lc {safe!r}"):
             with self.subTest(command=command.split()[0]):
                 result = self.run_gate(
-                    "pi",
+                    "cli",
                     {"tool": "bash", "command": command, "cwd": str(self.workspace)},
                 )
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(result.stdout, '{"decision":"ask"}\n')
 
 
-    def test_pi_reuses_every_shared_bash_allow_pattern(self) -> None:
+    def test_cli_reuses_every_shared_bash_allow_pattern(self) -> None:
         policy_text = (ROOT / "home/dot_agents/permgate-policy.yaml").read_text()
         policy = json.loads(policy_text)
         self.assertEqual(
-            {pattern["id"] for pattern in policy["pi"]["read_deny_patterns"]},
+            {pattern["id"] for pattern in policy["cli"]["read_deny_patterns"]},
             {
                 "dotenv",
                 "credentials",
@@ -567,16 +567,16 @@ class PermgateTest(unittest.TestCase):
         for command in commands:
             with self.subTest(command=command):
                 result = self.run_gate(
-                    "pi",
+                    "cli",
                     {"tool": "bash", "command": command, "cwd": str(self.workspace)},
                 )
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(result.stdout, '{"decision":"allow"}\n')
                 self.assertEqual(self.read_log()[-1]["layer"], "deterministic")
 
-    def test_pi_catastrophic_deny_precedes_workspace(self) -> None:
+    def test_cli_catastrophic_deny_precedes_workspace(self) -> None:
         result = self.run_gate(
-            "pi",
+            "cli",
             {"tool": "bash", "command": "rm -rf /", "cwd": str(self.workspace)},
         )
 

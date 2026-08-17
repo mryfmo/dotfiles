@@ -3,7 +3,7 @@ set -euo pipefail
 
 # @file whoami
 # @brief Show the active agmsg identity in id(1)-style output.
-# @description Supports claude-code, codex, gemini, antigravity, copilot, and pi.
+# @description Supports claude-code, codex, gemini, antigravity, and copilot.
 # @arg $1 string Project path.
 # @arg $2 string Optional CLI type; detected from the environment when omitted.
 

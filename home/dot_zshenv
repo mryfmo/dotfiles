@@ -1,14 +1,28 @@
 #!/usr/bin/env zsh
 
 # @file home/dot_zshenv
-# @brief Configure environment variables loaded before zsh startup.
+# @brief Configure the minimal environment required by every zsh instance.
 # @description
-#   Disables Claude Code's built-in auto-updater so Claude Code remains managed
-#   by the mise-controlled update flow.
+#   This file is also read by non-interactive SSH remote commands used to
+#   bootstrap Mosh and Herdr. Keep it silent and lightweight. Claude Code's
+#   built-in updater stays disabled so mise remains authoritative.
 export DISABLE_AUTOUPDATER=1
+
+typeset -gU path PATH
+path=(
+    "${HOME}/.local/share/mise/shims"
+    "${HOME}/.local/bin"
+    "${HOME}/.local/bin/common"
+    /opt/homebrew/bin
+    /opt/homebrew/sbin
+    /usr/local/bin
+    /usr/local/sbin
+    "${path[@]}"
+)
+export PATH
 
 readonly ZSHENV_PRIVATE="${HOME}/.zshenv_private"
 
-if [ -f "${ZSHENV_PRIVATE}" ]; then
+if [[ -r "${ZSHENV_PRIVATE}" ]]; then
     source "${ZSHENV_PRIVATE}"
 fi

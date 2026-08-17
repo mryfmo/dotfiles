@@ -1402,7 +1402,8 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         zshrc = ZSHRC.read_text()
 
         self.assertIn("typeset -gU path", zprofile)
-        self.assertIn("${HOME}/.local/bin/common(N-/)", zprofile)
+        self.assertIn('"${HOME}/.local/bin/common"', zprofile)
+        self.assertIn('if [[ -d "${directory}" ]]', zprofile)
         self.assertNotIn("typeset -gU path fpath", zshrc)
 
     def test_bare_herdr_in_ghostty_starts_plain_session(self) -> None:

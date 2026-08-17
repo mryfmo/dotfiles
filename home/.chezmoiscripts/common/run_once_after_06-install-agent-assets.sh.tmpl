@@ -1,2 +1,4 @@
+#!/usr/bin/env bash
+export DOTFILES_SOURCE_DIR={{ joinPath .chezmoi.sourceDir ".." | quote }}
 {{ include "../scripts/lib/asset-manifest.sh" }}
 {{ include "../scripts/update-agent-assets.sh" }}

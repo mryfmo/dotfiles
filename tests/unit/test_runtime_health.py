@@ -104,6 +104,10 @@ class RuntimeHealthTest(unittest.TestCase):
             ROOT / "scripts/lib/asset-manifest.sh",
             repo / "scripts/lib/asset-manifest.sh",
         )
+        (repo / "vendor/compactiondb").mkdir(parents=True)
+        (repo / "vendor/compactiondb/CHANGELOG.md").write_text(
+            "## 2.0.0+dotfiles.5\n"
+        )
         self.executable(
             bin_dir / "npm",
             """
@@ -155,6 +159,10 @@ class RuntimeHealthTest(unittest.TestCase):
         shutil.copy(
             ROOT / "scripts/lib/asset-manifest.sh",
             repo / "scripts/lib/asset-manifest.sh",
+        )
+        (repo / "vendor/compactiondb").mkdir(parents=True)
+        (repo / "vendor/compactiondb/CHANGELOG.md").write_text(
+            "## 2.0.0+dotfiles.5\n"
         )
         self.executable(bin_dir / "npm", "exit 1\n")
         self.executable(

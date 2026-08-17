@@ -490,7 +490,7 @@ def validate_codex_modify_script() -> None:
 
 def validate_codex_profile_modify_scripts(manifest: dict[str, Any]) -> None:
     for name, profile in manifest.get("model_profiles", {}).items():
-        path = ROOT / "home/dot_codex" / f"modify_{name}.config.toml"
+        path = ROOT / "home/dot_codex" / f"modify_private_{name}.config.toml"
         if not path.exists():
             fail(f"{path} is missing for model profile {name}")
         if path.stat().st_mode & 0o111 == 0:

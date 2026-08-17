@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "gitCommitHash": "520bd686bb376f84f82f3c9d11230011c0157424",
-  "generatedAt": "2026-08-17T10:02:15.363Z",
+  "gitCommitHash": "ebadef6175f50364413392952c009e79a12b0fa0",
+  "generatedAt": "2026-08-17T10:21:30.202Z",
   "files": {
     ".chezmoiroot": {
       "filePath": ".chezmoiroot",
@@ -6111,17 +6111,17 @@
     },
     "home/dot_config/claude/rules/understand-anything.md": {
       "filePath": "home/dot_config/claude/rules/understand-anything.md",
-      "contentHash": "e5b555b5d5bbc11ddeff4edbc8fef99ad1249d8faff076b120f7b717dc8a1630",
+      "contentHash": "2318440bea16b72d9f0bf05982e17d673c93b2736b63d7007bfc3a81378dc898",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 8,
+      "totalLines": 9,
       "hasStructuralAnalysis": true
     },
     "home/dot_config/codex/AGENTS.md": {
       "filePath": "home/dot_config/codex/AGENTS.md",
-      "contentHash": "09ad0f73b074c4512909b2acc932784321b94321c55df69a77238aee6b24565d",
+      "contentHash": "fb155cd2369a1aa67002666b14984e623cd0a4af535846255c949337b527b317",
       "functions": [],
       "classes": [],
       "imports": [],

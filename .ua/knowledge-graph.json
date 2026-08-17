@@ -28,8 +28,8 @@
       "GitHub Actions"
     ],
     "description": "Personal dotfiles managed with chezmoi.",
-    "analyzedAt": "2026-08-17T10:02:13.000Z",
-    "gitCommitHash": "520bd686bb376f84f82f3c9d11230011c0157424"
+    "analyzedAt": "2026-08-17T10:21:30.347Z",
+    "gitCommitHash": "ebadef6175f50364413392952c009e79a12b0fa0"
   },
   "nodes": [
     {
@@ -24692,6 +24692,167 @@
       "source": "file:scripts/validate-agent-assets.py",
       "target": "file:tests/unit/test_validate_agent_assets.py",
       "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:home/dot_agents/README.md",
+      "target": "config:home/dot_agents/agent-config.yaml",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:home/dot_agents/README.md",
+      "target": "config:home/dot_agents/model-profiles.env",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "config:home/dot_agents/agent-config.yaml",
+      "target": "config:home/dot_agents/model-profiles.env",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:home/dot_agents/skills/agmsg/scripts/executable_check-inbox.sh",
+      "target": "file:home/dot_agents/skills/agmsg/scripts/executable_whoami.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:home/dot_agents/skills/agmsg/scripts/executable_check-inbox.sh",
+      "target": "file:home/dot_agents/skills/agmsg/scripts/executable_config.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:home/dot_agents/skills/agmsg/scripts/executable_reset.sh",
+      "target": "file:home/dot_agents/skills/agmsg/scripts/executable_whoami.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:home/dot_agents/skills/agmsg/scripts/executable_send.sh",
+      "target": "file:home/dot_agents/skills/agmsg/scripts/executable_init-db.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:home/dot_agents/skills/agmsg/scripts/executable_whoami.sh",
+      "target": "file:home/dot_agents/skills/agmsg/scripts/executable_identities.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:home/dot_agents/skills/agmsg/templates/cmd.antigravity.md",
+      "target": "file:home/dot_agents/skills/agmsg/scripts/executable_whoami.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:home/dot_agents/skills/agmsg/templates/cmd.antigravity.md",
+      "target": "file:home/dot_agents/skills/agmsg/scripts/executable_join.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:home/dot_agents/skills/agmsg/templates/cmd.claude-code.md",
+      "target": "file:home/dot_agents/skills/agmsg/scripts/executable_whoami.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:home/dot_agents/skills/agmsg/templates/cmd.claude-code.md",
+      "target": "file:home/dot_agents/skills/agmsg/scripts/executable_join.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:home/dot_agents/skills/agmsg/templates/cmd.codex.md",
+      "target": "file:home/dot_agents/skills/agmsg/scripts/executable_whoami.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:home/dot_agents/skills/agmsg/templates/cmd.codex.md",
+      "target": "file:home/dot_agents/skills/agmsg/scripts/executable_join.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:home/dot_agents/skills/agmsg/templates/cmd.copilot.md",
+      "target": "file:home/dot_agents/skills/agmsg/scripts/executable_whoami.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:home/dot_agents/skills/agmsg/templates/cmd.copilot.md",
+      "target": "file:home/dot_agents/skills/agmsg/scripts/executable_join.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:home/dot_agents/skills/agmsg/templates/cmd.gemini.md",
+      "target": "file:home/dot_agents/skills/agmsg/scripts/executable_whoami.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:home/dot_agents/skills/agmsg/templates/cmd.gemini.md",
+      "target": "file:home/dot_agents/skills/agmsg/scripts/executable_join.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:home/dot_config/claude/rules/model-selection.md",
+      "target": "config:home/dot_codex/modify_deep.config.toml",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:home/dot_config/claude/rules/model-selection.md",
+      "target": "config:home/dot_codex/modify_express.config.toml",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:home/dot_config/claude/rules/model-selection.md",
+      "target": "config:home/dot_codex/modify_review.config.toml",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:home/dot_config/claude/rules/model-selection.md",
+      "target": "config:home/dot_codex/modify_standard.config.toml",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:home/dot_config/claude/rules/model-selection.md",
+      "target": "config:home/dot_codex/modify_private_config.toml",
+      "type": "documents",
       "direction": "forward",
       "weight": 0.5
     }

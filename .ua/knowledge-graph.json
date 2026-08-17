@@ -28,8 +28,8 @@
       "GitHub Actions"
     ],
     "description": "Personal dotfiles managed with chezmoi.",
-    "analyzedAt": "2026-08-17T10:21:30.347Z",
-    "gitCommitHash": "ebadef6175f50364413392952c009e79a12b0fa0"
+    "analyzedAt": "2026-08-17T20:14:45.204Z",
+    "gitCommitHash": "b48d52c1fadb1808669ced3343aa25055709079b"
   },
   "nodes": [
     {
@@ -6078,34 +6078,36 @@
       "complexity": "moderate"
     },
     {
-      "id": "config:home/dot_codex/modify_deep.config.toml",
+      "id": "config:home/dot_codex/modify_private_deep.config.toml",
       "type": "config",
-      "name": "modify_deep.config.toml",
-      "filePath": "home/dot_codex/modify_deep.config.toml",
-      "summary": "Chezmoi modify_ script (a Python program despite the .toml name) that renders Codex's \"deep\" model profile (gpt-5.6-sol, high reasoning effort) and merges it with Codex-owned runtime state (hook trust, marketplaces, projects) read from stdin, so `codex --profile deep` gets managed settings without clobbering runtime data.",
+      "name": "modify_private_deep.config.toml",
+      "filePath": "home/dot_codex/modify_private_deep.config.toml",
+      "summary": "Chezmoi modify script that maintains the Codex deep profile on gpt-5.6-sol with high reasoning and CompactionDB notifications while preserving Codex-owned runtime tables and profile hook trust.",
       "tags": [
         "configuration",
         "codex",
         "model-profile",
-        "chezmoi-script"
+        "runtime-merge",
+        "hook-trust"
       ],
       "complexity": "moderate",
-      "languageNotes": "Chezmoi 'modify_' scripts are executed at apply time and their stdout becomes the target file content; this one is Python (shebang #!/usr/bin/env python3) even though its filename and detected language are TOML."
+      "languageNotes": "Executable Python is stored under a chezmoi modify_ TOML target and merges TOML tables without a third-party parser."
     },
     {
-      "id": "config:home/dot_codex/modify_express.config.toml",
+      "id": "config:home/dot_codex/modify_private_express.config.toml",
       "type": "config",
-      "name": "modify_express.config.toml",
-      "filePath": "home/dot_codex/modify_express.config.toml",
-      "summary": "Chezmoi modify_ script that renders Codex's \"express\" model profile (gpt-5.6-luna, low reasoning effort) and merges it with Codex-owned runtime state read from stdin, so `codex --profile express` gets managed settings without clobbering runtime data.",
+      "name": "modify_private_express.config.toml",
+      "filePath": "home/dot_codex/modify_private_express.config.toml",
+      "summary": "Chezmoi modify script that maintains the low-reasoning gpt-5.6-luna Codex express profile while preserving Codex-owned runtime tables and authoritative profile hook trust.",
       "tags": [
         "configuration",
         "codex",
         "model-profile",
-        "chezmoi-script"
+        "runtime-merge",
+        "hook-trust"
       ],
       "complexity": "moderate",
-      "languageNotes": "Same merge algorithm as the sibling deep/review/standard profile scripts, differing only in the embedded MANAGED profile literal (model id and reasoning effort)."
+      "languageNotes": "Executable Python is stored under a chezmoi modify_ TOML target and merges TOML tables without a third-party parser."
     },
     {
       "id": "config:home/dot_codex/modify_private_config.toml",
@@ -6123,34 +6125,36 @@
       "languageNotes": "Unlike the per-profile scripts, this one loads its managed content from an external chezmoi template file (source_dir()) rather than an inline MANAGED string, and resolves CHEZMOI_SOURCE_DIR/CHEZMOI_HOME_DIR env vars for path substitution."
     },
     {
-      "id": "config:home/dot_codex/modify_review.config.toml",
+      "id": "config:home/dot_codex/modify_private_review.config.toml",
       "type": "config",
-      "name": "modify_review.config.toml",
-      "filePath": "home/dot_codex/modify_review.config.toml",
-      "summary": "Chezmoi modify_ script that renders Codex's \"review\" model profile (gpt-5.6-sol, low reasoning effort) and merges it with Codex-owned runtime state read from stdin, so `codex --profile review` gets managed settings without clobbering runtime data.",
+      "name": "modify_private_review.config.toml",
+      "filePath": "home/dot_codex/modify_private_review.config.toml",
+      "summary": "Chezmoi modify script that maintains the low-reasoning gpt-5.6-sol Codex review profile while preserving Codex-owned runtime tables and authoritative profile hook trust.",
       "tags": [
         "configuration",
         "codex",
         "model-profile",
-        "chezmoi-script"
+        "runtime-merge",
+        "hook-trust"
       ],
       "complexity": "moderate",
-      "languageNotes": "Same merge algorithm as the sibling deep/express/standard profile scripts, differing only in the embedded MANAGED profile literal (model id and reasoning effort)."
+      "languageNotes": "Executable Python is stored under a chezmoi modify_ TOML target and merges TOML tables without a third-party parser."
     },
     {
-      "id": "config:home/dot_codex/modify_standard.config.toml",
+      "id": "config:home/dot_codex/modify_private_standard.config.toml",
       "type": "config",
-      "name": "modify_standard.config.toml",
-      "filePath": "home/dot_codex/modify_standard.config.toml",
-      "summary": "Chezmoi modify_ script that renders Codex's \"standard\" model profile (gpt-5.6-terra, medium reasoning effort) and merges it with Codex-owned runtime state read from stdin, so `codex --profile standard` gets managed settings without clobbering runtime data.",
+      "name": "modify_private_standard.config.toml",
+      "filePath": "home/dot_codex/modify_private_standard.config.toml",
+      "summary": "Chezmoi modify script that maintains the medium-reasoning gpt-5.6-terra Codex standard profile with CompactionDB notifications while preserving Codex-owned runtime tables and profile hook trust.",
       "tags": [
         "configuration",
         "codex",
         "model-profile",
-        "chezmoi-script"
+        "runtime-merge",
+        "hook-trust"
       ],
       "complexity": "moderate",
-      "languageNotes": "The merge_config routine also cross-checks hook trust hashes against the base ~/.codex/config.toml and warns on stderr if a profile's trusted_hash diverges from the base config's, without recalculating or blindly trusting either."
+      "languageNotes": "Executable Python is stored under a chezmoi modify_ TOML target and merges TOML tables without a third-party parser."
     },
     {
       "id": "file:home/dot_config/alias/client.sh",
@@ -7375,7 +7379,8 @@
         "diagnostics",
         "shell-script",
         "lifecycle",
-        "read-only"
+        "read-only",
+        "tested"
       ],
       "complexity": "moderate"
     },
@@ -7966,15 +7971,16 @@
       "type": "file",
       "name": "update-agent-assets.sh",
       "filePath": "scripts/update-agent-assets.sh",
-      "summary": "Installs and refreshes shared AI-agent CLIs, plugins, integrations, CompactionDB, and the Codex Understand-Anything runtime for Claude Code and Codex. Each managed step records its provenance and inverse operations through the shared asset manifest helper.",
+      "summary": "Installs and refreshes shared AI-agent CLIs, plugins, Herdr integrations, CompactionDB, and the Codex Understand-Anything runtime for Claude Code and Codex, recording each managed asset through the shared manifest helper.",
       "tags": [
         "agent-tooling",
         "plugin-management",
         "asset-manifest",
-        "orchestration"
+        "orchestration",
+        "tested"
       ],
       "complexity": "complex",
-      "languageNotes": "Uses strict Bash mode with CLI capability checks, pinned installer verification, and manifest recording after each managed update."
+      "languageNotes": "Uses strict Bash mode, source-root validation, pinned installer verification, CLI capability checks, and manifest recording for managed updates."
     },
     {
       "id": "function:scripts/update-agent-assets.sh:section",
@@ -7982,8 +7988,8 @@
       "name": "section",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        46,
-        48
+        72,
+        74
       ],
       "summary": "Prints a formatted section heading for the updater's progress output.",
       "tags": [
@@ -7999,8 +8005,8 @@
       "name": "has_command",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        54,
-        56
+        80,
+        82
       ],
       "summary": "Checks whether a named command is available on the current PATH.",
       "tags": [
@@ -8016,8 +8022,8 @@
       "name": "remove_node_global_agent_cli_shadows",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        61,
-        70
+        87,
+        96
       ],
       "summary": "Removes globally installed npm agent CLIs that would shadow the mise-managed versions.",
       "tags": [
@@ -8033,8 +8039,8 @@
       "name": "ensure_mise_npm_agent_cli",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        77,
-        92
+        103,
+        118
       ],
       "summary": "Repairs an unavailable agent CLI through the locked mise npm backend and records the resulting installation in the asset manifest.",
       "tags": [
@@ -8050,8 +8056,8 @@
       "name": "is_macos",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        97,
-        99
+        123,
+        125
       ],
       "summary": "Checks whether the updater is running on macOS.",
       "tags": [
@@ -8067,8 +8073,8 @@
       "name": "command_output_contains",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        106,
-        111
+        132,
+        137
       ],
       "summary": "Runs a command with stderr suppressed and checks its output for a fixed string.",
       "tags": [
@@ -8084,8 +8090,8 @@
       "name": "codex_marketplace_is_configured_git_marketplace",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        117,
-        135
+        143,
+        161
       ],
       "summary": "Checks whether a Codex marketplace resolves to a configured Git working tree rather than the built-in temporary plugin cache.",
       "tags": [
@@ -8101,8 +8107,8 @@
       "name": "codex_marketplace_root",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        141,
-        145
+        167,
+        171
       ],
       "summary": "Looks up and prints the local root path for a configured Codex marketplace.",
       "tags": [
@@ -8118,8 +8124,8 @@
       "name": "git_remote_origin_matches",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        152,
-        165
+        178,
+        191
       ],
       "summary": "Checks whether a local Git repository origin matches the expected HTTPS or SSH source URL.",
       "tags": [
@@ -8135,8 +8141,8 @@
       "name": "codex_marketplace_has_source",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        172,
-        183
+        198,
+        209
       ],
       "summary": "Confirms that a configured Codex marketplace has the expected Git origin.",
       "tags": [
@@ -8152,8 +8158,8 @@
       "name": "ensure_claude_superpowers_marketplace",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        188,
-        194
+        214,
+        220
       ],
       "summary": "Ensures the official Claude Code plugin marketplace is configured before Superpowers installation.",
       "tags": [
@@ -8169,8 +8175,8 @@
       "name": "ensure_crit_cli",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        199,
-        213
+        225,
+        239
       ],
       "summary": "Ensures the Crit CLI is available, using Homebrew on macOS when possible and otherwise skipping Crit integrations.",
       "tags": [
@@ -8186,8 +8192,8 @@
       "name": "ensure_claude_crit_marketplace",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        218,
-        224
+        244,
+        250
       ],
       "summary": "Ensures the Crit marketplace is configured for Claude Code plugin installation.",
       "tags": [
@@ -8203,8 +8209,8 @@
       "name": "ensure_claude_ponytail_marketplace",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        229,
-        235
+        255,
+        261
       ],
       "summary": "Ensures the Ponytail marketplace is configured for Claude Code plugin installation.",
       "tags": [
@@ -8220,8 +8226,8 @@
       "name": "ensure_claude_understand_anything_marketplace",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        240,
-        246
+        266,
+        272
       ],
       "summary": "Ensures the Understand-Anything marketplace is configured for Claude Code plugin installation.",
       "tags": [
@@ -8237,8 +8243,8 @@
       "name": "claude_crit_plugin_is_enabled",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        251,
-        275
+        277,
+        301
       ],
       "summary": "Parses the Claude plugin inventory to check whether the Crit plugin is installed and enabled.",
       "tags": [
@@ -8254,8 +8260,8 @@
       "name": "claude_ponytail_plugin_is_enabled",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        280,
-        304
+        306,
+        330
       ],
       "summary": "Parses the Claude plugin inventory to check whether the Ponytail plugin is installed and enabled.",
       "tags": [
@@ -8271,8 +8277,8 @@
       "name": "claude_understand_anything_plugin_is_enabled",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        309,
-        333
+        335,
+        359
       ],
       "summary": "Parses the Claude plugin inventory to check whether the Understand-Anything plugin is installed and enabled.",
       "tags": [
@@ -8288,8 +8294,8 @@
       "name": "ensure_herdr_integrations",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        338,
-        347
+        364,
+        373
       ],
       "summary": "Installs Claude and Codex Herdr integrations when the CLI is available and records both generated hook paths.",
       "tags": [
@@ -8305,8 +8311,8 @@
       "name": "update_claude_superpowers",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        352,
-        369
+        378,
+        395
       ],
       "summary": "Installs or updates the official Claude Superpowers plugin and records its cache and settings paths.",
       "tags": [
@@ -8322,8 +8328,8 @@
       "name": "update_claude_crit",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        374,
-        399
+        400,
+        425
       ],
       "summary": "Ensures the Claude Crit marketplace and CLI, updates or installs and enables the plugin, and records its managed assets.",
       "tags": [
@@ -8339,8 +8345,8 @@
       "name": "update_claude_ponytail",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        404,
-        427
+        430,
+        453
       ],
       "summary": "Ensures the Claude Ponytail marketplace, updates or installs and enables the plugin, and records its managed assets.",
       "tags": [
@@ -8356,8 +8362,8 @@
       "name": "update_claude_understand_anything",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        432,
-        454
+        458,
+        480
       ],
       "summary": "Ensures the Claude Understand-Anything marketplace, updates or installs and enables the plugin, and records its managed assets.",
       "tags": [
@@ -8373,8 +8379,8 @@
       "name": "update_codex_superpowers",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        459,
-        479
+        485,
+        505
       ],
       "summary": "Updates the configured Codex marketplace when eligible, installs Superpowers if missing, and records the managed plugin assets.",
       "tags": [
@@ -8390,8 +8396,8 @@
       "name": "ensure_codex_ponytail_marketplace",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        484,
-        505
+        510,
+        531
       ],
       "summary": "Ensures Codex registers the Ponytail marketplace with its expected Git source and rejects conflicting registrations.",
       "tags": [
@@ -8407,8 +8413,8 @@
       "name": "update_codex_ponytail",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        510,
-        529
+        536,
+        555
       ],
       "summary": "Updates the Codex Ponytail marketplace, installs the plugin if absent, and records its managed cache and configuration paths.",
       "tags": [
@@ -8424,8 +8430,8 @@
       "name": "update_codex_crit",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        534,
-        549
+        560,
+        575
       ],
       "summary": "Installs the Codex Crit plugin through its CLI integration and records the plugin and configuration paths.",
       "tags": [
@@ -8441,8 +8447,8 @@
       "name": "provision_codex_understand_anything_runtime",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        555,
-        603
+        581,
+        629
       ],
       "summary": "Finds a Claude Understand-Anything release matching the installed Codex plugin version and copies its built core runtime and dependencies into the Codex plugin tree.",
       "tags": [
@@ -8458,8 +8464,8 @@
       "name": "update_codex_understand_anything",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        612,
-        641
+        638,
+        667
       ],
       "summary": "Downloads and verifies a pinned Understand-Anything installer, installs Codex skills, provisions matching runtime files, and records all managed paths.",
       "tags": [
@@ -8476,8 +8482,8 @@
       "name": "update_compactiondb",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        646,
-        651
+        672,
+        677
       ],
       "summary": "Synchronizes the vendored CompactionDB tree into the shared agent assets while preserving project runtime state, then records the install in the asset manifest.",
       "tags": [
@@ -8494,8 +8500,8 @@
       "name": "main",
       "filePath": "scripts/update-agent-assets.sh",
       "lineRange": [
-        657,
-        677
+        683,
+        703
       ],
       "summary": "Orchestrates CLI repair, Claude and Codex plugin updates, CompactionDB synchronization, and Herdr integration installation in sequence.",
       "tags": [
@@ -8515,7 +8521,8 @@
         "upgrade",
         "lifecycle",
         "homebrew",
-        "mise"
+        "mise",
+        "tested"
       ],
       "complexity": "complex"
     },
@@ -8977,13 +8984,15 @@
       "type": "file",
       "name": "run_once_after_06-install-agent-assets.sh.tmpl",
       "filePath": "home/.chezmoiscripts/common/run_once_after_06-install-agent-assets.sh.tmpl",
-      "summary": "Dotfiles code file for run_once_after_06-install-agent-assets.sh.tmpl.",
+      "summary": "Chezmoi run-once hook that exports the canonical source root, loads the shared asset-manifest helpers, and runs the agent asset installer after dotfiles are applied.",
       "tags": [
-        "dotfiles",
-        "code",
-        "configuration"
+        "chezmoi-hook",
+        "agent-assets",
+        "bootstrap",
+        "template"
       ],
-      "complexity": "simple"
+      "complexity": "simple",
+      "languageNotes": "A thin chezmoi template composed entirely from shared shell sources."
     },
     {
       "id": "file:home/.chezmoiscripts/common/run_once_after_99-install-gh-extensions.sh.tmpl",
@@ -11672,7 +11681,8 @@
         "shell",
         "agent",
         "automation",
-        "orchestration"
+        "orchestration",
+        "tested"
       ],
       "complexity": "complex"
     },
@@ -11906,7 +11916,8 @@
       "tags": [
         "shell-script",
         "automation",
-        "developer-tools"
+        "developer-tools",
+        "tested"
       ],
       "complexity": "complex"
     },
@@ -11919,7 +11930,8 @@
       "tags": [
         "shell-script",
         "automation",
-        "developer-tools"
+        "developer-tools",
+        "tested"
       ],
       "complexity": "simple"
     },
@@ -12058,11 +12070,12 @@
       "type": "file",
       "name": "dot_zprofile",
       "filePath": "home/dot_zprofile",
-      "summary": "Managed dotfile or support asset at home/dot_zprofile.",
+      "summary": "Initializes login-shell PATH ordering so ARM Homebrew wins over stale Intel binaries, appends managed local bin directories, and activates mise shims.",
       "tags": [
-        "dotfiles",
-        "configuration",
-        "environment"
+        "shell-config",
+        "path-management",
+        "homebrew",
+        "mise"
       ],
       "complexity": "simple"
     },
@@ -12071,11 +12084,12 @@
       "type": "file",
       "name": "dot_zshenv",
       "filePath": "home/dot_zshenv",
-      "summary": "Managed dotfile or support asset at home/dot_zshenv.",
+      "summary": "Defines the silent environment shared by every zsh instance, prioritizing mise and managed local binaries, disabling Claude self-updates, and loading an optional private environment file.",
       "tags": [
-        "dotfiles",
-        "configuration",
-        "environment"
+        "shell-config",
+        "environment",
+        "path-management",
+        "mise"
       ],
       "complexity": "simple"
     },
@@ -12084,11 +12098,13 @@
       "type": "file",
       "name": "dot_zshrc",
       "filePath": "home/dot_zshrc",
-      "summary": "Managed dotfile or support asset at home/dot_zshrc.",
+      "summary": "Configures interactive zsh with mise and Sheldon, exposes managed completions, routes bare Ghostty Herdr launches through the managed session layout, and provides a controlled Claude Code updater.",
       "tags": [
-        "dotfiles",
-        "configuration",
-        "environment"
+        "shell-config",
+        "interactive-shell",
+        "mise",
+        "herdr",
+        "claude-code"
       ],
       "complexity": "simple"
     },
@@ -12265,11 +12281,13 @@
       "type": "file",
       "name": "generate-agent-configs.py",
       "filePath": "scripts/generate-agent-configs.py",
-      "summary": "Generates Codex, Claude, MCP, marketplace, and model-profile assets from the central agent manifest.",
+      "summary": "Generates and checks Codex, Claude, MCP, plugin, model-profile, launcher, and shared-skill assets from the canonical agent manifest.",
       "tags": [
-        "dotfiles",
         "configuration",
-        "environment"
+        "generation",
+        "agent-assets",
+        "validation",
+        "tested"
       ],
       "complexity": "complex"
     },
@@ -12282,10 +12300,10 @@
         24,
         26
       ],
-      "summary": "Implements the fail operation for generate-agent-configs.py.",
+      "summary": "Prints a generation error to stderr and terminates with a failing exit status.",
       "tags": [
-        "utility",
-        "automation",
+        "error-handling",
+        "command-line",
         "validation"
       ],
       "complexity": "simple"
@@ -12299,10 +12317,10 @@
         29,
         39
       ],
-      "summary": "Implements the load_manifest operation for generate-agent-configs.py.",
+      "summary": "Loads the canonical YAML agent manifest, requiring a mapping with schema version 1.",
       "tags": [
-        "utility",
-        "automation",
+        "configuration",
+        "yaml",
         "validation"
       ],
       "complexity": "simple"
@@ -12316,11 +12334,11 @@
         42,
         43
       ],
-      "summary": "Implements the json_dumps operation for generate-agent-configs.py.",
+      "summary": "Serializes generated data as indented, Unicode-preserving JSON with a trailing newline.",
       "tags": [
-        "utility",
-        "automation",
-        "validation"
+        "serialization",
+        "json",
+        "utility"
       ],
       "complexity": "simple"
     },
@@ -12333,11 +12351,11 @@
         46,
         64
       ],
-      "summary": "Implements the quote_toml operation for generate-agent-configs.py.",
+      "summary": "Recursively renders supported booleans, integers, strings, lists, and mappings as TOML literals.",
       "tags": [
-        "utility",
-        "automation",
-        "validation"
+        "serialization",
+        "toml",
+        "utility"
       ],
       "complexity": "simple"
     },
@@ -12350,10 +12368,10 @@
         67,
         70
       ],
-      "summary": "Implements the quote_toml_key operation for generate-agent-configs.py.",
+      "summary": "Leaves launcher-safe TOML keys bare and JSON-quotes keys containing other characters.",
       "tags": [
-        "utility",
-        "automation",
+        "serialization",
+        "toml",
         "validation"
       ],
       "complexity": "simple"
@@ -12367,11 +12385,11 @@
         73,
         74
       ],
-      "summary": "Implements the target_agents operation for generate-agent-configs.py.",
+      "summary": "Returns the manifest's configured target agents as a set for membership checks.",
       "tags": [
-        "utility",
-        "automation",
-        "validation"
+        "configuration",
+        "agent-selection",
+        "utility"
       ],
       "complexity": "simple"
     },
@@ -12384,11 +12402,11 @@
         77,
         78
       ],
-      "summary": "Implements the enabled_for operation for generate-agent-configs.py.",
+      "summary": "Tests whether an MCP server is enabled for a named agent in the canonical manifest.",
       "tags": [
-        "utility",
-        "automation",
-        "validation"
+        "configuration",
+        "mcp",
+        "agent-selection"
       ],
       "complexity": "simple"
     },
@@ -12401,11 +12419,11 @@
         95,
         117
       ],
-      "summary": "Implements the model_profiles operation for generate-agent-configs.py.",
+      "summary": "Validates required model profiles, launcher-safe names, and per-agent model and effort fields before returning them.",
       "tags": [
-        "utility",
-        "automation",
-        "validation"
+        "model-profile",
+        "validation",
+        "configuration"
       ],
       "complexity": "simple"
     },
@@ -12418,11 +12436,11 @@
         120,
         125
       ],
-      "summary": "Implements the interactive_profile operation for generate-agent-configs.py.",
+      "summary": "Resolves the manifest's interactive profile after confirming that it names a validated model profile.",
       "tags": [
-        "utility",
-        "automation",
-        "validation"
+        "model-profile",
+        "configuration",
+        "selection"
       ],
       "complexity": "simple"
     },
@@ -12435,11 +12453,11 @@
         128,
         262
       ],
-      "summary": "Implements the render_codex operation for generate-agent-configs.py.",
+      "summary": "Renders the managed Codex TOML configuration, including model, sandbox, MCP, plugin, hook, marketplace, and project settings.",
       "tags": [
-        "utility",
-        "automation",
-        "validation"
+        "configuration",
+        "codex",
+        "serialization"
       ],
       "complexity": "moderate"
     },
@@ -12452,11 +12470,11 @@
         265,
         337
       ],
-      "summary": "Implements the render_claude_settings operation for generate-agent-configs.py.",
+      "summary": "Renders Claude settings JSON from the selected model profile, permissions, hooks, status line, and plugin policy.",
       "tags": [
-        "utility",
-        "automation",
-        "validation"
+        "configuration",
+        "claude",
+        "serialization"
       ],
       "complexity": "moderate"
     },
@@ -12469,11 +12487,11 @@
         340,
         358
       ],
-      "summary": "Implements the claude_mcp_entry operation for generate-agent-configs.py.",
+      "summary": "Converts one canonical stdio or HTTP MCP definition into Claude's server-entry schema and drops unset values.",
       "tags": [
-        "utility",
-        "automation",
-        "validation"
+        "mcp",
+        "configuration",
+        "serialization"
       ],
       "complexity": "simple"
     },
@@ -12486,11 +12504,11 @@
         361,
         369
       ],
-      "summary": "Implements the render_claude_mcp operation for generate-agent-configs.py.",
+      "summary": "Renders the disabled-by-default Claude MCP configuration for servers explicitly assigned to Claude.",
       "tags": [
-        "utility",
-        "automation",
-        "validation"
+        "mcp",
+        "claude",
+        "configuration"
       ],
       "complexity": "simple"
     },
@@ -12503,11 +12521,11 @@
         372,
         390
       ],
-      "summary": "Implements the render_marketplace operation for generate-agent-configs.py.",
+      "summary": "Builds the local Codex marketplace catalog and installation policy from managed plugin definitions.",
       "tags": [
-        "utility",
-        "automation",
-        "validation"
+        "plugin",
+        "marketplace",
+        "serialization"
       ],
       "complexity": "simple"
     },
@@ -12520,10 +12538,10 @@
         393,
         411
       ],
-      "summary": "Implements the render_codex_plugin operation for generate-agent-configs.py.",
+      "summary": "Validates required managed plugin metadata and renders the Codex plugin manifest JSON.",
       "tags": [
-        "utility",
-        "automation",
+        "plugin",
+        "codex",
         "validation"
       ],
       "complexity": "simple"
@@ -12537,11 +12555,11 @@
         414,
         416
       ],
-      "summary": "Implements the render_claude_skill_symlink operation for generate-agent-configs.py.",
+      "summary": "Produces a chezmoi symlink template pointing a Claude skill asset at its canonical shared source.",
       "tags": [
-        "utility",
-        "automation",
-        "validation"
+        "chezmoi",
+        "skill",
+        "symlink"
       ],
       "complexity": "simple"
     },
@@ -12554,11 +12572,11 @@
         419,
         420
       ],
-      "summary": "Implements the chezmoi_target_name operation for generate-agent-configs.py.",
+      "summary": "Converts an executable-prefixed chezmoi source filename to its deployed target name.",
       "tags": [
-        "utility",
-        "automation",
-        "validation"
+        "chezmoi",
+        "path-handling",
+        "utility"
       ],
       "complexity": "simple"
     },
@@ -12571,11 +12589,11 @@
         423,
         440
       ],
-      "summary": "Implements the claude_skill_symlink_outputs operation for generate-agent-configs.py.",
+      "summary": "Scans canonical shared skill files and maps each one to its generated Claude symlink template output.",
       "tags": [
-        "utility",
-        "automation",
-        "validation"
+        "skill",
+        "symlink",
+        "generation"
       ],
       "complexity": "simple"
     },
@@ -12586,13 +12604,13 @@
       "filePath": "scripts/generate-agent-configs.py",
       "lineRange": [
         444,
-        458
+        462
       ],
-      "summary": "Implements the render_codex_profile operation for generate-agent-configs.py.",
+      "summary": "Renders a minimal named Codex profile with its model, reasoning effort, optional notification command, and hook-state tables.",
       "tags": [
-        "utility",
-        "automation",
-        "validation"
+        "model-profile",
+        "codex",
+        "configuration"
       ],
       "complexity": "simple"
     },
@@ -12602,14 +12620,14 @@
       "name": "render_codex_profile_modify",
       "filePath": "scripts/generate-agent-configs.py",
       "lineRange": [
-        461,
-        620
+        465,
+        631
       ],
-      "summary": "Implements the render_codex_profile_modify operation for generate-agent-configs.py.",
+      "summary": "Generates the Python modifier that merges managed profile settings while preserving Codex-owned runtime tables and hook trust.",
       "tags": [
-        "utility",
-        "automation",
-        "validation"
+        "model-profile",
+        "runtime-state",
+        "generation"
       ],
       "complexity": "moderate"
     },
@@ -12619,14 +12637,14 @@
       "name": "render_model_profiles_env",
       "filePath": "scripts/generate-agent-configs.py",
       "lineRange": [
-        623,
-        638
+        634,
+        649
       ],
-      "summary": "Implements the render_model_profiles_env operation for generate-agent-configs.py.",
+      "summary": "Renders shell variables that map every model profile to Claude CLI arguments and named Codex profiles.",
       "tags": [
-        "utility",
-        "automation",
-        "validation"
+        "model-profile",
+        "shell",
+        "launcher"
       ],
       "complexity": "simple"
     },
@@ -12636,14 +12654,14 @@
       "name": "render_claude_express_agent",
       "filePath": "scripts/generate-agent-configs.py",
       "lineRange": [
-        641,
-        658
+        652,
+        670
       ],
-      "summary": "Implements the render_claude_express_agent operation for generate-agent-configs.py.",
+      "summary": "Renders the read-only Claude express-explorer agent definition from the express model profile.",
       "tags": [
-        "utility",
-        "automation",
-        "validation"
+        "model-profile",
+        "claude",
+        "agent-definition"
       ],
       "complexity": "simple"
     },
@@ -12653,14 +12671,14 @@
       "name": "expected_outputs",
       "filePath": "scripts/generate-agent-configs.py",
       "lineRange": [
-        661,
-        680
+        673,
+        694
       ],
-      "summary": "Implements the expected_outputs operation for generate-agent-configs.py.",
+      "summary": "Aggregates every generated Codex, Claude, MCP, plugin, profile, launcher, and skill-symlink path with its expected content.",
       "tags": [
-        "utility",
-        "automation",
-        "validation"
+        "generation",
+        "configuration",
+        "orchestration"
       ],
       "complexity": "simple"
     },
@@ -12670,14 +12688,14 @@
       "name": "remove_stale_generated_outputs",
       "filePath": "scripts/generate-agent-configs.py",
       "lineRange": [
-        683,
-        698
+        697,
+        712
       ],
-      "summary": "Implements the remove_stale_generated_outputs operation for generate-agent-configs.py.",
+      "summary": "Deletes obsolete generated Claude skill symlink templates and then removes empty generated directories.",
       "tags": [
-        "utility",
-        "automation",
-        "validation"
+        "cleanup",
+        "skill",
+        "filesystem"
       ],
       "complexity": "simple"
     },
@@ -12687,14 +12705,14 @@
       "name": "write_outputs",
       "filePath": "scripts/generate-agent-configs.py",
       "lineRange": [
-        701,
-        706
+        715,
+        720
       ],
-      "summary": "Implements the write_outputs operation for generate-agent-configs.py.",
+      "summary": "Creates output directories, writes generated content, and preserves executability for Codex modifier scripts.",
       "tags": [
-        "utility",
-        "automation",
-        "validation"
+        "generation",
+        "filesystem",
+        "permissions"
       ],
       "complexity": "simple"
     },
@@ -12704,14 +12722,14 @@
       "name": "stale_profile_outputs",
       "filePath": "scripts/generate-agent-configs.py",
       "lineRange": [
-        709,
-        714
+        723,
+        728
       ],
-      "summary": "Implements the stale_profile_outputs operation for generate-agent-configs.py.",
+      "summary": "Finds obsolete flat Codex profile files that should be removed after profile modifiers are generated.",
       "tags": [
-        "utility",
-        "automation",
-        "validation"
+        "cleanup",
+        "model-profile",
+        "filesystem"
       ],
       "complexity": "simple"
     },
@@ -12721,13 +12739,13 @@
       "name": "main",
       "filePath": "scripts/generate-agent-configs.py",
       "lineRange": [
-        717,
-        747
+        731,
+        761
       ],
-      "summary": "Implements the main operation for generate-agent-configs.py.",
+      "summary": "Runs generation or check mode, reports stale outputs, removes obsolete profile and skill artifacts, and prints the final status.",
       "tags": [
-        "utility",
-        "automation",
+        "entry-point",
+        "generation",
         "validation"
       ],
       "complexity": "simple"
@@ -13505,13 +13523,15 @@
       "type": "file",
       "name": "lifecycle.bats",
       "filePath": "tests/install/common/lifecycle.bats",
-      "summary": "Test file that verifies lifecycle  behavior.",
+      "summary": "Bats integration suite for the public setup, update, doctor, and upgrade lifecycle, including failure propagation, Herdr reload behavior, tool ownership, and managed agent integrations.",
       "tags": [
         "test",
-        "validation",
-        "automation"
+        "lifecycle",
+        "shell-integration",
+        "tool-management"
       ],
-      "complexity": "complex"
+      "complexity": "complex",
+      "languageNotes": "Bats expresses each shell test with @test while using an isolated fixture helper to exercise Make recipes and command ordering."
     },
     {
       "id": "file:tests/install/common/mise.bats",
@@ -13833,11 +13853,12 @@
       "type": "file",
       "name": "test_herdr_agents.py",
       "filePath": "tests/unit/test_herdr_agents.py",
-      "summary": "Test file that verifies test herdr agents  behavior.",
+      "summary": "Large integration-style unit suite for Herdr workspace attachment, pane layout repair, agent restart behavior, agmsg bootstrap delivery, terminal configuration, and CLI shadow cleanup.",
       "tags": [
         "test",
-        "validation",
-        "automation"
+        "herdr",
+        "agent-orchestration",
+        "terminal-integration"
       ],
       "complexity": "complex"
     },
@@ -13848,13 +13869,14 @@
       "filePath": "tests/unit/test_herdr_agents.py",
       "lineRange": [
         33,
-        1438
+        1439
       ],
-      "summary": "Test case class covering HerdrAgents behavior.",
+      "summary": "Creates fake Herdr, agmsg, shell, and workspace state to verify idempotent pane topology repair, safe agent reuse, delivery setup, and Ghostty command routing.",
       "tags": [
         "test",
-        "validation",
-        "automation"
+        "herdr",
+        "workspace-layout",
+        "agmsg"
       ],
       "complexity": "complex"
     },
@@ -14120,7 +14142,8 @@
         "entry-point",
         "validation",
         "runtime-assets",
-        "repair"
+        "repair",
+        "tested"
       ],
       "complexity": "complex"
     },
@@ -14130,8 +14153,8 @@
       "name": "render_template",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        85,
-        91
+        88,
+        94
       ],
       "summary": "Renders the limited chezmoi template syntax needed to compare managed source files with their deployed runtime copies.",
       "tags": [
@@ -14147,8 +14170,8 @@
       "name": "same_text",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        94,
-        98
+        97,
+        101
       ],
       "summary": "Checks whether a deployed file exists and exactly matches either its source text or rendered template output.",
       "tags": [
@@ -14164,8 +14187,8 @@
       "name": "same_modified",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        101,
-        123
+        104,
+        126
       ],
       "summary": "Runs a chezmoi modifier against the deployed content and verifies that applying its managed transformation would make no semantic change.",
       "tags": [
@@ -14181,8 +14204,8 @@
       "name": "is_ignored_runtime_path",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        126,
-        132
+        129,
+        135
       ],
       "summary": "Identifies agmsg database and runtime-store paths that are intentionally excluded from source-to-runtime drift checks.",
       "tags": [
@@ -14198,8 +14221,8 @@
       "name": "deployed_relative_path",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        135,
-        140
+        138,
+        143
       ],
       "summary": "Converts chezmoi source names with executable or private prefixes into their deployed relative paths.",
       "tags": [
@@ -14215,8 +14238,8 @@
       "name": "source_files",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        143,
-        149
+        146,
+        152
       ],
       "summary": "Builds a mapping from deployed relative paths to managed source files while excluding runtime-owned agmsg data.",
       "tags": [
@@ -14232,8 +14255,8 @@
       "name": "applied_files",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        152,
-        160
+        155,
+        163
       ],
       "summary": "Enumerates deployed files and symlinks beneath a runtime root while excluding runtime-owned agmsg data.",
       "tags": [
@@ -14249,8 +14272,8 @@
       "name": "expects_executable",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        163,
-        164
+        166,
+        167
       ],
       "summary": "Reports whether a chezmoi source filename declares that its deployed target must be executable.",
       "tags": [
@@ -14266,8 +14289,8 @@
       "name": "is_warning",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        167,
-        168
+        170,
+        171
       ],
       "summary": "Classifies diagnostic messages that are advisory rather than runtime drift errors.",
       "tags": [
@@ -14283,8 +14306,8 @@
       "name": "expected_claude_skill_targets",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        171,
-        185
+        219,
+        233
       ],
       "summary": "Resolves managed Claude skill symlink templates and returns the expected deployed file contents, marking broken targets explicitly.",
       "tags": [
@@ -14300,8 +14323,8 @@
       "name": "compare_tree_contents",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        188,
-        238
+        236,
+        286
       ],
       "summary": "Compares an expected managed tree with a deployed tree, reporting missing, extra, unreadable, changed, and non-executable files while optionally warning about unmanaged top-level directories.",
       "tags": [
@@ -14317,8 +14340,8 @@
       "name": "compare_shared_skills",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        241,
-        254
+        289,
+        302
       ],
       "summary": "Compares the canonical shared skill source tree with the active ~/.agents/skills deployment.",
       "tags": [
@@ -14334,8 +14357,8 @@
       "name": "compare_claude_skills",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        257,
-        263
+        305,
+        311
       ],
       "summary": "Compares generated Claude skill links with the active ~/.claude/skills tree.",
       "tags": [
@@ -14351,8 +14374,8 @@
       "name": "check_executable_hook",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        266,
-        274
+        314,
+        322
       ],
       "summary": "Verifies that a deployed hook matches its source and retains its user execute bit.",
       "tags": [
@@ -14368,8 +14391,8 @@
       "name": "normalized_path",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        277,
-        278
+        325,
+        326
       ],
       "summary": "Returns an absolute normalized path for stable ownership and overlap comparisons.",
       "tags": [
@@ -14385,8 +14408,8 @@
       "name": "paths_overlap",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        281,
-        284
+        329,
+        332
       ],
       "summary": "Determines whether two normalized paths are identical or one contains the other.",
       "tags": [
@@ -14402,8 +14425,8 @@
       "name": "installed_manifest_error",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        287,
-        302
+        335,
+        350
       ],
       "summary": "Validates the installed agent-asset manifest envelope and returns a concise integrity error when invalid.",
       "tags": [
@@ -14419,8 +14442,8 @@
       "name": "manifest_path_owners",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        305,
-        321
+        353,
+        369
       ],
       "summary": "Parses valid installed-manifest steps into normalized path ownership records.",
       "tags": [
@@ -14436,8 +14459,8 @@
       "name": "manifest_asset_findings",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        324,
-        347
+        372,
+        395
       ],
       "summary": "Finds manifest-managed agent asset paths that no longer exist and groups them by installation step.",
       "tags": [
@@ -14453,8 +14476,8 @@
       "name": "asset_failure_message",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        350,
-        354
+        398,
+        402
       ],
       "summary": "Formats a missing asset finding as the canonical runtime diagnostic consumed by repair selection.",
       "tags": [
@@ -14470,8 +14493,8 @@
       "name": "asset_repair_action",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        357,
-        384
+        405,
+        432
       ],
       "summary": "Maps a supported missing asset step, including parameterized mise CLI installs, to the exact updater command that can repair it.",
       "tags": [
@@ -14487,8 +14510,8 @@
       "name": "source_derived_directory_names",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        387,
-        400
+        435,
+        448
       ],
       "summary": "Derives managed agent-root and shared-skill directory names from the chezmoi source tree.",
       "tags": [
@@ -14504,8 +14527,8 @@
       "name": "direct_asset_directories",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        403,
-        408
+        451,
+        456
       ],
       "summary": "Lists direct child directories and symlinks of an agent asset root.",
       "tags": [
@@ -14521,8 +14544,8 @@
       "name": "orphaned_asset_warnings",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        411,
-        446
+        459,
+        494
       ],
       "summary": "Classifies unexpected agent and skill directories as manifest-accounted stale assets or unowned orphans requiring manual review.",
       "tags": [
@@ -14538,8 +14561,8 @@
       "name": "deployed_target_path",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        449,
-        454
+        497,
+        502
       ],
       "summary": "Expands a diagnostic target using the supplied home directory without relying on the process home.",
       "tags": [
@@ -14555,8 +14578,8 @@
       "name": "repair_actions",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        457,
-        533
+        505,
+        581
       ],
       "summary": "Translates concrete drift failures into deduplicated chmod, chezmoi apply, or asset-updater commands while ignoring warnings.",
       "tags": [
@@ -14572,8 +14595,8 @@
       "name": "execute_repair",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        536,
-        537
+        584,
+        585
       ],
       "summary": "Executes one prepared repair command and reports whether it succeeded.",
       "tags": [
@@ -14589,8 +14612,8 @@
       "name": "print_failures",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        540,
-        545
+        588,
+        593
       ],
       "summary": "Prints warnings to stdout and prefixes actionable drift failures on stderr.",
       "tags": [
@@ -14606,8 +14629,8 @@
       "name": "check",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        548,
-        623
+        596,
+        674
       ],
       "summary": "Runs the complete read-only runtime consistency audit across generated configs, skills, hooks, manifests, and installed agent assets.",
       "tags": [
@@ -14623,8 +14646,8 @@
       "name": "run_session_staleness",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        626,
-        630
+        677,
+        681
       ],
       "summary": "Delegates session staleness reporting or epoch comparison to the deployed helper command.",
       "tags": [
@@ -14640,8 +14663,8 @@
       "name": "main",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        633,
-        663
+        684,
+        714
       ],
       "summary": "Parses runtime-check options, reports findings, optionally performs one bounded repair pass, and returns failure when actionable drift remains.",
       "tags": [
@@ -14657,8 +14680,8 @@
       "name": "RepairAction",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        73,
-        76
+        76,
+        79
       ],
       "summary": "Immutable descriptor for one bounded runtime repair, including its category, target path, and command.",
       "tags": [
@@ -14674,8 +14697,8 @@
       "name": "AssetFinding",
       "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        79,
-        82
+        82,
+        85
       ],
       "summary": "Immutable record of a manifest installation step whose declared asset paths are missing.",
       "tags": [
@@ -14871,10 +14894,10 @@
       "type": "file",
       "name": "test_check_agent_runtime.py",
       "filePath": "tests/unit/test_check_agent_runtime.py",
-      "summary": "Exercises runtime drift detection and repair behavior for managed agent files, skills, manifests, executable modes, and stale or orphaned assets.",
+      "summary": "Exercises runtime drift detection and bounded repair behavior for managed agent files, skills, manifests, executable modes, and stale or orphaned assets.",
       "tags": [
         "test",
-        "runtime-assets",
+        "runtime-health",
         "repair",
         "regression"
       ],
@@ -14887,13 +14910,14 @@
       "filePath": "tests/unit/test_check_agent_runtime.py",
       "lineRange": [
         22,
-        700
+        758
       ],
-      "summary": "Regression suite for deployed-name mapping, runtime exclusions, tree drift detection, manifest findings, bounded repair selection, and repair convergence.",
+      "summary": "Regression suite for deployed-name mapping, ignored runtime state, semantic config comparison, manifest integrity, orphan classification, repair selection, and one-pass convergence.",
       "tags": [
         "test",
-        "regression",
-        "runtime-health"
+        "runtime-assets",
+        "repair",
+        "validation"
       ],
       "complexity": "complex"
     },
@@ -14902,12 +14926,12 @@
       "type": "file",
       "name": "test_runtime_health.py",
       "filePath": "tests/unit/test_runtime_health.py",
-      "summary": "Exercises agent runtime health flows spanning private run artifacts, generated launcher profiles, doctor checks, repair forwarding, and upgrade resilience.",
+      "summary": "Exercises agent runtime health flows spanning private run artifacts, generated launcher profiles, doctor checks, repair forwarding, and resilient tool upgrades.",
       "tags": [
         "test",
         "runtime-health",
         "agent-launcher",
-        "regression"
+        "tool-upgrade"
       ],
       "complexity": "complex"
     },
@@ -14918,13 +14942,14 @@
       "filePath": "tests/unit/test_runtime_health.py",
       "lineRange": [
         19,
-        792
+        800
       ],
-      "summary": "End-to-end-style unit suite for agent launcher privacy, generated profiles, runtime doctor checks, repair propagation, and resilient tool upgrades.",
+      "summary": "Builds isolated command fixtures to verify artifact privacy, fan-out safety, runtime doctor status propagation, bounded repair forwarding, and independent upgrade failure handling.",
       "tags": [
         "test",
-        "regression",
-        "runtime-health"
+        "runtime-health",
+        "security",
+        "regression"
       ],
       "complexity": "complex"
     },
@@ -16589,12 +16614,12 @@
       "type": "file",
       "name": "test_asset_manifest.py",
       "filePath": "tests/unit/test_asset_manifest.py",
-      "summary": "Validates shell-based agent asset manifest recording, including schema replacement, atomic failure behavior, permissions, updater coverage, and rendered chezmoi integration.",
+      "summary": "Validates shell-based agent asset manifest recording, including schema replacement, atomic failure safety, permission warnings, updater coverage, and rendered chezmoi integration.",
       "tags": [
         "test",
         "asset-manifest",
-        "shell-integration",
-        "atomic-write"
+        "atomic-write",
+        "shell-integration"
       ],
       "complexity": "complex"
     },
@@ -16604,15 +16629,15 @@
       "name": "AssetManifestTest",
       "filePath": "tests/unit/test_asset_manifest.py",
       "lineRange": [
-        22,
-        261
+        26,
+        357
       ],
-      "summary": "Unittest suite that runs manifest shell functions in isolated homes and verifies durable, permission-safe records for every supported agent asset installation step.",
+      "summary": "Runs manifest shell functions in temporary homes and verifies durable records for real installation steps, updater call coverage, source-root resolution, and failure behavior.",
       "tags": [
         "test",
         "asset-manifest",
-        "shell-integration",
-        "permissions"
+        "permissions",
+        "regression"
       ],
       "complexity": "complex"
     },
@@ -17013,7 +17038,8 @@
         "utility",
         "manifest",
         "install-state",
-        "atomic-write"
+        "atomic-write",
+        "tested"
       ],
       "complexity": "moderate"
     },
@@ -17093,19 +17119,20 @@
       "complexity": "moderate"
     },
     {
-      "id": "config:home/dot_codex/modify_security.config.toml",
+      "id": "config:home/dot_codex/modify_private_security.config.toml",
       "type": "config",
-      "name": "modify_security.config.toml",
-      "filePath": "home/dot_codex/modify_security.config.toml",
-      "summary": "Chezmoi modify script that renders the managed Codex security model profile and merges Codex-owned runtime tables while keeping profile hook trust authoritative and warning on divergent base trust hashes.",
+      "name": "modify_private_security.config.toml",
+      "filePath": "home/dot_codex/modify_private_security.config.toml",
+      "summary": "Chezmoi modify script that maintains the high-reasoning gpt-daybreak-blue-latest Codex security profile with CompactionDB notifications while preserving Codex-owned runtime tables and profile hook trust.",
       "tags": [
         "configuration",
+        "codex",
         "security-profile",
-        "chezmoi",
-        "runtime-state"
+        "runtime-merge",
+        "hook-trust"
       ],
-      "complexity": "complex",
-      "languageNotes": "Despite its target-style .toml name, this source is a Python chezmoi modify script that reads the current TOML from stdin and writes merged TOML to stdout."
+      "complexity": "moderate",
+      "languageNotes": "Executable Python is stored under a chezmoi modify_ TOML target and merges TOML tables without a third-party parser."
     },
     {
       "id": "document:home/dot_config/claude/rules/agmsg-orchestration.md",
@@ -17337,8 +17364,7 @@
         "agent-assets",
         "configuration",
         "security",
-        "automation",
-        "tested"
+        "automation"
       ],
       "complexity": "complex"
     },
@@ -17996,7 +18022,6 @@
         "test",
         "configuration",
         "code-generation",
-        "hooks",
         "security"
       ],
       "complexity": "complex"
@@ -18010,7 +18035,7 @@
         22,
         27
       ],
-      "summary": "Loads the agent-configuration generator module directly for isolated unit testing.",
+      "summary": "Loads the agent-configuration generator module directly from its repository path for isolated unit tests.",
       "tags": [
         "test-helper",
         "module-loading",
@@ -18027,7 +18052,7 @@
         30,
         97
       ],
-      "summary": "Builds a complete representative agent manifest used across configuration-generation tests.",
+      "summary": "Builds a complete representative agent manifest covering profiles, hooks, plugins, skills, MCP entries, and sandbox policy for generator tests.",
       "tags": [
         "test-fixture",
         "configuration",
@@ -18042,9 +18067,9 @@
       "filePath": "tests/unit/test_generate_agent_configs.py",
       "lineRange": [
         100,
-        505
+        507
       ],
-      "summary": "Regression suite for generated agent settings, model profiles, permission-gate hooks, managed paths, and runtime-state preservation.",
+      "summary": "Regression suite for generated settings, model-profile validation, permission hooks, managed paths, hook trust, and byte-idempotent runtime-state preservation.",
       "tags": [
         "test",
         "configuration",
@@ -18154,6 +18179,75 @@
         "hooks"
       ],
       "complexity": "complex"
+    },
+    {
+      "id": "function:scripts/update-agent-assets.sh:resolve_dotfiles_source_dir",
+      "type": "function",
+      "name": "resolve_dotfiles_source_dir",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        19,
+        35
+      ],
+      "summary": "Resolves the canonical dotfiles source root from the wrapper export or direct script location and rejects candidates without the vendored CompactionDB tree.",
+      "tags": [
+        "path-resolution",
+        "validation",
+        "compactiondb"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:home/dot_zshrc:claude-update",
+      "type": "function",
+      "name": "claude-update",
+      "filePath": "home/dot_zshrc",
+      "lineRange": [
+        45,
+        60
+      ],
+      "summary": "Upgrades the mise-managed Claude Code package without the normal release-age delay, then repairs its lifecycle scripts and optional dependencies at the selected version.",
+      "tags": [
+        "claude-code",
+        "mise",
+        "package-management"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:scripts/check-agent-runtime.py:chezmoi_drift_warnings",
+      "type": "function",
+      "name": "chezmoi_drift_warnings",
+      "filePath": "scripts/check-agent-runtime.py",
+      "summary": "Runs chezmoi drift verification and converts command failures or reported differences into runtime diagnostics.",
+      "tags": [
+        "chezmoi",
+        "validation",
+        "runtime-assets"
+      ],
+      "complexity": "simple",
+      "lineRange": [
+        174,
+        216
+      ]
+    },
+    {
+      "id": "function:tests/install/common/lifecycle.bats:run_update_fixture",
+      "type": "function",
+      "name": "run_update_fixture",
+      "filePath": "tests/install/common/lifecycle.bats",
+      "lineRange": [
+        15,
+        68
+      ],
+      "summary": "Builds an isolated fake update environment, records calls to chezmoi, mise, agent-asset, and Herdr commands, then runs the Make update target for failure-order assertions.",
+      "tags": [
+        "test-helper",
+        "fixture",
+        "lifecycle",
+        "shell-integration"
+      ],
+      "complexity": "moderate"
     }
   ],
   "edges": [
@@ -23976,7 +24070,7 @@
     },
     {
       "source": "config:home/dot_agents/agent-config.yaml",
-      "target": "config:home/dot_codex/modify_security.config.toml",
+      "target": "config:home/dot_codex/modify_private_security.config.toml",
       "type": "configures",
       "direction": "forward",
       "weight": 0.6
@@ -24823,28 +24917,28 @@
     },
     {
       "source": "document:home/dot_config/claude/rules/model-selection.md",
-      "target": "config:home/dot_codex/modify_deep.config.toml",
+      "target": "config:home/dot_codex/modify_private_deep.config.toml",
       "type": "documents",
       "direction": "forward",
       "weight": 0.5
     },
     {
       "source": "document:home/dot_config/claude/rules/model-selection.md",
-      "target": "config:home/dot_codex/modify_express.config.toml",
+      "target": "config:home/dot_codex/modify_private_express.config.toml",
       "type": "documents",
       "direction": "forward",
       "weight": 0.5
     },
     {
       "source": "document:home/dot_config/claude/rules/model-selection.md",
-      "target": "config:home/dot_codex/modify_review.config.toml",
+      "target": "config:home/dot_codex/modify_private_review.config.toml",
       "type": "documents",
       "direction": "forward",
       "weight": 0.5
     },
     {
       "source": "document:home/dot_config/claude/rules/model-selection.md",
-      "target": "config:home/dot_codex/modify_standard.config.toml",
+      "target": "config:home/dot_codex/modify_private_standard.config.toml",
       "type": "documents",
       "direction": "forward",
       "weight": 0.5
@@ -24853,6 +24947,125 @@
       "source": "document:home/dot_config/claude/rules/model-selection.md",
       "target": "config:home/dot_codex/modify_private_config.toml",
       "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "function:scripts/update-agent-assets.sh:resolve_dotfiles_source_dir",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:home/dot_zshrc",
+      "target": "function:home/dot_zshrc:claude-update",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:home/.chezmoiscripts/common/run_once_after_06-install-agent-assets.sh.tmpl",
+      "target": "file:scripts/update-agent-assets.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:home/dot_zshrc",
+      "target": "file:home/dot_local/bin/common/executable_herdr-session",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "function:scripts/check-agent-runtime.py:chezmoi_drift_warnings",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "function:scripts/check-agent-runtime.py:chezmoi_drift_warnings",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:tests/install/common/lifecycle.bats",
+      "target": "function:tests/install/common/lifecycle.bats:run_update_fixture",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/lib/asset-manifest.sh",
+      "target": "file:tests/unit/test_asset_manifest.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "file:tests/unit/test_asset_manifest.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "file:tests/unit/test_check_agent_runtime.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:scripts/generate-agent-configs.py",
+      "target": "file:tests/unit/test_generate_agent_configs.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:home/dot_local/bin/common/executable_herdr-agents",
+      "target": "file:tests/unit/test_herdr_agents.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:home/dot_local/bin/common/executable_herdr-session",
+      "target": "file:tests/unit/test_herdr_agents.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:home/dot_local/bin/common/executable_agent-fanout",
+      "target": "file:tests/unit/test_runtime_health.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:scripts/check-tools.sh",
+      "target": "file:tests/unit/test_runtime_health.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:scripts/upgrade-tools.sh",
+      "target": "file:tests/unit/test_runtime_health.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "file:tests/unit/test_runtime_health.py",
+      "type": "tested_by",
       "direction": "forward",
       "weight": 0.5
     }
@@ -24892,11 +25105,7 @@
         "document:home/dot_agents/skills/agmsg/templates/cmd.codex.md",
         "document:home/dot_agents/skills/agmsg/templates/cmd.copilot.md",
         "document:home/dot_agents/skills/agmsg/templates/cmd.gemini.md",
-        "config:home/dot_codex/modify_deep.config.toml",
-        "config:home/dot_codex/modify_express.config.toml",
         "config:home/dot_codex/modify_private_config.toml",
-        "config:home/dot_codex/modify_review.config.toml",
-        "config:home/dot_codex/modify_standard.config.toml",
         "file:home/dot_config/alias/client.sh",
         "file:home/dot_config/alias/common.sh",
         "file:home/dot_config/alias/server.sh",
@@ -25103,9 +25312,13 @@
         "file:home/symlink_dot_bashrc.tmpl",
         "file:home/dot_local/bin/common/executable_agent-session-staleness",
         "file:home/dot_local/bin/common/executable_remove-agent-asset",
-        "config:home/dot_codex/modify_security.config.toml",
         "file:home/dot_agents/skills/agmsg/scripts/lib/identifier.sh",
-        "config:home/dot_claude/skills/agmsg/scripts/lib/symlink_identifier.sh.tmpl"
+        "config:home/dot_claude/skills/agmsg/scripts/lib/symlink_identifier.sh.tmpl",
+        "config:home/dot_codex/modify_private_deep.config.toml",
+        "config:home/dot_codex/modify_private_express.config.toml",
+        "config:home/dot_codex/modify_private_review.config.toml",
+        "config:home/dot_codex/modify_private_security.config.toml",
+        "config:home/dot_codex/modify_private_standard.config.toml"
       ]
     },
     {

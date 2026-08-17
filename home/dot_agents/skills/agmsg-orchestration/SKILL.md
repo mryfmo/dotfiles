@@ -15,6 +15,8 @@ Use this skill for structured multi-agent work where a Claude Code orchestrator 
 - `herdr` panes are optional worker terminals; they are a launch surface, not the protocol.
 - This skill adopts only the Hermes Skill Subset ideas: `SKILL.md` structure, progressive disclosure, activation metadata, task/error/user-correction skill decisions, and separated candidate/promoted/rejected/merged registries. Do not introduce Hermes Agents runtime, memory, profiles, personalities, toolsets, plugins, UI, or automation framework.
 
+Pi workers use identity `pi-<profile>-<project-suffix>` and run through `agmsg-pi-worker --team <team> --identity <pi-...> --project <scratch-or-worktree> --scratch-root <root> [--provider <provider> --model <model>]`. The bridge delivers raw AGMSG-TASK prompts at RPC turn boundaries; Pi must read the task file and send its own AGMSG-RESULT through `send.sh`.
+
 ## Message Contract v1
 
 Send messages as single-line records so inbox/history output stays parseable.

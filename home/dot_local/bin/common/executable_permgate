@@ -103,6 +103,8 @@ def load_policy() -> dict[str, Any]:
             raise ValueError(f"{name} provider must be an object")
         if not isinstance(provider.get("llm_enabled"), bool):
             raise ValueError(f"{name} llm_enabled must be boolean")
+        if provider.get("workspace_write", False) is not False:
+            raise ValueError(f"{name} workspace_write must remain false")
         timeout = provider.get("timeout_seconds")
         if isinstance(timeout, bool) or not isinstance(timeout, (int, float)):
             raise ValueError(f"{name} timeout_seconds must be numeric")
@@ -123,10 +125,38 @@ def load_policy() -> dict[str, Any]:
     pi = policy.get("pi")
     if not isinstance(pi, dict):
         raise TypeError("pi policy must be an object")
-    if pi.get("decision_layers") != ["deny_patterns", "allow_patterns"]:
-        raise ValueError("pi must reuse the deterministic deny and allow layers")
+    if pi.get("decision_layers") != [
+        "deny_patterns",
+        "workspace_write",
+        "allow_patterns",
+    ]:
+        raise ValueError("pi must apply deny, workspace, then allow layers")
     if pi.get("llm_enabled") is not False:
         raise ValueError("pi llm classifier must remain disabled")
+    if pi.get("workspace_write") is not True:
+        raise ValueError("pi workspace_write must be enabled")
+    read_deny_patterns = pi.get("read_deny_patterns")
+    if not isinstance(read_deny_patterns, list) or not read_deny_patterns:
+        raise ValueError("pi read_deny_patterns must be a non-empty list")
+    read_deny_ids: set[str] = set()
+    for pattern in read_deny_patterns:
+        if not isinstance(pattern, dict) or set(pattern) != {"id", "regex"}:
+            raise ValueError("pi read deny patterns must define only id and regex")
+        pattern_id = pattern["id"]
+        regex = pattern["regex"]
+        if (
+            not isinstance(pattern_id, str)
+            or not pattern_id
+            or pattern_id in read_deny_ids
+            or not isinstance(regex, str)
+            or not regex
+        ):
+            raise ValueError("pi read deny pattern ids and regexes must be unique strings")
+        try:
+            re.compile(regex)
+        except re.error as error:
+            raise ValueError("pi read deny pattern regex must compile") from error
+        read_deny_ids.add(pattern_id)
     categories = policy.get("categories")
     if not isinstance(categories, list) or not all(
         isinstance(item, str) for item in categories
@@ -449,6 +479,76 @@ def decision_record(
     }
 
 
+def workspace_path_allowed(cwd: object, path: object) -> bool:
+    if not isinstance(cwd, str) or not isinstance(path, str):
+        return False
+    cwd_path = Path(cwd)
+    if not cwd_path.is_absolute():
+        return False
+    try:
+        resolved_cwd = cwd_path.resolve(strict=True)
+        if not resolved_cwd.is_dir() or resolved_cwd == Path(resolved_cwd.anchor):
+            return False
+        candidate = Path(path)
+        if not candidate.is_absolute():
+            candidate = resolved_cwd / candidate
+        resolved_path = candidate.resolve(strict=False)
+    except (OSError, RuntimeError):
+        return False
+    return resolved_path != resolved_cwd and resolved_path.is_relative_to(resolved_cwd)
+
+
+def pi_read_decision(
+    cwd: object, path: object, patterns: list[dict[str, str]]
+) -> str | None:
+    if not isinstance(cwd, str) or not isinstance(path, str):
+        return None
+    try:
+        candidate = Path(path)
+        if not candidate.is_absolute():
+            resolved_cwd = Path(cwd).resolve(strict=True)
+            if not resolved_cwd.is_dir():
+                return None
+            candidate = resolved_cwd / candidate
+        resolved_path = candidate.resolve(strict=True)
+        match_paths = [resolved_path.as_posix().casefold()]
+        try:
+            relative = resolved_path.relative_to(Path.home().resolve(strict=True))
+            match_paths.append(f"~/{relative.as_posix()}".casefold())
+        except ValueError:
+            pass
+    except (OSError, RuntimeError):
+        return None
+    if any(
+        re.fullmatch(pattern["regex"], match_path)
+        for pattern in patterns
+        for match_path in match_paths
+    ):
+        return "deny"
+    return "allow"
+
+
+def pi_workspace_decision(
+    agent: str, payload: dict[str, Any], policy: dict[str, Any]
+) -> str | None:
+    if agent != "pi" or policy["pi"].get("workspace_write") is not True:
+        return None
+    tool, tool_input, _ = request_parts(payload)
+    if tool == "Read":
+        return pi_read_decision(
+            payload.get("cwd"),
+            tool_input.get("path"),
+            policy["pi"]["read_deny_patterns"],
+        )
+    if tool in {"Write", "Edit"}:
+        return (
+            "allow"
+            if workspace_path_allowed(payload.get("cwd"), tool_input.get("path"))
+            else None
+        )
+    return None
+
+
 def decide(
     agent: str, payload: dict[str, Any], policy: dict[str, Any]
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
@@ -469,7 +569,12 @@ def decide(
             break
     else:
         safe_single_action = tool != "Bash" or is_bounded_shell_command(match_text)
-        if safe_single_action:
+        workspace_decision = pi_workspace_decision(agent, payload, policy)
+        if workspace_decision is not None:
+            layer = "workspace"
+            decision = workspace_decision
+            output = hook_output(workspace_decision)
+        if output is None and safe_single_action:
             for pattern in policy.get("allow_patterns", []):
                 if pattern_match(pattern, tool, match_text):
                     layer = "deterministic"
@@ -515,15 +620,22 @@ def decide(
 def pi_payload(action: dict[str, Any]) -> dict[str, Any]:
     tool = action.get("tool")
     field = "command" if tool == "bash" else "path"
-    expected = {"tool", field}
-    if tool not in {"bash", "write", "edit"} or set(action) != expected:
+    expected = {"tool", field, "cwd"}
+    if tool not in {"bash", "read", "write", "edit"} or set(action) != expected:
         raise ValueError("invalid normalized Pi action")
     value = action.get(field)
-    if not isinstance(value, str):
+    cwd = action.get("cwd")
+    if not isinstance(value, str) or not isinstance(cwd, str):
         raise TypeError("normalized Pi action value must be a string")
     return {
-        "tool_name": {"bash": "Bash", "write": "Write", "edit": "Edit"}[tool],
+        "tool_name": {
+            "bash": "Bash",
+            "read": "Read",
+            "write": "Write",
+            "edit": "Edit",
+        }[tool],
         "tool_input": {field: value},
+        "cwd": cwd,
     }
 
 

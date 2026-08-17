@@ -34,6 +34,7 @@ function context({ interactive = false, confirmed = false, mode } = {}) {
     let confirmations = 0;
     return {
         ctx: {
+            cwd: "/workspace/project",
             mode: mode ?? (interactive ? "tui" : "print"),
             hasUI: interactive,
             ui: {
@@ -57,9 +58,22 @@ test("allow proceeds and sends normalized stdin with the seven-second timeout", 
             file: "permgate",
             args: ["pi"],
             options: { encoding: "utf8", timeout: 7000 },
-            input: '{"tool":"bash","command":"git status"}',
+            input: '{"tool":"bash","command":"git status","cwd":"/workspace/project"}',
         },
     ]);
+});
+
+test("read sends cwd while preserving the path bytes for permgate", async () => {
+    const gate = harness();
+
+    assert.equal(
+        await gate.invoke(event("read", { path: "../raw/../input.txt" }), context().ctx),
+        undefined,
+    );
+    assert.equal(
+        gate.calls[0].input,
+        '{"tool":"read","path":"../raw/../input.txt","cwd":"/workspace/project"}',
+    );
 });
 
 test("deny blocks with the fixed one-line reason", async () => {
@@ -112,12 +126,16 @@ test("nonzero, timeout, malformed output, and malformed gated input fail closed"
 
     const gate = harness();
     assert.deepEqual(await gate.invoke(event("write", {}), context().ctx), BLOCKED);
+    assert.deepEqual(
+        await gate.invoke(event("write", { path: "output.txt" }), { ...context().ctx, cwd: undefined }),
+        BLOCKED,
+    );
     assert.equal(gate.calls.length, 0);
 });
 
-test("read-only passthrough tools never invoke permgate", async () => {
+test("ungated passthrough tools never invoke permgate", async () => {
     const gate = harness();
-    for (const toolName of ["read", "grep", "find", "ls"]) {
+    for (const toolName of ["grep", "find", "ls", "agmsg_send"]) {
         assert.equal(await gate.invoke(event(toolName, { path: "." }), context().ctx), undefined);
     }
     assert.equal(gate.calls.length, 0);

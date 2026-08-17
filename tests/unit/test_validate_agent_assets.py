@@ -136,12 +136,13 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "home/dot_pi/agent/settings.json", json.dumps(settings)
         )
         (self.temp_dir / "home/dot_pi/agent/extensions").mkdir(parents=True)
-        extension_source = ROOT / "home/dot_pi/agent/extensions/permgate.ts"
-        if extension_source.exists():
-            shutil.copy2(
-                extension_source,
-                self.temp_dir / "home/dot_pi/agent/extensions/permgate.ts",
-            )
+        for extension_name in ("permgate.ts", "contextdb.ts", "agmsg.ts"):
+            extension_source = ROOT / "home/dot_pi/agent/extensions" / extension_name
+            if extension_source.exists():
+                shutil.copy2(
+                    extension_source,
+                    self.temp_dir / "home/dot_pi/agent/extensions" / extension_name,
+                )
         self.write_text_file(
             "home/dot_mise/config.toml",
             '[tools]\n"npm:@earendil-works/pi-coding-agent" = '
@@ -189,6 +190,39 @@ class ValidateAgentAssetsTest(unittest.TestCase):
     def test_pi_assets_reject_tampered_permgate_extension(self) -> None:
         self.write_pi_assets()
         extension_path = self.temp_dir / "home/dot_pi/agent/extensions/permgate.ts"
+        self.assertTrue(extension_path.exists())
+        extension_path.write_text(extension_path.read_text() + "// tampered\n")
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_pi_assets()
+
+    def test_pi_assets_accept_matching_contextdb_extension_hash(self) -> None:
+        self.write_pi_assets()
+        extension_path = self.temp_dir / "home/dot_pi/agent/extensions/contextdb.ts"
+        self.assertTrue(extension_path.exists())
+
+        self.module.validate_pi_assets()
+
+    def test_pi_assets_reject_tampered_contextdb_extension(self) -> None:
+        self.write_pi_assets()
+        extension_path = self.temp_dir / "home/dot_pi/agent/extensions/contextdb.ts"
+        self.assertTrue(extension_path.exists())
+        extension_path.write_text(extension_path.read_text() + "// tampered\n")
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_pi_assets()
+
+    def test_pi_assets_require_agmsg_extension_hash(self) -> None:
+        self.assertIn("agmsg.ts", self.module.PI_EXTENSION_SHA256)
+
+    def test_pi_assets_accept_matching_agmsg_extension_hash(self) -> None:
+        self.write_pi_assets()
+
+        self.module.validate_pi_assets()
+
+    def test_pi_assets_reject_tampered_agmsg_extension(self) -> None:
+        self.write_pi_assets()
+        extension_path = self.temp_dir / "home/dot_pi/agent/extensions/agmsg.ts"
         self.assertTrue(extension_path.exists())
         extension_path.write_text(extension_path.read_text() + "// tampered\n")
 

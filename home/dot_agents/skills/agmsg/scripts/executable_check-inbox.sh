@@ -6,9 +6,13 @@ set -euo pipefail
 
 TYPE="${1:?Usage: check-inbox.sh <type> <project_path>}"
 PROJECT="${2:?Missing project_path}"
+ACTIVE_NAME="${AGMSG_ACTIVE_NAME:-}"
+TEAM_FILTER="${AGMSG_TEAM_FILTER:-}"
+FORCE_CHECK="${AGMSG_CHECK_INBOX_FORCE:-0}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+# shellcheck disable=SC1091
 source "$SCRIPT_DIR/lib/storage.sh"
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/lib/actas-lock.sh"
@@ -48,13 +52,30 @@ if echo "$WHOAMI" | grep -q "not_joined=true"; then
     exit 0
 fi
 
-# Handle multiple identities: use first agent name
-if echo "$WHOAMI" | grep -q "multiple=true"; then
-    AGENT=$(echo "$WHOAMI" | sed -n 's/.*agents=\([^,]*\).*/\1/p')
+# A bridge can explicitly narrow delivery to one registered identity. Existing
+# hook callers leave AGMSG_ACTIVE_NAME unset and retain byte-identical behavior.
+if [ -n "$ACTIVE_NAME" ]; then
+    PAIRS="$("$SCRIPT_DIR"/identities.sh "$PROJECT" "$TYPE")"
+    PAIRS=$(printf '%s\n' "$PAIRS" | awk -F '\t' -v name="$ACTIVE_NAME" '$2 == name')
+    [ -n "$PAIRS" ] || exit 0
+    AGENT="$ACTIVE_NAME"
+    TEAMS=$(printf '%s\n' "$PAIRS" | cut -f1 | awk '!seen[$0]++' | paste -sd, -)
 else
-    AGENT=$(echo "$WHOAMI" | sed -n 's/.*agent=\([^ ]*\).*/\1/p')
+    # Handle multiple identities: use first agent name
+    if echo "$WHOAMI" | grep -q "multiple=true"; then
+        AGENT=$(echo "$WHOAMI" | sed -n 's/.*agents=\([^,]*\).*/\1/p')
+    else
+        AGENT=$(echo "$WHOAMI" | sed -n 's/.*agent=\([^ ]*\).*/\1/p')
+    fi
+    TEAMS=$(echo "$WHOAMI" | sed -n 's/.*teams=\([^ ]*\).*/\1/p')
 fi
-TEAMS=$(echo "$WHOAMI" | sed -n 's/.*teams=\([^ ]*\).*/\1/p')
+
+if [ -n "$TEAM_FILTER" ]; then
+    if ! printf '%s\n' "$TEAMS" | tr ',' '\n' | grep -Fqx -- "$TEAM_FILTER"; then
+        exit 0
+    fi
+    TEAMS="$TEAM_FILTER"
+fi
 
 if [ -z "$AGENT" ] || [ -z "$TEAMS" ]; then
     exit 0
@@ -66,7 +87,7 @@ fi
 # when the default db dir doesn't exist.
 MARKER="$SKILL_DIR/run/.lastcheck-$AGENT"
 
-if [ -f "$MARKER" ]; then
+if [ "$FORCE_CHECK" != "1" ] && [ -f "$MARKER" ]; then
     if [ "$(uname)" = "Darwin" ]; then
         last=$(stat -f %m "$MARKER")
     else
@@ -119,11 +140,19 @@ for team in "${TEAM_LIST[@]}"; do
     other:*) continue ;;
     esac
 
-    RESULT=$(sqlite3 "$DB" "
-    SELECT from_agent || char(31) || replace(replace(body, char(10), '\n'), char(9), '\t') || char(31) || created_at
-    FROM messages WHERE team='$team' AND to_agent='$AGENT' AND read_at IS NULL
-    ORDER BY created_at ASC;
-  ")
+    if [ -n "$ACTIVE_NAME" ]; then
+        RESULT=$(sqlite3 -separator $'\x1f' "$DB" "
+      SELECT from_agent, replace(replace(body, char(10), '\n'), char(9), '\t'), created_at
+      FROM messages WHERE team='$team' AND to_agent='$AGENT' AND read_at IS NULL
+      ORDER BY created_at ASC;
+    ")
+    else
+        RESULT=$(sqlite3 "$DB" "
+      SELECT from_agent || char(31) || replace(replace(body, char(10), '\n'), char(9), '\t') || char(31) || created_at
+      FROM messages WHERE team='$team' AND to_agent='$AGENT' AND read_at IS NULL
+      ORDER BY created_at ASC;
+    ")
+    fi
     if [ -n "$RESULT" ]; then
         COUNT=$(echo "$RESULT" | wc -l | tr -d ' ')
         OUTPUT+="$COUNT new message(s) in $team:"$'\n'

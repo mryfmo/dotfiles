@@ -1,15 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Usage: rename.sh <team> <old_name> <new_name>
-#
-# Renames an agent in team config and updates all messages in DB.
+# @file rename
+# @brief Rename an agent in team configuration and stored messages.
+# @arg $1 string Team name.
+# @arg $2 string Existing agent identity.
+# @arg $3 string New agent identity.
 
 TEAM="${1:?Usage: rename.sh <team> <old_name> <new_name>}"
 OLD_NAME="${2:?Missing old agent name}"
 NEW_NAME="${3:?Missing new agent name}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/lib/identifier.sh"
+agmsg_validate_identifiers 'rename.sh <team> <old_name> <new_name>' "$TEAM" "$OLD_NAME" "$NEW_NAME"
+# shellcheck disable=SC1091
 source "$SCRIPT_DIR/lib/storage.sh"
 TEAMS_DIR="$SCRIPT_DIR/../teams"
 DB="$(agmsg_db_path)"

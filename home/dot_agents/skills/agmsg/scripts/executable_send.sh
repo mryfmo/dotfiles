@@ -13,15 +13,10 @@ FROM="${2:?Missing from agent}"
 TO="${3:?Missing to agent}"
 BODY="${4:?Missing message body}"
 
-IDENTIFIER_PATTERN='^[a-z0-9][a-z0-9_-]{0,63}$'
-for identifier in "$TEAM" "$FROM" "$TO"; do
-    if [[ ! "$identifier" =~ $IDENTIFIER_PATTERN ]]; then
-        printf 'Usage: send.sh <team> <from> <to> <message> (identifiers must match %s)\n' "$IDENTIFIER_PATTERN" >&2
-        exit 1
-    fi
-done
-
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/lib/identifier.sh"
+agmsg_validate_identifiers 'send.sh <team> <from> <to> <message>' "$TEAM" "$FROM" "$TO"
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/lib/storage.sh"
 DB="$(agmsg_db_path)"

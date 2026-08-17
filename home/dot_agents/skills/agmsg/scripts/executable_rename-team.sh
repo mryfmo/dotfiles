@@ -1,22 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Usage: rename-team.sh <old_team> <new_team>
-#
-# Renames a team:
-#   1. moves teams/<old>/ to teams/<new>/
-#   2. updates "name" field in the moved config.json
-#   3. updates messages.db: UPDATE messages SET team=<new> WHERE team=<old>
+# @file rename-team
+# @brief Rename a team in its directory, configuration, and stored messages.
+# @arg $1 string Existing team name.
+# @arg $2 string New team name.
 
 OLD_TEAM="${1:?Usage: rename-team.sh <old_team> <new_team>}"
 NEW_TEAM="${2:?Missing new team name}"
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/lib/identifier.sh"
+agmsg_validate_identifiers 'rename-team.sh <old_team> <new_team>' "$OLD_TEAM" "$NEW_TEAM"
 
 if [ "$OLD_TEAM" = "$NEW_TEAM" ]; then
     echo "Old and new team names are the same: $OLD_TEAM"
     exit 1
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
 source "$SCRIPT_DIR/lib/storage.sh"
 TEAMS_DIR="$SCRIPT_DIR/../teams"
 DB="$(agmsg_db_path)"

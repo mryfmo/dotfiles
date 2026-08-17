@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "gitCommitHash": "03621422f732c6be0eb318a137ff572ebeee47c8",
-  "generatedAt": "2026-08-16T07:27:54.965Z",
+  "gitCommitHash": "520bd686bb376f84f82f3c9d11230011c0157424",
+  "generatedAt": "2026-08-17T10:02:15.363Z",
   "files": {
     ".chezmoiroot": {
       "filePath": ".chezmoiroot",
@@ -4015,32 +4015,32 @@
     },
     "home/dot_agents/agent-config.yaml": {
       "filePath": "home/dot_agents/agent-config.yaml",
-      "contentHash": "3d9913afc505b87d5a0d4b564562a9d783e1322005aa043d5dcf53205c60827b",
+      "contentHash": "a3d657bbc8f52391215c08ec494fa58a98044f9976b4f03df5c4792a2ca5c75f",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 364,
+      "totalLines": 354,
       "hasStructuralAnalysis": true
     },
     "home/dot_agents/model-profiles.env": {
       "filePath": "home/dot_agents/model-profiles.env",
-      "contentHash": "df41abfad50774585af3bbfde70f24a4e705f2d31dc8fae059a777e8fc6b9f45",
+      "contentHash": "cb18254c45ade9c4d02dcaaa8cca8297d15a52f95bf8258a84a69082b2b7aebd",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 12,
+      "totalLines": 14,
       "hasStructuralAnalysis": true
     },
     "home/dot_agents/permgate-policy.yaml": {
       "filePath": "home/dot_agents/permgate-policy.yaml",
-      "contentHash": "b51f1ee3043bdc38a11c98b1fa07e24a8f9cfabeecced76e90590002ba9f9103",
+      "contentHash": "af2f82b2964cbd614ea688b17f19c183c7ec3734e870529ff2d9c388ae090476",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 144,
+      "totalLines": 159,
       "hasStructuralAnalysis": true
     },
     "home/dot_agents/plugins/marketplace.json": {
@@ -4065,12 +4065,12 @@
     },
     "home/dot_agents/skills/agmsg-orchestration/SKILL.md": {
       "filePath": "home/dot_agents/skills/agmsg-orchestration/SKILL.md",
-      "contentHash": "7e27546d7e7bdd5cf3755fe5631f8dda42d9dcbcbacc1d66c1e9e8d0def99c14",
+      "contentHash": "764e08103df782189d97c00bad62c7df067cd704c4552f0635344a657e4e498b",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 102,
+      "totalLines": 183,
       "hasStructuralAnalysis": true
     },
     "home/dot_agents/skills/agmsg/SKILL.md": {
@@ -4125,12 +4125,12 @@
     },
     "home/dot_agents/skills/agmsg/scripts/executable_check-inbox.sh": {
       "filePath": "home/dot_agents/skills/agmsg/scripts/executable_check-inbox.sh",
-      "contentHash": "50a3e59e5d2a83a0619bebd3db7b03b3d3c9dcb14983c597ce8eb0c1b8e48d52",
+      "contentHash": "52b99384d60b36cdcfda294887f1e2215bf6f822610b9f31e27de6daa2a75fe0",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 166,
+      "totalLines": 167,
       "hasStructuralAnalysis": true
     },
     "home/dot_agents/skills/agmsg/scripts/executable_config.sh": {
@@ -4315,12 +4315,12 @@
     },
     "home/dot_agents/skills/agmsg/scripts/executable_join.sh": {
       "filePath": "home/dot_agents/skills/agmsg/scripts/executable_join.sh",
-      "contentHash": "5a33165caeaa1b26d75f3ae1411cd8e35d4a9a03c9000645376a29a76056c175",
+      "contentHash": "7100d4e398915c6b15fc2b1477492190e2fe901a23f2c17226d8030801f5af76",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 95,
+      "totalLines": 105,
       "hasStructuralAnalysis": true
     },
     "home/dot_agents/skills/agmsg/scripts/executable_leave.sh": {
@@ -4335,22 +4335,22 @@
     },
     "home/dot_agents/skills/agmsg/scripts/executable_rename-team.sh": {
       "filePath": "home/dot_agents/skills/agmsg/scripts/executable_rename-team.sh",
-      "contentHash": "142b208c5c99dff72d3db30e4c8fe419ea4a27f0e15b6b376834694ada3fdca6",
+      "contentHash": "eb6f53dc38669f9ff9cc50abd6ed6e19f8a763d437d1894ba0ed62679e7c226e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 63,
+      "hasStructuralAnalysis": true
+    },
+    "home/dot_agents/skills/agmsg/scripts/executable_rename.sh": {
+      "filePath": "home/dot_agents/skills/agmsg/scripts/executable_rename.sh",
+      "contentHash": "00c183778e4cdd3ffab7aceed9983a55b0bbeafee44cf2023c48741fef64c570",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
       "totalLines": 60,
-      "hasStructuralAnalysis": true
-    },
-    "home/dot_agents/skills/agmsg/scripts/executable_rename.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/executable_rename.sh",
-      "contentHash": "1136be995929e5f358a1a8313fae34a2e12ab9d06e0d1a491c7f9cc836c109e9",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 54,
       "hasStructuralAnalysis": true
     },
     "home/dot_agents/skills/agmsg/scripts/executable_reset.sh": {
@@ -4365,12 +4365,19 @@
     },
     "home/dot_agents/skills/agmsg/scripts/executable_send.sh": {
       "filePath": "home/dot_agents/skills/agmsg/scripts/executable_send.sh",
-      "contentHash": "1371f289ee5a93192b856da273015e23431181f477710b8f436c0fdd8ffa79d7",
-      "functions": [],
+      "contentHash": "d52406f2e48de7c3b89f88d39ee1089fa440386e8bf3b6f897503657532b38ca",
+      "functions": [
+        {
+          "name": "sql_literal",
+          "params": [],
+          "exported": false,
+          "lineCount": 5
+        }
+      ],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 22,
+      "totalLines": 44,
       "hasStructuralAnalysis": true
     },
     "home/dot_agents/skills/agmsg/scripts/executable_session-end.sh": {
@@ -4429,7 +4436,7 @@
     },
     "home/dot_agents/skills/agmsg/scripts/executable_whoami.sh": {
       "filePath": "home/dot_agents/skills/agmsg/scripts/executable_whoami.sh",
-      "contentHash": "db71a30781e80c73363e4e31f1f88f5fc03b36a128b64ad598d0eebe6b82e151",
+      "contentHash": "0b2fbc6d63d8688f44c8a2b79351d981b6f99cbd5090f449c92a3e2a7de62315",
       "functions": [
         {
           "name": "detect_cli_type",
@@ -4441,7 +4448,7 @@
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 142,
+      "totalLines": 135,
       "hasStructuralAnalysis": true
     },
     "home/dot_agents/skills/agmsg/scripts/lib/actas-lock.sh": {
@@ -6024,12 +6031,12 @@
     },
     "home/dot_config/claude/rules/agmsg-orchestration.md": {
       "filePath": "home/dot_config/claude/rules/agmsg-orchestration.md",
-      "contentHash": "680feb82a87e1712b57a05173d090fc91da411378d38535eb9313ab53f211b2d",
+      "contentHash": "16eca016aa94516e2a1d8da5d2f8c29c137b540f9205b1a68ebbbc9c94e32f1e",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 21,
+      "totalLines": 8,
       "hasStructuralAnalysis": true
     },
     "home/dot_config/claude/rules/ask-user-question.md": {
@@ -6074,12 +6081,12 @@
     },
     "home/dot_config/claude/rules/model-selection.md": {
       "filePath": "home/dot_config/claude/rules/model-selection.md",
-      "contentHash": "3130a65bdf01a5c595e685a3618979510aeb34e1d6a48d0bd7d873e6ddf4b56f",
+      "contentHash": "e0bedce89f180118bb77f8f0a40b83ef765a2883ca7321c976205f9becd8864b",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 9,
+      "totalLines": 11,
       "hasStructuralAnalysis": true
     },
     "home/dot_config/claude/rules/ponytail.md": {
@@ -6114,12 +6121,12 @@
     },
     "home/dot_config/codex/AGENTS.md": {
       "filePath": "home/dot_config/codex/AGENTS.md",
-      "contentHash": "d008d2b97a1d85197f6dd6930f8b967618ca65f03ebb0912582af27d61f156bd",
+      "contentHash": "09ad0f73b074c4512909b2acc932784321b94321c55df69a77238aee6b24565d",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 125,
+      "totalLines": 69,
       "hasStructuralAnalysis": true
     },
     "home/dot_config/ghostty/config": {
@@ -6441,12 +6448,12 @@
     },
     "home/dot_local/bin/common/executable_permgate": {
       "filePath": "home/dot_local/bin/common/executable_permgate",
-      "contentHash": "3a9b6c76378badb3f1f9cafdb0462ffa6b036142b1dfa071ea60aa65b11b6fc8",
+      "contentHash": "990d3f14ac8df16a49da125cf1861929129dbc1b7796ab8565de97995e91bb20",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 611,
+      "totalLines": 786,
       "hasStructuralAnalysis": false
     },
     "home/dot_local/bin/common/executable_setup-gh": {
@@ -9687,7 +9694,7 @@
     },
     "scripts/validate-agent-assets.py": {
       "filePath": "scripts/validate-agent-assets.py",
-      "contentHash": "86631be2b58b5e6f49ddc6615d8635de4c1a423a8284bfa6d9fd734a344d0742",
+      "contentHash": "0d83ce39ca056ac78c43c3abe42742d3eddcc8057aad97384824d0f7a6b0ebc6",
       "functions": [
         {
           "name": "fail",
@@ -9848,7 +9855,7 @@
           "params": [],
           "returnType": "dict[str, Any]",
           "exported": true,
-          "lineCount": 50
+          "lineCount": 58
         },
         {
           "name": "validate_mcp_parity",
@@ -10041,7 +10048,7 @@
         "validate_no_obvious_secrets",
         "main"
       ],
-      "totalLines": 893,
+      "totalLines": 901,
       "hasStructuralAnalysis": true
     },
     "setup.sh": {
@@ -10854,7 +10861,7 @@
     },
     "tests/unit/test_generate_agent_configs.py": {
       "filePath": "tests/unit/test_generate_agent_configs.py",
-      "contentHash": "3e625812da716887ae48638a320e77ba2fb5b1d88150bd7364c086e3ac21dfd1",
+      "contentHash": "6719d25bd2f6327d7f137045d6f7315cb6ccc5e1bb1b5486a110dbd8e6a18aa0",
       "functions": [
         {
           "name": "load_generator",
@@ -10879,6 +10886,7 @@
             "test_claude_skill_symlink_outputs_strip_executable_target_prefix",
             "test_expected_outputs_uses_codex_baseline_path",
             "test_profile_modify_scripts_preserve_runtime_state",
+            "test_security_profile_renders_launcher_and_expanded_notify",
             "test_profile_modify_scripts_are_byte_idempotent_with_runtime_state",
             "test_profile_modify_scripts_preserve_repeated_runtime_tables",
             "test_profile_modify_scripts_seed_base_hook_trust",
@@ -10895,7 +10903,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 360
+          "lineCount": 406
         }
       ],
       "imports": [
@@ -10953,7 +10961,7 @@
         "sample_manifest",
         "GenerateAgentConfigsTest"
       ],
-      "totalLines": 464,
+      "totalLines": 510,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_herdr_agents.py": {
@@ -11126,7 +11134,7 @@
     },
     "tests/unit/test_permgate.py": {
       "filePath": "tests/unit/test_permgate.py",
-      "contentHash": "3cbb4c00f7b0d24a915caef129012d26be1a43e3d22f630a98c5083ffd029d7c",
+      "contentHash": "a1c82f4b1d5fe87e5da6cff62c1175d68e869b2c2855ba71c768d7fcd2f61eda",
       "functions": [
         {
           "name": "permission_behavior",
@@ -11151,6 +11159,22 @@
             "read_log",
             "test_layer_one_allows_documented_claude_and_codex_contracts",
             "test_layer_one_deny_uses_both_hook_output_schemas",
+            "test_cli_protocol_emits_each_compact_decision",
+            "test_cli_protocol_internal_failure_is_nonzero",
+            "test_cli_policy_pins_shared_layers_and_disables_llm",
+            "test_cli_protocol_rejects_malformed_normalized_action",
+            "test_cli_workspace_allows_in_cwd_read_write_and_edit",
+            "test_cli_read_allows_plain_resolvable_path_outside_workspace",
+            "test_cli_read_denies_each_sensitive_path_family",
+            "test_cli_read_resolves_symlinks_and_asks_for_unresolvable_paths",
+            "test_cli_workspace_rejects_path_escapes_root_and_symlink_escape",
+            "test_cli_workspace_asks_for_looping_or_missing_parent",
+            "test_cli_workspace_never_writes_through_final_symlink",
+            "test_cli_workspace_resolves_macos_var_alias_identically",
+            "test_cli_bash_send_lane_is_removed",
+            "test_cli_reuses_every_shared_bash_allow_pattern",
+            "test_cli_catastrophic_deny_precedes_workspace",
+            "test_claude_and_codex_hook_outputs_match_golden_bytes",
             "test_unknown_shadow_classification_returns_native_ask",
             "test_recursion_sentinel_is_a_complete_no_op",
             "test_timeout_returns_ask_within_hook_cap",
@@ -11179,7 +11203,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 603
+          "lineCount": 971
         }
       ],
       "imports": [
@@ -11242,7 +11266,7 @@
         "permission_behavior",
         "PermgateTest"
       ],
-      "totalLines": 656,
+      "totalLines": 1024,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_require_crit_review.py": {
@@ -11728,7 +11752,7 @@
     },
     "tests/unit/test_validate_agent_assets.py": {
       "filePath": "tests/unit/test_validate_agent_assets.py",
-      "contentHash": "6907aabbc04d643d9e9e18cc861883400d9f0ccf20b4d391b44ba41437c4ecb3",
+      "contentHash": "59f03ca1034daaa970017b24ebcff653d2f52672d4964d911b611cd95c7ed023",
       "functions": [
         {
           "name": "load_validator",
@@ -11750,6 +11774,10 @@
             "copy_managed_hook_sources",
             "update_json_hook_source",
             "assert_hook_composition_fails",
+            "write_valid_agent_manifest",
+            "test_agent_manifest_accepts_exact_security_profile_set",
+            "test_agent_manifest_rejects_missing_security_profile",
+            "test_agent_manifest_rejects_wrong_security_codex_model",
             "test_hook_composition_accepts_managed_source_fixture",
             "test_hook_composition_rejects_duplicate_command",
             "test_hook_composition_requires_permgate_first",
@@ -11782,7 +11810,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 401
+          "lineCount": 442
         }
       ],
       "imports": [
@@ -11845,7 +11873,7 @@
         "load_validator",
         "ValidateAgentAssetsTest"
       ],
-      "totalLines": 436,
+      "totalLines": 477,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_workflow_security.py": {
@@ -14421,6 +14449,221 @@
       "imports": [],
       "exports": [],
       "totalLines": 145,
+      "hasStructuralAnalysis": true
+    },
+    "home/dot_agents/skills/agmsg/scripts/lib/identifier.sh": {
+      "filePath": "home/dot_agents/skills/agmsg/scripts/lib/identifier.sh",
+      "contentHash": "271dcfc70e648665482e7749d1cbf6da1fe443aec39828d83eb2ce300f91b9bd",
+      "functions": [
+        {
+          "name": "agmsg_validate_identifiers",
+          "params": [],
+          "exported": false,
+          "lineCount": 11
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 22,
+      "hasStructuralAnalysis": true
+    },
+    "home/dot_claude/skills/agmsg/scripts/lib/symlink_identifier.sh.tmpl": {
+      "filePath": "home/dot_claude/skills/agmsg/scripts/lib/symlink_identifier.sh.tmpl",
+      "contentHash": "fd0f0562dfe720362f837adb884723677c882c3a3fa9a4d42abc464103882b7f",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2,
+      "hasStructuralAnalysis": false
+    },
+    "home/dot_codex/modify_security.config.toml": {
+      "filePath": "home/dot_codex/modify_security.config.toml",
+      "contentHash": "a582326aa2824dfe52ce7787fe0aa860a3692beda85a18658efb80854b814854",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 162,
+      "hasStructuralAnalysis": true
+    },
+    "home/dot_local/bin/common/executable_contextdb-codex-notify": {
+      "filePath": "home/dot_local/bin/common/executable_contextdb-codex-notify",
+      "contentHash": "cff2feb97843662e5ad39865dec48080fc78e27e688bf2384e82aadd7a345a6e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 55,
+      "hasStructuralAnalysis": false
+    },
+    "tests/unit/test_agmsg_send.py": {
+      "filePath": "tests/unit/test_agmsg_send.py",
+      "contentHash": "fda8d09996245982b96e3047f144128b71374a957ccd522ccc53fab13e9e343c",
+      "functions": [],
+      "classes": [
+        {
+          "name": "AgmsgSendTest",
+          "methods": [
+            "setUp",
+            "tearDown",
+            "test_valid_identifiers_store_message",
+            "test_invalid_identifiers_fail_before_storage_access",
+            "test_quote_bearing_body_round_trips",
+            "test_touched_shell_entrypoints_have_shdoc_headers"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 121
+        },
+        {
+          "name": "AgmsgRegistrationGrammarTest",
+          "methods": [
+            "setUp",
+            "tearDown",
+            "make_skill",
+            "run_script",
+            "seed_team_and_db",
+            "state",
+            "assert_usage_rejection",
+            "test_join_rejects_invalid_team_and_agent_without_mutation",
+            "test_rename_rejects_invalid_identifiers_without_mutation",
+            "test_team_rename_rejects_invalid_names_without_mutation",
+            "test_valid_registration_and_renames_still_work",
+            "test_identifier_grammar_has_one_source_of_truth"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 200
+        }
+      ],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "shutil",
+          "specifiers": [
+            "shutil"
+          ]
+        },
+        {
+          "source": "sqlite3",
+          "specifiers": [
+            "sqlite3"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "tempfile",
+          "specifiers": [
+            "tempfile"
+          ]
+        },
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        }
+      ],
+      "exports": [
+        "AgmsgSendTest",
+        "AgmsgRegistrationGrammarTest"
+      ],
+      "totalLines": 348,
+      "hasStructuralAnalysis": true
+    },
+    "tests/unit/test_contextdb_codex_notify.py": {
+      "filePath": "tests/unit/test_contextdb_codex_notify.py",
+      "contentHash": "5ae02d09ccb2a32f8cefafd05c2abc218c6120e81f6ba7a3e306b0d4d60afc4e",
+      "functions": [],
+      "classes": [
+        {
+          "name": "ContextdbCodexNotifyTest",
+          "methods": [
+            "setUp",
+            "tearDown",
+            "write_cli",
+            "run_receiver",
+            "test_project_cli_is_data_only_and_trusted_cli_gets_explicit_root",
+            "test_missing_trusted_runtime_is_silent",
+            "test_non_opted_project_is_silent_even_with_trusted_runtime"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 84
+        }
+      ],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "tempfile",
+          "specifiers": [
+            "tempfile"
+          ]
+        },
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        }
+      ],
+      "exports": [
+        "ContextdbCodexNotifyTest"
+      ],
+      "totalLines": 107,
       "hasStructuralAnalysis": true
     }
   }

@@ -50,6 +50,7 @@
 | `check-inbox.sh`(+62) | ブリッジ用 env 制御+shdoc | env 制御は削除(YAGNI)・shdoc 維持 |
 | `SKILL.md`(+2) | pi ワーカー節 | 削除 |
 | `validate-agent-assets.py`(+37/+21) | pi-assets カテゴリ | 削除(対象ファイル消滅) |
+| `tests/unit/test_validate_agent_assets.py`(混在) | pi-assets フィクスチャ/テスト(validate_pi_assets 呼び出し・拡張ハッシュ参照の範囲) | pi 固有のヘルパ/テストのみ削除、他カテゴリのテストは維持(PR #135 レビューで補正) |
 
 ### 2c. 共有資産(Pi 経由で獲得・全維持)
 

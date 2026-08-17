@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "gitCommitHash": "ebadef6175f50364413392952c009e79a12b0fa0",
-  "generatedAt": "2026-08-17T10:21:30.202Z",
+  "gitCommitHash": "b48d52c1fadb1808669ced3343aa25055709079b",
+  "generatedAt": "2026-08-17T20:12:41.323Z",
   "files": {
     ".chezmoiroot": {
       "filePath": ".chezmoiroot",
@@ -3685,12 +3685,12 @@
     },
     "home/.chezmoiscripts/common/run_once_after_06-install-agent-assets.sh.tmpl": {
       "filePath": "home/.chezmoiscripts/common/run_once_after_06-install-agent-assets.sh.tmpl",
-      "contentHash": "ca1da334fd0b6a404c70c699054cb734b67e469641e0b717acf562890e0ae753",
+      "contentHash": "99c3e8f1a668a48b7bb38330a38af3ea776c6686cc5957a3d52fb4f7e18ae4a6",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 2,
+      "totalLines": 5,
       "hasStructuralAnalysis": false
     },
     "home/.chezmoiscripts/common/run_once_after_99-install-gh-extensions.sh.tmpl": {
@@ -5929,18 +5929,18 @@
       "totalLines": 2,
       "hasStructuralAnalysis": false
     },
-    "home/dot_codex/modify_deep.config.toml": {
-      "filePath": "home/dot_codex/modify_deep.config.toml",
-      "contentHash": "d84176029cceece53142895a55b7341f513f984fecb3c14cb08cec443cca6beb",
+    "home/dot_codex/modify_private_deep.config.toml": {
+      "filePath": "home/dot_codex/modify_private_deep.config.toml",
+      "contentHash": "5bee5fa5ce3b7b5236d2e0a4150d80f6616aec22e1f7d70cdf186c62ae216944",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 158,
+      "totalLines": 162,
       "hasStructuralAnalysis": true
     },
-    "home/dot_codex/modify_express.config.toml": {
-      "filePath": "home/dot_codex/modify_express.config.toml",
+    "home/dot_codex/modify_private_express.config.toml": {
+      "filePath": "home/dot_codex/modify_private_express.config.toml",
       "contentHash": "dd4fa34be964868cb83e254c5a009f94a32dcb4f3a05ff71cc7dcbbc2c4fbdb8",
       "functions": [],
       "classes": [],
@@ -5959,8 +5959,8 @@
       "totalLines": 168,
       "hasStructuralAnalysis": true
     },
-    "home/dot_codex/modify_review.config.toml": {
-      "filePath": "home/dot_codex/modify_review.config.toml",
+    "home/dot_codex/modify_private_review.config.toml": {
+      "filePath": "home/dot_codex/modify_private_review.config.toml",
       "contentHash": "46e04253d0333b6db0db40e835a4de85151c7da2f3114270004164699e6f5ebc",
       "functions": [],
       "classes": [],
@@ -5969,14 +5969,14 @@
       "totalLines": 158,
       "hasStructuralAnalysis": true
     },
-    "home/dot_codex/modify_standard.config.toml": {
-      "filePath": "home/dot_codex/modify_standard.config.toml",
-      "contentHash": "7e636f2ce506b97684941c493d28e59cc8f61c94249ebcf3354b2f1b20bdf33a",
+    "home/dot_codex/modify_private_standard.config.toml": {
+      "filePath": "home/dot_codex/modify_private_standard.config.toml",
+      "contentHash": "340442e3e700b384299cf485dbad0f27d444ba8b84ab02f53ad0632e033758a8",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 158,
+      "totalLines": 162,
       "hasStructuralAnalysis": true
     },
     "home/dot_codex/symlink_AGENTS.md.tmpl": {
@@ -6618,32 +6618,32 @@
     },
     "home/dot_zprofile": {
       "filePath": "home/dot_zprofile",
-      "contentHash": "fcdda578283e2e2fa8198acd78da5541558d8c58923b37dd064618322830b361",
+      "contentHash": "cffec754a55bccb5ae3219b1348ef233785c8c71990fa11e16e33a7ecc147ca2",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 21,
+      "totalLines": 28,
       "hasStructuralAnalysis": false
     },
     "home/dot_zshenv": {
       "filePath": "home/dot_zshenv",
-      "contentHash": "dc66d7013ba4db1fb1026a9efcce1c49563dfa37c4aa6e363a9d0b838fce232c",
+      "contentHash": "a8959dae4c63c7b1b7f6ed9460a0e4d42eb80b49a3c0df53089b76e89a239a36",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 15,
+      "totalLines": 29,
       "hasStructuralAnalysis": false
     },
     "home/dot_zshrc": {
       "filePath": "home/dot_zshrc",
-      "contentHash": "47d4123f78bd79e6b7c21f6d04796f6891d4a96f5ce0f2c078cf4d8afe3e2cf7",
+      "contentHash": "a0cc791f53af3abd214722a5572d220ec337efc0f1d1580d2e81c4ad9ab01829",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 48,
+      "totalLines": 61,
       "hasStructuralAnalysis": false
     },
     "home/private_dot_gnupg/gpg-agent.conf.tmpl": {
@@ -7639,7 +7639,7 @@
     },
     "scripts/check-agent-runtime.py": {
       "filePath": "scripts/check-agent-runtime.py",
-      "contentHash": "ef2e1be3be295f19bf1c559d37f526324f10096de332205d8ea4519f82658f1f",
+      "contentHash": "e3aa2a7c047eb7fc70f867d3bffdc7cce01f79b834cbe498c1b8ae9e26b2e62b",
       "functions": [
         {
           "name": "render_template",
@@ -7725,6 +7725,13 @@
           "returnType": "bool",
           "exported": true,
           "lineCount": 2
+        },
+        {
+          "name": "chezmoi_drift_warnings",
+          "params": [],
+          "returnType": "list[str]",
+          "exported": true,
+          "lineCount": 43
         },
         {
           "name": "expected_claude_skill_targets",
@@ -7907,7 +7914,7 @@
           "params": [],
           "returnType": "list[str]",
           "exported": true,
-          "lineCount": 76
+          "lineCount": 79
         },
         {
           "name": "run_session_staleness",
@@ -8026,6 +8033,7 @@
         "applied_files",
         "expects_executable",
         "is_warning",
+        "chezmoi_drift_warnings",
         "expected_claude_skill_targets",
         "compare_tree_contents",
         "compare_shared_skills",
@@ -8049,7 +8057,7 @@
         "run_session_staleness",
         "main"
       ],
-      "totalLines": 668,
+      "totalLines": 719,
       "hasStructuralAnalysis": true
     },
     "scripts/check-statusline-tools.py": {
@@ -8192,7 +8200,7 @@
     },
     "scripts/generate-agent-configs.py": {
       "filePath": "scripts/generate-agent-configs.py",
-      "contentHash": "5635356305420f81aae365aa4c71be01a2415c957b74f9513989b5f1d4ecf4c0",
+      "contentHash": "ca7d83650ee442a2baba8501719ec073ecd88abc85e37dfaacbb53dfdf0b737c",
       "functions": [
         {
           "name": "fail",
@@ -8361,7 +8369,7 @@
           ],
           "returnType": "str",
           "exported": true,
-          "lineCount": 15
+          "lineCount": 19
         },
         {
           "name": "render_codex_profile_modify",
@@ -8371,7 +8379,7 @@
           ],
           "returnType": "str",
           "exported": true,
-          "lineCount": 160
+          "lineCount": 167
         },
         {
           "name": "render_model_profiles_env",
@@ -8389,7 +8397,7 @@
           ],
           "returnType": "str",
           "exported": true,
-          "lineCount": 18
+          "lineCount": 19
         },
         {
           "name": "expected_outputs",
@@ -8398,7 +8406,7 @@
           ],
           "returnType": "dict[Path, str]",
           "exported": true,
-          "lineCount": 20
+          "lineCount": 22
         },
         {
           "name": "remove_stale_generated_outputs",
@@ -8510,7 +8518,7 @@
         "stale_profile_outputs",
         "main"
       ],
-      "totalLines": 752,
+      "totalLines": 766,
       "hasStructuralAnalysis": true
     },
     "scripts/generate-docs.sh": {
@@ -9107,8 +9115,14 @@
     },
     "scripts/update-agent-assets.sh": {
       "filePath": "scripts/update-agent-assets.sh",
-      "contentHash": "5849b4ad7fb7de03810f714a1a8f7578064e16b90a8d630ec6c06ca50da7e093",
+      "contentHash": "dbb0cc47a5b268a400ca71cdb0f5d5694efaaf327e76f5a317aa041c58aa992e",
       "functions": [
+        {
+          "name": "resolve_dotfiles_source_dir",
+          "params": [],
+          "exported": false,
+          "lineCount": 17
+        },
         {
           "name": "section",
           "params": [],
@@ -9299,7 +9313,7 @@
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 682,
+      "totalLines": 708,
       "hasStructuralAnalysis": true
     },
     "scripts/upgrade-tools.sh": {
@@ -9694,7 +9708,7 @@
     },
     "scripts/validate-agent-assets.py": {
       "filePath": "scripts/validate-agent-assets.py",
-      "contentHash": "0d83ce39ca056ac78c43c3abe42742d3eddcc8057aad97384824d0f7a6b0ebc6",
+      "contentHash": "cb56134fb5dfba614add5de3e56e489fe0abd7379b8e9eb0cb1098dbe2aed63f",
       "functions": [
         {
           "name": "fail",
@@ -10313,12 +10327,12 @@
     },
     "tests/install/common/lifecycle.bats": {
       "filePath": "tests/install/common/lifecycle.bats",
-      "contentHash": "9e17d3f5e65c97a0eff2b3d02de97f2a14f88d34d6fefbd0162e0109af9a8eb9",
+      "contentHash": "004fc0f4edc73248a6c125207144f0a0fa97208ebb338d3f7a8baec869579937",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 442,
+      "totalLines": 448,
       "hasStructuralAnalysis": false
     },
     "tests/install/common/mise.bats": {
@@ -10549,7 +10563,7 @@
     },
     "tests/unit/test_check_agent_runtime.py": {
       "filePath": "tests/unit/test_check_agent_runtime.py",
-      "contentHash": "db942683bfaa39b8f5200bc890ffbbcc4000508c760575358962557d59cb04f9",
+      "contentHash": "546f38a9bc60f07ebc9e7704c26eeec4cbf5a4525c080be77d168972bfd07ee3",
       "functions": [],
       "classes": [
         {
@@ -10573,6 +10587,8 @@
             "test_json_modifier_accepts_cosmetic_reserialization",
             "test_json_modifier_rejects_real_value_drift",
             "test_check_uses_same_modified_for_codex_profiles",
+            "test_chezmoi_drift_warnings_classify_status_and_mode_only",
+            "test_chezmoi_drift_status_failure_is_warning",
             "test_orphan_detection_classifies_accounted_stale_and_orphan",
             "test_repair_actions_map_only_detected_file_drift",
             "test_execute_repair_calls_each_mapped_command_once",
@@ -10591,7 +10607,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 679
+          "lineCount": 737
         }
       ],
       "imports": [
@@ -10659,7 +10675,7 @@
       "exports": [
         "CheckAgentRuntimeTest"
       ],
-      "totalLines": 705,
+      "totalLines": 763,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_claude_settings_merge.py": {
@@ -10861,7 +10877,7 @@
     },
     "tests/unit/test_generate_agent_configs.py": {
       "filePath": "tests/unit/test_generate_agent_configs.py",
-      "contentHash": "6719d25bd2f6327d7f137045d6f7315cb6ccc5e1bb1b5486a110dbd8e6a18aa0",
+      "contentHash": "f60d6f713410bd2a9b9c4af61dfcdef65e9ad7711de720a49431922ca2b2eb22",
       "functions": [
         {
           "name": "load_generator",
@@ -10903,7 +10919,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 406
+          "lineCount": 408
         }
       ],
       "imports": [
@@ -10961,12 +10977,12 @@
         "sample_manifest",
         "GenerateAgentConfigsTest"
       ],
-      "totalLines": 510,
+      "totalLines": 512,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_herdr_agents.py": {
       "filePath": "tests/unit/test_herdr_agents.py",
-      "contentHash": "bd8845409054eb34d7e868380efd98e6c6f38989d1832977f4d127956cd05862",
+      "contentHash": "19ab7115a07cc75c249caed250e62b269620637e1939555ef088b8342961f4a6",
       "functions": [],
       "classes": [
         {
@@ -11049,7 +11065,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 1406
+          "lineCount": 1407
         }
       ],
       "imports": [
@@ -11129,7 +11145,7 @@
       "exports": [
         "HerdrAgentsTest"
       ],
-      "totalLines": 1443,
+      "totalLines": 1444,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_permgate.py": {
@@ -11386,7 +11402,7 @@
     },
     "tests/unit/test_runtime_health.py": {
       "filePath": "tests/unit/test_runtime_health.py",
-      "contentHash": "138e4786f299980cd948dc2c3f38c67d58eea0799207d4c57a6700ad7b76e908",
+      "contentHash": "e3556a961dc4e8c50d22a8a84f5364fa57c3b47b5b0d9efef99741e292ed092e",
       "functions": [],
       "classes": [
         {
@@ -11419,7 +11435,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 774
+          "lineCount": 782
         }
       ],
       "imports": [
@@ -11475,7 +11491,7 @@
       "exports": [
         "RuntimeHealthTest"
       ],
-      "totalLines": 797,
+      "totalLines": 805,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_statusline_tools.py": {
@@ -14206,7 +14222,7 @@
     },
     "tests/unit/test_asset_manifest.py": {
       "filePath": "tests/unit/test_asset_manifest.py",
-      "contentHash": "f85e19c7813030fc78f5fbab83acea7d299fd1d35ad3072fde0513546a42f43b",
+      "contentHash": "887fc0943cd9ddfb65f0f693ce85e4185eb661635255537de876d7ea84c087d1",
       "functions": [],
       "classes": [
         {
@@ -14223,11 +14239,15 @@
             "test_same_run_mise_repairs_preserve_both_identity_steps",
             "test_updater_has_one_recording_call_for_each_install_step",
             "test_chezmoi_rendered_updater_uses_inlined_manifest_library",
+            "test_chezmoi_rendered_updater_uses_exported_source_root",
+            "test_updater_direct_source_resolves_repository_root",
+            "test_rendered_updater_fails_when_no_source_root_is_valid",
+            "test_chezmoi_wrapper_renders_shebang_and_source_root",
             "_executable"
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 240
+          "lineCount": 332
         }
       ],
       "imports": [
@@ -14289,7 +14309,7 @@
       "exports": [
         "AssetManifestTest"
       ],
-      "totalLines": 266,
+      "totalLines": 362,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_remove_agent_asset.py": {
@@ -14478,8 +14498,8 @@
       "totalLines": 2,
       "hasStructuralAnalysis": false
     },
-    "home/dot_codex/modify_security.config.toml": {
-      "filePath": "home/dot_codex/modify_security.config.toml",
+    "home/dot_codex/modify_private_security.config.toml": {
+      "filePath": "home/dot_codex/modify_private_security.config.toml",
       "contentHash": "a582326aa2824dfe52ce7787fe0aa860a3692beda85a18658efb80854b814854",
       "functions": [],
       "classes": [],

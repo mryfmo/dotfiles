@@ -1,18 +1,29 @@
 #!/usr/bin/env zsh
 
+# @file home/dot_zshrc
+# @brief Configure interactive zsh behavior and managed tool integrations.
+
+#
+# Interactive mise activation
+#
+if [[ -x "${HOME}/.local/bin/mise" ]]; then
+    eval "$("${HOME}/.local/bin/mise" activate zsh)"
+fi
+
 #
 # Path settings
 #
 typeset -gU fpath
-fpath=(
-    $fpath
-    ${HOME}/.local/bin/common(N-/)
-)
+if [[ -d "${HOME}/.local/bin/common" ]]; then
+    fpath+=("${HOME}/.local/bin/common")
+fi
 
 #
 # Herdr in Ghostty
 #
-# @description Start the managed Herdr agent layout for bare `herdr` in Ghostty.
+# @description
+#   Start the managed layout for bare `herdr` only in Ghostty. Rootshell and
+#   argument-bearing calls invoke the real Herdr binary.
 function herdr() {
     if [[ $# -eq 0 && -n "${GHOSTTY_RESOURCES_DIR:-}" ]]; then
         herdr-session
@@ -24,7 +35,9 @@ function herdr() {
 #
 # sheldon initialization
 #
-eval "$(sheldon source)"
+if command -v sheldon > /dev/null 2>&1; then
+    eval "$(sheldon source)"
+fi
 
 #
 # Claude Code updater

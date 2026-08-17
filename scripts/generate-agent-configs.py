@@ -678,7 +678,9 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
         ROOT / manifest["plugins"]["marketplace_path"]: render_marketplace(manifest),
     }
     for name, profile in sorted(model_profiles(manifest).items()):
-        outputs[ROOT / "home/dot_codex" / f"modify_{name}.config.toml"] = render_codex_profile_modify(name, profile)
+        outputs[
+            ROOT / "home/dot_codex" / f"modify_private_{name}.config.toml"
+        ] = render_codex_profile_modify(name, profile)
     outputs[ROOT / "home/dot_agents/model-profiles.env"] = render_model_profiles_env(manifest)
     outputs[ROOT / "home/dot_claude/agents/express-explorer.md"] = render_claude_express_agent(manifest)
     for plugin in manifest["plugins"].get("codex_plugins", []):

@@ -149,7 +149,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         outputs = self.module.expected_outputs(sample_manifest())
 
         standard_profile = (
-            self.temp_dir / "home/dot_codex/modify_standard.config.toml"
+            self.temp_dir / "home/dot_codex/modify_private_standard.config.toml"
         )
         self.assertIn(standard_profile, outputs)
         self.module.write_outputs(outputs)
@@ -193,7 +193,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         }
         outputs = self.module.expected_outputs(manifest)
         security_profile = (
-            self.temp_dir / "home/dot_codex/modify_security.config.toml"
+            self.temp_dir / "home/dot_codex/modify_private_security.config.toml"
         )
         self.module.write_outputs(outputs)
 
@@ -228,7 +228,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
     def test_profile_modify_scripts_are_byte_idempotent_with_runtime_state(self) -> None:
         outputs = self.module.expected_outputs(sample_manifest())
         standard_profile = (
-            self.temp_dir / "home/dot_codex/modify_standard.config.toml"
+            self.temp_dir / "home/dot_codex/modify_private_standard.config.toml"
         )
         self.module.write_outputs(outputs)
         current = (
@@ -260,7 +260,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
     def test_profile_modify_scripts_preserve_repeated_runtime_tables(self) -> None:
         outputs = self.module.expected_outputs(sample_manifest())
         standard_profile = (
-            self.temp_dir / "home/dot_codex/modify_standard.config.toml"
+            self.temp_dir / "home/dot_codex/modify_private_standard.config.toml"
         )
         self.module.write_outputs(outputs)
         current = (
@@ -312,7 +312,9 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
     def test_profile_modify_scripts_seed_base_hook_trust(self) -> None:
         outputs = self.module.expected_outputs(sample_manifest())
-        standard_profile = self.temp_dir / "home/dot_codex/modify_standard.config.toml"
+        standard_profile = (
+            self.temp_dir / "home/dot_codex/modify_private_standard.config.toml"
+        )
         self.module.write_outputs(outputs)
         home = self.temp_dir / "target-home"
         base = home / ".codex/config.toml"
@@ -344,7 +346,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
     def test_profile_modify_scripts_warn_on_hook_trust_divergence(self) -> None:
         outputs = self.module.expected_outputs(sample_manifest())
-        profile = self.temp_dir / "home/dot_codex/modify_standard.config.toml"
+        profile = self.temp_dir / "home/dot_codex/modify_private_standard.config.toml"
         self.module.write_outputs(outputs)
         home = self.temp_dir / "target-home"
         base = home / ".codex/config.toml"
@@ -363,7 +365,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
     def test_profile_modify_scripts_are_quiet_for_matching_hook_trust(self) -> None:
         outputs = self.module.expected_outputs(sample_manifest())
-        profile = self.temp_dir / "home/dot_codex/modify_standard.config.toml"
+        profile = self.temp_dir / "home/dot_codex/modify_private_standard.config.toml"
         self.module.write_outputs(outputs)
         home = self.temp_dir / "target-home"
         base = home / ".codex/config.toml"

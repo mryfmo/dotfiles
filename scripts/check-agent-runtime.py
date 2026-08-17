@@ -68,6 +68,9 @@ UPDATER_SOURCE_COMMAND = (
     'source "$1"; export PATH="$HOME/.local/share/mise/shims:$PATH"; shift; "$@"'
 )
 CHEZMOI_APPLY_COMMAND = ("chezmoi", "apply", "--force")
+MODE_ONLY_DIFF = re.compile(
+    r"\Adiff --git .+\nold mode [0-7]+\nnew mode [0-7]+\n?\Z"
+)
 
 
 class RepairAction(NamedTuple):
@@ -166,6 +169,51 @@ def expects_executable(source: Path) -> bool:
 
 def is_warning(message: str) -> bool:
     return message.startswith("WARN: ")
+
+
+def chezmoi_drift_warnings() -> list[str]:
+    """Classify managed-target drift without changing the destination state."""
+    try:
+        status_result = subprocess.run(
+            ["chezmoi", "--no-pager", "status"],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+    except OSError as error:
+        return [f"WARN: unable to inspect chezmoi drift: {error}"]
+    if status_result.returncode != 0:
+        detail = status_result.stderr.strip() or f"exit {status_result.returncode}"
+        return [f"WARN: unable to inspect chezmoi drift: {detail}"]
+
+    warnings: list[str] = []
+    for line in status_result.stdout.splitlines():
+        if len(line) < 4:
+            continue
+        status, target = line[:2], line[3:]
+        target_path = Path(target)
+        if not target_path.is_absolute():
+            target_path = HOME / target_path
+        diff_result = subprocess.run(
+            ["chezmoi", "--no-pager", "diff", "--", str(target_path)],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        if diff_result.returncode == 0 and MODE_ONLY_DIFF.fullmatch(
+            diff_result.stdout
+        ):
+            hint = "permission divergence (mode-only)"
+        elif status == " M":
+            hint = "unapplied source update"
+        elif status == "MM":
+            hint = "two-sided drift"
+        else:
+            hint = "managed target drift"
+        warnings.append(f"WARN: chezmoi drift {status} {target}: {hint}")
+    return warnings
 
 
 def expected_claude_skill_targets() -> dict[Path, str]:
@@ -571,7 +619,9 @@ def check() -> list[str]:
         if not same_text(source, target, template=template):
             failures.append(f"{label} differs or is missing: {target}")
     for profile_source in sorted(SOURCE_ROOT.glob("dot_codex/modify_*.config.toml")):
-        target_name = profile_source.name.removeprefix("modify_")
+        target_name = deployed_relative_path(
+            Path(profile_source.name.removeprefix("modify_"))
+        ).name
         target = HOME / ".codex" / target_name
         if not same_modified(profile_source, target):
             failures.append(
@@ -620,6 +670,7 @@ def check() -> list[str]:
             asset_failure_message(finding) for finding in manifest_asset_findings()
         )
         failures.extend(orphaned_asset_warnings())
+    failures.extend(chezmoi_drift_warnings())
     return failures
 
 

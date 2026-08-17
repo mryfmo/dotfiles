@@ -17,6 +17,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 LIBRARY = ROOT / "scripts/lib/asset-manifest.sh"
 UPDATER = ROOT / "scripts/update-agent-assets.sh"
+WRAPPER = (
+    ROOT
+    / "home/.chezmoiscripts/common/run_once_after_06-install-agent-assets.sh.tmpl"
+)
 
 
 class AssetManifestTest(unittest.TestCase):
@@ -249,11 +253,103 @@ class AssetManifestTest(unittest.TestCase):
         self.assertEqual(0, syntax.returncode, syntax.stderr)
 
         result = self.run_bash(
-            f'source {rendered}; manifest_record rendered plugin 1 "$HOME/rendered" -- "render install"'
+            f'source {rendered}; manifest_record rendered plugin 1 "$HOME/rendered" -- "render install"',
+            env={"DOTFILES_SOURCE_DIR": str(ROOT)},
         )
 
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual("1", self.manifest()["steps"]["rendered"]["source_version"])
+
+    def test_chezmoi_rendered_updater_uses_exported_source_root(self) -> None:
+        rendered = self.temp_dir / "06-install-agent-assets.sh"
+        rendered.write_text(LIBRARY.read_text() + UPDATER.read_text())
+        foreign_cwd = self.temp_dir / "foreign"
+        foreign_cwd.mkdir()
+        bin_dir = self.temp_dir / "bin"
+        bin_dir.mkdir()
+        jq = shutil.which("jq")
+        self.assertIsNotNone(jq, "jq is required for asset manifest tests")
+        (bin_dir / "jq").symlink_to(jq)
+        log = self.temp_dir / "rsync.log"
+        self._executable(
+            bin_dir / "rsync", 'printf "%s\\n" "$*" > "$TEST_LOG"\n'
+        )
+
+        result = subprocess.run(
+            ["bash", "-c", 'source "$1"; update_compactiondb', "bash", rendered],
+            cwd=foreign_cwd,
+            env={
+                **os.environ,
+                "DOTFILES_SOURCE_DIR": str(ROOT),
+                "HOME": str(self.home),
+                "PATH": f"{bin_dir}:/usr/bin:/bin",
+                "TEST_LOG": str(log),
+            },
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        step = self.manifest()["steps"]["update_compactiondb"]
+        self.assertEqual("2.0.0+dotfiles.5", step["source_version"])
+        self.assertIn(f"{ROOT}/vendor/compactiondb/", log.read_text())
+
+    def test_updater_direct_source_resolves_repository_root(self) -> None:
+        result = self.run_bash(
+            f'unset DOTFILES_SOURCE_DIR; source {UPDATER}; resolve_dotfiles_source_dir'
+        )
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(str(ROOT), result.stdout.strip())
+
+    def test_rendered_updater_fails_when_no_source_root_is_valid(self) -> None:
+        rendered = self.temp_dir / "06-install-agent-assets.sh"
+        rendered.write_text(LIBRARY.read_text() + UPDATER.read_text())
+        foreign_cwd = self.temp_dir / "foreign"
+        foreign_cwd.mkdir()
+
+        result = subprocess.run(
+            ["bash", "-c", 'unset DOTFILES_SOURCE_DIR; source "$1"', "bash", rendered],
+            cwd=foreign_cwd,
+            env={**os.environ, "HOME": str(self.home)},
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertEqual(1, result.returncode)
+        self.assertIn("Unable to resolve dotfiles source root", result.stderr)
+
+    def test_chezmoi_wrapper_renders_shebang_and_source_root(self) -> None:
+        wrapper = WRAPPER.read_text()
+        export = (
+            'export DOTFILES_SOURCE_DIR={{ joinPath .chezmoi.sourceDir ".." | quote }}'
+        )
+        updater_include = '{{ include "../scripts/update-agent-assets.sh" }}'
+
+        self.assertIn(export, wrapper)
+        self.assertLess(wrapper.index(export), wrapper.index(updater_include))
+        rendered = subprocess.run(
+            [
+                "chezmoi",
+                "execute-template",
+                "--source",
+                str(ROOT / "home"),
+                "--file",
+                str(WRAPPER),
+            ],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(0, rendered.returncode, rendered.stderr)
+        self.assertEqual("#!/usr/bin/env bash", rendered.stdout.splitlines()[0])
+        self.assertEqual(
+            f'export DOTFILES_SOURCE_DIR="{ROOT}"',
+            rendered.stdout.splitlines()[1],
+        )
 
     @staticmethod
     def _executable(path: Path, body: str) -> None:

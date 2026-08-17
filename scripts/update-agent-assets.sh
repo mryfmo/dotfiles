@@ -10,7 +10,33 @@
 
 set -Eeuo pipefail
 
-AGENT_ASSET_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+#
+# @description Resolve the dotfiles repository source root.
+# @stdout Absolute source root containing the vendored CompactionDB tree.
+# @exitcode 0 A valid source root was found.
+# @exitcode 1 Neither the wrapper export nor direct script path was valid.
+#
+function resolve_dotfiles_source_dir() {
+    local candidate
+
+    if [[ -n "${DOTFILES_SOURCE_DIR:-}" ]] && [[ -d "${DOTFILES_SOURCE_DIR}/vendor/compactiondb" ]]; then
+        printf '%s\n' "${DOTFILES_SOURCE_DIR}"
+        return 0
+    fi
+
+    candidate="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    if [[ -d "${candidate}/vendor/compactiondb" ]]; then
+        printf '%s\n' "${candidate}"
+        return 0
+    fi
+
+    printf 'Unable to resolve dotfiles source root: vendor/compactiondb was not found via DOTFILES_SOURCE_DIR or BASH_SOURCE.\n' >&2
+    return 1
+}
+
+DOTFILES_REPO_SOURCE_DIR="$(resolve_dotfiles_source_dir)" || exit 1
+readonly DOTFILES_REPO_SOURCE_DIR
+AGENT_ASSET_SCRIPT_DIR="${DOTFILES_REPO_SOURCE_DIR}/scripts"
 readonly AGENT_ASSET_SCRIPT_DIR
 if ! declare -F manifest_record > /dev/null 2>&1; then
     # shellcheck source=scripts/lib/asset-manifest.sh
@@ -645,7 +671,7 @@ function update_codex_understand_anything() {
 #
 function update_compactiondb() {
     local source_root
-    source_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/vendor/compactiondb/"
+    source_root="${DOTFILES_REPO_SOURCE_DIR}/vendor/compactiondb/"
     rsync -a --delete --exclude '.claude/contextdb/state/' --exclude '.claude/contextdb/spool/' --exclude '.claude/contextdb/health/' --exclude '.claude/contextdb/contextdb.sqlite3*' "${source_root}" "${HOME}/.agents/compactiondb/" || true
     manifest_record "update_compactiondb" rsync "$(awk '/^## / { print $2; exit }' "${source_root}CHANGELOG.md")" "${HOME}/.agents/compactiondb" -- "rsync -a --delete --exclude .claude/contextdb/state/ --exclude .claude/contextdb/spool/ --exclude .claude/contextdb/health/ --exclude .claude/contextdb/contextdb.sqlite3* ${source_root} ${HOME}/.agents/compactiondb/"
 }

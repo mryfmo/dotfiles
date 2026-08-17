@@ -166,7 +166,8 @@ class CheckAgentRuntimeTest(unittest.TestCase):
 
     def test_check_uses_same_modified_for_codex_profiles(self) -> None:
         profile = self.write_source(
-            "dot_codex/modify_standard.config.toml", "#!/usr/bin/env python3\n"
+            "dot_codex/modify_private_standard.config.toml",
+            "#!/usr/bin/env python3\n",
         )
         profile.chmod(0o755)
         original_source_root = self.module.SOURCE_ROOT
@@ -176,6 +177,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         original_shared = self.module.compare_shared_skills
         original_claude = self.module.compare_claude_skills
         original_hook = self.module.check_executable_hook
+        original_drift = self.module.chezmoi_drift_warnings
         modified_sources: list[Path] = []
         try:
             self.module.SOURCE_ROOT = self.source_root
@@ -187,6 +189,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             self.module.compare_shared_skills = list
             self.module.compare_claude_skills = list
             self.module.check_executable_hook = lambda *args, **kwargs: []
+            self.module.chezmoi_drift_warnings = list
 
             self.module.check()
         finally:
@@ -197,8 +200,60 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             self.module.compare_shared_skills = original_shared
             self.module.compare_claude_skills = original_claude
             self.module.check_executable_hook = original_hook
+            self.module.chezmoi_drift_warnings = original_drift
 
         self.assertIn(profile, modified_sources)
+
+    def test_chezmoi_drift_warnings_classify_status_and_mode_only(self) -> None:
+        status = mock.Mock(
+            returncode=0,
+            stdout=(
+                " M .agents/agent-config.yaml\n"
+                "MM .zshrc\n"
+                "MM .codex/deep.config.toml\n"
+            ),
+            stderr="",
+        )
+        content_diff = mock.Mock(
+            returncode=0,
+            stdout="diff --git a/.zshrc b/.zshrc\n@@ -1 +1 @@\n-old\n+new\n",
+            stderr="",
+        )
+        mode_diff = mock.Mock(
+            returncode=0,
+            stdout=(
+                "diff --git a/.codex/deep.config.toml b/.codex/deep.config.toml\n"
+                "old mode 100600\n"
+                "new mode 100644\n"
+            ),
+            stderr="",
+        )
+
+        with mock.patch.object(
+            self.module.subprocess,
+            "run",
+            side_effect=[status, content_diff, content_diff, mode_diff],
+        ):
+            warnings = self.module.chezmoi_drift_warnings()
+
+        self.assertEqual(
+            [
+                "WARN: chezmoi drift  M .agents/agent-config.yaml: unapplied source update",
+                "WARN: chezmoi drift MM .zshrc: two-sided drift",
+                "WARN: chezmoi drift MM .codex/deep.config.toml: permission divergence (mode-only)",
+            ],
+            warnings,
+        )
+
+    def test_chezmoi_drift_status_failure_is_warning(self) -> None:
+        result = mock.Mock(returncode=1, stdout="", stderr="status failed\n")
+
+        with mock.patch.object(self.module.subprocess, "run", return_value=result):
+            warnings = self.module.chezmoi_drift_warnings()
+
+        self.assertEqual(
+            ["WARN: unable to inspect chezmoi drift: status failed"], warnings
+        )
 
     def test_orphan_detection_classifies_accounted_stale_and_orphan(self) -> None:
         home = self.temp_dir / "home"
@@ -547,6 +602,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         original_hook = self.module.check_executable_hook
         original_findings = self.module.manifest_asset_findings
         original_orphans = self.module.orphaned_asset_warnings
+        original_drift = self.module.chezmoi_drift_warnings
         try:
             self.module.HOME = self.target_root
             self.module.same_text = lambda *args, **kwargs: True
@@ -560,6 +616,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             self.module.orphaned_asset_warnings = lambda *args, **kwargs: self.fail(
                 "manifest orphan checks must be skipped"
             )
+            self.module.chezmoi_drift_warnings = list
 
             failures = self.module.check()
         finally:
@@ -571,6 +628,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             self.module.check_executable_hook = original_hook
             self.module.manifest_asset_findings = original_findings
             self.module.orphaned_asset_warnings = original_orphans
+            self.module.chezmoi_drift_warnings = original_drift
 
         self.assertEqual(1, len(failures))
         self.assertRegex(

@@ -1,0 +1,100 @@
+T76 VALIDATION
+==============
+
+IDENTITY PRECONDITION
+---------------------
+Interfaces:
+- whoami.sh /__agmsg_inventory__ __inventory__
+- team.sh <team> for every emitted available team
+
+Teams and members:
+- ai-ops-platform: claude-deep-dot, codex-deep-dot
+- dotfiles-conformance: claude-deep-dot, codex-deep-dot
+- enmaru-project: claude-lead, codex-impl
+- flue-pi-productionization: claude-deep-flue, codex-deep-flue
+- herddeck-project: claude-fable5high-herddeck, codex-gpt56solhigh-herddeck
+- herness-self-improvement: claude-fable5high-herness, codex-gpt56solhigh-herness
+- icsnet-project: claude-lead, codex-impl
+- t20-scratch: t20-watcher
+- towa-no-neko-project: claude-lead, codex-impl
+
+Exact check: ^[a-z0-9][a-z0-9_-]{0,63}$
+Result: PASS for all nine team names and every listed identity.
+
+TEST-FIRST EVIDENCE
+-------------------
+RED command:
+  uv run python -m unittest tests.unit.test_agmsg_send
+Result: expected FAIL; 4 tests ran with 9 invalid-identifier subtest failures.
+Each invalid value reached the missing DB initialization path (exit 127),
+proving the pre-storage guard did not yet exist.
+
+GREEN command:
+  uv run python -m unittest tests.unit.test_agmsg_send
+Result: PASS; 4 tests in 0.171s.
+
+The final test matrix covers:
+- 64-character identifier acceptance and one-character minimum;
+- 65-character, uppercase, invalid-first-character, quote, space, and
+  metacharacter rejection;
+- each invalid family across team/from/to;
+- absent storage directory remains absent on rejection;
+- quote-bearing BODY round-trips and the messages table remains intact.
+
+REPOSITORY GATES
+----------------
+Command: make format
+Result: PASS; shfmt reported no diff.
+
+Command: bash -n home/dot_agents/skills/agmsg/scripts/executable_send.sh
+Result: PASS.
+
+Command: shellcheck -x home/dot_agents/skills/agmsg/scripts/executable_send.sh
+Result: PASS.
+
+Command:
+  UV_CACHE_DIR=/private/tmp/t68c-uv-cache uv run python -m unittest discover -s tests/unit -p "test_*.py" -q
+Result: PASS; 331 tests in 28.923s, UNIT_EXIT=0.
+The four expected negative-fixture diagnostics from model-profile tests were
+printed, but their assertions passed.
+
+Command:
+  env UV_CACHE_DIR=/private/tmp/t68c-uv-cache make validate-agent-assets
+Result: PASS; agent asset validation ok.
+
+Command: git diff --check
+Result: PASS.
+
+The first attempt to repeat the full-suite summary with the default uv cache
+was sandbox-rejected before tests ran; pinning the already-used temporary cache
+path produced the successful result above without dependency changes.
+
+SCOPE AND INVARIANTS
+--------------------
+- Product/test edits are limited to the four T76 files.
+- home/dot_agents/skills/agmsg-orchestration/SKILL.md also contains the
+  already-accepted T74 Pi paragraph deletion; T76 adds only the cost sentence.
+- Existing T74/T75 changes were not modified as part of T76.
+- BODY has no grammar validation and continues through sql_literal.
+- Validation precedes SCRIPT_DIR and all storage/DB operations.
+- No git commit, push, chezmoi apply, Bats, or dependency changes were run.
+
+PLAN QUALITY
+------------
+The validator/Make target, hook, reviewer definition, and CI entrypoints named
+by plan-quality-gate are absent in this repository. The plan was checked
+manually for required headings, exact scope, safety invariant, adversarial
+tests, concrete commands, and the legacy-identity STOP condition.
+
+CRIT REVIEW
+-----------
+Record: r_1bbfe3, resolved finding-free approval.
+Evidence: .agents/worklog/codex/review/T76-crit-comments.json
+Receipt: .agents/worklog/codex/review/T76-receipt.md
+Gate: PASS with AGENT_REVIEWED=1 and the receipt above.
+
+DECISION MEMORY
+---------------
+UUID: dd27ee8e-27ef-4d69-9297-94439eca0c9e
+Command:
+  python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T76: agmsg send.sh validates team, from, and to before any storage work against the exact grammar ^[a-z0-9][a-z0-9_-]{0,63}$ while the message body remains unrestricted free text and SQL-safe. AGMSG acceptance records include a cost line with worker-reported token/cost figures when available, otherwise cost: n/a.'

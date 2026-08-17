@@ -1,0 +1,227 @@
+T74 VALIDATION
+Date: 2026-08-17 Asia/Tokyo
+
+BOUNDARIES
+- Inventory source: .orchestration/analysis/pi-pivot-decision.md section 2.
+- Pure Pi source/support deleted; mixed files edited only per section 2b.
+- home/dot_mise, vendor, deployed runtime, and section 2c shared assets: unchanged.
+- Bats, chezmoi apply, dependency changes, commit, and push: NOT RUN.
+
+TEST-FIRST RED
+$ uv run python -m unittest -v \
+    tests.unit.test_permgate.PermgateTest.test_cli_protocol_emits_each_compact_decision \
+    tests.unit.test_permgate.PermgateTest.test_claude_and_codex_hook_outputs_match_golden_bytes
+Ran 2 tests
+FAILED (failures=7 across subtests)
+
+Expected cause: tests and fixture policy used `cli` while the implementation
+still recognized only `pi`. Claude/Codex goldens also failed closed because the
+old implementation rejected the renamed fixture policy.
+
+FOCUSED GREEN
+$ env UV_CACHE_DIR=/private/tmp/t74-uv-cache uv run python -m unittest -v \
+    tests.unit.test_permgate tests.unit.test_validate_agent_assets tests.unit.test_agmsg_send
+Ran 77 tests in 5.984s
+OK
+
+The focused run includes compact allow/deny/ask output, malformed/nonzero
+fail-closed cases, workspace write/edit/read decisions, strict resolution,
+sensitive path denial including retained .pi auth, Bash allow reuse, deny
+precedence, and byte-exact Claude/Codex golden outputs.
+
+FULL GREEN
+$ make unit-test
+Ran 329 tests in 34.504s
+OK
+
+COUNT RECONCILIATION
+- Previous accepted baseline: 382 Python unittest cases.
+- Deleted pure-Pi Python test methods: 41.
+- Deleted pi-assets validator test methods: 12.
+- Expected: 382 - 41 - 12 = 329.
+- Observed: 329. Exact match.
+
+DELETED PURE-PI PYTHON TESTS (41)
+
+tests/unit/test_agmsg_pi_worker.py (9)
+- test_refuses_project_outside_explicit_scratch_root
+- test_task_becomes_correlated_prompt_and_completes_on_agent_end
+- test_agent_settled_after_agent_end_is_tolerated
+- test_child_death_sends_blocked_pong_and_exits_nonzero
+- test_ping_sends_bridge_level_alive_pong
+- test_fixed_instruction_is_appended_exactly_once
+- test_bridge_never_sends_agmsg_result
+- test_join_accepts_pi_runtime_type
+- test_check_inbox_bridge_controls_force_and_narrow_delivery
+
+tests/unit/test_pi_agmsg_extension.py (3)
+- test_node_behavior_suite
+- test_typescript_contract
+- test_node_syntax_fallback
+
+tests/unit/test_pi_contextdb_extension.py (3)
+- test_node_behavior_suite
+- test_typescript_contract
+- test_node_syntax_fallback
+
+tests/unit/test_pi_model_access_check.py (15)
+- test_passes_print_rpc_and_explicit_extension_load
+- test_skips_model_steps_when_provider_is_not_selected
+- test_skips_model_steps_when_documented_key_is_unset
+- test_anthropic_subscription_entry_runs_when_env_key_is_unset
+- test_subscription_auth_entry_runs_model_steps
+- test_missing_subscription_entry_skips_with_both_auth_lanes
+- test_malformed_subscription_auth_skips_without_printing_contents
+- test_fails_on_wrong_pinned_version_without_model_calls
+- test_fails_when_version_command_is_nonzero
+- test_fails_when_print_command_fails_but_still_checks_rpc
+- test_fails_when_rpc_exits_without_agent_end_and_lists_kinds
+- test_reasoning_double_message_uses_final_text
+- test_json_mismatch_still_checks_rpc_and_extension
+- test_rpc_mismatch_after_agent_end_keeps_extension_confirmation
+- test_error_turn_reports_bounded_provider_api_diagnostic
+
+tests/unit/test_pi_permgate_extension.py (3)
+- test_node_behavior_suite
+- test_typescript_contract
+- test_node_syntax_fallback
+
+tests/unit/test_pi_session_evidence.py (8)
+- test_linear_session_aggregates_active_assistant_usage
+- test_last_appended_branch_is_active_and_inactive_usage_is_excluded
+- test_compaction_and_model_changes_keep_order_and_bounds
+- test_malformed_lines_are_counted_warned_and_nonfatal
+- test_human_output_contains_acceptance_summary
+- test_session_file_is_not_modified
+- test_file_over_50_mib_is_refused_before_json_parsing
+- test_missing_file_has_clear_error
+
+DELETED PI-ASSETS VALIDATOR TESTS (12)
+- test_pi_assets_accept_deny_trust_and_exact_pin
+- test_pi_assets_reject_missing_default_project_trust
+- test_pi_assets_reject_version_range
+- test_pi_assets_reject_newer_exact_pin_during_cooldown
+- test_pi_assets_accept_absent_deferred_pin
+- test_pi_assets_accept_matching_permgate_extension_hash
+- test_pi_assets_reject_tampered_permgate_extension
+- test_pi_assets_accept_matching_contextdb_extension_hash
+- test_pi_assets_reject_tampered_contextdb_extension
+- test_pi_assets_require_agmsg_extension_hash
+- test_pi_assets_accept_matching_agmsg_extension_hash
+- test_pi_assets_reject_tampered_agmsg_extension
+
+DELETED NESTED NODE TESTS (22; run inside three deleted Python wrappers)
+
+pi_agmsg_extension.test.mjs (5)
+- registers the pinned typed schema and explicit RESULT prompt guidance
+- spawns send.sh with one argv array and no shell
+- missing identity returns a fixed error without spawning
+- invalid model-owned identifiers return an error without spawning
+- send failure returns one fixed error line
+
+pi_contextdb_extension.test.mjs (9)
+- tool completion captures success and each supported primary argument
+- tool failure emits the failure hook without raw result output
+- turn end captures only final assistant text capped at 240 characters
+- session compact captures the saved summary
+- non-opted cwd remains a completely silent no-op
+- missing trusted runtime remains a completely silent no-op
+- opt-in existence is cached and rechecked at session start
+- ingest failure and timeout return normally with one stderr line
+- a synchronous handler error never propagates
+
+pi_permgate_extension.test.mjs (8)
+- allow proceeds and sends normalized stdin with the seven-second timeout
+- read sends cwd while preserving the path bytes for permgate
+- deny blocks with the fixed one-line reason
+- ask uses interactive confirmation
+- ask blocks without interactive UI
+- ask blocks in RPC mode even when dialog UI is available
+- nonzero, timeout, malformed output, and malformed gated input fail closed
+- ungated passthrough tools never invoke permgate
+
+DELETED TEST SUPPORT ASSETS
+- pi_agmsg_extension_types.d.ts
+- pi_contextdb_extension_types.d.ts
+- pi_permgate_extension_types.d.ts
+- fixtures/pi_sessions/{branched,compaction-model,linear,malformed}.jsonl
+
+STATIC AND ASSET GATES
+$ make format
+PASS
+
+$ bash -n home/dot_agents/skills/agmsg/scripts/{executable_join.sh,executable_whoami.sh,executable_check-inbox.sh}
+PASS
+
+$ shellcheck -x home/dot_agents/skills/agmsg/scripts/{executable_join.sh,executable_whoami.sh,executable_check-inbox.sh}
+PASS
+
+$ uv run python -c '<policy JSON parse; compile permgate and validator>'
+PASS
+
+$ env UV_CACHE_DIR=/private/tmp/t68c-uv-cache make validate-agent-assets
+agent asset validation ok
+
+$ git diff --check
+PASS
+
+PURE INVENTORY ABSENCE
+- No home/dot_pi path remains.
+- No agmsg-pi-worker, pi-model-access-check, or pi-session-evidence source remains.
+- No pi_*.test.mjs, pi_*_types.d.ts, test_pi_*.py,
+  test_agmsg_pi_worker.py, or fixtures/pi_sessions path remains.
+
+RESIDUE SCAN
+$ grep -riE '\bpi\b' home scripts tests
+
+Justified source hits only:
+1. home/dot_mise/config.toml and mise.lock (3): T75-owned paired chore.
+2. permgate-policy + two test_permgate lines (3): retained .pi auth credential
+   denial; analysis section 2d explicitly leaves operator auth.json in place.
+3. flue-pi proper name (5): existing project/store/protocol examples in the
+   orchestration rule/skill, runtime checker comment, and checker test; not a
+   third-agent runtime reference and outside inventory 2b.
+4. Ignored generated __pycache__ binary matches: non-source and untracked;
+   filtered from source residue, with runtime teardown reserved for T75.
+
+Zero unjustified source references.
+
+FULL LOGICAL DIFF AND SCOPE
+- Deleted exactly 24 pure source/support files: 3 executables, 5 home/dot_pi
+  files including .gitkeep, 4 JSONL fixtures, 6 Node/type assets, and 6 Python
+  modules.
+- Modified exactly nine mixed files classified by inventory 2b:
+  permgate-policy.yaml, executable_permgate, test_permgate.py,
+  executable_join.sh, executable_whoami.sh, executable_check-inbox.sh,
+  agmsg-orchestration/SKILL.md, validate-agent-assets.py, and
+  test_validate_agent_assets.py.
+- `git diff --shortstat`: 33 files changed, 87 insertions, 3603 deletions.
+- `git diff --exit-code` is clean for home/dot_mise, vendor, send.sh,
+  test_agmsg_send.py, executable_contextdb-codex-notify, and
+  test_contextdb_codex_notify.py.
+- No runtime state or orchestration history was edited.
+
+One diagnostic extraction command initially used zsh's special lowercase
+`path` variable and lost PATH inside the loop. It changed no files and was
+rerun successfully with `artifact_path`, following the existing indexed learn.
+
+REVIEW
+- Crit review: /Users/mryfmo/.crit/reviews/dfcf30aea611/review.json
+- Records: r_60db89 approval and r_5f8ece addressed helper-name residue;
+  both resolved=true.
+- Evidence: .agents/worklog/codex/review/T74-crit-comments.json
+- Receipt: .agents/worklog/codex/review/T74-receipt.md
+- Receipt gate: PASS.
+
+PLAN QUALITY
+- Workflow, validator, hook, template, Make/CI target, and reviewer definition
+  entrypoints were absent.
+- Manual task/AGENTS checklist passed for exhaustive inventory, current-state
+  evidence, explicit commands, positive/adversarial gates, safety invariants,
+  maintenance ownership, and STOP conditions.
+
+MEMORY
+UUID: e1dbbefb-572a-4d97-a655-901ccc1b0a99
+kind=decision scope=project
+
+RESULT: PASS

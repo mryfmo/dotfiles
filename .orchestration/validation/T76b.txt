@@ -1,0 +1,118 @@
+T76b VALIDATION
+===============
+
+BOUNDARY INVENTORY
+------------------
+Read every file under home/dot_agents/skills/agmsg/scripts and searched config,
+team, rename, JSON mutation, directory move, and SQLite update sites.
+
+Creates/renames team or identity:
+- executable_join.sh
+- executable_rename.sh
+- executable_rename-team.sh
+
+Excluded after inspection:
+- leave/reset: deletion only
+- config/delivery: non-registration settings only
+- remaining scripts: read, message, lifecycle, or lock operations only
+
+TEST-FIRST EVIDENCE
+-------------------
+RED command:
+  UV_CACHE_DIR=/private/tmp/t68c-uv-cache uv run python -m unittest tests.unit.test_agmsg_send -q
+Result: expected FAIL; 9 tests ran with 22 failures after the fixture-only
+test harness correction. Failures showed invalid registration names could
+mutate state, emit non-usage errors, or succeed; the regex still lived in
+send.sh rather than the expected shared helper.
+
+GREEN command:
+  UV_CACHE_DIR=/private/tmp/t68c-uv-cache uv run python -m unittest tests.unit.test_agmsg_send
+Result: PASS; 9 tests in 0.853s.
+
+Coverage:
+- join team and agent positions x quote/space/uppercase: 6 subtests
+- rename team/old/new positions x quote/space/uppercase: 9 subtests
+- rename-team old/new positions x quote/space/uppercase: 6 subtests
+- invalid state snapshots are byte-identical; join creates no teams directory
+- valid join, agent rename, and team rename update config/messages correctly
+- T76 send valid/invalid/body regressions remain green
+- script-tree regex literal count is exactly one in lib/identifier.sh
+- all four callers source the helper and touched entrypoints have shdoc headers
+
+STATIC AND REPOSITORY GATES
+---------------------------
+Command: make format
+Result: PASS; shfmt reported no diff.
+
+Command:
+  bash -n <identifier.sh send.sh join.sh rename.sh rename-team.sh>
+Result: PASS.
+
+Command:
+  shellcheck -x <identifier.sh send.sh join.sh rename.sh rename-team.sh>
+Initial result: SC1091 for dynamic sources.
+Final result: PASS after narrow source directives; no behavior change.
+
+Command:
+  UV_CACHE_DIR=/private/tmp/t68c-uv-cache uv run python -m unittest discover -s tests/unit -p "test_*.py" -q
+Result: PASS; 336 tests in 34.443s, UNIT_EXIT=0.
+The four expected negative-fixture model-profile diagnostics were printed and
+their assertions passed.
+
+Initial command:
+  env UV_CACHE_DIR=/private/tmp/t68c-uv-cache make validate-agent-assets
+Result: expected scope discovery failure; generated
+home/dot_claude/skills/agmsg/scripts/lib/symlink_identifier.sh.tmpl was stale.
+
+Orchestrator update:
+  scope-expansion-approved for that single generated parity file.
+
+Generator command:
+  UV_CACHE_DIR=/private/tmp/t68c-uv-cache uv run --with pyyaml scripts/generate-agent-configs.py
+Result: PASS; generated agent configs updated. Only the approved symlink file
+was added under the generated Claude/Codex output roots.
+
+Parity check:
+  UV_CACHE_DIR=/private/tmp/t68c-uv-cache uv run --with pyyaml scripts/generate-agent-configs.py --check
+Result: PASS; generated agent configs are up to date.
+
+Final command:
+  env UV_CACHE_DIR=/private/tmp/t68c-uv-cache make validate-agent-assets
+Result: PASS; agent asset validation ok.
+
+Command:
+  rg -n -F '^[a-z0-9][a-z0-9_-]{0,63}$' home/dot_agents/skills/agmsg/scripts
+Result: one match, lib/identifier.sh:6.
+
+Command: git diff --check
+Result: PASS.
+
+SCOPE AND INVARIANTS
+--------------------
+- T76b product edits are the shared helper, send helper refactor, three
+  inventoried registration scripts, one generator-produced parity symlink,
+  and tests/unit/test_agmsg_send.py.
+- Existing accepted T74/T76 and unrelated T75 changes remain intact.
+- The grammar literal is unchanged and BODY remains free text.
+- All validation calls precede directory/config/DB mutation.
+- No commit, push, chezmoi apply, Bats, or dependency changes were run.
+
+PLAN QUALITY
+------------
+The plan-quality validator/Make target, hook, reviewer definition, and matching
+CI entrypoint are absent. The T76b plan was manually checked for exact scope,
+inventory evidence, mutation invariants, positive/adversarial tests, concrete
+commands, and STOP conditions.
+
+CRIT REVIEW
+-----------
+Record: r_3b2efd, resolved finding-free approval.
+Evidence: .agents/worklog/codex/review/T76b-crit-comments.json
+Receipt: .agents/worklog/codex/review/T76b-receipt.md
+Gate: PASS with AGENT_REVIEWED=1 and the receipt above.
+
+DECISION MEMORY
+---------------
+UUID: 2c94b7b7-7201-4194-b251-4a79f771a0cf
+Command:
+  python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'T76b: the exact agmsg identifier grammar ^[a-z0-9][a-z0-9_-]{0,63}$ lives in one shared identifier helper and is enforced before mutation by send, join, agent rename, and team rename, ensuring every successful registration can use the message bus.'

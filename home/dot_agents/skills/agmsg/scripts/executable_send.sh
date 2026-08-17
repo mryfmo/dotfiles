@@ -15,6 +15,9 @@ BODY="${4:?Missing message body}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
+source "$SCRIPT_DIR/lib/identifier.sh"
+agmsg_validate_identifiers 'send.sh <team> <from> <to> <message>' "$TEAM" "$FROM" "$TO"
+# shellcheck disable=SC1091
 source "$SCRIPT_DIR/lib/storage.sh"
 DB="$(agmsg_db_path)"
 

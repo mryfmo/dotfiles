@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import configparser
-import hashlib
 import json
 import re
 import subprocess
@@ -19,12 +18,6 @@ except ImportError:  # pragma: no cover - CI installs PyYAML for this script.
     yaml = None
 
 ROOT = Path(__file__).resolve().parents[1]
-# Regenerate with: shasum -a 256 home/dot_pi/agent/extensions/{permgate,contextdb,agmsg}.ts
-PI_EXTENSION_SHA256 = {
-    "permgate.ts": "da95e5a3be363faa9dcd749d781b4bc2e125321409dbfe86e9ea2b9a5659845c",
-    "contextdb.ts": "72632581af29fa62d59d1db6fd0ab5782aac4a7dead3d6a52c27e83784d4305a",
-    "agmsg.ts": "51d64f0cb9ba454c00306408b79d2403c9b8ccbfc0f9e124d62ad5f4ac4a7329",
-}
 SECRET_PATTERN = re.compile(
     r"""(?ix)
     (
@@ -678,40 +671,6 @@ def validate_understand_anything_assets() -> None:
             fail(f"README.md must document Understand-Anything lifecycle token {token!r}")
 
 
-def validate_pi_assets() -> None:
-    pi_root = ROOT / "home/dot_pi"
-    if pi_root.exists():
-        settings_path = pi_root / "agent/settings.json"
-        if not settings_path.is_file():
-            fail(f"{settings_path} is missing")
-        try:
-            settings = json.loads(settings_path.read_text())
-        except json.JSONDecodeError:
-            fail(f"{settings_path} must contain valid JSON")
-        if not isinstance(settings, dict) or settings.get("defaultProjectTrust") != "never":
-            fail(f'{settings_path} must set defaultProjectTrust to "never"')
-
-        extensions_path = pi_root / "agent/extensions"
-        if not extensions_path.is_dir():
-            fail(f"{extensions_path} is missing")
-        for extension_name, expected_hash in PI_EXTENSION_SHA256.items():
-            extension_path = extensions_path / extension_name
-            if not extension_path.is_file():
-                fail(f"{extension_path} is missing")
-            extension_hash = hashlib.sha256(extension_path.read_bytes()).hexdigest()
-            if extension_hash != expected_hash:
-                fail(f"{extension_path} content hash does not match the managed asset")
-
-    mise_path = ROOT / "home/dot_mise/config.toml"
-    try:
-        mise = tomllib.loads(mise_path.read_text())
-    except (FileNotFoundError, tomllib.TOMLDecodeError):
-        fail(f"{mise_path} must contain valid TOML")
-    pi_version = mise.get("tools", {}).get("npm:@earendil-works/pi-coding-agent")
-    if pi_version is not None and pi_version != "0.84.1":
-        fail(f"{mise_path} must pin npm:@earendil-works/pi-coding-agent to 0.84.1")
-
-
 def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
     codex_path = ROOT / "home/.chezmoitemplates/codex-config-managed.toml"
     codex_text = render_template_text(codex_path)
@@ -930,7 +889,6 @@ def main() -> None:
     validate_crit_install_assets()
     validate_ponytail_assets(manifest, codex)
     validate_understand_anything_assets()
-    validate_pi_assets()
     validate_model_profile_assets(manifest)
     validate_git_config()
     validate_no_removed_claude_skill()

@@ -14,7 +14,7 @@
       "minimum_confidence": 0.9
     }
   },
-  "pi": {
+  "cli": {
     "decision_layers": ["deny_patterns", "workspace_write", "allow_patterns"],
     "llm_enabled": false,
     "workspace_write": true,

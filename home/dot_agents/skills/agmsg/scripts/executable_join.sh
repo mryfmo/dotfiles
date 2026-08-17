@@ -1,28 +1,35 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Usage: join.sh <team> <agent_id> <type> <project_path>
-#
-# Adds an agent to a team. Creates the team if it doesn't exist.
+# @file join
+# @brief Add an agent registration, creating the team when needed.
+# @arg $1 string Team name.
+# @arg $2 string Agent identity.
+# @arg $3 string Agent runtime type.
+# @arg $4 path Project path.
 
 TEAM="${1:?Usage: join.sh <team> <agent_id> <type> <project_path>}"
 AGENT_ID="${2:?Missing agent_id}"
-AGENT_TYPE="${3:?Missing type (claude-code | codex | pi)}"
+AGENT_TYPE="${3:?Missing type (claude-code | codex)}"
 PROJECT_PATH="${4:?Missing project_path}"
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/lib/identifier.sh"
+agmsg_validate_identifiers 'join.sh <team> <agent_id> <type> <project_path>' "$TEAM" "$AGENT_ID"
 
 # Reject unknown agent types — the rest of agmsg (delivery.sh,
 # session-start.sh, identities.sh lookups) only supports the values listed
 # here. Allowing arbitrary strings silently mis-registers an agent and
 # makes monitor mode fail with a confusing "no joined teams" message.
 case "$AGENT_TYPE" in
-claude-code | codex | gemini | antigravity | copilot | pi) ;;
+claude-code | codex | gemini | antigravity | copilot) ;;
 *)
-    echo "Unknown agent type: '$AGENT_TYPE' (supported: claude-code, codex, gemini, antigravity, copilot, pi)" >&2
+    echo "Unknown agent type: '$AGENT_TYPE' (supported: claude-code, codex, gemini, antigravity, copilot)" >&2
     exit 1
     ;;
 esac
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TEAMS_DIR="$SCRIPT_DIR/../teams"
 TEAM_CONFIG="$TEAMS_DIR/$TEAM/config.json"
 

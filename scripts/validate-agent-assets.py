@@ -22,8 +22,8 @@ ROOT = Path(__file__).resolve().parents[1]
 # Regenerate with: shasum -a 256 home/dot_pi/agent/extensions/{permgate,contextdb,agmsg}.ts
 PI_EXTENSION_SHA256 = {
     "permgate.ts": "da95e5a3be363faa9dcd749d781b4bc2e125321409dbfe86e9ea2b9a5659845c",
-    "contextdb.ts": "ef21284b72ae8ea9597b3fa0f7dec7ef8d4ba7034dc3fa2287669934dbc199ef",
-    "agmsg.ts": "7d575f4a4b2961f8c9468b503bacaed1feb79e853d0a8d6c6f0326c0499ed55c",
+    "contextdb.ts": "72632581af29fa62d59d1db6fd0ab5782aac4a7dead3d6a52c27e83784d4305a",
+    "agmsg.ts": "51d64f0cb9ba454c00306408b79d2403c9b8ccbfc0f9e124d62ad5f4ac4a7329",
 }
 SECRET_PATTERN = re.compile(
     r"""(?ix)

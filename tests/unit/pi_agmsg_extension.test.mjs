@@ -106,6 +106,23 @@ test("missing identity returns a fixed error without spawning", async () => {
     }
 });
 
+test("invalid model-owned identifiers return an error without spawning", async () => {
+    for (const params of [
+        { team: "BadTeam", to: "orchestrator", body: "body" },
+        { team: "workers", to: "bad' OR 1=1 --", body: "body" },
+        { team: `a${"b".repeat(64)}`, to: "orchestrator", body: "body" },
+    ]) {
+        const send = harness();
+        const result = await send.execute(params);
+        assert.deepEqual(result, {
+            content: [{ type: "text", text: "agmsg_send: invalid identifier" }],
+            details: { success: false },
+            isError: true,
+        });
+        assert.deepEqual(send.calls, []);
+    }
+});
+
 test("send failure returns one fixed error line", async () => {
     const send = harness({ error: Object.assign(new Error("secret stderr"), { code: 7 }) });
 

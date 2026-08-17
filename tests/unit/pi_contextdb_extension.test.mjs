@@ -4,9 +4,11 @@ import test from "node:test";
 import contextdbExtension from "../../home/dot_pi/agent/extensions/contextdb.ts";
 
 const OPTED_CWD = "/workspace/project";
-const CLI = `${OPTED_CWD}/.claude/hooks/contextdb_cli.py`;
+const HOME = "/home/pi-worker";
+const OPT_IN = `${OPTED_CWD}/.claude/contextdb`;
+const CLI = `${HOME}/.agents/compactiondb/.claude/hooks/contextdb_cli.py`;
 
-function harness({ opted = true, execError = null, existsError = null } = {}) {
+function harness({ opted = true, trusted = true, execError = null, existsError = null } = {}) {
     const handlers = new Map();
     const calls = [];
     const errors = [];
@@ -28,14 +30,20 @@ function harness({ opted = true, execError = null, existsError = null } = {}) {
             },
         };
     };
-    const existsSync = () => {
+    const existsSync = (path) => {
         existsChecks += 1;
         if (existsError) {
             throw existsError;
         }
-        return typeof opted === "function" ? opted() : opted;
+        if (path === OPT_IN) {
+            return typeof opted === "function" ? opted() : opted;
+        }
+        if (path === CLI) {
+            return trusted;
+        }
+        return false;
     };
-    contextdbExtension(pi, execFile, existsSync, (message) => errors.push(message));
+    contextdbExtension(pi, execFile, existsSync, (message) => errors.push(message), HOME);
     const ctx = {
         cwd: OPTED_CWD,
         sessionManager: { getSessionId: () => "pi-session" },
@@ -50,7 +58,14 @@ function harness({ opted = true, execError = null, existsError = null } = {}) {
 
 function payload(call) {
     assert.equal(call.file, "python3");
-    assert.deepEqual(call.args, [CLI, "ingest", "--ingested-from", "pi"]);
+    assert.deepEqual(call.args, [
+        CLI,
+        "--project-root",
+        OPTED_CWD,
+        "ingest",
+        "--ingested-from",
+        "pi",
+    ]);
     assert.deepEqual(call.options, { cwd: OPTED_CWD, encoding: "utf8", timeout: 5000 });
     return JSON.parse(call.input);
 }
@@ -190,6 +205,22 @@ test("non-opted cwd remains a completely silent no-op", async () => {
 
     assert.deepEqual(capture.calls, []);
     assert.deepEqual(capture.errors, []);
+    assert.equal(capture.existsChecks(), 1);
+});
+
+test("missing trusted runtime remains a completely silent no-op", async () => {
+    const capture = harness({ trusted: false });
+    await start(capture);
+    await capture.invoke("turn_end", {
+        type: "turn_end",
+        turnIndex: 1,
+        message: { role: "assistant", content: [{ type: "text", text: "done" }] },
+        toolResults: [],
+    });
+
+    assert.deepEqual(capture.calls, []);
+    assert.deepEqual(capture.errors, []);
+    assert.equal(capture.existsChecks(), 2);
 });
 
 test("opt-in existence is cached and rechecked at session start", async () => {
@@ -208,7 +239,7 @@ test("opt-in existence is cached and rechecked at session start", async () => {
     await start(capture);
     await capture.invoke("turn_end", turn);
 
-    assert.equal(capture.existsChecks(), 2);
+    assert.equal(capture.existsChecks(), 3);
     assert.equal(capture.calls.length, 1);
 });
 

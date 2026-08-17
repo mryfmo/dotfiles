@@ -23,11 +23,20 @@ try:
     if cwd is not None and not isinstance(cwd, str):
         raise ValueError("notify cwd must be a string")
     project_dir = (Path(cwd) if cwd else Path.cwd()).resolve()
-    cli = project_dir / ".claude" / "hooks" / "contextdb_cli.py"
-    if not cli.is_file():
+    opt_in = project_dir / ".claude" / "contextdb"
+    cli = Path.home() / ".agents" / "compactiondb" / ".claude" / "hooks" / "contextdb_cli.py"
+    if not opt_in.is_dir() or not cli.is_file():
         raise SystemExit(0)
     subprocess.run(
-        ["python3", str(cli), "ingest", "--ingested-from", "codex"],
+        [
+            sys.executable,
+            str(cli),
+            "--project-root",
+            str(project_dir),
+            "ingest",
+            "--ingested-from",
+            "codex",
+        ],
         input=payload,
         text=True,
         stdout=subprocess.DEVNULL,

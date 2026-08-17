@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 
 import type {
@@ -77,7 +78,7 @@ function ingest(
     return new Promise((resolve, reject) => {
         const child = execFileImpl(
             "python3",
-            [cliPath, "ingest", "--ingested-from", "pi"],
+            [cliPath, "--project-root", cwd, "ingest", "--ingested-from", "pi"],
             { cwd, encoding: "utf8", timeout: 5000 },
             (error) => error ? reject(error) : resolve(),
         );
@@ -94,6 +95,7 @@ export default function contextdbExtension(
     execFileImpl: ExecFile = execFile,
     existsSyncImpl: ExistsSync = existsSync,
     reportError: ReportError = (message) => console.error(message),
+    home: string = homedir(),
 ) {
     let cliPath: string | undefined;
     const toolArgs = new Map<string, Record<string, unknown>>();
@@ -112,9 +114,17 @@ export default function contextdbExtension(
     pi.on("session_start", safe<SessionStartEvent>((_event, ctx) => {
         cliPath = undefined;
         toolArgs.clear();
-        const candidate = join(ctx.cwd, ".claude", "hooks", "contextdb_cli.py");
-        if (existsSyncImpl(candidate)) {
-            cliPath = candidate;
+        const optIn = join(ctx.cwd, ".claude", "contextdb");
+        const trustedCli = join(
+            home,
+            ".agents",
+            "compactiondb",
+            ".claude",
+            "hooks",
+            "contextdb_cli.py",
+        );
+        if (existsSyncImpl(optIn) && existsSyncImpl(trustedCli)) {
+            cliPath = trustedCli;
         }
     }, reportError));
 

@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Check inbox across all teams with cooldown. Skips if last check was < 60 seconds ago.
-# Usage: check-inbox.sh <type> <project_path>
+# @file check-inbox
+# @brief Check unread agmsg messages across registered teams.
+# @description Applies the configured cooldown and optional bridge identity filters.
+# @arg $1 string CLI type.
+# @arg $2 string Project path.
 
 TYPE="${1:?Usage: check-inbox.sh <type> <project_path>}"
 PROJECT="${2:?Missing project_path}"
@@ -52,8 +55,7 @@ if echo "$WHOAMI" | grep -q "not_joined=true"; then
     exit 0
 fi
 
-# A bridge can explicitly narrow delivery to one registered identity. Existing
-# hook callers leave AGMSG_ACTIVE_NAME unset and retain byte-identical behavior.
+# @description Narrow bridge delivery to one explicitly selected registered identity.
 if [ -n "$ACTIVE_NAME" ]; then
     PAIRS="$("$SCRIPT_DIR"/identities.sh "$PROJECT" "$TYPE")"
     PAIRS=$(printf '%s\n' "$PAIRS" | awk -F '\t' -v name="$ACTIVE_NAME" '$2 == name')
@@ -81,10 +83,7 @@ if [ -z "$AGENT" ] || [ -z "$TEAMS" ]; then
     exit 0
 fi
 
-# Cooldown check. The marker is hook runtime state, not message storage, so it
-# lives in the skill's run dir — independent of AGMSG_STORAGE_PATH. Keeping it
-# out of the store means an overridden/sandboxed store still gets delivery even
-# when the default db dir doesn't exist.
+# @description Store cooldown state in the runtime directory, independently of message storage.
 MARKER="$SKILL_DIR/run/.lastcheck-$AGENT"
 
 if [ "$FORCE_CHECK" != "1" ] && [ -f "$MARKER" ]; then

@@ -66,3 +66,7 @@ declare module "node:fs" {
 declare module "node:path" {
     export function join(...paths: string[]): string;
 }
+
+declare module "node:os" {
+    export function homedir(): string;
+}

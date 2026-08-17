@@ -374,6 +374,7 @@ class PermgateTest(unittest.TestCase):
 
     def test_pi_workspace_allows_in_cwd_read_write_and_edit(self) -> None:
         (self.workspace / "input.txt").write_text("input\n")
+        (self.workspace / "nested").mkdir()
         for tool, path in (
             ("write", "new.txt"),
             ("edit", "nested/edit.txt"),
@@ -459,6 +460,7 @@ class PermgateTest(unittest.TestCase):
             ("../outside/file.txt", str(self.workspace)),
             (str(self.outside / "file.txt"), str(self.workspace)),
             (".", str(self.workspace)),
+            ("..", str(self.workspace)),
             ("outside-link/file.txt", str(self.workspace)),
             ("loop/file.txt", str(self.workspace)),
             ("tmp/file.txt", "/"),
@@ -470,6 +472,54 @@ class PermgateTest(unittest.TestCase):
                 )
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(result.stdout, '{"decision":"ask"}\n')
+
+    def test_pi_workspace_asks_for_looping_or_missing_parent(self) -> None:
+        loop = self.workspace / "parent-loop"
+        loop.symlink_to(loop, target_is_directory=True)
+
+        for path in ("parent-loop/file.txt", "missing-parent/file.txt"):
+            with self.subTest(path=path):
+                result = self.run_gate(
+                    "pi",
+                    {"tool": "write", "path": path, "cwd": str(self.workspace)},
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, '{"decision":"ask"}\n')
+
+    def test_pi_workspace_never_writes_through_final_symlink(self) -> None:
+        target = self.workspace / "target.txt"
+        target.write_text("existing\n")
+        link = self.workspace / "write-link"
+        link.symlink_to(target)
+
+        for tool in ("write", "edit"):
+            with self.subTest(tool=tool):
+                result = self.run_gate(
+                    "pi",
+                    {"tool": tool, "path": str(link), "cwd": str(self.workspace)},
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, '{"decision":"ask"}\n')
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS /var alias only")
+    def test_pi_workspace_resolves_macos_var_alias_identically(self) -> None:
+        try:
+            relative = self.workspace.resolve().relative_to("/private/var")
+        except ValueError:
+            self.skipTest("temporary workspace is not under /private/var")
+        alias_workspace = Path("/var") / relative
+
+        result = self.run_gate(
+            "pi",
+            {
+                "tool": "write",
+                "path": str(alias_workspace / "alias-write.txt"),
+                "cwd": str(alias_workspace),
+            },
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, '{"decision":"allow"}\n')
 
     def test_pi_bash_send_lane_is_removed(self) -> None:
         prefix = f"{self.send_script} "

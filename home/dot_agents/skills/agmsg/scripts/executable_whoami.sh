@@ -1,17 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Show agent identity in id(1) style.
-# Single match:    agent=<name> teams=<t1,t2,...> type=<type> project=<path>
-# Multiple match:  multiple=true agents=<n1,n2,...> teams=<t1,t2,...> type=<type> project=<path>
-# Suggestions:     suggest=true agents=<n1,n2,...> teams=<t1,t2,...> type=<type> project=<path> available_teams=<...>
-# Not joined:      not_joined=true available_teams=<t1,t2,...> (or "none")
-#
-# Usage: whoami.sh <project_path> [type]
-#   type: claude-code, codex, gemini, antigravity, copilot, pi
-#   If type is omitted, auto-detect from env vars and process tree.
+# @file whoami
+# @brief Show the active agmsg identity in id(1)-style output.
+# @description Supports claude-code, codex, gemini, antigravity, copilot, and pi.
+# @arg $1 string Project path.
+# @arg $2 string Optional CLI type; detected from the environment when omitted.
 
-# Auto-detect CLI type from environment variables and process tree
+# @description Detect the active CLI type from the environment and process tree.
 detect_cli_type() {
     # 1. Check environment variables. Order matters: prefer the env vars that
     # the runtime *itself* exports for its own session over the env vars users
@@ -79,13 +75,10 @@ if [ ! -d "$TEAMS_DIR" ]; then
     exit 0
 fi
 
-# Exact (project, type) matches come from the shared identities helper.
-# Format: each line "<team>\t<agent>".
+# @description Load exact project and CLI type matches as team-agent pairs.
 EXACT_MATCHES="$("$SCRIPT_DIR/identities.sh" "$PROJECT_PATH" "$AGENT_TYPE")"
 
-# Suggestions = any agents of this type registered elsewhere, plus the list
-# of all teams on disk. These still need a full scan since identities.sh is
-# scoped to the exact (project, type).
+# @description Load suggestions from registrations outside the exact project match.
 SUGGESTED_MATCHES=""
 ALL_TEAMS=""
 
@@ -122,14 +115,14 @@ if [ -z "$EXACT_MATCHES" ] && [ -z "$SUGGESTED_MATCHES" ]; then
 fi
 
 if [ -z "$EXACT_MATCHES" ]; then
-    # SUGGESTED_MATCHES is "team\tagent" per line; preserve that order.
+    # @description Preserve the team-agent order in suggested matches.
     AGENT_NAMES=$(echo "$SUGGESTED_MATCHES" | cut -f2 | awk '!seen[$0]++' | paste -sd, -)
     TEAM_NAMES=$(echo "$SUGGESTED_MATCHES" | cut -f1 | awk '!seen[$0]++' | paste -sd, -)
     echo "suggest=true agents=$AGENT_NAMES teams=$TEAM_NAMES type=$AGENT_TYPE project=$PROJECT_PATH available_teams=${ALL_TEAMS:-none}"
     exit 0
 fi
 
-# EXACT_MATCHES from identities.sh is "team\tagent" per line.
+# @description Preserve the team-agent order returned by identities.sh.
 TEAM_NAMES=$(echo "$EXACT_MATCHES" | cut -f1 | awk '!seen[$0]++' | paste -sd, -)
 AGENT_NAMES=$(echo "$EXACT_MATCHES" | cut -f2 | awk '!seen[$0]++' | paste -sd, -)
 AGENT_COUNT=$(echo "$EXACT_MATCHES" | cut -f2 | sort -u | wc -l | tr -d ' ')

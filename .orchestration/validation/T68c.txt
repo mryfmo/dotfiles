@@ -1,0 +1,166 @@
+T68c VALIDATION
+Date: 2026-08-17 Asia/Tokyo
+
+BOUNDARIES
+- Project .claude/contextdb is an opt-in data marker only.
+- Executable code is fixed under HOME/.agents/compactiondb.
+- Model-owned team/to use ^[a-z0-9][a-z0-9_-]{0,63}$.
+- Legacy send.sh safely stores all four argv values, including quotes.
+- Real Pi, Bats, chezmoi apply, vendor writes, dependency-file changes,
+  commit, and push: NOT RUN.
+
+VENDORED TRUSTED-RUNTIME CONTRACT (READ ONLY)
+- paths.py:43-46: explicit root wins over env, payload cwd, and process cwd.
+- paths.py:86-105: project state/spool/DB live under root/.claude/contextdb.
+- cli.py:36,162-174: --project-root is accepted and used for ingest/drain.
+- hooks/contextdb_cli.py:7-10: package imports resolve beside installed wrapper.
+
+TEST-FIRST RED
+- Initial focused run failed on all unimplemented product paths: the Pi
+  receiver selected project-local code, agmsg accepted invalid identifiers,
+  send.sh broke on quote input, and shdoc markers were absent.
+- The new notify harness initially invoked the non-executable chezmoi source
+  directly; after correcting the harness to use bash, the clean regression
+  proved the malicious project CLI ran before the product fix.
+
+FOCUSED GREEN
+$ env UV_CACHE_DIR=/private/tmp/t68c-uv-cache uv run python -m unittest -v tests.unit.test_pi_contextdb_extension tests.unit.test_pi_agmsg_extension tests.unit.test_contextdb_codex_notify tests.unit.test_agmsg_send
+Ran 11 tests in 0.832s
+OK
+
+QUOTE-INJECTION AND TRUSTED-RUNTIME TRANSCRIPT
+$ env UV_CACHE_DIR=/private/tmp/t68c-uv-cache uv run python -m unittest -v tests.unit.test_agmsg_send.AgmsgSendTest.test_single_quotes_round_trip_without_sql_injection tests.unit.test_contextdb_codex_notify.ContextdbCodexNotifyTest.test_project_cli_is_data_only_and_trusted_cli_gets_explicit_root tests.unit.test_pi_agmsg_extension tests.unit.test_pi_contextdb_extension
+test_single_quotes_round_trip_without_sql_injection ... ok
+test_project_cli_is_data_only_and_trusted_cli_gets_explicit_root ... ok
+test_node_behavior_suite (pi_agmsg) ... ok
+test_node_syntax_fallback (pi_agmsg) ... ok
+test_typescript_contract (pi_agmsg) ... ok
+test_node_behavior_suite (pi_contextdb) ... ok
+test_node_syntax_fallback (pi_contextdb) ... ok
+test_typescript_contract (pi_contextdb) ... ok
+Ran 8 tests in 3.122s
+OK
+
+The scratch-SQL case sends these exact values:
+- team: team' OR 1=1 --
+- from: from'agent
+- to: to'agent
+- body: body'); DROP TABLE messages; -- 'intact
+It asserts one exact row and a still-queryable messages table.
+
+STATIC, TYPE, AND REPOSITORY GATES
+$ make format
+PASS
+
+$ bash -n <notify> <send.sh> <whoami.sh> <check-inbox.sh>
+PASS
+
+$ shellcheck -x <notify> <send.sh> <whoami.sh> <check-inbox.sh>
+PASS
+
+$ make unit-test
+Ran 382 tests in 39.829s
+OK
+
+$ env UV_CACHE_DIR=/private/tmp/t68c-uv-cache make validate-agent-assets
+agent asset validation ok
+
+The first sandboxed validator attempt failed only because DNS access to PyPI
+was blocked. The approved retry installed one ephemeral package in the temp uv
+cache; repository dependency files were unchanged.
+
+$ shasum -a 256 home/dot_pi/agent/extensions/contextdb.ts home/dot_pi/agent/extensions/agmsg.ts
+72632581af29fa62d59d1db6fd0ab5782aac4a7dead3d6a52c27e83784d4305a  contextdb.ts
+51d64f0cb9ba454c00306408b79d2403c9b8ccbfc0f9e124d62ad5f4ac4a7329  agmsg.ts
+
+$ git diff --check
+PASS
+
+FULL T68c LOGICAL DIFF
+
+home/dot_pi/agent/extensions/contextdb.ts
+- import homedir;
+- prepend --project-root and cwd to trusted CLI ingest argv;
+- accept an injectable/default HOME for deterministic tests;
+- replace project-local hook candidate with project opt-in marker plus the
+  fixed HOME/.agents/compactiondb/.claude/hooks/contextdb_cli.py candidate;
+- enable capture only when both paths exist.
+
+home/dot_pi/agent/extensions/agmsg.ts
+- add the exact /^[a-z0-9][a-z0-9_-]{0,63}$/ identifier expression;
+- reject invalid team/to with fixed agmsg_send: invalid identifier before
+  process creation; body remains one free-text argv element.
+
+home/dot_local/bin/common/executable_contextdb-codex-notify
+- replace project-local executable lookup with project opt-in directory and
+  fixed Path.home() installed CLI lookup;
+- silently no-op when either prerequisite is absent;
+- execute the installed CLI with the already-running sys.executable,
+  --project-root <resolved-project>, ingest --ingested-from codex, and project
+  cwd.
+
+home/dot_agents/skills/agmsg/scripts/executable_send.sh
+- replace Usage comment with @file/@brief/@arg annotations;
+- add the computed-source ShellCheck directive;
+- add one sql_literal helper that wraps and doubles single quotes;
+- pass team/from/to/body through the helper and interpolate only fully quoted
+  literals into the fixed INSERT.
+
+home/dot_agents/skills/agmsg/scripts/executable_whoami.sh
+- replace the top usage/output prose and T68-touched identity/suggestion
+  comments with English shdoc @file/@brief/@description/@arg annotations.
+
+home/dot_agents/skills/agmsg/scripts/executable_check-inbox.sh
+- replace the top usage prose and T68 bridge/cooldown comments with English
+  shdoc @file/@brief/@description/@arg annotations.
+
+scripts/validate-agent-assets.py
+- replace contextdb.ts/agmsg.ts integrity constants with the hashes above;
+  the earlier accepted multi-extension structure is unchanged.
+
+tests/unit
+- pi_contextdb_extension.test.mjs: trusted HOME path, explicit root argv,
+  opt-in short circuit, missing trusted runtime no-op, and recheck counts;
+- pi_contextdb_extension_types.d.ts: node:os homedir declaration;
+- pi_agmsg_extension.test.mjs: uppercase, quote-injection, and overlength
+  identifiers reject without spawn;
+- NEW test_contextdb_codex_notify.py: malicious project executable sentinel,
+  trusted argv/cwd/input capture, missing-runtime and non-opted no-ops;
+- NEW test_agmsg_send.py: four quote-bearing values round-trip through a
+  scratch AGMSG_STORAGE_PATH and shdoc headers are present.
+
+The shared dirty worktree contains accepted T66b-T70/T68 bases. Those changes
+were read and preserved. The logical diff above is the complete T68c delta.
+
+SCOPE
+Allowed T68c product/test paths touched:
+- home/dot_pi/agent/extensions/{contextdb.ts,agmsg.ts}
+- home/dot_local/bin/common/executable_contextdb-codex-notify
+- home/dot_agents/skills/agmsg/scripts/{executable_send.sh,
+  executable_whoami.sh,executable_check-inbox.sh}
+- scripts/validate-agent-assets.py
+- matching tests/unit modules listed above
+- five T68c artifacts plus ignored AGENTS worklog/plan/todo/learn/review evidence
+
+No join.sh, bridge, permgate, vendor, dependency, Claude/Codex configuration,
+or unrelated product path was changed by T68c.
+
+REVIEW
+- Crit review: /Users/mryfmo/.crit/reviews/dfcf30aea611/review.json
+- Record: r_df68e0; resolved=true.
+- Evidence: .agents/worklog/codex/review/T68c-crit-comments.json
+- Receipt: .agents/worklog/codex/review/T68c-receipt.md
+- Receipt gate: PASS.
+
+PLAN QUALITY
+- Workflow, validator, hook, template, Make/CI target, and reviewer subagent
+  entrypoints were unavailable.
+- Manual task/AGENTS checklist passed for trust boundaries, root cause,
+  maintenance rationale, exact commands, positive/adversarial tests, and STOP
+  conditions.
+
+MEMORY
+UUID: 6add9462-a555-407b-817d-28bfe6962c38
+kind=failure scope=project
+
+RESULT: PASS

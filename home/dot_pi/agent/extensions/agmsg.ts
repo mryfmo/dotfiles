@@ -11,6 +11,8 @@ type SendResult = {
     isError?: boolean;
 };
 
+const IDENTIFIER = /^[a-z0-9][a-z0-9_-]{0,63}$/;
+
 const success = (): SendResult => ({
     content: [{ type: "text", text: "agmsg_send: sent" }],
     details: { success: true },
@@ -61,6 +63,9 @@ export default function agmsgExtension(
         async execute(_toolCallId, params) {
             if (!identity) {
                 return failure("agmsg_send: missing AGMSG_PI_IDENTITY");
+            }
+            if (!IDENTIFIER.test(params.team) || !IDENTIFIER.test(params.to)) {
+                return failure("agmsg_send: invalid identifier");
             }
             const script = `${home}/.agents/skills/agmsg/scripts/send.sh`;
             try {

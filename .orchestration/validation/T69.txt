@@ -1,0 +1,138 @@
+T69 VALIDATION
+Date: 2026-08-17 Asia/Tokyo
+
+BOUNDARIES
+- Vendor files: UNCHANGED
+- Real Pi binary: NOT RUN
+- Extension network access: NONE
+- Extension state files: NONE
+- Capture failure propagated into Pi: NO
+- Chezmoi apply: NOT RUN
+- Bats: NOT RUN
+- Dependencies: UNCHANGED
+- Commit/push: NOT RUN
+
+PINNED v0.84.1 CONTRACT
+- types.ts:561-613: session_start and session_compact fields.
+- types.ts:727-785: turn_end; tool start has args, tool end has result/isError.
+- types.ts:1191-1238: ExtensionAPI subscriptions for all used events.
+- types.ts:1517-1518: default factory receives ExtensionAPI.
+
+TEST-FIRST RED
+
+$ uv run python -m unittest <T69 extension and integrity cases> -v
+Ran 5 tests in 1.814s
+FAILED (failures=5)
+
+Observed before implementation:
+- Node import, node --check, and tsc could not find contextdb.ts;
+- matching and tampered contextdb integrity fixtures could not find the asset.
+
+HANDLER-DIRECT TRANSCRIPTS
+
+$ node --test tests/unit/pi_contextdb_extension.test.mjs
+tests=10 pass=10 fail=0
+
+TOOL SUCCESS
+argv: python3 /workspace/project/.claude/hooks/contextdb_cli.py ingest --ingested-from pi
+options: cwd=/workspace/project encoding=utf8 timeout=5000
+stdin: {"hook_event_name":"PostToolUse","session_id":"pi-session","cwd":"/workspace/project","tool_name":"Bash","tool_use_id":"call-0","tool_input":{"command":"git status"},"tool_response":{"success":true}}
+Coverage: Bash command; Read/Write/Edit path; Grep/Find pattern.
+Raw tool result and non-primary inputs: absent.
+
+TOOL FAILURE
+stdin: {"hook_event_name":"PostToolUseFailure","session_id":"pi-session","cwd":"/workspace/project","tool_name":"Bash","tool_use_id":"failed-call","tool_input":{"command":"false"},"tool_response":{"success":false}}
+Raw private result: absent.
+
+TURN END
+stdin fields: hook_event_name=Stop session_id=pi-session cwd=/workspace/project
+last_assistant_message: exactly 240 text characters
+thinking content: absent
+
+SESSION COMPACT
+stdin: {"hook_event_name":"PostCompact","session_id":"pi-session","cwd":"/workspace/project","trigger":"threshold","compact_summary":"compact summary"}
+
+NON-OPTED
+session_start existence result=false; turn_end and session_compact invoked
+ingest invocations=0 stderr lines=0
+
+SESSION RECHECK
+first session_start=false; second session_start=true
+existence checks=2; event-time checks=0; second turn ingest invocations=1
+
+FAILURE / TIMEOUT
+exec error -> handler resolved, stderr="contextdb: capture failed"
+timeout error -> handler resolved, stderr="contextdb: capture failed"
+each case stderr lines=1
+
+THROWN INTERNAL ERROR
+existence check threw -> session_start handler resolved
+ingest invocations=0 stderr lines=1
+
+FOCUSED PYTHON GREEN
+
+$ uv run python -m unittest tests.unit.test_pi_contextdb_extension tests.unit.test_validate_agent_assets -v
+Ran 43 tests
+OK
+
+STATIC AND REPOSITORY GATES
+
+$ make format
+PASS
+
+$ node --check home/dot_pi/agent/extensions/contextdb.ts
+PASS
+
+$ tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --skipLibCheck tests/unit/pi_contextdb_extension_types.d.ts home/dot_pi/agent/extensions/contextdb.ts
+PASS (local TypeScript; no dependency added)
+
+$ make unit-test
+352 discovered tests
+PASS
+
+$ make validate-agent-assets
+agent asset validation ok
+
+$ shasum -a 256 home/dot_pi/agent/extensions/contextdb.ts
+ef21284b72ae8ea9597b3fa0f7dec7ef8d4ba7034dc3fa2287669934dbc199ef
+matches scripts/validate-agent-assets.py
+
+$ git diff --check
+PASS
+
+$ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/review/T69-receipt.md make require-crit-review
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+
+Crit evidence:
+- finding: c_ea387b
+- resolved: true
+- source: .agents/worklog/codex/review/T69-crit-comments.json
+- outcome: approved after canonical tool-name correction
+
+SCOPE
+T69 product/test paths:
+- home/dot_pi/agent/extensions/contextdb.ts
+- scripts/validate-agent-assets.py
+- tests/unit/pi_contextdb_extension.test.mjs
+- tests/unit/pi_contextdb_extension_types.d.ts
+- tests/unit/test_pi_contextdb_extension.py
+- tests/unit/test_validate_agent_assets.py
+- five T69 artifacts and ignored AGENTS-required worklog/review evidence
+
+Accepted T67b/T67c/T67d/T67e/T68 dirty paths were preserved. No vendor or
+unrelated path was changed for T69.
+
+PLAN QUALITY
+- Validator/Make target: unavailable.
+- Hook: unavailable.
+- Reviewer definition: unavailable.
+- Template/CI entrypoint: unavailable.
+- Manual checklist passed for pinned current-state evidence, args-lifecycle
+  root cause, trust boundaries, positive/adversarial fixtures, STOP conditions,
+  maintenance hash, and measured validation.
+
+MEMORY
+UUID: 67753213-22b9-49f9-beea-5fb63e2d5f29
+
+RESULT: PASS
+

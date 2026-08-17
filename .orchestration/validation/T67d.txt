@@ -1,0 +1,123 @@
+T67d VALIDATION
+Date: 2026-08-17 Asia/Tokyo
+
+BOUNDARIES
+- Real Pi binary: NOT RUN
+- Real ~/.pi/agent/auth.json: NOT READ
+- Credential content: NOT ACCESSED, PRINTED, OR COPIED
+- Chezmoi apply: NOT RUN
+- Bats: NOT RUN
+- Dependencies: UNCHANGED
+- Commit/push: NOT RUN
+
+TEST-FIRST RED PHASE
+
+$ uv run python -m unittest <three T67d cases> -v
+Ran 3 tests
+FAILED (failures=1)
+
+Observed old behavior for a complete RPC stream with a non-OK final text:
+- reported FAIL rpc: agent_end not received;
+- reported FAIL extension despite successful explicit extension execution;
+- therefore coupled content equality to completion/load evidence.
+
+FOCUSED GREEN PHASE
+
+$ uv run python -m unittest tests.unit.test_pi_model_access_check -v
+Ran 14 tests in 1.364s
+OK
+
+FIXTURE TRANSCRIPTS
+
+== REASONING DOUBLE MESSAGE ==
+events: agent_start,turn_start,message_start(thinking),message_end(thinking),
+        message_start(text OK),message_end(text OK),turn_end,agent_end,
+        agent_settled
+PASS json: assistant replied exactly OK
+PASS rpc: agent_end received
+PASS extension: permgate.ts loaded via --extension
+private reasoning absent from stdout/stderr
+
+== SINGLE-MESSAGE REGRESSION ==
+events: agent_start,message_start(text OK),message_end(text OK),turn_end,
+        agent_end,agent_settled
+PASS json: assistant replied exactly OK
+PASS rpc: agent_end received
+PASS extension: permgate.ts loaded via --extension
+
+== JSON MISMATCH, COMPLETE RPC ==
+FAIL json: assistant response was not exactly OK
+PASS rpc: agent_end received
+PASS extension: permgate.ts loaded via --extension
+
+== RPC MISMATCH AFTER COMPLETE EVENT STREAM ==
+RPC envelope KINDS: response,agent_start,message_start,message_end,agent_end,agent_settled
+FAIL rpc: assistant response was not exactly OK
+PASS extension: permgate.ts loaded via --extension
+
+== RPC EOF WITHOUT AGENT_END ==
+RPC envelope excludes agent_end
+FAIL rpc: agent_end not received
+PASS extension: permgate.ts loaded via --extension
+The independent PASS is supplied by the successful JSON lane's explicit
+--extension execution.
+
+PINNED v0.84.1 SCHEMA
+- packages/ai/src/types.ts:321-334: TextContent.type=text and
+  ThinkingContent.type=thinking.
+- packages/ai/src/types.ts:390-405: AssistantMessage content union.
+- packages/agent/src/types.ts:397-408: message lifecycle and agent_end are
+  distinct AgentEvent variants.
+
+STATIC AND REPOSITORY GATES
+
+$ make format
+PASS
+
+$ bash -n home/dot_local/bin/common/executable_pi-model-access-check
+PASS
+
+$ shellcheck home/dot_local/bin/common/executable_pi-model-access-check
+PASS
+
+$ make unit-test
+Ran 346 tests in 35.541s
+OK
+
+$ make validate-agent-assets
+agent asset validation ok
+
+$ git diff --check
+PASS
+
+$ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/review/T67d-receipt.md make require-crit-review
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+
+Crit evidence:
+- review id: r_dcdc68
+- resolved: true
+- source: .agents/worklog/codex/review/T67d-crit-comments.json
+- outcome: approved
+
+SCOPE
+- T67d implementation paths:
+  home/dot_local/bin/common/executable_pi-model-access-check
+  tests/unit/test_pi_model_access_check.py
+- Five T67d artifacts and ignored AGENTS-required worklog/review evidence are
+  the remaining task outputs.
+- Accepted T67b/T67c/T68 dirty paths were preserved; no unrelated path was
+  changed for T67d.
+
+PLAN QUALITY
+- Validator/Make target: unavailable.
+- Hook: unavailable.
+- Reviewer definition: unavailable.
+- CI entrypoint: unavailable.
+- Manual checklist passed for current-state evidence, root-cause scope,
+  positive/adversarial tests, STOP condition, and measured validation.
+
+MEMORY
+UUID: bf0768d8-7484-4778-9074-4697b1767f78
+
+RESULT: PASS
+

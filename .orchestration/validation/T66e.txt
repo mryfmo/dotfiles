@@ -1,0 +1,164 @@
+T66e VALIDATION
+Date: 2026-08-17 Asia/Tokyo
+
+BOUNDARIES
+- Only executable_permgate and its matching unit module changed.
+- Strict resolution tightens Pi workspace/read path handling only.
+- Policy, extensions, Claude/Codex paths, dependencies: UNCHANGED.
+- Real Pi, Bats, chezmoi apply, commit/push: NOT RUN.
+
+GRAPH ROUTING
+- .ua/meta.json gitCommitHash: 03621422f732c6be0eb318a137ff572ebeee47c8
+- current HEAD: 93872d321198042d144417e3ba7c08981c686eaa
+- Graph was stale; direct source search fallback was used per AGENTS.md.
+
+TEST-FIRST RED
+
+$ uv run python -m unittest <six strict-path methods>
+...FFF.
+Ran 6 tests in 0.622s
+FAILED (failures=3)
+
+Expected failures:
+- missing-parent/file.txt returned allow instead of ask;
+- final symlink returned allow for write and edit instead of ask.
+
+The parent loop, sensitive read-through-symlink, clean paths, escape cases, and
+live macOS /var alias already had the desired outcome and stayed as regression
+pins.
+
+ADVERSARIAL REVIEW RED/GREEN
+
+After strict-parent implementation, terminal `..` returned allow because the
+re-appended lexical path appeared relative while filesystem traversal escaped.
+
+$ uv run python -m unittest tests.unit.test_permgate.PermgateTest.test_pi_workspace_rejects_path_escapes_root_and_symlink_escape
+FAILED: path='..' expected ask, got allow
+
+After rejecting empty/terminal `..` final names:
+Ran 1 test
+OK
+
+FOCUSED GREEN
+
+$ uv run python -m unittest <six strict-path methods>
+Ran 6 tests in 0.610s
+OK
+
+$ uv run python -m unittest tests.unit.test_permgate
+Ran 43 tests in 5.769s
+OK
+
+Coverage includes:
+- clean in-cwd read/write/edit with existing parent;
+- ordinary resolvable read outside cwd;
+- parent ELOOP and missing parent -> ask;
+- final symlink write/edit -> ask;
+- final read symlink to .env -> deny;
+- final missing/loop read -> ask;
+- plain, symlink, terminal traversal, equal, root, and absolute escapes -> ask;
+- macOS /var cwd/candidate alias -> allow for an in-workspace new file.
+
+PYTHON FLOOR AND STATIC CHECKS
+
+$ python3 --version
+Python 3.14.7
+
+$ python3 -c 'import os, sys; assert sys.version_info >= (3, 10); print(os.path.realpath(".", strict=True))'
+/Users/mryfmo/Workspace/dotfiles
+
+`strict=` was added to os.path.realpath in Python 3.10. Repository pins:
+- home/dot_mise/config.toml:5: python = "3.14.7"
+- home/dot_mise/mise.lock:521: version = "3.14.7"
+
+$ python3 -m py_compile home/dot_local/bin/common/executable_permgate tests/unit/test_permgate.py
+PASS
+
+$ make format
+PASS
+
+FULL REPOSITORY GATES
+
+$ make unit-test
+Ran 377 tests in 38.330s
+OK
+
+$ make validate-agent-assets
+agent asset validation ok
+
+$ git diff --check
+PASS
+
+T66e LOGICAL DIFF (shared T66b-T68b base omitted)
+
+```diff
+--- home/dot_local/bin/common/executable_permgate (T66d/T68b accepted base)
++++ home/dot_local/bin/common/executable_permgate (T66e)
+@@ imports
++import stat
+@@ workspace resolver
+-def workspace_path_allowed(cwd, path):
+-    resolved_cwd = Path(cwd).resolve(strict=True)
+-    resolved_path = candidate.resolve(strict=False)
+-    return resolved_path != resolved_cwd and resolved_path.is_relative_to(resolved_cwd)
++def strict_candidate_path(cwd, path, *, follow_final_symlink):
++    resolved_cwd = Path(os.path.realpath(cwd_path, strict=True))
++    candidate = resolved_cwd / candidate if relative else candidate
++    reject final name "" or ".."
++    resolved_parent = Path(os.path.realpath(candidate.parent, strict=True))
++    resolved_path = resolved_parent / candidate.name
++    final_mode = resolved_path.lstat().st_mode
++    missing final: allow only for write/edit
++    final symlink: reject write/edit; strictly resolve for read
++    every cwd/parent resolution or non-final-missing lstat error: no decision
++    return resolved_cwd, resolved_path
++
++def workspace_path_allowed(cwd, path):
++    resolved = strict_candidate_path(..., follow_final_symlink=False)
++    return component-aware containment when resolved
+@@ sensitive read resolver
+-    resolved_path = candidate.resolve(strict=True)
++    resolved = strict_candidate_path(..., follow_final_symlink=True)
++    resolved_path = resolved[1]
+-    Path.home().resolve(strict=True)
++    Path(os.path.realpath(Path.home(), strict=True))
+--- tests/unit/test_permgate.py (accepted base)
++++ tests/unit/test_permgate.py (T66e)
+@@ clean fixtures
++    create nested parent before edit
+@@ escape fixtures
++    terminal `..` asks
+@@ new regressions
++    parent loop and missing parent ask
++    write/edit final symlink ask
++    Darwin /var and /private/var aliases allow the same clean write
+```
+
+REVIEW
+- Crit review file: /Users/mryfmo/.crit/reviews/dfcf30aea611/review.json
+- Record: r_f6df4f; resolved=true.
+- Finding: terminal `..` containment escape; addressed and regression-pinned.
+- Evidence: .agents/worklog/codex/review/T66e-crit-comments.json
+- Receipt: .agents/worklog/codex/review/T66e-receipt.md
+- Receipt gate: PASS.
+
+SCOPE
+T66e edited paths:
+- home/dot_local/bin/common/executable_permgate
+- tests/unit/test_permgate.py
+- five T66e artifacts and ignored AGENTS-required worklog/review evidence
+
+Accepted shared-worktree changes for T66b-T70/T68b were preserved. No other
+product/test path changed for T66e.
+
+PLAN QUALITY
+- Workflow, validator, hook, template, reviewer definition, Make/CI entrypoint:
+  unavailable.
+- Manual task/AGENTS checklist passed for current-state evidence, root cause,
+  strict trust boundary, positive/adversarial cases, exact commands,
+  maintenance rationale, and STOP conditions.
+
+MEMORY
+UUID: 3068b7ac-0f52-4bb5-858c-3ebbc4374b60
+
+RESULT: PASS

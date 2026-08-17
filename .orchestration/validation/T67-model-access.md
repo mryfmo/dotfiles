@@ -148,3 +148,41 @@ for the explicitly named file, while a load failure cannot be reported as a
 successful check. See the pinned
 [loader implementation](https://github.com/earendil-works/pi/blob/v0.84.1/packages/coding-agent/src/core/extensions/loader.ts#L490-L515)
 and [startup diagnostic gate](https://github.com/earendil-works/pi/blob/v0.84.1/packages/coding-agent/src/main.ts#L784-L902).
+
+## Results (recorded by orchestrator, 2026-08-17)
+
+- Operator subscription auth: OpenAI Codex login OK (credentials at
+  ~/.pi/agent/auth.json); initial selection gpt-5.5; catalog refresh
+  timed out (cached models used); active model gpt-5.6-terra.
+- (c) gpt-5.6 family via OpenAI subscription: CONFIRMED (gpt-5.6-terra).
+- (e) Headless gate: PASSED by orchestrator —
+  print lane: `pi -p "Reply with exactly OK"` returned exactly `OK`
+  (openai-codex / gpt-5.6-terra); RPC lane: prompt request
+  `{"id","type":"prompt","message"}` -> response success:true, event
+  kinds observed: agent_start turn_start message_start/update/end
+  turn_end agent_end agent_settled (T68 completion-detection contract
+  empirically confirmed).
+- (a)(b) Anthropic subscription lane (Fable listing, thinking levels):
+  NOT YET RUN — open item for the π4 comparison and model_profiles.pi.
+- (d) Terms judgment: pending operator note.
+- Checker gap found: pi-model-access-check SKIPs subscription-auth
+  providers (env-key mapping only) -> root-cause fix tasked as T67b.
+- T67b/T67c checker coverage: a set documented environment variable wins; otherwise a matching read-only `auth.json` provider entry enables the subscription-auth lane without printing credential content, and neither lane produces a SKIP naming both.
+
+## Results addendum (orchestrator, 2026-08-17 — Anthropic lane)
+
+- Operator completed Anthropic subscription auth (/login).
+- (a) Fable family listed: YES — RPC get_available_models returns
+  claude-fable-5 ("Claude Fable 5", provider anthropic, reasoning true,
+  contextWindow 1,000,000, maxTokens 128,000).
+- (b) Thinking levels: thinkingLevelMap {off, xhigh, max} — xhigh
+  AVAILABLE for claude-fable-5.
+- End-to-end: `pi -p "Reply with exactly OK" --provider anthropic
+  --model claude-fable-5` returned exactly `OK` under subscription auth.
+- model_profiles.pi candidate values are now fully informed:
+  anthropic/claude-fable-5 (xhigh) and openai-codex/gpt-5.6-terra both
+  proven live.
+- Checker gap #2 found: providers WITH an env-key mapping (anthropic)
+  never fall through to the subscription lane when the env var is unset
+  but auth.json holds a valid entry -> root-cause fix tasked as T67c.
+- (d) Terms judgment: still pending operator note.

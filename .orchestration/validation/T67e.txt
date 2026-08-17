@@ -1,0 +1,99 @@
+T67e VALIDATION
+Date: 2026-08-17 Asia/Tokyo
+
+BOUNDARIES
+- Real Pi binary: NOT RUN
+- Real ~/.pi/agent/auth.json: NOT READ
+- Credential content: NOT ACCESSED, PRINTED, OR COPIED
+- Chezmoi apply: NOT RUN
+- Bats: NOT RUN
+- Dependencies: UNCHANGED
+- Commit/push: NOT RUN
+
+PINNED v0.84.1 SCHEMA
+- packages/ai/src/types.ts:391:
+  StopReason includes "error".
+- packages/ai/src/types.ts:413-428:
+  AssistantMessage contains stopReason: StopReason and errorMessage?: string.
+
+TEST-FIRST RED PHASE
+
+$ uv run python -m unittest tests.unit.test_pi_model_access_check.PiModelAccessCheckTest.test_error_turn_reports_bounded_provider_api_diagnostic -v
+Ran 1 test in 0.138s
+FAILED (failures=1)
+Observed: expected provider/API diagnostic occurred 0 times.
+
+FOCUSED GREEN PHASE
+
+$ uv run python -m unittest tests.unit.test_pi_model_access_check -v
+Ran 15 tests in 1.588s
+OK
+
+FAKE-PI ERROR TRANSCRIPT
+
+final assistant message:
+{"role":"assistant","content":[],"stopReason":"error","errorMessage":"400 You're out of extra usage. ..."}
+
+FAIL json: provider/API error: <first 160 characters>
+RPC envelope KINDS: response,agent_start,message_start,message_end,agent_end
+FAIL rpc: provider/API error: <first 160 characters>
+PASS extension: permgate.ts loaded via --extension
+
+Assertions:
+- provider/API diagnostic occurs once per lane;
+- character 161 onward and TAIL_MUST_BE_TRUNCATED are absent;
+- assistant content-mismatch text is absent for the error turn;
+- existing exact-OK, non-error JSON/RPC mismatch, reasoning, and EOF cases pass.
+
+STATIC AND REPOSITORY GATES
+
+$ make format
+PASS
+
+$ bash -n home/dot_local/bin/common/executable_pi-model-access-check
+PASS
+
+$ shellcheck home/dot_local/bin/common/executable_pi-model-access-check
+PASS
+
+$ make unit-test
+347 discovered tests
+PASS
+
+$ make validate-agent-assets
+agent asset validation ok
+
+$ git diff --check
+PASS
+
+$ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/review/T67e-receipt.md make require-crit-review
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+
+Crit evidence:
+- review id: r_d49ae4
+- resolved: true
+- source: .agents/worklog/codex/review/T67e-crit-comments.json
+- outcome: approved
+
+SCOPE
+- T67e implementation paths:
+  home/dot_local/bin/common/executable_pi-model-access-check
+  tests/unit/test_pi_model_access_check.py
+- Five T67e artifacts and ignored AGENTS-required worklog/review evidence are
+  the remaining task outputs.
+- Accepted T67b/T67c/T67d/T68 dirty paths were preserved; no unrelated path
+  was changed for T67e.
+
+PLAN QUALITY
+- Validator/Make target: unavailable.
+- Hook: unavailable.
+- Reviewer definition: unavailable.
+- CI entrypoint: unavailable.
+- Manual checklist passed for current-state evidence, root-cause scope,
+  positive/error/mismatch tests, STOP condition, and measured validation.
+
+MEMORY
+UUID: 0109afd0-a11a-4122-97ef-f65d7782b5eb
+
+RESULT: PASS
+

@@ -4,16 +4,28 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 type ExecFile = typeof execFile;
 type Decision = "allow" | "deny" | "ask";
-type Action = { tool: "bash"; command: string } | { tool: "write" | "edit"; path: string };
+type Action =
+    | { tool: "bash"; command: string; cwd: string }
+    | { tool: "read" | "write" | "edit"; path: string; cwd: string };
 
 const BLOCKED = { block: true, reason: "blocked by policy" } as const;
 
-function normalizedAction(toolName: string, input: Record<string, unknown>): Action | undefined {
-    if (toolName === "bash" && typeof input.command === "string") {
-        return { tool: toolName, command: input.command };
+function normalizedAction(
+    toolName: string,
+    input: Record<string, unknown>,
+    cwd: unknown,
+): Action | undefined {
+    if (typeof cwd !== "string") {
+        return undefined;
     }
-    if ((toolName === "write" || toolName === "edit") && typeof input.path === "string") {
-        return { tool: toolName, path: input.path };
+    if (toolName === "bash" && typeof input.command === "string") {
+        return { tool: toolName, command: input.command, cwd };
+    }
+    if (
+        (toolName === "read" || toolName === "write" || toolName === "edit") &&
+        typeof input.path === "string"
+    ) {
+        return { tool: toolName, path: input.path, cwd };
     }
     return undefined;
 }
@@ -47,10 +59,10 @@ function askPermgate(action: Action, execFileImpl: ExecFile): Promise<Decision> 
 
 export default function permgateExtension(pi: ExtensionAPI, execFileImpl: ExecFile = execFile) {
     pi.on("tool_call", async (event, ctx) => {
-        if (!["bash", "write", "edit"].includes(event.toolName)) {
+        if (!["bash", "read", "write", "edit"].includes(event.toolName)) {
             return undefined;
         }
-        const action = normalizedAction(event.toolName, event.input);
+        const action = normalizedAction(event.toolName, event.input, ctx.cwd);
         if (!action) {
             return BLOCKED;
         }

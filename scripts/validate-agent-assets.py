@@ -19,8 +19,12 @@ except ImportError:  # pragma: no cover - CI installs PyYAML for this script.
     yaml = None
 
 ROOT = Path(__file__).resolve().parents[1]
-# Regenerate with: shasum -a 256 home/dot_pi/agent/extensions/permgate.ts
-PI_PERMGATE_EXTENSION_SHA256 = "e3591dcba2be96dad59174de4649fca702213dadd0d8217c4b2d9535445c43d6"
+# Regenerate with: shasum -a 256 home/dot_pi/agent/extensions/{permgate,contextdb,agmsg}.ts
+PI_EXTENSION_SHA256 = {
+    "permgate.ts": "da95e5a3be363faa9dcd749d781b4bc2e125321409dbfe86e9ea2b9a5659845c",
+    "contextdb.ts": "72632581af29fa62d59d1db6fd0ab5782aac4a7dead3d6a52c27e83784d4305a",
+    "agmsg.ts": "51d64f0cb9ba454c00306408b79d2403c9b8ccbfc0f9e124d62ad5f4ac4a7329",
+}
 SECRET_PATTERN = re.compile(
     r"""(?ix)
     (
@@ -690,12 +694,13 @@ def validate_pi_assets() -> None:
         extensions_path = pi_root / "agent/extensions"
         if not extensions_path.is_dir():
             fail(f"{extensions_path} is missing")
-        permgate_extension = extensions_path / "permgate.ts"
-        if not permgate_extension.is_file():
-            fail(f"{permgate_extension} is missing")
-        extension_hash = hashlib.sha256(permgate_extension.read_bytes()).hexdigest()
-        if extension_hash != PI_PERMGATE_EXTENSION_SHA256:
-            fail(f"{permgate_extension} content hash does not match the managed asset")
+        for extension_name, expected_hash in PI_EXTENSION_SHA256.items():
+            extension_path = extensions_path / extension_name
+            if not extension_path.is_file():
+                fail(f"{extension_path} is missing")
+            extension_hash = hashlib.sha256(extension_path.read_bytes()).hexdigest()
+            if extension_hash != expected_hash:
+                fail(f"{extension_path} content hash does not match the managed asset")
 
     mise_path = ROOT / "home/dot_mise/config.toml"
     try:

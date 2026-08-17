@@ -15,8 +15,19 @@
     }
   },
   "pi": {
-    "decision_layers": ["deny_patterns", "allow_patterns"],
-    "llm_enabled": false
+    "decision_layers": ["deny_patterns", "workspace_write", "allow_patterns"],
+    "llm_enabled": false,
+    "workspace_write": true,
+    "read_deny_patterns": [
+      {"id": "dotenv", "regex": "(?:.*/)?\\.env[^/]*"},
+      {"id": "credentials", "regex": "(?:.*/)?[^/]*credentials[^/]*(?:/.*)?"},
+      {"id": "ssh-key", "regex": "(?:.*/)?id_(?:rsa|dsa|ecdsa|ed25519)"},
+      {"id": "ssh-dir", "regex": "(?:.*/)?\\.ssh(?:/.*)?"},
+      {"id": "aws-dir", "regex": "(?:.*/)?\\.aws(?:/.*)?"},
+      {"id": "gnupg-dir", "regex": "(?:.*/)?\\.gnupg(?:/.*)?"},
+      {"id": "pem", "regex": ".*\\.pem"},
+      {"id": "agent-auth", "regex": "~/(?:\\.pi|\\.codex|\\.claude)(?:/.*)?/auth\\.json"}
+    ]
   },
   "enablement": {
     "minimum_successes": 5,

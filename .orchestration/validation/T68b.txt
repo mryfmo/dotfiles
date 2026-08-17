@@ -1,0 +1,150 @@
+T68b VALIDATION
+Date: 2026-08-17 Asia/Tokyo
+
+BOUNDARIES
+- Product transport: Node stdlib execFile; no shell and no dependency change.
+- Sender: bridge-verified AGMSG_PI_IDENTITY only; not a tool parameter.
+- Permgate: obsolete Bash send matcher removed; other lanes unchanged.
+- Real Pi, Bats, chezmoi apply, commit/push: NOT RUN.
+
+PINNED PI v0.84.1 CONTRACT
+- docs/extensions.md:1338-1365: registerTool fields, Type.Object parameters,
+  async execute result shape.
+- docs/extensions.md:1882-1888: promptSnippet and promptGuidelines semantics.
+- dist/core/extensions/types.d.ts:341-371: ToolDefinition contract.
+
+TEST-FIRST RED
+
+$ uv run python -m unittest <8 focused cases>
+Ran 8 tests
+FAILED (failures=8)
+
+Expected causes: agmsg.ts absent; old bridge instruction/argv/env; send.sh Bash
+still allowed; agmsg integrity hash absent.
+
+FOCUSED GREEN
+
+$ uv run python -m unittest tests.unit.test_pi_agmsg_extension tests.unit.test_agmsg_pi_worker tests.unit.test_permgate tests.unit.test_pi_permgate_extension tests.unit.test_validate_agent_assets
+Ran 98 tests in 9.274s
+OK
+
+Extension behavior coverage:
+- pinned typed schema and no from parameter;
+- exact fixed executable and argv array; no shell option;
+- absent/empty identity does not spawn;
+- fixed one-line success and failure with no child diagnostic disclosure;
+- agmsg_send bypasses the four-name generic permgate hook boundary.
+
+Bridge/lane/integrity coverage:
+- exact fixed instruction, child identity env, extension ordering;
+- absolute, leading-tilde, and shell-wrapper send.sh Bash forms all ask;
+- matching/tampered agmsg.ts hash fixtures.
+
+STATIC, TYPE, AND REPOSITORY GATES
+
+$ make format
+PASS
+
+$ bash -n home/dot_local/bin/common/executable_agmsg-pi-worker
+PASS
+
+$ shellcheck -x home/dot_local/bin/common/executable_agmsg-pi-worker
+PASS
+
+$ uv run python -m unittest tests.unit.test_pi_agmsg_extension
+Ran 3 tests in 0.326s
+OK
+
+The wrapper ran Node behavior, `node --check`, and installed `tsc --noEmit`
+against repository declarations and the extension.
+
+$ make unit-test
+Ran 374 tests in 40.506s
+OK
+
+$ make validate-agent-assets
+agent asset validation ok
+
+$ shasum -a 256 home/dot_pi/agent/extensions/agmsg.ts
+7d575f4a4b2961f8c9468b503bacaed1feb79e853d0a8d6c6f0326c0499ed55c
+
+$ git diff --check
+PASS
+
+FULL T68b LOGICAL DIFF
+
+NEW home/dot_pi/agent/extensions/agmsg.ts (full behavior):
+- imports Node execFile/homedir and Pi/TypeBox contracts;
+- registers agmsg_send(team:string,to:string,body:string), with no from field;
+- cites Pi v0.84.1 docs/extensions.md:1338-1365;
+- states RESULT tool use in promptSnippet/promptGuidelines;
+- reads AGMSG_PI_IDENTITY, rejects falsy identity before spawning;
+- calls fixed send.sh with [team, identity, to, body], encoding=utf8,
+  timeout=10000, and no shell;
+- returns exactly `agmsg_send: sent`, `agmsg_send: failed`, or
+  `agmsg_send: missing AGMSG_PI_IDENTITY` as one text line;
+- documents why the four-name permgate hook does not gate this constrained
+  custom tool.
+
+home/dot_local/bin/common/executable_agmsg-pi-worker:
+- RESULT description changed from direct send.sh composition to agmsg_send;
+- fixed instruction changed to `send your AGMSG-RESULT using the agmsg_send
+  tool`;
+- added AGMSG_EXTENSION path and missing-file preflight;
+- added the extension flag after permgate.ts;
+- exports AGMSG_PI_IDENTITY to the Pi child before exec.
+
+home/dot_local/bin/common/executable_permgate:
+- deleted PI_SEND_META;
+- deleted workspace_bash_allowed;
+- deleted the Bash/send.sh branch from pi_workspace_decision;
+- read/write/edit and shared deterministic Bash behavior otherwise unchanged.
+
+scripts/validate-agent-assets.py:
+- PI_EXTENSION_SHA256 now includes agmsg.ts at the hash printed above.
+
+tests/unit (full matching delta):
+- NEW pi_agmsg_extension.test.mjs: four schema/argv/identity/result tests;
+- NEW pi_agmsg_extension_types.d.ts: pinned minimal compile contract;
+- NEW test_pi_agmsg_extension.py: Node behavior/syntax and tsc runner;
+- bridge fake captures identity and asserts two extension flags/instruction;
+- permgate regression replaces safe send allow with three ask forms;
+- permgate extension passthrough includes agmsg_send;
+- asset fixtures copy, accept, require, and tamper-check agmsg.ts.
+
+The shared dirty worktree also contains accepted T66b-T70 bases. Those paths
+were read and preserved; the logical diff above is the complete T68b delta.
+
+REVIEW
+- Crit review: /Users/mryfmo/.crit/reviews/dfcf30aea611/review.json
+- Record: r_8e49c6; resolved=true.
+- Evidence: .agents/worklog/codex/review/T68b-crit-comments.json
+- Receipt: .agents/worklog/codex/review/T68b-receipt.md
+- Receipt gate: PASS.
+
+SCOPE
+Allowed product/test paths touched for T68b:
+- home/dot_pi/agent/extensions/agmsg.ts
+- home/dot_local/bin/common/executable_agmsg-pi-worker
+- home/dot_local/bin/common/executable_permgate
+- scripts/validate-agent-assets.py
+- tests/unit/pi_agmsg_extension.test.mjs
+- tests/unit/pi_agmsg_extension_types.d.ts
+- tests/unit/test_pi_agmsg_extension.py
+- matching existing tests/unit modules
+- five T68b artifacts plus ignored AGENTS worklog/review evidence
+
+No permgate policy, permgate.ts implementation, Claude/Codex path, dependency,
+or unrelated product file was changed for T68b.
+
+PLAN QUALITY
+- Workflow, validator, hook, template, Make/CI target, and reviewer subagent
+  entrypoints are unavailable.
+- Manual task/AGENTS checklist passed for root cause, pinned current-state
+  evidence, trust boundary, exact commands, positive/adversarial tests,
+  maintenance rationale, and STOP conditions.
+
+MEMORY
+UUID: aba142d1-54e6-43cc-88c1-3ada911413ee
+
+RESULT: PASS

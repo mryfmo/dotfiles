@@ -56,6 +56,11 @@ class PermgateTest(unittest.TestCase):
         self.fake_codex = self.root / "codex"
         self.claude_capture = self.root / "claude-capture.json"
         self.codex_capture = self.root / "codex-capture.json"
+        self.workspace = self.root / "workspace"
+        self.workspace.mkdir()
+        self.outside = self.root / "outside"
+        self.outside.mkdir()
+        self.send_script = self.root / ".agents/skills/agmsg/scripts/send.sh"
         self.write_fake_claude(
             """
             import json
@@ -94,8 +99,34 @@ class PermgateTest(unittest.TestCase):
                 },
             },
             "pi": {
-                "decision_layers": ["deny_patterns", "allow_patterns"],
+                "decision_layers": [
+                    "deny_patterns",
+                    "workspace_write",
+                    "allow_patterns",
+                ],
                 "llm_enabled": False,
+                "workspace_write": True,
+                "read_deny_patterns": [
+                    {"id": "dotenv", "regex": r"(?:.*/)?\.env[^/]*"},
+                    {
+                        "id": "credentials",
+                        "regex": r"(?:.*/)?[^/]*credentials[^/]*(?:/.*)?",
+                    },
+                    {
+                        "id": "ssh-key",
+                        "regex": r"(?:.*/)?id_(?:rsa|dsa|ecdsa|ed25519)",
+                    },
+                    {"id": "ssh-dir", "regex": r"(?:.*/)?\.ssh(?:/.*)?"},
+                    {"id": "aws-dir", "regex": r"(?:.*/)?\.aws(?:/.*)?"},
+                    {"id": "gnupg-dir", "regex": r"(?:.*/)?\.gnupg(?:/.*)?"},
+                    {"id": "pem", "regex": r".*\.pem"},
+                    {
+                        "id": "agent-auth",
+                        "regex": (
+                            r"~/(?:\.pi|\.codex|\.claude)(?:/.*)?/auth\.json"
+                        ),
+                    },
+                ],
             },
             "enablement": {
                 "minimum_successes": 5,
@@ -201,6 +232,7 @@ class PermgateTest(unittest.TestCase):
                 "PERMGATE_CODEX_COMMAND": str(self.fake_codex),
                 "PERMGATE_TEST_CLAUDE_CAPTURE": str(self.claude_capture),
                 "PERMGATE_TEST_CODEX_CAPTURE": str(self.codex_capture),
+                "HOME": str(self.root),
             }
         )
         if sentinel:
@@ -247,10 +279,11 @@ class PermgateTest(unittest.TestCase):
                 self.assertEqual(set(decision), {"behavior", "message"})
 
     def test_pi_protocol_emits_each_compact_decision(self) -> None:
+        cwd = str(self.workspace)
         fixtures = (
-            ({"tool": "bash", "command": "git status --short"}, "allow"),
-            ({"tool": "bash", "command": "rm -rf /"}, "deny"),
-            ({"tool": "write", "path": "/tmp/output"}, "ask"),
+            ({"tool": "bash", "command": "git status --short", "cwd": cwd}, "allow"),
+            ({"tool": "bash", "command": "rm -rf /", "cwd": cwd}, "deny"),
+            ({"tool": "write", "path": str(self.outside / "output"), "cwd": cwd}, "ask"),
         )
         for payload, decision in fixtures:
             with self.subTest(decision=decision):
@@ -261,13 +294,19 @@ class PermgateTest(unittest.TestCase):
     def test_pi_protocol_internal_failure_is_nonzero(self) -> None:
         self.policy_path.write_text("not-json\n")
 
-        result = self.run_gate("pi", {"tool": "bash", "command": "git status"})
+        result = self.run_gate(
+            "pi",
+            {"tool": "bash", "command": "git status", "cwd": str(self.workspace)},
+        )
 
         self.assertNotEqual(result.returncode, 0)
 
         self.write_policy()
         self.state_path.mkdir()
-        result = self.run_gate("pi", {"tool": "bash", "command": "git status"})
+        result = self.run_gate(
+            "pi",
+            {"tool": "bash", "command": "git status", "cwd": str(self.workspace)},
+        )
         self.assertNotEqual(result.returncode, 0)
 
     def test_pi_policy_pins_shared_layers_and_disables_llm(self) -> None:
@@ -275,25 +314,275 @@ class PermgateTest(unittest.TestCase):
         for key, value in (
             ("decision_layers", ["allow_patterns"]),
             ("llm_enabled", True),
+            ("workspace_write", False),
+            ("read_deny_patterns", []),
         ):
             with self.subTest(key=key):
                 policy = json.loads(json.dumps(base_policy))
                 policy["pi"][key] = value
                 self.policy_path.write_text(json.dumps(policy))
                 result = self.run_gate(
-                    "pi", {"tool": "bash", "command": "git status"}
+                    "pi",
+                    {
+                        "tool": "bash",
+                        "command": "git status",
+                        "cwd": str(self.workspace),
+                    },
+                )
+                self.assertNotEqual(result.returncode, 0)
+
+        policy = json.loads(json.dumps(base_policy))
+        policy["pi"]["read_deny_patterns"][0]["regex"] = "("
+        self.policy_path.write_text(json.dumps(policy))
+        result = self.run_gate(
+            "pi",
+            {"tool": "bash", "command": "git status", "cwd": str(self.workspace)},
+        )
+        self.assertNotEqual(result.returncode, 0)
+
+        for agent in ("claude", "codex"):
+            with self.subTest(agent=agent):
+                policy = json.loads(json.dumps(base_policy))
+                policy["providers"][agent]["workspace_write"] = True
+                self.policy_path.write_text(json.dumps(policy))
+                result = self.run_gate(
+                    "pi",
+                    {
+                        "tool": "bash",
+                        "command": "git status",
+                        "cwd": str(self.workspace),
+                    },
                 )
                 self.assertNotEqual(result.returncode, 0)
 
     def test_pi_protocol_rejects_malformed_normalized_action(self) -> None:
         for payload in (
             "not-json",
-            {"tool": "bash", "command": 7},
+            {"tool": "bash", "command": 7, "cwd": str(self.workspace)},
             {"tool": "read", "path": "/tmp/input"},
+            {"tool": "read", "path": "/tmp/input", "cwd": 7},
+            {
+                "tool": "read",
+                "path": "/tmp/input",
+                "cwd": str(self.workspace),
+                "extra": True,
+            },
         ):
             with self.subTest(payload=payload):
                 result = self.run_gate("pi", payload)
                 self.assertNotEqual(result.returncode, 0)
+
+    def test_pi_workspace_allows_in_cwd_read_write_and_edit(self) -> None:
+        (self.workspace / "input.txt").write_text("input\n")
+        (self.workspace / "nested").mkdir()
+        for tool, path in (
+            ("write", "new.txt"),
+            ("edit", "nested/edit.txt"),
+            ("read", str(self.workspace / "input.txt")),
+        ):
+            with self.subTest(tool=tool):
+                result = self.run_gate(
+                    "pi",
+                    {"tool": tool, "path": path, "cwd": str(self.workspace)},
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, '{"decision":"allow"}\n')
+                self.assertEqual(self.read_log()[-1]["layer"], "workspace")
+
+    def test_pi_read_allows_plain_resolvable_path_outside_workspace(self) -> None:
+        path = self.outside / "contract.md"
+        path.write_text("public contract\n")
+
+        result = self.run_gate(
+            "pi",
+            {"tool": "read", "path": str(path), "cwd": str(self.workspace)},
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, '{"decision":"allow"}\n')
+        self.assertEqual(self.read_log()[-1]["layer"], "workspace")
+
+    def test_pi_read_denies_each_sensitive_path_family(self) -> None:
+        paths = (
+            self.outside / ".env.local",
+            self.outside / "prod-credentials.json",
+            self.outside / "id_rsa",
+            self.outside / "id_ed25519",
+            self.outside / ".ssh/config",
+            self.outside / ".aws/config",
+            self.outside / ".gnupg/pubring.kbx",
+            self.outside / "client.pem",
+            self.root / ".pi/agent/auth.json",
+            self.root / ".codex/auth.json",
+            self.root / ".claude/runtime/auth.json",
+        )
+        for path in paths:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("sensitive\n")
+
+        for path in paths:
+            with self.subTest(path=path):
+                result = self.run_gate(
+                    "pi",
+                    {"tool": "read", "path": str(path), "cwd": str(self.workspace)},
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, '{"decision":"deny"}\n')
+
+    def test_pi_read_resolves_symlinks_and_asks_for_unresolvable_paths(self) -> None:
+        secret = self.outside / ".env"
+        secret.write_text("sensitive\n")
+        link = self.workspace / "plain-name"
+        link.symlink_to(secret)
+
+        denied = self.run_gate(
+            "pi",
+            {"tool": "read", "path": str(link), "cwd": str(self.workspace)},
+        )
+        missing = self.run_gate(
+            "pi",
+            {
+                "tool": "read",
+                "path": str(self.outside / "missing.txt"),
+                "cwd": str(self.workspace),
+            },
+        )
+
+        self.assertEqual(denied.stdout, '{"decision":"deny"}\n')
+        self.assertEqual(missing.stdout, '{"decision":"ask"}\n')
+
+    def test_pi_workspace_rejects_path_escapes_root_and_symlink_escape(self) -> None:
+        link = self.workspace / "outside-link"
+        link.symlink_to(self.outside, target_is_directory=True)
+        loop = self.workspace / "loop"
+        loop.symlink_to(loop)
+        fixtures = (
+            ("../outside/file.txt", str(self.workspace)),
+            (str(self.outside / "file.txt"), str(self.workspace)),
+            (".", str(self.workspace)),
+            ("..", str(self.workspace)),
+            ("outside-link/file.txt", str(self.workspace)),
+            ("loop/file.txt", str(self.workspace)),
+            ("tmp/file.txt", "/"),
+        )
+        for path, cwd in fixtures:
+            with self.subTest(path=path, cwd=cwd):
+                result = self.run_gate(
+                    "pi", {"tool": "write", "path": path, "cwd": cwd}
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, '{"decision":"ask"}\n')
+
+    def test_pi_workspace_asks_for_looping_or_missing_parent(self) -> None:
+        loop = self.workspace / "parent-loop"
+        loop.symlink_to(loop, target_is_directory=True)
+
+        for path in ("parent-loop/file.txt", "missing-parent/file.txt"):
+            with self.subTest(path=path):
+                result = self.run_gate(
+                    "pi",
+                    {"tool": "write", "path": path, "cwd": str(self.workspace)},
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, '{"decision":"ask"}\n')
+
+    def test_pi_workspace_never_writes_through_final_symlink(self) -> None:
+        target = self.workspace / "target.txt"
+        target.write_text("existing\n")
+        link = self.workspace / "write-link"
+        link.symlink_to(target)
+
+        for tool in ("write", "edit"):
+            with self.subTest(tool=tool):
+                result = self.run_gate(
+                    "pi",
+                    {"tool": tool, "path": str(link), "cwd": str(self.workspace)},
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, '{"decision":"ask"}\n')
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS /var alias only")
+    def test_pi_workspace_resolves_macos_var_alias_identically(self) -> None:
+        try:
+            relative = self.workspace.resolve().relative_to("/private/var")
+        except ValueError:
+            self.skipTest("temporary workspace is not under /private/var")
+        alias_workspace = Path("/var") / relative
+
+        result = self.run_gate(
+            "pi",
+            {
+                "tool": "write",
+                "path": str(alias_workspace / "alias-write.txt"),
+                "cwd": str(alias_workspace),
+            },
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, '{"decision":"allow"}\n')
+
+    def test_pi_bash_send_lane_is_removed(self) -> None:
+        prefix = f"{self.send_script} "
+        safe = prefix + "team pi-worker orchestrator 'AGMSG-RESULT v1 task_id=T'"
+        tilde_safe = safe.replace(str(self.root), "~", 1)
+        for command in (safe, tilde_safe, f"/bin/bash -lc {safe!r}"):
+            with self.subTest(command=command.split()[0]):
+                result = self.run_gate(
+                    "pi",
+                    {"tool": "bash", "command": command, "cwd": str(self.workspace)},
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, '{"decision":"ask"}\n')
+
+
+    def test_pi_reuses_every_shared_bash_allow_pattern(self) -> None:
+        policy_text = (ROOT / "home/dot_agents/permgate-policy.yaml").read_text()
+        policy = json.loads(policy_text)
+        self.assertEqual(
+            {pattern["id"] for pattern in policy["pi"]["read_deny_patterns"]},
+            {
+                "dotenv",
+                "credentials",
+                "ssh-key",
+                "ssh-dir",
+                "aws-dir",
+                "gnupg-dir",
+                "pem",
+                "agent-auth",
+            },
+        )
+        self.policy_path.write_text(policy_text)
+        commands = (
+            "gh pr view 128",
+            "gh run list",
+            "gh repo view",
+            "git status --short",
+            "git diff --stat",
+            "git branch --show-current",
+            "git remote get-url origin",
+            "ps -ef",
+            "git --version",
+        )
+
+        for command in commands:
+            with self.subTest(command=command):
+                result = self.run_gate(
+                    "pi",
+                    {"tool": "bash", "command": command, "cwd": str(self.workspace)},
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, '{"decision":"allow"}\n')
+                self.assertEqual(self.read_log()[-1]["layer"], "deterministic")
+
+    def test_pi_catastrophic_deny_precedes_workspace(self) -> None:
+        result = self.run_gate(
+            "pi",
+            {"tool": "bash", "command": "rm -rf /", "cwd": str(self.workspace)},
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, '{"decision":"deny"}\n')
+        self.assertEqual(self.read_log()[-1]["layer"], "deterministic")
 
     def test_claude_and_codex_hook_outputs_match_golden_bytes(self) -> None:
         fixtures = (

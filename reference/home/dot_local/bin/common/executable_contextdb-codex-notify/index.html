@@ -1053,6 +1053,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../executable_agmsg-pi-worker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_agmsg-pi-worker
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../executable_cdgwq/" class="md-nav__link">
         
   
@@ -1438,6 +1466,34 @@
     
   
     home/dot_local/bin/common/executable_pi-model-access-check
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_pi-session-evidence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pi-session-evidence
   
 
     
@@ -3533,11 +3589,20 @@
 <span class="s">    if cwd is not None and not isinstance(cwd, str):</span>
 <span class="s">        raise ValueError(&quot;notify cwd must be a string&quot;)</span>
 <span class="s">    project_dir = (Path(cwd) if cwd else Path.cwd()).resolve()</span>
-<span class="s">    cli = project_dir / &quot;.claude&quot; / &quot;hooks&quot; / &quot;contextdb_cli.py&quot;</span>
-<span class="s">    if not cli.is_file():</span>
+<span class="s">    opt_in = project_dir / &quot;.claude&quot; / &quot;contextdb&quot;</span>
+<span class="s">    cli = Path.home() / &quot;.agents&quot; / &quot;compactiondb&quot; / &quot;.claude&quot; / &quot;hooks&quot; / &quot;contextdb_cli.py&quot;</span>
+<span class="s">    if not opt_in.is_dir() or not cli.is_file():</span>
 <span class="s">        raise SystemExit(0)</span>
 <span class="s">    subprocess.run(</span>
-<span class="s">        [&quot;python3&quot;, str(cli), &quot;ingest&quot;, &quot;--ingested-from&quot;, &quot;codex&quot;],</span>
+<span class="s">        [</span>
+<span class="s">            sys.executable,</span>
+<span class="s">            str(cli),</span>
+<span class="s">            &quot;--project-root&quot;,</span>
+<span class="s">            str(project_dir),</span>
+<span class="s">            &quot;ingest&quot;,</span>
+<span class="s">            &quot;--ingested-from&quot;,</span>
+<span class="s">            &quot;codex&quot;,</span>
+<span class="s">        ],</span>
 <span class="s">        input=payload,</span>
 <span class="s">        text=True,</span>
 <span class="s">        stdout=subprocess.DEVNULL,</span>

@@ -1053,6 +1053,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../executable_agmsg-pi-worker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_agmsg-pi-worker
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../executable_cdgwq/" class="md-nav__link">
         
   
@@ -1438,6 +1466,34 @@
     
   
     home/dot_local/bin/common/executable_pi-model-access-check
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_pi-session-evidence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pi-session-evidence
   
 
     
@@ -3519,6 +3575,7 @@ import<span class="w"> </span>math
 import<span class="w"> </span>os
 import<span class="w"> </span>re
 import<span class="w"> </span>shlex
+import<span class="w"> </span>stat
 import<span class="w"> </span>statistics
 import<span class="w"> </span>subprocess
 import<span class="w"> </span>sys
@@ -3613,6 +3670,8 @@ def<span class="w"> </span>load_policy<span class="o">()</span><span class="w"> 
 <span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span>f<span class="s2">&quot;{name} provider must be an object&quot;</span><span class="o">)</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>provider.get<span class="o">(</span><span class="s2">&quot;llm_enabled&quot;</span><span class="o">)</span>,<span class="w"> </span>bool<span class="o">)</span>:
 <span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span>f<span class="s2">&quot;{name} llm_enabled must be boolean&quot;</span><span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>provider.get<span class="o">(</span><span class="s2">&quot;workspace_write&quot;</span>,<span class="w"> </span>False<span class="o">)</span><span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>False:
+<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span>f<span class="s2">&quot;{name} workspace_write must remain false&quot;</span><span class="o">)</span>
 <span class="w">        </span><span class="nv">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>provider.get<span class="o">(</span><span class="s2">&quot;timeout_seconds&quot;</span><span class="o">)</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>isinstance<span class="o">(</span>timeout,<span class="w"> </span>bool<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>timeout,<span class="w"> </span><span class="o">(</span>int,<span class="w"> </span>float<span class="o">))</span>:
 <span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span>f<span class="s2">&quot;{name} timeout_seconds must be numeric&quot;</span><span class="o">)</span>
@@ -3633,10 +3692,38 @@ def<span class="w"> </span>load_policy<span class="o">()</span><span class="w"> 
 <span class="w">    </span><span class="nv">pi</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">&quot;pi&quot;</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>pi,<span class="w"> </span>dict<span class="o">)</span>:
 <span class="w">        </span>raise<span class="w"> </span>TypeError<span class="o">(</span><span class="s2">&quot;pi policy must be an object&quot;</span><span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>pi.get<span class="o">(</span><span class="s2">&quot;decision_layers&quot;</span><span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="o">[</span><span class="s2">&quot;deny_patterns&quot;</span>,<span class="w"> </span><span class="s2">&quot;allow_patterns&quot;</span><span class="o">]</span>:
-<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;pi must reuse the deterministic deny and allow layers&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>pi.get<span class="o">(</span><span class="s2">&quot;decision_layers&quot;</span><span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="o">[</span>
+<span class="w">        </span><span class="s2">&quot;deny_patterns&quot;</span>,
+<span class="w">        </span><span class="s2">&quot;workspace_write&quot;</span>,
+<span class="w">        </span><span class="s2">&quot;allow_patterns&quot;</span>,
+<span class="w">    </span><span class="o">]</span>:
+<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;pi must apply deny, workspace, then allow layers&quot;</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>pi.get<span class="o">(</span><span class="s2">&quot;llm_enabled&quot;</span><span class="o">)</span><span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>False:
 <span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;pi llm classifier must remain disabled&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>pi.get<span class="o">(</span><span class="s2">&quot;workspace_write&quot;</span><span class="o">)</span><span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>True:
+<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;pi workspace_write must be enabled&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">read_deny_patterns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>pi.get<span class="o">(</span><span class="s2">&quot;read_deny_patterns&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>read_deny_patterns,<span class="w"> </span>list<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>read_deny_patterns:
+<span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;pi read_deny_patterns must be a non-empty list&quot;</span><span class="o">)</span>
+<span class="w">    </span>read_deny_ids:<span class="w"> </span>set<span class="o">[</span>str<span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>set<span class="o">()</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>pattern<span class="w"> </span><span class="k">in</span><span class="w"> </span>read_deny_patterns:
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>pattern,<span class="w"> </span>dict<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>set<span class="o">(</span>pattern<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="o">{</span><span class="s2">&quot;id&quot;</span>,<span class="w"> </span><span class="s2">&quot;regex&quot;</span><span class="o">}</span>:
+<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;pi read deny patterns must define only id and regex&quot;</span><span class="o">)</span>
+<span class="w">        </span><span class="nv">pattern_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>pattern<span class="o">[</span><span class="s2">&quot;id&quot;</span><span class="o">]</span>
+<span class="w">        </span><span class="nv">regex</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>pattern<span class="o">[</span><span class="s2">&quot;regex&quot;</span><span class="o">]</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">(</span>
+<span class="w">            </span>not<span class="w"> </span>isinstance<span class="o">(</span>pattern_id,<span class="w"> </span>str<span class="o">)</span>
+<span class="w">            </span>or<span class="w"> </span>not<span class="w"> </span>pattern_id
+<span class="w">            </span>or<span class="w"> </span>pattern_id<span class="w"> </span><span class="k">in</span><span class="w"> </span>read_deny_ids
+<span class="w">            </span>or<span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>regex,<span class="w"> </span>str<span class="o">)</span>
+<span class="w">            </span>or<span class="w"> </span>not<span class="w"> </span>regex
+<span class="w">        </span><span class="o">)</span>:
+<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;pi read deny pattern ids and regexes must be unique strings&quot;</span><span class="o">)</span>
+<span class="w">        </span>try:
+<span class="w">            </span>re.compile<span class="o">(</span>regex<span class="o">)</span>
+<span class="w">        </span>except<span class="w"> </span>re.error<span class="w"> </span>as<span class="w"> </span>error:
+<span class="w">            </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;pi read deny pattern regex must compile&quot;</span><span class="o">)</span><span class="w"> </span>from<span class="w"> </span>error
+<span class="w">        </span>read_deny_ids.add<span class="o">(</span>pattern_id<span class="o">)</span>
 <span class="w">    </span><span class="nv">categories</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">&quot;categories&quot;</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>categories,<span class="w"> </span>list<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>all<span class="o">(</span>
 <span class="w">        </span>isinstance<span class="o">(</span>item,<span class="w"> </span>str<span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>item<span class="w"> </span><span class="k">in</span><span class="w"> </span>categories
@@ -3959,6 +4046,95 @@ def<span class="w"> </span>decision_record<span class="o">(</span>
 <span class="w">    </span><span class="o">}</span>
 
 
+def<span class="w"> </span>strict_candidate_path<span class="o">(</span>
+<span class="w">    </span>cwd:<span class="w"> </span>object,<span class="w"> </span>path:<span class="w"> </span>object,<span class="w"> </span>*,<span class="w"> </span>follow_final_symlink:<span class="w"> </span>bool
+<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>tuple<span class="o">[</span>Path,<span class="w"> </span>Path<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>None:
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>cwd,<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>path,<span class="w"> </span>str<span class="o">)</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None
+<span class="w">    </span><span class="nv">cwd_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Path<span class="o">(</span>cwd<span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>cwd_path.is_absolute<span class="o">()</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None
+<span class="w">    </span>try:
+<span class="w">        </span><span class="nv">resolved_cwd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Path<span class="o">(</span>os.path.realpath<span class="o">(</span>cwd_path,<span class="w"> </span><span class="nv">strict</span><span class="o">=</span>True<span class="o">))</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>resolved_cwd.is_dir<span class="o">()</span><span class="w"> </span>or<span class="w"> </span><span class="nv">resolved_cwd</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>Path<span class="o">(</span>resolved_cwd.anchor<span class="o">)</span>:
+<span class="w">            </span><span class="k">return</span><span class="w"> </span>None
+<span class="w">        </span><span class="nv">candidate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Path<span class="o">(</span>path<span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>candidate.is_absolute<span class="o">()</span>:
+<span class="w">            </span><span class="nv">candidate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>resolved_cwd<span class="w"> </span>/<span class="w"> </span>candidate
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>candidate.name<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">{</span><span class="s2">&quot;&quot;</span>,<span class="w"> </span><span class="s2">&quot;..&quot;</span><span class="o">}</span>:
+<span class="w">            </span><span class="k">return</span><span class="w"> </span>None
+<span class="w">        </span><span class="nv">resolved_parent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Path<span class="o">(</span>os.path.realpath<span class="o">(</span>candidate.parent,<span class="w"> </span><span class="nv">strict</span><span class="o">=</span>True<span class="o">))</span>
+<span class="w">        </span><span class="nv">resolved_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>resolved_parent<span class="w"> </span>/<span class="w"> </span>candidate.name
+<span class="w">        </span>try:
+<span class="w">            </span><span class="nv">final_mode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>resolved_path.lstat<span class="o">()</span>.st_mode
+<span class="w">        </span>except<span class="w"> </span>FileNotFoundError:
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>follow_final_symlink:
+<span class="w">                </span><span class="k">return</span><span class="w"> </span>None
+<span class="w">        </span><span class="k">else</span>:
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>stat.S_ISLNK<span class="o">(</span>final_mode<span class="o">)</span>:
+<span class="w">                </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>follow_final_symlink:
+<span class="w">                    </span><span class="k">return</span><span class="w"> </span>None
+<span class="w">                </span><span class="nv">resolved_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Path<span class="o">(</span>os.path.realpath<span class="o">(</span>resolved_path,<span class="w"> </span><span class="nv">strict</span><span class="o">=</span>True<span class="o">))</span>
+<span class="w">    </span>except<span class="w"> </span><span class="o">(</span>OSError,<span class="w"> </span>RuntimeError<span class="o">)</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>resolved_cwd,<span class="w"> </span>resolved_path
+
+
+def<span class="w"> </span>workspace_path_allowed<span class="o">(</span>cwd:<span class="w"> </span>object,<span class="w"> </span>path:<span class="w"> </span>object<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>bool:
+<span class="w">    </span><span class="nv">resolved</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>strict_candidate_path<span class="o">(</span>cwd,<span class="w"> </span>path,<span class="w"> </span><span class="nv">follow_final_symlink</span><span class="o">=</span>False<span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>resolved<span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>False
+<span class="w">    </span>resolved_cwd,<span class="w"> </span><span class="nv">resolved_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>resolved
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>resolved_path<span class="w"> </span>!<span class="o">=</span><span class="w"> </span>resolved_cwd<span class="w"> </span>and<span class="w"> </span>resolved_path.is_relative_to<span class="o">(</span>resolved_cwd<span class="o">)</span>
+
+
+def<span class="w"> </span>pi_read_decision<span class="o">(</span>
+<span class="w">    </span>cwd:<span class="w"> </span>object,<span class="w"> </span>path:<span class="w"> </span>object,<span class="w"> </span>patterns:<span class="w"> </span>list<span class="o">[</span>dict<span class="o">[</span>str,<span class="w"> </span>str<span class="o">]]</span>
+<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>str<span class="w"> </span><span class="p">|</span><span class="w"> </span>None:
+<span class="w">    </span><span class="nv">resolved</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>strict_candidate_path<span class="o">(</span>cwd,<span class="w"> </span>path,<span class="w"> </span><span class="nv">follow_final_symlink</span><span class="o">=</span>True<span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>resolved<span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None
+<span class="w">    </span>_,<span class="w"> </span><span class="nv">resolved_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>resolved
+<span class="w">    </span>try:
+<span class="w">        </span><span class="nv">match_paths</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>resolved_path.as_posix<span class="o">()</span>.casefold<span class="o">()]</span>
+<span class="w">        </span>try:
+<span class="w">            </span><span class="nv">home</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Path<span class="o">(</span>os.path.realpath<span class="o">(</span>Path.home<span class="o">()</span>,<span class="w"> </span><span class="nv">strict</span><span class="o">=</span>True<span class="o">))</span>
+<span class="w">            </span><span class="nv">relative</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>resolved_path.relative_to<span class="o">(</span>home<span class="o">)</span>
+<span class="w">            </span>match_paths.append<span class="o">(</span>f<span class="s2">&quot;~/{relative.as_posix()}&quot;</span>.casefold<span class="o">())</span>
+<span class="w">        </span>except<span class="w"> </span>ValueError:
+<span class="w">            </span>pass
+<span class="w">    </span>except<span class="w"> </span><span class="o">(</span>OSError,<span class="w"> </span>RuntimeError<span class="o">)</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>any<span class="o">(</span>
+<span class="w">        </span>re.fullmatch<span class="o">(</span>pattern<span class="o">[</span><span class="s2">&quot;regex&quot;</span><span class="o">]</span>,<span class="w"> </span>match_path<span class="o">)</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span>pattern<span class="w"> </span><span class="k">in</span><span class="w"> </span>patterns
+<span class="w">        </span><span class="k">for</span><span class="w"> </span>match_path<span class="w"> </span><span class="k">in</span><span class="w"> </span>match_paths
+<span class="w">    </span><span class="o">)</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="s2">&quot;deny&quot;</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s2">&quot;allow&quot;</span>
+
+
+def<span class="w"> </span>pi_workspace_decision<span class="o">(</span>
+<span class="w">    </span>agent:<span class="w"> </span>str,<span class="w"> </span>payload:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span>,<span class="w"> </span>policy:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span>
+<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>str<span class="w"> </span><span class="p">|</span><span class="w"> </span>None:
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>agent<span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">&quot;pi&quot;</span><span class="w"> </span>or<span class="w"> </span>policy<span class="o">[</span><span class="s2">&quot;pi&quot;</span><span class="o">]</span>.get<span class="o">(</span><span class="s2">&quot;workspace_write&quot;</span><span class="o">)</span><span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>True:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None
+<span class="w">    </span>tool,<span class="w"> </span>tool_input,<span class="w"> </span><span class="nv">_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>request_parts<span class="o">(</span>payload<span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">tool</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;Read&quot;</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>pi_read_decision<span class="o">(</span>
+<span class="w">            </span>payload.get<span class="o">(</span><span class="s2">&quot;cwd&quot;</span><span class="o">)</span>,
+<span class="w">            </span>tool_input.get<span class="o">(</span><span class="s2">&quot;path&quot;</span><span class="o">)</span>,
+<span class="w">            </span>policy<span class="o">[</span><span class="s2">&quot;pi&quot;</span><span class="o">][</span><span class="s2">&quot;read_deny_patterns&quot;</span><span class="o">]</span>,
+<span class="w">        </span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>tool<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">{</span><span class="s2">&quot;Write&quot;</span>,<span class="w"> </span><span class="s2">&quot;Edit&quot;</span><span class="o">}</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="o">(</span>
+<span class="w">            </span><span class="s2">&quot;allow&quot;</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>workspace_path_allowed<span class="o">(</span>payload.get<span class="o">(</span><span class="s2">&quot;cwd&quot;</span><span class="o">)</span>,<span class="w"> </span>tool_input.get<span class="o">(</span><span class="s2">&quot;path&quot;</span><span class="o">))</span>
+<span class="w">            </span><span class="k">else</span><span class="w"> </span>None
+<span class="w">        </span><span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>None
+
+
 def<span class="w"> </span>decide<span class="o">(</span>
 <span class="w">    </span>agent:<span class="w"> </span>str,<span class="w"> </span>payload:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span>,<span class="w"> </span>policy:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span>
 <span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>tuple<span class="o">[</span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>None,<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]]</span>:
@@ -3979,7 +4155,12 @@ def<span class="w"> </span>decide<span class="o">(</span>
 <span class="w">            </span><span class="k">break</span>
 <span class="w">    </span><span class="k">else</span>:
 <span class="w">        </span><span class="nv">safe_single_action</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>tool<span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">&quot;Bash&quot;</span><span class="w"> </span>or<span class="w"> </span>is_bounded_shell_command<span class="o">(</span>match_text<span class="o">)</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>safe_single_action:
+<span class="w">        </span><span class="nv">workspace_decision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>pi_workspace_decision<span class="o">(</span>agent,<span class="w"> </span>payload,<span class="w"> </span>policy<span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>workspace_decision<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
+<span class="w">            </span><span class="nv">layer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;workspace&quot;</span>
+<span class="w">            </span><span class="nv">decision</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>workspace_decision
+<span class="w">            </span><span class="nv">output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>hook_output<span class="o">(</span>workspace_decision<span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>output<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span>and<span class="w"> </span>safe_single_action:
 <span class="w">            </span><span class="k">for</span><span class="w"> </span>pattern<span class="w"> </span><span class="k">in</span><span class="w"> </span>policy.get<span class="o">(</span><span class="s2">&quot;allow_patterns&quot;</span>,<span class="w"> </span><span class="o">[])</span>:
 <span class="w">                </span><span class="k">if</span><span class="w"> </span>pattern_match<span class="o">(</span>pattern,<span class="w"> </span>tool,<span class="w"> </span>match_text<span class="o">)</span>:
 <span class="w">                    </span><span class="nv">layer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;deterministic&quot;</span>
@@ -4025,15 +4206,22 @@ def<span class="w"> </span>decide<span class="o">(</span>
 def<span class="w"> </span>pi_payload<span class="o">(</span>action:<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">])</span><span class="w"> </span>-&gt;<span class="w"> </span>dict<span class="o">[</span>str,<span class="w"> </span>Any<span class="o">]</span>:
 <span class="w">    </span><span class="nv">tool</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>action.get<span class="o">(</span><span class="s2">&quot;tool&quot;</span><span class="o">)</span>
 <span class="w">    </span><span class="nv">field</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;command&quot;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nv">tool</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;bash&quot;</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">&quot;path&quot;</span>
-<span class="w">    </span><span class="nv">expected</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{</span><span class="s2">&quot;tool&quot;</span>,<span class="w"> </span>field<span class="o">}</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>tool<span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">{</span><span class="s2">&quot;bash&quot;</span>,<span class="w"> </span><span class="s2">&quot;write&quot;</span>,<span class="w"> </span><span class="s2">&quot;edit&quot;</span><span class="o">}</span><span class="w"> </span>or<span class="w"> </span>set<span class="o">(</span>action<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>expected:
+<span class="w">    </span><span class="nv">expected</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{</span><span class="s2">&quot;tool&quot;</span>,<span class="w"> </span>field,<span class="w"> </span><span class="s2">&quot;cwd&quot;</span><span class="o">}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>tool<span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">{</span><span class="s2">&quot;bash&quot;</span>,<span class="w"> </span><span class="s2">&quot;read&quot;</span>,<span class="w"> </span><span class="s2">&quot;write&quot;</span>,<span class="w"> </span><span class="s2">&quot;edit&quot;</span><span class="o">}</span><span class="w"> </span>or<span class="w"> </span>set<span class="o">(</span>action<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>expected:
 <span class="w">        </span>raise<span class="w"> </span>ValueError<span class="o">(</span><span class="s2">&quot;invalid normalized Pi action&quot;</span><span class="o">)</span>
 <span class="w">    </span><span class="nv">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>action.get<span class="o">(</span>field<span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>value,<span class="w"> </span>str<span class="o">)</span>:
+<span class="w">    </span><span class="nv">cwd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>action.get<span class="o">(</span><span class="s2">&quot;cwd&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>value,<span class="w"> </span>str<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>isinstance<span class="o">(</span>cwd,<span class="w"> </span>str<span class="o">)</span>:
 <span class="w">        </span>raise<span class="w"> </span>TypeError<span class="o">(</span><span class="s2">&quot;normalized Pi action value must be a string&quot;</span><span class="o">)</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">{</span>
-<span class="w">        </span><span class="s2">&quot;tool_name&quot;</span>:<span class="w"> </span><span class="o">{</span><span class="s2">&quot;bash&quot;</span>:<span class="w"> </span><span class="s2">&quot;Bash&quot;</span>,<span class="w"> </span><span class="s2">&quot;write&quot;</span>:<span class="w"> </span><span class="s2">&quot;Write&quot;</span>,<span class="w"> </span><span class="s2">&quot;edit&quot;</span>:<span class="w"> </span><span class="s2">&quot;Edit&quot;</span><span class="o">}[</span>tool<span class="o">]</span>,
+<span class="w">        </span><span class="s2">&quot;tool_name&quot;</span>:<span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="s2">&quot;bash&quot;</span>:<span class="w"> </span><span class="s2">&quot;Bash&quot;</span>,
+<span class="w">            </span><span class="s2">&quot;read&quot;</span>:<span class="w"> </span><span class="s2">&quot;Read&quot;</span>,
+<span class="w">            </span><span class="s2">&quot;write&quot;</span>:<span class="w"> </span><span class="s2">&quot;Write&quot;</span>,
+<span class="w">            </span><span class="s2">&quot;edit&quot;</span>:<span class="w"> </span><span class="s2">&quot;Edit&quot;</span>,
+<span class="w">        </span><span class="o">}[</span>tool<span class="o">]</span>,
 <span class="w">        </span><span class="s2">&quot;tool_input&quot;</span>:<span class="w"> </span><span class="o">{</span>field:<span class="w"> </span>value<span class="o">}</span>,
+<span class="w">        </span><span class="s2">&quot;cwd&quot;</span>:<span class="w"> </span>cwd,
 <span class="w">    </span><span class="o">}</span>
 
 

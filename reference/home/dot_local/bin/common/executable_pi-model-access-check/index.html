@@ -14,7 +14,7 @@
         <link rel="prev" href="../executable_permgate/">
       
       
-        <link rel="next" href="../executable_remove-agent-asset/">
+        <link rel="next" href="../executable_pi-session-evidence/">
       
       
         
@@ -1053,6 +1053,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../executable_agmsg-pi-worker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_agmsg-pi-worker
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../executable_cdgwq/" class="md-nav__link">
         
   
@@ -1457,6 +1485,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../executable_pi-session-evidence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_pi-session-evidence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -3523,7 +3579,7 @@
 
 
 <h1 id="homedot_localbincommonexecutable_pi-model-access-check">home/dot_local/bin/common/executable_pi-model-access-check<a class="headerlink" href="#homedot_localbincommonexecutable_pi-model-access-check" title="Permanent link">&para;</a></h1>
-<p>Uses an already-installed Pi 0.84.1 and a provider/model selected through PI_CHECK_PROVIDER and PI_CHECK_MODEL. The script checks only whether the provider's documented credential environment variable exists; it never reads, prints, or forwards credential content explicitly.</p>
+<p>Uses an already-installed Pi 0.84.1 and a provider/model selected through PI_CHECK_PROVIDER and PI_CHECK_MODEL. The script checks only whether a documented credential environment variable or matching subscription-auth entry exists; it never prints or forwards credential content explicitly.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_pi-model-access-check</code></li>
@@ -3538,6 +3594,7 @@
 <li><code>pass</code></li>
 <li><code>run_rpc_check</code></li>
 <li><code>skip</code></li>
+<li><code>subscription_auth_available</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
@@ -3546,15 +3603,16 @@
 <span class="c1"># @brief Verify pinned Pi model access through JSON and RPC one-shot requests.</span>
 <span class="c1"># @description</span>
 <span class="c1">#   Uses an already-installed Pi 0.84.1 and a provider/model selected through</span>
-<span class="c1">#   PI_CHECK_PROVIDER and PI_CHECK_MODEL. The script checks only whether the</span>
-<span class="c1">#   provider&#39;s documented credential environment variable exists; it never</span>
-<span class="c1">#   reads, prints, or forwards credential content explicitly.</span>
+<span class="c1">#   PI_CHECK_PROVIDER and PI_CHECK_MODEL. The script checks only whether a</span>
+<span class="c1">#   documented credential environment variable or matching subscription-auth</span>
+<span class="c1">#   entry exists; it never prints or forwards credential content explicitly.</span>
 
 <span class="nb">set</span><span class="w"> </span>-uo<span class="w"> </span>pipefail
 
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">EXPECTED_PI_VERSION</span><span class="o">=</span><span class="s2">&quot;0.84.1&quot;</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">PROMPT</span><span class="o">=</span><span class="s2">&quot;Reply with exactly OK&quot;</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">PERMGATE_EXTENSION</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.pi/agent/extensions/permgate.ts&quot;</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">SUBSCRIPTION_AUTH_FILE</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.pi/agent/auth.json&quot;</span>
 
 <span class="nv">FAILURES</span><span class="o">=</span><span class="m">0</span>
 <span class="nv">PI_BIN</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
@@ -3633,8 +3691,34 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Return success when Pi auth.json is a provider-keyed object containing the selected provider.</span>
+<span class="c1"># @arg $1 string Pi provider identifier.</span>
+<span class="c1"># @exitcode 0 The subscription-auth entry exists.</span>
+<span class="c1"># @exitcode 1 The file is missing, malformed, or has no matching entry.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>subscription_auth_available<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SUBSCRIPTION_AUTH_FILE</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>python3<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>python3<span class="w"> </span>-<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SUBSCRIPTION_AUTH_FILE</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span><span class="w"> </span><span class="s">&lt;&lt; &#39;PY&#39;</span>
+<span class="s">import json</span>
+<span class="s">import sys</span>
+
+<span class="s">try:</span>
+<span class="s">    with open(sys.argv[1], encoding=&quot;utf-8&quot;) as stream:</span>
+<span class="s">        auth = json.load(stream)</span>
+<span class="s">except (OSError, json.JSONDecodeError):</span>
+<span class="s">    raise SystemExit(1)</span>
+
+<span class="s">raise SystemExit(0 if isinstance(auth, dict) and sys.argv[2] in auth else 1)</span>
+<span class="s">PY</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Return success when JSON output ends with an exact assistant OK.</span>
 <span class="c1"># @arg $1 path Pi JSON event-stream file.</span>
+<span class="c1"># @stdout Provider/API error excerpt when the final assistant message is an error.</span>
+<span class="c1"># @exitcode 0 The final assistant text is exactly OK.</span>
+<span class="c1"># @exitcode 7 The final assistant message is a provider/API error.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>json_answer_is_ok<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span>python3<span class="w"> </span>-<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span><span class="w"> </span><span class="s">&lt;&lt; &#39;PY&#39;</span>
@@ -3642,18 +3726,34 @@
 <span class="s">import sys</span>
 
 <span class="s">answer = None</span>
+<span class="s">provider_error = None</span>
+
+<span class="s">def assistant_text(message):</span>
+<span class="s">    if message.get(&quot;role&quot;) != &quot;assistant&quot;:</span>
+<span class="s">        return None</span>
+<span class="s">    text_parts = [</span>
+<span class="s">        part.get(&quot;text&quot;, &quot;&quot;)</span>
+<span class="s">        for part in message.get(&quot;content&quot;, [])</span>
+<span class="s">        if isinstance(part, dict) and part.get(&quot;type&quot;) == &quot;text&quot;</span>
+<span class="s">    ]</span>
+<span class="s">    return &quot;&quot;.join(text_parts) if text_parts else None</span>
+
 <span class="s">with open(sys.argv[1], encoding=&quot;utf-8&quot;) as stream:</span>
 <span class="s">    for line in stream:</span>
 <span class="s">        event = json.loads(line)</span>
 <span class="s">        message = event.get(&quot;message&quot;, {})</span>
-<span class="s">        if event.get(&quot;type&quot;) != &quot;message_end&quot; or message.get(&quot;role&quot;) != &quot;assistant&quot;:</span>
-<span class="s">            continue</span>
-<span class="s">        content = message.get(&quot;content&quot;, [])</span>
-<span class="s">        answer = &quot;&quot;.join(</span>
-<span class="s">            part.get(&quot;text&quot;, &quot;&quot;)</span>
-<span class="s">            for part in content</span>
-<span class="s">            if isinstance(part, dict) and part.get(&quot;type&quot;) == &quot;text&quot;</span>
-<span class="s">        )</span>
+<span class="s">        if event.get(&quot;type&quot;) == &quot;message_end&quot;:</span>
+<span class="s">            if message.get(&quot;role&quot;) == &quot;assistant&quot;:</span>
+<span class="s">                error_message = message.get(&quot;errorMessage&quot;)</span>
+<span class="s">                provider_error = None</span>
+<span class="s">                if message.get(&quot;stopReason&quot;) == &quot;error&quot; or &quot;errorMessage&quot; in message:</span>
+<span class="s">                    provider_error = error_message if isinstance(error_message, str) else &quot;&quot;</span>
+<span class="s">            candidate = assistant_text(message)</span>
+<span class="s">            if candidate is not None:</span>
+<span class="s">                answer = candidate</span>
+<span class="s">if provider_error is not None:</span>
+<span class="s">    print(provider_error[:160])</span>
+<span class="s">    raise SystemExit(7)</span>
 <span class="s">raise SystemExit(0 if answer == &quot;OK&quot; else 1)</span>
 <span class="s">PY</span>
 <span class="o">}</span>
@@ -3668,6 +3768,7 @@
 <span class="c1"># @arg $6 path RPC stderr file.</span>
 <span class="c1"># @arg $7 path Ordered envelope-kind output file.</span>
 <span class="c1"># @exitcode 0 agent_end arrived with an exact assistant OK.</span>
+<span class="c1"># @exitcode 7 agent_end arrived with a provider/API error message.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>run_rpc_check<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span>python3<span class="w"> </span>-<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$@</span><span class="s2">&quot;</span><span class="w"> </span><span class="s">&lt;&lt; &#39;PY&#39;</span>
@@ -3695,6 +3796,7 @@
 <span class="s">    )</span>
 <span class="s">    assert process.stdin is not None</span>
 <span class="s">    assert process.stdout is not None</span>
+<span class="s">    # T67b live verification confirmed this exact v0.84.1 RPC request shape.</span>
 <span class="s">    process.stdin.write(json.dumps({</span>
 <span class="s">        &quot;id&quot;: &quot;t67-check&quot;,</span>
 <span class="s">        &quot;type&quot;: &quot;prompt&quot;,</span>
@@ -3707,8 +3809,20 @@
 <span class="s">    deadline = time.monotonic() + 120</span>
 <span class="s">    kinds = []</span>
 <span class="s">    answer = None</span>
+<span class="s">    provider_error = None</span>
 <span class="s">    received_agent_end = False</span>
+<span class="s">    response_success = False</span>
 <span class="s">    invalid_json = False</span>
+
+<span class="s">    def assistant_text(message):</span>
+<span class="s">        if message.get(&quot;role&quot;) != &quot;assistant&quot;:</span>
+<span class="s">            return None</span>
+<span class="s">        text_parts = [</span>
+<span class="s">            part.get(&quot;text&quot;, &quot;&quot;)</span>
+<span class="s">            for part in message.get(&quot;content&quot;, [])</span>
+<span class="s">            if isinstance(part, dict) and part.get(&quot;type&quot;) == &quot;text&quot;</span>
+<span class="s">        ]</span>
+<span class="s">        return &quot;&quot;.join(text_parts) if text_parts else None</span>
 
 <span class="s">    while time.monotonic() &lt; deadline and not received_agent_end:</span>
 <span class="s">        if not selector.select(timeout=min(1, deadline - time.monotonic())):</span>
@@ -3728,13 +3842,18 @@
 <span class="s">        kind = event.get(&quot;type&quot;)</span>
 <span class="s">        if isinstance(kind, str) and kind not in kinds:</span>
 <span class="s">            kinds.append(kind)</span>
+<span class="s">        if kind == &quot;response&quot; and event.get(&quot;id&quot;) == &quot;t67-check&quot; and event.get(&quot;success&quot;) is True:</span>
+<span class="s">            response_success = True</span>
 <span class="s">        message = event.get(&quot;message&quot;, {})</span>
-<span class="s">        if kind == &quot;message_end&quot; and message.get(&quot;role&quot;) == &quot;assistant&quot;:</span>
-<span class="s">            answer = &quot;&quot;.join(</span>
-<span class="s">                part.get(&quot;text&quot;, &quot;&quot;)</span>
-<span class="s">                for part in message.get(&quot;content&quot;, [])</span>
-<span class="s">                if isinstance(part, dict) and part.get(&quot;type&quot;) == &quot;text&quot;</span>
-<span class="s">            )</span>
+<span class="s">        if kind == &quot;message_end&quot;:</span>
+<span class="s">            if message.get(&quot;role&quot;) == &quot;assistant&quot;:</span>
+<span class="s">                error_message = message.get(&quot;errorMessage&quot;)</span>
+<span class="s">                provider_error = None</span>
+<span class="s">                if message.get(&quot;stopReason&quot;) == &quot;error&quot; or &quot;errorMessage&quot; in message:</span>
+<span class="s">                    provider_error = error_message if isinstance(error_message, str) else &quot;&quot;</span>
+<span class="s">            candidate = assistant_text(message)</span>
+<span class="s">            if candidate is not None:</span>
+<span class="s">                answer = candidate</span>
 <span class="s">        received_agent_end = kind == &quot;agent_end&quot;</span>
 
 <span class="s">    with open(kinds_path, &quot;w&quot;, encoding=&quot;utf-8&quot;) as kinds_file:</span>
@@ -3753,6 +3872,11 @@
 <span class="s">    raise SystemExit(3)</span>
 <span class="s">if process.returncode != 0:</span>
 <span class="s">    raise SystemExit(2)</span>
+<span class="s">if not response_success:</span>
+<span class="s">    raise SystemExit(6)</span>
+<span class="s">if provider_error is not None:</span>
+<span class="s">    print(provider_error[:160])</span>
+<span class="s">    raise SystemExit(7)</span>
 <span class="s">raise SystemExit(0 if answer == &quot;OK&quot; else 5)</span>
 <span class="s">PY</span>
 <span class="o">}</span>
@@ -3787,10 +3911,13 @@ pass<span class="w"> </span>version<span class="w"> </span><span class="s2">&quo
 <span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PROVIDER</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">MODEL</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nv">PREREQUISITE_ERROR</span><span class="o">=</span><span class="s2">&quot;set PI_CHECK_PROVIDER and PI_CHECK_MODEL&quot;</span>
 <span class="k">else</span>
-<span class="w">    </span><span class="nv">CREDENTIAL_ENV</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>credential_env_for_provider<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PROVIDER</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span>
-<span class="w">        </span><span class="nv">PREREQUISITE_ERROR</span><span class="o">=</span><span class="s2">&quot;provider </span><span class="si">${</span><span class="nv">PROVIDER</span><span class="si">}</span><span class="s2"> has no documented single-key mapping&quot;</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PREREQUISITE_ERROR</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>!<span class="w"> </span>printenv<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CREDENTIAL_ENV</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nv">PREREQUISITE_ERROR</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CREDENTIAL_ENV</span><span class="si">}</span><span class="s2"> is not set&quot;</span>
+<span class="w">    </span><span class="nv">CREDENTIAL_ENV</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>credential_env_for_provider<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PROVIDER</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CREDENTIAL_ENV</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>printenv<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">CREDENTIAL_ENV</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>:
+<span class="w">    </span><span class="k">elif</span><span class="w"> </span>subscription_auth_available<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PROVIDER</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>:
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nv">PREREQUISITE_ERROR</span><span class="o">=</span><span class="s2">&quot;set a documented credential environment variable or run /login for </span><span class="si">${</span><span class="nv">PROVIDER</span><span class="si">}</span><span class="s2">&quot;</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="k">fi</span>
 
@@ -3820,6 +3947,7 @@ pass<span class="w"> </span>version<span class="w"> </span><span class="s2">&quo
 
 <span class="nv">JSON_OUTPUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">WORK_DIR</span><span class="si">}</span><span class="s2">/print.jsonl&quot;</span>
 <span class="nv">JSON_ERROR</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">WORK_DIR</span><span class="si">}</span><span class="s2">/print.stderr&quot;</span>
+<span class="nv">EXTENSION_CONFIRMED</span><span class="o">=</span><span class="m">0</span>
 <span class="k">if</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PI_BIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PROMPT</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--mode<span class="w"> </span>json<span class="w"> </span><span class="se">\</span>
@@ -3828,10 +3956,16 @@ pass<span class="w"> </span>version<span class="w"> </span><span class="s2">&quo
 <span class="w">    </span>--no-session<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--extension<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PERMGATE_EXTENSION</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">JSON_OUTPUT</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">JSON_ERROR</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>json_answer_is_ok<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">JSON_OUTPUT</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nv">EXTENSION_CONFIRMED</span><span class="o">=</span><span class="m">1</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">JSON_DIAGNOSTIC</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>json_answer_is_ok<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">JSON_OUTPUT</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span>pass<span class="w"> </span>json<span class="w"> </span><span class="s2">&quot;assistant replied exactly OK&quot;</span>
 <span class="w">    </span><span class="k">else</span>
-<span class="w">        </span>fail<span class="w"> </span>json<span class="w"> </span><span class="s2">&quot;assistant response was not exactly OK&quot;</span>
+<span class="w">        </span><span class="nv">JSON_STATUS</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">JSON_STATUS</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">7</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span>fail<span class="w"> </span>json<span class="w"> </span><span class="s2">&quot;provider/API error: </span><span class="si">${</span><span class="nv">JSON_DIAGNOSTIC</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">        </span><span class="k">else</span>
+<span class="w">            </span>fail<span class="w"> </span>json<span class="w"> </span><span class="s2">&quot;assistant response was not exactly OK&quot;</span>
+<span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="k">else</span>
 <span class="w">    </span>fail<span class="w"> </span>json<span class="w"> </span><span class="s2">&quot;pi print invocation failed&quot;</span>
@@ -3840,22 +3974,48 @@ pass<span class="w"> </span>version<span class="w"> </span><span class="s2">&quo
 <span class="nv">RPC_OUTPUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">WORK_DIR</span><span class="si">}</span><span class="s2">/rpc.jsonl&quot;</span>
 <span class="nv">RPC_ERROR</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">WORK_DIR</span><span class="si">}</span><span class="s2">/rpc.stderr&quot;</span>
 <span class="nv">RPC_KINDS</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">WORK_DIR</span><span class="si">}</span><span class="s2">/rpc-kinds.txt&quot;</span>
-<span class="k">if</span><span class="w"> </span>run_rpc_check<span class="w"> </span><span class="se">\</span>
+<span class="k">if</span><span class="w"> </span><span class="nv">RPC_DIAGNOSTIC</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>run_rpc_check<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PI_BIN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PROVIDER</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">MODEL</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PERMGATE_EXTENSION</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">RPC_OUTPUT</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">RPC_ERROR</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">RPC_KINDS</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span>pass<span class="w"> </span>rpc<span class="w"> </span><span class="s2">&quot;agent_end received&quot;</span>
+<span class="w">    </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">RPC_KINDS</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nv">RPC_STATUS</span><span class="o">=</span><span class="m">0</span>
+<span class="k">else</span>
+<span class="w">    </span><span class="nv">RPC_STATUS</span><span class="o">=</span><span class="nv">$?</span>
+<span class="k">fi</span>
+
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">RPC_KINDS</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;RPC envelope KINDS: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>&lt;<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">RPC_KINDS</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="k">fi</span>
+
+<span class="k">case</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">RPC_STATUS</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="k">in</span>
+<span class="m">0</span><span class="o">)</span>
+<span class="w">    </span>pass<span class="w"> </span>rpc<span class="w"> </span><span class="s2">&quot;agent_end received&quot;</span>
+<span class="w">    </span><span class="nv">EXTENSION_CONFIRMED</span><span class="o">=</span><span class="m">1</span>
+<span class="w">    </span><span class="p">;;</span>
+<span class="m">5</span><span class="o">)</span>
+<span class="w">    </span>fail<span class="w"> </span>rpc<span class="w"> </span><span class="s2">&quot;assistant response was not exactly OK&quot;</span>
+<span class="w">    </span><span class="nv">EXTENSION_CONFIRMED</span><span class="o">=</span><span class="m">1</span>
+<span class="w">    </span><span class="p">;;</span>
+<span class="m">6</span><span class="o">)</span>
+<span class="w">    </span>fail<span class="w"> </span>rpc<span class="w"> </span><span class="s2">&quot;prompt response was not accepted&quot;</span>
+<span class="w">    </span><span class="nv">EXTENSION_CONFIRMED</span><span class="o">=</span><span class="m">1</span>
+<span class="w">    </span><span class="p">;;</span>
+<span class="m">7</span><span class="o">)</span>
+<span class="w">    </span>fail<span class="w"> </span>rpc<span class="w"> </span><span class="s2">&quot;provider/API error: </span><span class="si">${</span><span class="nv">RPC_DIAGNOSTIC</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">EXTENSION_CONFIRMED</span><span class="o">=</span><span class="m">1</span>
+<span class="w">    </span><span class="p">;;</span>
+*<span class="o">)</span>
+<span class="w">    </span>fail<span class="w"> </span>rpc<span class="w"> </span><span class="s2">&quot;agent_end not received&quot;</span>
+<span class="w">    </span><span class="p">;;</span>
+<span class="k">esac</span>
+
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">EXTENSION_CONFIRMED</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>pass<span class="w"> </span>extension<span class="w"> </span><span class="s2">&quot;permgate.ts loaded via --extension&quot;</span>
 <span class="k">else</span>
-<span class="w">    </span>fail<span class="w"> </span>rpc<span class="w"> </span><span class="s2">&quot;agent_end not received&quot;</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">RPC_KINDS</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;RPC envelope KINDS: %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>&lt;<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">RPC_KINDS</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span>fail<span class="w"> </span>extension<span class="w"> </span><span class="s2">&quot;explicit permgate.ts load was not confirmed&quot;</span>
 <span class="k">fi</span>
 

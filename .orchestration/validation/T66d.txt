@@ -1,0 +1,658 @@
+T66d VALIDATION
+Date: 2026-08-17 Asia/Tokyo
+
+BOUNDARIES
+- Only the Pi exact agmsg send matcher changed.
+- Only a trimmed leading ~/ is normalized for comparison.
+- PI_SEND_META evaluates the original trimmed command.
+- ~user, mid-string tildes, read/write/edit, common Bash allow, and
+  Claude/Codex paths are unchanged.
+- Real Pi, Bats, chezmoi apply, dependencies, commit/push: NOT RUN.
+
+TEST-FIRST RED
+
+$ uv run python -m unittest tests.unit.test_permgate.PermgateTest.test_pi_workspace_allows_only_exact_safe_agmsg_send_lane
+Ran 1 test in 0.552s
+FAILED (failures=1)
+
+Expected cause:
+- the clean ~/.agents/.../send.sh command asked because the matcher compared only
+  the absolute HOME prefix.
+
+FOCUSED GREEN
+
+$ uv run python -m unittest   tests.unit.test_permgate.PermgateTest.test_pi_workspace_allows_only_exact_safe_agmsg_send_lane   tests.unit.test_permgate.PermgateTest.test_claude_and_codex_hook_outputs_match_golden_bytes
+Ran 2 tests in 0.744s
+OK
+
+$ uv run python -m unittest tests.unit.test_permgate
+Ran 40 tests in 5.759s
+OK
+
+Pinned outcomes:
+- absolute clean send: allow, workspace layer;
+- leading ~/ clean send: allow, workspace layer;
+- ~user send: ask;
+- leading ~/ with semicolon injection: ask;
+- every pre-existing meta fixture: ask;
+- arbitrary Bash: ask;
+- Claude/Codex golden bytes: unchanged.
+
+REPOSITORY GATES
+
+$ make format
+PASS
+
+$ make unit-test
+Ran 368 tests in 41.485s
+OK
+
+$ make validate-agent-assets
+agent asset validation ok
+
+$ python3 -m py_compile home/dot_local/bin/common/executable_permgate tests/unit/test_permgate.py
+PASS
+
+$ git diff --check
+PASS
+
+REVIEW
+- Crit review file: /Users/mryfmo/.crit/reviews/dfcf30aea611/review.json
+- Record: r_b25ddc
+- Resolved: true
+- Evidence: .agents/worklog/codex/review/T66d-crit-comments.json
+- Receipt: .agents/worklog/codex/review/T66d-receipt.md
+- Outcome: approved; no actionable finding.
+
+SCOPE
+T66d product/test paths:
+- home/dot_local/bin/common/executable_permgate
+- tests/unit/test_permgate.py
+- five T66d artifacts and ignored AGENTS worklog/review evidence
+
+The shared worktree already contained accepted T66b-T70 changes. T66d did not
+edit policy, extension, hash validator, Claude/Codex paths, dependencies, or
+another permission lane.
+
+PLAN QUALITY
+- Workflow document: unavailable.
+- Validator/Make target: unavailable.
+- Hook: unavailable.
+- Reviewer definition: unavailable.
+- Template/CI entrypoint: unavailable.
+- Manual AGENTS/task checklist passed.
+
+MEMORY
+UUID: 7b50df47-0753-4b6e-8243-bd433663e772
+
+FULL CURRENT WORKTREE DIFF FOR T66d TOUCHED FILES
+(The diff includes accepted T66b/T66c bases because the tasks share these files.)
+
+```diff
+diff --git a/home/dot_local/bin/common/executable_permgate b/home/dot_local/bin/common/executable_permgate
+index 722a4c6..9285961 100755
+--- a/home/dot_local/bin/common/executable_permgate
++++ b/home/dot_local/bin/common/executable_permgate
+@@ -22,6 +22,7 @@ from typing import Any
+ SENTINEL_ENV = "PERMGATE_INNER"
+ SHELL_CONTROL = re.compile(r"[;&|><`\n]|\$\(")
+ SHELL_EXPANSION = re.compile(r"[$*?\[\]{}~]")
++PI_SEND_META = re.compile(r"[;|&$`><(\n\r]")
+ SECRET_MARKER = re.compile(
+     r"(?i)(?:(?:api[_-]?key|authorization|cookie|password|secret|token)\s*[:=]"
+     r"|bearer\s+\S+|://[^\s/@:]+:[^\s/@]+@)"
+@@ -103,6 +104,8 @@ def load_policy() -> dict[str, Any]:
+             raise ValueError(f"{name} provider must be an object")
+         if not isinstance(provider.get("llm_enabled"), bool):
+             raise ValueError(f"{name} llm_enabled must be boolean")
++        if provider.get("workspace_write", False) is not False:
++            raise ValueError(f"{name} workspace_write must remain false")
+         timeout = provider.get("timeout_seconds")
+         if isinstance(timeout, bool) or not isinstance(timeout, (int, float)):
+             raise ValueError(f"{name} timeout_seconds must be numeric")
+@@ -123,10 +126,38 @@ def load_policy() -> dict[str, Any]:
+     pi = policy.get("pi")
+     if not isinstance(pi, dict):
+         raise TypeError("pi policy must be an object")
+-    if pi.get("decision_layers") != ["deny_patterns", "allow_patterns"]:
+-        raise ValueError("pi must reuse the deterministic deny and allow layers")
++    if pi.get("decision_layers") != [
++        "deny_patterns",
++        "workspace_write",
++        "allow_patterns",
++    ]:
++        raise ValueError("pi must apply deny, workspace, then allow layers")
+     if pi.get("llm_enabled") is not False:
+         raise ValueError("pi llm classifier must remain disabled")
++    if pi.get("workspace_write") is not True:
++        raise ValueError("pi workspace_write must be enabled")
++    read_deny_patterns = pi.get("read_deny_patterns")
++    if not isinstance(read_deny_patterns, list) or not read_deny_patterns:
++        raise ValueError("pi read_deny_patterns must be a non-empty list")
++    read_deny_ids: set[str] = set()
++    for pattern in read_deny_patterns:
++        if not isinstance(pattern, dict) or set(pattern) != {"id", "regex"}:
++            raise ValueError("pi read deny patterns must define only id and regex")
++        pattern_id = pattern["id"]
++        regex = pattern["regex"]
++        if (
++            not isinstance(pattern_id, str)
++            or not pattern_id
++            or pattern_id in read_deny_ids
++            or not isinstance(regex, str)
++            or not regex
++        ):
++            raise ValueError("pi read deny pattern ids and regexes must be unique strings")
++        try:
++            re.compile(regex)
++        except re.error as error:
++            raise ValueError("pi read deny pattern regex must compile") from error
++        read_deny_ids.add(pattern_id)
+     categories = policy.get("categories")
+     if not isinstance(categories, list) or not all(
+         isinstance(item, str) for item in categories
+@@ -449,6 +480,92 @@ def decision_record(
+     }
+ 
+ 
++def workspace_path_allowed(cwd: object, path: object) -> bool:
++    if not isinstance(cwd, str) or not isinstance(path, str):
++        return False
++    cwd_path = Path(cwd)
++    if not cwd_path.is_absolute():
++        return False
++    try:
++        resolved_cwd = cwd_path.resolve(strict=True)
++        if not resolved_cwd.is_dir() or resolved_cwd == Path(resolved_cwd.anchor):
++            return False
++        candidate = Path(path)
++        if not candidate.is_absolute():
++            candidate = resolved_cwd / candidate
++        resolved_path = candidate.resolve(strict=False)
++    except (OSError, RuntimeError):
++        return False
++    return resolved_path != resolved_cwd and resolved_path.is_relative_to(resolved_cwd)
++
++
++def workspace_bash_allowed(command: object) -> bool:
++    if not isinstance(command, str):
++        return False
++    command = command.strip()
++    compared_command = (
++        str(Path.home()) + command[1:] if command.startswith("~/") else command
++    )
++    prefix = str(Path.home() / ".agents/skills/agmsg/scripts/send.sh") + " "
++    if not compared_command.startswith(prefix):
++        return False
++    arguments = compared_command[len(prefix) :]
++    return bool(arguments) and not PI_SEND_META.search(command)
++
++
++def pi_read_decision(
++    cwd: object, path: object, patterns: list[dict[str, str]]
++) -> str | None:
++    if not isinstance(cwd, str) or not isinstance(path, str):
++        return None
++    try:
++        candidate = Path(path)
++        if not candidate.is_absolute():
++            resolved_cwd = Path(cwd).resolve(strict=True)
++            if not resolved_cwd.is_dir():
++                return None
++            candidate = resolved_cwd / candidate
++        resolved_path = candidate.resolve(strict=True)
++        match_paths = [resolved_path.as_posix().casefold()]
++        try:
++            relative = resolved_path.relative_to(Path.home().resolve(strict=True))
++            match_paths.append(f"~/{relative.as_posix()}".casefold())
++        except ValueError:
++            pass
++    except (OSError, RuntimeError):
++        return None
++    if any(
++        re.fullmatch(pattern["regex"], match_path)
++        for pattern in patterns
++        for match_path in match_paths
++    ):
++        return "deny"
++    return "allow"
++
++
++def pi_workspace_decision(
++    agent: str, payload: dict[str, Any], policy: dict[str, Any]
++) -> str | None:
++    if agent != "pi" or policy["pi"].get("workspace_write") is not True:
++        return None
++    tool, tool_input, _ = request_parts(payload)
++    if tool == "Read":
++        return pi_read_decision(
++            payload.get("cwd"),
++            tool_input.get("path"),
++            policy["pi"]["read_deny_patterns"],
++        )
++    if tool in {"Write", "Edit"}:
++        return (
++            "allow"
++            if workspace_path_allowed(payload.get("cwd"), tool_input.get("path"))
++            else None
++        )
++    if tool == "Bash":
++        return "allow" if workspace_bash_allowed(tool_input.get("command")) else None
++    return None
++
++
+ def decide(
+     agent: str, payload: dict[str, Any], policy: dict[str, Any]
+ ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+@@ -469,7 +586,12 @@ def decide(
+             break
+     else:
+         safe_single_action = tool != "Bash" or is_bounded_shell_command(match_text)
+-        if safe_single_action:
++        workspace_decision = pi_workspace_decision(agent, payload, policy)
++        if workspace_decision is not None:
++            layer = "workspace"
++            decision = workspace_decision
++            output = hook_output(workspace_decision)
++        if output is None and safe_single_action:
+             for pattern in policy.get("allow_patterns", []):
+                 if pattern_match(pattern, tool, match_text):
+                     layer = "deterministic"
+@@ -515,15 +637,22 @@ def decide(
+ def pi_payload(action: dict[str, Any]) -> dict[str, Any]:
+     tool = action.get("tool")
+     field = "command" if tool == "bash" else "path"
+-    expected = {"tool", field}
+-    if tool not in {"bash", "write", "edit"} or set(action) != expected:
++    expected = {"tool", field, "cwd"}
++    if tool not in {"bash", "read", "write", "edit"} or set(action) != expected:
+         raise ValueError("invalid normalized Pi action")
+     value = action.get(field)
+-    if not isinstance(value, str):
++    cwd = action.get("cwd")
++    if not isinstance(value, str) or not isinstance(cwd, str):
+         raise TypeError("normalized Pi action value must be a string")
+     return {
+-        "tool_name": {"bash": "Bash", "write": "Write", "edit": "Edit"}[tool],
++        "tool_name": {
++            "bash": "Bash",
++            "read": "Read",
++            "write": "Write",
++            "edit": "Edit",
++        }[tool],
+         "tool_input": {field: value},
++        "cwd": cwd,
+     }
+ 
+ 
+diff --git a/tests/unit/test_permgate.py b/tests/unit/test_permgate.py
+index 6ee9025..9ee57ab 100644
+--- a/tests/unit/test_permgate.py
++++ b/tests/unit/test_permgate.py
+@@ -56,6 +56,11 @@ class PermgateTest(unittest.TestCase):
+         self.fake_codex = self.root / "codex"
+         self.claude_capture = self.root / "claude-capture.json"
+         self.codex_capture = self.root / "codex-capture.json"
++        self.workspace = self.root / "workspace"
++        self.workspace.mkdir()
++        self.outside = self.root / "outside"
++        self.outside.mkdir()
++        self.send_script = self.root / ".agents/skills/agmsg/scripts/send.sh"
+         self.write_fake_claude(
+             """
+             import json
+@@ -94,8 +99,34 @@ class PermgateTest(unittest.TestCase):
+                 },
+             },
+             "pi": {
+-                "decision_layers": ["deny_patterns", "allow_patterns"],
++                "decision_layers": [
++                    "deny_patterns",
++                    "workspace_write",
++                    "allow_patterns",
++                ],
+                 "llm_enabled": False,
++                "workspace_write": True,
++                "read_deny_patterns": [
++                    {"id": "dotenv", "regex": r"(?:.*/)?\.env[^/]*"},
++                    {
++                        "id": "credentials",
++                        "regex": r"(?:.*/)?[^/]*credentials[^/]*(?:/.*)?",
++                    },
++                    {
++                        "id": "ssh-key",
++                        "regex": r"(?:.*/)?id_(?:rsa|dsa|ecdsa|ed25519)",
++                    },
++                    {"id": "ssh-dir", "regex": r"(?:.*/)?\.ssh(?:/.*)?"},
++                    {"id": "aws-dir", "regex": r"(?:.*/)?\.aws(?:/.*)?"},
++                    {"id": "gnupg-dir", "regex": r"(?:.*/)?\.gnupg(?:/.*)?"},
++                    {"id": "pem", "regex": r".*\.pem"},
++                    {
++                        "id": "agent-auth",
++                        "regex": (
++                            r"~/(?:\.pi|\.codex|\.claude)(?:/.*)?/auth\.json"
++                        ),
++                    },
++                ],
+             },
+             "enablement": {
+                 "minimum_successes": 5,
+@@ -201,6 +232,7 @@ class PermgateTest(unittest.TestCase):
+                 "PERMGATE_CODEX_COMMAND": str(self.fake_codex),
+                 "PERMGATE_TEST_CLAUDE_CAPTURE": str(self.claude_capture),
+                 "PERMGATE_TEST_CODEX_CAPTURE": str(self.codex_capture),
++                "HOME": str(self.root),
+             }
+         )
+         if sentinel:
+@@ -247,10 +279,11 @@ class PermgateTest(unittest.TestCase):
+                 self.assertEqual(set(decision), {"behavior", "message"})
+ 
+     def test_pi_protocol_emits_each_compact_decision(self) -> None:
++        cwd = str(self.workspace)
+         fixtures = (
+-            ({"tool": "bash", "command": "git status --short"}, "allow"),
+-            ({"tool": "bash", "command": "rm -rf /"}, "deny"),
+-            ({"tool": "write", "path": "/tmp/output"}, "ask"),
++            ({"tool": "bash", "command": "git status --short", "cwd": cwd}, "allow"),
++            ({"tool": "bash", "command": "rm -rf /", "cwd": cwd}, "deny"),
++            ({"tool": "write", "path": str(self.outside / "output"), "cwd": cwd}, "ask"),
+         )
+         for payload, decision in fixtures:
+             with self.subTest(decision=decision):
+@@ -261,13 +294,19 @@ class PermgateTest(unittest.TestCase):
+     def test_pi_protocol_internal_failure_is_nonzero(self) -> None:
+         self.policy_path.write_text("not-json\n")
+ 
+-        result = self.run_gate("pi", {"tool": "bash", "command": "git status"})
++        result = self.run_gate(
++            "pi",
++            {"tool": "bash", "command": "git status", "cwd": str(self.workspace)},
++        )
+ 
+         self.assertNotEqual(result.returncode, 0)
+ 
+         self.write_policy()
+         self.state_path.mkdir()
+-        result = self.run_gate("pi", {"tool": "bash", "command": "git status"})
++        result = self.run_gate(
++            "pi",
++            {"tool": "bash", "command": "git status", "cwd": str(self.workspace)},
++        )
+         self.assertNotEqual(result.returncode, 0)
+ 
+     def test_pi_policy_pins_shared_layers_and_disables_llm(self) -> None:
+@@ -275,26 +314,267 @@ class PermgateTest(unittest.TestCase):
+         for key, value in (
+             ("decision_layers", ["allow_patterns"]),
+             ("llm_enabled", True),
++            ("workspace_write", False),
++            ("read_deny_patterns", []),
+         ):
+             with self.subTest(key=key):
+                 policy = json.loads(json.dumps(base_policy))
+                 policy["pi"][key] = value
+                 self.policy_path.write_text(json.dumps(policy))
+                 result = self.run_gate(
+-                    "pi", {"tool": "bash", "command": "git status"}
++                    "pi",
++                    {
++                        "tool": "bash",
++                        "command": "git status",
++                        "cwd": str(self.workspace),
++                    },
++                )
++                self.assertNotEqual(result.returncode, 0)
++
++        policy = json.loads(json.dumps(base_policy))
++        policy["pi"]["read_deny_patterns"][0]["regex"] = "("
++        self.policy_path.write_text(json.dumps(policy))
++        result = self.run_gate(
++            "pi",
++            {"tool": "bash", "command": "git status", "cwd": str(self.workspace)},
++        )
++        self.assertNotEqual(result.returncode, 0)
++
++        for agent in ("claude", "codex"):
++            with self.subTest(agent=agent):
++                policy = json.loads(json.dumps(base_policy))
++                policy["providers"][agent]["workspace_write"] = True
++                self.policy_path.write_text(json.dumps(policy))
++                result = self.run_gate(
++                    "pi",
++                    {
++                        "tool": "bash",
++                        "command": "git status",
++                        "cwd": str(self.workspace),
++                    },
+                 )
+                 self.assertNotEqual(result.returncode, 0)
+ 
+     def test_pi_protocol_rejects_malformed_normalized_action(self) -> None:
+         for payload in (
+             "not-json",
+-            {"tool": "bash", "command": 7},
++            {"tool": "bash", "command": 7, "cwd": str(self.workspace)},
+             {"tool": "read", "path": "/tmp/input"},
++            {"tool": "read", "path": "/tmp/input", "cwd": 7},
++            {
++                "tool": "read",
++                "path": "/tmp/input",
++                "cwd": str(self.workspace),
++                "extra": True,
++            },
+         ):
+             with self.subTest(payload=payload):
+                 result = self.run_gate("pi", payload)
+                 self.assertNotEqual(result.returncode, 0)
+ 
++    def test_pi_workspace_allows_in_cwd_read_write_and_edit(self) -> None:
++        (self.workspace / "input.txt").write_text("input\n")
++        for tool, path in (
++            ("write", "new.txt"),
++            ("edit", "nested/edit.txt"),
++            ("read", str(self.workspace / "input.txt")),
++        ):
++            with self.subTest(tool=tool):
++                result = self.run_gate(
++                    "pi",
++                    {"tool": tool, "path": path, "cwd": str(self.workspace)},
++                )
++                self.assertEqual(result.returncode, 0, result.stderr)
++                self.assertEqual(result.stdout, '{"decision":"allow"}\n')
++                self.assertEqual(self.read_log()[-1]["layer"], "workspace")
++
++    def test_pi_read_allows_plain_resolvable_path_outside_workspace(self) -> None:
++        path = self.outside / "contract.md"
++        path.write_text("public contract\n")
++
++        result = self.run_gate(
++            "pi",
++            {"tool": "read", "path": str(path), "cwd": str(self.workspace)},
++        )
++
++        self.assertEqual(result.returncode, 0, result.stderr)
++        self.assertEqual(result.stdout, '{"decision":"allow"}\n')
++        self.assertEqual(self.read_log()[-1]["layer"], "workspace")
++
++    def test_pi_read_denies_each_sensitive_path_family(self) -> None:
++        paths = (
++            self.outside / ".env.local",
++            self.outside / "prod-credentials.json",
++            self.outside / "id_rsa",
++            self.outside / "id_ed25519",
++            self.outside / ".ssh/config",
++            self.outside / ".aws/config",
++            self.outside / ".gnupg/pubring.kbx",
++            self.outside / "client.pem",
++            self.root / ".pi/agent/auth.json",
++            self.root / ".codex/auth.json",
++            self.root / ".claude/runtime/auth.json",
++        )
++        for path in paths:
++            path.parent.mkdir(parents=True, exist_ok=True)
++            path.write_text("sensitive\n")
++
++        for path in paths:
++            with self.subTest(path=path):
++                result = self.run_gate(
++                    "pi",
++                    {"tool": "read", "path": str(path), "cwd": str(self.workspace)},
++                )
++                self.assertEqual(result.returncode, 0, result.stderr)
++                self.assertEqual(result.stdout, '{"decision":"deny"}\n')
++
++    def test_pi_read_resolves_symlinks_and_asks_for_unresolvable_paths(self) -> None:
++        secret = self.outside / ".env"
++        secret.write_text("sensitive\n")
++        link = self.workspace / "plain-name"
++        link.symlink_to(secret)
++
++        denied = self.run_gate(
++            "pi",
++            {"tool": "read", "path": str(link), "cwd": str(self.workspace)},
++        )
++        missing = self.run_gate(
++            "pi",
++            {
++                "tool": "read",
++                "path": str(self.outside / "missing.txt"),
++                "cwd": str(self.workspace),
++            },
++        )
++
++        self.assertEqual(denied.stdout, '{"decision":"deny"}\n')
++        self.assertEqual(missing.stdout, '{"decision":"ask"}\n')
++
++    def test_pi_workspace_rejects_path_escapes_root_and_symlink_escape(self) -> None:
++        link = self.workspace / "outside-link"
++        link.symlink_to(self.outside, target_is_directory=True)
++        loop = self.workspace / "loop"
++        loop.symlink_to(loop)
++        fixtures = (
++            ("../outside/file.txt", str(self.workspace)),
++            (str(self.outside / "file.txt"), str(self.workspace)),
++            (".", str(self.workspace)),
++            ("outside-link/file.txt", str(self.workspace)),
++            ("loop/file.txt", str(self.workspace)),
++            ("tmp/file.txt", "/"),
++        )
++        for path, cwd in fixtures:
++            with self.subTest(path=path, cwd=cwd):
++                result = self.run_gate(
++                    "pi", {"tool": "write", "path": path, "cwd": cwd}
++                )
++                self.assertEqual(result.returncode, 0, result.stderr)
++                self.assertEqual(result.stdout, '{"decision":"ask"}\n')
++
++    def test_pi_workspace_allows_only_exact_safe_agmsg_send_lane(self) -> None:
++        prefix = f"{self.send_script} "
++        safe = prefix + "team pi-worker orchestrator 'AGMSG-RESULT v1 task_id=T'"
++        tilde_safe = safe.replace(str(self.root), "~", 1)
++        for command in (f"  {safe}  ", tilde_safe):
++            with self.subTest(command=command.split()[0]):
++                result = self.run_gate(
++                    "pi",
++                    {"tool": "bash", "command": command, "cwd": str(self.workspace)},
++                )
++                self.assertEqual(result.returncode, 0, result.stderr)
++                self.assertEqual(result.stdout, '{"decision":"allow"}\n')
++                self.assertEqual(self.read_log()[-1]["layer"], "workspace")
++
++        for suffix in (
++            "; touch injected",
++            " | other",
++            " & other",
++            " $HOME",
++            " `id`",
++            " > output",
++            " < input",
++            " (subshell)",
++            "\nother",
++        ):
++            with self.subTest(suffix=suffix):
++                result = self.run_gate(
++                    "pi",
++                    {
++                        "tool": "bash",
++                        "command": safe + suffix,
++                        "cwd": str(self.workspace),
++                    },
++                )
++                self.assertEqual(result.returncode, 0, result.stderr)
++                self.assertEqual(result.stdout, '{"decision":"ask"}\n')
++
++        for command in (
++            tilde_safe + "; touch injected",
++            tilde_safe.replace("~/", "~other/", 1),
++        ):
++            with self.subTest(command=command.split()[0]):
++                result = self.run_gate(
++                    "pi",
++                    {"tool": "bash", "command": command, "cwd": str(self.workspace)},
++                )
++                self.assertEqual(result.returncode, 0, result.stderr)
++                self.assertEqual(result.stdout, '{"decision":"ask"}\n')
++
++        arbitrary = self.run_gate(
++            "pi",
++            {"tool": "bash", "command": "echo work", "cwd": str(self.workspace)},
++        )
++        self.assertEqual(arbitrary.stdout, '{"decision":"ask"}\n')
++
++    def test_pi_reuses_every_shared_bash_allow_pattern(self) -> None:
++        policy_text = (ROOT / "home/dot_agents/permgate-policy.yaml").read_text()
++        policy = json.loads(policy_text)
++        self.assertEqual(
++            {pattern["id"] for pattern in policy["pi"]["read_deny_patterns"]},
++            {
++                "dotenv",
++                "credentials",
++                "ssh-key",
++                "ssh-dir",
++                "aws-dir",
++                "gnupg-dir",
++                "pem",
++                "agent-auth",
++            },
++        )
++        self.policy_path.write_text(policy_text)
++        commands = (
++            "gh pr view 128",
++            "gh run list",
++            "gh repo view",
++            "git status --short",
++            "git diff --stat",
++            "git branch --show-current",
++            "git remote get-url origin",
++            "ps -ef",
++            "git --version",
++        )
++
++        for command in commands:
++            with self.subTest(command=command):
++                result = self.run_gate(
++                    "pi",
++                    {"tool": "bash", "command": command, "cwd": str(self.workspace)},
++                )
++                self.assertEqual(result.returncode, 0, result.stderr)
++                self.assertEqual(result.stdout, '{"decision":"allow"}\n')
++                self.assertEqual(self.read_log()[-1]["layer"], "deterministic")
++
++    def test_pi_catastrophic_deny_precedes_workspace(self) -> None:
++        result = self.run_gate(
++            "pi",
++            {"tool": "bash", "command": "rm -rf /", "cwd": str(self.workspace)},
++        )
++
++        self.assertEqual(result.returncode, 0, result.stderr)
++        self.assertEqual(result.stdout, '{"decision":"deny"}\n')
++        self.assertEqual(self.read_log()[-1]["layer"], "deterministic")
++
+     def test_claude_and_codex_hook_outputs_match_golden_bytes(self) -> None:
+         fixtures = (
+             (
+```
+
+RESULT: PASS
+

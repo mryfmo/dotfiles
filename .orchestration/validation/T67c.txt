@@ -1,0 +1,112 @@
+T67c VALIDATION
+Date: 2026-08-17 Asia/Tokyo
+
+BOUNDARIES
+- Real Pi binary: NOT RUN
+- Real ~/.pi/agent/auth.json: NOT READ
+- Credential content: NOT ACCESSED, PRINTED, OR COPIED
+- Chezmoi apply: NOT RUN
+- Bats: NOT RUN
+- Dependencies: UNCHANGED
+- Commit/push: NOT RUN
+
+TEST-FIRST RED PHASE
+
+$ uv run python -m unittest <anthropic fallback and neither-lane cases> -v
+Ran 2 tests in 0.083s
+FAILED (failures=2)
+
+Observed old behavior:
+- anthropic plus matching fake auth.json and no env key SKIPped with
+  ANTHROPIC_API_KEY is not set;
+- anthropic with neither lane did not use the uniform two-lane SKIP reason.
+
+FOCUSED GREEN PHASE
+
+$ uv run python -m unittest tests.unit.test_pi_model_access_check -v
+Ran 11 tests in 0.977s
+OK
+
+FIXTURE TRANSCRIPTS
+
+== ANTHROPIC ENV LANE ==
+fixture: ANTHROPIC_API_KEY set; no auth.json required
+PASS version: pi 0.84.1
+PASS json: assistant replied exactly OK
+PASS rpc: agent_end received
+PASS extension: permgate.ts loaded via --extension
+sentinel credential value absent from stdout/stderr
+
+== ANTHROPIC SUBSCRIPTION FALLBACK ==
+fixture: ANTHROPIC_API_KEY unset; fake auth.json contains exact anthropic key
+PASS version: pi 0.84.1
+PASS json: assistant replied exactly OK
+PASS rpc: agent_end received
+subscription sentinel absent from stdout/stderr
+
+== ANTHROPIC NEITHER LANE ==
+fixture: ANTHROPIC_API_KEY unset; no matching auth.json entry
+PASS version: pi 0.84.1
+SKIP json: set a documented credential environment variable or run /login for anthropic
+SKIP rpc: set a documented credential environment variable or run /login for anthropic
+SKIP extension: model-access prerequisites unavailable
+
+== OPENAI-CODEX REGRESSION ==
+fixture: no documented env mapping; fake auth.json contains exact openai-codex key
+PASS json: assistant replied exactly OK
+PASS rpc: agent_end received
+subscription sentinel absent from stdout/stderr
+
+STATIC AND REPOSITORY GATES
+
+$ make format
+PASS
+
+$ bash -n home/dot_local/bin/common/executable_pi-model-access-check
+PASS
+
+$ shellcheck home/dot_local/bin/common/executable_pi-model-access-check
+PASS
+
+$ make unit-test
+Ran 343 tests in 42.207s
+OK
+
+$ make validate-agent-assets
+agent asset validation ok
+
+$ git diff --check
+PASS
+
+$ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/review/T67c-receipt.md make require-crit-review
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+
+Crit evidence:
+- review id: r_9ef410
+- resolved: true
+- source: .agents/worklog/codex/review/T67c-crit-comments.json
+- outcome: approved
+
+SCOPE
+- T67c implementation/procedure paths:
+  home/dot_local/bin/common/executable_pi-model-access-check
+  tests/unit/test_pi_model_access_check.py
+  .orchestration/validation/T67-model-access.md (coverage line only)
+- Five T67c artifacts and ignored AGENTS-required worklog/review evidence are
+  the remaining task outputs.
+- Accepted T67b/T68 dirty paths were preserved; no unrelated path was changed
+  for T67c.
+
+PLAN QUALITY
+- Validator/Make target: unavailable.
+- Hook: unavailable.
+- Reviewer definition: unavailable.
+- CI entrypoint: unavailable.
+- Manual checklist passed for current-state evidence, root-cause scope,
+  positive/adversarial tests, STOP condition, and measured validation.
+
+MEMORY
+UUID: 632cae23-6d57-4305-83db-a9e964cd20af
+
+RESULT: PASS
+

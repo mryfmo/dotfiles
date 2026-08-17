@@ -1,0 +1,116 @@
+T67b VALIDATION
+Date: 2026-08-17 Asia/Tokyo
+
+BOUNDARIES
+- Real Pi binary: NOT RUN
+- Real ~/.pi/agent/auth.json: NOT READ
+- Credential content: NOT PRINTED OR COPIED
+- Chezmoi apply: NOT RUN
+- Bats: NOT RUN
+- Dependencies: UNCHANGED
+- Commit/push: NOT RUN
+
+PINNED SOURCE
+- Pi v0.84.1 auth-storage.ts line 13 defines AuthStorageData as
+  Record<string, Credential>.
+- Lines 199-240 parse auth.json as an object keyed by provider ID.
+- Lines 242-245 look up the exact provider ID.
+- Source:
+  https://github.com/earendil-works/pi/blob/v0.84.1/packages/coding-agent/src/core/auth-storage.ts#L13
+  https://github.com/earendil-works/pi/blob/v0.84.1/packages/coding-agent/src/core/auth-storage.ts#L199-L245
+
+TEST-FIRST RED PHASE
+
+$ uv run python -m unittest <three new subscription cases> -v
+Ran 3 tests in 0.104s
+FAILED (failures=3)
+
+Observed old behavior:
+- Valid openai-codex subscription entry still SKIPped with
+  "provider openai-codex has no documented single-key mapping".
+- Missing-entry and malformed-file cases did not name both auth lanes.
+
+FOCUSED GREEN PHASE
+
+$ uv run python -m unittest tests.unit.test_pi_model_access_check -v
+Ran 10 tests in 0.791s
+OK
+
+FAKE-PI TRANSCRIPTS
+
+== SUBSCRIPTION PASS ==
+PASS version: pi 0.84.1
+PASS json: assistant replied exactly OK
+PASS rpc: agent_end received
+RPC envelope KINDS: response,agent_start,message_start,message_end,agent_end
+PASS extension: permgate.ts loaded via --extension
+
+== MISSING ENTRY SKIP ==
+PASS version: pi 0.84.1
+SKIP json: set a documented credential environment variable or run /login for openai-codex
+SKIP rpc: set a documented credential environment variable or run /login for openai-codex
+SKIP extension: model-access prerequisites unavailable
+
+== MALFORMED JSON SKIP ==
+PASS version: pi 0.84.1
+SKIP json: set a documented credential environment variable or run /login for openai-codex
+SKIP rpc: set a documented credential environment variable or run /login for openai-codex
+SKIP extension: model-access prerequisites unavailable
+
+Each transcript was produced with fake HOME, fake Pi, and sentinel credential
+values asserted absent from stdout and stderr. The environment-key cases remain
+green. The fake RPC process accepts only the exact id/type/message request and
+emits agent_settled after agent_end.
+
+STATIC AND REPOSITORY GATES
+
+$ make format
+shfmt --indent 4 --space-redirects --diff .
+PASS
+
+$ bash -n home/dot_local/bin/common/executable_pi-model-access-check
+PASS
+
+$ shellcheck home/dot_local/bin/common/executable_pi-model-access-check
+PASS
+
+$ make unit-test
+Ran 333 tests in 35.553s
+OK
+
+$ make validate-agent-assets
+agent asset validation ok
+
+$ git diff --check -- <three allowed implementation/procedure paths>
+PASS
+
+$ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/review/T67b-receipt.md make require-crit-review
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+
+Crit evidence:
+- review id: r_1c87da
+- resolved: true
+- source: .agents/worklog/codex/review/T67b-crit-comments.json
+- outcome: approved
+
+SCOPE
+- Modified task paths:
+  .orchestration/validation/T67-model-access.md
+  home/dot_local/bin/common/executable_pi-model-access-check
+  tests/unit/test_pi_model_access_check.py
+- The operator procedure retains the orchestrator's existing recorded results;
+  T67b adds one coverage-note bullet only.
+- Five T67b artifacts and ignored AGENTS-required worklog/review evidence are
+  the remaining task outputs.
+- No mise, dependency, policy, or deployed-home path changed.
+
+PLAN QUALITY
+- Validator/Make target: unavailable.
+- Hook: unavailable.
+- Reviewer subagent definition: unavailable.
+- CI entrypoint: unavailable.
+- Manual check passed for required worklog headings, frontmatter, measured
+  source evidence, positive/adversarial tests, STOP condition, and scope.
+
+RESULT: PASS
+

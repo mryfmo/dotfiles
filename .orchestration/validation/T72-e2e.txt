@@ -1,0 +1,67 @@
+T72 live E2E evidence (Pi worker integration plan)
+==================================================
+
+All lanes ran against pinned pi 0.84.1 (mise), openai-codex /
+gpt-5.6-terra via subscription auth, in the scratch project
+~/Workspace/pi-e2e (compactiondb-opted).
+
+E2E-π2 permgate gate (PASS)
+---------------------------
+RPC-driven Pi asked to `touch e2e-gate-test.txt`:
+tool_execution_end result "blocked by policy" isError=true; file not
+created — non-interactive fail-closed proven end-to-end. (An earlier
+`rm -rf /` prompt was refused by the model before any tool call.)
+
+E2E-π1 bridge round trip (PASS after 5 live rounds; each round's finding
+was root-cause fixed by a dedicated task)
+-----------------------------------------
+Round 1 -> T66b: ask->deny blocked ALL work (4 blocks; no artifact) —
+  workspace-write layer added (writes cwd-scoped, send.sh lane).
+Round 2 -> T66c: reads gated to cwd blocked legitimate contract reading
+  (SKILL.md) — read semantics aligned to the Codex baseline (allow
+  everywhere except sensitive families).
+Round 3 -> T66d: model used `~/` form; prefix mismatch — leading-tilde
+  normalization.
+Round 4 -> T68b: model wrapped in /bin/bash -lc — the string-prefix
+  design itself was the defect; replaced by the first-class agmsg_send
+  tool (identity pinned via bridge env, argv-array spawn, bash lane
+  REMOVED).
+Round 5 (restore semantics: task P5 queued while the bridge was down,
+fetched at startup): hello.txt created (`pi-worker-ok`), and the
+worker's OWN result arrived on the bus:
+  pi-standard-dot -> claude-deep-dot
+  "AGMSG-RESULT v1 task_id=P5 status=ready_for_review note=hello-created"
+Bridge lifecycle observed: identity join, bus-task fetch, correlated
+prompt, turn events, turn-complete, boundary inbox recheck,
+agent_settled tolerance.
+
+Known operational characteristic (recorded, matches the codex-worker
+reality): an IDLE bridge only checks the inbox at startup and turn
+boundaries; tasks queued while idle need a bridge (re)start as the wake,
+exactly as idle codex panes need a nudge. Runbook: queue tasks before
+starting the bridge, or restart it.
+
+E2E-π3 CompactionDB capture (PASS)
+----------------------------------
+Scratch ledger rows with ingested_from='pi', TOOL GRANULARITY and
+first-class types:
+  64 pi turn_stop  Stop: Created hello.txt and sent the AGMSG result...
+  62 pi tool_success agmsg_send succeeded
+  60 pi tool_success Write succeeded: path=.../hello.txt
+  58 pi tool_failure Bash failed: printf ... (the DENIED attempt —
+     the gate's steering of the model to the Write tool is itself
+     captured in the ledger)
+
+E2E-π5 session evidence (PASS)
+------------------------------
+pi-session-evidence on the round-5 session: 16 entries, model tracking
+(openai-codex/gpt-5.6-terra), usage totals (19,556 in / 464 out /
+29,184 cacheRead), cost $0.0505, zero malformed. Also used live during
+rounds 1-2 diagnosis (block counting) — proven as an investigation tool.
+
+Deferred (non-gating)
+---------------------
+- π4 cost A/B (T71): awaits Anthropic subscription usage top-up
+  (operator item; quota exhaustion evidenced live with the truthful
+  T67e diagnostic).
+- Anthropic-lane fable-5 checker rerun: same dependency.

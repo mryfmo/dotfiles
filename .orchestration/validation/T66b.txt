@@ -1,0 +1,213 @@
+T66b VALIDATION
+Date: 2026-08-17 Asia/Tokyo
+
+BOUNDARIES
+- Workspace behavior: Pi only.
+- Decision order: deny_patterns -> workspace_write -> allow_patterns.
+- Claude/Codex workspace_write: absent/false only; true rejected.
+- Pi LLM classifier: disabled.
+- Real Pi, Bats, chezmoi apply, dependency changes, commit/push: NOT RUN.
+
+TEST-FIRST RED
+
+$ uv run python -m unittest tests.unit.test_permgate tests.unit.test_pi_permgate_extension -v
+Ran 39 tests in 5.258s
+FAILED (failures=51, errors=8)
+
+Expected pre-implementation causes:
+- the new policy order/switch was rejected by the old validator, causing shared
+  fixture config errors (including temporary golden failures);
+- old Pi actions rejected cwd/read and could not produce workspace decisions;
+- the extension omitted cwd and bypassed read.
+
+FOCUSED GREEN
+
+$ uv run python -m unittest tests.unit.test_permgate tests.unit.test_pi_permgate_extension tests.unit.test_validate_agent_assets -v
+Ran 79 tests in 5.289s
+OK
+
+Pinned outcomes:
+- read/write/edit under cwd: allow, layer=workspace;
+- relative `..`, absolute outside, equal cwd, symlink outside, symlink loop, and
+  root cwd: ask;
+- exact expanded send.sh prefix with safe arguments: allow, layer=workspace;
+- `; | & $ ` > < (` and newline injections: ask;
+- arbitrary Bash: unchanged ask; existing git-status allow remains allow;
+- catastrophic rm denial: deny, layer=deterministic, before workspace;
+- Claude/Codex allow, deny, and native-ask stdout: byte-identical golden;
+- extension stdin contains raw path and ctx.cwd exactly.
+
+STATIC AND REPOSITORY GATES
+
+$ make format
+PASS
+
+$ uv run python -m py_compile home/dot_local/bin/common/executable_permgate tests/unit/test_permgate.py tests/unit/test_pi_permgate_extension.py
+PASS
+
+$ bash -n home/dot_agents/skills/agmsg/scripts/executable_send.sh
+PASS
+
+$ node --check home/dot_pi/agent/extensions/permgate.ts
+PASS
+
+$ tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --skipLibCheck tests/unit/pi_permgate_extension_types.d.ts home/dot_pi/agent/extensions/permgate.ts
+PASS (local TypeScript; no dependency added)
+
+$ make unit-test
+Ran 364 tests in 38.579s
+OK
+
+$ make validate-agent-assets
+agent asset validation ok
+
+$ shasum -a 256 home/dot_pi/agent/extensions/permgate.ts
+da95e5a3be363faa9dcd749d781b4bc2e125321409dbfe86e9ea2b9a5659845c
+matches scripts/validate-agent-assets.py
+
+$ git diff --check
+PASS
+
+FULL EXECUTABLE_PERMGATE WORKSPACE-LAYER DIFF
+
+```diff
+diff --git a/home/dot_local/bin/common/executable_permgate b/home/dot_local/bin/common/executable_permgate
+index 722a4c6..6e1e582 100755
+--- a/home/dot_local/bin/common/executable_permgate
++++ b/home/dot_local/bin/common/executable_permgate
+@@ -22,6 +22,7 @@ from typing import Any
+ SENTINEL_ENV = "PERMGATE_INNER"
+ SHELL_CONTROL = re.compile(r"[;&|><`\n]|\$\(")
+ SHELL_EXPANSION = re.compile(r"[$*?\[\]{}~]")
++PI_SEND_META = re.compile(r"[;|&$`><(\n\r]")
+ SECRET_MARKER = re.compile(
+@@ -103,6 +104,8 @@ def load_policy() -> dict[str, Any]:
+         if not isinstance(provider.get("llm_enabled"), bool):
+             raise ValueError(f"{name} llm_enabled must be boolean")
++        if provider.get("workspace_write", False) is not False:
++            raise ValueError(f"{name} workspace_write must remain false")
+@@ -123,10 +126,16 @@ def load_policy() -> dict[str, Any]:
+-    if pi.get("decision_layers") != ["deny_patterns", "allow_patterns"]:
+-        raise ValueError("pi must reuse the deterministic deny and allow layers")
++    if pi.get("decision_layers") != [
++        "deny_patterns",
++        "workspace_write",
++        "allow_patterns",
++    ]:
++        raise ValueError("pi must apply deny, workspace, then allow layers")
+     if pi.get("llm_enabled") is not False:
+         raise ValueError("pi llm classifier must remain disabled")
++    if pi.get("workspace_write") is not True:
++        raise ValueError("pi workspace_write must be enabled")
+@@ -449,6 +458,47 @@ def decision_record(
++def workspace_path_allowed(cwd: object, path: object) -> bool:
++    if not isinstance(cwd, str) or not isinstance(path, str):
++        return False
++    cwd_path = Path(cwd)
++    if not cwd_path.is_absolute():
++        return False
++    try:
++        resolved_cwd = cwd_path.resolve(strict=True)
++        if not resolved_cwd.is_dir() or resolved_cwd == Path(resolved_cwd.anchor):
++            return False
++        candidate = Path(path)
++        if not candidate.is_absolute():
++            candidate = resolved_cwd / candidate
++        resolved_path = candidate.resolve(strict=False)
++    except (OSError, RuntimeError):
++        return False
++    return resolved_path != resolved_cwd and resolved_path.is_relative_to(resolved_cwd)
++
++
++def workspace_bash_allowed(command: object) -> bool:
++    if not isinstance(command, str):
++        return False
++    command = command.strip()
++    prefix = str(Path.home() / ".agents/skills/agmsg/scripts/send.sh") + " "
++    if not command.startswith(prefix):
++        return False
++    arguments = command[len(prefix) :]
++    return bool(arguments) and not PI_SEND_META.search(arguments)
++
++
++def workspace_allows(agent: str, payload: dict[str, Any], policy: dict[str, Any]) -> bool:
++    if agent != "pi" or policy["pi"].get("workspace_write") is not True:
++        return False
++    tool, tool_input, _ = request_parts(payload)
++    if tool in {"Read", "Write", "Edit"}:
++        return workspace_path_allowed(payload.get("cwd"), tool_input.get("path"))
++    if tool == "Bash":
++        return workspace_bash_allowed(tool_input.get("command"))
++    return False
+@@ -469,7 +519,11 @@ def decide(
+     else:
+         safe_single_action = tool != "Bash" or is_bounded_shell_command(match_text)
+-        if safe_single_action:
++        if workspace_allows(agent, payload, policy):
++            layer = "workspace"
++            decision = "allow"
++            output = hook_output("allow")
++        if output is None and safe_single_action:
+@@ -515,15 +569,22 @@ def pi_payload(action: dict[str, Any]) -> dict[str, Any]:
+     tool = action.get("tool")
+     field = "command" if tool == "bash" else "path"
+-    expected = {"tool", field}
+-    if tool not in {"bash", "write", "edit"} or set(action) != expected:
++    expected = {"tool", field, "cwd"}
++    if tool not in {"bash", "read", "write", "edit"} or set(action) != expected:
+         raise ValueError("invalid normalized Pi action")
+     value = action.get(field)
+-    if not isinstance(value, str):
++    cwd = action.get("cwd")
++    if not isinstance(value, str) or not isinstance(cwd, str):
+         raise TypeError("normalized Pi action value must be a string")
+     return {
+-        "tool_name": {"bash": "Bash", "write": "Write", "edit": "Edit"}[tool],
++        "tool_name": {
++            "bash": "Bash",
++            "read": "Read",
++            "write": "Write",
++            "edit": "Edit",
++        }[tool],
+         "tool_input": {field: value},
++        "cwd": cwd,
+     }
+```
+
+REVIEW
+- Crit review file: /Users/mryfmo/.crit/reviews/dfcf30aea611/review.json
+- Record: r_295949
+- Resolved: true
+- Evidence: .agents/worklog/codex/review/T66b-crit-comments.json
+- Receipt: .agents/worklog/codex/review/T66b-receipt.md
+- Outcome: approved after security-focused review; no actionable finding.
+
+SCOPE
+T66b product/test paths:
+- home/dot_pi/agent/extensions/permgate.ts
+- home/dot_local/bin/common/executable_permgate
+- home/dot_agents/permgate-policy.yaml
+- scripts/validate-agent-assets.py (permgate hash line only)
+- tests/unit/pi_permgate_extension.test.mjs
+- tests/unit/pi_permgate_extension_types.d.ts
+- tests/unit/test_permgate.py
+- five T66b artifacts and ignored AGENTS-required worklog/review evidence
+
+Accepted T67-T70 and T69 validator/test fixture changes were preserved. No
+Claude/Codex product path, vendor path, dependency, or unrelated product path
+was changed for T66b.
+
+PLAN QUALITY
+- Workflow document: unavailable.
+- Validator/Make target: unavailable.
+- Hook: unavailable.
+- Reviewer definition: unavailable.
+- Template/CI entrypoint: unavailable.
+- Manual checklist passed for current-state evidence, live root cause, trust
+  boundaries, positive/adversarial fixtures, deny invariants, exact commands,
+  maintenance hash, and STOP conditions.
+
+MEMORY
+UUID: 35bce298-04e0-40b6-99e2-5018ec3f5b2f
+
+RESULT: PASS

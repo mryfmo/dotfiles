@@ -1,0 +1,152 @@
+T68 VALIDATION
+Date: 2026-08-17 Asia/Tokyo
+
+BOUNDARIES
+- Real Pi binary: NOT RUN
+- Deployed Pi extension: NOT RUN
+- Chezmoi apply: NOT RUN
+- Bats: NOT RUN
+- Dependencies: UNCHANGED
+- Claude/Codex delivery config: UNCHANGED
+- Commit/push: NOT RUN
+
+TEST-FIRST RED PHASE
+
+$ uv run python -m unittest tests.unit.test_agmsg_pi_worker -v
+Ran 9 tests in 0.290s
+FAILED (failures=9)
+
+Observed before implementation:
+- bridge path absent;
+- join.sh rejected runtime type pi;
+- check-inbox ignored bridge identity/team/force controls.
+
+FOCUSED GREEN PHASE
+
+$ uv run python -m unittest tests.unit.test_agmsg_pi_worker -v
+Ran 9 tests in 7.681s
+OK
+
+FAKE-PI TRANSCRIPTS (a)-(g)
+
+(a) SCRATCH GUARD
+argv: --project <outside> --scratch-root <scratch>
+stderr: agmsg-pi-worker: project is outside scratch root
+result: nonzero; fake Pi start log absent
+
+(b) TASK -> PROMPT -> AGENT_END
+bus: AGMSG-TASK v1 task_id=T99 task_file=.orchestration/tasks/T99.md
+rpc request: {"id":"t68-1","type":"prompt","message":"<raw task>\n<fixed instruction>"}
+rpc response: {"id":"t68-1","type":"response","command":"prompt","success":true}
+events: agent_start,message_start,message_end,agent_end
+stderr: rpc-response corr=t68-1 success=true
+stderr: turn-complete corr=t68-1 task_id=T99
+startup argv: --mode rpc --provider openai-codex --model test-model
+              --extension <fake-home>/.pi/agent/extensions/permgate.ts
+cwd: canonical project path under scratch root
+
+(c) TRAILING SETTLED
+events: agent_end,agent_settled
+stderr: turn-complete corr=t68-1 task_id=T100
+stderr: rpc-event kind=agent_settled
+result: bridge remains alive
+
+(d) CHILD DEATH
+fake Pi exits 18 after accepting T101 prompt
+send spy: AGMSG-PONG v1 task_id=T101 status=blocked note=bridge-child-died
+stderr: bridge-child-died task_id=T101
+result: nonzero
+
+(e) PING
+bus: AGMSG-PING v1 task_id=T102 reason=status
+send spy: AGMSG-PONG v1 task_id=T102 status=alive note=bridge-alive
+Pi prompt log: empty
+
+(f) FIXED INSTRUCTION
+request message suffix exactly:
+Execute per the task file; reply on the agmsg bus yourself using the send.sh contract; your final assistant text is not the RESULT.
+count in request: 1
+
+(g) RESULT OWNERSHIP
+send spy after successful T104 turn: no record beginning AGMSG-RESULT
+bridge source send paths: AGMSG-PONG only
+
+INTEGRATION SEAMS
+- Copied repository join.sh registers pi with the expected registration JSON.
+- Copied repository check-inbox.sh bypasses an existing cooldown only under
+  AGMSG_CHECK_INBOX_FORCE=1, delivers only the selected identity/team, and
+  leaves messages for sibling identities/teams unread.
+
+STATIC AND REPOSITORY GATES
+
+$ make format
+PASS
+
+$ bash -n <four touched shell paths>
+PASS
+
+$ shellcheck -x <four touched shell paths>
+PASS
+
+$ make unit-test
+Ran 342 tests in 34.385s
+OK
+
+$ make validate-agent-assets
+agent asset validation ok
+
+$ python3 <join pi-only normalization proof>
+join-pi-only-normalization: PASS
+head-sha256:       001fe09a1014945345cd7ce0a4d1ed97af2c14dc0f159711e61d6b9934eb1cdb
+normalized-sha256: 001fe09a1014945345cd7ce0a4d1ed97af2c14dc0f159711e61d6b9934eb1cdb
+
+The filtered zero-context diff contains only:
+- pi appended to the missing-type usage text;
+- pi appended to the existing whitelist alternatives;
+- pi appended to the supported-type error text.
+
+$ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/review/T68-receipt.md make require-crit-review
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+
+Crit evidence:
+- review id: r_600888
+- resolved: true
+- source: .agents/worklog/codex/review/T68-crit-comments.json
+- outcome: approved
+
+EXTENSION CONTRACT
+- Pinned Pi v0.84.1 docs state that ~/.pi/agent/extensions/*.ts is globally
+  auto-discovered.
+- The bridge requires the same permgate.ts file and always supplies its path
+  through --extension; the explicit fatal-load contract is the operational
+  dependency and auto-discovery is redundant coverage.
+- Source:
+  https://github.com/earendil-works/pi/blob/v0.84.1/packages/coding-agent/docs/extensions.md#extension-locations
+
+SCOPE
+- Implementation/docs/tests:
+  home/dot_local/bin/common/executable_agmsg-pi-worker
+  home/dot_agents/skills/agmsg/scripts/executable_join.sh
+  home/dot_agents/skills/agmsg/scripts/executable_whoami.sh
+  home/dot_agents/skills/agmsg/scripts/executable_check-inbox.sh
+  home/dot_agents/skills/agmsg-orchestration/SKILL.md
+  tests/unit/test_agmsg_pi_worker.py
+- Five T68 artifacts and ignored AGENTS-required worklog/review evidence are
+  the remaining T68 outputs.
+- Existing dirty T67b paths were preserved and excluded from T68.
+
+PLAN QUALITY
+- Validator/Make target: unavailable.
+- Hook: unavailable.
+- Reviewer subagent definition: unavailable.
+- CI entrypoint: unavailable.
+- Manual check passed for required worklog headings/frontmatter, explicit
+  assumptions and design, positive/adversarial tests, STOP condition, measured
+  evidence, and bounded scope.
+
+DECISION MEMORY
+$ python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '<task-specified fact>'
+UUID: 7e47f06e-d582-4d00-a55f-f179a9691791
+
+RESULT: PASS
+

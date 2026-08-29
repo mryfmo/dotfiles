@@ -42,6 +42,8 @@ class HerdrAgentsTest(unittest.TestCase):
         self.pane_layout_after_resize_path = self.temp_dir / "pane-layout-after-resize.json"
         self.pane_layout_exit_path = self.temp_dir / "pane-layout-exit.txt"
         self.agent_get_path = self.temp_dir / "agent-get.json"
+        self.agent_start_failures_path = self.temp_dir / "agent-start-failures.txt"
+        self.agent_start_not_ready_path = self.temp_dir / "agent-start-not-ready.txt"
         self.pane_counter_path = self.temp_dir / "pane-counter.txt"
         self.home_dir = self.temp_dir / "home"
         (self.home_dir / ".config/herdr").mkdir(parents=True)
@@ -53,6 +55,8 @@ class HerdrAgentsTest(unittest.TestCase):
         self.pane_layout_after_resize_path.write_text("")
         self.pane_layout_exit_path.write_text("0\n")
         self.agent_get_path.write_text("")
+        self.agent_start_failures_path.write_text("0\n")
+        self.agent_start_not_ready_path.write_text("0\n")
         self.pane_counter_path.write_text("2\n")
 
         self.write_executable(
@@ -101,15 +105,53 @@ fi
 if [[ $1 == pane && $2 == run ]]; then
     exit 0
 fi
+if [[ $1 == pane && $2 == wait-output ]]; then
+    exit 0
+fi
+if [[ $1 == pane && $2 == process-info ]]; then
+    printf '%s\\n' '{{"id":"cli:pane:process_info","result":{{"process_info":{{"foreground_processes":[{{"argv0":"zsh","name":"zsh"}}]}}}}}}'
+    exit 0
+fi
 if [[ $1 == agent && $2 == start ]]; then
-    workspace='w-test'
+    name="$3"
+    kind=''
+    pane=''
+    shift 3
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --workspace) workspace="$2"; shift 2 ;;
+            --kind) kind="$2"; shift 2 ;;
+            --pane) pane="$2"; shift 2 ;;
+            --cwd|--workspace|--split|--env|--focus|--no-focus)
+                printf 'removed agent start option: %s\\n' "$1" >&2
+                exit 64
+                ;;
+            --) shift; break ;;
             *) shift ;;
         esac
     done
-    printf '{{"id":"cli:agent:start","result":{{"pane":{{"pane_id":"%s:p2"}}}}}}\\n' "$workspace"
+    if [[ ! $name =~ ^[a-z][a-z0-9_-]{{0,31}}$ ]]; then
+        printf 'invalid_agent_name: %s\\n' "$name" >&2
+        exit 64
+    fi
+    if [[ $kind != codex && $kind != claude ]] || [[ -z $pane ]]; then
+        printf 'agent start requires --kind and --pane\\n' >&2
+        exit 64
+    fi
+    failures="$(cat {self.agent_start_failures_path})"
+    if (( failures > 0 )); then
+        printf '%s\\n' "$(( failures - 1 ))" > {self.agent_start_failures_path}
+        printf 'agent start timeout\\n' >&2
+        exit 1
+    fi
+    if [[ $(cat {self.agent_start_not_ready_path}) == 1 ]]; then
+        printf '0\\n' > {self.agent_start_not_ready_path}
+        printf 'agent_not_ready\\n' >&2
+        exit 1
+    fi
+    printf '{{"id":"cli:agent:start","result":{{"pane":{{"pane_id":"%s"}}}}}}\\n' "$pane"
+    exit 0
+fi
+if [[ $1 == agent && $2 == wait ]]; then
     exit 0
 fi
 if [[ $1 == agent && $2 == get ]]; then
@@ -261,6 +303,8 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         )
         pane_list = json.loads(f'{{"id":"cli:pane:list","result":{{"panes":[{panes}]}}}}')
         for pane in pane_list["result"]["panes"]:
+            if pane.get("cwd") == str(self.workdir):
+                pane["cwd"] = str(self.workdir.resolve())
             pane.setdefault("tab_id", f"{workspace_id}:t1")
         self.pane_list_path.write_text(json.dumps(pane_list) + "\n")
         if agent_pane_id:
@@ -307,10 +351,17 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         path = self.pane_layout_after_resize_path if after_resize else self.pane_layout_path
         path.write_text(json.dumps(layout) + "\n")
 
-    def run_helper(self) -> subprocess.CompletedProcess[str]:
+    def run_helper(
+        self, *, extra_env: dict[str, str] | None = None
+    ) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env["HOME"] = str(self.home_dir)
         env["PATH"] = f"{self.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"
+        env.pop("HERDR_AGENTS_CODEX_PROFILE", None)
+        env.pop("HERDR_AGENTS_CLAUDE_ARGS", None)
+        env.pop("FPATH", None)
+        if extra_env:
+            env.update(extra_env)
         return subprocess.run(
             ["bash", str(SCRIPT), str(self.workdir)],
             cwd=ROOT,
@@ -336,18 +387,24 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         )
 
     def run_attach_helper(
-        self, *, in_herdr: bool, managed_layout: bool = False
+        self,
+        *,
+        in_herdr: bool,
+        managed_layout: bool = False,
+        workspace_id: str = "w-attach",
+        pane_id: str = "w-attach:p1",
     ) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env["HOME"] = str(self.home_dir)
         env["PATH"] = f"{self.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"
+        env.pop("FPATH", None)
         for key in ("HERDR_ENV", "HERDR_PANE_ID", "HERDR_WORKSPACE_ID", "HERDR_AGENTS_LAYOUT"):
             env.pop(key, None)
         if in_herdr:
             env.update(
                 HERDR_ENV="1",
-                HERDR_PANE_ID="w-attach:p1",
-                HERDR_WORKSPACE_ID="w-attach",
+                HERDR_PANE_ID=pane_id,
+                HERDR_WORKSPACE_ID=workspace_id,
             )
         if managed_layout:
             env["HERDR_AGENTS_LAYOUT"] = "managed"
@@ -397,12 +454,49 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
+        self.assertIn(
+            f"pane split w-attach:p1 --direction right --cwd {self.workdir.resolve()} --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus",
+            calls,
+        )
         codex_start = next(call for call in calls if call.startswith("agent start codex-worker-w-attach "))
-        self.assertIn("--split right", codex_start)
+        self.assertIn("--kind codex --pane w-attach:p3", codex_start)
+        self.assertNotIn("--cwd", codex_start)
         self.assertIn("pane rename w-attach:p1 claude-orchestrator", calls)
-        self.assertFalse(any(call.startswith("pane split ") for call in calls))
         self.assertFalse(any(call.startswith("pane run w-attach:p1 ") for call in calls))
         self.assertFalse(any(call.startswith("workspace create ") for call in calls))
+
+    def test_attach_lowercases_and_validates_derived_agent_name(self) -> None:
+        self.write_workspace_state(
+            "w1F",
+            f'{{"agent":"claude","cwd":"{self.workdir}","pane_id":"w1F:p1","workspace_id":"w1F"}}',
+        )
+
+        result = self.run_attach_helper(
+            in_herdr=True, workspace_id="w1F", pane_id="w1F:p1"
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertTrue(
+            any(call.startswith("agent start codex-worker-w1f ") for call in calls)
+        )
+
+    def test_attach_rejects_invalid_derived_agent_name(self) -> None:
+        self.write_workspace_state(
+            "w.bad",
+            f'{{"agent":"claude","cwd":"{self.workdir}","pane_id":"w.bad:p1","workspace_id":"w.bad"}}',
+        )
+
+        result = self.run_attach_helper(
+            in_herdr=True, workspace_id="w.bad", pane_id="w.bad:p1"
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Invalid Herdr agent name", result.stderr)
+        calls = self.calls_path.read_text().splitlines() if self.calls_path.exists() else []
+        self.assertFalse(
+            any(call.startswith("agent start codex-worker-") for call in calls)
+        )
 
     def test_attach_complete_workspace_is_idempotent(self) -> None:
         self.write_workspace_state(
@@ -920,16 +1014,131 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         calls = self.calls_path.read_text().splitlines()
         self.assertIn("pane rename w-test:p1 claude-orchestrator", calls)
-        self.assertIn("pane run w-test:p1 CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed claude", calls)
         self.assertIn(
-            f"agent start codex-worker-w-test --cwd {self.workdir} --workspace w-test --split right --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- {self.bin_dir}/codex --sandbox workspace-write --profile standard",
+            "agent start claude-orchestrator-w-test --kind claude --pane w-test:p1 --timeout 30000 --",
             calls,
         )
-        self.assertIn("pane rename w-test:p2 codex-worker", calls)
-        self.assertFalse(any(call.startswith("pane split ") for call in calls))
-        self.assertNotIn(
-            f"agent start claude --cwd {self.workdir} --workspace w-test --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --focus -- claude",
+        self.assertIn(
+            f"pane split w-test:p1 --direction right --cwd {self.workdir.resolve()} --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus",
             calls,
+        )
+        self.assertIn(
+            "agent start codex-worker-w-test --kind codex --pane w-test:p3 --timeout 30000 -- --sandbox workspace-write --profile standard",
+            calls,
+        )
+        self.assertIn("pane rename w-test:p3 codex-worker", calls)
+        self.assertFalse(
+            any(
+                removed in call
+                for call in calls
+                if call.startswith("agent start ")
+                for removed in ("--cwd", "--workspace", "--split", "--env", "--focus", "--no-focus")
+            )
+        )
+
+    def test_new_pane_waits_for_shell_and_retries_agent_start_once_on_timeout(self) -> None:
+        self.agent_start_failures_path.write_text("1\n")
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        starts = [call for call in calls if call.startswith("agent start ")]
+        self.assertEqual(
+            starts.count(
+                "agent start claude-orchestrator-w-test --kind claude --pane w-test:p1 --timeout 30000 --"
+            ),
+            2,
+        )
+        self.assertGreaterEqual(
+            len(
+                [
+                    call
+                    for call in calls
+                    if call == "pane process-info --pane w-test:p1"
+                ]
+            ),
+            2,
+        )
+
+    def test_registered_agent_not_ready_waits_for_idle_without_duplicate_start(self) -> None:
+        self.agent_start_not_ready_path.write_text("1\n")
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertEqual(
+            len(
+                [
+                    call
+                    for call in calls
+                    if call.startswith("agent start claude-orchestrator-w-test ")
+                ]
+            ),
+            1,
+        )
+        self.assertIn(
+            "agent wait claude-orchestrator-w-test --until idle --until working --until done --timeout 1000",
+            calls,
+        )
+
+    def test_codex_profile_defaults_to_generated_interactive_profile(self) -> None:
+        profiles = self.home_dir / ".agents/model-profiles.env"
+        profiles.parent.mkdir(parents=True)
+        profiles.write_text("MODEL_PROFILE_INTERACTIVE=review\n")
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue(
+            any(
+                call.endswith("--sandbox workspace-write --profile review")
+                for call in self.calls_path.read_text().splitlines()
+                if call.startswith("agent start codex-worker-")
+            )
+        )
+
+    def test_codex_profile_env_override_wins_over_generated_profile(self) -> None:
+        profiles = self.home_dir / ".agents/model-profiles.env"
+        profiles.parent.mkdir(parents=True)
+        profiles.write_text("MODEL_PROFILE_INTERACTIVE=review\n")
+
+        result = self.run_helper(
+            extra_env={"HERDR_AGENTS_CODEX_PROFILE": "express"}
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue(
+            any(
+                call.endswith("--sandbox workspace-write --profile express")
+                for call in self.calls_path.read_text().splitlines()
+                if call.startswith("agent start codex-worker-")
+            )
+        )
+
+    def test_claude_agent_accepts_manifest_profile_arguments_for_e2e(self) -> None:
+        result = self.run_helper(
+            extra_env={"HERDR_AGENTS_CLAUDE_ARGS": "--model haiku --effort low"}
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            "agent start claude-orchestrator-w-test --kind claude --pane w-test:p1 --timeout 30000 -- --model haiku --effort low",
+            self.calls_path.read_text().splitlines(),
+        )
+
+    def test_pane_creation_propagates_explicit_fpath(self) -> None:
+        result = self.run_helper(extra_env={"FPATH": "/safe/zsh/functions"})
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertTrue(
+            all(
+                "--env FPATH=/safe/zsh/functions" in call
+                for call in calls
+                if call.startswith(("workspace create ", "pane split "))
+            )
         )
 
     def install_npm_fake(self, *, installed: bool, mise_has_tool: bool = True) -> None:
@@ -1003,6 +1212,23 @@ fi
         )
         self.assertIn("workspace focus w-old", calls)
 
+    def test_existing_workspace_matches_canonical_macos_workdir(self) -> None:
+        canonical_workdir = self.workdir.resolve()
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":"claude","cwd":"{canonical_workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
+            f'{{"agent":"codex","cwd":"{canonical_workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}}',
+            agent_pane_id="w-old:p2",
+        )
+        self.write_ratio_layout((60, 60), pane_ids=("w-old:p1", "w-old:p2"))
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn("workspace focus w-old", calls)
+        self.assertFalse(any(call.startswith("workspace create ") for call in calls))
+
     def test_existing_workspace_with_legacy_files_pane_focuses_without_mutation(self) -> None:
         self.write_workspace_state(
             "w-old",
@@ -1032,8 +1258,14 @@ fi
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
         calls = self.calls_path.read_text().splitlines()
-        self.assertIn("pane split w-old:p2 --direction right --no-focus", calls)
-        self.assertIn("pane run w-old:p3 CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed claude", calls)
+        self.assertIn(
+            f"pane split w-old:p2 --direction right --cwd {self.workdir.resolve()} --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --env HERDR_AGENTS_LAYOUT=managed --no-focus",
+            calls,
+        )
+        self.assertIn(
+            "agent start claude-orchestrator-w-old --kind claude --pane w-old:p3 --timeout 30000 --",
+            calls,
+        )
         self.assertFalse(any("--ratio" in call for call in calls))
         self.assertFalse(any(call.startswith("pane rename w-old:p9 ") for call in calls))
         self.assertFalse(any(call.startswith("pane run w-old:p9 ") for call in calls))
@@ -1049,10 +1281,10 @@ fi
 
         calls = self.calls_path.read_text().splitlines()
         self.assertIn(
-            f"agent start codex-worker-w-old --cwd {self.workdir} --workspace w-old --split right --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- {self.bin_dir}/codex --sandbox workspace-write --profile standard",
+            "agent start codex-worker-w-old --kind codex --pane w-old:p3 --timeout 30000 -- --sandbox workspace-write --profile standard",
             calls,
         )
-        self.assertIn("pane rename w-old:p2 codex-worker", calls)
+        self.assertIn("pane rename w-old:p3 codex-worker", calls)
         self.assertNotIn(f"workspace create --cwd {self.workdir} --label project agents --focus", calls)
         self.assertIn("workspace focus w-old", calls)
 
@@ -1068,11 +1300,17 @@ fi
 
         calls = self.calls_path.read_text().splitlines()
         self.assertIn(
-            f"agent start codex-worker-w-old --cwd {self.workdir} --workspace w-old --split right --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus -- {self.bin_dir}/codex --sandbox workspace-write --profile standard",
+            "agent start codex-worker-w-old --kind codex --pane w-old:p2 --timeout 30000 -- --sandbox workspace-write --profile standard",
             calls,
         )
-        self.assertIn("pane run w-old:p3 CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed claude", calls)
-        self.assertNotIn("pane run w-old:p2 CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed claude", calls)
+        self.assertIn(
+            "agent start claude-orchestrator-w-old --kind claude --pane w-old:p3 --timeout 30000 --",
+            calls,
+        )
+        self.assertNotIn(
+            "agent start claude-orchestrator-w-old --kind claude --pane w-old:p2 --timeout 30000 --",
+            calls,
+        )
 
     def test_existing_workspace_restarts_missing_claude_in_empty_pane(self) -> None:
         self.write_workspace_state(
@@ -1087,8 +1325,17 @@ fi
 
         calls = self.calls_path.read_text().splitlines()
         self.assertIn("pane rename w-old:p1 claude-orchestrator", calls)
-        self.assertIn("pane run w-old:p1 CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed claude", calls)
-        self.assertFalse(any(call.startswith("agent start ") for call in calls))
+        self.assertIn(
+            "pane run w-old:p1 export CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed",
+            calls,
+        )
+        self.assertIn(
+            "agent start claude-orchestrator-w-old --kind claude --pane w-old:p1 --timeout 30000 --",
+            calls,
+        )
+        self.assertFalse(
+            any(call.startswith("agent start codex-worker-") for call in calls)
+        )
         self.assertIn("workspace focus w-old", calls)
 
     def test_existing_workspace_splits_when_missing_claude_has_no_empty_pane(self) -> None:
@@ -1102,9 +1349,15 @@ fi
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
         calls = self.calls_path.read_text().splitlines()
-        self.assertIn("pane split w-old:p2 --direction right --no-focus", calls)
+        self.assertIn(
+            f"pane split w-old:p2 --direction right --cwd {self.workdir.resolve()} --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --env HERDR_AGENTS_LAYOUT=managed --no-focus",
+            calls,
+        )
         self.assertIn("pane swap --pane w-old:p3 --direction left", calls)
-        self.assertIn("pane run w-old:p3 CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed claude", calls)
+        self.assertIn(
+            "agent start claude-orchestrator-w-old --kind claude --pane w-old:p3 --timeout 30000 --",
+            calls,
+        )
         self.assertIn("workspace focus w-old", calls)
 
     def test_ghostty_herdr_starts_plain_workspace(self) -> None:
@@ -1338,6 +1591,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
     ) -> subprocess.CompletedProcess[str]:
         self.install_zshrc_fakes(herdr_session_exit_code=herdr_session_exit_code)
         env = os.environ.copy()
+        env["HOME"] = str(self.home_dir)
         env["PATH"] = f"{self.bin_dir}{os.pathsep}{env['PATH']}"
         if ghostty:
             env["GHOSTTY_RESOURCES_DIR"] = str(self.temp_dir / "ghostty")
@@ -1357,6 +1611,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
     def run_interactive_ghostty_herdr(self) -> subprocess.CompletedProcess[str]:
         self.install_zshrc_fakes()
         env = os.environ.copy()
+        env["HOME"] = str(self.home_dir)
         env["PATH"] = f"{self.bin_dir}{os.pathsep}{env['PATH']}"
         env["GHOSTTY_RESOURCES_DIR"] = str(self.temp_dir / "ghostty")
 

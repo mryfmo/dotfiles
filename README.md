@@ -184,6 +184,19 @@ installer clones `~/.understand-anything/repo` and symlinks its skills into
 `~/.agents/skills` (expected unmanaged-skill WARNs in `make doctor`, one per
 linked skill); Codex runtime files are provisioned from the version-matched Claude release artifact when available.
 
+The zenbu-labs terminal tools — terminal-code (`tode`) and `terminal-browser` —
+install through their sha256-verified upstream curl installers, pinned by
+version and installer checksum in `scripts/lib/installer-pins.sh`.
+`make update` converges both tools to the pinned versions; `make upgrade`
+rewrites the pin file to the latest upstream release and installs it in the
+same run — like the rest of `make upgrade`, that is trust-now-and-record, and
+the pin diff is then reviewed and committed like a mise config/lock bump.
+terminal-browser links its bundled agent skills into `~/.agents/skills`
+(expected unmanaged-skill WARNs in `make doctor`, tracked by its
+`~/.local/state/terminal-browser/skills.links` receipt), and its editor setup
+is always skipped in lifecycle runs — run `terminal-browser setup` once
+manually if wanted.
+
 Model selection is governed by `model_profiles` in
 `home/dot_agents/agent-config.yaml`, the single place where model IDs and
 efforts live. The generator renders the interactive profile into the managed

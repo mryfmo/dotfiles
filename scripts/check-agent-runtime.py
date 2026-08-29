@@ -59,6 +59,8 @@ ASSET_STEP_FUNCTIONS = {
     "update_codex_superpowers",
     "update_codex_understand_anything",
     "update_compactiondb",
+    "update_terminal_browser",
+    "update_terminal_code",
 }
 MISE_STEP_IDENTITIES = {
     "claude": "npm:@anthropic-ai/claude-code",
@@ -68,9 +70,7 @@ UPDATER_SOURCE_COMMAND = (
     'source "$1"; export PATH="$HOME/.local/share/mise/shims:$PATH"; shift; "$@"'
 )
 CHEZMOI_APPLY_COMMAND = ("chezmoi", "apply", "--force")
-MODE_ONLY_DIFF = re.compile(
-    r"\Adiff --git .+\nold mode [0-7]+\nnew mode [0-7]+\n?\Z"
-)
+MODE_ONLY_DIFF = re.compile(r"\Adiff --git .+\nold mode [0-7]+\nnew mode [0-7]+\n?\Z")
 
 
 class RepairAction(NamedTuple):
@@ -202,9 +202,7 @@ def chezmoi_drift_warnings() -> list[str]:
             stderr=subprocess.PIPE,
             check=False,
         )
-        if diff_result.returncode == 0 and MODE_ONLY_DIFF.fullmatch(
-            diff_result.stdout
-        ):
+        if diff_result.returncode == 0 and MODE_ONLY_DIFF.fullmatch(diff_result.stdout):
             hint = "permission divergence (mode-only)"
         elif status == " M":
             hint = "unapplied source update"
@@ -233,15 +231,35 @@ def expected_claude_skill_targets() -> dict[Path, str]:
     return outputs
 
 
+def terminal_browser_receipt_paths(home: Path | None = None) -> set[Path]:
+    """Return symlink paths recorded by the terminal-browser installer receipt."""
+    home = HOME if home is None else home
+    receipt = home / ".local/state/terminal-browser/skills.links"
+    try:
+        lines = receipt.read_text().splitlines()
+    except OSError:
+        return set()
+    return {normalized_path(Path(line)) for line in lines if line.strip()}
+
+
 def compare_tree_contents(
     label: str,
     expected: dict[Path, str],
     target_root: Path,
     expected_sources: dict[Path, Path] | None = None,
     warn_unmanaged_top_level: bool = False,
+    ignored_paths: set[Path] | None = None,
 ) -> list[str]:
     failures: list[str] = []
     actual = applied_files(target_root)
+    if ignored_paths:
+        actual = {
+            rel
+            for rel in actual
+            if not any(
+                paths_overlap(target_root / rel, ignored) for ignored in ignored_paths
+            )
+        }
     expected_rels = set(expected)
     if warn_unmanaged_top_level:
         managed_top_levels = {rel.parts[0] for rel in expected_rels if rel.parts}
@@ -307,7 +325,10 @@ def compare_claude_skills() -> list[str]:
     if not target_root.exists():
         return ["Claude shared-skill symlink tree is missing: ~/.claude/skills"]
     return compare_tree_contents(
-        "Claude shared-skill tree", expected_claude_skill_targets(), target_root
+        "Claude shared-skill tree",
+        expected_claude_skill_targets(),
+        target_root,
+        ignored_paths=terminal_browser_receipt_paths(),
     )
 
 
@@ -363,7 +384,9 @@ def manifest_path_owners(manifest_path: Path) -> dict[str, list[Path]]:
         if not isinstance(step, str) or not isinstance(entry, dict):
             continue
         paths = entry.get("paths")
-        if not isinstance(paths, list) or not all(isinstance(path, str) for path in paths):
+        if not isinstance(paths, list) or not all(
+            isinstance(path, str) for path in paths
+        ):
             continue
         owners[step] = [normalized_path(Path(path).expanduser()) for path in paths]
     return owners
@@ -383,7 +406,9 @@ def manifest_asset_findings(home: Path | None = None) -> list[AssetFinding]:
         if not isinstance(step, str) or not isinstance(entry, dict):
             continue
         paths = entry.get("paths")
-        if not isinstance(paths, list) or not all(isinstance(path, str) for path in paths):
+        if not isinstance(paths, list) or not all(
+            isinstance(path, str) for path in paths
+        ):
             continue
         missing = tuple(
             normalized_path(Path(recorded).expanduser())
@@ -396,9 +421,8 @@ def manifest_asset_findings(home: Path | None = None) -> list[AssetFinding]:
 
 
 def asset_failure_message(finding: AssetFinding) -> str:
-    return (
-        f"asset manifest step {finding.step!r} has missing paths: "
-        + ", ".join(str(path) for path in finding.missing_paths)
+    return f"asset manifest step {finding.step!r} has missing paths: " + ", ".join(
+        str(path) for path in finding.missing_paths
     )
 
 
@@ -434,26 +458,32 @@ def asset_repair_action(
 
 def source_derived_directory_names(source_root: Path) -> tuple[set[str], set[str]]:
     agents_source = source_root / "dot_agents"
-    root_names = {
-        deployed_relative_path(path.relative_to(agents_source)).parts[0]
-        for path in agents_source.iterdir()
-        if path.is_dir()
-    } if agents_source.is_dir() else set()
+    root_names = (
+        {
+            deployed_relative_path(path.relative_to(agents_source)).parts[0]
+            for path in agents_source.iterdir()
+            if path.is_dir()
+        }
+        if agents_source.is_dir()
+        else set()
+    )
     skills_source = agents_source / "skills"
-    skill_names = {
-        deployed_relative_path(path.relative_to(skills_source)).parts[0]
-        for path in skills_source.iterdir()
-        if path.is_dir() or path.is_symlink()
-    } if skills_source.is_dir() else set()
+    skill_names = (
+        {
+            deployed_relative_path(path.relative_to(skills_source)).parts[0]
+            for path in skills_source.iterdir()
+            if path.is_dir() or path.is_symlink()
+        }
+        if skills_source.is_dir()
+        else set()
+    )
     return root_names, skill_names
 
 
 def direct_asset_directories(root: Path) -> list[Path]:
     if not root.is_dir():
         return []
-    return sorted(
-        path for path in root.iterdir() if path.is_dir() or path.is_symlink()
-    )
+    return sorted(path for path in root.iterdir() if path.is_dir() or path.is_symlink())
 
 
 def orphaned_asset_warnings(
@@ -467,11 +497,21 @@ def orphaned_asset_warnings(
     owners = manifest_path_owners(agents_root / ".installed-manifest.json")
     warnings: list[str] = []
 
+    # Skill links installed by terminal-browser are receipt-tracked, not
+    # source-managed; treat them like the understand-anything allowlist.
+    receipt_skill_names = {
+        path.name
+        for path in terminal_browser_receipt_paths(home)
+        if path.parent == normalized_path(skills_root)
+    }
+    skill_allowlist = (
+        UNDERSTAND_SKILL_ALLOWLIST | receipt_skill_names | {"db", "run", "teams"}
+    )
     candidates = [
         (path, source_root_names, AGENT_ROOT_ALLOWLIST)
         for path in direct_asset_directories(agents_root)
     ] + [
-        (path, source_skill_names, UNDERSTAND_SKILL_ALLOWLIST | {"db", "run", "teams"})
+        (path, source_skill_names, skill_allowlist)
         for path in direct_asset_directories(skills_root)
     ]
     for path, source_names, allowlist in candidates:
@@ -480,7 +520,9 @@ def orphaned_asset_warnings(
         matching_steps = sorted(
             step
             for step, recorded_paths in owners.items()
-            if any(paths_overlap(path, recorded_path) for recorded_path in recorded_paths)
+            if any(
+                paths_overlap(path, recorded_path) for recorded_path in recorded_paths
+            )
         )
         if matching_steps:
             for step in matching_steps:
@@ -502,9 +544,7 @@ def deployed_target_path(value: str, home: Path) -> Path:
     return Path(value)
 
 
-def repair_actions(
-    failures: list[str], home: Path | None = None
-) -> list[RepairAction]:
+def repair_actions(failures: list[str], home: Path | None = None) -> list[RepairAction]:
     home = HOME if home is None else home
     actions: list[RepairAction] = []
     tree_roots = {

@@ -13,13 +13,11 @@ import textwrap
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 LIBRARY = ROOT / "scripts/lib/asset-manifest.sh"
 UPDATER = ROOT / "scripts/update-agent-assets.sh"
 WRAPPER = (
-    ROOT
-    / "home/.chezmoiscripts/common/run_once_after_06-install-agent-assets.sh.tmpl"
+    ROOT / "home/.chezmoiscripts/common/run_once_after_06-install-agent-assets.sh.tmpl"
 )
 
 
@@ -45,9 +43,7 @@ class AssetManifestTest(unittest.TestCase):
         )
 
     def manifest(self) -> dict[str, object]:
-        return json.loads(
-            (self.home / ".agents/.installed-manifest.json").read_text()
-        )
+        return json.loads((self.home / ".agents/.installed-manifest.json").read_text())
 
     def test_records_schema_two_steps_and_replaces_one_whole_entry(self) -> None:
         result = self.run_bash(
@@ -78,7 +74,7 @@ class AssetManifestTest(unittest.TestCase):
 
     def test_failed_atomic_commit_leaves_previous_manifest_intact(self) -> None:
         seed = self.run_bash(
-            f"source {LIBRARY}; manifest_record stable plugin 1 \"$HOME/stable\""
+            f'source {LIBRARY}; manifest_record stable plugin 1 "$HOME/stable"'
         )
         self.assertEqual(0, seed.returncode, seed.stderr)
         before = self.manifest()
@@ -102,7 +98,7 @@ class AssetManifestTest(unittest.TestCase):
         (self.home / ".agents").write_text("not a directory")
 
         result = self.run_bash(
-            f"source {LIBRARY}; manifest_record broken plugin unknown \"$HOME/path\""
+            f'source {LIBRARY}; manifest_record broken plugin unknown "$HOME/path"'
         )
 
         self.assertEqual(0, result.returncode)
@@ -150,8 +146,12 @@ class AssetManifestTest(unittest.TestCase):
             {"update_compactiondb", "ensure_herdr_integrations"},
             set(data["steps"]),
         )
-        self.assertEqual("2.0.0+dotfiles.5", data["steps"]["update_compactiondb"]["source_version"])
-        self.assertEqual("9.9.9", data["steps"]["ensure_herdr_integrations"]["source_version"])
+        self.assertEqual(
+            "2.0.0+dotfiles.5", data["steps"]["update_compactiondb"]["source_version"]
+        )
+        self.assertEqual(
+            "9.9.9", data["steps"]["ensure_herdr_integrations"]["source_version"]
+        )
         self.assertEqual(
             [
                 "herdr integration install claude",
@@ -229,10 +229,12 @@ class AssetManifestTest(unittest.TestCase):
             "update_codex_crit",
             "update_codex_ponytail",
             "update_codex_understand_anything",
+            "update_terminal_code",
+            "update_terminal_browser",
             "update_compactiondb",
         )
 
-        self.assertEqual(11, updater.count('manifest_record "'))
+        self.assertEqual(13, updater.count('manifest_record "'))
         self.assertEqual(
             1,
             updater.count('manifest_record "ensure_mise_npm_agent_cli:${cli}"'),
@@ -271,9 +273,7 @@ class AssetManifestTest(unittest.TestCase):
         self.assertIsNotNone(jq, "jq is required for asset manifest tests")
         (bin_dir / "jq").symlink_to(jq)
         log = self.temp_dir / "rsync.log"
-        self._executable(
-            bin_dir / "rsync", 'printf "%s\\n" "$*" > "$TEST_LOG"\n'
-        )
+        self._executable(bin_dir / "rsync", 'printf "%s\\n" "$*" > "$TEST_LOG"\n')
 
         result = subprocess.run(
             ["bash", "-c", 'source "$1"; update_compactiondb', "bash", rendered],
@@ -297,7 +297,7 @@ class AssetManifestTest(unittest.TestCase):
 
     def test_updater_direct_source_resolves_repository_root(self) -> None:
         result = self.run_bash(
-            f'unset DOTFILES_SOURCE_DIR; source {UPDATER}; resolve_dotfiles_source_dir'
+            f"unset DOTFILES_SOURCE_DIR; source {UPDATER}; resolve_dotfiles_source_dir"
         )
 
         self.assertEqual(0, result.returncode, result.stderr)

@@ -42,6 +42,8 @@ if ! declare -F manifest_record > /dev/null 2>&1; then
     # shellcheck source=scripts/lib/asset-manifest.sh
     source "${AGENT_ASSET_SCRIPT_DIR}/lib/asset-manifest.sh"
 fi
+# shellcheck source=scripts/lib/installer-pins.sh
+source "${AGENT_ASSET_SCRIPT_DIR}/lib/installer-pins.sh"
 
 readonly CLAUDE_SUPERPOWERS_PLUGIN="superpowers@claude-plugins-official"
 readonly CLAUDE_SUPERPOWERS_MARKETPLACE="anthropics/claude-plugins-official"
@@ -64,6 +66,12 @@ readonly CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME="understand-anything"
 readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT="797ce7969312411be2e125c39628854166f055d7"
 readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256="54f0350d09f43fcc8245f3f1fb2057bd322c36c6f158483dd47dcaf5f4a44eba"
 readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL="https://raw.githubusercontent.com/Egonex-AI/Understand-Anything/${CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT}/install.sh"
+# Versions and installer checksums for both URLs are pinned in
+# scripts/lib/installer-pins.sh and bumped by scripts/upgrade-tools.sh.
+# Install paths below assume the default XDG layout; the upstream installers
+# honor XDG_*_HOME/TODE_INSTALL_ROOT overrides that this lifecycle does not.
+readonly TERMINAL_CODE_INSTALLER_URL="https://tode.sh/install"
+readonly TERMINAL_BROWSER_INSTALLER_URL="https://terminal-browser.sh/install"
 
 #
 # @description Print a section heading.
@@ -667,6 +675,99 @@ function update_codex_understand_anything() {
 }
 
 #
+# @description Return success when the zenbu-labs installers support this platform.
+# @description
+#   Upstream publishes darwin-arm64, linux-x64, and linux-arm64 builds only;
+#   Intel macOS has no release asset, so it is skipped rather than failed.
+#
+function zenbu_platform_supported() {
+    case "$(uname -s)-$(uname -m)" in
+    Darwin-arm64 | Linux-x86_64 | Linux-amd64 | Linux-aarch64 | Linux-arm64)
+        return 0
+        ;;
+    esac
+    return 1
+}
+
+#
+# @description Download an upstream installer, verify its pinned checksum, and run it.
+# @arg $1 string Installer URL.
+# @arg $2 string Expected installer script SHA256.
+# @arg $@ string Optional NAME=value environment assignments for the installer run.
+#
+function run_pinned_installer() {
+    local url="$1"
+    local expected="$2"
+    local actual installer
+    shift 2
+
+    installer="$(mktemp)"
+    # shellcheck disable=SC2064 # Expand the temp path now; it never changes.
+    trap "rm -f '${installer}'" RETURN
+    curl -fsSL "${url}" -o "${installer}" || {
+        printf 'Installer download failed: %s\n' "${url}" >&2
+        return 1
+    }
+    actual="$(shasum -a 256 "${installer}" | awk '{ print $1 }')"
+    [ "${actual}" = "${expected}" ] || {
+        printf 'Installer checksum mismatch for %s\n' "${url}" >&2
+        return 1
+    }
+    env "$@" bash "${installer}" < /dev/null
+}
+
+#
+# @description Install or update the terminal-code (tode) CLI at the pinned version.
+#
+function update_terminal_code() {
+    local installed
+
+    zenbu_platform_supported || {
+        printf 'Skipping terminal-code: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
+        return 0
+    }
+
+    section "terminal-code (tode)"
+    installed="$(jq -r '.version' "${HOME}/.local/state/tode/install.json" 2> /dev/null || printf 'none\n')"
+    if [ "${installed}" = "${TERMINAL_CODE_PIN_VERSION}" ]; then
+        printf 'tode %s is already installed.\n' "${installed}"
+    else
+        run_pinned_installer "${TERMINAL_CODE_INSTALLER_URL}" "${TERMINAL_CODE_INSTALLER_SHA256}" ||
+            printf 'tode installer failed; existing install unchanged.\n' >&2
+    fi
+    manifest_record "update_terminal_code" installer "${TERMINAL_CODE_PIN_VERSION}" "${HOME}/.local/lib/tode" "${HOME}/.local/bin/tode" "${HOME}/.local/state/tode/install.json" -- "curl -fsSL ${TERMINAL_CODE_INSTALLER_URL}" "shasum -a 256 <installer>" "bash <installer>"
+}
+
+#
+# @description Install or update the terminal-browser CLI at the pinned version.
+# @description
+#   The installer symlinks its bundled skills into ~/.agents/skills and
+#   per-agent skill directories, recording every link in
+#   ~/.local/state/terminal-browser/skills.links; check-agent-runtime.py reads
+#   that receipt and reports the shared links as expected unmanaged-skill
+#   WARNs. Editor setup is always skipped for non-interactive lifecycle runs;
+#   run `terminal-browser setup` manually once if wanted.
+#
+function update_terminal_browser() {
+    local installed
+
+    zenbu_platform_supported || {
+        printf 'Skipping terminal-browser: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
+        return 0
+    }
+
+    section "terminal-browser"
+    installed="$(cat "${HOME}/.local/share/terminal-browser/app/VERSION" 2> /dev/null || printf 'none\n')"
+    if [ "${installed}" = "${TERMINAL_BROWSER_PIN_VERSION}" ]; then
+        printf 'terminal-browser %s is already installed.\n' "${installed}"
+    else
+        run_pinned_installer "${TERMINAL_BROWSER_INSTALLER_URL}" "${TERMINAL_BROWSER_INSTALLER_SHA256}" TERMINAL_BROWSER_SKIP_EDITOR_SETUP=1 ||
+            printf 'terminal-browser installer failed; existing install unchanged.\n' >&2
+    fi
+    manifest_record "update_terminal_browser" installer "${TERMINAL_BROWSER_PIN_VERSION}" "${HOME}/.local/share/terminal-browser/app" "${HOME}/.local/bin/terminal-browser" "${HOME}/.local/state/terminal-browser/skills.links" -- "curl -fsSL ${TERMINAL_BROWSER_INSTALLER_URL}" "shasum -a 256 <installer>" "TERMINAL_BROWSER_SKIP_EDITOR_SETUP=1 bash <installer>"
+}
+
+#
 # @description Sync the vendored CompactionDB tree without deleting project runtime state.
 #
 function update_compactiondb() {
@@ -698,6 +799,8 @@ function main() {
     update_codex_crit
     update_codex_ponytail
     update_codex_understand_anything
+    update_terminal_code
+    update_terminal_browser
     update_compactiondb
     ensure_herdr_integrations
 }

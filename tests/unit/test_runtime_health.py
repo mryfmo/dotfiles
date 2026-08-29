@@ -12,7 +12,6 @@ import textwrap
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -37,7 +36,7 @@ class RuntimeHealthTest(unittest.TestCase):
         check: bool = False,
     ) -> subprocess.CompletedProcess[str]:
         """Run a fixed test command whose dynamic arguments come only from its fixture."""
-        return subprocess.run(  # noqa: S603, S607 -- commands and PATH stubs are test-owned
+        return subprocess.run(
             command,
             cwd=cwd,
             env=env,
@@ -104,10 +103,14 @@ class RuntimeHealthTest(unittest.TestCase):
             ROOT / "scripts/lib/asset-manifest.sh",
             repo / "scripts/lib/asset-manifest.sh",
         )
-        (repo / "vendor/compactiondb").mkdir(parents=True)
-        (repo / "vendor/compactiondb/CHANGELOG.md").write_text(
-            "## 2.0.0+dotfiles.5\n"
+        shutil.copy(
+            ROOT / "scripts/lib/installer-pins.sh",
+            repo / "scripts/lib/installer-pins.sh",
         )
+        (repo / "vendor/compactiondb").mkdir(parents=True)
+        (repo / "vendor/compactiondb/CHANGELOG.md").write_text("## 2.0.0+dotfiles.5\n")
+        # Keep the run hermetic: downloads fail fast instead of hitting the network.
+        self.executable(bin_dir / "curl", "exit 1\n")
         self.executable(
             bin_dir / "npm",
             """
@@ -160,10 +163,14 @@ class RuntimeHealthTest(unittest.TestCase):
             ROOT / "scripts/lib/asset-manifest.sh",
             repo / "scripts/lib/asset-manifest.sh",
         )
-        (repo / "vendor/compactiondb").mkdir(parents=True)
-        (repo / "vendor/compactiondb/CHANGELOG.md").write_text(
-            "## 2.0.0+dotfiles.5\n"
+        shutil.copy(
+            ROOT / "scripts/lib/installer-pins.sh",
+            repo / "scripts/lib/installer-pins.sh",
         )
+        (repo / "vendor/compactiondb").mkdir(parents=True)
+        (repo / "vendor/compactiondb/CHANGELOG.md").write_text("## 2.0.0+dotfiles.5\n")
+        # Keep the run hermetic: downloads fail fast instead of hitting the network.
+        self.executable(bin_dir / "curl", "exit 1\n")
         self.executable(bin_dir / "npm", "exit 1\n")
         self.executable(
             shim_dir / "claude",
@@ -210,19 +217,17 @@ EOF
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         calls = log.read_text().splitlines()
-        repair = (
-            "mise npm 0 install --force --locked "
-            "npm:@anthropic-ai/claude-code"
-        )
+        repair = "mise npm 0 install --force --locked npm:@anthropic-ai/claude-code"
         self.assertIn(repair, calls)
         self.assertFalse(
             any(
-                call.endswith("npm:@openai/codex")
-                and call.startswith("mise ")
+                call.endswith("npm:@openai/codex") and call.startswith("mise ")
                 for call in calls
             )
         )
-        self.assertLess(calls.index(repair), calls.index("claude plugin marketplace list"))
+        self.assertLess(
+            calls.index(repair), calls.index("claude plugin marketplace list")
+        )
 
     def test_agent_launchers_do_not_hardcode_model_ids(self) -> None:
         herdr = (ROOT / "home/dot_local/bin/common/executable_herdr-agents").read_text()
@@ -748,8 +753,12 @@ EOF
         log = (repo / "commands.log").read_text()
         self.assertNotIn("fallback npm", log)
         self.assertIn("mise exec node -- npm view @openai/codex version", log)
-        self.assertIn("mise exec node -- npm view @anthropic-ai/claude-code version", log)
-        self.assertRegex(log, r"mise exec node -- npm install -g .* @openai/codex@1\.2\.3")
+        self.assertIn(
+            "mise exec node -- npm view @anthropic-ai/claude-code version", log
+        )
+        self.assertRegex(
+            log, r"mise exec node -- npm install -g .* @openai/codex@1\.2\.3"
+        )
         self.assertRegex(
             log,
             r"mise exec node -- npm install -g .* @anthropic-ai/claude-code@1\.2\.3",

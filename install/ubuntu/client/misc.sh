@@ -14,6 +14,12 @@ fi
 
 readonly PACKAGES=(
     gparted
+    # Chromium/Electron runtime libraries used by terminal-code and
+    # terminal-browser; their installers only warn when these are missing.
+    libnss3
+    libgtk-3-0
+    libasound2t64
+    libgbm1
 )
 
 #

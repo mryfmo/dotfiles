@@ -1,0 +1,70 @@
+WP-L validation
+Timestamp: 2026-08-29T17:20:07+09:00
+
+1. git diff main -- home/dot_config/claude/rules/agmsg-orchestration.md
+Result: PASS
+Summary: exactly one added bullet at the required position; neighboring bullets unchanged.
+Output:
+diff --git a/home/dot_config/claude/rules/agmsg-orchestration.md b/home/dot_config/claude/rules/agmsg-orchestration.md
+index 264eb32..c16f236 100644
+--- a/home/dot_config/claude/rules/agmsg-orchestration.md
++++ b/home/dot_config/claude/rules/agmsg-orchestration.md
+@@ -2,6 +2,7 @@
+ 
+ - Activate when the operator requests agmsg/Codex collaboration or when the agmsg bus and a resident Codex worker for this repository are available; agmsg is required unless the operator opts out for the current task. Invoke the `agmsg-orchestration` skill immediately for the full protocol. Only after opt-out may Claude mutate the repo directly.
+ - Delegate all repository-mutating work to resident Codex workers. agmsg/herdr control-plane work and evidence-sync bookkeeping are exempt; otherwise Claude is limited to lightweight reads, judgment, tasking, and acceptance.
++- The delegation mandate covers repository-mutating work only. Claude handles the following directly, without delegation: agmsg/herdr control-plane operations and evidence-sync bookkeeping; acceptance and final integration, including merging an already-reviewed, CI-green PR; and machine-state hygiene that touches no repository (tool-manager operations such as `mise install`/`mise prune`, removal of unmanaged `$HOME` files), provided tracked worktrees stay diff-clean throughout. When acting directly under an exemption, declare which exemption applies in one line before mutating anything.
+ - Review every RESULT adversarially across correctness, regressions, security, and reporting omissions; try to refute and independently re-derive findings; never treat sampled spot checks as full verification.
+
+2. git diff --numstat main -- home/dot_config/claude/rules/agmsg-orchestration.md
+Result: PASS
+Output:
+1	0	home/dot_config/claude/rules/agmsg-orchestration.md
+
+3. git diff --name-only main...HEAD
+Result: PASS
+Output:
+home/dot_config/claude/rules/agmsg-orchestration.md
+
+4. git diff --check
+Result: PASS
+Output: empty
+
+5. git status --porcelain (after commit)
+Result: PASS
+Output: empty
+
+6. make require-crit-review
+Result: review required for agent lifecycle rule change, as expected.
+
+7. env AGENT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/WP-L-review-receipt.md make require-crit-review
+Result: PASS
+Output: Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+
+8. python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content '<task decision>'
+Result: PASS
+Decision ID: 615e5f78-08b8-4afa-b8e7-0a523bc2ec59
+
+8a. python3 .claude/hooks/contextdb_cli.py memory search '<full task decision>' --limit 5
+Result: PASS
+Output:
+615e5f78-08b8-4afa-b8e7-0a523bc2ec59 [project/decision] The agmsg delegation mandate covers repository-mutating work only; control-plane ops, acceptance/final integration (including merging reviewed CI-green PRs), and non-repository machine hygiene are orchestrator-direct, with a one-line exemption declaration required.
+
+9. gh pr checks 152 --repo mryfmo/dotfiles
+Result: PASS
+- CodeRabbit: pass
+- changes: pass
+- validate: pass
+- test (macos-14, client): pass
+- test (ubuntu-latest, client): pass
+- test (ubuntu-latest, server): pass
+- private-bootstrap (macos-14, client): pass
+- private-bootstrap (ubuntu-latest, client): pass
+- private-bootstrap (ubuntu-latest, server): pass
+- public-bootstrap (macos-14, client): pass
+- public-bootstrap (ubuntu-latest, client): pass
+- public-bootstrap (ubuntu-latest, server): pass
+- nix: skipped by workflow condition
+
+10. Local bats
+Result: NOT RUN (forbidden by task and repository policy)

@@ -729,7 +729,11 @@ function update_terminal_code() {
 
     section "terminal-code (tode)"
     installed="$(jq -r '.version' "${HOME}/.local/state/tode/install.json" 2> /dev/null || printf 'none\n')"
-    if [ "${installed}" = "${TERMINAL_CODE_PIN_VERSION}" ]; then
+    # Short-circuit only when every manifest-recorded artifact is present, so a
+    # partially deleted install is repaired instead of skipped forever.
+    if [ "${installed}" = "${TERMINAL_CODE_PIN_VERSION}" ] &&
+        [ -x "${HOME}/.local/bin/tode" ] &&
+        [ -d "${HOME}/.local/lib/tode" ]; then
         printf 'tode %s is already installed.\n' "${installed}"
     else
         run_pinned_installer "${TERMINAL_CODE_INSTALLER_URL}" "${TERMINAL_CODE_INSTALLER_SHA256}" ||
@@ -758,7 +762,11 @@ function update_terminal_browser() {
 
     section "terminal-browser"
     installed="$(cat "${HOME}/.local/share/terminal-browser/app/VERSION" 2> /dev/null || printf 'none\n')"
-    if [ "${installed}" = "${TERMINAL_BROWSER_PIN_VERSION}" ]; then
+    # Short-circuit only when every manifest-recorded artifact is present, so a
+    # partially deleted install is repaired instead of skipped forever.
+    if [ "${installed}" = "${TERMINAL_BROWSER_PIN_VERSION}" ] &&
+        [ -x "${HOME}/.local/bin/terminal-browser" ] &&
+        [ -f "${HOME}/.local/state/terminal-browser/skills.links" ]; then
         printf 'terminal-browser %s is already installed.\n' "${installed}"
     else
         run_pinned_installer "${TERMINAL_BROWSER_INSTALLER_URL}" "${TERMINAL_BROWSER_INSTALLER_SHA256}" TERMINAL_BROWSER_SKIP_EDITOR_SETUP=1 ||

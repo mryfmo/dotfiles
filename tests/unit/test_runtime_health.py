@@ -549,10 +549,29 @@ EOF
         repo = self.temp_dir / f"upgrade-{fail_phase}"
         bin_dir = repo / "bin"
         home = repo / "home"
-        (repo / "scripts").mkdir(parents=True)
+        (repo / "scripts/lib").mkdir(parents=True)
         home.mkdir()
         shutil.copy(
             ROOT / "scripts/upgrade-tools.sh", repo / "scripts/upgrade-tools.sh"
+        )
+        shutil.copy(
+            ROOT / "scripts/lib/installer-pins.sh",
+            repo / "scripts/lib/installer-pins.sh",
+        )
+        # Hermetic installer downloads: serve a deterministic fake installer so
+        # the terminal tool pin-bump phase never touches the network in tests.
+        self.executable(
+            bin_dir / "curl",
+            """
+            printf 'curl %s\n' "$*" >> "$TEST_LOG"
+            out=""
+            while [ "$#" -gt 0 ]; do
+                if [ "$1" = "-o" ]; then out="$2"; shift; fi
+                shift
+            done
+            [ -n "$out" ] || exit 1
+            printf 'VERSION="v9.9.9"\nCHANNEL="stable"\n' > "$out"
+            """,
         )
         self.executable(
             repo / "scripts/update-agent-assets.sh",
@@ -774,6 +793,25 @@ EOF
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertIn("optional warnings: 1", result.stdout)
+
+    def test_upgrade_bumps_terminal_tool_pins_from_fetched_installers(self) -> None:
+        repo, env = self.upgrade_fixture("none")
+
+        result = self.run_test_command(
+            ["bash", "scripts/upgrade-tools.sh"],
+            cwd=repo,
+            env=env,
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("Pinned tode v9.9.9 and terminal-browser v9.9.9", result.stdout)
+        pins = (repo / "scripts/lib/installer-pins.sh").read_text()
+        self.assertIn('TERMINAL_CODE_PIN_VERSION="v9.9.9"', pins)
+        self.assertIn('TERMINAL_BROWSER_PIN_VERSION="v9.9.9"', pins)
+        self.assertRegex(pins, r'TERMINAL_CODE_INSTALLER_SHA256="[0-9a-f]{64}"')
+        log = (repo / "commands.log").read_text()
+        self.assertIn("curl -fsSL https://tode.sh/install", log)
+        self.assertIn("curl -fsSL https://terminal-browser.sh/install", log)
 
     def test_upgrade_skips_ccr_notice_when_gh_is_unavailable(self) -> None:
         repo, env = self.upgrade_fixture("none")

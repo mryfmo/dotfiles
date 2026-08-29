@@ -31,7 +31,7 @@ shfmt = "3.13.1"
 "github:x-motemen/ghq" = "1.10.1"
 "github:d-kuro/gwq" = "0.1.1"
 "github:cli/cli" = "2.98.0"
-"github:ogulcancelik/herdr" = "0.8.2"
+"github:ogulcancelik/herdr" = "0.8.0"
 "github:shuntaka9576/blocc" = { version = "0.6.0", os = ["linux/x64"] }
 
 "cargo:pueue" = "4.0.4"

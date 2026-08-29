@@ -1,0 +1,193 @@
+WP-M verbatim validation evidence
+Timestamp: 2026-08-29T18:08:41+09:00
+
+COMMAND
+git diff main -- home/dot_agents/skills/agmsg-orchestration/SKILL.md
+EXIT CODE
+0
+VERBATIM OUTPUT
+```text
+diff --git a/home/dot_agents/skills/agmsg-orchestration/SKILL.md b/home/dot_agents/skills/agmsg-orchestration/SKILL.md
+index 141e7bf..b77a046 100644
+--- a/home/dot_agents/skills/agmsg-orchestration/SKILL.md
++++ b/home/dot_agents/skills/agmsg-orchestration/SKILL.md
+@@ -78,6 +78,8 @@ Tasks that create persistent side effects outside the repository working tree, s
+ 
+ RESULT reports must mark durable facts with the same CompactionDB marker contract. In CompactionDB-opted-in projects, the worker runs `python3 .claude/hooks/contextdb_cli.py memory add` before completion and includes the exact command or commands in the RESULT report.
+ 
++RESULT validation files must contain the verbatim output of every validation command actually executed — not summaries or PASS labels alone — and any identifier the report claims to have created (commit hash, PR number, CompactionDB memory/decision ID) must appear in that pasted output. A claim without its pasted output is treated as unexecuted and grounds for `status=revise`.
++
+ `AGMSG-ACCEPTANCE v1` fields:
+ 
+ ```text
+@@ -126,7 +128,7 @@ AGMSG-PONG v1 task_id=<id> status=alive|blocked note=<short-note>
+ 3. Treat `allowed_files` as the edit boundary. If it says to see the task file, read that section and follow it exactly.
+ 4. Do not perform any `forbidden_actions`.
+ 5. Write artifacts to the exact expected paths. Do not invent alternate paths.
+-6. Put command outputs and validation evidence in `expected_validation_file`.
++6. Put the verbatim output of every validation command in `expected_validation_file`; every identifier your report claims to have created must appear in that output.
+ 7. Put sandbox/OpenSandbox status or fallback rationale in `expected_sandbox_file`.
+ 8. Put reusable learning triage in `expected_learning_file`; do not promote rules directly unless the task explicitly allows it.
+ 9. Put AutoSkill run status or a not-used record in `expected_autoskill_file`.
+```
+
+COMMAND
+git diff --check
+EXIT CODE
+0
+VERBATIM OUTPUT
+```text
+```
+
+COMMAND
+python3 /Users/mryfmo/.codex/skills/.system/skill-creator/scripts/quick_validate.py home/dot_agents/skills/agmsg-orchestration
+EXIT CODE
+1
+VERBATIM OUTPUT
+```text
+mise WARN  tracking config: failed to ln -sf /private/tmp/dotfiles-WP-M/mise.toml /Users/mryfmo/.local/state/mise/tracked-configs/3043f2870b288377: Operation not permitted (os error 1)
+Traceback (most recent call last):
+  File "/Users/mryfmo/.codex/skills/.system/skill-creator/scripts/quick_validate.py", line 10, in <module>
+    import yaml
+ModuleNotFoundError: No module named 'yaml'
+```
+
+COMMAND
+uv run --with pyyaml python /Users/mryfmo/.codex/skills/.system/skill-creator/scripts/quick_validate.py home/dot_agents/skills/agmsg-orchestration
+EXIT CODE
+0
+VERBATIM OUTPUT
+```text
+Skill is valid!
+```
+
+COMMAND
+make require-crit-review
+EXIT CODE
+2
+VERBATIM OUTPUT
+```text
+Native agent review required before completion.
+- agent lifecycle path changed: home/dot_agents/skills/agmsg-orchestration/SKILL.md
+Use the active agent's review path, not a browser by default:
+- Codex: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Claude Code: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Use browser Crit review only when the user explicitly asks for Crit web UI or Crit data is unavailable.
+Record a receipt with `review_surface:`, `reviewer:`, and `review_outcome:`.
+For agent judgment, locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` to a repo-local JSON file.
+Evidence must contain at least one resolved record; for a finding-free review, add and resolve one review-scope approval record.
+This local evidence is process evidence, not reviewer authentication.
+Then use `review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`, and `review_source: <json path>`.
+After addressing review feedback, rerun with AGENT_REVIEWED=1 or CRIT_REVIEWED=1 plus REVIEW_EVIDENCE=<path>.
+make: *** [require-crit-review] Error 1
+```
+
+COMMAND
+env AGENT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/WP-M-review-receipt.md make require-crit-review
+EXIT CODE
+0
+VERBATIM OUTPUT
+```text
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+```
+
+COMMAND
+git diff --cached --check
+EXIT CODE
+0
+VERBATIM OUTPUT
+```text
+```
+
+COMMAND
+git commit -m 'chore(skills): require verbatim validation evidence'
+EXIT CODE
+0
+VERBATIM OUTPUT
+```text
+[chore/agmsg-validation-evidence 7c3d0d0] chore(skills): require verbatim validation evidence
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+```
+
+COMMAND
+git status --porcelain
+EXIT CODE
+0
+VERBATIM OUTPUT
+```text
+```
+
+COMMAND
+git push -u origin chore/agmsg-validation-evidence
+EXIT CODE
+0
+VERBATIM OUTPUT
+```text
+remote: 
+remote: Create a pull request for 'chore/agmsg-validation-evidence' on GitHub by visiting:        
+remote:      https://github.com/mryfmo/dotfiles/pull/new/chore/agmsg-validation-evidence        
+remote: 
+To github.com:mryfmo/dotfiles.git
+ * [new branch]      chore/agmsg-validation-evidence -> chore/agmsg-validation-evidence
+branch 'chore/agmsg-validation-evidence' set up to track 'origin/chore/agmsg-validation-evidence'.
+```
+
+COMMAND
+gh pr create --repo mryfmo/dotfiles --base main --head chore/agmsg-validation-evidence --title 'chore(skills): require verbatim validation output in worker RESULT evidence' --body '<full PR description>'
+EXIT CODE
+0
+VERBATIM OUTPUT
+```text
+https://github.com/mryfmo/dotfiles/pull/153
+```
+
+COMMAND
+python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'Worker RESULT evidence must contain the verbatim output of every validation command actually executed; any identifier a report claims to have created must appear in that pasted output, and a claim without its pasted output is treated as unexecuted.'
+EXIT CODE
+0
+VERBATIM OUTPUT
+```text
+a56a24bb-cc22-43c1-b074-1db26f05ffcd
+```
+
+COMMAND
+python3 .claude/hooks/contextdb_cli.py memory search 'Worker RESULT evidence must contain the verbatim output of every validation command actually executed; any identifier a report claims to have created must appear in that pasted output, and a claim without its pasted output is treated as unexecuted.' --limit 5
+EXIT CODE
+0
+VERBATIM OUTPUT
+```text
+a56a24bb-cc22-43c1-b074-1db26f05ffcd [project/decision] Worker RESULT evidence must contain the verbatim output of every validation command actually executed; any identifier a report claims to have created must appear in that pasted output, and a claim without its pasted output is treated as unexecuted.
+```
+
+COMMAND
+gh pr view 153 --repo mryfmo/dotfiles --json url,title,headRefName,baseRefName,commits,files
+EXIT CODE
+0
+VERBATIM OUTPUT
+```json
+{"baseRefName":"main","commits":[{"authoredDate":"2026-08-29T09:01:39Z","authors":[{"email":"mryfmo@gmail.com","id":"MDQ6VXNlcjExNTEyMjYy","login":"mryfmo","name":"mryfmo"}],"committedDate":"2026-08-29T09:01:39Z","messageBody":"","messageHeadline":"chore(skills): require verbatim validation evidence","oid":"7c3d0d0e12ec6e888400bb5e3fc12e83e4433b2a"}],"files":[{"path":"home/dot_agents/skills/agmsg-orchestration/SKILL.md","additions":3,"deletions":1,"changeType":"MODIFIED"}],"headRefName":"chore/agmsg-validation-evidence","title":"chore(skills): require verbatim validation output in worker RESULT evidence","url":"https://github.com/mryfmo/dotfiles/pull/153"}
+```
+
+COMMAND
+gh pr checks 153 --repo mryfmo/dotfiles
+EXIT CODE
+0
+VERBATIM OUTPUT
+```text
+CodeRabbit	pass	0		Review skipped: manual review required for this OSS repository
+changes	pass	4s	https://github.com/mryfmo/dotfiles/actions/runs/33244526879/job/99079574849	
+private-bootstrap (macos-14, client)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/33244526895/job/99079575124	
+nix	skipping	0	https://github.com/mryfmo/dotfiles/actions/runs/33244526879/job/99079587714	
+private-bootstrap (ubuntu-latest, client)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/33244526895/job/99079575155	
+private-bootstrap (ubuntu-latest, server)	pass	4s	https://github.com/mryfmo/dotfiles/actions/runs/33244526895/job/99079575137	
+public-bootstrap (macos-14, client)	pass	5m49s	https://github.com/mryfmo/dotfiles/actions/runs/33244526895/job/99079575047	
+public-bootstrap (ubuntu-latest, client)	pass	5m53s	https://github.com/mryfmo/dotfiles/actions/runs/33244526895/job/99079575099	
+public-bootstrap (ubuntu-latest, server)	pass	5m16s	https://github.com/mryfmo/dotfiles/actions/runs/33244526895/job/99079575093	
+test (macos-14, client)	pass	1m29s	https://github.com/mryfmo/dotfiles/actions/runs/33244526879/job/99079586980	
+test (ubuntu-latest, client)	pass	3m23s	https://github.com/mryfmo/dotfiles/actions/runs/33244526879/job/99079586933	
+test (ubuntu-latest, server)	pass	1m57s	https://github.com/mryfmo/dotfiles/actions/runs/33244526879/job/99079586956	
+validate	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/33244526932/job/99079574992	
+```
+
+LOCAL BATS
+Not executed, as forbidden by the task and repository policy.

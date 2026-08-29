@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "gitCommitHash": "b48d52c1fadb1808669ced3343aa25055709079b",
-  "generatedAt": "2026-08-17T20:12:41.323Z",
+  "gitCommitHash": "607e6dc61e20075eb2e560b922d6cdcfae831fb2",
+  "generatedAt": "2026-08-29T02:17:47.606Z",
   "files": {
     ".chezmoiroot": {
       "filePath": ".chezmoiroot",
@@ -3535,12 +3535,12 @@
     },
     "README.md": {
       "filePath": "README.md",
-      "contentHash": "6b683695128ccc767a0bfbabdf552b1b933611cea244b6a5f94fd10946445ec1",
+      "contentHash": "5576fb2cc2c7bdffe9c9224f783ffed96663dc0e9c6750e155ef1720a34df92b",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 471,
+      "totalLines": 484,
       "hasStructuralAnalysis": true
     },
     "codecov.yml": {
@@ -7262,7 +7262,7 @@
     },
     "install/ubuntu/client/misc.sh": {
       "filePath": "install/ubuntu/client/misc.sh",
-      "contentHash": "6b4224939de30fd105f4cc84500f53219298a8af503abfc8e1eadd5dbb4932e4",
+      "contentHash": "720a5587941fb7dbdbeaf5164ff884c3ae62e93cd089bb324c42c550416a14f6",
       "functions": [
         {
           "name": "install_misc",
@@ -7286,7 +7286,7 @@
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 43,
+      "totalLines": 50,
       "hasStructuralAnalysis": true
     },
     "install/ubuntu/common/aws_cli.sh": {
@@ -7639,426 +7639,13 @@
     },
     "scripts/check-agent-runtime.py": {
       "filePath": "scripts/check-agent-runtime.py",
-      "contentHash": "e3aa2a7c047eb7fc70f867d3bffdc7cce01f79b834cbe498c1b8ae9e26b2e62b",
-      "functions": [
-        {
-          "name": "render_template",
-          "params": [
-            "path"
-          ],
-          "returnType": "str",
-          "exported": true,
-          "lineCount": 7
-        },
-        {
-          "name": "same_text",
-          "params": [
-            "source",
-            "target",
-            "template"
-          ],
-          "returnType": "bool",
-          "exported": true,
-          "lineCount": 5
-        },
-        {
-          "name": "same_modified",
-          "params": [
-            "source",
-            "target",
-            "json_target"
-          ],
-          "returnType": "bool",
-          "exported": true,
-          "lineCount": 23
-        },
-        {
-          "name": "is_ignored_runtime_path",
-          "params": [
-            "rel"
-          ],
-          "returnType": "bool",
-          "exported": true,
-          "lineCount": 7
-        },
-        {
-          "name": "deployed_relative_path",
-          "params": [
-            "source_rel"
-          ],
-          "returnType": "Path",
-          "exported": true,
-          "lineCount": 6
-        },
-        {
-          "name": "source_files",
-          "params": [
-            "root"
-          ],
-          "returnType": "dict[Path, Path]",
-          "exported": true,
-          "lineCount": 7
-        },
-        {
-          "name": "applied_files",
-          "params": [
-            "root"
-          ],
-          "returnType": "set[Path]",
-          "exported": true,
-          "lineCount": 9
-        },
-        {
-          "name": "expects_executable",
-          "params": [
-            "source"
-          ],
-          "returnType": "bool",
-          "exported": true,
-          "lineCount": 2
-        },
-        {
-          "name": "is_warning",
-          "params": [
-            "message"
-          ],
-          "returnType": "bool",
-          "exported": true,
-          "lineCount": 2
-        },
-        {
-          "name": "chezmoi_drift_warnings",
-          "params": [],
-          "returnType": "list[str]",
-          "exported": true,
-          "lineCount": 43
-        },
-        {
-          "name": "expected_claude_skill_targets",
-          "params": [],
-          "returnType": "dict[Path, str]",
-          "exported": true,
-          "lineCount": 15
-        },
-        {
-          "name": "compare_tree_contents",
-          "params": [
-            "label",
-            "expected",
-            "target_root",
-            "expected_sources",
-            "warn_unmanaged_top_level"
-          ],
-          "returnType": "list[str]",
-          "exported": true,
-          "lineCount": 51
-        },
-        {
-          "name": "compare_shared_skills",
-          "params": [],
-          "returnType": "list[str]",
-          "exported": true,
-          "lineCount": 14
-        },
-        {
-          "name": "compare_claude_skills",
-          "params": [],
-          "returnType": "list[str]",
-          "exported": true,
-          "lineCount": 7
-        },
-        {
-          "name": "check_executable_hook",
-          "params": [
-            "source",
-            "target",
-            "label"
-          ],
-          "returnType": "list[str]",
-          "exported": true,
-          "lineCount": 9
-        },
-        {
-          "name": "normalized_path",
-          "params": [
-            "path"
-          ],
-          "returnType": "Path",
-          "exported": true,
-          "lineCount": 2
-        },
-        {
-          "name": "paths_overlap",
-          "params": [
-            "left",
-            "right"
-          ],
-          "returnType": "bool",
-          "exported": true,
-          "lineCount": 4
-        },
-        {
-          "name": "installed_manifest_error",
-          "params": [
-            "manifest_path"
-          ],
-          "returnType": "str | None",
-          "exported": true,
-          "lineCount": 16
-        },
-        {
-          "name": "manifest_path_owners",
-          "params": [
-            "manifest_path"
-          ],
-          "returnType": "dict[str, list[Path]]",
-          "exported": true,
-          "lineCount": 17
-        },
-        {
-          "name": "manifest_asset_findings",
-          "params": [
-            "home"
-          ],
-          "returnType": "list[AssetFinding]",
-          "exported": true,
-          "lineCount": 24
-        },
-        {
-          "name": "asset_failure_message",
-          "params": [
-            "finding"
-          ],
-          "returnType": "str",
-          "exported": true,
-          "lineCount": 5
-        },
-        {
-          "name": "asset_repair_action",
-          "params": [
-            "finding",
-            "updater"
-          ],
-          "returnType": "RepairAction | None",
-          "exported": true,
-          "lineCount": 28
-        },
-        {
-          "name": "source_derived_directory_names",
-          "params": [
-            "source_root"
-          ],
-          "returnType": "tuple[set[str], set[str]]",
-          "exported": true,
-          "lineCount": 14
-        },
-        {
-          "name": "direct_asset_directories",
-          "params": [
-            "root"
-          ],
-          "returnType": "list[Path]",
-          "exported": true,
-          "lineCount": 6
-        },
-        {
-          "name": "orphaned_asset_warnings",
-          "params": [
-            "home",
-            "source_root"
-          ],
-          "returnType": "list[str]",
-          "exported": true,
-          "lineCount": 36
-        },
-        {
-          "name": "deployed_target_path",
-          "params": [
-            "value",
-            "home"
-          ],
-          "returnType": "Path",
-          "exported": true,
-          "lineCount": 6
-        },
-        {
-          "name": "repair_actions",
-          "params": [
-            "failures",
-            "home"
-          ],
-          "returnType": "list[RepairAction]",
-          "exported": true,
-          "lineCount": 77
-        },
-        {
-          "name": "execute_repair",
-          "params": [
-            "action"
-          ],
-          "returnType": "bool",
-          "exported": true,
-          "lineCount": 2
-        },
-        {
-          "name": "print_failures",
-          "params": [
-            "failures"
-          ],
-          "returnType": "None",
-          "exported": true,
-          "lineCount": 6
-        },
-        {
-          "name": "check",
-          "params": [],
-          "returnType": "list[str]",
-          "exported": true,
-          "lineCount": 79
-        },
-        {
-          "name": "run_session_staleness",
-          "params": [
-            "epoch"
-          ],
-          "returnType": "int",
-          "exported": true,
-          "lineCount": 5
-        },
-        {
-          "name": "main",
-          "params": [
-            "argv"
-          ],
-          "returnType": "int",
-          "exported": true,
-          "lineCount": 31
-        }
-      ],
-      "classes": [
-        {
-          "name": "RepairAction",
-          "methods": [],
-          "properties": [
-            "category",
-            "target",
-            "command"
-          ],
-          "exported": true,
-          "lineCount": 4
-        },
-        {
-          "name": "AssetFinding",
-          "methods": [],
-          "properties": [
-            "step",
-            "missing_paths",
-            "entry"
-          ],
-          "exported": true,
-          "lineCount": 4
-        }
-      ],
-      "imports": [
-        {
-          "source": "argparse",
-          "specifiers": [
-            "argparse"
-          ]
-        },
-        {
-          "source": "json",
-          "specifiers": [
-            "json"
-          ]
-        },
-        {
-          "source": "os",
-          "specifiers": [
-            "os"
-          ]
-        },
-        {
-          "source": "re",
-          "specifiers": [
-            "re"
-          ]
-        },
-        {
-          "source": "shlex",
-          "specifiers": [
-            "shlex"
-          ]
-        },
-        {
-          "source": "stat",
-          "specifiers": [
-            "stat"
-          ]
-        },
-        {
-          "source": "subprocess",
-          "specifiers": [
-            "subprocess"
-          ]
-        },
-        {
-          "source": "sys",
-          "specifiers": [
-            "sys"
-          ]
-        },
-        {
-          "source": "pathlib",
-          "specifiers": [
-            "Path"
-          ]
-        },
-        {
-          "source": "typing",
-          "specifiers": [
-            "NamedTuple"
-          ]
-        }
-      ],
-      "exports": [
-        "RepairAction",
-        "AssetFinding",
-        "render_template",
-        "same_text",
-        "same_modified",
-        "is_ignored_runtime_path",
-        "deployed_relative_path",
-        "source_files",
-        "applied_files",
-        "expects_executable",
-        "is_warning",
-        "chezmoi_drift_warnings",
-        "expected_claude_skill_targets",
-        "compare_tree_contents",
-        "compare_shared_skills",
-        "compare_claude_skills",
-        "check_executable_hook",
-        "normalized_path",
-        "paths_overlap",
-        "installed_manifest_error",
-        "manifest_path_owners",
-        "manifest_asset_findings",
-        "asset_failure_message",
-        "asset_repair_action",
-        "source_derived_directory_names",
-        "direct_asset_directories",
-        "orphaned_asset_warnings",
-        "deployed_target_path",
-        "repair_actions",
-        "execute_repair",
-        "print_failures",
-        "check",
-        "run_session_staleness",
-        "main"
-      ],
-      "totalLines": 719,
-      "hasStructuralAnalysis": true
+      "contentHash": "a2441f2b67240d2a2dc019c22a8ca741fa9aa0052a2e7462d46a47196fc782b9",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 759,
+      "hasStructuralAnalysis": false
     },
     "scripts/check-statusline-tools.py": {
       "filePath": "scripts/check-statusline-tools.py",
@@ -9115,7 +8702,7 @@
     },
     "scripts/update-agent-assets.sh": {
       "filePath": "scripts/update-agent-assets.sh",
-      "contentHash": "dbb0cc47a5b268a400ca71cdb0f5d5694efaaf327e76f5a317aa041c58aa992e",
+      "contentHash": "b510afd529c52f237d57c6d0585fe3cf1feeeaa9bb6024da3372a2370e6f3708",
       "functions": [
         {
           "name": "resolve_dotfiles_source_dir",
@@ -9298,6 +8885,30 @@
           "lineCount": 30
         },
         {
+          "name": "zenbu_platform_supported",
+          "params": [],
+          "exported": false,
+          "lineCount": 8
+        },
+        {
+          "name": "run_pinned_installer",
+          "params": [],
+          "exported": false,
+          "lineCount": 20
+        },
+        {
+          "name": "update_terminal_code",
+          "params": [],
+          "exported": false,
+          "lineCount": 22
+        },
+        {
+          "name": "update_terminal_browser",
+          "params": [],
+          "exported": false,
+          "lineCount": 22
+        },
+        {
           "name": "update_compactiondb",
           "params": [],
           "exported": false,
@@ -9307,18 +8918,18 @@
           "name": "main",
           "params": [],
           "exported": false,
-          "lineCount": 21
+          "lineCount": 23
         }
       ],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 708,
+      "totalLines": 819,
       "hasStructuralAnalysis": true
     },
     "scripts/upgrade-tools.sh": {
       "filePath": "scripts/upgrade-tools.sh",
-      "contentHash": "064d80c74a90ee649a26357c0178bb82fe419e2be34f0f12f05e9d77bd5dc0df",
+      "contentHash": "e2238429e73fa5e3e3cb2c1462813e2c42c0472cb3e1cd67b473593e840dca67",
       "functions": [
         {
           "name": "section",
@@ -9429,6 +9040,18 @@
           "lineCount": 6
         },
         {
+          "name": "fetch_installer_pin",
+          "params": [],
+          "exported": false,
+          "lineCount": 16
+        },
+        {
+          "name": "bump_terminal_tool_pins",
+          "params": [],
+          "exported": false,
+          "lineCount": 40
+        },
+        {
           "name": "upgrade_uv_tools",
           "params": [],
           "exported": false,
@@ -9462,13 +9085,13 @@
           "name": "main",
           "params": [],
           "exported": false,
-          "lineCount": 17
+          "lineCount": 18
         }
       ],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 475,
+      "totalLines": 546,
       "hasStructuralAnalysis": true
     },
     "scripts/usage-report.py": {
@@ -10327,12 +9950,12 @@
     },
     "tests/install/common/lifecycle.bats": {
       "filePath": "tests/install/common/lifecycle.bats",
-      "contentHash": "004fc0f4edc73248a6c125207144f0a0fa97208ebb338d3f7a8baec869579937",
+      "contentHash": "bacaf3acbfb311f7d97355cfaa96cefbcdf709c461ea9daa2cbf13c2fe7ce72f",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 448,
+      "totalLines": 469,
       "hasStructuralAnalysis": false
     },
     "tests/install/common/mise.bats": {
@@ -10427,12 +10050,12 @@
     },
     "tests/install/ubuntu/client/misc.bats": {
       "filePath": "tests/install/ubuntu/client/misc.bats",
-      "contentHash": "aa2ee7d9804fe88c38a2908cec4e3d4007ae2e9d941f69a9d062c0828ab95c6b",
+      "contentHash": "a7e211ded572b56e9afe795d65195dee1b95497386511f75dfb52fe7dfe50b17",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 31,
+      "totalLines": 37,
       "hasStructuralAnalysis": false
     },
     "tests/install/ubuntu/common/dependencies.bats": {
@@ -10563,120 +10186,13 @@
     },
     "tests/unit/test_check_agent_runtime.py": {
       "filePath": "tests/unit/test_check_agent_runtime.py",
-      "contentHash": "546f38a9bc60f07ebc9e7704c26eeec4cbf5a4525c080be77d168972bfd07ee3",
+      "contentHash": "167d72c50817fbddc8e3c1cb4555f1402a6c1e0dce108ad8c38d082712471609",
       "functions": [],
-      "classes": [
-        {
-          "name": "CheckAgentRuntimeTest",
-          "methods": [
-            "setUp",
-            "tearDown",
-            "write_source",
-            "write_target",
-            "compare",
-            "test_executable_prefix_is_compared_against_deployed_name",
-            "test_executable_prefix_requires_deployed_execute_bit",
-            "test_private_prefix_is_compared_against_deployed_name",
-            "test_agmsg_runtime_paths_are_ignored_on_both_sides",
-            "test_agmsg_separate_store_prefix_is_ignored",
-            "test_only_exact_agmsg_root_legacy_database_names_are_ignored",
-            "test_unexpected_non_runtime_file_still_fails",
-            "test_unmanaged_top_level_skill_dir_warns",
-            "test_managed_top_level_extra_still_fails_with_unmanaged_warning_mode",
-            "test_content_drift_still_fails",
-            "test_json_modifier_accepts_cosmetic_reserialization",
-            "test_json_modifier_rejects_real_value_drift",
-            "test_check_uses_same_modified_for_codex_profiles",
-            "test_chezmoi_drift_warnings_classify_status_and_mode_only",
-            "test_chezmoi_drift_status_failure_is_warning",
-            "test_orphan_detection_classifies_accounted_stale_and_orphan",
-            "test_repair_actions_map_only_detected_file_drift",
-            "test_execute_repair_calls_each_mapped_command_once",
-            "test_every_generated_chezmoi_repair_action_is_forced",
-            "test_deleted_shared_skill_file_repair_converges",
-            "test_manifest_drift_requires_recorded_step_with_missing_path",
-            "test_asset_repair_invokes_only_the_detected_step",
-            "test_sourced_asset_repair_runs_no_main_or_sibling_step",
-            "test_parameterized_mise_step_uses_key_identity",
-            "test_installed_manifest_integrity_reasons",
-            "test_invalid_manifest_is_one_error_and_skips_dependent_checks",
-            "test_repair_mode_converges_once_and_reports_each_action",
-            "test_repair_mode_fails_after_one_non_convergent_round",
-            "test_repair_unset_is_byte_identical_and_never_mutates",
-            "test_repair_mode_never_acts_on_stale_or_orphan_warnings"
-          ],
-          "properties": [],
-          "exported": true,
-          "lineCount": 737
-        }
-      ],
-      "imports": [
-        {
-          "source": "contextlib",
-          "specifiers": [
-            "contextlib"
-          ]
-        },
-        {
-          "source": "importlib.util",
-          "specifiers": [
-            "importlib.util"
-          ]
-        },
-        {
-          "source": "io",
-          "specifiers": [
-            "io"
-          ]
-        },
-        {
-          "source": "json",
-          "specifiers": [
-            "json"
-          ]
-        },
-        {
-          "source": "os",
-          "specifiers": [
-            "os"
-          ]
-        },
-        {
-          "source": "shutil",
-          "specifiers": [
-            "shutil"
-          ]
-        },
-        {
-          "source": "tempfile",
-          "specifiers": [
-            "tempfile"
-          ]
-        },
-        {
-          "source": "unittest",
-          "specifiers": [
-            "unittest"
-          ]
-        },
-        {
-          "source": "pathlib",
-          "specifiers": [
-            "Path"
-          ]
-        },
-        {
-          "source": "unittest",
-          "specifiers": [
-            "mock"
-          ]
-        }
-      ],
-      "exports": [
-        "CheckAgentRuntimeTest"
-      ],
-      "totalLines": 763,
-      "hasStructuralAnalysis": true
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 832,
+      "hasStructuralAnalysis": false
     },
     "tests/unit/test_claude_settings_merge.py": {
       "filePath": "tests/unit/test_claude_settings_merge.py",
@@ -11402,97 +10918,13 @@
     },
     "tests/unit/test_runtime_health.py": {
       "filePath": "tests/unit/test_runtime_health.py",
-      "contentHash": "e3556a961dc4e8c50d22a8a84f5364fa57c3b47b5b0d9efef99741e292ed092e",
+      "contentHash": "59e57281e21531d9355b693257bd469406ca1564ae43aae6529ee705a3f16196",
       "functions": [],
-      "classes": [
-        {
-          "name": "RuntimeHealthTest",
-          "methods": [
-            "setUp",
-            "tearDown",
-            "executable",
-            "run_test_command",
-            "test_agent_runs_are_private_and_ignored",
-            "test_agent_asset_update_removes_node_global_shadows_before_agent_commands",
-            "test_agent_asset_update_repairs_broken_claude_with_npm_backend",
-            "test_agent_launchers_do_not_hardcode_model_ids",
-            "test_agent_fanout_applies_profile_args_from_generated_fragment",
-            "test_agent_fanout_preserves_caller_umask_for_child_agents",
-            "test_agent_fanout_restricts_preexisting_output_artifacts",
-            "test_agent_fanout_refuses_symlink_artifacts",
-            "doctor_environment",
-            "test_doctor_required_optional_and_healthy_statuses",
-            "test_make_doctor_propagates_runtime_drift_after_tool_checks",
-            "test_make_doctor_does_not_skip_runtime_check_when_deployed_root_is_missing",
-            "test_make_doctor_passes_repair_variable_to_runtime_check",
-            "upgrade_fixture",
-            "test_upgrade_required_failures_are_nonzero_and_independent",
-            "test_upgrade_skips_unavailable_mise_self_update",
-            "test_upgrade_uses_current_mise_node_after_runtime_replacement",
-            "test_upgrade_github_extensions_are_warning_only",
-            "test_upgrade_skips_ccr_notice_when_gh_is_unavailable",
-            "test_upgrade_reports_ccr_adoption_gate_values"
-          ],
-          "properties": [],
-          "exported": true,
-          "lineCount": 782
-        }
-      ],
-      "imports": [
-        {
-          "source": "os",
-          "specifiers": [
-            "os"
-          ]
-        },
-        {
-          "source": "shutil",
-          "specifiers": [
-            "shutil"
-          ]
-        },
-        {
-          "source": "stat",
-          "specifiers": [
-            "stat"
-          ]
-        },
-        {
-          "source": "subprocess",
-          "specifiers": [
-            "subprocess"
-          ]
-        },
-        {
-          "source": "tempfile",
-          "specifiers": [
-            "tempfile"
-          ]
-        },
-        {
-          "source": "textwrap",
-          "specifiers": [
-            "textwrap"
-          ]
-        },
-        {
-          "source": "unittest",
-          "specifiers": [
-            "unittest"
-          ]
-        },
-        {
-          "source": "pathlib",
-          "specifiers": [
-            "Path"
-          ]
-        }
-      ],
-      "exports": [
-        "RuntimeHealthTest"
-      ],
-      "totalLines": 805,
-      "hasStructuralAnalysis": true
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 852,
+      "hasStructuralAnalysis": false
     },
     "tests/unit/test_statusline_tools.py": {
       "filePath": "tests/unit/test_statusline_tools.py",
@@ -14222,95 +13654,13 @@
     },
     "tests/unit/test_asset_manifest.py": {
       "filePath": "tests/unit/test_asset_manifest.py",
-      "contentHash": "887fc0943cd9ddfb65f0f693ce85e4185eb661635255537de876d7ea84c087d1",
+      "contentHash": "2d30c911b7d92119b98af4d55f6e6b7ad85bd848f9856fb17dccd1c12ed998c2",
       "functions": [],
-      "classes": [
-        {
-          "name": "AssetManifestTest",
-          "methods": [
-            "setUp",
-            "tearDown",
-            "run_bash",
-            "manifest",
-            "test_records_schema_two_steps_and_replaces_one_whole_entry",
-            "test_failed_atomic_commit_leaves_previous_manifest_intact",
-            "test_unwritable_destination_warns_once_without_failing",
-            "test_two_real_install_steps_record_under_fake_home",
-            "test_same_run_mise_repairs_preserve_both_identity_steps",
-            "test_updater_has_one_recording_call_for_each_install_step",
-            "test_chezmoi_rendered_updater_uses_inlined_manifest_library",
-            "test_chezmoi_rendered_updater_uses_exported_source_root",
-            "test_updater_direct_source_resolves_repository_root",
-            "test_rendered_updater_fails_when_no_source_root_is_valid",
-            "test_chezmoi_wrapper_renders_shebang_and_source_root",
-            "_executable"
-          ],
-          "properties": [],
-          "exported": true,
-          "lineCount": 332
-        }
-      ],
-      "imports": [
-        {
-          "source": "json",
-          "specifiers": [
-            "json"
-          ]
-        },
-        {
-          "source": "os",
-          "specifiers": [
-            "os"
-          ]
-        },
-        {
-          "source": "shutil",
-          "specifiers": [
-            "shutil"
-          ]
-        },
-        {
-          "source": "stat",
-          "specifiers": [
-            "stat"
-          ]
-        },
-        {
-          "source": "subprocess",
-          "specifiers": [
-            "subprocess"
-          ]
-        },
-        {
-          "source": "tempfile",
-          "specifiers": [
-            "tempfile"
-          ]
-        },
-        {
-          "source": "textwrap",
-          "specifiers": [
-            "textwrap"
-          ]
-        },
-        {
-          "source": "unittest",
-          "specifiers": [
-            "unittest"
-          ]
-        },
-        {
-          "source": "pathlib",
-          "specifiers": [
-            "Path"
-          ]
-        }
-      ],
-      "exports": [
-        "AssetManifestTest"
-      ],
+      "classes": [],
+      "imports": [],
+      "exports": [],
       "totalLines": 362,
-      "hasStructuralAnalysis": true
+      "hasStructuralAnalysis": false
     },
     "tests/unit/test_remove_agent_asset.py": {
       "filePath": "tests/unit/test_remove_agent_asset.py",
@@ -14684,6 +14034,16 @@
         "ContextdbCodexNotifyTest"
       ],
       "totalLines": 107,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/lib/installer-pins.sh": {
+      "filePath": "scripts/lib/installer-pins.sh",
+      "contentHash": "ffa68204520990d313f9fe1af96b86795b610434093e2755f4cd76c7eaeadd49",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 18,
       "hasStructuralAnalysis": true
     }
   }

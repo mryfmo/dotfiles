@@ -17,7 +17,7 @@ function teardown() {
     expected_packages=(
         gparted
         libnss3
-        libgtk-3-0
+        libgtk-3-0t64
         libasound2t64
         libgbm1
     )
@@ -29,7 +29,7 @@ function teardown() {
 @test "[ubuntu-client] misc" {
     DOTFILES_DEBUG=1 bash "${SCRIPT_PATH}"
 
-    for package in gparted libnss3 libgtk-3-0 libasound2t64 libgbm1; do
+    for package in gparted libnss3 libgtk-3-0t64 libasound2t64 libgbm1; do
         run dpkg -s "${package}"
         [ "${status}" -eq 0 ]
     done

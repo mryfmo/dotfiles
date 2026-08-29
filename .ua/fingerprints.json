@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "gitCommitHash": "607e6dc61e20075eb2e560b922d6cdcfae831fb2",
-  "generatedAt": "2026-08-29T02:31:34.710Z",
+  "gitCommitHash": "d91b835021981a2fb604c61e2ef324f972cc8795",
+  "generatedAt": "2026-08-29T06:05:31.413Z",
   "files": {
     ".chezmoiroot": {
       "filePath": ".chezmoiroot",
@@ -6428,12 +6428,12 @@
     },
     "home/dot_local/bin/common/executable_herdr-agents": {
       "filePath": "home/dot_local/bin/common/executable_herdr-agents",
-      "contentHash": "2c2c9d81a209ac4bb82fbf307235faa5aa2649d21a79e219af87e100593816d2",
+      "contentHash": "4288709bce9219c4023bd0f67e84109f0e49fd078688bde9650518cc23330bd3",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 573,
+      "totalLines": 706,
       "hasStructuralAnalysis": false
     },
     "home/dot_local/bin/common/executable_herdr-session": {
@@ -11032,7 +11032,7 @@
     },
     "tests/unit/test_herdr_agents.py": {
       "filePath": "tests/unit/test_herdr_agents.py",
-      "contentHash": "19ab7115a07cc75c249caed250e62b269620637e1939555ef088b8342961f4a6",
+      "contentHash": "7d39438869deba4e693092060fb1de7ea0f7a6a118599fa4fc28a2bfa6c1c287",
       "functions": [],
       "classes": [
         {
@@ -11056,6 +11056,8 @@
             "test_attach_noops_without_herdr_environment",
             "test_attach_noops_for_full_mode_managed_layout",
             "test_attach_builds_codex_right_of_current_claude_pane",
+            "test_attach_lowercases_and_validates_derived_agent_name",
+            "test_attach_rejects_invalid_derived_agent_name",
             "test_attach_complete_workspace_is_idempotent",
             "test_attach_repairs_codex_claude_order_with_one_swap",
             "test_attach_correct_order_does_not_swap",
@@ -11085,11 +11087,18 @@
             "test_claude_settings_add_herdr_attach_session_hook",
             "test_herdr_session_does_not_prebuild_agent_layout",
             "test_uses_initial_workspace_pane_for_claude_and_splits_codex_right",
+            "test_new_pane_waits_for_shell_and_retries_agent_start_once_on_timeout",
+            "test_registered_agent_not_ready_waits_for_idle_without_duplicate_start",
+            "test_codex_profile_defaults_to_generated_interactive_profile",
+            "test_codex_profile_env_override_wins_over_generated_profile",
+            "test_claude_agent_accepts_manifest_profile_arguments_for_e2e",
+            "test_pane_creation_propagates_explicit_fpath",
             "install_npm_fake",
             "test_start_removes_node_global_agent_clis_shadowing_mise",
             "test_start_skips_node_global_removal_without_stray",
             "test_start_keeps_node_global_without_mise_tool_install",
             "test_existing_two_pane_workspace_repairs_skewed_widths",
+            "test_existing_workspace_matches_canonical_macos_workdir",
             "test_existing_workspace_with_legacy_files_pane_focuses_without_mutation",
             "test_existing_legacy_files_pane_is_not_reused_for_claude_or_split_again",
             "test_existing_workspace_restarts_missing_codex_agent",
@@ -11115,7 +11124,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 1407
+          "lineCount": 1662
         }
       ],
       "imports": [
@@ -11195,7 +11204,7 @@
       "exports": [
         "HerdrAgentsTest"
       ],
-      "totalLines": 1444,
+      "totalLines": 1699,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_permgate.py": {

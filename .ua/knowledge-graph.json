@@ -28,8 +28,8 @@
       "GitHub Actions"
     ],
     "description": "Personal dotfiles managed with chezmoi.",
-    "analyzedAt": "2026-08-17T20:14:45.204Z",
-    "gitCommitHash": "b48d52c1fadb1808669ced3343aa25055709079b"
+    "analyzedAt": "2026-08-29T02:17:47.592Z",
+    "gitCommitHash": "607e6dc61e20075eb2e560b922d6cdcfae831fb2"
   },
   "nodes": [
     {
@@ -7967,784 +7967,6 @@
       "complexity": "moderate"
     },
     {
-      "id": "file:scripts/update-agent-assets.sh",
-      "type": "file",
-      "name": "update-agent-assets.sh",
-      "filePath": "scripts/update-agent-assets.sh",
-      "summary": "Installs and refreshes shared AI-agent CLIs, plugins, Herdr integrations, CompactionDB, and the Codex Understand-Anything runtime for Claude Code and Codex, recording each managed asset through the shared manifest helper.",
-      "tags": [
-        "agent-tooling",
-        "plugin-management",
-        "asset-manifest",
-        "orchestration",
-        "tested"
-      ],
-      "complexity": "complex",
-      "languageNotes": "Uses strict Bash mode, source-root validation, pinned installer verification, CLI capability checks, and manifest recording for managed updates."
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:section",
-      "type": "function",
-      "name": "section",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        72,
-        74
-      ],
-      "summary": "Prints a formatted section heading for the updater's progress output.",
-      "tags": [
-        "cli-output",
-        "formatting",
-        "utility"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:has_command",
-      "type": "function",
-      "name": "has_command",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        80,
-        82
-      ],
-      "summary": "Checks whether a named command is available on the current PATH.",
-      "tags": [
-        "command-detection",
-        "validation",
-        "utility"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:remove_node_global_agent_cli_shadows",
-      "type": "function",
-      "name": "remove_node_global_agent_cli_shadows",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        87,
-        96
-      ],
-      "summary": "Removes globally installed npm agent CLIs that would shadow the mise-managed versions.",
-      "tags": [
-        "npm",
-        "mise",
-        "cleanup"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:ensure_mise_npm_agent_cli",
-      "type": "function",
-      "name": "ensure_mise_npm_agent_cli",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        103,
-        118
-      ],
-      "summary": "Repairs an unavailable agent CLI through the locked mise npm backend and records the resulting installation in the asset manifest.",
-      "tags": [
-        "npm",
-        "mise",
-        "agent-tooling"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:is_macos",
-      "type": "function",
-      "name": "is_macos",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        123,
-        125
-      ],
-      "summary": "Checks whether the updater is running on macOS.",
-      "tags": [
-        "platform-detection",
-        "macos",
-        "utility"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:command_output_contains",
-      "type": "function",
-      "name": "command_output_contains",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        132,
-        137
-      ],
-      "summary": "Runs a command with stderr suppressed and checks its output for a fixed string.",
-      "tags": [
-        "command-execution",
-        "validation",
-        "utility"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:codex_marketplace_is_configured_git_marketplace",
-      "type": "function",
-      "name": "codex_marketplace_is_configured_git_marketplace",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        143,
-        161
-      ],
-      "summary": "Checks whether a Codex marketplace resolves to a configured Git working tree rather than the built-in temporary plugin cache.",
-      "tags": [
-        "codex",
-        "marketplace",
-        "validation"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:codex_marketplace_root",
-      "type": "function",
-      "name": "codex_marketplace_root",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        167,
-        171
-      ],
-      "summary": "Looks up and prints the local root path for a configured Codex marketplace.",
-      "tags": [
-        "codex",
-        "marketplace",
-        "path-lookup"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:git_remote_origin_matches",
-      "type": "function",
-      "name": "git_remote_origin_matches",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        178,
-        191
-      ],
-      "summary": "Checks whether a local Git repository origin matches the expected HTTPS or SSH source URL.",
-      "tags": [
-        "git",
-        "validation",
-        "marketplace"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:codex_marketplace_has_source",
-      "type": "function",
-      "name": "codex_marketplace_has_source",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        198,
-        209
-      ],
-      "summary": "Confirms that a configured Codex marketplace has the expected Git origin.",
-      "tags": [
-        "codex",
-        "marketplace",
-        "validation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:ensure_claude_superpowers_marketplace",
-      "type": "function",
-      "name": "ensure_claude_superpowers_marketplace",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        214,
-        220
-      ],
-      "summary": "Ensures the official Claude Code plugin marketplace is configured before Superpowers installation.",
-      "tags": [
-        "claude-code",
-        "superpowers",
-        "marketplace"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:ensure_crit_cli",
-      "type": "function",
-      "name": "ensure_crit_cli",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        225,
-        239
-      ],
-      "summary": "Ensures the Crit CLI is available, using Homebrew on macOS when possible and otherwise skipping Crit integrations.",
-      "tags": [
-        "crit",
-        "homebrew",
-        "install-script"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:ensure_claude_crit_marketplace",
-      "type": "function",
-      "name": "ensure_claude_crit_marketplace",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        244,
-        250
-      ],
-      "summary": "Ensures the Crit marketplace is configured for Claude Code plugin installation.",
-      "tags": [
-        "claude-code",
-        "crit",
-        "marketplace"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:ensure_claude_ponytail_marketplace",
-      "type": "function",
-      "name": "ensure_claude_ponytail_marketplace",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        255,
-        261
-      ],
-      "summary": "Ensures the Ponytail marketplace is configured for Claude Code plugin installation.",
-      "tags": [
-        "claude-code",
-        "ponytail",
-        "marketplace"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:ensure_claude_understand_anything_marketplace",
-      "type": "function",
-      "name": "ensure_claude_understand_anything_marketplace",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        266,
-        272
-      ],
-      "summary": "Ensures the Understand-Anything marketplace is configured for Claude Code plugin installation.",
-      "tags": [
-        "claude-code",
-        "understand-anything",
-        "marketplace"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:claude_crit_plugin_is_enabled",
-      "type": "function",
-      "name": "claude_crit_plugin_is_enabled",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        277,
-        301
-      ],
-      "summary": "Parses the Claude plugin inventory to check whether the Crit plugin is installed and enabled.",
-      "tags": [
-        "claude-code",
-        "crit",
-        "plugin-management"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:claude_ponytail_plugin_is_enabled",
-      "type": "function",
-      "name": "claude_ponytail_plugin_is_enabled",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        306,
-        330
-      ],
-      "summary": "Parses the Claude plugin inventory to check whether the Ponytail plugin is installed and enabled.",
-      "tags": [
-        "claude-code",
-        "ponytail",
-        "plugin-management"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:claude_understand_anything_plugin_is_enabled",
-      "type": "function",
-      "name": "claude_understand_anything_plugin_is_enabled",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        335,
-        359
-      ],
-      "summary": "Parses the Claude plugin inventory to check whether the Understand-Anything plugin is installed and enabled.",
-      "tags": [
-        "claude-code",
-        "understand-anything",
-        "plugin-management"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:ensure_herdr_integrations",
-      "type": "function",
-      "name": "ensure_herdr_integrations",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        364,
-        373
-      ],
-      "summary": "Installs Claude and Codex Herdr integrations when the CLI is available and records both generated hook paths.",
-      "tags": [
-        "herdr",
-        "integration",
-        "asset-manifest"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:update_claude_superpowers",
-      "type": "function",
-      "name": "update_claude_superpowers",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        378,
-        395
-      ],
-      "summary": "Installs or updates the official Claude Superpowers plugin and records its cache and settings paths.",
-      "tags": [
-        "claude-code",
-        "superpowers",
-        "plugin-management"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:update_claude_crit",
-      "type": "function",
-      "name": "update_claude_crit",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        400,
-        425
-      ],
-      "summary": "Ensures the Claude Crit marketplace and CLI, updates or installs and enables the plugin, and records its managed assets.",
-      "tags": [
-        "claude-code",
-        "crit",
-        "plugin-management"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:update_claude_ponytail",
-      "type": "function",
-      "name": "update_claude_ponytail",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        430,
-        453
-      ],
-      "summary": "Ensures the Claude Ponytail marketplace, updates or installs and enables the plugin, and records its managed assets.",
-      "tags": [
-        "claude-code",
-        "ponytail",
-        "plugin-management"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:update_claude_understand_anything",
-      "type": "function",
-      "name": "update_claude_understand_anything",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        458,
-        480
-      ],
-      "summary": "Ensures the Claude Understand-Anything marketplace, updates or installs and enables the plugin, and records its managed assets.",
-      "tags": [
-        "claude-code",
-        "understand-anything",
-        "plugin-management"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:update_codex_superpowers",
-      "type": "function",
-      "name": "update_codex_superpowers",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        485,
-        505
-      ],
-      "summary": "Updates the configured Codex marketplace when eligible, installs Superpowers if missing, and records the managed plugin assets.",
-      "tags": [
-        "codex",
-        "superpowers",
-        "plugin-management"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:ensure_codex_ponytail_marketplace",
-      "type": "function",
-      "name": "ensure_codex_ponytail_marketplace",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        510,
-        531
-      ],
-      "summary": "Ensures Codex registers the Ponytail marketplace with its expected Git source and rejects conflicting registrations.",
-      "tags": [
-        "codex",
-        "ponytail",
-        "marketplace"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:update_codex_ponytail",
-      "type": "function",
-      "name": "update_codex_ponytail",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        536,
-        555
-      ],
-      "summary": "Updates the Codex Ponytail marketplace, installs the plugin if absent, and records its managed cache and configuration paths.",
-      "tags": [
-        "codex",
-        "ponytail",
-        "plugin-management"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:update_codex_crit",
-      "type": "function",
-      "name": "update_codex_crit",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        560,
-        575
-      ],
-      "summary": "Installs the Codex Crit plugin through its CLI integration and records the plugin and configuration paths.",
-      "tags": [
-        "codex",
-        "crit",
-        "plugin-management"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:provision_codex_understand_anything_runtime",
-      "type": "function",
-      "name": "provision_codex_understand_anything_runtime",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        581,
-        629
-      ],
-      "summary": "Finds a Claude Understand-Anything release matching the installed Codex plugin version and copies its built core runtime and dependencies into the Codex plugin tree.",
-      "tags": [
-        "codex",
-        "understand-anything",
-        "runtime-provisioning"
-      ],
-      "complexity": "complex"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:update_codex_understand_anything",
-      "type": "function",
-      "name": "update_codex_understand_anything",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        638,
-        667
-      ],
-      "summary": "Downloads and verifies a pinned Understand-Anything installer, installs Codex skills, provisions matching runtime files, and records all managed paths.",
-      "tags": [
-        "codex",
-        "understand-anything",
-        "installer",
-        "checksum"
-      ],
-      "complexity": "complex"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:update_compactiondb",
-      "type": "function",
-      "name": "update_compactiondb",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        672,
-        677
-      ],
-      "summary": "Synchronizes the vendored CompactionDB tree into the shared agent assets while preserving project runtime state, then records the install in the asset manifest.",
-      "tags": [
-        "compactiondb",
-        "rsync",
-        "asset-manifest",
-        "agent-tooling"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/update-agent-assets.sh:main",
-      "type": "function",
-      "name": "main",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        683,
-        703
-      ],
-      "summary": "Orchestrates CLI repair, Claude and Codex plugin updates, CompactionDB synchronization, and Herdr integration installation in sequence.",
-      "tags": [
-        "entry-point",
-        "orchestration",
-        "agent-tooling"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "file:scripts/upgrade-tools.sh",
-      "type": "file",
-      "name": "upgrade-tools.sh",
-      "filePath": "scripts/upgrade-tools.sh",
-      "summary": "Explicitly upgrades tools managed outside normal `chezmoi apply`, keeping the bootstrap path stable by moving package-manager upgrades into an intentional lifecycle command; the default mode upgrades user-level tooling and Homebrew, and `--system` additionally upgrades OS packages such as apt.",
-      "tags": [
-        "upgrade",
-        "lifecycle",
-        "homebrew",
-        "mise",
-        "tested"
-      ],
-      "complexity": "complex"
-    },
-    {
-      "id": "function:scripts/upgrade-tools.sh:is_forbidden_homebrew_formula",
-      "type": "function",
-      "name": "is_forbidden_homebrew_formula",
-      "filePath": "scripts/upgrade-tools.sh",
-      "lineRange": [
-        82,
-        96
-      ],
-      "summary": "Checks whether a Homebrew formula name is on the deny-list that must never be auto-upgraded.",
-      "tags": [
-        "homebrew",
-        "safety-check"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/upgrade-tools.sh:upgrade_homebrew",
-      "type": "function",
-      "name": "upgrade_homebrew",
-      "filePath": "scripts/upgrade-tools.sh",
-      "lineRange": [
-        101,
-        153
-      ],
-      "summary": "Upgrades installed Homebrew formulae and casks, skipping formulae on the forbidden list.",
-      "tags": [
-        "homebrew",
-        "upgrade",
-        "macos"
-      ],
-      "complexity": "complex"
-    },
-    {
-      "id": "function:scripts/upgrade-tools.sh:upgrade_mise_self",
-      "type": "function",
-      "name": "upgrade_mise_self",
-      "filePath": "scripts/upgrade-tools.sh",
-      "lineRange": [
-        159,
-        175
-      ],
-      "summary": "Upgrades the mise tool version manager binary itself.",
-      "tags": [
-        "mise",
-        "upgrade"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/upgrade-tools.sh:run_mise_with_isolated_git_config",
-      "type": "function",
-      "name": "run_mise_with_isolated_git_config",
-      "filePath": "scripts/upgrade-tools.sh",
-      "lineRange": [
-        181,
-        196
-      ],
-      "summary": "Runs a mise command with an isolated git configuration to avoid interference from the user's global git config.",
-      "tags": [
-        "mise",
-        "git",
-        "isolation"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/upgrade-tools.sh:run_mise_tool_command",
-      "type": "function",
-      "name": "run_mise_tool_command",
-      "filePath": "scripts/upgrade-tools.sh",
-      "lineRange": [
-        210,
-        247
-      ],
-      "summary": "Runs a mise tool subcommand (list/upgrade) with isolated git config and consistent error handling.",
-      "tags": [
-        "mise",
-        "upgrade"
-      ],
-      "complexity": "complex"
-    },
-    {
-      "id": "function:scripts/upgrade-tools.sh:upgrade_mise_tools",
-      "type": "function",
-      "name": "upgrade_mise_tools",
-      "filePath": "scripts/upgrade-tools.sh",
-      "lineRange": [
-        252,
-        263
-      ],
-      "summary": "Upgrades all mise-managed tool versions to their latest allowed versions.",
-      "tags": [
-        "mise",
-        "upgrade",
-        "toolchain"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/upgrade-tools.sh:repair_mise_npm_package",
-      "type": "function",
-      "name": "repair_mise_npm_package",
-      "filePath": "scripts/upgrade-tools.sh",
-      "lineRange": [
-        280,
-        298
-      ],
-      "summary": "Repairs a mise-managed npm package installation that has drifted or failed by reinstalling it.",
-      "tags": [
-        "mise",
-        "npm",
-        "repair"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/upgrade-tools.sh:upgrade_mise_npm_agent_tool",
-      "type": "function",
-      "name": "upgrade_mise_npm_agent_tool",
-      "filePath": "scripts/upgrade-tools.sh",
-      "lineRange": [
-        305,
-        328
-      ],
-      "summary": "Upgrades a single mise-managed npm-based agent CLI tool to its latest published version.",
-      "tags": [
-        "mise",
-        "npm",
-        "agent-tooling",
-        "upgrade"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/upgrade-tools.sh:upgrade_agent_cli_tools",
-      "type": "function",
-      "name": "upgrade_agent_cli_tools",
-      "filePath": "scripts/upgrade-tools.sh",
-      "lineRange": [
-        333,
-        345
-      ],
-      "summary": "Iterates and upgrades all mise-managed npm agent CLI tools.",
-      "tags": [
-        "agent-tooling",
-        "mise",
-        "upgrade"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/upgrade-tools.sh:report_ccr_adoption_gates",
-      "type": "function",
-      "name": "report_ccr_adoption_gates",
-      "filePath": "scripts/upgrade-tools.sh",
-      "lineRange": [
-        382,
-        404
-      ],
-      "summary": "Reports the current status of Claude Code Router (CCR) adoption gates as part of the upgrade lifecycle.",
-      "tags": [
-        "claude-code",
-        "diagnostics",
-        "reporting"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/upgrade-tools.sh:upgrade_apt_packages",
-      "type": "function",
-      "name": "upgrade_apt_packages",
-      "filePath": "scripts/upgrade-tools.sh",
-      "lineRange": [
-        409,
-        418
-      ],
-      "summary": "Upgrades installed apt packages when running in `--system` mode.",
-      "tags": [
-        "apt",
-        "upgrade",
-        "ubuntu"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/upgrade-tools.sh:parse_args",
-      "type": "function",
-      "name": "parse_args",
-      "filePath": "scripts/upgrade-tools.sh",
-      "lineRange": [
-        424,
-        448
-      ],
-      "summary": "Parses command-line arguments, including the `--system` flag that enables OS package upgrades.",
-      "tags": [
-        "argument-parsing",
-        "cli"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/upgrade-tools.sh:main",
-      "type": "function",
-      "name": "main",
-      "filePath": "scripts/upgrade-tools.sh",
-      "lineRange": [
-        454,
-        470
-      ],
-      "summary": "Orchestrates the full upgrade lifecycle: Homebrew, mise self and tools, agent CLI tools, agent assets, uv tools, gh extensions, and optionally apt packages.",
-      "tags": [
-        "entry-point",
-        "orchestration",
-        "upgrade"
-      ],
-      "complexity": "moderate"
-    },
-    {
       "id": "file:scripts/usage-snapshot.sh",
       "type": "file",
       "name": "usage-snapshot.sh",
@@ -13519,21 +12741,6 @@
       "complexity": "simple"
     },
     {
-      "id": "file:tests/install/common/lifecycle.bats",
-      "type": "file",
-      "name": "lifecycle.bats",
-      "filePath": "tests/install/common/lifecycle.bats",
-      "summary": "Bats integration suite for the public setup, update, doctor, and upgrade lifecycle, including failure propagation, Herdr reload behavior, tool ownership, and managed agent integrations.",
-      "tags": [
-        "test",
-        "lifecycle",
-        "shell-integration",
-        "tool-management"
-      ],
-      "complexity": "complex",
-      "languageNotes": "Bats expresses each shell test with @test while using an isolated fixture helper to exercise Make recipes and command ordering."
-    },
-    {
       "id": "file:tests/install/common/mise.bats",
       "type": "file",
       "name": "mise.bats",
@@ -13643,19 +12850,6 @@
       "name": "ghostty.bats",
       "filePath": "tests/install/ubuntu/client/ghostty.bats",
       "summary": "Test file that verifies ghostty  behavior.",
-      "tags": [
-        "test",
-        "validation",
-        "automation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "file:tests/install/ubuntu/client/misc.bats",
-      "type": "file",
-      "name": "misc.bats",
-      "filePath": "tests/install/ubuntu/client/misc.bats",
-      "summary": "Test file that verifies misc  behavior.",
       "tags": [
         "test",
         "validation",
@@ -14133,582 +13327,6 @@
       "complexity": "moderate"
     },
     {
-      "id": "file:scripts/check-agent-runtime.py",
-      "type": "file",
-      "name": "check-agent-runtime.py",
-      "filePath": "scripts/check-agent-runtime.py",
-      "summary": "Audits whether active Codex, Claude, MCP, hook, plugin, and shared-skill runtime assets match the managed chezmoi source, with an optional single bounded repair pass.",
-      "tags": [
-        "entry-point",
-        "validation",
-        "runtime-assets",
-        "repair",
-        "tested"
-      ],
-      "complexity": "complex"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:render_template",
-      "type": "function",
-      "name": "render_template",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        88,
-        94
-      ],
-      "summary": "Renders the limited chezmoi template syntax needed to compare managed source files with their deployed runtime copies.",
-      "tags": [
-        "validation",
-        "agent-assets",
-        "utility"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:same_text",
-      "type": "function",
-      "name": "same_text",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        97,
-        101
-      ],
-      "summary": "Checks whether a deployed file exists and exactly matches either its source text or rendered template output.",
-      "tags": [
-        "validation",
-        "runtime-assets",
-        "filesystem"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:same_modified",
-      "type": "function",
-      "name": "same_modified",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        104,
-        126
-      ],
-      "summary": "Runs a chezmoi modifier against the deployed content and verifies that applying its managed transformation would make no semantic change.",
-      "tags": [
-        "validation",
-        "runtime-assets",
-        "filesystem"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:is_ignored_runtime_path",
-      "type": "function",
-      "name": "is_ignored_runtime_path",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        129,
-        135
-      ],
-      "summary": "Identifies agmsg database and runtime-store paths that are intentionally excluded from source-to-runtime drift checks.",
-      "tags": [
-        "filesystem",
-        "path-handling",
-        "utility"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:deployed_relative_path",
-      "type": "function",
-      "name": "deployed_relative_path",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        138,
-        143
-      ],
-      "summary": "Converts chezmoi source names with executable or private prefixes into their deployed relative paths.",
-      "tags": [
-        "filesystem",
-        "path-handling",
-        "utility"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:source_files",
-      "type": "function",
-      "name": "source_files",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        146,
-        152
-      ],
-      "summary": "Builds a mapping from deployed relative paths to managed source files while excluding runtime-owned agmsg data.",
-      "tags": [
-        "filesystem",
-        "path-handling",
-        "utility"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:applied_files",
-      "type": "function",
-      "name": "applied_files",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        155,
-        163
-      ],
-      "summary": "Enumerates deployed files and symlinks beneath a runtime root while excluding runtime-owned agmsg data.",
-      "tags": [
-        "filesystem",
-        "path-handling",
-        "utility"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:expects_executable",
-      "type": "function",
-      "name": "expects_executable",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        166,
-        167
-      ],
-      "summary": "Reports whether a chezmoi source filename declares that its deployed target must be executable.",
-      "tags": [
-        "validation",
-        "agent-assets",
-        "utility"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:is_warning",
-      "type": "function",
-      "name": "is_warning",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        170,
-        171
-      ],
-      "summary": "Classifies diagnostic messages that are advisory rather than runtime drift errors.",
-      "tags": [
-        "validation",
-        "agent-assets",
-        "utility"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:expected_claude_skill_targets",
-      "type": "function",
-      "name": "expected_claude_skill_targets",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        219,
-        233
-      ],
-      "summary": "Resolves managed Claude skill symlink templates and returns the expected deployed file contents, marking broken targets explicitly.",
-      "tags": [
-        "validation",
-        "agent-assets",
-        "utility"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:compare_tree_contents",
-      "type": "function",
-      "name": "compare_tree_contents",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        236,
-        286
-      ],
-      "summary": "Compares an expected managed tree with a deployed tree, reporting missing, extra, unreadable, changed, and non-executable files while optionally warning about unmanaged top-level directories.",
-      "tags": [
-        "validation",
-        "runtime-assets",
-        "filesystem"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:compare_shared_skills",
-      "type": "function",
-      "name": "compare_shared_skills",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        289,
-        302
-      ],
-      "summary": "Compares the canonical shared skill source tree with the active ~/.agents/skills deployment.",
-      "tags": [
-        "validation",
-        "runtime-assets",
-        "filesystem"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:compare_claude_skills",
-      "type": "function",
-      "name": "compare_claude_skills",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        305,
-        311
-      ],
-      "summary": "Compares generated Claude skill links with the active ~/.claude/skills tree.",
-      "tags": [
-        "validation",
-        "runtime-assets",
-        "filesystem"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:check_executable_hook",
-      "type": "function",
-      "name": "check_executable_hook",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        314,
-        322
-      ],
-      "summary": "Verifies that a deployed hook matches its source and retains its user execute bit.",
-      "tags": [
-        "validation",
-        "agent-assets",
-        "utility"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:normalized_path",
-      "type": "function",
-      "name": "normalized_path",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        325,
-        326
-      ],
-      "summary": "Returns an absolute normalized path for stable ownership and overlap comparisons.",
-      "tags": [
-        "filesystem",
-        "path-handling",
-        "utility"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:paths_overlap",
-      "type": "function",
-      "name": "paths_overlap",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        329,
-        332
-      ],
-      "summary": "Determines whether two normalized paths are identical or one contains the other.",
-      "tags": [
-        "filesystem",
-        "path-handling",
-        "utility"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:installed_manifest_error",
-      "type": "function",
-      "name": "installed_manifest_error",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        335,
-        350
-      ],
-      "summary": "Validates the installed agent-asset manifest envelope and returns a concise integrity error when invalid.",
-      "tags": [
-        "manifest",
-        "validation",
-        "agent-assets"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:manifest_path_owners",
-      "type": "function",
-      "name": "manifest_path_owners",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        353,
-        369
-      ],
-      "summary": "Parses valid installed-manifest steps into normalized path ownership records.",
-      "tags": [
-        "manifest",
-        "validation",
-        "agent-assets"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:manifest_asset_findings",
-      "type": "function",
-      "name": "manifest_asset_findings",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        372,
-        395
-      ],
-      "summary": "Finds manifest-managed agent asset paths that no longer exist and groups them by installation step.",
-      "tags": [
-        "manifest",
-        "validation",
-        "agent-assets"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:asset_failure_message",
-      "type": "function",
-      "name": "asset_failure_message",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        398,
-        402
-      ],
-      "summary": "Formats a missing asset finding as the canonical runtime diagnostic consumed by repair selection.",
-      "tags": [
-        "validation",
-        "agent-assets",
-        "utility"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:asset_repair_action",
-      "type": "function",
-      "name": "asset_repair_action",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        405,
-        432
-      ],
-      "summary": "Maps a supported missing asset step, including parameterized mise CLI installs, to the exact updater command that can repair it.",
-      "tags": [
-        "repair",
-        "runtime-assets",
-        "automation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:source_derived_directory_names",
-      "type": "function",
-      "name": "source_derived_directory_names",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        435,
-        448
-      ],
-      "summary": "Derives managed agent-root and shared-skill directory names from the chezmoi source tree.",
-      "tags": [
-        "filesystem",
-        "path-handling",
-        "utility"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:direct_asset_directories",
-      "type": "function",
-      "name": "direct_asset_directories",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        451,
-        456
-      ],
-      "summary": "Lists direct child directories and symlinks of an agent asset root.",
-      "tags": [
-        "filesystem",
-        "path-handling",
-        "utility"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:orphaned_asset_warnings",
-      "type": "function",
-      "name": "orphaned_asset_warnings",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        459,
-        494
-      ],
-      "summary": "Classifies unexpected agent and skill directories as manifest-accounted stale assets or unowned orphans requiring manual review.",
-      "tags": [
-        "validation",
-        "agent-assets",
-        "utility"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:deployed_target_path",
-      "type": "function",
-      "name": "deployed_target_path",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        497,
-        502
-      ],
-      "summary": "Expands a diagnostic target using the supplied home directory without relying on the process home.",
-      "tags": [
-        "filesystem",
-        "path-handling",
-        "utility"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:repair_actions",
-      "type": "function",
-      "name": "repair_actions",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        505,
-        581
-      ],
-      "summary": "Translates concrete drift failures into deduplicated chmod, chezmoi apply, or asset-updater commands while ignoring warnings.",
-      "tags": [
-        "repair",
-        "runtime-assets",
-        "automation"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:execute_repair",
-      "type": "function",
-      "name": "execute_repair",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        584,
-        585
-      ],
-      "summary": "Executes one prepared repair command and reports whether it succeeded.",
-      "tags": [
-        "repair",
-        "runtime-assets",
-        "automation"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:print_failures",
-      "type": "function",
-      "name": "print_failures",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        588,
-        593
-      ],
-      "summary": "Prints warnings to stdout and prefixes actionable drift failures on stderr.",
-      "tags": [
-        "validation",
-        "agent-assets",
-        "utility"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:check",
-      "type": "function",
-      "name": "check",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        596,
-        674
-      ],
-      "summary": "Runs the complete read-only runtime consistency audit across generated configs, skills, hooks, manifests, and installed agent assets.",
-      "tags": [
-        "validation",
-        "runtime-assets",
-        "filesystem"
-      ],
-      "complexity": "moderate"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:run_session_staleness",
-      "type": "function",
-      "name": "run_session_staleness",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        677,
-        681
-      ],
-      "summary": "Delegates session staleness reporting or epoch comparison to the deployed helper command.",
-      "tags": [
-        "validation",
-        "agent-assets",
-        "utility"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "function:scripts/check-agent-runtime.py:main",
-      "type": "function",
-      "name": "main",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        684,
-        714
-      ],
-      "summary": "Parses runtime-check options, reports findings, optionally performs one bounded repair pass, and returns failure when actionable drift remains.",
-      "tags": [
-        "entry-point",
-        "validation",
-        "agent-assets"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "class:scripts/check-agent-runtime.py:RepairAction",
-      "type": "class",
-      "name": "RepairAction",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        76,
-        79
-      ],
-      "summary": "Immutable descriptor for one bounded runtime repair, including its category, target path, and command.",
-      "tags": [
-        "repair",
-        "data-model",
-        "runtime-assets"
-      ],
-      "complexity": "simple"
-    },
-    {
-      "id": "class:scripts/check-agent-runtime.py:AssetFinding",
-      "type": "class",
-      "name": "AssetFinding",
-      "filePath": "scripts/check-agent-runtime.py",
-      "lineRange": [
-        82,
-        85
-      ],
-      "summary": "Immutable record of a manifest installation step whose declared asset paths are missing.",
-      "tags": [
-        "manifest",
-        "data-model",
-        "runtime-assets"
-      ],
-      "complexity": "simple"
-    },
-    {
       "id": "file:.claude/contextdb/contextdb/__init__.py",
       "type": "file",
       "name": "__init__.py",
@@ -14888,70 +13506,6 @@
         "context-storage"
       ],
       "complexity": "simple"
-    },
-    {
-      "id": "file:tests/unit/test_check_agent_runtime.py",
-      "type": "file",
-      "name": "test_check_agent_runtime.py",
-      "filePath": "tests/unit/test_check_agent_runtime.py",
-      "summary": "Exercises runtime drift detection and bounded repair behavior for managed agent files, skills, manifests, executable modes, and stale or orphaned assets.",
-      "tags": [
-        "test",
-        "runtime-health",
-        "repair",
-        "regression"
-      ],
-      "complexity": "complex"
-    },
-    {
-      "id": "class:tests/unit/test_check_agent_runtime.py:CheckAgentRuntimeTest",
-      "type": "class",
-      "name": "CheckAgentRuntimeTest",
-      "filePath": "tests/unit/test_check_agent_runtime.py",
-      "lineRange": [
-        22,
-        758
-      ],
-      "summary": "Regression suite for deployed-name mapping, ignored runtime state, semantic config comparison, manifest integrity, orphan classification, repair selection, and one-pass convergence.",
-      "tags": [
-        "test",
-        "runtime-assets",
-        "repair",
-        "validation"
-      ],
-      "complexity": "complex"
-    },
-    {
-      "id": "file:tests/unit/test_runtime_health.py",
-      "type": "file",
-      "name": "test_runtime_health.py",
-      "filePath": "tests/unit/test_runtime_health.py",
-      "summary": "Exercises agent runtime health flows spanning private run artifacts, generated launcher profiles, doctor checks, repair forwarding, and resilient tool upgrades.",
-      "tags": [
-        "test",
-        "runtime-health",
-        "agent-launcher",
-        "tool-upgrade"
-      ],
-      "complexity": "complex"
-    },
-    {
-      "id": "class:tests/unit/test_runtime_health.py:RuntimeHealthTest",
-      "type": "class",
-      "name": "RuntimeHealthTest",
-      "filePath": "tests/unit/test_runtime_health.py",
-      "lineRange": [
-        19,
-        800
-      ],
-      "summary": "Builds isolated command fixtures to verify artifact privacy, fan-out safety, runtime doctor status propagation, bounded repair forwarding, and independent upgrade failure handling.",
-      "tags": [
-        "test",
-        "runtime-health",
-        "security",
-        "regression"
-      ],
-      "complexity": "complex"
     },
     {
       "id": "file:.claude/contextdb/contextdb/config.py",
@@ -16610,38 +15164,6 @@
       "complexity": "complex"
     },
     {
-      "id": "file:tests/unit/test_asset_manifest.py",
-      "type": "file",
-      "name": "test_asset_manifest.py",
-      "filePath": "tests/unit/test_asset_manifest.py",
-      "summary": "Validates shell-based agent asset manifest recording, including schema replacement, atomic failure safety, permission warnings, updater coverage, and rendered chezmoi integration.",
-      "tags": [
-        "test",
-        "asset-manifest",
-        "atomic-write",
-        "shell-integration"
-      ],
-      "complexity": "complex"
-    },
-    {
-      "id": "class:tests/unit/test_asset_manifest.py:AssetManifestTest",
-      "type": "class",
-      "name": "AssetManifestTest",
-      "filePath": "tests/unit/test_asset_manifest.py",
-      "lineRange": [
-        26,
-        357
-      ],
-      "summary": "Runs manifest shell functions in temporary homes and verifies durable records for real installation steps, updater call coverage, source-root resolution, and failure behavior.",
-      "tags": [
-        "test",
-        "asset-manifest",
-        "permissions",
-        "regression"
-      ],
-      "complexity": "complex"
-    },
-    {
       "id": "file:tests/unit/test_remove_agent_asset.py",
       "type": "file",
       "name": "test_remove_agent_asset.py",
@@ -18181,23 +16703,6 @@
       "complexity": "complex"
     },
     {
-      "id": "function:scripts/update-agent-assets.sh:resolve_dotfiles_source_dir",
-      "type": "function",
-      "name": "resolve_dotfiles_source_dir",
-      "filePath": "scripts/update-agent-assets.sh",
-      "lineRange": [
-        19,
-        35
-      ],
-      "summary": "Resolves the canonical dotfiles source root from the wrapper export or direct script location and rejects candidates without the vendored CompactionDB tree.",
-      "tags": [
-        "path-resolution",
-        "validation",
-        "compactiondb"
-      ],
-      "complexity": "moderate"
-    },
-    {
       "id": "function:home/dot_zshrc:claude-update",
       "type": "function",
       "name": "claude-update",
@@ -18215,39 +16720,1174 @@
       "complexity": "moderate"
     },
     {
-      "id": "function:scripts/check-agent-runtime.py:chezmoi_drift_warnings",
-      "type": "function",
-      "name": "chezmoi_drift_warnings",
-      "filePath": "scripts/check-agent-runtime.py",
-      "summary": "Runs chezmoi drift verification and converts command failures or reported differences into runtime diagnostics.",
+      "id": "file:scripts/check-agent-runtime.py",
+      "type": "file",
+      "name": "check-agent-runtime.py",
+      "summary": "Doctor-style verifier that compares deployed agent runtime assets under HOME against the chezmoi source tree, checks the installed-asset manifest, detects orphaned/stale asset directories, and can auto-repair detected drift via forced chezmoi applies and targeted updater steps.",
       "tags": [
-        "chezmoi",
         "validation",
-        "runtime-assets"
+        "drift-detection",
+        "auto-repair",
+        "agent-assets",
+        "lifecycle"
+      ],
+      "complexity": "complex",
+      "filePath": "scripts/check-agent-runtime.py",
+      "languageNotes": "Stdlib-only Python: dataclasses for RepairAction/AssetFinding, subprocess for chezmoi/updater invocations, no third-party imports."
+    },
+    {
+      "id": "file:scripts/lib/installer-pins.sh",
+      "type": "file",
+      "name": "installer-pins.sh",
+      "summary": "Sourced pin file holding the reviewed version and installer-script SHA256 for the zenbu-labs terminal-code (tode) and terminal-browser curl installers; rewritten wholesale by upgrade-tools.sh and consumed by update-agent-assets.sh.",
+      "tags": [
+        "configuration",
+        "version-pinning",
+        "security",
+        "supply-chain"
       ],
       "complexity": "simple",
+      "filePath": "scripts/lib/installer-pins.sh",
+      "languageNotes": "Assignments are deliberately non-readonly so the file can be re-sourced after an in-process rewrite."
+    },
+    {
+      "id": "file:scripts/update-agent-assets.sh",
+      "type": "file",
+      "name": "update-agent-assets.sh",
+      "summary": "Agent asset lifecycle updater: installs and refreshes Claude Code and Codex marketplaces/plugins (Superpowers, Crit, Ponytail, Understand-Anything), Herdr integrations, CompactionDB, and the pinned zenbu-labs terminal-code/terminal-browser CLIs via sha256-verified installers, recording every step in the installed-asset manifest.",
+      "tags": [
+        "lifecycle",
+        "agent-assets",
+        "installer",
+        "plugin-management",
+        "supply-chain"
+      ],
+      "complexity": "complex",
+      "filePath": "scripts/update-agent-assets.sh",
+      "languageNotes": "Each install step calls manifest_record so check-agent-runtime.py can later verify and repair the recorded artifacts."
+    },
+    {
+      "id": "file:scripts/upgrade-tools.sh",
+      "type": "file",
+      "name": "upgrade-tools.sh",
+      "summary": "Explicit upgrade lifecycle for installed tooling: Homebrew (with forbidden-formula filtering), mise self and mise-managed tools, npm-backed agent CLIs, uv tools, gh extensions, apt packages, and an optional phase that bumps the terminal-code/terminal-browser installer pins before regenerating agent assets.",
+      "tags": [
+        "lifecycle",
+        "upgrade",
+        "package-management",
+        "version-pinning"
+      ],
+      "complexity": "complex",
+      "filePath": "scripts/upgrade-tools.sh",
+      "languageNotes": "Phases run through run_required_phase/run_optional_phase wrappers so individual optional failures do not abort the whole upgrade."
+    },
+    {
+      "id": "file:tests/install/common/lifecycle.bats",
+      "type": "file",
+      "name": "lifecycle.bats",
+      "summary": "Bats suite asserting the Makefile lifecycle contract: setup/update/doctor/upgrade target wiring, Herdr reload semantics, phase ordering and failure stops, agent CLI and plugin integration wiring, and that the agent asset lifecycle installs the pinned zenbu-labs terminal tools with checksum-verified installers.",
+      "tags": [
+        "test",
+        "lifecycle",
+        "makefile",
+        "integration-test"
+      ],
+      "complexity": "complex",
+      "filePath": "tests/install/common/lifecycle.bats",
+      "languageNotes": "Mostly static contract tests: grep/make -n assertions over Makefile and scripts plus fixture-driven update runs with stubbed commands."
+    },
+    {
+      "id": "func:scripts/check-agent-runtime.py:same_modified",
+      "type": "function",
+      "name": "same_modified",
+      "summary": "Compares a modify_-templated source against its deployed target, tolerating cosmetic JSON reserialization for json targets while rejecting real value drift.",
+      "tags": [
+        "comparison",
+        "drift-detection",
+        "json"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/check-agent-runtime.py",
       "lineRange": [
-        174,
-        216
+        104,
+        126
       ]
     },
     {
-      "id": "function:tests/install/common/lifecycle.bats:run_update_fixture",
+      "id": "func:scripts/check-agent-runtime.py:chezmoi_drift_warnings",
       "type": "function",
-      "name": "run_update_fixture",
-      "filePath": "tests/install/common/lifecycle.bats",
-      "lineRange": [
-        15,
-        68
-      ],
-      "summary": "Builds an isolated fake update environment, records calls to chezmoi, mise, agent-asset, and Herdr commands, then runs the Make update target for failure-order assertions.",
+      "name": "chezmoi_drift_warnings",
+      "summary": "Runs chezmoi status for both public and private source states and classifies reported drift, downgrading mode-only diffs and status failures to warnings.",
       "tags": [
-        "test-helper",
-        "fixture",
-        "lifecycle",
-        "shell-integration"
+        "drift-detection",
+        "chezmoi",
+        "warning"
       ],
-      "complexity": "moderate"
+      "complexity": "moderate",
+      "filePath": "scripts/check-agent-runtime.py",
+      "lineRange": [
+        174,
+        214
+      ]
+    },
+    {
+      "id": "func:scripts/check-agent-runtime.py:expected_claude_skill_targets",
+      "type": "function",
+      "name": "expected_claude_skill_targets",
+      "summary": "Builds the expected set of deployed Claude skill files from the chezmoi source tree, following linked skill sources.",
+      "tags": [
+        "skills",
+        "expected-state",
+        "chezmoi"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/check-agent-runtime.py",
+      "lineRange": [
+        217,
+        231
+      ]
+    },
+    {
+      "id": "func:scripts/check-agent-runtime.py:terminal_browser_receipt_paths",
+      "type": "function",
+      "name": "terminal_browser_receipt_paths",
+      "summary": "Reads the terminal-browser skills.links receipt under HOME and returns the recorded skill-link paths so receipt-linked entries are not flagged as unmanaged or orphaned.",
+      "tags": [
+        "terminal-browser",
+        "receipt",
+        "skills"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/check-agent-runtime.py",
+      "lineRange": [
+        234,
+        242
+      ]
+    },
+    {
+      "id": "func:scripts/check-agent-runtime.py:compare_tree_contents",
+      "type": "function",
+      "name": "compare_tree_contents",
+      "summary": "Core tree comparator: diffs expected source-derived files against a deployed target root, honoring executable expectations, ignored runtime paths, an ignored_paths filter for receipt-linked entries, and optional unmanaged top-level warnings.",
+      "tags": [
+        "comparison",
+        "drift-detection",
+        "core-logic"
+      ],
+      "complexity": "moderate",
+      "filePath": "scripts/check-agent-runtime.py",
+      "lineRange": [
+        245,
+        304
+      ]
+    },
+    {
+      "id": "func:scripts/check-agent-runtime.py:compare_shared_skills",
+      "type": "function",
+      "name": "compare_shared_skills",
+      "summary": "Compares the deployed shared agents skills tree against its expected chezmoi sources using compare_tree_contents.",
+      "tags": [
+        "skills",
+        "comparison",
+        "drift-detection"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/check-agent-runtime.py",
+      "lineRange": [
+        307,
+        320
+      ]
+    },
+    {
+      "id": "func:scripts/check-agent-runtime.py:compare_claude_skills",
+      "type": "function",
+      "name": "compare_claude_skills",
+      "summary": "Compares deployed Claude skills against expected targets, passing terminal-browser receipt paths as ignored entries.",
+      "tags": [
+        "skills",
+        "comparison",
+        "terminal-browser"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/check-agent-runtime.py",
+      "lineRange": [
+        323,
+        332
+      ]
+    },
+    {
+      "id": "func:scripts/check-agent-runtime.py:installed_manifest_error",
+      "type": "function",
+      "name": "installed_manifest_error",
+      "summary": "Validates the installed-asset manifest JSON for parseability and schema integrity, returning a single error string when it is unusable.",
+      "tags": [
+        "manifest",
+        "validation",
+        "integrity"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/check-agent-runtime.py",
+      "lineRange": [
+        356,
+        371
+      ]
+    },
+    {
+      "id": "func:scripts/check-agent-runtime.py:manifest_path_owners",
+      "type": "function",
+      "name": "manifest_path_owners",
+      "summary": "Maps each manifest-recorded artifact path to the install step that owns it, for orphan accounting.",
+      "tags": [
+        "manifest",
+        "ownership",
+        "accounting"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/check-agent-runtime.py",
+      "lineRange": [
+        374,
+        392
+      ]
+    },
+    {
+      "id": "func:scripts/check-agent-runtime.py:manifest_asset_findings",
+      "type": "function",
+      "name": "manifest_asset_findings",
+      "summary": "Checks every manifest-recorded artifact path for existence and produces AssetFinding records for missing ones.",
+      "tags": [
+        "manifest",
+        "validation",
+        "drift-detection"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/check-agent-runtime.py",
+      "lineRange": [
+        395,
+        420
+      ]
+    },
+    {
+      "id": "func:scripts/check-agent-runtime.py:asset_repair_action",
+      "type": "function",
+      "name": "asset_repair_action",
+      "summary": "Builds the RepairAction that re-runs only the updater step owning a missing asset, resolving parameterized mise step identities.",
+      "tags": [
+        "auto-repair",
+        "manifest",
+        "targeted-repair"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/check-agent-runtime.py",
+      "lineRange": [
+        429,
+        456
+      ]
+    },
+    {
+      "id": "func:scripts/check-agent-runtime.py:source_derived_directory_names",
+      "type": "function",
+      "name": "source_derived_directory_names",
+      "summary": "Derives the set of asset directory names the chezmoi source tree is expected to deploy, used as the accounted baseline for orphan detection.",
+      "tags": [
+        "expected-state",
+        "orphan-detection",
+        "chezmoi"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/check-agent-runtime.py",
+      "lineRange": [
+        459,
+        480
+      ]
+    },
+    {
+      "id": "func:scripts/check-agent-runtime.py:orphaned_asset_warnings",
+      "type": "function",
+      "name": "orphaned_asset_warnings",
+      "summary": "Classifies direct asset directories under HOME as accounted, stale, or orphaned relative to source-derived names, manifest ownership, and terminal-browser receipt links, emitting warnings only.",
+      "tags": [
+        "orphan-detection",
+        "warning",
+        "agent-assets"
+      ],
+      "complexity": "moderate",
+      "filePath": "scripts/check-agent-runtime.py",
+      "lineRange": [
+        489,
+        536
+      ]
+    },
+    {
+      "id": "func:scripts/check-agent-runtime.py:repair_actions",
+      "type": "function",
+      "name": "repair_actions",
+      "summary": "Maps detected failures to concrete repair commands: forced chezmoi applies for file drift and targeted updater steps for manifest asset findings, never acting on warnings.",
+      "tags": [
+        "auto-repair",
+        "chezmoi",
+        "core-logic"
+      ],
+      "complexity": "moderate",
+      "filePath": "scripts/check-agent-runtime.py",
+      "lineRange": [
+        547,
+        621
+      ]
+    },
+    {
+      "id": "func:scripts/check-agent-runtime.py:check",
+      "type": "function",
+      "name": "check",
+      "summary": "Top-level check pass: compares profiles, hooks, shared and Claude skills, manifest integrity and assets, and collects chezmoi drift plus orphan warnings into a failure list.",
+      "tags": [
+        "orchestration",
+        "validation",
+        "drift-detection"
+      ],
+      "complexity": "moderate",
+      "filePath": "scripts/check-agent-runtime.py",
+      "lineRange": [
+        636,
+        714
+      ]
+    },
+    {
+      "id": "func:scripts/check-agent-runtime.py:main",
+      "type": "function",
+      "name": "main",
+      "summary": "CLI entry point: runs check, optionally executes repair actions with a single convergence re-check, and prints failures with exit status.",
+      "tags": [
+        "entry-point",
+        "cli",
+        "auto-repair"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/check-agent-runtime.py",
+      "lineRange": [
+        724,
+        754
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:resolve_dotfiles_source_dir",
+      "type": "function",
+      "name": "resolve_dotfiles_source_dir",
+      "summary": "Resolves the dotfiles repository source root via DOTFILES_SOURCE_DIR or BASH_SOURCE, validating that the vendored CompactionDB tree exists.",
+      "tags": [
+        "path-resolution",
+        "bootstrap",
+        "validation"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        19,
+        35
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:remove_node_global_agent_cli_shadows",
+      "type": "function",
+      "name": "remove_node_global_agent_cli_shadows",
+      "summary": "Removes node-global installs of agent CLIs that would shadow the mise-managed copies before any agent commands run.",
+      "tags": [
+        "cleanup",
+        "npm",
+        "agent-cli"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        95,
+        104
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:ensure_mise_npm_agent_cli",
+      "type": "function",
+      "name": "ensure_mise_npm_agent_cli",
+      "summary": "Ensures an agent CLI is installed as a mise npm package, installing the latest version when missing or broken.",
+      "tags": [
+        "installer",
+        "mise",
+        "npm",
+        "agent-cli"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        111,
+        126
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:codex_marketplace_is_configured_git_marketplace",
+      "type": "function",
+      "name": "codex_marketplace_is_configured_git_marketplace",
+      "summary": "Checks whether a Codex marketplace name is already configured as a git marketplace with the expected source.",
+      "tags": [
+        "codex",
+        "marketplace",
+        "validation"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        151,
+        169
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:git_remote_origin_matches",
+      "type": "function",
+      "name": "git_remote_origin_matches",
+      "summary": "Verifies that a cloned marketplace checkout's git origin matches the expected remote URL.",
+      "tags": [
+        "git",
+        "validation",
+        "marketplace"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        186,
+        199
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:codex_marketplace_has_source",
+      "type": "function",
+      "name": "codex_marketplace_has_source",
+      "summary": "Returns success when the Codex config already registers the named marketplace with the given source.",
+      "tags": [
+        "codex",
+        "marketplace",
+        "configuration"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        206,
+        217
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:ensure_crit_cli",
+      "type": "function",
+      "name": "ensure_crit_cli",
+      "summary": "Installs the crit CLI when absent so Crit plugin integrations can be provisioned for both agents.",
+      "tags": [
+        "installer",
+        "crit",
+        "agent-cli"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        233,
+        247
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:claude_crit_plugin_is_enabled",
+      "type": "function",
+      "name": "claude_crit_plugin_is_enabled",
+      "summary": "Reads Claude Code settings to determine whether the Crit plugin is installed and enabled.",
+      "tags": [
+        "claude-code",
+        "plugin",
+        "validation"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        285,
+        309
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:claude_ponytail_plugin_is_enabled",
+      "type": "function",
+      "name": "claude_ponytail_plugin_is_enabled",
+      "summary": "Reads Claude Code settings to determine whether the Ponytail plugin is installed and enabled.",
+      "tags": [
+        "claude-code",
+        "plugin",
+        "validation"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        314,
+        338
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:claude_understand_anything_plugin_is_enabled",
+      "type": "function",
+      "name": "claude_understand_anything_plugin_is_enabled",
+      "summary": "Reads Claude Code settings to determine whether the Understand-Anything plugin is installed and enabled.",
+      "tags": [
+        "claude-code",
+        "plugin",
+        "validation"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        343,
+        367
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:ensure_herdr_integrations",
+      "type": "function",
+      "name": "ensure_herdr_integrations",
+      "summary": "Provisions Herdr integrations for the agent runtimes when the herdr CLI is available.",
+      "tags": [
+        "herdr",
+        "integration",
+        "installer"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        372,
+        381
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:update_claude_superpowers",
+      "type": "function",
+      "name": "update_claude_superpowers",
+      "summary": "Installs or updates the Superpowers marketplace and plugin for Claude Code.",
+      "tags": [
+        "claude-code",
+        "plugin",
+        "installer"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        386,
+        403
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:update_claude_crit",
+      "type": "function",
+      "name": "update_claude_crit",
+      "summary": "Installs or updates the Crit marketplace and plugin for Claude Code, recording the step in the asset manifest.",
+      "tags": [
+        "claude-code",
+        "crit",
+        "plugin",
+        "installer"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        408,
+        433
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:update_claude_ponytail",
+      "type": "function",
+      "name": "update_claude_ponytail",
+      "summary": "Installs or updates the Ponytail marketplace and plugin for Claude Code, recording the step in the asset manifest.",
+      "tags": [
+        "claude-code",
+        "ponytail",
+        "plugin",
+        "installer"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        438,
+        461
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:update_claude_understand_anything",
+      "type": "function",
+      "name": "update_claude_understand_anything",
+      "summary": "Installs or updates the Understand-Anything marketplace and plugin for Claude Code, recording the step in the asset manifest.",
+      "tags": [
+        "claude-code",
+        "understand-anything",
+        "plugin",
+        "installer"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        466,
+        488
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:update_codex_superpowers",
+      "type": "function",
+      "name": "update_codex_superpowers",
+      "summary": "Installs or updates the Superpowers integration for Codex.",
+      "tags": [
+        "codex",
+        "plugin",
+        "installer"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        493,
+        513
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:ensure_codex_ponytail_marketplace",
+      "type": "function",
+      "name": "ensure_codex_ponytail_marketplace",
+      "summary": "Registers the Ponytail marketplace in the Codex config when it is not already present with the expected source.",
+      "tags": [
+        "codex",
+        "ponytail",
+        "marketplace"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        518,
+        539
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:update_codex_ponytail",
+      "type": "function",
+      "name": "update_codex_ponytail",
+      "summary": "Installs or updates the Ponytail integration for Codex, recording the step in the asset manifest.",
+      "tags": [
+        "codex",
+        "ponytail",
+        "installer"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        544,
+        563
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:update_codex_crit",
+      "type": "function",
+      "name": "update_codex_crit",
+      "summary": "Installs or updates the Crit integration for Codex, recording the step in the asset manifest.",
+      "tags": [
+        "codex",
+        "crit",
+        "installer"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        568,
+        583
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:provision_codex_understand_anything_runtime",
+      "type": "function",
+      "name": "provision_codex_understand_anything_runtime",
+      "summary": "Clones the Understand-Anything repository for Codex, creates the plugin symlink, copies runtime dist/node_modules payloads, and links each skill into the shared agents skills directory.",
+      "tags": [
+        "codex",
+        "understand-anything",
+        "provisioning",
+        "symlink"
+      ],
+      "complexity": "moderate",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        589,
+        637
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:update_codex_understand_anything",
+      "type": "function",
+      "name": "update_codex_understand_anything",
+      "summary": "Installs or updates the Understand-Anything integration for Codex, provisioning the runtime and recording the step in the asset manifest.",
+      "tags": [
+        "codex",
+        "understand-anything",
+        "installer"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        646,
+        675
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:zenbu_platform_supported",
+      "type": "function",
+      "name": "zenbu_platform_supported",
+      "summary": "Returns success only on platforms with published zenbu-labs release assets (darwin-arm64, linux-x64/arm64); Intel macOS is skipped rather than failed.",
+      "tags": [
+        "platform-detection",
+        "guard",
+        "zenbu"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        683,
+        690
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:run_pinned_installer",
+      "type": "function",
+      "name": "run_pinned_installer",
+      "summary": "Downloads an upstream installer to a temp file, verifies it against the pinned SHA256, and only then executes it with optional environment assignments.",
+      "tags": [
+        "installer",
+        "checksum-verification",
+        "security",
+        "supply-chain"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        698,
+        717
+      ],
+      "languageNotes": "A RETURN trap cleans the temp installer, and stdin is redirected from /dev/null so installers cannot prompt during lifecycle runs."
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:update_terminal_code",
+      "type": "function",
+      "name": "update_terminal_code",
+      "summary": "Installs or updates the terminal-code (tode) CLI at the pinned version, short-circuiting only when every manifest-recorded artifact is present so partial deletions are repaired, and recording the step in the asset manifest.",
+      "tags": [
+        "terminal-code",
+        "installer",
+        "version-pinning",
+        "idempotent"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        722,
+        743
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:update_terminal_browser",
+      "type": "function",
+      "name": "update_terminal_browser",
+      "summary": "Installs or updates the terminal-browser CLI at the pinned version with editor setup skipped, short-circuiting only when the binary, app tree, and skills.links receipt all exist, and recording the step in the asset manifest.",
+      "tags": [
+        "terminal-browser",
+        "installer",
+        "version-pinning",
+        "idempotent"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        755,
+        776
+      ]
+    },
+    {
+      "id": "func:scripts/update-agent-assets.sh:main",
+      "type": "function",
+      "name": "main",
+      "summary": "Entry point ordering the asset lifecycle: shadow removal, agent CLIs, marketplaces and plugins for both agents, terminal tools, CompactionDB, and Herdr integrations.",
+      "tags": [
+        "entry-point",
+        "orchestration",
+        "lifecycle"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/update-agent-assets.sh",
+      "lineRange": [
+        792,
+        814
+      ]
+    },
+    {
+      "id": "func:scripts/upgrade-tools.sh:is_forbidden_homebrew_formula",
+      "type": "function",
+      "name": "is_forbidden_homebrew_formula",
+      "summary": "Filters Homebrew formulae that must never be upgraded through this lifecycle (tools owned by mise or other managers).",
+      "tags": [
+        "homebrew",
+        "guard",
+        "filtering"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/upgrade-tools.sh",
+      "lineRange": [
+        82,
+        96
+      ]
+    },
+    {
+      "id": "func:scripts/upgrade-tools.sh:upgrade_homebrew",
+      "type": "function",
+      "name": "upgrade_homebrew",
+      "summary": "Updates Homebrew and upgrades outdated formulae and casks while skipping forbidden formulae without triggering installed-dependent side effects.",
+      "tags": [
+        "homebrew",
+        "upgrade",
+        "package-management"
+      ],
+      "complexity": "moderate",
+      "filePath": "scripts/upgrade-tools.sh",
+      "lineRange": [
+        101,
+        153
+      ]
+    },
+    {
+      "id": "func:scripts/upgrade-tools.sh:upgrade_mise_self",
+      "type": "function",
+      "name": "upgrade_mise_self",
+      "summary": "Upgrades the mise binary itself before any mise-managed tools, skipping when self-update is unavailable for the install method.",
+      "tags": [
+        "mise",
+        "upgrade",
+        "self-update"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/upgrade-tools.sh",
+      "lineRange": [
+        159,
+        175
+      ]
+    },
+    {
+      "id": "func:scripts/upgrade-tools.sh:run_mise_with_isolated_git_config",
+      "type": "function",
+      "name": "run_mise_with_isolated_git_config",
+      "summary": "Runs a mise command with an isolated Git configuration so user git settings cannot break tool installs.",
+      "tags": [
+        "mise",
+        "isolation",
+        "git"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/upgrade-tools.sh",
+      "lineRange": [
+        181,
+        196
+      ]
+    },
+    {
+      "id": "func:scripts/upgrade-tools.sh:run_mise_tool_command",
+      "type": "function",
+      "name": "run_mise_tool_command",
+      "summary": "Runs a mise command per tool, isolating Git config and continuing after individual tool failures while collecting a failure summary.",
+      "tags": [
+        "mise",
+        "error-handling",
+        "resilience"
+      ],
+      "complexity": "moderate",
+      "filePath": "scripts/upgrade-tools.sh",
+      "lineRange": [
+        210,
+        247
+      ]
+    },
+    {
+      "id": "func:scripts/upgrade-tools.sh:upgrade_mise_tools",
+      "type": "function",
+      "name": "upgrade_mise_tools",
+      "summary": "Upgrades every currently installed mise-managed tool via run_mise_tool_command.",
+      "tags": [
+        "mise",
+        "upgrade",
+        "package-management"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/upgrade-tools.sh",
+      "lineRange": [
+        252,
+        263
+      ]
+    },
+    {
+      "id": "func:scripts/upgrade-tools.sh:repair_mise_npm_package",
+      "type": "function",
+      "name": "repair_mise_npm_package",
+      "summary": "Reinstalls a broken mise npm package at the latest version when its binary is missing or non-functional.",
+      "tags": [
+        "mise",
+        "npm",
+        "auto-repair"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/upgrade-tools.sh",
+      "lineRange": [
+        280,
+        298
+      ]
+    },
+    {
+      "id": "func:scripts/upgrade-tools.sh:upgrade_mise_npm_agent_tool",
+      "type": "function",
+      "name": "upgrade_mise_npm_agent_tool",
+      "summary": "Upgrades one npm-backed agent CLI through mise to the latest published version, repairing broken installs first.",
+      "tags": [
+        "npm",
+        "agent-cli",
+        "upgrade"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/upgrade-tools.sh",
+      "lineRange": [
+        305,
+        328
+      ]
+    },
+    {
+      "id": "func:scripts/upgrade-tools.sh:upgrade_agent_cli_tools",
+      "type": "function",
+      "name": "upgrade_agent_cli_tools",
+      "summary": "Upgrades the npm-backed agent CLI tools (Claude Code, Codex, and friends) through the mise npm backend.",
+      "tags": [
+        "agent-cli",
+        "upgrade",
+        "orchestration"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/upgrade-tools.sh",
+      "lineRange": [
+        333,
+        345
+      ]
+    },
+    {
+      "id": "func:scripts/upgrade-tools.sh:fetch_installer_pin",
+      "type": "function",
+      "name": "fetch_installer_pin",
+      "summary": "Downloads an upstream installer script and prints its baked-in VERSION and SHA256, rejecting any VERSION that is not a plausible tag charset so a malicious upstream cannot inject shell into the sourced pin file.",
+      "tags": [
+        "version-pinning",
+        "security",
+        "input-validation",
+        "supply-chain"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/upgrade-tools.sh",
+      "lineRange": [
+        362,
+        377
+      ],
+      "languageNotes": "The charset allowlist on the upstream-controlled VERSION value is the trust-boundary guard for the generated installer-pins.sh."
+    },
+    {
+      "id": "func:scripts/upgrade-tools.sh:bump_terminal_tool_pins",
+      "type": "function",
+      "name": "bump_terminal_tool_pins",
+      "summary": "Optional upgrade phase that fetches the latest tode and terminal-browser installer pins and rewrites scripts/lib/installer-pins.sh wholesale for review, keeping current pins on any fetch or write failure.",
+      "tags": [
+        "version-pinning",
+        "upgrade",
+        "terminal-tools",
+        "code-generation"
+      ],
+      "complexity": "moderate",
+      "filePath": "scripts/upgrade-tools.sh",
+      "lineRange": [
+        386,
+        425
+      ]
+    },
+    {
+      "id": "func:scripts/upgrade-tools.sh:report_ccr_adoption_gates",
+      "type": "function",
+      "name": "report_ccr_adoption_gates",
+      "summary": "Reports the CCR adoption gate values from GitHub as informational output, skipping when gh is unavailable.",
+      "tags": [
+        "reporting",
+        "github",
+        "adoption-gates"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/upgrade-tools.sh",
+      "lineRange": [
+        452,
+        474
+      ]
+    },
+    {
+      "id": "func:scripts/upgrade-tools.sh:upgrade_apt_packages",
+      "type": "function",
+      "name": "upgrade_apt_packages",
+      "summary": "Upgrades system apt packages on Linux when the SYSTEM flag requests system package upgrades.",
+      "tags": [
+        "apt",
+        "upgrade",
+        "linux"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/upgrade-tools.sh",
+      "lineRange": [
+        479,
+        488
+      ]
+    },
+    {
+      "id": "func:scripts/upgrade-tools.sh:parse_args",
+      "type": "function",
+      "name": "parse_args",
+      "summary": "Parses CLI flags selecting which upgrade phases run, including the system package and terminal tool pin phases.",
+      "tags": [
+        "cli",
+        "argument-parsing"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/upgrade-tools.sh",
+      "lineRange": [
+        494,
+        518
+      ]
+    },
+    {
+      "id": "func:scripts/upgrade-tools.sh:main",
+      "type": "function",
+      "name": "main",
+      "summary": "Entry point sequencing the upgrade phases: Homebrew, mise self and tools, agent CLIs, optional terminal tool pin bump, agent assets, uv tools, gh extensions, and reporting.",
+      "tags": [
+        "entry-point",
+        "orchestration",
+        "lifecycle"
+      ],
+      "complexity": "simple",
+      "filePath": "scripts/upgrade-tools.sh",
+      "lineRange": [
+        524,
+        541
+      ]
+    },
+    {
+      "id": "file:tests/install/ubuntu/client/misc.bats",
+      "type": "file",
+      "name": "misc.bats",
+      "summary": "Bats tests for the Ubuntu client misc install step: verifies the PACKAGES array lists gparted plus the four Electron runtime apt libraries (libnss3, libgtk-3-0t64, libasound2t64, libgbm1) and that running the script installs them all.",
+      "tags": [
+        "test",
+        "ubuntu",
+        "apt",
+        "install-script"
+      ],
+      "complexity": "simple",
+      "filePath": "tests/install/ubuntu/client/misc.bats"
+    },
+    {
+      "id": "file:tests/unit/test_asset_manifest.py",
+      "type": "file",
+      "name": "test_asset_manifest.py",
+      "summary": "Unittest suite for the installed-asset manifest library and its chezmoi-rendered updater wrapper: schema and atomic-commit behavior, per-step recording under a fake HOME, mise repair identity preservation, and source-root resolution/failure modes of the rendered updater.",
+      "tags": [
+        "test",
+        "manifest",
+        "lifecycle",
+        "unit-test"
+      ],
+      "complexity": "complex",
+      "filePath": "tests/unit/test_asset_manifest.py",
+      "languageNotes": "Runs real bash snippets against the manifest library in a temp HOME instead of mocking the shell."
+    },
+    {
+      "id": "file:tests/unit/test_check_agent_runtime.py",
+      "type": "file",
+      "name": "test_check_agent_runtime.py",
+      "summary": "Unit tests for check-agent-runtime.py: tree comparison semantics (executable_/private_ prefixes, agmsg runtime ignores, JSON reserialization tolerance), terminal-browser receipt-linked skill filtering, chezmoi drift classification, orphan detection, manifest integrity, and repair-mode convergence guarantees.",
+      "tags": [
+        "test",
+        "drift-detection",
+        "unit-test",
+        "auto-repair"
+      ],
+      "complexity": "complex",
+      "filePath": "tests/unit/test_check_agent_runtime.py",
+      "languageNotes": "Loads the hyphen-named script as a module via importlib.util.spec_from_file_location to test its functions directly."
+    },
+    {
+      "id": "file:tests/unit/test_runtime_health.py",
+      "type": "file",
+      "name": "test_runtime_health.py",
+      "summary": "End-to-end shell-behavior tests for the lifecycle scripts run against stub commands in a fake HOME: agent asset update ordering and npm-backend repair, agent fan-out safety, make doctor propagation, and upgrade phases including terminal tool pin bumping from hermetic curl-stubbed installers.",
+      "tags": [
+        "test",
+        "lifecycle",
+        "integration-test",
+        "shell"
+      ],
+      "complexity": "complex",
+      "filePath": "tests/unit/test_runtime_health.py",
+      "languageNotes": "Builds hermetic PATH sandboxes of stub executables (including curl stubs serving fake installers) so real network and package managers are never touched."
+    },
+    {
+      "id": "class:tests/unit/test_asset_manifest.py:AssetManifestTest",
+      "type": "class",
+      "name": "AssetManifestTest",
+      "summary": "Exercises the asset manifest shell library and rendered updater wrapper end to end in a temp HOME: schema recording, atomic-commit failure safety, unwritable-destination warnings, mise repair identity preservation, and source-root resolution.",
+      "tags": [
+        "test",
+        "manifest",
+        "shell",
+        "unit-test"
+      ],
+      "complexity": "complex",
+      "filePath": "tests/unit/test_asset_manifest.py",
+      "lineRange": [
+        24,
+        357
+      ]
+    },
+    {
+      "id": "class:tests/unit/test_check_agent_runtime.py:CheckAgentRuntimeTest",
+      "type": "class",
+      "name": "CheckAgentRuntimeTest",
+      "summary": "Loads check-agent-runtime.py as a module and verifies comparison prefixes, ignored runtime and receipt-linked paths, JSON drift tolerance, chezmoi drift classification, orphan classification, manifest integrity reasons, and repair-mode convergence and safety invariants.",
+      "tags": [
+        "test",
+        "drift-detection",
+        "auto-repair",
+        "unit-test"
+      ],
+      "complexity": "complex",
+      "filePath": "tests/unit/test_check_agent_runtime.py",
+      "lineRange": [
+        21,
+        827
+      ]
+    },
+    {
+      "id": "class:tests/unit/test_runtime_health.py:RuntimeHealthTest",
+      "type": "class",
+      "name": "RuntimeHealthTest",
+      "summary": "Runs the lifecycle shell scripts against stub-command sandboxes to verify asset update ordering, npm backend repair, agent fan-out artifact safety, make doctor propagation, and upgrade behavior including hermetic terminal tool pin bumps via curl stubs.",
+      "tags": [
+        "test",
+        "lifecycle",
+        "integration-test",
+        "shell"
+      ],
+      "complexity": "complex",
+      "filePath": "tests/unit/test_runtime_health.py",
+      "lineRange": [
+        18,
+        847
+      ]
     }
   ],
   "edges": [
@@ -19646,20 +19286,6 @@
     },
     {
       "source": "document:plans/005-make-runtime-health-and-verification-truthful.md",
-      "target": "file:scripts/upgrade-tools.sh",
-      "type": "documents",
-      "direction": "forward",
-      "weight": 0.5
-    },
-    {
-      "source": "document:plans/005-make-runtime-health-and-verification-truthful.md",
-      "target": "file:scripts/update-agent-assets.sh",
-      "type": "documents",
-      "direction": "forward",
-      "weight": 0.5
-    },
-    {
-      "source": "document:plans/005-make-runtime-health-and-verification-truthful.md",
       "target": "file:install/ubuntu/server/ssh_server.sh",
       "type": "documents",
       "direction": "forward",
@@ -19930,328 +19556,6 @@
       "type": "contains",
       "direction": "forward",
       "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:section",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:has_command",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:remove_node_global_agent_cli_shadows",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:ensure_mise_npm_agent_cli",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:is_macos",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:command_output_contains",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:codex_marketplace_is_configured_git_marketplace",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:codex_marketplace_root",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:git_remote_origin_matches",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:codex_marketplace_has_source",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:ensure_claude_superpowers_marketplace",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:ensure_crit_cli",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:ensure_claude_crit_marketplace",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:ensure_claude_ponytail_marketplace",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:ensure_claude_understand_anything_marketplace",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:claude_crit_plugin_is_enabled",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:claude_ponytail_plugin_is_enabled",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:claude_understand_anything_plugin_is_enabled",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:ensure_herdr_integrations",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:update_claude_superpowers",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:update_claude_crit",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:update_claude_ponytail",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:update_claude_understand_anything",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:update_codex_superpowers",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:ensure_codex_ponytail_marketplace",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:update_codex_ponytail",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:update_codex_crit",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:provision_codex_understand_anything_runtime",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:update_codex_understand_anything",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:update_compactiondb",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:main",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "file:scripts/lib/asset-manifest.sh",
-      "type": "depends_on",
-      "direction": "forward",
-      "weight": 0.6
-    },
-    {
-      "source": "file:scripts/upgrade-tools.sh",
-      "target": "function:scripts/upgrade-tools.sh:is_forbidden_homebrew_formula",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/upgrade-tools.sh",
-      "target": "function:scripts/upgrade-tools.sh:upgrade_homebrew",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/upgrade-tools.sh",
-      "target": "function:scripts/upgrade-tools.sh:upgrade_mise_self",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/upgrade-tools.sh",
-      "target": "function:scripts/upgrade-tools.sh:run_mise_with_isolated_git_config",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/upgrade-tools.sh",
-      "target": "function:scripts/upgrade-tools.sh:run_mise_tool_command",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/upgrade-tools.sh",
-      "target": "function:scripts/upgrade-tools.sh:upgrade_mise_tools",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/upgrade-tools.sh",
-      "target": "function:scripts/upgrade-tools.sh:repair_mise_npm_package",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/upgrade-tools.sh",
-      "target": "function:scripts/upgrade-tools.sh:upgrade_mise_npm_agent_tool",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/upgrade-tools.sh",
-      "target": "function:scripts/upgrade-tools.sh:upgrade_agent_cli_tools",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/upgrade-tools.sh",
-      "target": "function:scripts/upgrade-tools.sh:report_ccr_adoption_gates",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/upgrade-tools.sh",
-      "target": "function:scripts/upgrade-tools.sh:upgrade_apt_packages",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/upgrade-tools.sh",
-      "target": "function:scripts/upgrade-tools.sh:parse_args",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/upgrade-tools.sh",
-      "target": "function:scripts/upgrade-tools.sh:main",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/upgrade-tools.sh",
-      "target": "file:scripts/update-agent-assets.sh",
-      "type": "depends_on",
-      "direction": "forward",
-      "weight": 0.6
     },
     {
       "source": "file:home/.chezmoiscripts/common/run_once_before_01-decrypt-private-key.sh.tmpl",
@@ -21752,468 +21056,6 @@
       "weight": 0.5
     },
     {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:render_template",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:render_template",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:same_text",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:same_text",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:same_modified",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:same_modified",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:is_ignored_runtime_path",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:is_ignored_runtime_path",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:deployed_relative_path",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:deployed_relative_path",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:source_files",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:source_files",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:applied_files",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:applied_files",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:expects_executable",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:expects_executable",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:is_warning",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:is_warning",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:expected_claude_skill_targets",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:expected_claude_skill_targets",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:compare_tree_contents",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:compare_tree_contents",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:compare_shared_skills",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:compare_shared_skills",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:compare_claude_skills",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:compare_claude_skills",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:check_executable_hook",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:check_executable_hook",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:normalized_path",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:normalized_path",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:paths_overlap",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:paths_overlap",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:installed_manifest_error",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:installed_manifest_error",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:manifest_path_owners",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:manifest_path_owners",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:manifest_asset_findings",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:manifest_asset_findings",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:asset_failure_message",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:asset_failure_message",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:asset_repair_action",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:asset_repair_action",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:source_derived_directory_names",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:source_derived_directory_names",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:direct_asset_directories",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:direct_asset_directories",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:orphaned_asset_warnings",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:orphaned_asset_warnings",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:deployed_target_path",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:deployed_target_path",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:repair_actions",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:repair_actions",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:execute_repair",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:execute_repair",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:print_failures",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:print_failures",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:check",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:check",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:run_session_staleness",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:run_session_staleness",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:main",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:main",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "class:scripts/check-agent-runtime.py:RepairAction",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "class:scripts/check-agent-runtime.py:RepairAction",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "class:scripts/check-agent-runtime.py:AssetFinding",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "class:scripts/check-agent-runtime.py:AssetFinding",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
       "source": "file:.claude/contextdb/contextdb/cli.py",
       "target": "function:.claude/contextdb/contextdb/cli.py:_add_scope",
       "type": "contains",
@@ -22401,34 +21243,6 @@
       "type": "imports",
       "direction": "forward",
       "weight": 0.7
-    },
-    {
-      "source": "file:tests/unit/test_check_agent_runtime.py",
-      "target": "class:tests/unit/test_check_agent_runtime.py:CheckAgentRuntimeTest",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:tests/unit/test_check_agent_runtime.py",
-      "target": "class:tests/unit/test_check_agent_runtime.py:CheckAgentRuntimeTest",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:tests/unit/test_runtime_health.py",
-      "target": "class:tests/unit/test_runtime_health.py:RuntimeHealthTest",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:tests/unit/test_runtime_health.py",
-      "target": "class:tests/unit/test_runtime_health.py:RuntimeHealthTest",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
     },
     {
       "source": "file:.claude/contextdb/contextdb/config.py",
@@ -23894,20 +22708,6 @@
       "weight": 0.8
     },
     {
-      "source": "file:tests/unit/test_asset_manifest.py",
-      "target": "class:tests/unit/test_asset_manifest.py:AssetManifestTest",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:tests/unit/test_asset_manifest.py",
-      "target": "class:tests/unit/test_asset_manifest.py:AssetManifestTest",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
       "source": "file:tests/unit/test_remove_agent_asset.py",
       "target": "class:tests/unit/test_remove_agent_asset.py:RemoveAgentAssetTest",
       "type": "contains",
@@ -24951,13 +23751,6 @@
       "weight": 0.5
     },
     {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "function:scripts/update-agent-assets.sh:resolve_dotfiles_source_dir",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
       "source": "file:home/dot_zshrc",
       "target": "function:home/dot_zshrc:claude-update",
       "type": "contains",
@@ -24965,60 +23758,11 @@
       "weight": 1
     },
     {
-      "source": "file:home/.chezmoiscripts/common/run_once_after_06-install-agent-assets.sh.tmpl",
-      "target": "file:scripts/update-agent-assets.sh",
-      "type": "depends_on",
-      "direction": "forward",
-      "weight": 0.6
-    },
-    {
       "source": "file:home/dot_zshrc",
       "target": "file:home/dot_local/bin/common/executable_herdr-session",
       "type": "depends_on",
       "direction": "forward",
       "weight": 0.6
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:chezmoi_drift_warnings",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "function:scripts/check-agent-runtime.py:chezmoi_drift_warnings",
-      "type": "exports",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "file:tests/install/common/lifecycle.bats",
-      "target": "function:tests/install/common/lifecycle.bats:run_update_fixture",
-      "type": "contains",
-      "direction": "forward",
-      "weight": 1
-    },
-    {
-      "source": "file:scripts/lib/asset-manifest.sh",
-      "target": "file:tests/unit/test_asset_manifest.py",
-      "type": "tested_by",
-      "direction": "forward",
-      "weight": 0.5
-    },
-    {
-      "source": "file:scripts/update-agent-assets.sh",
-      "target": "file:tests/unit/test_asset_manifest.py",
-      "type": "tested_by",
-      "direction": "forward",
-      "weight": 0.5
-    },
-    {
-      "source": "file:scripts/check-agent-runtime.py",
-      "target": "file:tests/unit/test_check_agent_runtime.py",
-      "type": "tested_by",
-      "direction": "forward",
-      "weight": 0.5
     },
     {
       "source": "file:scripts/generate-agent-configs.py",
@@ -25042,14 +23786,546 @@
       "weight": 0.5
     },
     {
-      "source": "file:home/dot_local/bin/common/executable_agent-fanout",
-      "target": "file:tests/unit/test_runtime_health.py",
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:same_modified",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:same_modified",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:chezmoi_drift_warnings",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:chezmoi_drift_warnings",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:expected_claude_skill_targets",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:expected_claude_skill_targets",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:terminal_browser_receipt_paths",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:terminal_browser_receipt_paths",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:compare_tree_contents",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:compare_tree_contents",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:compare_shared_skills",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:compare_shared_skills",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:compare_claude_skills",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:compare_claude_skills",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:installed_manifest_error",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:installed_manifest_error",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:manifest_path_owners",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:manifest_path_owners",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:manifest_asset_findings",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:manifest_asset_findings",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:asset_repair_action",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:asset_repair_action",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:source_derived_directory_names",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:source_derived_directory_names",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:orphaned_asset_warnings",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:orphaned_asset_warnings",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:repair_actions",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:repair_actions",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:check",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:check",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:main",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "func:scripts/check-agent-runtime.py:main",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:resolve_dotfiles_source_dir",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:remove_node_global_agent_cli_shadows",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:ensure_mise_npm_agent_cli",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:codex_marketplace_is_configured_git_marketplace",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:git_remote_origin_matches",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:codex_marketplace_has_source",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:ensure_crit_cli",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:claude_crit_plugin_is_enabled",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:claude_ponytail_plugin_is_enabled",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:claude_understand_anything_plugin_is_enabled",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:ensure_herdr_integrations",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:update_claude_superpowers",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:update_claude_crit",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:update_claude_ponytail",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:update_claude_understand_anything",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:update_codex_superpowers",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:ensure_codex_ponytail_marketplace",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:update_codex_ponytail",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:update_codex_crit",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:provision_codex_understand_anything_runtime",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:update_codex_understand_anything",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:zenbu_platform_supported",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:run_pinned_installer",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:update_terminal_code",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:update_terminal_browser",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "func:scripts/update-agent-assets.sh:main",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/upgrade-tools.sh",
+      "target": "func:scripts/upgrade-tools.sh:is_forbidden_homebrew_formula",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/upgrade-tools.sh",
+      "target": "func:scripts/upgrade-tools.sh:upgrade_homebrew",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/upgrade-tools.sh",
+      "target": "func:scripts/upgrade-tools.sh:upgrade_mise_self",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/upgrade-tools.sh",
+      "target": "func:scripts/upgrade-tools.sh:run_mise_with_isolated_git_config",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/upgrade-tools.sh",
+      "target": "func:scripts/upgrade-tools.sh:run_mise_tool_command",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/upgrade-tools.sh",
+      "target": "func:scripts/upgrade-tools.sh:upgrade_mise_tools",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/upgrade-tools.sh",
+      "target": "func:scripts/upgrade-tools.sh:repair_mise_npm_package",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/upgrade-tools.sh",
+      "target": "func:scripts/upgrade-tools.sh:upgrade_mise_npm_agent_tool",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/upgrade-tools.sh",
+      "target": "func:scripts/upgrade-tools.sh:upgrade_agent_cli_tools",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/upgrade-tools.sh",
+      "target": "func:scripts/upgrade-tools.sh:fetch_installer_pin",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/upgrade-tools.sh",
+      "target": "func:scripts/upgrade-tools.sh:bump_terminal_tool_pins",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/upgrade-tools.sh",
+      "target": "func:scripts/upgrade-tools.sh:report_ccr_adoption_gates",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/upgrade-tools.sh",
+      "target": "func:scripts/upgrade-tools.sh:upgrade_apt_packages",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/upgrade-tools.sh",
+      "target": "func:scripts/upgrade-tools.sh:parse_args",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/upgrade-tools.sh",
+      "target": "func:scripts/upgrade-tools.sh:main",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "file:scripts/lib/installer-pins.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/upgrade-tools.sh",
+      "target": "file:scripts/lib/installer-pins.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/upgrade-tools.sh",
+      "target": "file:scripts/update-agent-assets.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/check-agent-runtime.py",
+      "target": "file:tests/unit/test_check_agent_runtime.py",
       "type": "tested_by",
       "direction": "forward",
       "weight": 0.5
     },
     {
-      "source": "file:scripts/check-tools.sh",
+      "source": "file:scripts/update-agent-assets.sh",
       "target": "file:tests/unit/test_runtime_health.py",
       "type": "tested_by",
       "direction": "forward",
@@ -25063,11 +24339,81 @@
       "weight": 0.5
     },
     {
-      "source": "file:scripts/update-agent-assets.sh",
+      "source": "file:scripts/check-agent-runtime.py",
       "target": "file:tests/unit/test_runtime_health.py",
       "type": "tested_by",
       "direction": "forward",
       "weight": 0.5
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "file:tests/unit/test_asset_manifest.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "file:tests/install/common/lifecycle.bats",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:scripts/upgrade-tools.sh",
+      "target": "file:tests/install/common/lifecycle.bats",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:scripts/lib/installer-pins.sh",
+      "target": "file:tests/install/common/lifecycle.bats",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:tests/unit/test_asset_manifest.py",
+      "target": "class:tests/unit/test_asset_manifest.py:AssetManifestTest",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:tests/unit/test_asset_manifest.py",
+      "target": "class:tests/unit/test_asset_manifest.py:AssetManifestTest",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:tests/unit/test_check_agent_runtime.py",
+      "target": "class:tests/unit/test_check_agent_runtime.py:CheckAgentRuntimeTest",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:tests/unit/test_check_agent_runtime.py",
+      "target": "class:tests/unit/test_check_agent_runtime.py:CheckAgentRuntimeTest",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:tests/unit/test_runtime_health.py",
+      "target": "class:tests/unit/test_runtime_health.py:RuntimeHealthTest",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:tests/unit/test_runtime_health.py",
+      "target": "class:tests/unit/test_runtime_health.py:RuntimeHealthTest",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
     }
   ],
   "layers": [
@@ -25390,7 +24736,8 @@
         "file:scripts/usage-report.py",
         "file:scripts/validate-agent-assets.py",
         "file:scripts/lib/asset-manifest.sh",
-        "file:scripts/update-agent-assets.sh"
+        "file:scripts/update-agent-assets.sh",
+        "file:scripts/lib/installer-pins.sh"
       ]
     },
     {

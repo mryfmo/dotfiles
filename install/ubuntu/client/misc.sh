@@ -14,6 +14,13 @@ fi
 
 readonly PACKAGES=(
     gparted
+    # Chromium/Electron runtime libraries used by terminal-code and
+    # terminal-browser; their installers only warn when these are missing.
+    # libgtk-3-0 and libasound2 use their t64 package names on Ubuntu 24.04.
+    libnss3
+    libgtk-3-0t64
+    libasound2t64
+    libgbm1
 )
 
 #

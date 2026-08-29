@@ -355,6 +355,76 @@ function upgrade_agent_assets() {
 }
 
 #
+# @description Print the VERSION and script SHA256 of one upstream installer.
+# @arg $1 string Installer URL.
+# @stdout Two lines: the baked-in VERSION value, then the script SHA256.
+#
+function fetch_installer_pin() {
+    local url="$1"
+    local installer version
+
+    installer="$(mktemp)"
+    # shellcheck disable=SC2064 # Expand the temp path now; it never changes.
+    trap "rm -f '${installer}'" RETURN
+    curl -fsSL "${url}" -o "${installer}" || return 1
+    version="$(sed -n 's/^VERSION="\(.*\)"$/\1/p' "${installer}" | head -n 1)"
+    # The value is upstream-controlled and later written into a sourced shell
+    # file; reject anything that is not a plausible version tag so a malicious
+    # VERSION line cannot inject executable shell into installer-pins.sh.
+    [[ "${version}" =~ ^[A-Za-z0-9._+-]+$ ]] || return 1
+    printf '%s\n' "${version}"
+    shasum -a 256 "${installer}" | awk '{ print $1 }'
+}
+
+#
+# @description Bump the terminal-code and terminal-browser installer pins to the latest upstream release.
+# @description
+#   Rewrites scripts/lib/installer-pins.sh wholesale; the diff is reviewed and
+#   committed like a mise config/lock bump. The subsequent agent asset
+#   regeneration phase installs the newly pinned versions.
+#
+function bump_terminal_tool_pins() {
+    local repo_root pins tode_pin tb_pin
+
+    section "terminal tool pins"
+    repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    pins="${repo_root}/scripts/lib/installer-pins.sh"
+    tode_pin="$(fetch_installer_pin "https://tode.sh/install")" || {
+        printf 'warning: unable to fetch the tode installer pin; keeping current pins\n' >&2
+        return 1
+    }
+    tb_pin="$(fetch_installer_pin "https://terminal-browser.sh/install")" || {
+        printf 'warning: unable to fetch the terminal-browser installer pin; keeping current pins\n' >&2
+        return 1
+    }
+
+    if ! cat > "${pins}" << EOF; then
+#!/usr/bin/env bash
+# shellcheck disable=SC2034 # Variables are consumed by the scripts that source this file.
+
+# @file scripts/lib/installer-pins.sh
+# @brief Pinned upstream installer versions and script checksums.
+# @description
+#   Holds the reviewed version and installer-script SHA256 for upstream tools
+#   installed through sha256-verified curl installers. The file is rewritten
+#   wholesale by scripts/upgrade-tools.sh (bump_terminal_tool_pins) and
+#   consumed by scripts/update-agent-assets.sh. Review and commit the diff
+#   like a mise config/lock bump. Assignments stay non-readonly so the file
+#   can be sourced again after a rewrite within the same process.
+
+TERMINAL_CODE_PIN_VERSION="$(sed -n 1p <<< "${tode_pin}")"
+TERMINAL_CODE_INSTALLER_SHA256="$(sed -n 2p <<< "${tode_pin}")"
+TERMINAL_BROWSER_PIN_VERSION="$(sed -n 1p <<< "${tb_pin}")"
+TERMINAL_BROWSER_INSTALLER_SHA256="$(sed -n 2p <<< "${tb_pin}")"
+EOF
+        printf 'warning: unable to write %s; keeping current pins\n' "${pins}" >&2
+        return 1
+    fi
+    printf 'Pinned tode %s and terminal-browser %s; review and commit the installer-pins diff.\n' \
+        "$(sed -n 1p <<< "${tode_pin}")" "$(sed -n 1p <<< "${tb_pin}")"
+}
+
+#
 # @description Upgrade uv tool installations when uv is available.
 #
 function upgrade_uv_tools() {
@@ -458,6 +528,7 @@ function main() {
     run_required_phase "mise self-update" upgrade_mise_self
     run_required_phase "mise inventory/install/upgrade" upgrade_mise_tools
     run_required_phase "Codex/Claude CLI upgrade" upgrade_agent_cli_tools
+    run_optional_phase "terminal tool pin bump" bump_terminal_tool_pins
     run_required_phase "agent asset regeneration" upgrade_agent_assets
     run_required_phase "uv tool upgrade" upgrade_uv_tools
     run_optional_phase "GitHub CLI extension upgrade" upgrade_gh_extensions

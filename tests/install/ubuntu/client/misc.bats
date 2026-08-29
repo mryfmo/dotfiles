@@ -12,10 +12,14 @@ function teardown() {
 
 @test "[ubuntu-client] PACKAGES for misc" {
     num_packages="${#PACKAGES[@]}"
-    [ $num_packages -eq 1 ]
+    [ $num_packages -eq 5 ]
 
     expected_packages=(
         gparted
+        libnss3
+        libgtk-3-0t64
+        libasound2t64
+        libgbm1
     )
     for ((i = 0; i < ${#expected_packages[*]}; ++i)); do
         [ "${PACKAGES[$i]}" == "${expected_packages[$i]}" ]
@@ -25,6 +29,8 @@ function teardown() {
 @test "[ubuntu-client] misc" {
     DOTFILES_DEBUG=1 bash "${SCRIPT_PATH}"
 
-    run dpkg -s gparted
-    [ "${status}" -eq 0 ]
+    for package in gparted libnss3 libgtk-3-0t64 libasound2t64 libgbm1; do
+        run dpkg -s "${package}"
+        [ "${status}" -eq 0 ]
+    done
 }

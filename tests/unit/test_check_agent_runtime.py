@@ -14,7 +14,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-
 ROOT = Path(__file__).resolve().parents[2]
 CHECKER = ROOT / "scripts/check-agent-runtime.py"
 
@@ -41,7 +40,9 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         path.write_text(text)
         return path
 
-    def write_target(self, rel: str, text: str = "content\n", *, executable: bool = False) -> Path:
+    def write_target(
+        self, rel: str, text: str = "content\n", *, executable: bool = False
+    ) -> Path:
         path = self.target_root / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text)
@@ -52,7 +53,13 @@ class CheckAgentRuntimeTest(unittest.TestCase):
     def compare(self, *, warn_unmanaged_top_level: bool = False) -> list[str]:
         expected_sources = self.module.source_files(self.source_root)
         expected = {rel: path.read_text() for rel, path in expected_sources.items()}
-        return self.module.compare_tree_contents("skills", expected, self.target_root, expected_sources, warn_unmanaged_top_level)
+        return self.module.compare_tree_contents(
+            "skills",
+            expected,
+            self.target_root,
+            expected_sources,
+            warn_unmanaged_top_level,
+        )
 
     def test_executable_prefix_is_compared_against_deployed_name(self) -> None:
         self.write_source("agmsg/scripts/executable_send.sh")
@@ -113,21 +120,31 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.write_target("agmsg/scripts/send.sh", executable=True)
         self.write_target("agmsg/extra.txt")
 
-        self.assertEqual(self.compare(), ["skills has unexpected files: agmsg/extra.txt"])
+        self.assertEqual(
+            self.compare(), ["skills has unexpected files: agmsg/extra.txt"]
+        )
 
     def test_unmanaged_top_level_skill_dir_warns(self) -> None:
         self.write_source("agmsg/scripts/executable_send.sh")
         self.write_target("agmsg/scripts/send.sh", executable=True)
         self.write_target("crit/SKILL.md")
 
-        self.assertEqual(self.compare(warn_unmanaged_top_level=True), [f"WARN: unmanaged skill dir: {self.target_root / 'crit'}"])
+        self.assertEqual(
+            self.compare(warn_unmanaged_top_level=True),
+            [f"WARN: unmanaged skill dir: {self.target_root / 'crit'}"],
+        )
 
-    def test_managed_top_level_extra_still_fails_with_unmanaged_warning_mode(self) -> None:
+    def test_managed_top_level_extra_still_fails_with_unmanaged_warning_mode(
+        self,
+    ) -> None:
         self.write_source("agmsg/scripts/executable_send.sh")
         self.write_target("agmsg/scripts/send.sh", executable=True)
         self.write_target("agmsg/extra.txt")
 
-        self.assertEqual(self.compare(warn_unmanaged_top_level=True), ["skills has unexpected files: agmsg/extra.txt"])
+        self.assertEqual(
+            self.compare(warn_unmanaged_top_level=True),
+            ["skills has unexpected files: agmsg/extra.txt"],
+        )
 
     def test_content_drift_still_fails(self) -> None:
         self.write_source("agmsg/scripts/executable_send.sh", "source\n")
@@ -208,9 +225,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         status = mock.Mock(
             returncode=0,
             stdout=(
-                " M .agents/agent-config.yaml\n"
-                "MM .zshrc\n"
-                "MM .codex/deep.config.toml\n"
+                " M .agents/agent-config.yaml\nMM .zshrc\nMM .codex/deep.config.toml\n"
             ),
             stderr="",
         )
@@ -276,9 +291,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         manifest = {
             "version": 1,
             "steps": {
-                "install_stale_skill": {
-                    "paths": [str(skills / "stale-skill/payload")]
-                },
+                "install_stale_skill": {"paths": [str(skills / "stale-skill/payload")]},
                 "ensure_mise_npm_agent_cli:claude": {
                     "paths": [str(agents / "stale-root")]
                 },
@@ -305,6 +318,57 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             agents / "compactiondb",
         ):
             self.assertNotIn(str(accounted), joined)
+
+    def test_terminal_browser_receipt_links_are_not_orphans(self) -> None:
+        home = self.temp_dir / "home"
+        source = self.temp_dir / "repo-source"
+        skills = home / ".agents/skills"
+        (source / "dot_agents/skills/managed").mkdir(parents=True)
+        (skills / "terminal-browser").mkdir(parents=True)
+        (skills / "unlisted-skill").mkdir(parents=True)
+        receipt = home / ".local/state/terminal-browser/skills.links"
+        receipt.parent.mkdir(parents=True)
+        receipt.write_text(f"{skills / 'terminal-browser'}\n")
+
+        warnings = self.module.orphaned_asset_warnings(home, source)
+
+        self.assertEqual(
+            [
+                f"WARN: orphaned agent asset: {skills / 'unlisted-skill'}; manual review required",
+            ],
+            warnings,
+        )
+
+    def test_missing_terminal_browser_receipt_is_harmless(self) -> None:
+        self.assertEqual(
+            set(),
+            self.module.terminal_browser_receipt_paths(self.temp_dir / "no-home"),
+        )
+
+    def test_ignored_paths_suppress_receipt_linked_tree_entries(self) -> None:
+        self.write_source("agmsg/scripts/executable_send.sh")
+        self.write_target("agmsg/scripts/send.sh", executable=True)
+        self.write_target("terminal-browser/SKILL.md")
+
+        expected_sources = self.module.source_files(self.source_root)
+        expected = {rel: path.read_text() for rel, path in expected_sources.items()}
+        ignored = {self.module.normalized_path(self.target_root / "terminal-browser")}
+
+        with_ignore = self.module.compare_tree_contents(
+            "skills",
+            expected,
+            self.target_root,
+            expected_sources,
+            ignored_paths=ignored,
+        )
+        without_ignore = self.module.compare_tree_contents(
+            "skills", expected, self.target_root, expected_sources
+        )
+
+        self.assertEqual([], with_ignore)
+        self.assertEqual(
+            ["skills has unexpected files: terminal-browser/SKILL.md"], without_ignore
+        )
 
     def test_repair_actions_map_only_detected_file_drift(self) -> None:
         missing = self.target_root / "missing.json"
@@ -446,13 +510,16 @@ class CheckAgentRuntimeTest(unittest.TestCase):
 
         self.assertEqual(0, result)
         self.assertEqual(1, len(actions))
-        self.assertEqual([], self.module.compare_tree_contents(
-            "shared skill directory",
-            {Path("agmsg/scripts/history.sh"): source.read_text()},
-            home / ".agents/skills",
-            {Path("agmsg/scripts/history.sh"): source},
-            warn_unmanaged_top_level=True,
-        ))
+        self.assertEqual(
+            [],
+            self.module.compare_tree_contents(
+                "shared skill directory",
+                {Path("agmsg/scripts/history.sh"): source.read_text()},
+                home / ".agents/skills",
+                {Path("agmsg/scripts/history.sh"): source},
+                warn_unmanaged_top_level=True,
+            ),
+        )
 
     def test_manifest_drift_requires_recorded_step_with_missing_path(self) -> None:
         home = self.temp_dir / "home"
@@ -652,7 +719,9 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             self.module.repair_actions = lambda failures, home=None: (
                 [action] if failures else []
             )
-            self.module.execute_repair = lambda candidate: calls.append(candidate) or True
+            self.module.execute_repair = lambda candidate: (
+                calls.append(candidate) or True
+            )
             stdout = io.StringIO()
             stderr = io.StringIO()
             with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):

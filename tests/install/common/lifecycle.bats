@@ -364,6 +364,27 @@ herdr server reload-config" ]
     grep -q 'validate_understand_anything_assets' scripts/validate-agent-assets.py
 }
 
+@test "[common] agent asset lifecycle installs pinned zenbu-labs terminal tools" {
+    local bump_line asset_line
+
+    grep -q 'TERMINAL_CODE_PIN_VERSION=' scripts/lib/installer-pins.sh
+    grep -q 'TERMINAL_CODE_INSTALLER_SHA256=' scripts/lib/installer-pins.sh
+    grep -q 'TERMINAL_BROWSER_PIN_VERSION=' scripts/lib/installer-pins.sh
+    grep -q 'TERMINAL_BROWSER_INSTALLER_SHA256=' scripts/lib/installer-pins.sh
+    grep -q 'TERMINAL_CODE_INSTALLER_URL="https://tode.sh/install"' scripts/update-agent-assets.sh
+    grep -q 'TERMINAL_BROWSER_INSTALLER_URL="https://terminal-browser.sh/install"' scripts/update-agent-assets.sh
+    grep -q 'function run_pinned_installer()' scripts/update-agent-assets.sh
+    grep -q 'TERMINAL_BROWSER_SKIP_EDITOR_SETUP=1' scripts/update-agent-assets.sh
+    grep -q '^    update_terminal_code$' scripts/update-agent-assets.sh
+    grep -q '^    update_terminal_browser$' scripts/update-agent-assets.sh
+    grep -q 'function bump_terminal_tool_pins()' scripts/upgrade-tools.sh
+    bump_line="$(grep -n 'run_optional_phase "terminal tool pin bump" bump_terminal_tool_pins' scripts/upgrade-tools.sh | cut -d: -f1)"
+    asset_line="$(grep -n 'run_required_phase "agent asset regeneration" upgrade_agent_assets' scripts/upgrade-tools.sh | cut -d: -f1)"
+    [ -n "${bump_line}" ]
+    [ -n "${asset_line}" ]
+    [ "${bump_line}" -lt "${asset_line}" ]
+}
+
 @test "[common] agent asset lifecycle renders model profiles and permgate hooks" {
     ! grep -q 'aqua:tak848/ccgate' scripts/update-agent-assets.sh
     ! grep -q '"aqua:tak848/ccgate" = "0.9.5"' home/dot_mise/config.toml

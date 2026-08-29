@@ -12,7 +12,6 @@ import textwrap
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -37,7 +36,7 @@ class RuntimeHealthTest(unittest.TestCase):
         check: bool = False,
     ) -> subprocess.CompletedProcess[str]:
         """Run a fixed test command whose dynamic arguments come only from its fixture."""
-        return subprocess.run(  # noqa: S603, S607 -- commands and PATH stubs are test-owned
+        return subprocess.run(
             command,
             cwd=cwd,
             env=env,
@@ -104,10 +103,14 @@ class RuntimeHealthTest(unittest.TestCase):
             ROOT / "scripts/lib/asset-manifest.sh",
             repo / "scripts/lib/asset-manifest.sh",
         )
-        (repo / "vendor/compactiondb").mkdir(parents=True)
-        (repo / "vendor/compactiondb/CHANGELOG.md").write_text(
-            "## 2.0.0+dotfiles.5\n"
+        shutil.copy(
+            ROOT / "scripts/lib/installer-pins.sh",
+            repo / "scripts/lib/installer-pins.sh",
         )
+        (repo / "vendor/compactiondb").mkdir(parents=True)
+        (repo / "vendor/compactiondb/CHANGELOG.md").write_text("## 2.0.0+dotfiles.5\n")
+        # Keep the run hermetic: downloads fail fast instead of hitting the network.
+        self.executable(bin_dir / "curl", "exit 1\n")
         self.executable(
             bin_dir / "npm",
             """
@@ -160,10 +163,14 @@ class RuntimeHealthTest(unittest.TestCase):
             ROOT / "scripts/lib/asset-manifest.sh",
             repo / "scripts/lib/asset-manifest.sh",
         )
-        (repo / "vendor/compactiondb").mkdir(parents=True)
-        (repo / "vendor/compactiondb/CHANGELOG.md").write_text(
-            "## 2.0.0+dotfiles.5\n"
+        shutil.copy(
+            ROOT / "scripts/lib/installer-pins.sh",
+            repo / "scripts/lib/installer-pins.sh",
         )
+        (repo / "vendor/compactiondb").mkdir(parents=True)
+        (repo / "vendor/compactiondb/CHANGELOG.md").write_text("## 2.0.0+dotfiles.5\n")
+        # Keep the run hermetic: downloads fail fast instead of hitting the network.
+        self.executable(bin_dir / "curl", "exit 1\n")
         self.executable(bin_dir / "npm", "exit 1\n")
         self.executable(
             shim_dir / "claude",
@@ -210,19 +217,17 @@ EOF
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         calls = log.read_text().splitlines()
-        repair = (
-            "mise npm 0 install --force --locked "
-            "npm:@anthropic-ai/claude-code"
-        )
+        repair = "mise npm 0 install --force --locked npm:@anthropic-ai/claude-code"
         self.assertIn(repair, calls)
         self.assertFalse(
             any(
-                call.endswith("npm:@openai/codex")
-                and call.startswith("mise ")
+                call.endswith("npm:@openai/codex") and call.startswith("mise ")
                 for call in calls
             )
         )
-        self.assertLess(calls.index(repair), calls.index("claude plugin marketplace list"))
+        self.assertLess(
+            calls.index(repair), calls.index("claude plugin marketplace list")
+        )
 
     def test_agent_launchers_do_not_hardcode_model_ids(self) -> None:
         herdr = (ROOT / "home/dot_local/bin/common/executable_herdr-agents").read_text()
@@ -544,10 +549,29 @@ EOF
         repo = self.temp_dir / f"upgrade-{fail_phase}"
         bin_dir = repo / "bin"
         home = repo / "home"
-        (repo / "scripts").mkdir(parents=True)
+        (repo / "scripts/lib").mkdir(parents=True)
         home.mkdir()
         shutil.copy(
             ROOT / "scripts/upgrade-tools.sh", repo / "scripts/upgrade-tools.sh"
+        )
+        shutil.copy(
+            ROOT / "scripts/lib/installer-pins.sh",
+            repo / "scripts/lib/installer-pins.sh",
+        )
+        # Hermetic installer downloads: serve a deterministic fake installer so
+        # the terminal tool pin-bump phase never touches the network in tests.
+        self.executable(
+            bin_dir / "curl",
+            """
+            printf 'curl %s\n' "$*" >> "$TEST_LOG"
+            out=""
+            while [ "$#" -gt 0 ]; do
+                if [ "$1" = "-o" ]; then out="$2"; shift; fi
+                shift
+            done
+            [ -n "$out" ] || exit 1
+            printf 'VERSION="v9.9.9"\nCHANNEL="stable"\n' > "$out"
+            """,
         )
         self.executable(
             repo / "scripts/update-agent-assets.sh",
@@ -748,8 +772,12 @@ EOF
         log = (repo / "commands.log").read_text()
         self.assertNotIn("fallback npm", log)
         self.assertIn("mise exec node -- npm view @openai/codex version", log)
-        self.assertIn("mise exec node -- npm view @anthropic-ai/claude-code version", log)
-        self.assertRegex(log, r"mise exec node -- npm install -g .* @openai/codex@1\.2\.3")
+        self.assertIn(
+            "mise exec node -- npm view @anthropic-ai/claude-code version", log
+        )
+        self.assertRegex(
+            log, r"mise exec node -- npm install -g .* @openai/codex@1\.2\.3"
+        )
         self.assertRegex(
             log,
             r"mise exec node -- npm install -g .* @anthropic-ai/claude-code@1\.2\.3",
@@ -765,6 +793,25 @@ EOF
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertIn("optional warnings: 1", result.stdout)
+
+    def test_upgrade_bumps_terminal_tool_pins_from_fetched_installers(self) -> None:
+        repo, env = self.upgrade_fixture("none")
+
+        result = self.run_test_command(
+            ["bash", "scripts/upgrade-tools.sh"],
+            cwd=repo,
+            env=env,
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("Pinned tode v9.9.9 and terminal-browser v9.9.9", result.stdout)
+        pins = (repo / "scripts/lib/installer-pins.sh").read_text()
+        self.assertIn('TERMINAL_CODE_PIN_VERSION="v9.9.9"', pins)
+        self.assertIn('TERMINAL_BROWSER_PIN_VERSION="v9.9.9"', pins)
+        self.assertRegex(pins, r'TERMINAL_CODE_INSTALLER_SHA256="[0-9a-f]{64}"')
+        log = (repo / "commands.log").read_text()
+        self.assertIn("curl -fsSL https://tode.sh/install", log)
+        self.assertIn("curl -fsSL https://terminal-browser.sh/install", log)
 
     def test_upgrade_skips_ccr_notice_when_gh_is_unavailable(self) -> None:
         repo, env = self.upgrade_fixture("none")

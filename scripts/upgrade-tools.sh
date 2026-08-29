@@ -400,6 +400,7 @@ function bump_terminal_tool_pins() {
 
     cat > "${pins}" << EOF
 #!/usr/bin/env bash
+# shellcheck disable=SC2034 # Variables are consumed by the scripts that source this file.
 
 # @file scripts/lib/installer-pins.sh
 # @brief Pinned upstream installer versions and script checksums.

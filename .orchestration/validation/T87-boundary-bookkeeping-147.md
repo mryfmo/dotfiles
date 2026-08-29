@@ -15,8 +15,16 @@
 
 ## Pull-request scope and CI
 
-Final `git show --stat` and `gh pr checks` outputs are recorded in the follow-up artifact update after all three PR numbers and green states exist.
+- PR A #150, `git show --stat`: `.ua/fingerprints.json`, `.ua/knowledge-graph.json`, `.ua/meta.json`, and 13 `.orchestration/**` audit/artifact files only; initial commit `b6407b2` is 16 files, 443 insertions, 16 deletions. The follow-up changes only T87 report/validation/autoskill artifacts.
+- PR B #148, `git show --stat a4417ab`: exactly `home/dot_agents/skills/agmsg/templates/cmd.claude-code.md`; 1 file, 185 insertions, 11 deletions.
+- PR C #149, `git show --stat origin/main..HEAD`: all three same-class commits touch exactly `home/dot_mise/config.toml` and `home/dot_mise/mise.lock`; no third path.
+- Final `gh pr checks 148`: all required checks pass (`nix` skipped by design).
+- Final `gh pr checks 149`: all required checks pass (`nix` skipped by design).
+- Final `gh pr checks 150`: all required checks pass (`nix` skipped by design).
+- No PR was merged or force-pushed. PR C's two CI-pin corrections remain same-class follow-ups and will squash to one class commit under the repository convention.
 
 ## Boundary status
 
-The final main-checkout `git status --short` audit is recorded after PR A's final push and exact untracked orchestration cleanup.
+- `git status --short .orchestration`: empty.
+- `git ls-files --others --exclude-standard .orchestration`: empty.
+- The eight canonical-checkout tail files were removed only after commit `b6407b2` was pushed; they remain recoverable from PR #150.

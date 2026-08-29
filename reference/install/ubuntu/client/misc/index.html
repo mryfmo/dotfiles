@@ -3256,6 +3256,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../scripts/lib/installer-pins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/installer-pins.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -3523,6 +3551,13 @@
 
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">PACKAGES</span><span class="o">=(</span>
 <span class="w">    </span>gparted
+<span class="w">    </span><span class="c1"># Chromium/Electron runtime libraries used by terminal-code and</span>
+<span class="w">    </span><span class="c1"># terminal-browser; their installers only warn when these are missing.</span>
+<span class="w">    </span><span class="c1"># libgtk-3-0 and libasound2 use their t64 package names on Ubuntu 24.04.</span>
+<span class="w">    </span>libnss3
+<span class="w">    </span>libgtk-3-0t64
+<span class="w">    </span>libasound2t64
+<span class="w">    </span>libgbm1
 <span class="o">)</span>
 
 <span class="c1">#</span>

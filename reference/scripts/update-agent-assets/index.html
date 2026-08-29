@@ -3252,6 +3252,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lib/installer-pins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/lib/installer-pins.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -3520,6 +3548,7 @@
 <li><code>provision_codex_understand_anything_runtime</code></li>
 <li><code>remove_node_global_agent_cli_shadows</code></li>
 <li><code>resolve_dotfiles_source_dir</code></li>
+<li><code>run_pinned_installer</code></li>
 <li><code>section</code></li>
 <li><code>update_claude_crit</code></li>
 <li><code>update_claude_ponytail</code></li>
@@ -3530,6 +3559,9 @@
 <li><code>update_codex_superpowers</code></li>
 <li><code>update_codex_understand_anything</code></li>
 <li><code>update_compactiondb</code></li>
+<li><code>update_terminal_browser</code></li>
+<li><code>update_terminal_code</code></li>
+<li><code>zenbu_platform_supported</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
@@ -3576,6 +3608,8 @@
 <span class="w">    </span><span class="c1"># shellcheck source=scripts/lib/asset-manifest.sh</span>
 <span class="w">    </span><span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AGENT_ASSET_SCRIPT_DIR</span><span class="si">}</span><span class="s2">/lib/asset-manifest.sh"</span>
 <span class="k">fi</span>
+<span class="c1"># shellcheck source=scripts/lib/installer-pins.sh</span>
+<span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">AGENT_ASSET_SCRIPT_DIR</span><span class="si">}</span><span class="s2">/lib/installer-pins.sh"</span>
 
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CLAUDE_SUPERPOWERS_PLUGIN</span><span class="o">=</span><span class="s2">"superpowers@claude-plugins-official"</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CLAUDE_SUPERPOWERS_MARKETPLACE</span><span class="o">=</span><span class="s2">"anthropics/claude-plugins-official"</span>
@@ -3598,6 +3632,12 @@
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT</span><span class="o">=</span><span class="s2">"797ce7969312411be2e125c39628854166f055d7"</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256</span><span class="o">=</span><span class="s2">"54f0350d09f43fcc8245f3f1fb2057bd322c36c6f158483dd47dcaf5f4a44eba"</span>
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL</span><span class="o">=</span><span class="s2">"https://raw.githubusercontent.com/Egonex-AI/Understand-Anything/</span><span class="si">${</span><span class="nv">CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT</span><span class="si">}</span><span class="s2">/install.sh"</span>
+<span class="c1"># Versions and installer checksums for both URLs are pinned in</span>
+<span class="c1"># scripts/lib/installer-pins.sh and bumped by scripts/upgrade-tools.sh.</span>
+<span class="c1"># Install paths below assume the default XDG layout; the upstream installers</span>
+<span class="c1"># honor XDG_*_HOME/TODE_INSTALL_ROOT overrides that this lifecycle does not.</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">TERMINAL_CODE_INSTALLER_URL</span><span class="o">=</span><span class="s2">"https://tode.sh/install"</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">TERMINAL_BROWSER_INSTALLER_URL</span><span class="o">=</span><span class="s2">"https://terminal-browser.sh/install"</span>
 
 <span class="c1">#</span>
 <span class="c1"># @description Print a section heading.</span>
@@ -4201,6 +4241,107 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Return success when the zenbu-labs installers support this platform.</span>
+<span class="c1"># @description</span>
+<span class="c1">#   Upstream publishes darwin-arm64, linux-x64, and linux-arm64 builds only;</span>
+<span class="c1">#   Intel macOS has no release asset, so it is skipped rather than failed.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>zenbu_platform_supported<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-s<span class="k">)</span><span class="s2">-</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span>Darwin-arm64<span class="w"> </span><span class="p">|</span><span class="w"> </span>Linux-x86_64<span class="w"> </span><span class="p">|</span><span class="w"> </span>Linux-amd64<span class="w"> </span><span class="p">|</span><span class="w"> </span>Linux-aarch64<span class="w"> </span><span class="p">|</span><span class="w"> </span>Linux-arm64<span class="o">)</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Download an upstream installer, verify its pinned checksum, and run it.</span>
+<span class="c1"># @arg $1 string Installer URL.</span>
+<span class="c1"># @arg $2 string Expected installer script SHA256.</span>
+<span class="c1"># @arg $@ string Optional NAME=value environment assignments for the installer run.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>run_pinned_installer<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">url</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">expected</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>actual<span class="w"> </span>installer
+<span class="w">    </span><span class="nb">shift</span><span class="w"> </span><span class="m">2</span>
+
+<span class="w">    </span><span class="nv">installer</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="c1"># shellcheck disable=SC2064 # Expand the temp path now; it never changes.</span>
+<span class="w">    </span><span class="nb">trap</span><span class="w"> </span><span class="s2">"rm -f '</span><span class="si">${</span><span class="nv">installer</span><span class="si">}</span><span class="s2">'"</span><span class="w"> </span>RETURN
+<span class="w">    </span>curl<span class="w"> </span>-fsSL<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">url</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-o<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installer</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Installer download failed: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">url</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="nv">actual</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installer</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'{ print $1 }'</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">actual</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">expected</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Installer checksum mismatch for %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">url</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span>env<span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span><span class="w"> </span>bash<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installer</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&lt;<span class="w"> </span>/dev/null
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Install or update the terminal-code (tode) CLI at the pinned version.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>update_terminal_code<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>installed
+
+<span class="w">    </span>zenbu_platform_supported<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Skipping terminal-code: unsupported platform %s %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-s<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="o">}</span>
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">"terminal-code (tode)"</span>
+<span class="w">    </span><span class="nv">installed</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.version'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/state/tode/install.json"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'none\n'</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="c1"># Short-circuit only when every manifest-recorded artifact is present, so a</span>
+<span class="w">    </span><span class="c1"># partially deleted install is repaired instead of skipped forever.</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">TERMINAL_CODE_PIN_VERSION</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">        </span><span class="o">[</span><span class="w"> </span>-x<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin/tode"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">        </span><span class="o">[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/lib/tode"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'tode %s is already installed.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span>run_pinned_installer<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">TERMINAL_CODE_INSTALLER_URL</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">TERMINAL_CODE_INSTALLER_SHA256</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'tode installer failed; existing install unchanged.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>manifest_record<span class="w"> </span><span class="s2">"update_terminal_code"</span><span class="w"> </span>installer<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">TERMINAL_CODE_PIN_VERSION</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/lib/tode"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin/tode"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/state/tode/install.json"</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"curl -fsSL </span><span class="si">${</span><span class="nv">TERMINAL_CODE_INSTALLER_URL</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"shasum -a 256 &lt;installer&gt;"</span><span class="w"> </span><span class="s2">"bash &lt;installer&gt;"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Install or update the terminal-browser CLI at the pinned version.</span>
+<span class="c1"># @description</span>
+<span class="c1">#   The installer symlinks its bundled skills into ~/.agents/skills and</span>
+<span class="c1">#   per-agent skill directories, recording every link in</span>
+<span class="c1">#   ~/.local/state/terminal-browser/skills.links; check-agent-runtime.py reads</span>
+<span class="c1">#   that receipt and reports the shared links as expected unmanaged-skill</span>
+<span class="c1">#   WARNs. Editor setup is always skipped for non-interactive lifecycle runs;</span>
+<span class="c1">#   run `terminal-browser setup` manually once if wanted.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>update_terminal_browser<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>installed
+
+<span class="w">    </span>zenbu_platform_supported<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Skipping terminal-browser: unsupported platform %s %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-s<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="o">}</span>
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">"terminal-browser"</span>
+<span class="w">    </span><span class="nv">installed</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>cat<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/share/terminal-browser/app/VERSION"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'none\n'</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="c1"># Short-circuit only when every manifest-recorded artifact is present, so a</span>
+<span class="w">    </span><span class="c1"># partially deleted install is repaired instead of skipped forever.</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">TERMINAL_BROWSER_PIN_VERSION</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">        </span><span class="o">[</span><span class="w"> </span>-x<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin/terminal-browser"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">        </span><span class="o">[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/state/terminal-browser/skills.links"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'terminal-browser %s is already installed.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span>run_pinned_installer<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">TERMINAL_BROWSER_INSTALLER_URL</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">TERMINAL_BROWSER_INSTALLER_SHA256</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="nv">TERMINAL_BROWSER_SKIP_EDITOR_SETUP</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="o">||</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'terminal-browser installer failed; existing install unchanged.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>manifest_record<span class="w"> </span><span class="s2">"update_terminal_browser"</span><span class="w"> </span>installer<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">TERMINAL_BROWSER_PIN_VERSION</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/share/terminal-browser/app"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin/terminal-browser"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/state/terminal-browser/skills.links"</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"curl -fsSL </span><span class="si">${</span><span class="nv">TERMINAL_BROWSER_INSTALLER_URL</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"shasum -a 256 &lt;installer&gt;"</span><span class="w"> </span><span class="s2">"TERMINAL_BROWSER_SKIP_EDITOR_SETUP=1 bash &lt;installer&gt;"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Sync the vendored CompactionDB tree without deleting project runtime state.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>update_compactiondb<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -4232,6 +4373,8 @@
 <span class="w">    </span>update_codex_crit
 <span class="w">    </span>update_codex_ponytail
 <span class="w">    </span>update_codex_understand_anything
+<span class="w">    </span>update_terminal_code
+<span class="w">    </span>update_terminal_browser
 <span class="w">    </span>update_compactiondb
 <span class="w">    </span>ensure_herdr_integrations
 <span class="o">}</span>

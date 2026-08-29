@@ -78,6 +78,8 @@ Tasks that create persistent side effects outside the repository working tree, s
 
 RESULT reports must mark durable facts with the same CompactionDB marker contract. In CompactionDB-opted-in projects, the worker runs `python3 .claude/hooks/contextdb_cli.py memory add` before completion and includes the exact command or commands in the RESULT report.
 
+RESULT validation files must contain the verbatim output of every validation command actually executed — not summaries or PASS labels alone — and any identifier the report claims to have created (commit hash, PR number, CompactionDB memory/decision ID) must appear in that pasted output. A claim without its pasted output is treated as unexecuted and grounds for `status=revise`.
+
 `AGMSG-ACCEPTANCE v1` fields:
 
 ```text
@@ -126,7 +128,7 @@ AGMSG-PONG v1 task_id=<id> status=alive|blocked note=<short-note>
 3. Treat `allowed_files` as the edit boundary. If it says to see the task file, read that section and follow it exactly.
 4. Do not perform any `forbidden_actions`.
 5. Write artifacts to the exact expected paths. Do not invent alternate paths.
-6. Put command outputs and validation evidence in `expected_validation_file`.
+6. Put the verbatim output of every validation command in `expected_validation_file`; every identifier your report claims to have created must appear in that output.
 7. Put sandbox/OpenSandbox status or fallback rationale in `expected_sandbox_file`.
 8. Put reusable learning triage in `expected_learning_file`; do not promote rules directly unless the task explicitly allows it.
 9. Put AutoSkill run status or a not-used record in `expected_autoskill_file`.

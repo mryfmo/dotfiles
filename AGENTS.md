@@ -7,6 +7,13 @@
 - Private dotfiles are managed separately from `~/.local/share/chezmoi-private` with config at `~/.config/chezmoi-private/chezmoi.yaml`.
 - Treat the public `home/` tree and the private `chezmoi` source/config as separate management domains.
 
+## ADH (autonomous-dev-harness)
+
+- The ADH product repository lives at `~/Workspace/autonomous-dev-harness`; dotfiles carries only ADH distribution, configuration generation, and thin wrappers. Do not copy ADH implementation into dotfiles.
+- `reviews/ADH_Integrated_Plan/` is the READ-ONLY input baseline, verified by SHA256SUMS, for the ADH V4 program. Never edit files under it; handle conflicts as change requests in the ADH program ledger.
+- dotfiles and ADH changes for one ADH release are accepted together as a ReleaseSet of paired revisions; do not activate one-sided updates.
+- Make ADH-related dotfiles changes on dedicated `adh/*` branches from `main`; do not touch unrelated user files or dirty state.
+
 ## Response Rule
 
 - After reading this `AGENTS.md`, say: `🤖 I read the AGENTS.md for mryfmo/dotfiles.`

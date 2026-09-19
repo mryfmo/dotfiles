@@ -52,6 +52,14 @@ model_profiles:
       model: gpt-daybreak-blue-latest
       model_reasoning_effort: high
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
+  # ADH V4 program profile; fallback and effort downgrade are forbidden.
+  # Edit here only; profiles/model_profiles.json is a validation view.
+  adh:
+    claude: { model: claude-fable-5-1, effort: high }
+    codex:
+      model: gpt-6-astra
+      model_reasoning_effort: xhigh
+      notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
 interactive_profile: deep
 
 codex:

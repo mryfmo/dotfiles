@@ -71,6 +71,13 @@ UPDATER_SOURCE_COMMAND = (
 )
 CHEZMOI_APPLY_COMMAND = ("chezmoi", "apply", "--force")
 MODE_ONLY_DIFF = re.compile(r"\Adiff --git .+\nold mode [0-7]+\nnew mode [0-7]+\n?\Z")
+ADH_PROFILE_BLOCK = """  adh:
+    claude: { model: claude-fable-5-1, effort: high }
+    codex:
+      model: gpt-6-astra
+      model_reasoning_effort: xhigh
+      notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
+"""
 
 
 class RepairAction(NamedTuple):
@@ -341,6 +348,21 @@ def check_executable_hook(source: Path, target: Path, label: str) -> list[str]:
     if not mode & stat.S_IXUSR:
         failures.append(f"{label} is not executable: {target}")
     return failures
+
+
+def manifest_policy_failures() -> list[str]:
+    text = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
+    match = re.search(
+        r"(?ms)^  adh:\n.*?(?=^  [a-z][a-z0-9_]*:|^interactive_profile:)",
+        text,
+    )
+    if match is not None and match.group(0) == ADH_PROFILE_BLOCK:
+        return []
+    return [
+        "agent manifest policy invalid: model_profiles.adh must pin "
+        "claude-fable-5-1/high and gpt-6-astra/xhigh with contextdb notify "
+        "and no fallback settings"
+    ]
 
 
 def normalized_path(path: Path) -> Path:
@@ -634,7 +656,7 @@ def print_failures(failures: list[str]) -> None:
 
 
 def check() -> list[str]:
-    failures: list[str] = []
+    failures = manifest_policy_failures()
     checks = [
         (
             SOURCE_ROOT / "dot_claude/private_mcp.json.tmpl",

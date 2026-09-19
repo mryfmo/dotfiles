@@ -51,6 +51,16 @@ SESSIONSTART_EXPECTED_COMMAND_SUBSTRINGS = {
     "codex": (),
     "compactiondb": ("contextdb_hook.py", "contextdb_recover.py"),
 }
+ADH_PROFILE = {
+    "claude": {"model": "claude-fable-5-1", "effort": "high"},
+    "codex": {
+        "model": "gpt-6-astra",
+        "model_reasoning_effort": "xhigh",
+        "notify": [
+            "{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify"
+        ],
+    },
+}
 
 
 def fail(message: str) -> None:
@@ -421,10 +431,9 @@ def validate_agent_manifest() -> dict[str, Any]:
     claude = manifest.get("claude", {})
     profiles = manifest.get("model_profiles", {})
     required_profiles = {"express", "standard", "review", "deep", "security"}
-    if set(profiles) != required_profiles:
+    if not required_profiles <= set(profiles) or set(profiles) - required_profiles - {"adh"}:
         fail(
-            f"{manifest_path} must define exactly model profiles "
-            f"{sorted(required_profiles)}"
+            f"{manifest_path} must define the five base profiles and only the optional adh profile"
         )
     if profiles["security"].get("codex", {}).get("model") != "gpt-daybreak-blue-latest":
         fail(
@@ -462,6 +471,14 @@ def validate_agent_manifest() -> dict[str, Any]:
             if package in serialized:
                 fail(f"MCP server {name} uses deprecated {package}. {replacement}")
     return manifest
+
+
+def validate_adh_profile(manifest: dict[str, Any]) -> None:
+    if manifest.get("model_profiles", {}).get("adh") != ADH_PROFILE:
+        fail(
+            "model_profiles.adh must pin claude-fable-5-1/high and "
+            "gpt-6-astra/xhigh with contextdb notify and no fallback settings"
+        )
 
 
 def validate_mcp_parity(codex: dict[str, Any], claude: dict[str, Any], manifest: dict[str, Any]) -> None:
@@ -873,6 +890,7 @@ def validate_no_obvious_secrets() -> None:
 
 def main() -> None:
     manifest = validate_agent_manifest()
+    validate_adh_profile(manifest)
     validate_generated_agent_configs()
     validate_hook_composition()
     validate_skills()

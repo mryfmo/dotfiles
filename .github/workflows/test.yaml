@@ -129,12 +129,12 @@ jobs:
             # `gawk` is available for shell tooling used by the test suite.
             # `chezmoi` is installed so Bats can render chezmoi templates
             # behaviorally instead of grepping template syntax.
-            brew install bash bats-core chezmoi gawk parallel shellcheck shfmt
+            brew install bash bats-core chezmoi gawk parallel shellcheck
 
           elif [ "${OS}" == "ubuntu-latest" ]; then
             # Ruby is required for bashcov/simplecov formatters. Install chezmoi
             # explicitly so template tests can verify rendered behavior.
-            sudo apt-get update && sudo apt-get install -y bats curl iproute2 parallel ruby shellcheck shfmt
+            sudo apt-get update && sudo apt-get install -y bats curl iproute2 parallel ruby shellcheck
             chezmoi_version=2.70.5
             artifact="chezmoi_${chezmoi_version}_linux_amd64.tar.gz"
             base_url="https://github.com/twpayne/chezmoi/releases/download/v${chezmoi_version}"
@@ -251,7 +251,9 @@ jobs:
       - name: Run `shfmt`
         if: ${{ needs.changes.outputs.should_test == 'true' }}
         run: |
-          git ls-files -- ':(glob)install/**/*.sh' ':(glob)scripts/**/*.sh' | xargs shfmt -i 4 -sr -d
+          # shfmt is version-pinned via mise: brew/apt ship divergent versions
+          # (3.14 changed heredoc-in-if formatting) and unpinned runners disagree.
+          git ls-files -- ':(glob)install/**/*.sh' ':(glob)scripts/**/*.sh' | xargs mise x shfmt@3.14.1 -- shfmt -i 4 -sr -d
 
       - name: Run `ShellCheck`
         if: ${{ needs.changes.outputs.should_test == 'true' }}

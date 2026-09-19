@@ -398,7 +398,7 @@ function bump_terminal_tool_pins() {
         return 1
     }
 
-    if ! cat > "${pins}" << EOF; then
+    if ! cat > "${pins}" << EOF
 #!/usr/bin/env bash
 # shellcheck disable=SC2034 # Variables are consumed by the scripts that source this file.
 
@@ -417,6 +417,7 @@ TERMINAL_CODE_INSTALLER_SHA256="$(sed -n 2p <<< "${tode_pin}")"
 TERMINAL_BROWSER_PIN_VERSION="$(sed -n 1p <<< "${tb_pin}")"
 TERMINAL_BROWSER_INSTALLER_SHA256="$(sed -n 2p <<< "${tb_pin}")"
 EOF
+    then
         printf 'warning: unable to write %s; keeping current pins\n' "${pins}" >&2
         return 1
     fi

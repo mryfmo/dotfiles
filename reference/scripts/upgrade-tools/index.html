@@ -3954,7 +3954,7 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="o">}</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pins</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s">&lt;&lt; EOF; then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pins</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s">&lt;&lt; EOF</span>
 <span class="s">#!/usr/bin/env bash</span>
 <span class="s"># shellcheck disable=SC2034 # Variables are consumed by the scripts that source this file.</span>
 
@@ -3973,6 +3973,7 @@
 <span class="s">TERMINAL_BROWSER_PIN_VERSION="$(sed -n 1p &lt;&lt;&lt; "${tb_pin}")"</span>
 <span class="s">TERMINAL_BROWSER_INSTALLER_SHA256="$(sed -n 2p &lt;&lt;&lt; "${tb_pin}")"</span>
 <span class="s">EOF</span>
+<span class="w">    </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: unable to write %s; keeping current pins\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pins</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">fi</span>

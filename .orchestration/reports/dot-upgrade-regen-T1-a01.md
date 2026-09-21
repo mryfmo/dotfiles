@@ -66,9 +66,22 @@ Reverse mapping for `make-upgrade-user-tools`: **irreversible as one atomic oper
 ## Validation
 
 - `uv run python -m unittest tests.unit.test_supply_chain_policy`: 17 tests, OK.
+- Revision: `uv run python -m unittest tests.unit.test_statusline_tools`: 5 tests, OK after the expected pre-fix failure.
+- Revision: all six workflow YAML files parsed with `yaml.safe_load`.
 - `git diff --check`: exit 0.
-- `git diff --name-only`: only the two scoped mise files.
+- Revision's consumer implementation diff is limited to the four approved files: `.github/workflows/test.yaml`, `tests/unit/test_statusline_tools.py`, `scripts/check-statusline-tools.py`, and `tests/install/common/mise.bats`; task evidence files were also updated.
 - Full command evidence: `.orchestration/validation/dot-upgrade-regen-T1-a01.md`.
+
+## CI revision
+
+The superseding revision aligns all exact-version consumers with the regenerated pins:
+
+- `.github/workflows/test.yaml`: mise-action 2026.7.5→2026.9.12, ccstatusline 2.2.27→2.2.29, ccusage 20.0.19→20.0.20.
+- `tests/unit/test_statusline_tools.py`: exact config/lock and workflow token expectations updated to ccstatusline 2.2.29 and ccusage 20.0.20.
+- `scripts/check-statusline-tools.py`: smoke-test version expectations updated to ccstatusline 2.2.29 and ccusage 20.0.20.
+- `tests/install/common/mise.bats`: herdr config assertion updated from 0.8.2 to 0.9.0. The Bats suite was not run locally, per repository policy.
+
+Repository scan found one remaining `0.8.2` occurrence outside lock/history: `home/dot_local/bin/common/executable_herdr-agents:70`, in the comment `Derive and validate a herdr 0.8.2 agent registration name.` It is outside the explicitly approved four-file revision scope and is not an exact-version runtime consumer, so it was reported rather than changed. No remaining `2.2.27`, `20.0.19`, or `2026.7.5` runtime/test consumer was found outside historical evidence.
 
 ## CompactionDB
 
@@ -80,6 +93,16 @@ Exact command:
 
 ```sh
 python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dot-upgrade-regen-T1-a01: Mac make upgrade regenerated home/dot_mise/config.toml and mise.lock for the chore change; installer-pins.sh remained unchanged. Because ~/.config/mise config and lock symlink to the normal checkout, a dedicated worktree must copy the regenerated pair from those symlink targets before review.'
+```
+
+[memory:decision] Exact-version CI and smoke-test consumers must advance with regenerated mise pins.
+
+Revision memory ID: `0578538c-58fa-4da5-a467-a4e6aae4dd3d`
+
+Exact command:
+
+```sh
+python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dot-upgrade-regen-T1-a01 revision: CI exact-version consumers must advance with regenerated mise pins. test.yaml now uses mise-action 2026.9.12, ccstatusline 2.2.29, and ccusage 20.0.20; Python smoke expectations match; the mise.bats herdr assertion matches 0.9.0.'
 ```
 
 cost: n/a

@@ -3256,6 +3256,116 @@ Final gate:
 Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
 ```
 
+Final superseding-revision completion check:
+
+```text
+git_diff_check
+exit=0
+
+changed_files
+.github/workflows/test.yaml
+.orchestration/learning/dot-upgrade-regen-T1-a01.md
+.orchestration/reports/dot-upgrade-regen-T1-a01.md
+.orchestration/validation/dot-upgrade-regen-T1-a01.md
+scripts/check-statusline-tools.py
+tests/install/common/mise.bats
+tests/unit/test_statusline_tools.py
+
+old_runtime_tree_occurrences
+./home/dot_local/bin/common/executable_herdr-agents:70:# @description Derive and validate a herdr 0.8.2 agent registration name.
+
+active_todos
+
+review_gate
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+```
+
+## Superseding CI consumer revision
+
+Initial system-Python YAML attempt (exit 1):
+
+```text
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    from pathlib import Path; import yaml; files=sorted(Path(".github/workflows").glob("*.yaml")); [yaml.safe_load(path.read_text()) for path in files]; print(f"parsed {len(files)} workflow YAML files")
+                              ^^^^^^^^^^^
+ModuleNotFoundError: No module named 'yaml'
+```
+
+PyYAML validation after the mise-action-only revision (exit 0):
+
+```text
+parsed 6 workflow YAML files
+```
+
+Focused statusline test before exact-consumer updates (exit 1):
+
+```text
+...F.
+======================================================================
+FAIL: test_mise_config_and_lock_pin_exact_npm_versions (tests.unit.test_statusline_tools.StatuslineToolsTest.test_mise_config_and_lock_pin_exact_npm_versions)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/upgrade-regen/tests/unit/test_statusline_tools.py", line 37, in test_mise_config_and_lock_pin_exact_npm_versions
+    self.assertEqual(config["tools"] | EXPECTED_TOOLS, config["tools"])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {'nod[568 chars]2.2.27', 'npm:ccusage': '20.0.19', 'npm:pyrigh[1422 chars]'}}}} != {'nod[568 chars]2.2.29', 'npm:ccusage': '20.0.20', 'npm:pyrigh[1422 chars]'}}}}
+Diff is 2761 characters long. Set self.maxDiff to None to see it.
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.037s
+
+FAILED (failures=1)
+```
+
+Focused statusline test after exact-consumer updates (exit 0):
+
+```text
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.045s
+
+OK
+```
+
+Supply-chain policy test after revision (exit 0):
+
+```text
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 0.375s
+
+OK
+```
+
+Final PyYAML validation (exit 0):
+
+```text
+parsed 6 workflow YAML files
+```
+
+Old-version runtime-consumer scan and diff check:
+
+```text
+runtime_consumer_old_versions
+./home/dot_local/bin/common/executable_herdr-agents:70:# @description Derive and validate a herdr 0.8.2 agent registration name.
+
+diff_check
+exit=0
+```
+
+Revision CompactionDB memory verification:
+
+```text
+0578538c-58fa-4da5-a467-a4e6aae4dd3d [project/decision] confidence=1.00 salience=0.90 dot-upgrade-regen-T1-a01 revision: CI exact-version consumers must advance with regenerated mise pins. test.yaml now uses mise-action 2026.9.12, ccstatusline 2.2.29, and ccusage 20.0.20; Python smoke expectations match; the mise.bats herdr assertion matches 0.9.0.
+```
+
+Revision agent review gate:
+
+```text
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+```
+
 ## Final completion checks
 
 ```text

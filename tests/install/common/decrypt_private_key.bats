@@ -20,6 +20,7 @@ function render_decrypt_script() {
 
     run env CI=false HOME="${home_dir}" bash -lc "
         source '${script_path}'
+        function stdin_is_tty() { return 0; }
         function chezmoi() { return 1; }
         decrypt_age_private_key
     "
@@ -41,6 +42,7 @@ function render_decrypt_script() {
 
     run env CI=false HOME="${home_dir}" bash -lc "
         source '${script_path}'
+        function stdin_is_tty() { return 0; }
         function chezmoi() {
             local output_path=''
             while [ \"\$#\" -gt 0 ]; do
@@ -60,4 +62,24 @@ function render_decrypt_script() {
     [ -f "${home_dir}/.config/age/key.txt" ]
     [ ! -e "${home_dir}/.config/age/key.txt.tmp" ]
     [[ "$(< "${home_dir}/.config/age/key.txt")" == "AGE-SECRET-KEY-test" ]]
+}
+
+@test "[common] decrypt_age_private_key skips passphrase prompt without a tty" {
+    local source_dir="${BATS_TEST_TMPDIR}/source"
+    local home_dir="${BATS_TEST_TMPDIR}/home"
+    local script_path="${BATS_TEST_TMPDIR}/decrypt-private-key.sh"
+
+    mkdir -p "${source_dir}" "${home_dir}"
+    touch "${source_dir}/.key.txt.age"
+    render_decrypt_script "${source_dir}" "${script_path}"
+
+    run env CI=false HOME="${home_dir}" bash -c "
+        source '${script_path}'
+        function chezmoi() { printf 'unexpected chezmoi call\n'; return 99; }
+        decrypt_age_private_key
+    "
+
+    [ "${status}" -eq 0 ]
+    [ -z "${output}" ]
+    [ ! -e "${home_dir}/.config/age/key.txt" ]
 }

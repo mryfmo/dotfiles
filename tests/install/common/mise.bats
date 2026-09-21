@@ -29,6 +29,10 @@ function teardown() {
     [ -x "$(command -v mise)" ]
 }
 
+@test "[common] mise pin includes the Linux arm64 aqua bin-path fix" {
+    [ "${MISE_VERSION}" = "v2026.9.12" ]
+}
+
 @test "[common] run_mise_install vets exact npm tools before the seven-day batch" {
     printf "min-release-age=99\n" > "${HOME}/.npmrc"
 

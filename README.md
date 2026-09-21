@@ -51,6 +51,8 @@ bash -c "$(wget -qO - https://raw.githubusercontent.com/mryfmo/dotfiles/main/set
 
 ![Screenshot of setup on Ubuntu Server machine](.github/screenshot-ubuntu-server.png)
 
+On a fresh machine, enter the age passphrase only when the interactive prompt appears; GitHub authentication is intentionally deferred, so run `setup-gh` after the public apply. On Ubuntu Desktop, add **Japanese (Mozc)** under **Settings → Keyboard → Input Sources** after installation.
+
 ### Minimal setup
 
 The following is a minimal setup command to install chezmoi and my dotfiles from the github repository on a new empty machine:

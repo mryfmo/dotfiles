@@ -581,6 +581,19 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             action.command,
         )
 
+    def test_missing_crit_asset_is_repairable(self) -> None:
+        missing = self.target_root / ".local/bin/crit"
+
+        action = self.module.asset_repair_action(
+            self.module.AssetFinding(
+                "ensure_crit_cli",
+                (missing,),
+                {"commands": ["install pinned crit"]},
+            )
+        )
+
+        self.assertEqual("ensure_crit_cli", action.command[-1])
+
     def test_sourced_asset_repair_runs_no_main_or_sibling_step(self) -> None:
         updater = self.temp_dir / "strict-update-agent-assets.sh"
         log = self.temp_dir / "steps.log"

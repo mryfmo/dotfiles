@@ -274,6 +274,40 @@ EOF
             "Error: plugin superpowers@openai-curated was not found", result.stderr
         )
 
+    def test_codex_crit_normalizes_managed_marketplace_mode(self) -> None:
+        home = self.temp_dir / "codex-crit-home"
+        marketplace = home / ".agents/plugins/marketplace.json"
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                textwrap.dedent(
+                    """
+                    source "$1"
+                    has_command() { return 0; }
+                    ensure_crit_cli() { return 0; }
+                    crit() {
+                        if [ "$*" = "install codex-plugin --force" ]; then
+                            mkdir -p "$HOME/.agents/plugins"
+                            umask 002
+                            printf '{}\n' > "$HOME/.agents/plugins/marketplace.json"
+                        elif [ "$*" = "--version" ]; then
+                            printf 'crit v9.9.9\n'
+                        fi
+                    }
+                    manifest_record() { :; }
+                    update_codex_crit
+                    """
+                ),
+                "_",
+                str(ROOT / "scripts/update-agent-assets.sh"),
+            ],
+            env={**os.environ, "HOME": str(home)},
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual(0o644, stat.S_IMODE(marketplace.stat().st_mode))
+
     def crit_fixture(
         self, installed_version: str | None = None
     ) -> tuple[Path, Path, dict[str, str], str]:

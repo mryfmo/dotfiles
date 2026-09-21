@@ -611,6 +611,9 @@ function update_codex_crit() {
         cd "${HOME}"
         crit install codex-plugin --force
     ) || true
+    if [ -f "${HOME}/.agents/plugins/marketplace.json" ]; then
+        chmod 644 "${HOME}/.agents/plugins/marketplace.json"
+    fi
     manifest_record "update_codex_crit" plugin "$(crit --version 2> /dev/null | awk 'NR == 1 { print $2 }')" "${CODEX_HOME:-${HOME}/.codex}/plugins/crit" "${CODEX_HOME:-${HOME}/.codex}/config.toml" -- "ensure_crit_cli" "crit install codex-plugin --force"
 }
 

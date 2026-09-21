@@ -105,8 +105,8 @@ EOF
     run_update_fixture running
     [ "$status" -eq 0 ]
     run cat "${UPDATE_FIXTURE}/calls"
-    [ "$output" = "chezmoi apply --verbose --exclude=scripts
-chezmoi --source ${UPDATE_FIXTURE}/home/.local/share/chezmoi-private --config ${UPDATE_FIXTURE}/home/.config/chezmoi-private/chezmoi.yaml apply --verbose --exclude=scripts
+    [ "$output" = "chezmoi apply --verbose
+chezmoi --source ${UPDATE_FIXTURE}/home/.local/share/chezmoi-private --config ${UPDATE_FIXTURE}/home/.config/chezmoi-private/chezmoi.yaml apply --verbose
 mise install --locked node
 mise install --locked npm:ccstatusline npm:ccusage
 assets
@@ -199,7 +199,8 @@ herdr server reload-config" ]
     [[ "$output" == *'$HOME/.local/share/chezmoi-private'* ]]
     [[ "$output" == *'$HOME/.config/chezmoi-private/chezmoi.yaml'* ]]
     [[ "$output" == *'--source "$HOME/.local/share/chezmoi-private"'* ]]
-    [[ "$output" == *'apply --verbose --exclude=scripts'* ]]
+    [[ "$output" == *'apply --verbose'* ]]
+    [[ "$output" != *'--exclude=scripts'* ]]
     [[ "$output" == *'Skipping private dotfiles'* ]]
     [[ "$output" != *'chezmoi-private apply'* ]]
 }

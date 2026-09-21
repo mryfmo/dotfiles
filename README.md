@@ -143,8 +143,11 @@ make upgrade SYSTEM=1
 upgrades. Other values, including `SYSTEM=0`, keep `make upgrade` in user-level
 tooling mode.
 
-`make update` applies managed files and excludes chezmoi scripts, so one-time
-installers do not run during routine updates. Before applying, it runs
+`make update` applies all committed public and private chezmoi state, including
+scripts. Chezmoi records each `run_once` content hash, so new or changed
+one-time installers run once while unchanged installers stay skipped. This
+converges the machine to committed pinned state; only `make upgrade` advances
+tool pins. Before applying, `make update` runs
 `git pull --ff-only` only when the checkout is on `main`, tracks `origin/main`,
 and has no staged or unstaged tracked-file changes. Otherwise it prints the
 reason and the exact manual `git -C <repo> pull` command, then continues with
@@ -399,7 +402,9 @@ error, and rerun setup. Setup does not provide rollback.
 If you are already inside the cloned repository root, `make setup` remains available as a local wrapper around `./setup.sh`.
 
 `make apply` remains as a compatibility alias for `make update` because `apply` is the native chezmoi verb, while `update` is the public dotfiles workflow command.
-One-time chezmoi scripts under `home/.chezmoiscripts/**/run_once_*` are for initial installation.
+One-time chezmoi scripts under `home/.chezmoiscripts/**/run_once_*` run once per
+content hash, including when a newly committed script first reaches an existing
+machine through `make update`.
 Do not use `make reset` as the normal update path; it clears chezmoi's script state so one-time installers can run again intentionally.
 Tool versions in `home/dot_mise/config.toml` are exact and backed by `mise.lock`. Updates occur only through `make upgrade` with a reviewed config and lock diff.
 For `npm:` tools, mise owns the version, lock entry, and isolated install

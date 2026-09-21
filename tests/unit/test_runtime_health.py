@@ -270,9 +270,7 @@ EOF
             "superpowers@openai-curated`.",
             result.stdout,
         )
-        self.assertIn(
-            "Error: plugin superpowers@openai-curated was not found", result.stderr
-        )
+        self.assertNotIn("Error:", result.stdout + result.stderr)
 
     def test_codex_crit_normalizes_managed_marketplace_mode(self) -> None:
         home = self.temp_dir / "codex-crit-home"

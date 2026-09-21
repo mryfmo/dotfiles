@@ -73,7 +73,7 @@ function render_decrypt_script() {
     touch "${source_dir}/.key.txt.age"
     render_decrypt_script "${source_dir}" "${script_path}"
 
-    run env CI=false HOME="${home_dir}" bash -lc "
+    run env CI=false HOME="${home_dir}" bash -c "
         source '${script_path}'
         function chezmoi() { printf 'unexpected chezmoi call\n'; return 99; }
         decrypt_age_private_key

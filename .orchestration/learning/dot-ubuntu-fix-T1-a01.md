@@ -8,6 +8,8 @@
 
 [memory:decision] A GPG dearmor pipeline targeting a persistent keyring must use `--batch --yes`; otherwise a rerun attempts `/dev/tty` overwrite confirmation and aborts non-interactive bootstrap.
 
+[memory:failure] Do not use `bash -lc` in a cross-platform bats case that requires empty output; CI runner login profiles can emit unrelated text. Use `bash -c` unless the login shell is itself under test.
+
 ## Disposition
 
 - Recorded as a validated Codex learn entry and queued for CompactionDB project memory.

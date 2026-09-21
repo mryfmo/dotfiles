@@ -7,3 +7,4 @@
 - Final validation used credential-free scratch user `dotf2test`; `userdel --remove dotf2test` removed it and its home after success.
 - Repository writes stayed within the task's allowed files.
 - The Docker keyring revision needed no additional VM mutation; its rerun path was isolated with command mocks and left no external effects.
+- The bats login-shell revision changed one test flag and used only local temporary directories, which were removed after validation.

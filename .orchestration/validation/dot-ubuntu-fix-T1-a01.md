@@ -4,7 +4,7 @@ review_surface: crit-data
 reviewer: codex
 review_source: .agents/worklog/codex/review/dot-ubuntu-fix-T1-a01-crit-comments.json
 review_outcome: approved
-review_notes: Resolved revision-scope approval `r_13a66b` covers the Docker keyring overwrite fix, focused regression test, and validation evidence.
+review_notes: Resolved CI-revision approval `r_0398ab` covers the one-line non-login-shell fix, related-pattern audit, and direct empty-output validation.
 
 ## Shell, shdoc-compatible scripts, and chezmoi templates
 
@@ -148,6 +148,57 @@ Verbatim output:
 ```
 
 ## Crit review gate
+
+Command:
+
+```text
+AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/validation/dot-ubuntu-fix-T1-a01.md make require-crit-review
+```
+
+Verbatim output:
+
+```text
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+```
+
+## Bats login-shell revision: direct non-TTY behavior
+
+Command rendered the decrypt template, invoked it through `bash -c`, captured combined output, required it to be empty, and required no key file.
+
+Verbatim output:
+
+```text
+decrypt non-login empty-output validation: OK
+```
+
+## Bats login-shell revision: task pattern audit and diff
+
+Commands audited for any remaining `bash -lc` plus empty-output assertion, printed the two relevant non-login invocations, and ran `git diff --check`.
+
+Verbatim output:
+
+```text
+76:    run env CI=false HOME="${home_dir}" bash -c "
+29:    run env CALLS_PATH="${calls_path}" bash -c '
+task login-shell pattern audit: OK
+revision git diff --check: OK
+```
+
+## Bats login-shell revision: CompactionDB failure memory
+
+Command:
+
+```text
+python3 .claude/hooks/contextdb_cli.py memory add --kind failure --scope project --content 'dot-ubuntu-fix-T1-a01 CI revise: bats tests that assert empty output must use bash -c, not bash -lc, because runner login profiles may emit unrelated output.'
+```
+
+Verbatim output:
+
+```text
+8c177c0d-b525-4924-8eda-f7122015172c
+```
+
+## Bats login-shell revision: review gate
 
 Command:
 

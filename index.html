@@ -2482,6 +2482,34 @@
   
   
     <li class="md-nav__item">
+      <a href="reference/install/ubuntu/client/default_shell/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/default_shell.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="reference/install/ubuntu/client/docker/" class="md-nav__link">
         
   
@@ -3499,12 +3527,12 @@
 </div>
 <div class="landing-stats">
 <div class="landing-stat">
-  <span class="landing-stat__value">60</span>
+  <span class="landing-stat__value">61</span>
   <span class="landing-stat__label">source docs</span>
   <span class="landing-stat__note">tracked shell assets</span>
 </div>
 <div class="landing-stat">
-  <span class="landing-stat__value">24</span>
+  <span class="landing-stat__value">25</span>
   <span class="landing-stat__label">install scripts</span>
   <span class="landing-stat__note">bootstrap and app setup</span>
 </div>
@@ -3529,7 +3557,7 @@
   <span class="landing-stat__note">common, client, server</span>
 </div>
 <div class="landing-stat">
-  <span class="landing-stat__value">20</span>
+  <span class="landing-stat__value">21</span>
   <span class="landing-stat__label">template mappings</span>
   <span class="landing-stat__note">chezmoi wrappers</span>
 </div>
@@ -3574,8 +3602,8 @@ The site is rebuilt from tracked shell sources every time.
 The homepage stays curated, while the complete generated table of contents lives on its own page.
 
 - [Open the full catalog](catalog/)
-- **60** source reference pages are generated from tracked shell assets
-- **20** chezmoi wrappers are mapped back to their source scripts
+- **61** source reference pages are generated from tracked shell assets
+- **21** chezmoi wrappers are mapped back to their source scripts
 
 </div>
 <div class="landing-card" markdown="1">
@@ -3586,7 +3614,7 @@ The homepage stays curated, while the complete generated table of contents lives
 
 Wrapper templates under `home/.chezmoiscripts` are linked back to the source scripts they include.
 
-_20 mapped wrappers_
+_21 mapped wrappers_
 
 - [Open template mapping](reference/chezmoi-templates.md)
 - `home/.chezmoiscripts/common/run_once_after_01-setup-chezmoi-private.sh.tmpl` -> [`install/common/chezmoi_private.sh`](reference/install/common/chezmoi_private.md)
@@ -3596,7 +3624,7 @@ _20 mapped wrappers_
 - `home/.chezmoiscripts/macos/run_once_04-install-ghostty.sh.tmpl` -> [`install/macos/common/ghostty.sh`](reference/install/macos/common/ghostty.md)
 - `home/.chezmoiscripts/macos/run_once_10-install-docker.sh.tmpl` -> [`install/macos/common/docker.sh`](reference/install/macos/common/docker.md)
 
-[14 more mappings](reference/chezmoi-templates.md)
+[15 more mappings](reference/chezmoi-templates.md)
 
 </div>
 </div>
@@ -3612,7 +3640,7 @@ _20 mapped wrappers_
 
 Bootstrap and application setup flows stored under `install/**`.
 
-_24 documented entries_
+_25 documented entries_
 
 - [`install/common/chezmoi_private.sh`](reference/install/common/chezmoi_private.md): Bootstraps `mryfmo/dotfiles-private` using the dedicated source and config paths under the current user's home direct...
 - [`install/common/gh_extensions.sh`](reference/install/common/gh_extensions.md): Activates `mise` when available and installs the configured `gh` extensions only when GitHub CLI is already authentic...
@@ -3621,7 +3649,7 @@ _24 documented entries_
 - [`install/macos/arm64/prepare_arm64_system.sh`](reference/install/macos/arm64/prepare_arm64_system.md): Installs Rosetta on arm64 macOS machines when it is not already present.
 - [`install/macos/arm64/run.sh`](reference/install/macos/arm64/run.md): Emits the relative arm64 installer path consumed by the surrounding setup flow.
 
-[18 more entries in the full catalog](catalog/)
+[19 more entries in the full catalog](catalog/)
 
 </div>
 <div class="landing-card" markdown="1">

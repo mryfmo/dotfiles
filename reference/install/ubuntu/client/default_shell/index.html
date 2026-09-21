@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../ssh_server/">
+        <link rel="prev" href="../../../macos/common/misc/">
       
       
-        <link rel="next" href="../../../../scripts/check-tools/">
+        <link rel="next" href="../docker/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>install/ubuntu/server/starship.sh - Dotfiles Docs</title>
+        <title>install/ubuntu/client/default_shell.sh - Dotfiles Docs</title>
       
     
     
@@ -68,7 +68,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#installubuntuserverstarshipsh" class="md-skip">
+        <a href="#installubuntuclientdefault_shellsh" class="md-skip">
           Skip to content
         </a>
       
@@ -104,7 +104,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              install/ubuntu/server/starship.sh
+              install/ubuntu/client/default_shell.sh
             
           </span>
         </div>
@@ -2371,18 +2371,20 @@
                 
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3_3_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3_3_1" checked>
         
           
           <label class="md-nav__link" for="__nav_4_3_3_1" id="__nav_4_3_3_1_label" tabindex="0">
@@ -2403,7 +2405,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_3_3_1_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_3_3_1_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_3_3_1">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2418,10 +2420,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../client/default_shell/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/default_shell.sh
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -2437,6 +2466,59 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metadata
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -2449,7 +2531,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../client/docker/" class="md-nav__link">
+      <a href="../docker/" class="md-nav__link">
         
   
   
@@ -2477,7 +2559,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../client/ghostty/" class="md-nav__link">
+      <a href="../ghostty/" class="md-nav__link">
         
   
   
@@ -2505,7 +2587,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../client/misc/" class="md-nav__link">
+      <a href="../misc/" class="md-nav__link">
         
   
   
@@ -2705,20 +2787,18 @@
                 
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3_3_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3_3_3" >
         
           
           <label class="md-nav__link" for="__nav_4_3_3_3" id="__nav_4_3_3_3_label" tabindex="0">
@@ -2739,7 +2819,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_3_3_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_3_3_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_3_3_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2757,7 +2837,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../misc/" class="md-nav__link">
+      <a href="../../server/misc/" class="md-nav__link">
         
   
   
@@ -2785,7 +2865,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../setup_timezone/" class="md-nav__link">
+      <a href="../../server/setup_timezone/" class="md-nav__link">
         
   
   
@@ -2813,7 +2893,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ssh_server/" class="md-nav__link">
+      <a href="../../server/ssh_server/" class="md-nav__link">
         
   
   
@@ -2838,37 +2918,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    install/ubuntu/server/starship.sh
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../server/starship/" class="md-nav__link">
         
   
   
@@ -2884,59 +2937,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#metadata" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Metadata
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#functions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Functions
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#source" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Source
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -3548,88 +3548,46 @@
 
 
 
-<h1 id="installubuntuserverstarshipsh">install/ubuntu/server/starship.sh<a class="headerlink" href="#installubuntuserverstarshipsh" title="Permanent link">&para;</a></h1>
-<p>Downloads and verifies a pinned Starship release archive.</p>
+<h1 id="installubuntuclientdefault_shellsh">install/ubuntu/client/default_shell.sh<a class="headerlink" href="#installubuntuclientdefault_shellsh" title="Permanent link">&para;</a></h1>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Source: <code>install/ubuntu/server/starship.sh</code></li>
+<li>Source: <code>install/ubuntu/client/default_shell.sh</code></li>
 <li>Category: install script</li>
 <li>Renderer: <code>shell-fallback</code></li>
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>main</code></li>
-<li><code>starship_artifact</code></li>
-<li><code>uninstall_starship</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
 
-<span class="c1"># @file install/ubuntu/server/starship.sh</span>
-<span class="c1"># @brief Install the Starship prompt on Ubuntu servers.</span>
-<span class="c1"># @description</span>
-<span class="c1">#   Downloads and verifies a pinned Starship release archive.</span>
+<span class="c1"># @file install/ubuntu/client/default_shell.sh</span>
+<span class="c1"># @brief Set zsh as the login shell on Ubuntu client machines.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
-<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span><span class="nb">set</span><span class="w"> </span>-x
-<span class="k">fi</span>
-
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">BIN_DIR</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin"</span>
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">STARSHIP_VERSION</span><span class="o">=</span><span class="s2">"v1.25.1"</span>
-
-<span class="c1"># @description Print the Starship Linux artifact name for the current architecture.</span>
-<span class="k">function</span><span class="w"> </span>starship_artifact<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
-<span class="w">    </span>x86_64<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'starship-x86_64-unknown-linux-musl.tar.gz\n'</span><span class="w"> </span><span class="p">;;</span>
-<span class="w">    </span>aarch64<span class="w"> </span><span class="p">|</span><span class="w"> </span>arm64<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'starship-aarch64-unknown-linux-musl.tar.gz\n'</span><span class="w"> </span><span class="p">;;</span>
-<span class="w">    </span>*<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Unsupported Starship architecture: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">        </span><span class="p">;;</span>
-<span class="w">    </span><span class="k">esac</span>
-<span class="o">}</span>
-
 <span class="c1">#</span>
-<span class="c1"># @description Download and install the Starship binary.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>install_starship<span class="o">()</span><span class="w"> </span><span class="o">(</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>actual<span class="w"> </span>artifact<span class="w"> </span>base_url<span class="w"> </span>expected<span class="w"> </span><span class="nv">stage</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span>tmpdir
-<span class="w">    </span><span class="nv">artifact</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>starship_artifact<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">    </span><span class="nv">base_url</span><span class="o">=</span><span class="s2">"https://github.com/starship/starship/releases/download/</span><span class="si">${</span><span class="nv">STARSHIP_VERSION</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span><span class="nv">tmpdir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">    </span><span class="nb">trap</span><span class="w"> </span><span class="s1">'rm -rf "${tmpdir}"; [ -z "${stage}" ] || rm -f "${stage}"'</span><span class="w"> </span>EXIT
-<span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BIN_DIR</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">    </span><span class="nv">stage</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BIN_DIR</span><span class="si">}</span><span class="s2">/starship.tmp.XXXXXX"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">    </span>curl<span class="w"> </span>-fsSL<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">base_url</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-o<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">    </span><span class="nv">expected</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>curl<span class="w"> </span>-fsSL<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">base_url</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">.sha256"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">    </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">expected</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Missing checksum for %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="o">}</span>
-<span class="w">    </span><span class="nv">actual</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>sha256sum<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'{ print $1 }'</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">actual</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">expected</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Checksum mismatch for %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="o">}</span>
-<span class="w">    </span>tar<span class="w"> </span>-xzf<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">    </span>install<span class="w"> </span>-m<span class="w"> </span><span class="m">0755</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tmpdir</span><span class="si">}</span><span class="s2">/starship"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">stage</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span>
-<span class="w">    </span>mv<span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">stage</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BIN_DIR</span><span class="si">}</span><span class="s2">/starship"</span>
-<span class="o">)</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Remove the locally installed Starship binary.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>uninstall_starship<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>rm<span class="w"> </span>-f<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BIN_DIR</span><span class="si">}</span><span class="s2">/starship"</span>
-<span class="o">}</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Run the Starship installation flow.</span>
+<span class="c1"># @description Change the current user's login shell to zsh when needed.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>install_starship
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>current_shell<span class="w"> </span>zsh_path
+
+<span class="w">    </span><span class="nv">zsh_path</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>zsh<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">current_shell</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>getent<span class="w"> </span>passwd<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">USER</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-d:<span class="w"> </span>-f7<span class="k">)</span><span class="s2">"</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">current_shell</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">zsh_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Login shell is already %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">zsh_path</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>grep<span class="w"> </span>-Fxq<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">zsh_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>/etc/shells<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">zsh_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sudo<span class="w"> </span>tee<span class="w"> </span>-a<span class="w"> </span>/etc/shells<span class="w"> </span>&gt;<span class="w"> </span>/dev/null
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span>sudo<span class="w"> </span>chsh<span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">zsh_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">USER</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="c1"># shellcheck disable=SC2016 # Backticks are literal operator guidance.</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Login shell changed to %s; sign in again or run `exec zsh`.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">zsh_path</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>

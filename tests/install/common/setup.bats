@@ -39,6 +39,10 @@ create_chezmoi_release_fixture() {
     grep -qx '    system: "client"' <<< "${output}"
 }
 
+@test "[common] Sheldon language plugin preserves an existing LANG" {
+    grep -Fq 'export LANG="${LANG:-en_US.UTF-8}"' home/dot_config/sheldon/plugin_sources/common.toml
+}
+
 @test "[common] chezmoi config rejects invalid roles before rendering YAML" {
     local context='"chezmoi" (dict "homeDir" "/tmp/home" "workingTree" "/tmp/source" "os" "linux")'
     local role

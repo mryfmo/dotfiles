@@ -14,6 +14,10 @@ fi
 
 readonly PACKAGES=(
     gparted
+    language-pack-ja
+    fonts-noto-cjk
+    fonts-noto-color-emoji
+    ibus-mozc
     # Chromium/Electron runtime libraries used by terminal-code and
     # terminal-browser; their installers only warn when these are missing.
     # libgtk-3-0 and libasound2 use their t64 package names on Ubuntu 24.04.

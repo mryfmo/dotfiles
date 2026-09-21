@@ -267,7 +267,7 @@ install_starship
         bootstrap = (ROOT / "install/common/mise.sh").read_text()
         pinned_mise = re.search(r'readonly MISE_VERSION="(v[^"]+)"', bootstrap)
         self.assertIsNotNone(pinned_mise)
-        self.assertEqual("v2026.7.5", pinned_mise.group(1))
+        self.assertEqual("v2026.9.12", pinned_mise.group(1))
         lock_text = (ROOT / "home/dot_mise/mise.lock").read_text()
         for name in ("http:bats", "http:gcloud"):
             entry = lock["tools"][name][0]

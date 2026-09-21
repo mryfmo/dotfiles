@@ -14,6 +14,21 @@ function teardown() {
     [ ${#PACKAGES[@]} -eq 1 ]
 }
 
+@test "[ubuntu-common] install_github_host_key adds the pinned key once" {
+    local home_dir="${BATS_TEST_TMPDIR}/home"
+
+    run env HOME="${home_dir}" bash -c '
+        source "'"${SCRIPT_PATH}"'"
+        install_github_host_key
+        install_github_host_key
+        cat "${HOME}/.ssh/known_hosts"
+    '
+
+    [ "${status}" -eq 0 ]
+    [ "${#lines[@]}" -eq 1 ]
+    [ "${lines[0]}" = "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" ]
+}
+
 @test "[ubuntu-common] ssh" {
     DOTFILES_DEBUG=1 bash "${SCRIPT_PATH}"
 

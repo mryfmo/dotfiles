@@ -1,20 +1,28 @@
 #!/usr/bin/env bash
 
+# @file home/.chezmoiscripts/common/run_once_before_01-decrypt-private-key.sh.tmpl
+# @brief Restore the private age identity when interactive input is available.
+
 set -Eeuo pipefail
 
 if [ "${DOTFILES_DEBUG:-}" ]; then
     set -x
 fi
 
+# @description Return success when standard input is attached to a terminal.
+function stdin_is_tty() {
+    [ -t 0 ]
+}
+
+# @description Decrypt the private age identity without blocking non-interactive applies.
 function decrypt_age_private_key() {
     local age_dir
     local age_src_key
     local age_dst_key
     local tmp_age_dst_key
 
-    if "${CI:-false}"; then
-        # age is currently required tty. The CI does not have tty so return early
-        return 0 # early return
+    if [ "${CI:-false}" = true ] || ! stdin_is_tty; then
+        return 0
     fi
 
     age_dir="${HOME}/.config/age"
@@ -42,6 +50,7 @@ function decrypt_age_private_key() {
     fi
 }
 
+# @description Run the private age identity restore flow.
 function main() {
     decrypt_age_private_key
 }

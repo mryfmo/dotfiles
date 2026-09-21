@@ -129,7 +129,7 @@ inline = 'eval "$(~/.local/bin/mise activate zsh)"'
 [plugins.lang]
 inline = '''
 function _lang() {
-    export LANG='en_US.UTF-8'
+    export LANG="${LANG:-en_US.UTF-8}"
 }
 zsh-defer _lang
 '''

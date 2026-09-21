@@ -14,7 +14,6 @@ fi
 
 readonly PACKAGES=(
     build-essential
-    busybox
     cmake
     curl
     git

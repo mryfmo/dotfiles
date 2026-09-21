@@ -24,7 +24,7 @@ readonly SCRIPT_PATH="./install/ubuntu/common/dependencies.sh"
             echo "sudo $*" >> "${CALLS_PATH}"
         }
 
-        run_apt_get install -y busybox
+        run_apt_get install -y curl
     '
 
     [ "${status}" -eq 0 ]
@@ -33,7 +33,7 @@ readonly SCRIPT_PATH="./install/ubuntu/common/dependencies.sh"
     [ "${status}" -eq 0 ]
     [[ "${output}" == *"apt-get update"* ]]
     [[ "${output}" == *"apt-get install -y sudo"* ]]
-    [[ "${output}" == *"sudo --preserve-env=http_proxy,https_proxy,no_proxy apt-get install -y busybox"* ]]
+    [[ "${output}" == *"sudo --preserve-env=http_proxy,https_proxy,no_proxy apt-get install -y curl"* ]]
 }
 
 @test "[ubuntu-common] install_apt_packages skips apt when all packages are installed" {

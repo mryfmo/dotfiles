@@ -4,7 +4,7 @@ review_surface: crit-data
 reviewer: codex
 review_source: .agents/worklog/codex/review/dot-ubuntu-fix-T1-a01-crit-comments.json
 review_outcome: approved
-review_notes: Resolved CI-revision approval `r_0398ab` covers the one-line non-login-shell fix, related-pattern audit, and direct empty-output validation.
+review_notes: Resolved SSH-guard revision approval `r_9956b3` covers the one-line guard fix, repository audit, and direct source behavior.
 
 ## Shell, shdoc-compatible scripts, and chezmoi templates
 
@@ -148,6 +148,56 @@ Verbatim output:
 ```
 
 ## Crit review gate
+
+Command:
+
+```text
+AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/validation/dot-ubuntu-fix-T1-a01.md make require-crit-review
+```
+
+Verbatim output:
+
+```text
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+```
+
+## SSH source-guard revision: static validation and audit
+
+Commands ran bash syntax, mise-managed shellcheck/shfmt, and rejected any remaining array-length `BASH_SOURCE` guard under `install/`.
+
+Verbatim output:
+
+```text
+ssh guard static validation: OK
+install guard audit: OK
+```
+
+## SSH source-guard revision: direct source behavior
+
+Command sourced `ssh.sh` from `bash -c` with a failing `sudo` mock, installed the host key twice, and required output to equal one pinned key line.
+
+Verbatim output:
+
+```text
+github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
+ssh source guard behavior: OK
+```
+
+## SSH source-guard revision: CompactionDB failure memory
+
+Command:
+
+```text
+python3 .claude/hooks/contextdb_cli.py memory add --kind failure --scope project --content 'dot-ubuntu-fix-T1-a01 CI revise: ${#BASH_SOURCE[@]} is not a safe source guard in bash -c; install scripts must compare BASH_SOURCE[0] with $0 so sourcing never runs main.'
+```
+
+Verbatim output:
+
+```text
+76f15624-6899-437c-a66b-4b999a38d477
+```
+
+## SSH source-guard revision: review gate
 
 Command:
 

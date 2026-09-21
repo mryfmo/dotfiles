@@ -10,6 +10,8 @@
 
 [memory:failure] Do not use `bash -lc` in a cross-platform bats case that requires empty output; CI runner login profiles can emit unrelated text. Use `bash -c` unless the login shell is itself under test.
 
+[memory:failure] Do not use `${#BASH_SOURCE[@]} == 1` as an install-script execution guard. Under `bash -c`, a sourced file can still have array length one; compare `BASH_SOURCE[0]` with `$0` instead.
+
 ## Disposition
 
 - Recorded as a validated Codex learn entry and queued for CompactionDB project memory.

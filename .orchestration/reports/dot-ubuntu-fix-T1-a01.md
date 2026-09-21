@@ -25,13 +25,19 @@ cost: n/a
 - Audited task-related decrypt and Docker tests: no remaining `bash -lc` case is paired with an empty-output assertion, and the Docker rerun test already uses `bash -c`.
 - Direct non-login execution produced empty output and no key file; local bats remains unrun by policy.
 
+## Revision: SSH source guard
+
+- [memory:failure] Replaced the lone `install/` array-length `BASH_SOURCE` guard with the repository-standard `[[ "${BASH_SOURCE[0]}" == "${0}" ]]`, preventing `main` from running when `ssh.sh` is sourced from `bash -c`.
+- Audited every `install/` script; no array-length source guards remain.
+- Direct source behavior now prints exactly the single pinned host-key line expected by the existing bats test. Bash syntax, mise-managed shellcheck, and mise-managed shfmt pass.
+
 ## Tests and validation
 
 - Updated bats coverage but did not run bats locally, as required by repository policy.
 - Passed bash syntax, mise-managed shellcheck/shfmt, rendered chezmoi template checks, direct behavior checks, `tests.unit.test_supply_chain_policy`, and `git diff --check`.
 - Captured F2 before/after command output in the validation artifact.
 - The broader local Python unit discovery also exited successfully; existing expected-error and ResourceWarning output was unrelated to this task.
-- Completed finding-free Crit data self-reviews with resolved records `r_1f790a`, `r_13a66b`, and CI-revision-specific `r_0398ab`; the agent review gate passed.
+- Completed finding-free Crit data self-reviews with resolved records `r_1f790a`, `r_13a66b`, `r_0398ab`, and SSH-guard-specific `r_9956b3`; the agent review gate passed.
 
 ## Files
 
@@ -45,6 +51,7 @@ cost: n/a
 - `python3 .claude/hooks/contextdb_cli.py memory add --kind failure --scope project --content 'dot-ubuntu-fix-T1-a01: HOME override under sudo -i did not isolate mise global config; use a credential-free scratch user with a minimal config for backend validation.'` → `6cc64147-8c39-4f86-9d52-2a735213aa25`
 - `python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dot-ubuntu-fix-T1-a01 revise: Docker apt keyring replacement must invoke gpg with --batch --yes so reruns never prompt on /dev/tty when docker.gpg already exists.'` → `096e1f34-f289-46ca-8c60-e5dea660a1ad`
 - `python3 .claude/hooks/contextdb_cli.py memory add --kind failure --scope project --content 'dot-ubuntu-fix-T1-a01 CI revise: bats tests that assert empty output must use bash -c, not bash -lc, because runner login profiles may emit unrelated output.'` → `8c177c0d-b525-4924-8eda-f7122015172c`
+- `python3 .claude/hooks/contextdb_cli.py memory add --kind failure --scope project --content 'dot-ubuntu-fix-T1-a01 CI revise: ${#BASH_SOURCE[@]} is not a safe source guard in bash -c; install scripts must compare BASH_SOURCE[0] with $0 so sourcing never runs main.'` → `76f15624-6899-437c-a66b-4b999a38d477`
 
 ## Constraints honored
 

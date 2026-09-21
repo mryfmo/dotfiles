@@ -491,6 +491,8 @@ function update_claude_understand_anything() {
 # @description Install or update the Codex Superpowers plugin from configured marketplaces.
 #
 function update_codex_superpowers() {
+    local marketplace_configured=false
+
     if ! has_command codex; then
         printf 'Skipping Codex plugins: codex command not found.\n'
         return 0
@@ -498,6 +500,7 @@ function update_codex_superpowers() {
 
     section "Codex plugins"
     if codex_marketplace_is_configured_git_marketplace openai-curated; then
+        marketplace_configured=true
         codex plugin marketplace upgrade openai-curated || true
     else
         printf 'Skipping Codex marketplace upgrade: openai-curated is not a configured Git marketplace.\n'
@@ -506,8 +509,10 @@ function update_codex_superpowers() {
     if command_output_contains "\"pluginId\":\"${CODEX_SUPERPOWERS_PLUGIN}\"" codex plugin list --json ||
         command_output_contains "\"pluginId\": \"${CODEX_SUPERPOWERS_PLUGIN}\"" codex plugin list --json; then
         printf 'Codex Superpowers plugin is already installed.\n'
-    else
+    elif ${marketplace_configured}; then
         codex plugin add "${CODEX_SUPERPOWERS_PLUGIN}" || true
+    else
+        printf 'Skipping Codex Superpowers plugin: openai-curated is not a configured Git marketplace.\n'
     fi
     manifest_record "update_codex_superpowers" plugin "$(manifest_codex_plugin_version "${CODEX_SUPERPOWERS_PLUGIN}")" "${CODEX_HOME:-${HOME}/.codex}/.tmp/plugins/plugins/superpowers" "${CODEX_HOME:-${HOME}/.codex}/config.toml" -- "codex plugin marketplace upgrade openai-curated" "codex plugin add ${CODEX_SUPERPOWERS_PLUGIN}"
 }

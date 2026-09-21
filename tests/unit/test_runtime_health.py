@@ -229,6 +229,41 @@ EOF
             calls.index(repair), calls.index("claude plugin marketplace list")
         )
 
+    def test_codex_superpowers_skips_add_without_configured_marketplace(self) -> None:
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                textwrap.dedent(
+                    """
+                    source "$1"
+                    has_command() { return 0; }
+                    codex_marketplace_is_configured_git_marketplace() { return 1; }
+                    command_output_contains() { return 1; }
+                    codex() {
+                        if [ "$*" = "plugin add superpowers@openai-curated" ]; then
+                            printf 'Error: plugin superpowers@openai-curated was not found\n'
+                        fi
+                    }
+                    manifest_codex_plugin_version() { printf 'unknown\n'; }
+                    manifest_record() { :; }
+                    update_codex_superpowers
+                    """
+                ),
+                "_",
+                str(ROOT / "scripts/update-agent-assets.sh"),
+            ],
+            env={**os.environ, "HOME": str(self.temp_dir)},
+        )
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn(
+            "Skipping Codex Superpowers plugin: openai-curated is not a "
+            "configured Git marketplace.",
+            result.stdout,
+        )
+        self.assertNotIn("Error:", result.stdout + result.stderr)
+
     def test_agent_launchers_do_not_hardcode_model_ids(self) -> None:
         herdr = (ROOT / "home/dot_local/bin/common/executable_herdr-agents").read_text()
         fanout = (

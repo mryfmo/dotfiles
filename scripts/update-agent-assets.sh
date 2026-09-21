@@ -126,6 +126,13 @@ function ensure_mise_npm_agent_cli() {
 }
 
 #
+# @description Install configured GitHub CLI extensions when authentication is ready.
+#
+function ensure_gh_extensions() {
+    bash "${DOTFILES_REPO_SOURCE_DIR}/install/common/gh_extensions.sh"
+}
+
+#
 # @description Return success when the current OS is macOS.
 #
 function is_macos() {
@@ -273,12 +280,12 @@ function ensure_crit_cli() {
 
     target="${HOME}/.local/bin/crit"
     version="${CRIT_PIN_VERSION#v}"
-    if has_command crit && crit --version 2> /dev/null | awk -v expected="${version}" '$1 == "crit" { sub(/^v/, "", $2); if ($2 == expected) found = 1 } END { exit !found }'; then
-        [ "$(command -v crit)" = "${target}" ] || return 0
-    else
+    if ! [ -x "${target}" ] || ! "${target}" --version 2> /dev/null | awk -v expected="${version}" '$1 == "crit" { sub(/^v/, "", $2); if ($2 == expected) found = 1 } END { exit !found }'; then
         section "Crit CLI"
         install_pinned_linux_crit "${artifact}" "${checksum}" "${target}" "${version}" || return 1
     fi
+    export PATH="${HOME}/.local/bin:${PATH}"
+    hash -r
     manifest_record "ensure_crit_cli" installer "${CRIT_PIN_VERSION}" "${target}" -- "curl -fsSL https://github.com/tomasz-tomczyk/crit/releases/download/${CRIT_PIN_VERSION}/${artifact}" "shasum -a 256 <binary>" "install -m 0755 <binary> ${target}"
 }
 
@@ -844,6 +851,7 @@ function main() {
     remove_node_global_agent_cli_shadows
     ensure_mise_npm_agent_cli claude "npm:@anthropic-ai/claude-code"
     ensure_mise_npm_agent_cli codex "npm:@openai/codex"
+    ensure_gh_extensions
     update_claude_superpowers
     update_claude_crit
     update_claude_ponytail

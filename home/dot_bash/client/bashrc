@@ -124,7 +124,7 @@ fi
 
 # for prompt
 # shellcheck source=../../dot_local/bin/server/prompt.sh
-source "${HOME%/}/.local/bin/server/prompt.sh"
+[ -r "${HOME%/}/.local/bin/server/prompt.sh" ] && source "${HOME%/}/.local/bin/server/prompt.sh"
 
 # shellcheck source=../../dot_local/bin/server/history.sh
 source "${HOME%/}/.local/bin/server/history.sh"
@@ -139,7 +139,7 @@ source "${HOME%/}/.local/bin/server/history.sh"
 
 # for aliases
 # shellcheck source=../../dot_local/bin/server/aliases.sh
-source "${HOME%/}/.local/bin/server/aliases.sh"
+[ -r "${HOME%/}/.local/bin/server/aliases.sh" ] && source "${HOME%/}/.local/bin/server/aliases.sh"
 
 # Load optional secret exports supplied by the private chezmoi domain.
 # shellcheck disable=SC1091

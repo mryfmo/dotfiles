@@ -51,7 +51,7 @@ bash -c "$(wget -qO - https://raw.githubusercontent.com/mryfmo/dotfiles/main/set
 
 ![Screenshot of setup on Ubuntu Server machine](.github/screenshot-ubuntu-server.png)
 
-On a fresh machine, enter the age passphrase only when the interactive prompt appears; GitHub authentication is intentionally deferred, so run `setup-gh` after the public apply. On Ubuntu Desktop, add **Japanese (Mozc)** under **Settings → Keyboard → Input Sources** after installation. Ubuntu clients use zsh from the next login; run `exec zsh` to switch the current terminal immediately.
+On a fresh machine, enter the age passphrase only when the interactive prompt appears; GitHub authentication is intentionally deferred, so run `setup-gh` after the public apply. The next `make update` installs the configured GitHub CLI extensions. On Ubuntu Desktop, add **Japanese (Mozc)** under **Settings → Keyboard → Input Sources** after installation. Ubuntu clients use zsh from the next login; run `exec zsh` to switch the current terminal immediately.
 
 ### Minimal setup
 

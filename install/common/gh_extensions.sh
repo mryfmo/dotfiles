@@ -32,11 +32,14 @@ function activate_mise() {
 #
 function install_gh_extensions() {
     if ! gh auth status &> /dev/null; then
-        printf '%s\n' 'Warning: GitHub CLI is not authenticated. Run setup-gh, then rerun chezmoi apply to install extensions.' >&2
+        printf '%s\n' 'Warning: GitHub CLI is not authenticated. Run setup-gh, then make update to install extensions.' >&2
         return 0
     fi
 
     for extension in "${GH_EXTENSIONS[@]}"; do
+        if gh extension list | awk -F '\t' -v expected="${extension}" '$2 == expected { found = 1 } END { exit !found }'; then
+            continue
+        fi
         gh extension install "${extension}"
     done
 }

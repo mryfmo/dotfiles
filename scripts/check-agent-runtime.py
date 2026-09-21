@@ -48,6 +48,7 @@ UNDERSTAND_SKILL_ALLOWLIST = {
     "understand-onboard",
 }
 ASSET_STEP_FUNCTIONS = {
+    "ensure_crit_cli",
     "ensure_herdr_integrations",
     "ensure_mise_npm_agent_cli",
     "update_claude_crit",

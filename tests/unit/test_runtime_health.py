@@ -46,6 +46,81 @@ class RuntimeHealthTest(unittest.TestCase):
             check=check,
         )
 
+    def test_client_bashrc_treats_private_sources_as_optional(self) -> None:
+        home = self.temp_dir / "bashrc-home"
+        server = home / ".local/bin/server"
+        common = home / ".local/bin/common"
+        server.mkdir(parents=True)
+        common.mkdir(parents=True)
+        for path in (
+            server / "history.sh",
+            server / "cache.sh",
+            common / "dev",
+            common / "git-delete-merged-branches",
+        ):
+            path.write_text(":\n")
+
+        command = [
+            "bash",
+            "--noprofile",
+            "--rcfile",
+            str(ROOT / "home/dot_bash/client/bashrc"),
+            "-i",
+            "-c",
+            "true",
+        ]
+        env = {**os.environ, "HOME": str(home), "TERM": "dumb"}
+
+        public_only = self.run_test_command(command, env=env)
+
+        self.assertEqual(0, public_only.returncode)
+        self.assertNotIn("prompt.sh", public_only.stderr)
+        self.assertNotIn("aliases.sh", public_only.stderr)
+
+        (server / "prompt.sh").write_text("printf 'private-prompt\\n'\n")
+        (server / "aliases.sh").write_text("printf 'private-aliases\\n'\n")
+
+        with_private = self.run_test_command(command, env=env)
+
+        self.assertEqual(0, with_private.returncode)
+        self.assertIn("private-prompt", with_private.stdout)
+        self.assertIn("private-aliases", with_private.stdout)
+
+    def test_agent_asset_update_runs_gh_extension_ensure(self) -> None:
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                textwrap.dedent(
+                    """
+                    source "$1"
+                    remove_node_global_agent_cli_shadows() { :; }
+                    ensure_mise_npm_agent_cli() { :; }
+                    update_claude_superpowers() { :; }
+                    update_claude_crit() { :; }
+                    update_claude_ponytail() { :; }
+                    update_claude_understand_anything() { :; }
+                    update_codex_superpowers() { :; }
+                    update_codex_crit() { :; }
+                    update_codex_ponytail() { :; }
+                    update_codex_understand_anything() { :; }
+                    update_terminal_code() { :; }
+                    update_terminal_browser() { :; }
+                    update_compactiondb() { :; }
+                    ensure_herdr_integrations() { :; }
+                    ensure_gh_extensions() { printf 'gh-extensions-ensured\\n'; }
+                    main
+                    """
+                ),
+                "_",
+                str(ROOT / "scripts/update-agent-assets.sh"),
+            ],
+            env={**os.environ, "HOME": str(self.temp_dir)},
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual("gh-extensions-ensured\n", result.stdout)
+
     def test_agent_runs_are_private_and_ignored(self) -> None:
         repo = self.temp_dir / "repo"
         home = self.temp_dir / "home"
@@ -94,6 +169,7 @@ class RuntimeHealthTest(unittest.TestCase):
         home = self.temp_dir / "agent-assets-home"
         bin_dir = repo / "bin"
         (repo / "scripts").mkdir(parents=True)
+        (repo / "install/common").mkdir(parents=True)
         home.mkdir()
         shutil.copy(
             ROOT / "scripts/update-agent-assets.sh",
@@ -107,6 +183,10 @@ class RuntimeHealthTest(unittest.TestCase):
         shutil.copy(
             ROOT / "scripts/lib/installer-pins.sh",
             repo / "scripts/lib/installer-pins.sh",
+        )
+        shutil.copy(
+            ROOT / "install/common/gh_extensions.sh",
+            repo / "install/common/gh_extensions.sh",
         )
         (repo / "vendor/compactiondb").mkdir(parents=True)
         (repo / "vendor/compactiondb/CHANGELOG.md").write_text("## 2.0.0+dotfiles.5\n")
@@ -154,6 +234,7 @@ class RuntimeHealthTest(unittest.TestCase):
         bin_dir = home / ".local/bin"
         shim_dir = home / ".local/share/mise/shims"
         (repo / "scripts").mkdir(parents=True)
+        (repo / "install/common").mkdir(parents=True)
         home.mkdir()
         shutil.copy(
             ROOT / "scripts/update-agent-assets.sh",
@@ -167,6 +248,10 @@ class RuntimeHealthTest(unittest.TestCase):
         shutil.copy(
             ROOT / "scripts/lib/installer-pins.sh",
             repo / "scripts/lib/installer-pins.sh",
+        )
+        shutil.copy(
+            ROOT / "install/common/gh_extensions.sh",
+            repo / "install/common/gh_extensions.sh",
         )
         (repo / "vendor/compactiondb").mkdir(parents=True)
         (repo / "vendor/compactiondb/CHANGELOG.md").write_text("## 2.0.0+dotfiles.5\n")
@@ -423,6 +508,30 @@ EOF
             [str(home / ".local/bin/crit")],
             manifest["steps"]["ensure_crit_cli"]["paths"],
         )
+
+    def test_linux_crit_prefers_pinned_target_over_older_path_binary(self) -> None:
+        repo, home, env, checksum = self.crit_fixture("9.9.9")
+        self.executable(
+            repo / "bin/crit",
+            "printf 'crit v1.0.0 (shadow)\\n'\n",
+        )
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                "source scripts/update-agent-assets.sh; "
+                "CRIT_PIN_VERSION=v9.9.9; "
+                f"CRIT_LINUX_AMD64_SHA256={checksum}; "
+                "ensure_crit_cli; crit --version",
+            ],
+            cwd=repo,
+            env=env,
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertFalse((repo / "commands.log").exists())
+        self.assertIn("crit v9.9.9", result.stdout)
+        self.assertNotIn("shadow", result.stdout)
 
     def test_linux_crit_checksum_failure_preserves_existing_binary(self) -> None:
         repo, home, env, _checksum = self.crit_fixture("1.0.0")

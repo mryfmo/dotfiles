@@ -4057,6 +4057,8 @@
 <span class="c1"># @description Install or update the Codex Superpowers plugin from configured marketplaces.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>update_codex_superpowers<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">marketplace_configured</span><span class="o">=</span><span class="nb">false</span>
+
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>codex<span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Skipping Codex plugins: codex command not found.\n'</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
@@ -4064,6 +4066,7 @@
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">"Codex plugins"</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>codex_marketplace_is_configured_git_marketplace<span class="w"> </span>openai-curated<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">marketplace_configured</span><span class="o">=</span><span class="nb">true</span>
 <span class="w">        </span>codex<span class="w"> </span>plugin<span class="w"> </span>marketplace<span class="w"> </span>upgrade<span class="w"> </span>openai-curated<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 <span class="w">    </span><span class="k">else</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Skipping Codex marketplace upgrade: openai-curated is not a configured Git marketplace.\n'</span>
@@ -4072,8 +4075,10 @@
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>command_output_contains<span class="w"> </span><span class="s2">"\"pluginId\":\"</span><span class="si">${</span><span class="nv">CODEX_SUPERPOWERS_PLUGIN</span><span class="si">}</span><span class="s2">\""</span><span class="w"> </span>codex<span class="w"> </span>plugin<span class="w"> </span>list<span class="w"> </span>--json<span class="w"> </span><span class="o">||</span>
 <span class="w">        </span>command_output_contains<span class="w"> </span><span class="s2">"\"pluginId\": \"</span><span class="si">${</span><span class="nv">CODEX_SUPERPOWERS_PLUGIN</span><span class="si">}</span><span class="s2">\""</span><span class="w"> </span>codex<span class="w"> </span>plugin<span class="w"> </span>list<span class="w"> </span>--json<span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Codex Superpowers plugin is already installed.\n'</span>
-<span class="w">    </span><span class="k">else</span>
+<span class="w">    </span><span class="k">elif</span><span class="w"> </span><span class="si">${</span><span class="nv">marketplace_configured</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span>codex<span class="w"> </span>plugin<span class="w"> </span>add<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_SUPERPOWERS_PLUGIN</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Skipping Codex Superpowers plugin: openai-curated is not a configured Git marketplace.\n'</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span>manifest_record<span class="w"> </span><span class="s2">"update_codex_superpowers"</span><span class="w"> </span>plugin<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>manifest_codex_plugin_version<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_SUPERPOWERS_PLUGIN</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_HOME</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/.codex</span><span class="si">}</span><span class="s2">/.tmp/plugins/plugins/superpowers"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_HOME</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/.codex</span><span class="si">}</span><span class="s2">/config.toml"</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"codex plugin marketplace upgrade openai-curated"</span><span class="w"> </span><span class="s2">"codex plugin add </span><span class="si">${</span><span class="nv">CODEX_SUPERPOWERS_PLUGIN</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>

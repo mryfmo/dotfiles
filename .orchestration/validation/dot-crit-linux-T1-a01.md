@@ -255,3 +255,76 @@ resolved: 2
 unresolved: 0
 Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
 ```
+
+## Revision: Bats logical versus physical fixture path
+
+GitHub was inspected first. Run: https://github.com/mryfmo/dotfiles/actions/runs/35569113472
+
+Failed macOS job: https://github.com/mryfmo/dotfiles/actions/runs/35569113472/job/106236824349
+
+Relevant verbatim log output:
+
+```text
+not ok 12 [common] update skips pull for tracked changes and prints the manual command
+# (in test file tests/install/common/lifecycle.bats, line 94)
+#   `[[ "$output" == *"Notice: local source not pulled (tracked files have staged or unstaged changes); run 'git -C ${UPDATE_FIXTURE} pull' to fetch remote updates."* ]]' failed
+```
+
+Ubuntu client job: https://github.com/mryfmo/dotfiles/actions/runs/35569113472/job/106236824366
+
+Ubuntu server job: https://github.com/mryfmo/dotfiles/actions/runs/35569113472/job/106236824343
+
+Relevant verbatim log output:
+
+```text
+test (ubuntu-latest, client) Run unit test 2026-09-21T06:36:24.6339350Z ok 12 [common] update skips pull for tracked changes and prints the manual command
+test (ubuntu-latest, client) Run unit test 2026-09-21T06:37:11.1629750Z ##[error]The operation was canceled.
+test (ubuntu-latest, server) Run unit test 2026-09-21T06:36:31.1527502Z ok 12 [common] update skips pull for tracked changes and prints the manual command
+test (ubuntu-latest, server) Upload coverage to Codecov 2026-09-21T06:37:03.7209397Z ##[error]The operation was canceled.
+```
+
+The Ubuntu logs do not print the two compared paths. Because the original logical-path assertion passed in both Ubuntu jobs, it is reasonable to infer that those jobs had no observable logical/physical divergence; cancellation occurred later, not in test 12. macOS local physical-resolution proof:
+
+```text
+logical parent: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T
+physical parent: /private/var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T
+```
+
+The test now records `UPDATE_FIXTURE_PHYSICAL="$(cd "${fixture}" && pwd -P)"` and uses that value only for the Notice path assertion.
+
+Allowed local checks (Bats remained CI-only):
+
+```text
+$ uv run python -m unittest tests.unit.test_runtime_health
+..........................
+----------------------------------------------------------------------
+Ran 26 tests in 8.100s
+
+OK
+
+$ shellcheck -x -e SC2314,SC2016 tests/install/common/lifecycle.bats && shfmt --indent 4 --space-redirects --diff tests/install/common/lifecycle.bats && git diff --check && printf 'lifecycle-bats-static: OK\n'
+lifecycle-bats-static: OK
+
+$ uv run --with pyyaml scripts/validate-agent-assets.py
+agent asset validation ok
+```
+
+CompactionDB command:
+
+```text
+python3 .claude/hooks/contextdb_cli.py memory add --kind failure --scope project --content 'dot-crit-linux-T1-a01 revise: Bats temp paths can be logical while make -C reports physical CURDIR (macOS /var versus /private/var); assertions for printed repository paths must derive expected values with pwd -P. In CI run 35569113472 the old assertion failed on macOS but passed on both Ubuntu jobs.'
+```
+
+Verbatim output:
+
+```text
+b62160c1-001b-444f-afac-f3c18347527f
+```
+
+Path-resolution revision Crit evidence and final gate:
+
+```text
+resolved: 3
+unresolved: 0
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+```

@@ -78,6 +78,7 @@ EOF
 
     run env HOME="${fixture}/home" PATH="${fixture}/bin:${PATH}" make -C "${fixture}" update
     UPDATE_FIXTURE="${fixture}"
+    UPDATE_FIXTURE_PHYSICAL="$(cd "${fixture}" && pwd -P)"
 }
 
 @test "[common] update pulls a clean main branch tracking origin/main first" {
@@ -91,7 +92,7 @@ EOF
     run_update_fixture running 0 0 0 0 0 "" main origin/main 1
     [ "$status" -eq 0 ]
     [ "$(grep -c '^git pull --ff-only$' "${UPDATE_FIXTURE}/calls")" -eq 0 ]
-    [[ "$output" == *"Notice: local source not pulled (tracked files have staged or unstaged changes); run 'git -C ${UPDATE_FIXTURE} pull' to fetch remote updates."* ]]
+    [[ "$output" == *"Notice: local source not pulled (tracked files have staged or unstaged changes); run 'git -C ${UPDATE_FIXTURE_PHYSICAL} pull' to fetch remote updates."* ]]
 }
 
 @test "[common] update reloads a running Herdr server exactly once" {

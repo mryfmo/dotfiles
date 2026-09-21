@@ -15,6 +15,7 @@ cost: n/a
 - Replaced the function-scoped `RETURN` cleanup trap with `install_pinned_linux_crit`, a subshell helper using an `EXIT` trap. Cleanup variables now remain alive for the full trap lifetime, matching `_install_mise_binary`.
 - Restored the README validator's literal single-line token `version-matched Claude release artifact`.
 - Added a trap-leak regression and passed the requested full runtime-health suite plus `scripts/validate-agent-assets.py`.
+- Resolved the Bats Notice assertion through `pwd -P` fixture resolution. The product remains unchanged: macOS CI exposed `/var` versus `/private/var`, while both Ubuntu jobs passed the original assertion.
 
 ## Validation
 
@@ -24,7 +25,7 @@ cost: n/a
 - The related Python unit suites pass all 36 tests. Local bats was not run, as required.
 - Hermetic `make update` traces prove pull-before-apply on clean main and no pull plus the exact Notice on dirty main.
 - The actual `ensure_crit_cli` function installed and ran `crit v0.20.2` in a credential-free `adh-test` scratch user, wrote the manifest path, and removed the user/home afterward.
-- Codex completed initial and revision Crit data reviews with two resolved review-scope approval records and passed `make require-crit-review` using the repo-local receipt.
+- Codex completed initial and revision Crit data reviews with three resolved review-scope approval records and passed `make require-crit-review` using the repo-local receipt.
 - Revise validation passed 26 runtime-health tests and the full agent-asset validator.
 
 Full command outputs are in `.orchestration/validation/dot-crit-linux-T1-a01.md`.
@@ -48,6 +49,8 @@ python3 .claude/hooks/contextdb_cli.py memory add --kind failure --scope project
 ```
 
 Failure memory ID: `1639ae38-a92b-4f5a-a0c4-b7659a9b257e`
+
+Path-resolution failure memory ID: `b62160c1-001b-444f-afac-f3c18347527f`
 
 ## Side effects and reverse mapping
 

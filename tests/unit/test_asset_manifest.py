@@ -220,6 +220,7 @@ class AssetManifestTest(unittest.TestCase):
     def test_updater_has_one_recording_call_for_each_install_step(self) -> None:
         updater = UPDATER.read_text()
         steps = (
+            "ensure_crit_cli",
             "ensure_herdr_integrations",
             "update_claude_superpowers",
             "update_claude_crit",
@@ -234,7 +235,7 @@ class AssetManifestTest(unittest.TestCase):
             "update_compactiondb",
         )
 
-        self.assertEqual(13, updater.count('manifest_record "'))
+        self.assertEqual(14, updater.count('manifest_record "'))
         self.assertEqual(
             1,
             updater.count('manifest_record "ensure_mise_npm_agent_cli:${cli}"'),

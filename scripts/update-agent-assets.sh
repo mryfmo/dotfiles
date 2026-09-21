@@ -228,22 +228,82 @@ function ensure_claude_superpowers_marketplace() {
 }
 
 #
+# @description Download, verify, and atomically install one pinned Linux Crit binary.
+# @arg $1 string Release artifact name.
+# @arg $2 string Expected binary SHA256.
+# @arg $3 path Destination executable path.
+# @arg $4 string Expected version without a leading v.
+#
+function install_pinned_linux_crit() (
+    local artifact="$1"
+    local checksum="$2"
+    local target="$3"
+    local version="$4"
+    local actual download staging=""
+
+    download="$(mktemp)" || return
+    trap 'rm -f "${download}" ${staging:+"${staging}"}' EXIT
+    curl -fsSL "https://github.com/tomasz-tomczyk/crit/releases/download/${CRIT_PIN_VERSION}/${artifact}" -o "${download}" || return
+    actual="$(shasum -a 256 "${download}" | awk '{ print $1 }')"
+    [ "${actual}" = "${checksum}" ] || {
+        printf 'Crit checksum mismatch for %s.\n' "${artifact}" >&2
+        return 1
+    }
+
+    mkdir -p "$(dirname "${target}")" || return
+    staging="$(mktemp "${target}.XXXXXX")" || return
+    install -m 0755 "${download}" "${staging}" || return
+    "${staging}" --version 2> /dev/null | awk -v expected="${version}" '$1 == "crit" { sub(/^v/, "", $2); if ($2 == expected) found = 1 } END { exit !found }' || return
+    mv -f "${staging}" "${target}"
+)
+
+#
 # @description Ensure the Crit CLI is available for agent integrations.
 #
 function ensure_crit_cli() {
-    if has_command crit; then
+    local artifact checksum target version
+
+    if is_macos; then
+        if ! has_command crit && has_command brew; then
+            section "Crit CLI"
+            brew install crit || true
+        fi
+        has_command crit || {
+            printf 'Skipping Crit integrations: crit command not found.\n'
+            return 1
+        }
         return 0
     fi
 
-    if is_macos && has_command brew; then
-        section "Crit CLI"
-        brew install crit || true
-    fi
-
-    if ! has_command crit; then
-        printf 'Skipping Crit integrations: crit command not found.\n'
+    if [ "$(uname -s)" != "Linux" ]; then
+        printf 'Skipping Crit integrations: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
         return 1
     fi
+
+    case "$(uname -m)" in
+    x86_64 | amd64)
+        artifact="crit-linux-amd64"
+        checksum="${CRIT_LINUX_AMD64_SHA256}"
+        ;;
+    aarch64 | arm64)
+        artifact="crit-linux-arm64"
+        checksum="${CRIT_LINUX_ARM64_SHA256}"
+        ;;
+    *)
+        printf 'Skipping Crit integrations: unsupported Linux architecture %s.\n' "$(uname -m)"
+        return 1
+        ;;
+    esac
+
+    target="${HOME}/.local/bin/crit"
+    version="${CRIT_PIN_VERSION#v}"
+    if has_command crit && crit --version 2> /dev/null | awk -v expected="${version}" '$1 == "crit" { sub(/^v/, "", $2); if ($2 == expected) found = 1 } END { exit !found }'; then
+        [ "$(command -v crit)" = "${target}" ] || return 0
+    else
+        section "Crit CLI"
+        install_pinned_linux_crit "${artifact}" "${checksum}" "${target}" "${version}" || return 1
+    fi
+    manifest_record "ensure_crit_cli" installer "${CRIT_PIN_VERSION}" "${target}" -- "curl -fsSL https://github.com/tomasz-tomczyk/crit/releases/download/${CRIT_PIN_VERSION}/${artifact}" "shasum -a 256 <binary>" "install -m 0755 <binary> ${target}"
 }
 
 #
@@ -429,7 +489,7 @@ function update_claude_crit() {
     else
         claude plugin enable "${CLAUDE_CRIT_PLUGIN}" || true
     fi
-    manifest_record "update_claude_crit" plugin "$(manifest_claude_plugin_version "${CLAUDE_CRIT_PLUGIN}")" "${HOME}/.claude/plugins/cache/crit/crit" "${HOME}/.claude/settings.json" -- "brew install crit" "claude plugin marketplace add ${CLAUDE_CRIT_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_CRIT_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_CRIT_PLUGIN}" "claude plugin update ${CLAUDE_CRIT_PLUGIN}" "claude plugin enable ${CLAUDE_CRIT_PLUGIN}"
+    manifest_record "update_claude_crit" plugin "$(manifest_claude_plugin_version "${CLAUDE_CRIT_PLUGIN}")" "${HOME}/.claude/plugins/cache/crit/crit" "${HOME}/.claude/settings.json" -- "ensure_crit_cli" "claude plugin marketplace add ${CLAUDE_CRIT_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_CRIT_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_CRIT_PLUGIN}" "claude plugin update ${CLAUDE_CRIT_PLUGIN}" "claude plugin enable ${CLAUDE_CRIT_PLUGIN}"
 }
 
 #
@@ -584,7 +644,7 @@ function update_codex_crit() {
         cd "${HOME}"
         crit install codex-plugin --force
     ) || true
-    manifest_record "update_codex_crit" plugin "$(manifest_brew_formula_version crit)" "${CODEX_HOME:-${HOME}/.codex}/plugins/crit" "${CODEX_HOME:-${HOME}/.codex}/config.toml" -- "brew install crit" "crit install codex-plugin --force"
+    manifest_record "update_codex_crit" plugin "$(crit --version 2> /dev/null | awk 'NR == 1 { print $2 }')" "${CODEX_HOME:-${HOME}/.codex}/plugins/crit" "${CODEX_HOME:-${HOME}/.codex}/config.toml" -- "ensure_crit_cli" "crit install codex-plugin --force"
 }
 
 #

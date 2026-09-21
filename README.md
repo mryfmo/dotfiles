@@ -144,9 +144,13 @@ upgrades. Other values, including `SYSTEM=0`, keep `make upgrade` in user-level
 tooling mode.
 
 `make update` applies managed files and excludes chezmoi scripts, so one-time
-installers do not run during routine updates. It then ensures the locked
-Node/npm runtime is installed before the two locked statusline tools required
-by the applied config, without upgrading other tools.
+installers do not run during routine updates. Before applying, it runs
+`git pull --ff-only` only when the checkout is on `main`, tracks `origin/main`,
+and has no staged or unstaged tracked-file changes. Otherwise it prints the
+reason and the exact manual `git -C <repo> pull` command, then continues with
+the local source; a failed fast-forward pull also warns and continues. It then
+ensures the locked Node/npm runtime is installed before the two locked
+statusline tools required by the applied config, without upgrading other tools.
 After assets are refreshed, it reloads a running Herdr server, skips reload when
 the server is reported as not running or the command is unavailable, and fails
 on ambiguous status or reload errors. After
@@ -185,6 +189,11 @@ sha256 before execution (bump both constants together in
 installer clones `~/.understand-anything/repo` and symlinks its skills into
 `~/.agents/skills` (expected unmanaged-skill WARNs in `make doctor`, one per
 linked skill); Codex runtime files are provisioned from the version-matched Claude release artifact when available.
+
+On Linux, Crit itself is installed from the pinned amd64 or arm64 GitHub
+release binary after SHA-256 verification; macOS continues to use Homebrew.
+Both Linux checksums and the version live in `scripts/lib/installer-pins.sh`
+and are refreshed by `make upgrade`.
 
 The zenbu-labs terminal tools — terminal-code (`tode`) and `terminal-browser` —
 install through their sha256-verified upstream curl installers, pinned by

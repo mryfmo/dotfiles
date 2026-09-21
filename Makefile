@@ -42,6 +42,21 @@ init:
 
 .PHONY: update
 update:
+	@branch="$$(git branch --show-current 2>/dev/null || true)"; \
+	upstream="$$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true)"; \
+	reason=""; \
+	if [ "$$branch" != main ]; then \
+		reason="current branch is $${branch:-detached}, not main"; \
+	elif [ "$$upstream" != origin/main ]; then \
+		reason="upstream is $${upstream:-unset}, not origin/main"; \
+	elif ! git diff --quiet || ! git diff --cached --quiet; then \
+		reason="tracked files have staged or unstaged changes"; \
+	fi; \
+	if [ -n "$$reason" ]; then \
+		printf "Notice: local source not pulled (%s); run 'git -C %s pull' to fetch remote updates.\n" "$$reason" "$(CURDIR)"; \
+	elif ! git pull --ff-only; then \
+		printf 'Warning: git pull --ff-only failed; continuing with local source.\n' >&2; \
+	fi
 	chezmoi apply --verbose --exclude=scripts
 	@if [ -d "$$HOME/.local/share/chezmoi-private" ] && [ -f "$$HOME/.config/chezmoi-private/chezmoi.yaml" ]; then \
 		chezmoi --source "$$HOME/.local/share/chezmoi-private" \

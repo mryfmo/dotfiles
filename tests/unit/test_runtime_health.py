@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import stat
@@ -263,6 +264,231 @@ EOF
             result.stdout,
         )
         self.assertNotIn("Error:", result.stdout + result.stderr)
+
+    def crit_fixture(
+        self, installed_version: str | None = None
+    ) -> tuple[Path, Path, dict[str, str], str]:
+        repo = self.temp_dir / "crit-repo"
+        home = self.temp_dir / "crit-home"
+        bin_dir = repo / "bin"
+        (repo / "scripts/lib").mkdir(parents=True)
+        (home / ".local/bin").mkdir(parents=True)
+        shutil.copy(
+            ROOT / "scripts/update-agent-assets.sh",
+            repo / "scripts/update-agent-assets.sh",
+        )
+        shutil.copy(
+            ROOT / "scripts/lib/asset-manifest.sh",
+            repo / "scripts/lib/asset-manifest.sh",
+        )
+        shutil.copy(
+            ROOT / "scripts/lib/installer-pins.sh",
+            repo / "scripts/lib/installer-pins.sh",
+        )
+        (repo / "vendor/compactiondb").mkdir(parents=True)
+        payload = repo / "crit-linux-amd64"
+        self.executable(payload, "printf 'crit v9.9.9 (fixture)\\n'\n")
+        checksum = subprocess.run(
+            ["shasum", "-a", "256", str(payload)],
+            text=True,
+            capture_output=True,
+            check=True,
+        ).stdout.split()[0]
+        self.executable(
+            bin_dir / "uname",
+            """
+            case "$1" in
+                -s) printf 'Linux\\n' ;;
+                -m) printf 'x86_64\\n' ;;
+                *) printf 'Linux\\n' ;;
+            esac
+            """,
+        )
+        self.executable(
+            bin_dir / "curl",
+            """
+            printf 'curl %s\\n' "$*" >> "$TEST_LOG"
+            out=""
+            while [ "$#" -gt 0 ]; do
+                if [ "$1" = "-o" ]; then out="$2"; shift; fi
+                shift
+            done
+            cp "$CRIT_PAYLOAD" "$out"
+            """,
+        )
+        jq = shutil.which("jq")
+        self.assertIsNotNone(jq)
+        (bin_dir / "jq").symlink_to(jq)
+        if installed_version is not None:
+            self.executable(
+                home / ".local/bin/crit",
+                f"printf 'crit v{installed_version} (fixture)\\n'\n",
+            )
+        log = repo / "commands.log"
+        env = {
+            **os.environ,
+            "CRIT_PAYLOAD": str(payload),
+            "DOTFILES_SOURCE_DIR": str(repo),
+            "HOME": str(home),
+            "PATH": f"{bin_dir}:{home / '.local/bin'}:/usr/bin:/bin",
+            "TEST_LOG": str(log),
+        }
+        return repo, home, env, checksum
+
+    def test_linux_crit_install_is_pinned_atomic_and_recorded(self) -> None:
+        repo, home, env, checksum = self.crit_fixture()
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                "source scripts/update-agent-assets.sh; "
+                "CRIT_PIN_VERSION=v9.9.9; "
+                f"CRIT_LINUX_AMD64_SHA256={checksum}; "
+                "ensure_crit_cli",
+            ],
+            cwd=repo,
+            env=env,
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        target = home / ".local/bin/crit"
+        self.assertTrue(target.stat().st_mode & stat.S_IXUSR)
+        self.assertIn("crit v9.9.9", self.run_test_command([str(target)]).stdout)
+        self.assertIn(
+            "/v9.9.9/crit-linux-amd64", (repo / "commands.log").read_text()
+        )
+        manifest = json.loads((home / ".agents/.installed-manifest.json").read_text())
+        self.assertEqual([str(target)], manifest["steps"]["ensure_crit_cli"]["paths"])
+
+    def test_linux_crit_correct_version_is_download_free(self) -> None:
+        repo, home, env, checksum = self.crit_fixture("9.9.9")
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                "source scripts/update-agent-assets.sh; "
+                "CRIT_PIN_VERSION=v9.9.9; "
+                f"CRIT_LINUX_AMD64_SHA256={checksum}; "
+                "ensure_crit_cli",
+            ],
+            cwd=repo,
+            env=env,
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertFalse((repo / "commands.log").exists())
+        manifest = json.loads((home / ".agents/.installed-manifest.json").read_text())
+        self.assertEqual(
+            [str(home / ".local/bin/crit")],
+            manifest["steps"]["ensure_crit_cli"]["paths"],
+        )
+
+    def test_linux_crit_checksum_failure_preserves_existing_binary(self) -> None:
+        repo, home, env, _checksum = self.crit_fixture("1.0.0")
+        target = home / ".local/bin/crit"
+        previous = target.read_bytes()
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                "source scripts/update-agent-assets.sh; "
+                "CRIT_PIN_VERSION=v9.9.9; "
+                f"CRIT_LINUX_AMD64_SHA256={'0' * 64}; "
+                "ensure_crit_cli",
+            ],
+            cwd=repo,
+            env=env,
+        )
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertEqual(previous, target.read_bytes())
+
+    def test_linux_crit_failure_does_not_leak_cleanup_trap(self) -> None:
+        repo, _home, env, _checksum = self.crit_fixture("1.0.0")
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                "source scripts/update-agent-assets.sh; "
+                "CRIT_PIN_VERSION=v9.9.9; "
+                f"CRIT_LINUX_AMD64_SHA256={'0' * 64}; "
+                "ensure_crit_cli || :; "
+                "later_function() { :; }; later_function",
+            ],
+            cwd=repo,
+            env=env,
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertNotIn("unbound variable", result.stderr)
+
+    def update_fixture(
+        self, *, branch: str = "main", upstream: str = "origin/main", dirty: bool = False
+    ) -> tuple[subprocess.CompletedProcess[str], Path]:
+        repo = self.temp_dir / f"update-{'dirty' if dirty else 'clean'}"
+        home = repo / "home"
+        bin_dir = repo / "bin"
+        (repo / "scripts").mkdir(parents=True)
+        home.mkdir()
+        shutil.copy(ROOT / "Makefile", repo / "Makefile")
+        self.executable(
+            bin_dir / "git",
+            f"""
+            case "$*" in
+                "branch --show-current") printf '{branch}\\n' ;;
+                "rev-parse --abbrev-ref --symbolic-full-name @{{upstream}}") printf '{upstream}\\n' ;;
+                "diff --quiet"|"diff --cached --quiet") exit {int(dirty)} ;;
+                "pull --ff-only") printf 'git pull --ff-only\\n' >> "$TEST_LOG" ;;
+            esac
+            """,
+        )
+        self.executable(bin_dir / "chezmoi", "printf 'chezmoi %s\\n' \"$*\" >> \"$TEST_LOG\"\n")
+        self.executable(bin_dir / "mise", "printf 'mise %s\\n' \"$*\" >> \"$TEST_LOG\"\n")
+        self.executable(
+            bin_dir / "herdr",
+            """
+            if [ "$*" = "status server --json" ]; then
+                printf '{"status":"not_running"}\\n'
+            fi
+            """,
+        )
+        self.executable(
+            repo / "scripts/update-agent-assets.sh",
+            "printf 'assets\\n' >> \"$TEST_LOG\"\n",
+        )
+        jq = shutil.which("jq")
+        self.assertIsNotNone(jq)
+        (bin_dir / "jq").symlink_to(jq)
+        log = repo / "calls"
+        result = self.run_test_command(
+            ["make", "update"],
+            cwd=repo,
+            env={
+                **os.environ,
+                "HOME": str(home),
+                "PATH": f"{bin_dir}:/usr/bin:/bin",
+                "TEST_LOG": str(log),
+            },
+        )
+        return result, log
+
+    def test_make_update_pulls_clean_main_before_apply(self) -> None:
+        result, log = self.update_fixture()
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual("git pull --ff-only", log.read_text().splitlines()[0])
+
+    def test_make_update_skips_dirty_main_with_manual_pull_notice(self) -> None:
+        result, log = self.update_fixture(dirty=True)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertNotIn("git pull --ff-only", log.read_text())
+        self.assertIn(
+            "Notice: local source not pulled (tracked files have staged or "
+            "unstaged changes); run 'git -C ",
+            result.stdout,
+        )
+        self.assertIn(" pull' to fetch remote updates.", result.stdout)
 
     def test_agent_launchers_do_not_hardcode_model_ids(self) -> None:
         herdr = (ROOT / "home/dot_local/bin/common/executable_herdr-agents").read_text()
@@ -593,19 +819,25 @@ EOF
             ROOT / "scripts/lib/installer-pins.sh",
             repo / "scripts/lib/installer-pins.sh",
         )
-        # Hermetic installer downloads: serve a deterministic fake installer so
-        # the terminal tool pin-bump phase never touches the network in tests.
+        # Hermetic downloads keep the pin-bump phase off the network in tests.
         self.executable(
             bin_dir / "curl",
             """
             printf 'curl %s\n' "$*" >> "$TEST_LOG"
+            request="$*"
             out=""
             while [ "$#" -gt 0 ]; do
                 if [ "$1" = "-o" ]; then out="$2"; shift; fi
                 shift
             done
             [ -n "$out" ] || exit 1
-            printf 'VERSION="v9.9.9"\nCHANNEL="stable"\n' > "$out"
+            case "$request" in
+                *tode.sh/install*|*terminal-browser.sh/install*)
+                    printf 'VERSION="v9.9.9"\nCHANNEL="stable"\n' > "$out"
+                    ;;
+                *crit-linux-amd64*) printf 'fixture amd64\n' > "$out" ;;
+                *crit-linux-arm64*) printf 'fixture arm64\n' > "$out" ;;
+            esac
             """,
         )
         self.executable(
@@ -676,10 +908,11 @@ EOF
             bin_dir / "gh",
             """
             printf 'gh %s\n' "$*" >> "$TEST_LOG"
-            [[ "$FAIL_PHASE" != gh ]] || exit 9
+            [[ "$FAIL_PHASE:$1" != gh:extension ]] || exit 9
             case "$*" in
                 *issues/1115*) printf 'open\n' ;;
-                *releases/latest*) printf 'v3.0.15\n' ;;
+                *tomasz-tomczyk/crit/releases/latest*) printf 'v9.9.9\n' ;;
+                *musistudio/claude-code-router/releases/latest*) printf 'v3.0.15\n' ;;
             esac
             """,
         )
@@ -829,7 +1062,7 @@ EOF
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertIn("optional warnings: 1", result.stdout)
 
-    def test_upgrade_bumps_terminal_tool_pins_from_fetched_installers(self) -> None:
+    def test_upgrade_bumps_terminal_and_crit_pins_from_fetched_artifacts(self) -> None:
         repo, env = self.upgrade_fixture("none")
 
         result = self.run_test_command(
@@ -839,14 +1072,22 @@ EOF
         )
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertIn("Pinned tode v9.9.9 and terminal-browser v9.9.9", result.stdout)
+        self.assertIn(
+            "Pinned tode v9.9.9, terminal-browser v9.9.9, and crit v9.9.9",
+            result.stdout,
+        )
         pins = (repo / "scripts/lib/installer-pins.sh").read_text()
         self.assertIn('TERMINAL_CODE_PIN_VERSION="v9.9.9"', pins)
         self.assertIn('TERMINAL_BROWSER_PIN_VERSION="v9.9.9"', pins)
+        self.assertIn('CRIT_PIN_VERSION="v9.9.9"', pins)
         self.assertRegex(pins, r'TERMINAL_CODE_INSTALLER_SHA256="[0-9a-f]{64}"')
+        self.assertRegex(pins, r'CRIT_LINUX_AMD64_SHA256="[0-9a-f]{64}"')
+        self.assertRegex(pins, r'CRIT_LINUX_ARM64_SHA256="[0-9a-f]{64}"')
         log = (repo / "commands.log").read_text()
         self.assertIn("curl -fsSL https://tode.sh/install", log)
         self.assertIn("curl -fsSL https://terminal-browser.sh/install", log)
+        self.assertIn("crit-linux-amd64", log)
+        self.assertIn("crit-linux-arm64", log)
 
     def test_upgrade_skips_ccr_notice_when_gh_is_unavailable(self) -> None:
         repo, env = self.upgrade_fixture("none")

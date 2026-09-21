@@ -403,6 +403,25 @@ EOF
         self.assertNotEqual(0, result.returncode)
         self.assertEqual(previous, target.read_bytes())
 
+    def test_linux_crit_failure_does_not_leak_cleanup_trap(self) -> None:
+        repo, _home, env, _checksum = self.crit_fixture("1.0.0")
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                "source scripts/update-agent-assets.sh; "
+                "CRIT_PIN_VERSION=v9.9.9; "
+                f"CRIT_LINUX_AMD64_SHA256={'0' * 64}; "
+                "ensure_crit_cli || :; "
+                "later_function() { :; }; later_function",
+            ],
+            cwd=repo,
+            env=env,
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertNotIn("unbound variable", result.stderr)
+
     def update_fixture(
         self, *, branch: str = "main", upstream: str = "origin/main", dirty: bool = False
     ) -> tuple[subprocess.CompletedProcess[str], Path]:

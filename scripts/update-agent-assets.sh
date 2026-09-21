@@ -228,10 +228,40 @@ function ensure_claude_superpowers_marketplace() {
 }
 
 #
+# @description Download, verify, and atomically install one pinned Linux Crit binary.
+# @arg $1 string Release artifact name.
+# @arg $2 string Expected binary SHA256.
+# @arg $3 path Destination executable path.
+# @arg $4 string Expected version without a leading v.
+#
+function install_pinned_linux_crit() (
+    local artifact="$1"
+    local checksum="$2"
+    local target="$3"
+    local version="$4"
+    local actual download staging=""
+
+    download="$(mktemp)" || return
+    trap 'rm -f "${download}" ${staging:+"${staging}"}' EXIT
+    curl -fsSL "https://github.com/tomasz-tomczyk/crit/releases/download/${CRIT_PIN_VERSION}/${artifact}" -o "${download}" || return
+    actual="$(shasum -a 256 "${download}" | awk '{ print $1 }')"
+    [ "${actual}" = "${checksum}" ] || {
+        printf 'Crit checksum mismatch for %s.\n' "${artifact}" >&2
+        return 1
+    }
+
+    mkdir -p "$(dirname "${target}")" || return
+    staging="$(mktemp "${target}.XXXXXX")" || return
+    install -m 0755 "${download}" "${staging}" || return
+    "${staging}" --version 2> /dev/null | awk -v expected="${version}" '$1 == "crit" { sub(/^v/, "", $2); if ($2 == expected) found = 1 } END { exit !found }' || return
+    mv -f "${staging}" "${target}"
+)
+
+#
 # @description Ensure the Crit CLI is available for agent integrations.
 #
 function ensure_crit_cli() {
-    local actual artifact checksum download staging target version
+    local artifact checksum target version
 
     if is_macos; then
         if ! has_command crit && has_command brew; then
@@ -271,22 +301,7 @@ function ensure_crit_cli() {
         [ "$(command -v crit)" = "${target}" ] || return 0
     else
         section "Crit CLI"
-        download="$(mktemp)"
-        staging=""
-        trap 'rm -f "${download}" ${staging:+"${staging}"}' RETURN
-        curl -fsSL "https://github.com/tomasz-tomczyk/crit/releases/download/${CRIT_PIN_VERSION}/${artifact}" -o "${download}" || return 1
-        actual="$(shasum -a 256 "${download}" | awk '{ print $1 }')"
-        [ "${actual}" = "${checksum}" ] || {
-            printf 'Crit checksum mismatch for %s.\n' "${artifact}" >&2
-            return 1
-        }
-
-        mkdir -p "$(dirname "${target}")"
-        staging="$(mktemp "${target}.XXXXXX")"
-        install -m 0755 "${download}" "${staging}"
-        "${staging}" --version 2> /dev/null | awk -v expected="${version}" '$1 == "crit" { sub(/^v/, "", $2); if ($2 == expected) found = 1 } END { exit !found }'
-        mv "${staging}" "${target}"
-        staging=""
+        install_pinned_linux_crit "${artifact}" "${checksum}" "${target}" "${version}" || return 1
     fi
     manifest_record "ensure_crit_cli" installer "${CRIT_PIN_VERSION}" "${target}" -- "curl -fsSL https://github.com/tomasz-tomczyk/crit/releases/download/${CRIT_PIN_VERSION}/${artifact}" "shasum -a 256 <binary>" "install -m 0755 <binary> ${target}"
 }

@@ -10,6 +10,12 @@ cost: n/a
 - F2: `make update` runs `git pull --ff-only` only on clean `main` tracking `origin/main`. Every ineligible state prints one actionable Notice and continues; pull failure warns and continues.
 - F2: README lifecycle and agent-asset documentation now describes both behaviors.
 
+## Revision
+
+- Replaced the function-scoped `RETURN` cleanup trap with `install_pinned_linux_crit`, a subshell helper using an `EXIT` trap. Cleanup variables now remain alive for the full trap lifetime, matching `_install_mise_binary`.
+- Restored the README validator's literal single-line token `version-matched Claude release artifact`.
+- Added a trap-leak regression and passed the requested full runtime-health suite plus `scripts/validate-agent-assets.py`.
+
 ## Validation
 
 - Official GitHub latest-release metadata reports `v0.20.2`, `draft=false`, `prerelease=false`.
@@ -18,7 +24,8 @@ cost: n/a
 - The related Python unit suites pass all 36 tests. Local bats was not run, as required.
 - Hermetic `make update` traces prove pull-before-apply on clean main and no pull plus the exact Notice on dirty main.
 - The actual `ensure_crit_cli` function installed and ran `crit v0.20.2` in a credential-free `adh-test` scratch user, wrote the manifest path, and removed the user/home afterward.
-- Codex completed a Crit data review with one resolved review-scope approval record and passed `make require-crit-review` using the repo-local receipt.
+- Codex completed initial and revision Crit data reviews with two resolved review-scope approval records and passed `make require-crit-review` using the repo-local receipt.
+- Revise validation passed 26 runtime-health tests and the full agent-asset validator.
 
 Full command outputs are in `.orchestration/validation/dot-crit-linux-T1-a01.md`.
 
@@ -33,6 +40,14 @@ python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope projec
 ```
 
 Memory ID: `7520a322-d63d-403a-9837-70af16f3b871`
+
+Revision failure memory command:
+
+```text
+python3 .claude/hooks/contextdb_cli.py memory add --kind failure --scope project --content 'dot-crit-linux-T1-a01 revise: a RETURN trap created inside ensure_crit_cli can outlive its local cleanup variables and fail later function returns under set -u; isolate download staging in a subshell helper and use an EXIT trap, following _install_mise_binary.'
+```
+
+Failure memory ID: `1639ae38-a92b-4f5a-a0c4-b7659a9b257e`
 
 ## Side effects and reverse mapping
 

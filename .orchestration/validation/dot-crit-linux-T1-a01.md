@@ -193,3 +193,65 @@ Verbatim output:
 ```text
 Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
 ```
+
+## Revision: cleanup trap lifetime and README token
+
+Requested runtime-health command:
+
+```text
+uv run python -m unittest tests.unit.test_runtime_health
+```
+
+Verbatim green output:
+
+```text
+..........................
+----------------------------------------------------------------------
+Ran 26 tests in 8.170s
+
+OK
+```
+
+Requested validator command:
+
+```text
+uv run --with pyyaml scripts/validate-agent-assets.py
+```
+
+Verbatim green output:
+
+```text
+agent asset validation ok
+```
+
+Revision static command:
+
+```text
+bash -n scripts/update-agent-assets.sh && shellcheck -x scripts/update-agent-assets.sh && shfmt --indent 4 --space-redirects --diff scripts/update-agent-assets.sh && git diff --check && printf 'revise-shell-static: OK\n'
+```
+
+Verbatim output:
+
+```text
+revise-shell-static: OK
+```
+
+CompactionDB failure command:
+
+```text
+python3 .claude/hooks/contextdb_cli.py memory add --kind failure --scope project --content 'dot-crit-linux-T1-a01 revise: a RETURN trap created inside ensure_crit_cli can outlive its local cleanup variables and fail later function returns under set -u; isolate download staging in a subshell helper and use an EXIT trap, following _install_mise_binary.'
+```
+
+Verbatim output:
+
+```text
+1639ae38-a92b-4f5a-a0c4-b7659a9b257e
+```
+
+Revision Crit data evidence added resolved approval `r_ac5c99`. Final Crit status and gate output:
+
+```text
+resolved: 2
+unresolved: 0
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+```

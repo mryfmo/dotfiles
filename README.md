@@ -188,8 +188,7 @@ sha256 before execution (bump both constants together in
 `scripts/update-agent-assets.sh` to take upstream installer updates). The
 installer clones `~/.understand-anything/repo` and symlinks its skills into
 `~/.agents/skills` (expected unmanaged-skill WARNs in `make doctor`, one per
-linked skill); Codex runtime files are provisioned from the version-matched
-Claude release artifact when available.
+linked skill); Codex runtime files are provisioned from the version-matched Claude release artifact when available.
 
 On Linux, Crit itself is installed from the pinned amd64 or arm64 GitHub
 release binary after SHA-256 verification; macOS continues to use Homebrew.

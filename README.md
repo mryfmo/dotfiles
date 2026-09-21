@@ -51,7 +51,7 @@ bash -c "$(wget -qO - https://raw.githubusercontent.com/mryfmo/dotfiles/main/set
 
 ![Screenshot of setup on Ubuntu Server machine](.github/screenshot-ubuntu-server.png)
 
-On a fresh machine, enter the age passphrase only when the interactive prompt appears; GitHub authentication is intentionally deferred, so run `setup-gh` after the public apply. On Ubuntu Desktop, add **Japanese (Mozc)** under **Settings → Keyboard → Input Sources** after installation.
+On a fresh machine, enter the age passphrase only when the interactive prompt appears; GitHub authentication is intentionally deferred, so run `setup-gh` after the public apply. On Ubuntu Desktop, add **Japanese (Mozc)** under **Settings → Keyboard → Input Sources** after installation. Ubuntu clients use zsh from the next login; run `exec zsh` to switch the current terminal immediately.
 
 ### Minimal setup
 
@@ -243,6 +243,11 @@ make update
 # Claude Code and Codex use DietrichGebert/ponytail as the marketplace source.
 # In Codex, open /hooks after install or update, then review and trust the
 # Ponytail lifecycle hooks before starting a new thread.
+
+# A fresh Codex install needs authentication before its OpenAI-curated catalog
+# is available. If Superpowers is skipped, complete these commands:
+codex login
+codex plugin add superpowers@openai-curated
 
 # Before an agent reports completion with a dirty diff, run the review guard.
 # It only requires review for meaningful changes such as agent lifecycle,

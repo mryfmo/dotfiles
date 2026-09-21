@@ -41,6 +41,7 @@ init:
 	fi
 
 .PHONY: update
+# run_once hashes let update converge committed scripts without advancing tool pins.
 update:
 	@branch="$$(git branch --show-current 2>/dev/null || true)"; \
 	upstream="$$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true)"; \
@@ -57,11 +58,11 @@ update:
 	elif ! git pull --ff-only; then \
 		printf 'Warning: git pull --ff-only failed; continuing with local source.\n' >&2; \
 	fi
-	chezmoi apply --verbose --exclude=scripts
+	chezmoi apply --verbose
 	@if [ -d "$$HOME/.local/share/chezmoi-private" ] && [ -f "$$HOME/.config/chezmoi-private/chezmoi.yaml" ]; then \
 		chezmoi --source "$$HOME/.local/share/chezmoi-private" \
 			--config "$$HOME/.config/chezmoi-private/chezmoi.yaml" \
-			apply --verbose --exclude=scripts; \
+			apply --verbose; \
 	else \
 		echo "Warning: private chezmoi source/config not found. Skipping private dotfiles."; \
 	fi

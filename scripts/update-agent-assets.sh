@@ -527,6 +527,8 @@ function update_claude_understand_anything() {
 # @description Install the Codex Superpowers plugin from the OpenAI-curated catalog.
 #
 function update_codex_superpowers() {
+    local codex_output
+
     if ! has_command codex; then
         printf 'Skipping Codex plugins: codex command not found.\n'
         return 0
@@ -536,7 +538,15 @@ function update_codex_superpowers() {
     if command_output_contains "\"pluginId\":\"${CODEX_SUPERPOWERS_PLUGIN}\"" codex plugin list --json ||
         command_output_contains "\"pluginId\": \"${CODEX_SUPERPOWERS_PLUGIN}\"" codex plugin list --json; then
         printf 'Codex Superpowers plugin is already installed.\n'
-    elif ! codex plugin add "${CODEX_SUPERPOWERS_PLUGIN}"; then
+    elif codex_output="$(codex plugin add "${CODEX_SUPERPOWERS_PLUGIN}" 2>&1)"; then
+        if [ -n "${DOTFILES_DEBUG:-}" ] && [ -n "${codex_output}" ]; then
+            printf '%s\n' "${codex_output}" >&2
+        fi
+        printf 'Codex Superpowers plugin installed.\n'
+    else
+        if [ -n "${DOTFILES_DEBUG:-}" ] && [ -n "${codex_output}" ]; then
+            printf '%s\n' "${codex_output}" >&2
+        fi
         printf 'Codex Superpowers was not installed: the OpenAI-curated catalog is unavailable.\n'
         # shellcheck disable=SC2016 # Backticks are literal operator guidance.
         printf 'Run `codex login`, then `codex plugin add %s`.\n' "${CODEX_SUPERPOWERS_PLUGIN}"

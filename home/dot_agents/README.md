@@ -22,7 +22,7 @@ Generated files include:
 - `home/dot_claude/agents/express-explorer.md`
 - `home/dot_claude/skills/**/symlink_*.tmpl`
 - `home/dot_agents/model-profiles.env`
-- `home/dot_agents/plugins/marketplace.json`
+- `home/dot_agents/plugins/create_marketplace.json`
 - `home/dot_agents/plugins/mryfmo-dev-workflows/.codex-plugin/plugin.json`
 
 ## Parity policy

@@ -200,7 +200,7 @@ claude:
   enabledPlugins: {}
 
 plugins:
-  marketplace_path: home/dot_agents/plugins/marketplace.json
+  marketplace_path: home/dot_agents/plugins/create_marketplace.json
   marketplace:
     name: mryfmo-personal-plugins
     displayName: mryfmo Personal Plugins

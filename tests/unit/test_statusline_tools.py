@@ -21,8 +21,8 @@ CLAUDE_SETTINGS = ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
 CI_WORKFLOW = ROOT / ".github/workflows/test.yaml"
 INTEGRATION_SMOKE = ROOT / "scripts/check-statusline-tools.py"
 EXPECTED_TOOLS = {
-    "npm:ccusage": "20.0.19",
-    "npm:ccstatusline": "2.2.27",
+    "npm:ccusage": "20.0.20",
+    "npm:ccstatusline": "2.2.29",
 }
 
 
@@ -96,10 +96,12 @@ class StatuslineToolsTest(unittest.TestCase):
     def test_ci_smokes_exact_tools_with_network_denied(self) -> None:
         workflow = CI_WORKFLOW.read_text()
         smoke = INTEGRATION_SMOKE.read_text()
+        node_install = 'mise -C "${RUNNER_TEMP}/statusline-mise" install --locked node'
 
         for token in (
-            "npm:ccstatusline@2.2.27",
-            "npm:ccusage@20.0.19",
+            node_install,
+            "npm:ccstatusline@2.2.29",
+            "npm:ccusage@20.0.20",
             'mise trust --yes "${RUNNER_TEMP}/statusline-mise/mise.toml"',
             "sudo unshare --net",
             "/usr/bin/sandbox-exec",
@@ -108,6 +110,9 @@ class StatuslineToolsTest(unittest.TestCase):
             "scripts/check-statusline-tools.py",
         ):
             self.assertIn(token, workflow)
+        self.assertLess(
+            workflow.index(node_install), workflow.index("npm:ccstatusline@2.2.29")
+        )
         for token in (
             '"display_name": "Claude"',
             '"session_id": "offline-test"',

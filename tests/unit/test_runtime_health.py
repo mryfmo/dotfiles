@@ -230,7 +230,9 @@ EOF
             calls.index(repair), calls.index("claude plugin marketplace list")
         )
 
-    def test_codex_superpowers_skips_add_without_configured_marketplace(self) -> None:
+    def test_codex_superpowers_reports_login_step_when_curated_catalog_is_missing(
+        self,
+    ) -> None:
         result = self.run_test_command(
             [
                 "bash",
@@ -239,11 +241,11 @@ EOF
                     """
                     source "$1"
                     has_command() { return 0; }
-                    codex_marketplace_is_configured_git_marketplace() { return 1; }
                     command_output_contains() { return 1; }
                     codex() {
                         if [ "$*" = "plugin add superpowers@openai-curated" ]; then
-                            printf 'Error: plugin superpowers@openai-curated was not found\n'
+                            printf 'Error: plugin superpowers@openai-curated was not found\n' >&2
+                            return 1
                         fi
                     }
                     manifest_codex_plugin_version() { printf 'unknown\n'; }
@@ -259,11 +261,18 @@ EOF
 
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn(
-            "Skipping Codex Superpowers plugin: openai-curated is not a "
-            "configured Git marketplace.",
+            "Codex Superpowers was not installed: the OpenAI-curated catalog is "
+            "unavailable.",
             result.stdout,
         )
-        self.assertNotIn("Error:", result.stdout + result.stderr)
+        self.assertIn(
+            "Run `codex login`, then `codex plugin add "
+            "superpowers@openai-curated`.",
+            result.stdout,
+        )
+        self.assertIn(
+            "Error: plugin superpowers@openai-curated was not found", result.stderr
+        )
 
     def crit_fixture(
         self, installed_version: str | None = None

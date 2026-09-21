@@ -90,7 +90,7 @@ def sample_manifest() -> dict:
             "enabledPlugins": {},
         },
         "plugins": {
-            "marketplace_path": "home/dot_agents/plugins/marketplace.json",
+            "marketplace_path": "home/dot_agents/plugins/create_marketplace.json",
             "marketplace": {"displayName": "Local", "name": "local"},
         },
         "mcp_servers": {},
@@ -107,6 +107,24 @@ class GenerateAgentConfigsTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.module.ROOT = self.old_root
         shutil.rmtree(self.temp_dir)
+
+    def test_repository_marketplace_is_a_runtime_owned_seed(self) -> None:
+        manifest = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
+        seed = ROOT / "home/dot_agents/plugins/create_marketplace.json"
+        managed = ROOT / "home/dot_agents/plugins/marketplace.json"
+        ignore = (ROOT / "home/.chezmoiignore").read_text()
+
+        self.assertIn(
+            "marketplace_path: home/dot_agents/plugins/create_marketplace.json",
+            manifest,
+        )
+        self.assertTrue(seed.is_file())
+        self.assertFalse(managed.exists())
+        self.assertIn(
+            'stat (joinPath .chezmoi.homeDir ".agents/plugins/marketplace.json")',
+            ignore,
+        )
+        self.assertIn(".agents/plugins/marketplace.json", ignore)
 
     def test_claude_skill_symlink_outputs_strip_executable_target_prefix(self) -> None:
         source = (

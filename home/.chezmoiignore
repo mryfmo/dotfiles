@@ -1,4 +1,7 @@
 {{ template "chezmoiignore.d/common" . }}
+{{ if stat (joinPath .chezmoi.homeDir ".agents/plugins/marketplace.json") -}}
+.agents/plugins/marketplace.json
+{{ end -}}
 {{ if eq .chezmoi.os "darwin" -}}
 {{   template "chezmoiignore.d/macos" . }}
 {{ else if eq .chezmoi.os "linux" -}}

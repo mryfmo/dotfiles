@@ -182,6 +182,8 @@ Any model-profile decision still requires manual quality review and a PR.
 ### Agent review and permission assets
 
 `make update` also refreshes agent-managed assets after `chezmoi apply`.
+The generated `create_marketplace.json` seeds `~/.agents/plugins/marketplace.json`
+only when it is missing; plugin runtimes own later content and mode changes.
 This includes the Crit integrations, the Ponytail (`ponytail@ponytail`) plugin,
 and the Understand-Anything (`understand-anything@understand-anything`)
 knowledge-graph plugin for Codex and Claude Code. Understand-Anything installs

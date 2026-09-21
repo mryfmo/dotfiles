@@ -246,7 +246,7 @@ def validate_manifest_home_paths() -> None:
 
 
 def validate_codex_plugins() -> None:
-    marketplace_path = ROOT / "home/dot_agents/plugins/marketplace.json"
+    marketplace_path = ROOT / "home/dot_agents/plugins/create_marketplace.json"
     marketplace = json.loads(marketplace_path.read_text())
     if not marketplace.get("name"):
         fail(f"{marketplace_path} is missing name")

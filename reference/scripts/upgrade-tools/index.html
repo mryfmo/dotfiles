@@ -3528,6 +3528,7 @@
 <ul>
 <li><code>bump_terminal_tool_pins</code></li>
 <li><code>current_mise_tools</code></li>
+<li><code>fetch_crit_pin</code></li>
 <li><code>fetch_installer_pin</code></li>
 <li><code>has_command</code></li>
 <li><code>is_forbidden_homebrew_formula</code></li>
@@ -3933,14 +3934,34 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Bump the terminal-code and terminal-browser installer pins to the latest upstream release.</span>
+<span class="c1"># @description Print the latest Crit tag and SHA256 values for both Linux release binaries.</span>
+<span class="c1"># @stdout Three lines: release tag, amd64 SHA256, then arm64 SHA256.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>fetch_crit_pin<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>amd64<span class="w"> </span>arm64<span class="w"> </span>tag
+
+<span class="w">    </span>has_command<span class="w"> </span>gh<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nv">tag</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>gh<span class="w"> </span>api<span class="w"> </span>repos/tomasz-tomczyk/crit/releases/latest<span class="w"> </span>--jq<span class="w"> </span>.tag_name<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^v<span class="o">[</span><span class="m">0</span>-9<span class="o">]</span>+<span class="se">\.</span><span class="o">[</span><span class="m">0</span>-9<span class="o">]</span>+<span class="se">\.</span><span class="o">[</span><span class="m">0</span>-9<span class="o">]</span>+$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nv">amd64</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">arm64</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">trap</span><span class="w"> </span><span class="s1">'rm -f "${amd64}" "${arm64}"'</span><span class="w"> </span>RETURN
+<span class="w">    </span>curl<span class="w"> </span>-fsSL<span class="w"> </span><span class="s2">"https://github.com/tomasz-tomczyk/crit/releases/download/</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">/crit-linux-amd64"</span><span class="w"> </span>-o<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">amd64</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>curl<span class="w"> </span>-fsSL<span class="w"> </span><span class="s2">"https://github.com/tomasz-tomczyk/crit/releases/download/</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">/crit-linux-arm64"</span><span class="w"> </span>-o<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">arm64</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">amd64</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'{ print $1 }'</span>
+<span class="w">    </span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">arm64</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'{ print $1 }'</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Bump terminal tool installers and Crit binaries to the latest upstream releases.</span>
 <span class="c1"># @description</span>
 <span class="c1">#   Rewrites scripts/lib/installer-pins.sh wholesale; the diff is reviewed and</span>
 <span class="c1">#   committed like a mise config/lock bump. The subsequent agent asset</span>
 <span class="c1">#   regeneration phase installs the newly pinned versions.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>bump_terminal_tool_pins<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>repo_root<span class="w"> </span>pins<span class="w"> </span>tode_pin<span class="w"> </span>tb_pin
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>repo_root<span class="w"> </span>pins<span class="w"> </span>tode_pin<span class="w"> </span>tb_pin<span class="w"> </span>crit_pin
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">"terminal tool pins"</span>
 <span class="w">    </span><span class="nv">repo_root</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">/.."</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="k">)</span><span class="s2">"</span>
@@ -3953,16 +3974,20 @@
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: unable to fetch the terminal-browser installer pin; keeping current pins\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="nv">crit_pin</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>fetch_crit_pin<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: unable to fetch the Crit release pins; keeping current pins\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pins</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s">&lt;&lt; EOF</span>
 <span class="s">#!/usr/bin/env bash</span>
 <span class="s"># shellcheck disable=SC2034 # Variables are consumed by the scripts that source this file.</span>
 
 <span class="s"># @file scripts/lib/installer-pins.sh</span>
-<span class="s"># @brief Pinned upstream installer versions and script checksums.</span>
+<span class="s"># @brief Pinned upstream tool versions and artifact checksums.</span>
 <span class="s"># @description</span>
-<span class="s">#   Holds the reviewed version and installer-script SHA256 for upstream tools</span>
-<span class="s">#   installed through sha256-verified curl installers. The file is rewritten</span>
+<span class="s">#   Holds reviewed versions and SHA256 values for upstream installers and</span>
+<span class="s">#   release binaries. The file is rewritten</span>
 <span class="s">#   wholesale by scripts/upgrade-tools.sh (bump_terminal_tool_pins) and</span>
 <span class="s">#   consumed by scripts/update-agent-assets.sh. Review and commit the diff</span>
 <span class="s">#   like a mise config/lock bump. Assignments stay non-readonly so the file</span>
@@ -3972,13 +3997,16 @@
 <span class="s">TERMINAL_CODE_INSTALLER_SHA256="$(sed -n 2p &lt;&lt;&lt; "${tode_pin}")"</span>
 <span class="s">TERMINAL_BROWSER_PIN_VERSION="$(sed -n 1p &lt;&lt;&lt; "${tb_pin}")"</span>
 <span class="s">TERMINAL_BROWSER_INSTALLER_SHA256="$(sed -n 2p &lt;&lt;&lt; "${tb_pin}")"</span>
+<span class="s">CRIT_PIN_VERSION="$(sed -n 1p &lt;&lt;&lt; "${crit_pin}")"</span>
+<span class="s">CRIT_LINUX_AMD64_SHA256="$(sed -n 2p &lt;&lt;&lt; "${crit_pin}")"</span>
+<span class="s">CRIT_LINUX_ARM64_SHA256="$(sed -n 3p &lt;&lt;&lt; "${crit_pin}")"</span>
 <span class="s">EOF</span>
 <span class="w">    </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: unable to write %s; keeping current pins\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pins</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Pinned tode %s and terminal-browser %s; review and commit the installer-pins diff.\n'</span><span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span>1p<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tode_pin</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span>1p<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tb_pin</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Pinned tode %s, terminal-browser %s, and crit %s; review and commit the installer-pins diff.\n'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span>1p<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tode_pin</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span>1p<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tb_pin</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span>1p<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">crit_pin</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>

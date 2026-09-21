@@ -6,3 +6,4 @@
 - A `HOME`-override attempt still discovered the login user's global mise config and exhausted `/tmp`; all three task-created `/tmp/dot-ubuntu-fix-*` directories were removed.
 - Final validation used credential-free scratch user `dotf2test`; `userdel --remove dotf2test` removed it and its home after success.
 - Repository writes stayed within the task's allowed files.
+- The Docker keyring revision needed no additional VM mutation; its rerun path was isolated with command mocks and left no external effects.

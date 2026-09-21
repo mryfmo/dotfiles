@@ -4,7 +4,7 @@ review_surface: crit-data
 reviewer: codex
 review_source: .agents/worklog/codex/review/dot-ubuntu-fix-T1-a01-crit-comments.json
 review_outcome: approved
-review_notes: Resolved finding-free scope approval `r_1f790a` covers correctness, regressions, security, reporting completeness, and the full task diff.
+review_notes: Resolved revision-scope approval `r_13a66b` covers the Docker keyring overwrite fix, focused regression test, and validation evidence.
 
 ## Shell, shdoc-compatible scripts, and chezmoi templates
 
@@ -158,5 +158,62 @@ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/validation/dot-ubuntu-fix-T1-a01
 Verbatim output:
 
 ```text
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+```
+
+## Docker keyring revision: static validation
+
+Command:
+
+```text
+bash -n install/ubuntu/client/docker.sh && mise x shellcheck -- shellcheck -x install/ubuntu/client/docker.sh && mise x shfmt -- shfmt -i 4 -sr -d install/ubuntu/client/docker.sh && printf 'docker static validation: OK\n'
+```
+
+Verbatim output:
+
+```text
+docker static validation: OK
+```
+
+## Docker keyring revision: two-run behavior
+
+Command mocked curl, dpkg, lsb_release, and sudo, then called `setup_repository` twice and inspected the GPG calls.
+
+Verbatim output:
+
+```text
+2
+gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg
+gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg
+docker rerun behavior: OK
+```
+
+## Docker keyring revision: CompactionDB decision
+
+Command:
+
+```text
+python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dot-ubuntu-fix-T1-a01 revise: Docker apt keyring replacement must invoke gpg with --batch --yes so reruns never prompt on /dev/tty when docker.gpg already exists.'
+```
+
+Verbatim output:
+
+```text
+096e1f34-f289-46ca-8c60-e5dea660a1ad
+```
+
+## Docker keyring revision: final diff and review gate
+
+Commands:
+
+```text
+git diff --check && printf 'revision git diff --check: OK\n'
+AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/validation/dot-ubuntu-fix-T1-a01.md make require-crit-review
+```
+
+Verbatim output:
+
+```text
+revision git diff --check: OK
 Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
 ```

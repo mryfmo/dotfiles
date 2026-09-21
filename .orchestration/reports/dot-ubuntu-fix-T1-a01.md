@@ -13,13 +13,19 @@ cost: n/a
 - F6: Added GitHub's published Ed25519 host key idempotently to the user's `known_hosts`; the pinned fingerprint is documented in the script.
 - F7: Documented age and GitHub authentication follow-up behavior in Setup.
 
+## Revision: Docker keyring rerun
+
+- [memory:decision] Added `gpg --batch --yes` to Docker's apt-key dearmor pipeline so an existing `/etc/apt/keyrings/docker.gpg` is replaced without `/dev/tty` interaction.
+- Added a focused bats case that calls `setup_repository` twice and requires both GPG invocations to carry the non-interactive overwrite flags.
+- Direct two-run mock, bash syntax, mise-managed shellcheck, and mise-managed shfmt all pass. Local bats remains unrun by policy.
+
 ## Tests and validation
 
 - Updated bats coverage but did not run bats locally, as required by repository policy.
 - Passed bash syntax, mise-managed shellcheck/shfmt, rendered chezmoi template checks, direct behavior checks, `tests.unit.test_supply_chain_policy`, and `git diff --check`.
 - Captured F2 before/after command output in the validation artifact.
 - The broader local Python unit discovery also exited successfully; existing expected-error and ResourceWarning output was unrelated to this task.
-- Completed a finding-free Crit data self-review with resolved record `r_1f790a`; the agent review gate passed.
+- Completed finding-free Crit data self-reviews with resolved records `r_1f790a` and revision-specific `r_13a66b`; the agent review gate passed.
 
 ## Files
 
@@ -31,6 +37,7 @@ cost: n/a
 
 - `python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dot-ubuntu-fix-T1-a01: Pin mise v2026.9.12; fresh Ubuntu arm64 installs resolve the unchanged locked uv/yazi GNU artifacts through .mise-bins.'` → `7b773deb-b084-420e-81d2-40e4ba7134d9`
 - `python3 .claude/hooks/contextdb_cli.py memory add --kind failure --scope project --content 'dot-ubuntu-fix-T1-a01: HOME override under sudo -i did not isolate mise global config; use a credential-free scratch user with a minimal config for backend validation.'` → `6cc64147-8c39-4f86-9d52-2a735213aa25`
+- `python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dot-ubuntu-fix-T1-a01 revise: Docker apt keyring replacement must invoke gpg with --batch --yes so reruns never prompt on /dev/tty when docker.gpg already exists.'` → `096e1f34-f289-46ca-8c60-e5dea660a1ad`
 
 ## Constraints honored
 

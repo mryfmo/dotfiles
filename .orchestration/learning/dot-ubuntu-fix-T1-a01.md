@@ -6,6 +6,8 @@
 
 [memory:decision] mise v2026.9.12 fixes fresh Linux arm64 aqua bin discovery for the repository's locked uv/yazi GNU artifacts by creating resolvable `.mise-bins` entries; no lock edit is required.
 
+[memory:decision] A GPG dearmor pipeline targeting a persistent keyring must use `--batch --yes`; otherwise a rerun attempts `/dev/tty` overwrite confirmation and aborts non-interactive bootstrap.
+
 ## Disposition
 
 - Recorded as a validated Codex learn entry and queued for CompactionDB project memory.

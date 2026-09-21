@@ -3566,6 +3566,7 @@
 <li><code>ensure_claude_understand_anything_marketplace</code></li>
 <li><code>ensure_codex_ponytail_marketplace</code></li>
 <li><code>ensure_crit_cli</code></li>
+<li><code>ensure_gh_extensions</code></li>
 <li><code>ensure_herdr_integrations</code></li>
 <li><code>ensure_mise_npm_agent_cli</code></li>
 <li><code>git_remote_origin_matches</code></li>
@@ -3719,6 +3720,13 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Install configured GitHub CLI extensions when authentication is ready.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>ensure_gh_extensions<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>bash<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">DOTFILES_REPO_SOURCE_DIR</span><span class="si">}</span><span class="s2">/install/common/gh_extensions.sh"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Return success when the current OS is macOS.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>is_macos<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -3866,12 +3874,12 @@
 
 <span class="w">    </span><span class="nv">target</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin/crit"</span>
 <span class="w">    </span><span class="nv">version</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">CRIT_PIN_VERSION</span><span class="p">#v</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>has_command<span class="w"> </span>crit<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>crit<span class="w"> </span>--version<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span>-v<span class="w"> </span><span class="nv">expected</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'$1 == "crit" { sub(/^v/, "", $2); if ($2 == expected) found = 1 } END { exit !found }'</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>crit<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">else</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="o">[</span><span class="w"> </span>-x<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>!<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--version<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span>-v<span class="w"> </span><span class="nv">expected</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'$1 == "crit" { sub(/^v/, "", $2); if ($2 == expected) found = 1 } END { exit !found }'</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span>section<span class="w"> </span><span class="s2">"Crit CLI"</span>
 <span class="w">        </span>install_pinned_linux_crit<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">checksum</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin:</span><span class="si">${</span><span class="nv">PATH</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">hash</span><span class="w"> </span>-r
 <span class="w">    </span>manifest_record<span class="w"> </span><span class="s2">"ensure_crit_cli"</span><span class="w"> </span>installer<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CRIT_PIN_VERSION</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"curl -fsSL https://github.com/tomasz-tomczyk/crit/releases/download/</span><span class="si">${</span><span class="nv">CRIT_PIN_VERSION</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"shasum -a 256 &lt;binary&gt;"</span><span class="w"> </span><span class="s2">"install -m 0755 &lt;binary&gt; </span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
@@ -4437,6 +4445,7 @@
 <span class="w">    </span>remove_node_global_agent_cli_shadows
 <span class="w">    </span>ensure_mise_npm_agent_cli<span class="w"> </span>claude<span class="w"> </span><span class="s2">"npm:@anthropic-ai/claude-code"</span>
 <span class="w">    </span>ensure_mise_npm_agent_cli<span class="w"> </span>codex<span class="w"> </span><span class="s2">"npm:@openai/codex"</span>
+<span class="w">    </span>ensure_gh_extensions
 <span class="w">    </span>update_claude_superpowers
 <span class="w">    </span>update_claude_crit
 <span class="w">    </span>update_claude_ponytail

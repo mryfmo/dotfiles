@@ -68,6 +68,7 @@ Reverse mapping for `make-upgrade-user-tools`: **irreversible as one atomic oper
 - `uv run python -m unittest tests.unit.test_supply_chain_policy`: 17 tests, OK.
 - Revision: `uv run python -m unittest tests.unit.test_statusline_tools`: 5 tests, OK after the expected pre-fix failure.
 - Revision: all six workflow YAML files parsed with `yaml.safe_load`.
+- Node-first revision: the focused test failed before the workflow change, then passed all 5 tests; supply-chain remained 17 tests OK and all six workflows parsed.
 - `git diff --check`: exit 0.
 - Revision's consumer implementation diff is limited to the four approved files: `.github/workflows/test.yaml`, `tests/unit/test_statusline_tools.py`, `scripts/check-statusline-tools.py`, and `tests/install/common/mise.bats`; task evidence files were also updated.
 - Full command evidence: `.orchestration/validation/dot-upgrade-regen-T1-a01.md`.
@@ -82,6 +83,10 @@ The superseding revision aligns all exact-version consumers with the regenerated
 - `tests/install/common/mise.bats`: herdr config assertion updated from 0.8.2 to 0.9.0. The Bats suite was not run locally, per repository policy.
 
 Repository scan found one remaining `0.8.2` occurrence outside lock/history: `home/dot_local/bin/common/executable_herdr-agents:70`, in the comment `Derive and validate a herdr 0.8.2 agent registration name.` It is outside the explicitly approved four-file revision scope and is not an exact-version runtime consumer, so it was reported rather than changed. No remaining `2.2.27`, `20.0.19`, or `2026.7.5` runtime/test consumer was found outside historical evidence.
+
+## Node-first CI revision
+
+mise 2026.9.12 requires the configured dependency `node@26.8.2` to be installed before the locked npm statusline tools in the isolated workflow directory. `.github/workflows/test.yaml` now runs the locked node install first, mirroring `install/common/mise.sh::run_mise_install`. `tests/unit/test_statusline_tools.py` asserts both presence and ordering. The subsequent smoke step already runs after installation and resolves both binaries from their exact mise roots, so it required no change.
 
 ## CompactionDB
 
@@ -103,6 +108,16 @@ Exact command:
 
 ```sh
 python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dot-upgrade-regen-T1-a01 revision: CI exact-version consumers must advance with regenerated mise pins. test.yaml now uses mise-action 2026.9.12, ccstatusline 2.2.29, and ccusage 20.0.20; Python smoke expectations match; the mise.bats herdr assertion matches 0.9.0.'
+```
+
+[memory:decision] mise 2026.9.12 requires node to be installed before configured npm tools in the isolated CI directory.
+
+Node-first revision memory ID: `f2e8be05-427a-4c7d-894c-98d2ec4a4f24`
+
+Exact command:
+
+```sh
+python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'dot-upgrade-regen-T1-a01 node-first revision: mise 2026.9.12 requires configured install dependency node@26.8.2 to be installed before locked npm statusline tools in the isolated CI mise directory; test.yaml now mirrors run_mise_install ordering and the unit test asserts it.'
 ```
 
 cost: n/a

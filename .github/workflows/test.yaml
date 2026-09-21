@@ -194,6 +194,7 @@ jobs:
         if: ${{ needs.changes.outputs.should_test == 'true' }}
         run: |
           mise trust --yes "${RUNNER_TEMP}/statusline-mise/mise.toml"
+          mise -C "${RUNNER_TEMP}/statusline-mise" install --locked node
           mise -C "${RUNNER_TEMP}/statusline-mise" install --locked \
             npm:ccstatusline@2.2.29 \
             npm:ccusage@20.0.20

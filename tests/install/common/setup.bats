@@ -93,6 +93,11 @@ create_chezmoi_release_fixture() {
     grep -q -- '--init' <<< "${update_block}"
 }
 
+@test "[common] setup.sh uses built-in Git only when external Git is unavailable" {
+    [ "$(grep -c -- '--use-builtin-git auto' setup.sh)" -eq 2 ]
+    ! grep -q -- '--use-builtin-git true' setup.sh
+}
+
 @test "[common] setup.sh installs Homebrew non-interactively and continues from its prefix" {
     grep -q 'NONINTERACTIVE=1 /bin/bash' setup.sh
     grep -q 'https://raw.githubusercontent.com/Homebrew/install/${HOMEBREW_INSTALL_COMMIT}/install.sh' setup.sh

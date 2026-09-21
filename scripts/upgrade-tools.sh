@@ -377,14 +377,34 @@ function fetch_installer_pin() {
 }
 
 #
-# @description Bump the terminal-code and terminal-browser installer pins to the latest upstream release.
+# @description Print the latest Crit tag and SHA256 values for both Linux release binaries.
+# @stdout Three lines: release tag, amd64 SHA256, then arm64 SHA256.
+#
+function fetch_crit_pin() {
+    local amd64 arm64 tag
+
+    has_command gh || return 1
+    tag="$(gh api repos/tomasz-tomczyk/crit/releases/latest --jq .tag_name)" || return 1
+    [[ "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 1
+    amd64="$(mktemp)"
+    arm64="$(mktemp)"
+    trap 'rm -f "${amd64}" "${arm64}"' RETURN
+    curl -fsSL "https://github.com/tomasz-tomczyk/crit/releases/download/${tag}/crit-linux-amd64" -o "${amd64}" || return 1
+    curl -fsSL "https://github.com/tomasz-tomczyk/crit/releases/download/${tag}/crit-linux-arm64" -o "${arm64}" || return 1
+    printf '%s\n' "${tag}"
+    shasum -a 256 "${amd64}" | awk '{ print $1 }'
+    shasum -a 256 "${arm64}" | awk '{ print $1 }'
+}
+
+#
+# @description Bump terminal tool installers and Crit binaries to the latest upstream releases.
 # @description
 #   Rewrites scripts/lib/installer-pins.sh wholesale; the diff is reviewed and
 #   committed like a mise config/lock bump. The subsequent agent asset
 #   regeneration phase installs the newly pinned versions.
 #
 function bump_terminal_tool_pins() {
-    local repo_root pins tode_pin tb_pin
+    local repo_root pins tode_pin tb_pin crit_pin
 
     section "terminal tool pins"
     repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -397,16 +417,20 @@ function bump_terminal_tool_pins() {
         printf 'warning: unable to fetch the terminal-browser installer pin; keeping current pins\n' >&2
         return 1
     }
+    crit_pin="$(fetch_crit_pin)" || {
+        printf 'warning: unable to fetch the Crit release pins; keeping current pins\n' >&2
+        return 1
+    }
 
     if ! cat > "${pins}" << EOF
 #!/usr/bin/env bash
 # shellcheck disable=SC2034 # Variables are consumed by the scripts that source this file.
 
 # @file scripts/lib/installer-pins.sh
-# @brief Pinned upstream installer versions and script checksums.
+# @brief Pinned upstream tool versions and artifact checksums.
 # @description
-#   Holds the reviewed version and installer-script SHA256 for upstream tools
-#   installed through sha256-verified curl installers. The file is rewritten
+#   Holds reviewed versions and SHA256 values for upstream installers and
+#   release binaries. The file is rewritten
 #   wholesale by scripts/upgrade-tools.sh (bump_terminal_tool_pins) and
 #   consumed by scripts/update-agent-assets.sh. Review and commit the diff
 #   like a mise config/lock bump. Assignments stay non-readonly so the file
@@ -416,13 +440,16 @@ TERMINAL_CODE_PIN_VERSION="$(sed -n 1p <<< "${tode_pin}")"
 TERMINAL_CODE_INSTALLER_SHA256="$(sed -n 2p <<< "${tode_pin}")"
 TERMINAL_BROWSER_PIN_VERSION="$(sed -n 1p <<< "${tb_pin}")"
 TERMINAL_BROWSER_INSTALLER_SHA256="$(sed -n 2p <<< "${tb_pin}")"
+CRIT_PIN_VERSION="$(sed -n 1p <<< "${crit_pin}")"
+CRIT_LINUX_AMD64_SHA256="$(sed -n 2p <<< "${crit_pin}")"
+CRIT_LINUX_ARM64_SHA256="$(sed -n 3p <<< "${crit_pin}")"
 EOF
     then
         printf 'warning: unable to write %s; keeping current pins\n' "${pins}" >&2
         return 1
     fi
-    printf 'Pinned tode %s and terminal-browser %s; review and commit the installer-pins diff.\n' \
-        "$(sed -n 1p <<< "${tode_pin}")" "$(sed -n 1p <<< "${tb_pin}")"
+    printf 'Pinned tode %s, terminal-browser %s, and crit %s; review and commit the installer-pins diff.\n' \
+        "$(sed -n 1p <<< "${tode_pin}")" "$(sed -n 1p <<< "${tb_pin}")" "$(sed -n 1p <<< "${crit_pin}")"
 }
 
 #

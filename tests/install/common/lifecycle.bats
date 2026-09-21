@@ -20,6 +20,10 @@ function run_update_fixture() {
     local assets_exit="${5:-0}"
     local mise_exit="${6:-0}"
     local mise_fail_args="${7:-}"
+    local git_branch="${8:-feature/test}"
+    local git_upstream="${9:-origin/feature/test}"
+    local git_dirty="${10:-0}"
+    local git_pull_exit="${11:-0}"
     local fixture="${BATS_TEST_TMPDIR}/update-${BATS_TEST_NUMBER}"
 
     mkdir -p "${fixture}/bin" "${fixture}/scripts" \
@@ -39,6 +43,15 @@ if [ -n '${mise_fail_args}' ] && [ "\$*" = '${mise_fail_args}' ]; then
     exit ${mise_exit}
 fi
 exit 0
+EOF
+    cat > "${fixture}/bin/git" << EOF
+#!/usr/bin/env bash
+case "\$*" in
+    "branch --show-current") printf '%s\n' '${git_branch}' ;;
+    "rev-parse --abbrev-ref --symbolic-full-name @{upstream}") printf '%s\n' '${git_upstream}' ;;
+    "diff --quiet"|"diff --cached --quiet") exit ${git_dirty} ;;
+    "pull --ff-only") printf 'git pull --ff-only\n' >> "${fixture}/calls"; exit ${git_pull_exit} ;;
+esac
 EOF
     cat > "${fixture}/scripts/update-agent-assets.sh" << EOF
 #!/usr/bin/env bash
@@ -60,11 +73,25 @@ if [[ \$1 == status ]]; then
 fi
 exit ${reload_exit}
 EOF
-    chmod +x "${fixture}/bin/chezmoi" "${fixture}/bin/mise" "${fixture}/bin/herdr" \
+    chmod +x "${fixture}/bin/chezmoi" "${fixture}/bin/git" "${fixture}/bin/mise" "${fixture}/bin/herdr" \
         "${fixture}/scripts/update-agent-assets.sh"
 
     run env HOME="${fixture}/home" PATH="${fixture}/bin:${PATH}" make -C "${fixture}" update
     UPDATE_FIXTURE="${fixture}"
+}
+
+@test "[common] update pulls a clean main branch tracking origin/main first" {
+    run_update_fixture running 0 0 0 0 0 "" main origin/main 0
+    [ "$status" -eq 0 ]
+    [ "$(head -n 1 "${UPDATE_FIXTURE}/calls")" = "git pull --ff-only" ]
+    [ "$(grep -c '^git pull --ff-only$' "${UPDATE_FIXTURE}/calls")" -eq 1 ]
+}
+
+@test "[common] update skips pull for tracked changes and prints the manual command" {
+    run_update_fixture running 0 0 0 0 0 "" main origin/main 1
+    [ "$status" -eq 0 ]
+    [ "$(grep -c '^git pull --ff-only$' "${UPDATE_FIXTURE}/calls")" -eq 0 ]
+    [[ "$output" == *"Notice: local source not pulled (tracked files have staged or unstaged changes); run 'git -C ${UPDATE_FIXTURE} pull' to fetch remote updates."* ]]
 }
 
 @test "[common] update reloads a running Herdr server exactly once" {

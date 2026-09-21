@@ -2696,6 +2696,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../ubuntu/common/setup_locale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/setup_locale.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../ubuntu/common/ssh/" class="md-nav__link">
         
   
@@ -2787,34 +2815,6 @@
     
   
     install/ubuntu/server/misc.sh
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../ubuntu/server/setup_locale/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    install/ubuntu/server/setup_locale.sh
   
 
     
@@ -3519,7 +3519,7 @@
 
 
 <h1 id="installcommongh_extensionssh">install/common/gh_extensions.sh<a class="headerlink" href="#installcommongh_extensionssh" title="Permanent link">&para;</a></h1>
-<p>Activates <code>mise</code> when available, ensures GitHub authentication, and installs the configured <code>gh</code> extensions.</p>
+<p>Activates <code>mise</code> when available and installs the configured <code>gh</code> extensions only when GitHub CLI is already authenticated.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>install/common/gh_extensions.sh</code></li>
@@ -3529,7 +3529,6 @@
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>activate_mise</code></li>
-<li><code>ensure_gh_auth</code></li>
 <li><code>install_gh_extensions</code></li>
 <li><code>main</code></li>
 </ul>
@@ -3539,8 +3538,8 @@
 <span class="c1"># @file install/common/gh_extensions.sh</span>
 <span class="c1"># @brief Install GitHub CLI extensions used by the dotfiles.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Activates `mise` when available, ensures GitHub authentication, and</span>
-<span class="c1">#   installs the configured `gh` extensions.</span>
+<span class="c1">#   Activates `mise` when available and installs the configured `gh`</span>
+<span class="c1">#   extensions only when GitHub CLI is already authenticated.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
@@ -3564,18 +3563,14 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Prompt for GitHub CLI authentication when no session exists.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>ensure_gh_auth<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>gh<span class="w"> </span>auth<span class="w"> </span>status<span class="w"> </span><span class="p">&amp;</span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>gh<span class="w"> </span>auth<span class="w"> </span>login<span class="w"> </span>-h<span class="w"> </span>github.com<span class="w"> </span>-p<span class="w"> </span>https
-<span class="w">    </span><span class="k">fi</span>
-<span class="o">}</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Install every extension listed in `GH_EXTENSIONS`.</span>
+<span class="c1"># @description Install every configured extension, or skip when unauthenticated.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>install_gh_extensions<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>gh<span class="w"> </span>auth<span class="w"> </span>status<span class="w"> </span><span class="p">&amp;</span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s1">'Warning: GitHub CLI is not authenticated. Run setup-gh, then rerun chezmoi apply to install extensions.'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>extension<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">GH_EXTENSIONS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">        </span>gh<span class="w"> </span>extension<span class="w"> </span>install<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">extension</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">done</span>
@@ -3586,7 +3581,6 @@
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span>activate_mise
-<span class="w">    </span>ensure_gh_auth
 <span class="w">    </span>install_gh_extensions
 <span class="o">}</span>
 

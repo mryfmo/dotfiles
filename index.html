@@ -2677,6 +2677,34 @@
   
   
     <li class="md-nav__item">
+      <a href="reference/install/ubuntu/common/setup_locale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/setup_locale.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="reference/install/ubuntu/common/ssh/" class="md-nav__link">
         
   
@@ -2768,34 +2796,6 @@
     
   
     install/ubuntu/server/misc.sh
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="reference/install/ubuntu/server/setup_locale/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    install/ubuntu/server/setup_locale.sh
   
 
     
@@ -3529,7 +3529,7 @@
   <span class="landing-stat__note">common, client, server</span>
 </div>
 <div class="landing-stat">
-  <span class="landing-stat__value">21</span>
+  <span class="landing-stat__value">20</span>
   <span class="landing-stat__label">template mappings</span>
   <span class="landing-stat__note">chezmoi wrappers</span>
 </div>
@@ -3575,7 +3575,7 @@ The homepage stays curated, while the complete generated table of contents lives
 
 - [Open the full catalog](catalog/)
 - **60** source reference pages are generated from tracked shell assets
-- **21** chezmoi wrappers are mapped back to their source scripts
+- **20** chezmoi wrappers are mapped back to their source scripts
 
 </div>
 <div class="landing-card" markdown="1">
@@ -3586,7 +3586,7 @@ The homepage stays curated, while the complete generated table of contents lives
 
 Wrapper templates under `home/.chezmoiscripts` are linked back to the source scripts they include.
 
-_21 mapped wrappers_
+_20 mapped wrappers_
 
 - [Open template mapping](reference/chezmoi-templates.md)
 - `home/.chezmoiscripts/common/run_once_after_01-setup-chezmoi-private.sh.tmpl` -> [`install/common/chezmoi_private.sh`](reference/install/common/chezmoi_private.md)
@@ -3596,7 +3596,7 @@ _21 mapped wrappers_
 - `home/.chezmoiscripts/macos/run_once_04-install-ghostty.sh.tmpl` -> [`install/macos/common/ghostty.sh`](reference/install/macos/common/ghostty.md)
 - `home/.chezmoiscripts/macos/run_once_10-install-docker.sh.tmpl` -> [`install/macos/common/docker.sh`](reference/install/macos/common/docker.md)
 
-[15 more mappings](reference/chezmoi-templates.md)
+[14 more mappings](reference/chezmoi-templates.md)
 
 </div>
 </div>
@@ -3615,7 +3615,7 @@ Bootstrap and application setup flows stored under `install/**`.
 _24 documented entries_
 
 - [`install/common/chezmoi_private.sh`](reference/install/common/chezmoi_private.md): Bootstraps `mryfmo/dotfiles-private` using the dedicated source and config paths under the current user's home direct...
-- [`install/common/gh_extensions.sh`](reference/install/common/gh_extensions.md): Activates `mise` when available, ensures GitHub authentication, and installs the configured `gh` extensions.
+- [`install/common/gh_extensions.sh`](reference/install/common/gh_extensions.md): Activates `mise` when available and installs the configured `gh` extensions only when GitHub CLI is already authentic...
 - [`install/common/mise.sh`](reference/install/common/mise.md): Downloads and verifies a pinned standalone `mise` release, then runs `mise install` against the repository tool defin...
 - [`install/common/sheldon.sh`](reference/install/common/sheldon.md): Builds the pinned crates.io release with its packaged Cargo.lock.
 - [`install/macos/arm64/prepare_arm64_system.sh`](reference/install/macos/arm64/prepare_arm64_system.md): Installs Rosetta on arm64 macOS machines when it is not already present.

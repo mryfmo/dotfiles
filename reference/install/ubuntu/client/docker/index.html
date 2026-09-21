@@ -2698,6 +2698,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../common/setup_locale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/common/setup_locale.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../common/ssh/" class="md-nav__link">
         
   
@@ -2789,34 +2817,6 @@
     
   
     install/ubuntu/server/misc.sh
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../server/setup_locale/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    install/ubuntu/server/setup_locale.sh
   
 
     
@@ -3591,7 +3591,7 @@
 
 <span class="w">    </span><span class="c1"># Add Docker’s official GPG key:</span>
 <span class="w">    </span>sudo<span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>/etc/apt/keyrings
-<span class="w">    </span>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://download.docker.com/linux/ubuntu/gpg<span class="w"> </span><span class="p">|</span><span class="w"> </span>sudo<span class="w"> </span>gpg<span class="w"> </span>--dearmor<span class="w"> </span>-o<span class="w"> </span>/etc/apt/keyrings/docker.gpg
+<span class="w">    </span>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://download.docker.com/linux/ubuntu/gpg<span class="w"> </span><span class="p">|</span><span class="w"> </span>sudo<span class="w"> </span>gpg<span class="w"> </span>--batch<span class="w"> </span>--yes<span class="w"> </span>--dearmor<span class="w"> </span>-o<span class="w"> </span>/etc/apt/keyrings/docker.gpg
 
 <span class="w">    </span><span class="c1"># Use the following command to set up the repository:</span>
 <span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="se">\</span>

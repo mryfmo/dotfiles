@@ -42,10 +42,24 @@ function uninstall_misc() {
 }
 
 #
+# @description Install Chromium via snap.
+# @description
+#   Ubuntu 24.04 only ships Chromium as a snap (the apt package is a
+#   transitional snap wrapper). Google Chrome is not used instead because
+#   Google does not publish a linux-arm64 build. Skips gracefully when snap
+#   is unavailable (e.g. minimal or container images).
+#
+function install_chromium() {
+    command -v snap > /dev/null 2>&1 || return 0
+    sudo snap install chromium
+}
+
+#
 # @description Run the optional Ubuntu client package installation flow.
 #
 function main() {
     install_misc
+    install_chromium
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

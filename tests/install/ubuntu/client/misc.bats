@@ -37,4 +37,17 @@ function teardown() {
         run dpkg -s "${package}"
         [ "${status}" -eq 0 ]
     done
+
+    if command -v snap > /dev/null 2>&1; then
+        run snap list chromium
+        [ "${status}" -eq 0 ]
+    fi
+}
+
+@test "[ubuntu-client] install_chromium is a no-op when snap is unavailable" {
+    run env PATH="${BATS_TEST_TMPDIR}" bash -c '
+        source "'"${SCRIPT_PATH}"'"
+        install_chromium
+    '
+    [ "${status}" -eq 0 ]
 }

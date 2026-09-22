@@ -83,6 +83,7 @@ allowed_files: `home/dot_bash/client/bashrc`, `home/.chezmoiremove`, `home/dot_z
 `home/Library/LaunchAgents/**`,
 `home/.chezmoitemplates/chezmoiexternal.d/{common,macos,ubuntu}.yaml.tmpl`,
 `install/ubuntu/common/dependencies.sh`, `home/private_dot_gnupg/gpg-agent.conf.tmpl`,
+`home/dot_config/git/config.tmpl`,
 `tests/**`,
 `.orchestration/{reports,validation,sandboxes,learning,autoskill/runs}/dot-ubuntu-parity-T3-a01.md`,
 `.agents/worklog/codex/**`
@@ -105,3 +106,9 @@ done_signal=AGMSG-RESULT。max_turns=60。cost 行を report に。
 - `mise lock` は必ず `MISE_CONFIG_DIR="$PWD/home/dot_mise" mise lock` で実行する
   (素の実行は ~/.config/mise → main worktree へのシムリンクを書き換えてしまう)。
 - push・PR 作成・gh での書き込み操作は禁止(このマシンに書き込み権限がない)。
+
+### B12b. git user.name の誤ハードコード修正(`fix(git): correct hardcoded user.name`)(2026-09-23 追加、操作者確認済み)
+
+- `home/dot_config/git/config.tmpl:2` の `name = Shunsuke KITADA` は誤り。
+  操作者の正しい名義 **Fumio Moriya** に修正する(email 同様のテンプレート化は不要 —
+  マシン間で不変のため直値の修正で足りる。判断根拠を report へ)。

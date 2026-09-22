@@ -1,0 +1,7 @@
+[Unit]
+Description=Take a dotfiles usage snapshot and generate the usage report
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/make -C {{ .chezmoi.workingTree }} usage-snapshot usage-report
+Environment=PATH={{ .chezmoi.homeDir }}/.local/share/mise/shims:/usr/local/bin:/usr/bin:/bin

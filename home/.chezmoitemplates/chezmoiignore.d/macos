@@ -4,5 +4,6 @@
 .local/bin/server
 .zsh/server/zshrc
 .zsh/server/zprofile
+.config/systemd
 
 .bash/server/bashrc

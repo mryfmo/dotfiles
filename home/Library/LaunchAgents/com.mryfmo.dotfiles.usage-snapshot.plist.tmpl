@@ -8,14 +8,14 @@
     <array>
         <string>/usr/bin/make</string>
         <string>-C</string>
-        <string>/Users/mryfmo/Workspace/dotfiles</string>
+        <string>{{ .chezmoi.workingTree }}</string>
         <string>usage-snapshot</string>
         <string>usage-report</string>
     </array>
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>/Users/mryfmo/.local/share/mise/shims:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <string>{{ .chezmoi.homeDir }}/.local/share/mise/shims:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>
     <key>StartCalendarInterval</key>
     <dict>
@@ -27,8 +27,8 @@
         <integer>0</integer>
     </dict>
     <key>StandardOutPath</key>
-    <string>/Users/mryfmo/.config/dotfiles/usage-review.log</string>
+    <string>{{ .chezmoi.homeDir }}/.config/dotfiles/usage-review.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/mryfmo/.config/dotfiles/usage-review.log</string>
+    <string>{{ .chezmoi.homeDir }}/.config/dotfiles/usage-review.log</string>
 </dict>
 </plist>

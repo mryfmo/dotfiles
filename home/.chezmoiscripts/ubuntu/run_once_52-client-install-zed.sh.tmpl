@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+{{ if eq .chezmoi.os "linux" -}}
+{{   if eq .chezmoi.osRelease.idLike "debian" -}}
+{{     if eq .system "client" -}}
+(
+{{       include "../scripts/lib/installer-pins.sh" }}
+{{       include "../install/ubuntu/client/zed.sh" }}
+)
+{{     end -}}
+{{   end -}}
+{{ end -}}

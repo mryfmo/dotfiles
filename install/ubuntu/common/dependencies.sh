@@ -22,6 +22,7 @@ readonly PACKAGES=(
     iproute2
     iputils-ping
     perl
+    pinentry-curses
     sudo
     unzip
     vim

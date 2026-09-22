@@ -10,7 +10,7 @@ readonly SCRIPT_PATH="./install/ubuntu/common/dependencies.sh"
     '
 
     [ "${status}" -eq 0 ]
-    [ "${lines[0]}" -eq 14 ]
+    [ "${lines[0]}" -eq 15 ]
 
     expected_packages=(
         build-essential
@@ -22,6 +22,7 @@ readonly SCRIPT_PATH="./install/ubuntu/common/dependencies.sh"
         iproute2
         iputils-ping
         perl
+        pinentry-curses
         sudo
         unzip
         vim

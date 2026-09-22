@@ -4,6 +4,8 @@ pinentry-program /opt/homebrew/bin/pinentry-mac
 {{-   else }}
 pinentry-program /usr/local/bin/pinentry-mac
 {{-   end }}
+{{- else if eq .chezmoi.os "linux" }}
+pinentry-program /usr/bin/pinentry-curses
 {{- end }}
 # Cache passphrases for one day by default and at most one week.
 default-cache-ttl 86400

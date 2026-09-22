@@ -47,6 +47,9 @@ UNDERSTAND_SKILL_ALLOWLIST = {
     "understand-knowledge",
     "understand-onboard",
 }
+# Codex-side Crit skills are installed by update-agent-assets.sh's
+# update_codex_crit, not rendered from the chezmoi source tree.
+CRIT_PLUGIN_SKILLS = {"crit", "crit-cli", "crit-story"}
 ASSET_STEP_FUNCTIONS = {
     "ensure_crit_cli",
     "ensure_herdr_integrations",
@@ -336,7 +339,9 @@ def compare_claude_skills() -> list[str]:
         "Claude shared-skill tree",
         expected_claude_skill_targets(),
         target_root,
-        ignored_paths=terminal_browser_receipt_paths(),
+        # Cowork syncs its own skills into this subtree; chezmoi does not own it.
+        ignored_paths=terminal_browser_receipt_paths()
+        | {HOME / ".claude/skills/synced"},
     )
 
 
@@ -528,7 +533,10 @@ def orphaned_asset_warnings(
         if path.parent == normalized_path(skills_root)
     }
     skill_allowlist = (
-        UNDERSTAND_SKILL_ALLOWLIST | receipt_skill_names | {"db", "run", "teams"}
+        UNDERSTAND_SKILL_ALLOWLIST
+        | CRIT_PLUGIN_SKILLS
+        | receipt_skill_names
+        | {"db", "run", "teams"}
     )
     candidates = [
         (path, source_root_names, AGENT_ROOT_ALLOWLIST)

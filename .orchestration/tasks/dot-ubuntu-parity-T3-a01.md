@@ -95,3 +95,13 @@ main への直コミット禁止、allowed_files 外の変更禁止(出たら re
 
 done_signal=AGMSG-RESULT。max_turns=60。cost 行を report に。
 ブロックされたら AGMSG-RESULT status=blocked で report に理由を。
+
+## 環境注意(2026-09-23 追記)
+
+- 作業場所はあなたの登録 worktree(`git worktree`)。main への checkout はしない。
+  ブランチ `feat/ubuntu-parity` は worktree 作成時に済んでいる。
+- このマシンには SSH 署名鍵がないため、コミットは必ず
+  `git -c commit.gpgsign=false commit ...` で作成する(署名試行は fail する)。
+- `mise lock` は必ず `MISE_CONFIG_DIR="$PWD/home/dot_mise" mise lock` で実行する
+  (素の実行は ~/.config/mise → main worktree へのシムリンクを書き換えてしまう)。
+- push・PR 作成・gh での書き込み操作は禁止(このマシンに書き込み権限がない)。

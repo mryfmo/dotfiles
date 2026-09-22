@@ -311,7 +311,7 @@ install_starship
         text = (ROOT / "home/.chezmoitemplates/chezmoiexternal.d/common.yaml.tmpl").read_text()
         self.assertNotIn("gitHubLatestReleaseAssetURL", text)
         self.assertNotIn('type: "git-repo"', text)
-        self.assertEqual(3, text.count("  checksum:\n    sha256:"))
+        self.assertEqual(5, text.count("  checksum:\n    sha256:"))
         self.assertIn("spacemacs/archive/530c17d62e4ccca09087a2f142752b21000658fb.tar.gz", text)
         self.assertIn("ba040a5d04a6d37c821274eea1f1e4c26d146e2f65057b4d15f4741159071260", text)
         self.assertIn("stripComponents: 1", text)

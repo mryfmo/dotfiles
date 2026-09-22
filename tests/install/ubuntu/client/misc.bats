@@ -45,7 +45,7 @@ function teardown() {
 }
 
 @test "[ubuntu-client] install_chromium is a no-op when snap is unavailable" {
-    run env PATH="${BATS_TEST_TMPDIR}" bash -c '
+    run env PATH="${BATS_TEST_TMPDIR}" /bin/bash -c '
         source "'"${SCRIPT_PATH}"'"
         install_chromium
     '

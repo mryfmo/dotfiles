@@ -31,9 +31,13 @@ function setup() {
 }
 
 @test "[ubuntu-client] main downloads, verifies, and links zed when not already installed" {
+    mkdir -p "${BATS_TEST_TMPDIR}/.local/share"
+
     run env HOME="${BATS_TEST_TMPDIR}" bash -c '
         source "'"${PINS_PATH}"'"
         source "'"${SCRIPT_PATH}"'"
+        uname() { [ "$1" = -m ] && printf x86_64 || command uname "$1"; }
+        sha256sum() { printf "%s  %s\n" "${ZED_LINUX_AMD64_SHA256}" "$1"; }
         curl() {
             local output
             while [ "$#" -gt 0 ]; do

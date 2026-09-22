@@ -7,7 +7,7 @@ function setup() {
 }
 
 @test "[ubuntu-client] main is a no-op without gsettings on PATH" {
-    run env PATH="${BATS_TEST_TMPDIR}" DISPLAY=":0" bash "${SCRIPT_PATH}"
+    run env PATH="${BATS_TEST_TMPDIR}" DISPLAY=":0" /bin/bash "${SCRIPT_PATH}"
     [ "${status}" -eq 0 ]
 }
 
@@ -17,7 +17,7 @@ function setup() {
     printf '#!/bin/sh\necho "gsettings should not run" >&2\nexit 99\n' > "${bin_dir}/gsettings"
     chmod +x "${bin_dir}/gsettings"
 
-    run env PATH="${bin_dir}" DISPLAY="" DBUS_SESSION_BUS_ADDRESS="" bash "${SCRIPT_PATH}"
+    run env PATH="${bin_dir}" DISPLAY="" DBUS_SESSION_BUS_ADDRESS="" /bin/bash "${SCRIPT_PATH}"
     [ "${status}" -eq 0 ]
 }
 

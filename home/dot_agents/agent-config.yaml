@@ -128,7 +128,7 @@ codex:
       ponytail@ponytail:hooks/claude-codex-hooks.json:subagent_start:0:0:
         trusted_hash: sha256:28c43eada804ad00a4e651d6af6320c01e763b1df060af0ab74865a55bc1c9a9
   projects:
-    /Users/mryfmo/Workspace/dotfiles:
+    "{{ .chezmoi.workingTree }}":
       trust_level: trusted
 
 claude:

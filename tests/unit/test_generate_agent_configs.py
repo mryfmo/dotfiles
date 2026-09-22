@@ -193,9 +193,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertIn('model_reasoning_effort = "medium"', result.stdout)
         self.assertIn("[hooks.state]", result.stdout)
         self.assertIn("trusted = true", result.stdout)
-        self.assertNotIn(
-            self.temp_dir / "home/dot_codex/standard.config.toml", outputs
-        )
+        self.assertNotIn(self.temp_dir / "home/dot_codex/standard.config.toml", outputs)
 
     def test_security_profile_renders_launcher_and_expanded_notify(self) -> None:
         manifest = sample_manifest()
@@ -239,11 +237,11 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             'MODEL_PROFILE_SECURITY_CLAUDE_ARGS="--model claude-fable-5 --effort high"',
             env,
         )
-        self.assertIn(
-            'MODEL_PROFILE_SECURITY_CODEX_ARGS="--profile security"', env
-        )
+        self.assertIn('MODEL_PROFILE_SECURITY_CODEX_ARGS="--profile security"', env)
 
-    def test_profile_modify_scripts_are_byte_idempotent_with_runtime_state(self) -> None:
+    def test_profile_modify_scripts_are_byte_idempotent_with_runtime_state(
+        self,
+    ) -> None:
         outputs = self.module.expected_outputs(sample_manifest())
         standard_profile = (
             self.temp_dir / "home/dot_codex/modify_private_standard.config.toml"
@@ -373,12 +371,20 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         current = '[hooks.state."hook"]\ntrusted_hash = "sha256:profile"\n'
 
         result = subprocess.run(
-            [str(profile)], input=current, text=True, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, env={**os.environ, "HOME": str(home)}, check=False,
+            [str(profile)],
+            input=current,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env={**os.environ, "HOME": str(home)},
+            check=False,
         )
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn('warning: hook trust divergence for hooks.state."hook": profile=sha256:profile base=sha256:base', result.stderr)
+        self.assertIn(
+            'warning: hook trust divergence for hooks.state."hook": profile=sha256:profile base=sha256:base',
+            result.stderr,
+        )
         self.assertIn('trusted_hash = "sha256:profile"', result.stdout)
 
     def test_profile_modify_scripts_are_quiet_for_matching_hook_trust(self) -> None:
@@ -392,8 +398,13 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         current = '[hooks.state."hook"]\ntrusted_hash = "sha256:same"\n'
 
         result = subprocess.run(
-            [str(profile)], input=current, text=True, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, env={**os.environ, "HOME": str(home)}, check=False,
+            [str(profile)],
+            input=current,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env={**os.environ, "HOME": str(home)},
+            check=False,
         )
 
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -434,17 +445,24 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertIn('command = "permgate codex"', config)
         self.assertNotIn("ccgate", config)
 
+    def test_codex_config_renders_working_tree_project_key(self) -> None:
+        manifest = sample_manifest()
+        manifest["codex"]["projects"] = {
+            "{{ .chezmoi.workingTree }}": {"trust_level": "trusted"}
+        }
+
+        config = self.module.render_codex(manifest)
+
+        self.assertIn('[projects."{{ .chezmoi.workingTree }}"]', config)
+        self.assertNotIn("/Users/mryfmo/", config)
+
     def test_managed_hooks_use_installed_permgate_paths(self) -> None:
-        codex = (
-            ROOT / "home/.chezmoitemplates/codex-config-managed.toml"
-        ).read_text()
+        codex = (ROOT / "home/.chezmoitemplates/codex-config-managed.toml").read_text()
         claude = (
             ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
         ).read_text()
 
-        self.assertIn(
-            "{{ .chezmoi.homeDir }}/.local/bin/common/permgate codex", codex
-        )
+        self.assertIn("{{ .chezmoi.homeDir }}/.local/bin/common/permgate codex", codex)
         self.assertIn("~/.local/bin/common/permgate claude", claude)
 
     def test_unknown_interactive_profile_fails(self) -> None:

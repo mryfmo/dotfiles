@@ -1,3 +1,6 @@
 .codex/ccgate.jsonnet
 .claude/ccgate.jsonnet
 .local/bin/common/start-cognee-mcp
+{{ if and (eq .chezmoi.os "linux") (eq .system "client") }}
+.local/bin/server
+{{ end }}

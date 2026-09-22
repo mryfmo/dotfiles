@@ -80,12 +80,20 @@ function uninstall_docker_engine() {
 }
 
 #
+# @description Add the current user to the docker group so docker can run without sudo.
+#
+function configure_docker_group() {
+    sudo usermod -aG docker "$(id -un)"
+}
+
+#
 # @description Install Docker Engine from Docker's official Ubuntu repository.
 #
 function main() {
     uninstall_old_docker
     setup_repository
     install_docker_engine
+    configure_docker_group
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

@@ -21,6 +21,10 @@ function teardown() {
     [ "${status}" -eq 0 ]
     run dpkg -s 'docker-compose-plugin'
     [ "${status}" -eq 0 ]
+
+    run getent group docker
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"$(id -un)"* ]]
 }
 
 @test "[ubuntu-client] setup_repository replaces an existing keyring non-interactively" {

@@ -13,10 +13,10 @@ path=(
     "${HOME}/.local/share/mise/shims"
     "${HOME}/.local/bin"
     "${HOME}/.local/bin/common"
-    /opt/homebrew/bin
-    /opt/homebrew/sbin
-    /usr/local/bin
-    /usr/local/sbin
+    /opt/homebrew/bin(N-/)
+    /opt/homebrew/sbin(N-/)
+    /usr/local/bin(N-/)
+    /usr/local/sbin(N-/)
     "${path[@]}"
 )
 export PATH

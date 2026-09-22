@@ -84,6 +84,9 @@ allowed_files: `home/dot_bash/client/bashrc`, `home/.chezmoiremove`, `home/dot_z
 `home/.chezmoitemplates/chezmoiexternal.d/{common,macos,ubuntu}.yaml.tmpl`,
 `install/ubuntu/common/dependencies.sh`, `home/private_dot_gnupg/gpg-agent.conf.tmpl`,
 `home/dot_config/git/config.tmpl`,
+`home/dot_local/bin/common/executable_contextdb-codex-notify`,
+`home/dot_local/bin/common/executable_herdr-agents`,
+`home/dot_mise/mise.lock`,
 `tests/**`,
 `.orchestration/{reports,validation,sandboxes,learning,autoskill/runs}/dot-ubuntu-parity-T3-a01.md`,
 `.agents/worklog/codex/**`
@@ -112,3 +115,16 @@ done_signal=AGMSG-RESULT。max_turns=60。cost 行を report に。
 - `home/dot_config/git/config.tmpl:2` の `name = Shunsuke KITADA` は誤り。
   操作者の正しい名義 **Fumio Moriya** に修正する(email 同様のテンプレート化は不要 —
   マシン間で不変のため直値の修正で足りる。判断根拠を report へ)。
+
+### B0b. 既存 shfmt ドリフト修正(`style(bin): satisfy shfmt on contextdb-codex-notify and herdr-agents`)(T2 レビューからの編入)
+
+- `home/dot_local/bin/common/executable_contextdb-codex-notify`(heredoc 後の `then` 配置)と
+  `home/dot_local/bin/common/executable_herdr-agents`(case アームのインデント)を
+  shfmt v3.14.1 が通る形へ整形のみ(ロジック変更禁止)。以後 `make format` が green になること。
+
+### B2b. yq supply-chain テストの追従と stale lock 削除(`fix(mise): finish yq backend migration in lock and tests`)(T2 レビューからの編入)
+
+- `tests/unit/test_supply_chain_policy.py`(:229 付近)の `"github:mikefarah/yq"` 参照を
+  `"aqua:mikefarah/yq"` に更新。
+- `home/dot_mise/mise.lock` から stale な `github:mikefarah/yq` ブロックを削除。
+- `uv run python -m unittest tests.unit.test_supply_chain_policy` green を逐語で validation へ。

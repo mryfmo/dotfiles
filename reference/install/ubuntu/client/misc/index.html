@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../ghostty/">
+        <link rel="prev" href="../gnome_settings/">
       
       
-        <link rel="next" href="../../common/aws_cli/">
+        <link rel="next" href="../tailscale/">
       
       
         
@@ -2504,6 +2504,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../gnome_settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/gnome_settings.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -2603,6 +2631,62 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tailscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/tailscale.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/zed.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -3558,6 +3642,7 @@
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
+<li><code>install_chromium</code></li>
 <li><code>install_misc</code></li>
 <li><code>main</code></li>
 <li><code>uninstall_misc</code></li>
@@ -3607,10 +3692,24 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Install Chromium via snap.</span>
+<span class="c1"># @description</span>
+<span class="c1">#   Ubuntu 24.04 only ships Chromium as a snap (the apt package is a</span>
+<span class="c1">#   transitional snap wrapper). Google Chrome is not used instead because</span>
+<span class="c1">#   Google does not publish a linux-arm64 build. Skips gracefully when snap</span>
+<span class="c1">#   is unavailable (e.g. minimal or container images).</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>install_chromium<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>snap<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span>sudo<span class="w"> </span>snap<span class="w"> </span>install<span class="w"> </span>chromium
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Run the optional Ubuntu client package installation flow.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span>install_misc
+<span class="w">    </span>install_chromium
 <span class="o">}</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>

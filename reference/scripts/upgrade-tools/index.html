@@ -2501,6 +2501,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../install/ubuntu/client/gnome_settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/gnome_settings.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../install/ubuntu/client/misc/" class="md-nav__link">
         
   
@@ -2509,6 +2537,62 @@
     
   
     install/ubuntu/client/misc.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install/ubuntu/client/tailscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/tailscale.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install/ubuntu/client/zed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/zed.sh
   
 
     
@@ -3558,6 +3642,7 @@
 <li><code>current_mise_tools</code></li>
 <li><code>fetch_crit_pin</code></li>
 <li><code>fetch_installer_pin</code></li>
+<li><code>fetch_zed_pin</code></li>
 <li><code>has_command</code></li>
 <li><code>is_forbidden_homebrew_formula</code></li>
 <li><code>is_linux</code></li>
@@ -3982,14 +4067,34 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Bump terminal tool installers and Crit binaries to the latest upstream releases.</span>
+<span class="c1"># @description Print the latest Zed tag and SHA256 values for both Linux release tarballs.</span>
+<span class="c1"># @stdout Three lines: release tag, amd64 SHA256, then arm64 SHA256.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>fetch_zed_pin<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>amd64<span class="w"> </span>arm64<span class="w"> </span>tag
+
+<span class="w">    </span>has_command<span class="w"> </span>gh<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nv">tag</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>gh<span class="w"> </span>api<span class="w"> </span>repos/zed-industries/zed/releases/latest<span class="w"> </span>--jq<span class="w"> </span>.tag_name<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^v<span class="o">[</span><span class="m">0</span>-9<span class="o">]</span>+<span class="se">\.</span><span class="o">[</span><span class="m">0</span>-9<span class="o">]</span>+<span class="se">\.</span><span class="o">[</span><span class="m">0</span>-9<span class="o">]</span>+$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nv">amd64</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">arm64</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">trap</span><span class="w"> </span><span class="s1">'rm -f "${amd64}" "${arm64}"'</span><span class="w"> </span>RETURN
+<span class="w">    </span>curl<span class="w"> </span>-fsSL<span class="w"> </span><span class="s2">"https://github.com/zed-industries/zed/releases/download/</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">/zed-linux-x86_64.tar.gz"</span><span class="w"> </span>-o<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">amd64</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>curl<span class="w"> </span>-fsSL<span class="w"> </span><span class="s2">"https://github.com/zed-industries/zed/releases/download/</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">/zed-linux-aarch64.tar.gz"</span><span class="w"> </span>-o<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">arm64</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">amd64</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'{ print $1 }'</span>
+<span class="w">    </span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">arm64</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'{ print $1 }'</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Bump terminal tool installers, Crit, and Zed binaries to the latest upstream releases.</span>
 <span class="c1"># @description</span>
 <span class="c1">#   Rewrites scripts/lib/installer-pins.sh wholesale; the diff is reviewed and</span>
 <span class="c1">#   committed like a mise config/lock bump. The subsequent agent asset</span>
 <span class="c1">#   regeneration phase installs the newly pinned versions.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>bump_terminal_tool_pins<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>repo_root<span class="w"> </span>pins<span class="w"> </span>tode_pin<span class="w"> </span>tb_pin<span class="w"> </span>crit_pin
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>repo_root<span class="w"> </span>pins<span class="w"> </span>tode_pin<span class="w"> </span>tb_pin<span class="w"> </span>crit_pin<span class="w"> </span>zed_pin
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">"terminal tool pins"</span>
 <span class="w">    </span><span class="nv">repo_root</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">/.."</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="k">)</span><span class="s2">"</span>
@@ -4004,6 +4109,10 @@
 <span class="w">    </span><span class="o">}</span>
 <span class="w">    </span><span class="nv">crit_pin</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>fetch_crit_pin<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: unable to fetch the Crit release pins; keeping current pins\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="w">    </span><span class="nv">zed_pin</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>fetch_zed_pin<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: unable to fetch the Zed release pins; keeping current pins\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="o">}</span>
 
@@ -4028,13 +4137,16 @@
 <span class="s">CRIT_PIN_VERSION="$(sed -n 1p &lt;&lt;&lt; "${crit_pin}")"</span>
 <span class="s">CRIT_LINUX_AMD64_SHA256="$(sed -n 2p &lt;&lt;&lt; "${crit_pin}")"</span>
 <span class="s">CRIT_LINUX_ARM64_SHA256="$(sed -n 3p &lt;&lt;&lt; "${crit_pin}")"</span>
+<span class="s">ZED_PIN_VERSION="$(sed -n 1p &lt;&lt;&lt; "${zed_pin}")"</span>
+<span class="s">ZED_LINUX_AMD64_SHA256="$(sed -n 2p &lt;&lt;&lt; "${zed_pin}")"</span>
+<span class="s">ZED_LINUX_ARM64_SHA256="$(sed -n 3p &lt;&lt;&lt; "${zed_pin}")"</span>
 <span class="s">EOF</span>
 <span class="w">    </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: unable to write %s; keeping current pins\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pins</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Pinned tode %s, terminal-browser %s, and crit %s; review and commit the installer-pins diff.\n'</span><span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span>1p<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tode_pin</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span>1p<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tb_pin</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span>1p<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">crit_pin</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Pinned tode %s, terminal-browser %s, crit %s, and zed %s; review and commit the installer-pins diff.\n'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span>1p<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tode_pin</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span>1p<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tb_pin</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span>1p<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">crit_pin</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span>1p<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">zed_pin</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>

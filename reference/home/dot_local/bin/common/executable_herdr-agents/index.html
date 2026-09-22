@@ -2589,6 +2589,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/client/gnome_settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/gnome_settings.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../../../install/ubuntu/client/misc/" class="md-nav__link">
         
   
@@ -2597,6 +2625,62 @@
     
   
     install/ubuntu/client/misc.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/client/tailscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/tailscale.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/client/zed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/zed.sh
   
 
     
@@ -3756,14 +3840,14 @@
 <span class="w">        </span><span class="k">return</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_output</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
-<span class="w">        </span>*timeout*<span class="w"> </span><span class="p">|</span><span class="w"> </span>*Timeout*<span class="w"> </span><span class="p">|</span><span class="w"> </span>*timed<span class="se">\ </span>out*<span class="w"> </span><span class="p">|</span><span class="w"> </span>*TIMED_OUT*<span class="o">)</span>
-<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">newly_created</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>wait_for_shell_prompt<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="nv">agent_output</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>herdr<span class="w"> </span>agent<span class="w"> </span>start<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--kind<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">kind</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--pane<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--timeout<span class="w"> </span><span class="m">30000</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">                    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">                    </span><span class="k">return</span>
-<span class="w">                </span><span class="k">fi</span>
+<span class="w">    </span>*timeout*<span class="w"> </span><span class="p">|</span><span class="w"> </span>*Timeout*<span class="w"> </span><span class="p">|</span><span class="w"> </span>*timed<span class="se">\ </span>out*<span class="w"> </span><span class="p">|</span><span class="w"> </span>*TIMED_OUT*<span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">newly_created</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>wait_for_shell_prompt<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="nv">agent_output</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>herdr<span class="w"> </span>agent<span class="w"> </span>start<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--kind<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">kind</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--pane<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--timeout<span class="w"> </span><span class="m">30000</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">                </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">                </span><span class="k">return</span>
 <span class="w">            </span><span class="k">fi</span>
-<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span><span class="k">esac</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Failed to start %s agent %s: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">kind</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_output</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>

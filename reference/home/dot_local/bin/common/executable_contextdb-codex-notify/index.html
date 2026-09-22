@@ -2578,6 +2578,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/client/gnome_settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/gnome_settings.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../../../install/ubuntu/client/misc/" class="md-nav__link">
         
   
@@ -2586,6 +2614,62 @@
     
   
     install/ubuntu/client/misc.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/client/tailscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/tailscale.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/client/zed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/zed.sh
   
 
     
@@ -3546,7 +3630,7 @@
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="k">fi</span>
 
-<span class="k">if</span><span class="w"> </span>!<span class="w"> </span>python3<span class="w"> </span>-<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">1</span><span class="p">-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="s">&lt;&lt; 'PY'; then</span>
+<span class="k">if</span><span class="w"> </span>!<span class="w"> </span>python3<span class="w"> </span>-<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">1</span><span class="p">-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="s">&lt;&lt; 'PY'</span>
 <span class="s">import json</span>
 <span class="s">import subprocess</span>
 <span class="s">import sys</span>
@@ -3586,6 +3670,7 @@
 <span class="s">except Exception:</span>
 <span class="s">    raise SystemExit(1)</span>
 <span class="s">PY</span>
+<span class="k">then</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s1">'contextdb-codex-notify: ingest failed'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="k">fi</span>
 

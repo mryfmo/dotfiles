@@ -2501,6 +2501,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../install/ubuntu/client/gnome_settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/gnome_settings.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../install/ubuntu/client/misc/" class="md-nav__link">
         
   
@@ -2509,6 +2537,62 @@
     
   
     install/ubuntu/client/misc.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install/ubuntu/client/tailscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/tailscale.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install/ubuntu/client/zed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/zed.sh
   
 
     
@@ -4225,7 +4309,7 @@
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/plugins/marketplace.json"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span>chmod<span class="w"> </span><span class="m">644</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/plugins/marketplace.json"</span>
 <span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span>manifest_record<span class="w"> </span><span class="s2">"update_codex_crit"</span><span class="w"> </span>plugin<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>crit<span class="w"> </span>--version<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'NR == 1 { print $2 }'</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_HOME</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/.codex</span><span class="si">}</span><span class="s2">/plugins/crit"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_HOME</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/.codex</span><span class="si">}</span><span class="s2">/config.toml"</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"ensure_crit_cli"</span><span class="w"> </span><span class="s2">"crit install codex-plugin --force"</span>
+<span class="w">    </span>manifest_record<span class="w"> </span><span class="s2">"update_codex_crit"</span><span class="w"> </span>plugin<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>crit<span class="w"> </span>--version<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'NR == 1 { print $2 }'</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_HOME</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/.codex</span><span class="si">}</span><span class="s2">/plugins/crit"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CODEX_HOME</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/.codex</span><span class="si">}</span><span class="s2">/config.toml"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/crit"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/crit-cli"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/crit-story"</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"ensure_crit_cli"</span><span class="w"> </span><span class="s2">"crit install codex-plugin --force"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>

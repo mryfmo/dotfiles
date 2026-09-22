@@ -2587,6 +2587,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../gnome_settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/gnome_settings.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../misc/" class="md-nav__link">
         
   
@@ -2595,6 +2623,62 @@
     
   
     install/ubuntu/client/misc.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tailscale/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/tailscale.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    install/ubuntu/client/zed.sh
   
 
     
@@ -3558,6 +3642,7 @@
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
+<li><code>configure_docker_group</code></li>
 <li><code>install_docker_engine</code></li>
 <li><code>main</code></li>
 <li><code>setup_repository</code></li>
@@ -3647,12 +3732,20 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Add the current user to the docker group so docker can run without sudo.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>configure_docker_group<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>sudo<span class="w"> </span>usermod<span class="w"> </span>-aG<span class="w"> </span>docker<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>id<span class="w"> </span>-un<span class="k">)</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Install Docker Engine from Docker's official Ubuntu repository.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span>uninstall_old_docker
 <span class="w">    </span>setup_repository
 <span class="w">    </span>install_docker_engine
+<span class="w">    </span>configure_docker_group
 <span class="o">}</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>

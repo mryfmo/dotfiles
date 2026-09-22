@@ -226,7 +226,7 @@ install_starship
             "platforms.macos-arm64",
             "platforms.macos-x64",
         }
-        for name in ("fd", "github:mikefarah/yq"):
+        for name in ("fd", "aqua:mikefarah/yq"):
             platforms = {key for key in lock["tools"][name][0] if key.startswith("platforms.")}
             self.assertEqual(expected, platforms, name)
         self.assertEqual("cargo:eza", lock["tools"]["cargo:eza"][0]["backend"])

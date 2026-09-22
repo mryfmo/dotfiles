@@ -328,35 +328,6 @@ checksum = "sha256:667aa6973e1cf1eb0c00600c4fc480a1c93d979ed99cdf3cae63dcbc484a6
 url = "https://github.com/d-kuro/gwq/releases/download/v0.1.1/gwq_Darwin_x86_64.tar.gz"
 url_api = "https://api.github.com/repos/d-kuro/gwq/releases/assets/410341155"
 
-[[tools."github:mikefarah/yq"]]
-version = "4.53.6"
-backend = "github:mikefarah/yq"
-
-[tools."github:mikefarah/yq"."platforms.linux-arm64"]
-checksum = "sha256:d5e7531273d45c5d4b7abb4a1597c47a0fecb5d6b081dfa755064b38ffcc34f4"
-url = "https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_linux_arm64.tar.gz"
-url_api = "https://api.github.com/repos/mikefarah/yq/releases/assets/522028000"
-provenance = "github-attestations"
-
-[tools."github:mikefarah/yq"."platforms.linux-x64"]
-checksum = "sha256:38b907b21b1b04327fb9481c595331d925a67c6ee1aabd0ef419d0b7d12dfb3d"
-url = "https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_linux_amd64.tar.gz"
-url_api = "https://api.github.com/repos/mikefarah/yq/releases/assets/522028025"
-provenance = "github-attestations"
-
-[tools."github:mikefarah/yq"."platforms.macos-arm64"]
-checksum = "sha256:4e2b18f4242c720965af7919dc0573819474cecf03a71b6cd7656025f2e5162c"
-url = "https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_darwin_arm64.tar.gz"
-url_api = "https://api.github.com/repos/mikefarah/yq/releases/assets/522028017"
-provenance = "github-attestations"
-provenance_verified = true
-
-[tools."github:mikefarah/yq"."platforms.macos-x64"]
-checksum = "sha256:cf8304676c6572960a3720a189fd42e7038bf989dc181f0c05019a2883caf540"
-url = "https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_darwin_amd64.tar.gz"
-url_api = "https://api.github.com/repos/mikefarah/yq/releases/assets/522028030"
-provenance = "github-attestations"
-
 [[tools."github:ogulcancelik/herdr"]]
 version = "0.9.0"
 backend = "github:ogulcancelik/herdr"

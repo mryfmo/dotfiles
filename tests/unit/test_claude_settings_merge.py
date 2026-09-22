@@ -11,17 +11,20 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-
 ROOT = Path(__file__).resolve().parents[2]
 MERGE_SCRIPT = ROOT / "home/dot_claude/modify_private_settings.json"
 
 
 class ClaudeSettingsMergeTest(unittest.TestCase):
     def setUp(self) -> None:
-        self.temp_dir = tempfile.TemporaryDirectory(prefix="claude-settings-merge-test-")
+        self.temp_dir = tempfile.TemporaryDirectory(
+            prefix="claude-settings-merge-test-"
+        )
         self.source_dir = Path(self.temp_dir.name)
         (self.source_dir / ".chezmoitemplates").mkdir()
-        self.baseline_path = self.source_dir / ".chezmoitemplates/claude-settings-managed.json"
+        self.baseline_path = (
+            self.source_dir / ".chezmoitemplates/claude-settings-managed.json"
+        )
         self.home_dir = self.source_dir / "target-home"
 
     def tearDown(self) -> None:
@@ -82,7 +85,17 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
 
     def test_merge_is_idempotent(self) -> None:
         managed = {"model": "managed", "effortLevel": "high", "enabledPlugins": {}}
-        current = json.dumps({"enabledPlugins": {"crit@crit": True}, "model": "runtime", "localState": 1}, indent=2) + "\n"
+        current = (
+            json.dumps(
+                {
+                    "enabledPlugins": {"crit@crit": True},
+                    "model": "runtime",
+                    "localState": 1,
+                },
+                indent=2,
+            )
+            + "\n"
+        )
 
         once = self.merge(managed, current)
         twice = self.merge(managed, once)
@@ -113,6 +126,7 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         self.assertEqual(self.merge(managed, current), current)
 
     def test_current_session_start_order_is_preserved(self) -> None:
+        """Order is preserved; a stale bare herdr-agents command still migrates."""
         state_hook = {
             "matcher": "*",
             "hooks": [
@@ -123,7 +137,7 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
                 }
             ],
         }
-        attach_hook = {
+        stale_attach_hook = {
             "matcher": "*",
             "hooks": [
                 {
@@ -137,21 +151,30 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
             "enabledPlugins": {},
             "hooks": {"SessionStart": [state_hook]},
         }
-        current = json.dumps(
-            {
-                "enabledPlugins": {},
-                "hooks": {"SessionStart": [attach_hook, state_hook]},
-            },
-            indent=2,
-        ) + "\n"
+        current = (
+            json.dumps(
+                {
+                    "enabledPlugins": {},
+                    "hooks": {"SessionStart": [stale_attach_hook, state_hook]},
+                },
+                indent=2,
+            )
+            + "\n"
+        )
 
         output = self.merge(managed, current)
 
-        self.assertEqual(json.loads(output), json.loads(current))
-        self.assertEqual(
-            json.loads(output)["hooks"]["SessionStart"],
-            [attach_hook, state_hook],
+        session_hooks = json.loads(output)["hooks"]["SessionStart"]
+        commands = [h["command"] for e in session_hooks for h in e["hooks"]]
+        self.assertEqual(len(session_hooks), 2)
+        self.assertTrue(
+            commands[0].startswith(str(self.home_dir))
+            and commands[0].endswith(
+                '/herdr-agents --attach >> "$HOME/.config/herdr/herdr-agents.log" 2>&1 || true'
+            ),
+            f"attach hook must migrate to an absolute path, got {commands[0]!r}",
         )
+        self.assertEqual(session_hooks[1], state_hook)
 
     def test_managed_permgate_replaces_stale_current_ccgate_hook(self) -> None:
         managed_hook = {

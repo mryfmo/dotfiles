@@ -19,7 +19,7 @@ MANAGED_PERMISSION_EXECUTABLES = ("ccgate", "permgate")
 # SessionStart entries are merged additively, so a managed command whose shape
 # changes would leave its previous variant behind and fire the hook twice. Any
 # entry invoking this script is managed, whatever home path it was rendered with.
-MANAGED_SESSION_START_SCRIPTS = ("herdr-agent-state.sh",)
+MANAGED_SESSION_START_SCRIPTS = ("herdr-agent-state.sh", "herdr-agents")
 
 
 def source_dir() -> Path:
@@ -177,7 +177,7 @@ def main() -> int:
                 "hooks": [
                     {
                         "type": "command",
-                        "command": 'herdr-agents --attach >> "$HOME/.config/herdr/herdr-agents.log" 2>&1 || true',
+                        "command": f'{home_dir()}/.local/bin/common/herdr-agents --attach >> "$HOME/.config/herdr/herdr-agents.log" 2>&1 || true',
                         "timeout": 10,
                     }
                 ],

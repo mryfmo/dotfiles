@@ -987,6 +987,8 @@ EOF
                     ;;
                 *crit-linux-amd64*) printf 'fixture amd64\n' > "$out" ;;
                 *crit-linux-arm64*) printf 'fixture arm64\n' > "$out" ;;
+                *zed-linux-x86_64.tar.gz*) printf 'fixture zed amd64\n' > "$out" ;;
+                *zed-linux-aarch64.tar.gz*) printf 'fixture zed arm64\n' > "$out" ;;
             esac
             """,
         )
@@ -1062,6 +1064,7 @@ EOF
             case "$*" in
                 *issues/1115*) printf 'open\n' ;;
                 *tomasz-tomczyk/crit/releases/latest*) printf 'v9.9.9\n' ;;
+                *zed-industries/zed/releases/latest*) printf 'v9.9.9\n' ;;
                 *musistudio/claude-code-router/releases/latest*) printf 'v3.0.15\n' ;;
             esac
             """,
@@ -1223,21 +1226,26 @@ EOF
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertIn(
-            "Pinned tode v9.9.9, terminal-browser v9.9.9, and crit v9.9.9",
+            "Pinned tode v9.9.9, terminal-browser v9.9.9, crit v9.9.9, and zed v9.9.9",
             result.stdout,
         )
         pins = (repo / "scripts/lib/installer-pins.sh").read_text()
         self.assertIn('TERMINAL_CODE_PIN_VERSION="v9.9.9"', pins)
         self.assertIn('TERMINAL_BROWSER_PIN_VERSION="v9.9.9"', pins)
         self.assertIn('CRIT_PIN_VERSION="v9.9.9"', pins)
+        self.assertIn('ZED_PIN_VERSION="v9.9.9"', pins)
         self.assertRegex(pins, r'TERMINAL_CODE_INSTALLER_SHA256="[0-9a-f]{64}"')
         self.assertRegex(pins, r'CRIT_LINUX_AMD64_SHA256="[0-9a-f]{64}"')
         self.assertRegex(pins, r'CRIT_LINUX_ARM64_SHA256="[0-9a-f]{64}"')
+        self.assertRegex(pins, r'ZED_LINUX_AMD64_SHA256="[0-9a-f]{64}"')
+        self.assertRegex(pins, r'ZED_LINUX_ARM64_SHA256="[0-9a-f]{64}"')
         log = (repo / "commands.log").read_text()
         self.assertIn("curl -fsSL https://tode.sh/install", log)
         self.assertIn("curl -fsSL https://terminal-browser.sh/install", log)
         self.assertIn("crit-linux-amd64", log)
         self.assertIn("crit-linux-arm64", log)
+        self.assertIn("zed-linux-x86_64.tar.gz", log)
+        self.assertIn("zed-linux-aarch64.tar.gz", log)
 
     def test_upgrade_skips_ccr_notice_when_gh_is_unavailable(self) -> None:
         repo, env = self.upgrade_fixture("none")

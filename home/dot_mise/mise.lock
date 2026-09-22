@@ -52,6 +52,34 @@ checksum = "sha256:d765b9bdd6478c4f5a3cbd5a93ebe7bab2b9cec30b5350016975cf1045855
 url = "https://github.com/micro-editor/micro/releases/download/v2.0.15/micro-2.0.15-osx.tar.gz"
 url_api = "https://api.github.com/repos/micro-editor/micro/releases/assets/334842967"
 
+[[tools."aqua:mikefarah/yq"]]
+version = "4.53.6"
+backend = "aqua:mikefarah/yq"
+
+[tools."aqua:mikefarah/yq"."platforms.linux-arm64"]
+checksum = "sha256:88a1016bc1d657375a35864e4f44b6f333df8ff97b559f51bba0adcb2169df09"
+url = "https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_linux_arm64"
+url_api = "https://api.github.com/repos/mikefarah/yq/releases/assets/522028007"
+provenance = "cosign"
+
+[tools."aqua:mikefarah/yq"."platforms.linux-x64"]
+checksum = "sha256:c5f056448f973ae7d39b5401949648a78f2dc1947d6a8eb65be60d5c504b9385"
+url = "https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_linux_amd64"
+url_api = "https://api.github.com/repos/mikefarah/yq/releases/assets/522028022"
+provenance = "cosign"
+
+[tools."aqua:mikefarah/yq"."platforms.macos-arm64"]
+checksum = "sha256:cceb0b8d71ea5294334121f8429f33f92b920e7217d904a2f9f35443968ac424"
+url = "https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_darwin_arm64"
+url_api = "https://api.github.com/repos/mikefarah/yq/releases/assets/522028033"
+provenance = "cosign"
+
+[tools."aqua:mikefarah/yq"."platforms.macos-x64"]
+checksum = "sha256:caa513cb04f3804b34d4752f0e0d7904fecb9e7cf1d34081289f83259319a7f6"
+url = "https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_darwin_amd64"
+url_api = "https://api.github.com/repos/mikefarah/yq/releases/assets/522028031"
+provenance = "cosign"
+
 [[tools."aqua:tak848/ccgate"]]
 version = "0.9.5"
 backend = "aqua:tak848/ccgate"
@@ -75,6 +103,30 @@ url_api = "https://api.github.com/repos/tak848/ccgate/releases/assets/464090941"
 checksum = "sha256:745f68f193997ab23263e69205426012a29ee067a7701b97be0720eea93e064c"
 url = "https://github.com/tak848/ccgate/releases/download/v0.9.5/ccgate-darwin-amd64.tar.gz"
 url_api = "https://api.github.com/repos/tak848/ccgate/releases/assets/464090944"
+
+[[tools."aqua:watchexec/watchexec"]]
+version = "2.7.3"
+backend = "aqua:watchexec/watchexec"
+
+[tools."aqua:watchexec/watchexec"."platforms.linux-arm64"]
+checksum = "sha256:02b3e2beddf96fef5fb2b88849902e3cf9e96da87968bdfb7a488700d64142cc"
+url = "https://github.com/watchexec/watchexec/releases/download/v2.7.3/watchexec-2.7.3-aarch64-unknown-linux-gnu.tar.xz"
+url_api = "https://api.github.com/repos/watchexec/watchexec/releases/assets/565495662"
+
+[tools."aqua:watchexec/watchexec"."platforms.linux-x64"]
+checksum = "sha256:8ace3a1d2e752d189f28b6766311d58f155ab977fae66aba60b111ec8aec2f64"
+url = "https://github.com/watchexec/watchexec/releases/download/v2.7.3/watchexec-2.7.3-x86_64-unknown-linux-gnu.tar.xz"
+url_api = "https://api.github.com/repos/watchexec/watchexec/releases/assets/565495660"
+
+[tools."aqua:watchexec/watchexec"."platforms.macos-arm64"]
+checksum = "sha256:bb2a3acc02de5c64f87779fc0226274d47d79026c6df969c8c1034a110b2efad"
+url = "https://github.com/watchexec/watchexec/releases/download/v2.7.3/watchexec-2.7.3-aarch64-apple-darwin.tar.xz"
+url_api = "https://api.github.com/repos/watchexec/watchexec/releases/assets/565495664"
+
+[tools."aqua:watchexec/watchexec"."platforms.macos-x64"]
+checksum = "sha256:ddca28bbd6b219a14ffec4893d56dad2e29cfc8b3e47f49e275706c9af20b4c2"
+url = "https://github.com/watchexec/watchexec/releases/download/v2.7.3/watchexec-2.7.3-x86_64-apple-darwin.tar.xz"
+url_api = "https://api.github.com/repos/watchexec/watchexec/releases/assets/565495778"
 
 [[tools.bun]]
 version = "1.4.2"

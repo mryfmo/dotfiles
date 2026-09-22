@@ -106,15 +106,17 @@ Then continue with the user's subcommand. This catches the case where the user i
   "permissions": {
     "allow": [
       "Bash(~/.agents/skills/agmsg/scripts/*)",
+      "Bash(/home/<you>/.agents/skills/agmsg/scripts/*)",
       "Bash(/Users/<you>/.agents/skills/agmsg/scripts/*)",
       "Bash(bash ~/.agents/skills/agmsg/scripts/*)",
+      "Bash(bash /home/<you>/.agents/skills/agmsg/scripts/*)",
       "Bash(bash /Users/<you>/.agents/skills/agmsg/scripts/*)"
     ]
   }
 }
 ```
 
-Four entries because a rule matches the command string as written, and these scripts are invoked both as `~/...` and as an absolute path, with or without an explicit `bash` prefix. Replace `/Users/<you>` with the user's home directory.
+Six entries are shown here (Linux and macOS side by side) because a rule matches the command string as written, and these scripts are invoked both as `~/...` and as an absolute path, with or without an explicit `bash` prefix. You only need four in practice: both `~/...` entries plus the one absolute-path pair matching your OS -- `/home/<you>` on Linux, `/Users/<you>` on macOS. Replace `<you>` with the user's actual home directory.
 
 **Every subcommand needs its own match.** Per [Claude Code's permission docs](https://code.claude.com/docs/en/permissions), a rule must match each subcommand independently, and the recognized separators are `&&`, `||`, `;`, `|`, `|&`, `&`, and newlines. Chaining two `agmsg` scripts is fine — both match the entries above. The prompt returns when a subcommand those entries do not cover rides along: `delivery.sh status … ; printenv AGMSG_SPAWNED` prompts because of the `printenv`, not because of the `;`. Splitting it into its own call does not remove that prompt — it only keeps it from gating the `agmsg` call. Allowlist the command as well if it needs to be prompt-free.
 

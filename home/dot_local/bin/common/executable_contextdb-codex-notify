@@ -8,7 +8,7 @@ if ! command -v python3 > /dev/null 2>&1; then
     exit 0
 fi
 
-if ! python3 - "${1-}" 2> /dev/null << 'PY'; then
+if ! python3 - "${1-}" 2> /dev/null << 'PY'
 import json
 import subprocess
 import sys
@@ -48,6 +48,7 @@ try:
 except Exception:
     raise SystemExit(1)
 PY
+then
     printf '%s\n' 'contextdb-codex-notify: ingest failed' >&2
 fi
 

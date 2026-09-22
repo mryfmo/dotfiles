@@ -169,14 +169,14 @@ function start_agent_in_pane() {
         return
     fi
     case "${agent_output}" in
-        *timeout* | *Timeout* | *timed\ out* | *TIMED_OUT*)
-            if [[ ${newly_created} == true ]] && wait_for_shell_prompt "${pane_id}"; then
-                if agent_output="$(herdr agent start "${agent_name}" --kind "${kind}" --pane "${pane_id}" --timeout 30000 -- "$@" 2>&1)"; then
-                    printf '%s\n' "${pane_id}"
-                    return
-                fi
+    *timeout* | *Timeout* | *timed\ out* | *TIMED_OUT*)
+        if [[ ${newly_created} == true ]] && wait_for_shell_prompt "${pane_id}"; then
+            if agent_output="$(herdr agent start "${agent_name}" --kind "${kind}" --pane "${pane_id}" --timeout 30000 -- "$@" 2>&1)"; then
+                printf '%s\n' "${pane_id}"
+                return
             fi
-            ;;
+        fi
+        ;;
     esac
     printf 'Failed to start %s agent %s: %s\n' "${kind}" "${agent_name}" "${agent_output}" >&2
     return 1

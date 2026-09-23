@@ -291,12 +291,20 @@ when the wrapper changes.
 The workspace layout stays centralized in `herdr-agents`, which is also bound
 inside Herdr at `prefix+alt+a`. The target layout is deliberately fixed at
 exactly two managed panes, split 50/50: `claude-orchestrator` on the left and
-`codex-worker-${workspace_id}` on the right. Attach mode renames the current
-Claude pane, starts Codex with `--split right` when it is missing, and repairs
-pane order (Claude left) and the 50/50 ratio, refusing any repair when the
-layout is ambiguous or contains unmanaged panes. Unmanaged panes — such as a
-legacy `files` pane restored from a pre-two-pane persisted session — are
-deliberately preserved, never closed, split, or reused. Full mode
+`${HERDR_AGENTS_WORKER_KIND}-worker-${workspace_id}` on the right, defaulting
+to a `codex-worker-${workspace_id}` pane unchanged from the historical
+codex-only behavior. Set `HERDR_AGENTS_WORKER_KIND=claude` to switch the
+worker pane to a resident Claude Code session instead — useful when Codex is
+unavailable (for example, not logged in) — inheriting the same managed
+lifecycle: dedicated workspace creation, pane wait/prompt handling, layout
+repair, and attach-mode healing. A claude worker also gets an unattended
+`Down`+`Enter` sent to its workspace-trust dialog on first start, since that
+dialog otherwise defaults to "No" and exits. Attach mode renames the current
+Claude pane, starts the worker with `--split right` when it is missing, and
+repairs pane order (Claude left) and the 50/50 ratio, refusing any repair
+when the layout is ambiguous or contains unmanaged panes. Unmanaged panes —
+such as a legacy `files` pane restored from a pre-two-pane persisted session
+— are deliberately preserved, never closed, split, or reused. Full mode
 (`herdr-agents [DIR]`) creates or heals the two managed panes and focuses a
 healthy existing workspace instead of recreating it, again leaving any
 unmanaged panes in place. Both agents start in
@@ -305,10 +313,14 @@ messaging; the worker is a resident interactive session, kept warm so
 delegation avoids per-task cold starts and survives Herdr session restores.
 
 Per-task agent switching happens at the profile layer, never in the layout:
-the Codex worker profile comes from `HERDR_AGENTS_CODEX_PROFILE` (default
-`standard`, passed to `codex --profile`), and the Claude side follows
-`interactive_profile` in `home/dot_agents/agent-config.yaml`, escalating with
-`/model` and `/effort` only at task boundaries. Parallelism never adds panes
+the worker profile comes from `HERDR_AGENTS_WORKER_PROFILE` (default
+`standard`; the deprecated `HERDR_AGENTS_CODEX_PROFILE` alias still works),
+passed to `codex --profile` for a codex worker or resolved through
+`MODEL_PROFILE_<PROFILE>_CLAUDE_ARGS` (plus optional
+`HERDR_AGENTS_CLAUDE_WORKER_ARGS`) for a claude worker. The orchestrator side
+follows `interactive_profile` in `home/dot_agents/agent-config.yaml`,
+escalating with `/model` and `/effort` only at task boundaries. Parallelism
+never adds panes
 to this workspace: one git worktree equals one resident worker in its own
 tab/workspace (started with `herdr agent start <agent-name> --cwd <worktree>`), completion
 is detected only through agmsg RESULT messages, and about three concurrent

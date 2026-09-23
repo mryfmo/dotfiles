@@ -653,7 +653,7 @@ EOF
             self.assertNotIn("claude-fable-5", text)
             self.assertNotIn("gpt-5.6", text)
             self.assertNotIn("model_reasoning_effort=", text)
-        self.assertIn('--profile "${HERDR_AGENTS_CODEX_PROFILE:-standard}"', herdr)
+        self.assertIn('--profile "${HERDR_AGENTS_WORKER_PROFILE:-standard}"', herdr)
         self.assertIn("model-profiles.env", fanout)
 
     def test_agent_fanout_applies_profile_args_from_generated_fragment(self) -> None:

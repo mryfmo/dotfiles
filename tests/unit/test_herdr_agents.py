@@ -12,10 +12,10 @@ import subprocess
 import sys
 import tempfile
 import textwrap
-import tomllib
 import unittest
 from pathlib import Path
 
+import tomllib
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "home/dot_local/bin/common/executable_herdr-agents"
@@ -23,7 +23,9 @@ MAKEFILE = ROOT / "Makefile"
 HERDR_SESSION_SCRIPT = ROOT / "home/dot_local/bin/common/executable_herdr-session"
 CLAUDE_SETTINGS_MODIFIER = ROOT / "home/dot_claude/modify_private_settings.json"
 HERDR_CONFIG = ROOT / "home/dot_config/herdr/config.toml"
-FILE_VIEWER_CONFIG = ROOT / "home/dot_config/herdr/plugins/config/herdr-file-viewer/config.toml"
+FILE_VIEWER_CONFIG = (
+    ROOT / "home/dot_config/herdr/plugins/config/herdr-file-viewer/config.toml"
+)
 YAZI_CONFIG = ROOT / "home/dot_config/yazi/yazi.toml"
 GHOSTTY_CONFIG = ROOT / "home/dot_config/ghostty/config"
 ZPROFILE = ROOT / "home/dot_zprofile"
@@ -39,24 +41,32 @@ class HerdrAgentsTest(unittest.TestCase):
         self.workspace_list_path = self.temp_dir / "workspace-list.json"
         self.pane_list_path = self.temp_dir / "pane-list.json"
         self.pane_layout_path = self.temp_dir / "pane-layout.json"
-        self.pane_layout_after_resize_path = self.temp_dir / "pane-layout-after-resize.json"
+        self.pane_layout_after_resize_path = (
+            self.temp_dir / "pane-layout-after-resize.json"
+        )
         self.pane_layout_exit_path = self.temp_dir / "pane-layout-exit.txt"
         self.agent_get_path = self.temp_dir / "agent-get.json"
         self.agent_start_failures_path = self.temp_dir / "agent-start-failures.txt"
         self.agent_start_not_ready_path = self.temp_dir / "agent-start-not-ready.txt"
+        self.trust_dialog_match_path = self.temp_dir / "trust-dialog-match.txt"
         self.pane_counter_path = self.temp_dir / "pane-counter.txt"
         self.home_dir = self.temp_dir / "home"
         (self.home_dir / ".config/herdr").mkdir(parents=True)
         self.workdir = self.temp_dir / "project"
         self.workdir.mkdir()
-        self.workspace_list_path.write_text('{"id":"cli:workspace:list","result":{"type":"workspace_list","workspaces":[]}}\n')
+        self.workspace_list_path.write_text(
+            '{"id":"cli:workspace:list","result":{"type":"workspace_list","workspaces":[]}}\n'
+        )
         self.pane_list_path.write_text('{"id":"cli:pane:list","result":{"panes":[]}}\n')
-        self.pane_layout_path.write_text('{"id":"cli:pane:layout","result":{"layout":{"panes":[]}}}\n')
+        self.pane_layout_path.write_text(
+            '{"id":"cli:pane:layout","result":{"layout":{"panes":[]}}}\n'
+        )
         self.pane_layout_after_resize_path.write_text("")
         self.pane_layout_exit_path.write_text("0\n")
         self.agent_get_path.write_text("")
         self.agent_start_failures_path.write_text("0\n")
         self.agent_start_not_ready_path.write_text("0\n")
+        self.trust_dialog_match_path.write_text("0\n")
         self.pane_counter_path.write_text("2\n")
 
         self.write_executable(
@@ -106,6 +116,12 @@ if [[ $1 == pane && $2 == run ]]; then
     exit 0
 fi
 if [[ $1 == pane && $2 == wait-output ]]; then
+    for arg in "$@"; do
+        if [[ $arg == "trust this folder" ]]; then
+            [[ $(cat {self.trust_dialog_match_path}) == 1 ]] && exit 0
+            exit 1
+        fi
+    done
     exit 0
 fi
 if [[ $1 == pane && $2 == process-info ]]; then
@@ -291,7 +307,9 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 """,
         )
 
-    def write_workspace_state(self, workspace_id: str, panes: str, *, agent_pane_id: str = "") -> None:
+    def write_workspace_state(
+        self, workspace_id: str, panes: str, *, agent_pane_id: str = ""
+    ) -> None:
         self.workspace_list_path.write_text(
             textwrap.dedent(
                 f"""\
@@ -301,14 +319,18 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
                 """
             )
         )
-        pane_list = json.loads(f'{{"id":"cli:pane:list","result":{{"panes":[{panes}]}}}}')
+        pane_list = json.loads(
+            f'{{"id":"cli:pane:list","result":{{"panes":[{panes}]}}}}'
+        )
         for pane in pane_list["result"]["panes"]:
             if pane.get("cwd") == str(self.workdir):
                 pane["cwd"] = str(self.workdir.resolve())
             pane.setdefault("tab_id", f"{workspace_id}:t1")
         self.pane_list_path.write_text(json.dumps(pane_list) + "\n")
         if agent_pane_id:
-            self.agent_get_path.write_text(f'{{"id":"cli:agent:get","result":{{"agent":{{"pane_id":"{agent_pane_id}"}},"type":"agent_info"}}}}\n')
+            self.agent_get_path.write_text(
+                f'{{"id":"cli:agent:get","result":{{"agent":{{"pane_id":"{agent_pane_id}"}},"type":"agent_info"}}}}\n'
+            )
         else:
             self.agent_get_path.write_text("")
 
@@ -318,7 +340,10 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             for pane_id, x in panes
         ]
         self.pane_layout_path.write_text(
-            json.dumps({"id": "cli:pane:layout", "result": {"layout": {"panes": layout_panes}}}) + "\n"
+            json.dumps(
+                {"id": "cli:pane:layout", "result": {"layout": {"panes": layout_panes}}}
+            )
+            + "\n"
         )
 
     def write_ratio_layout(
@@ -336,19 +361,29 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             "result": {
                 "layout": {
                     "panes": [
-                        {"pane_id": left_id, "rect": {"height": 40, "width": left, "x": 0, "y": 0}},
+                        {
+                            "pane_id": left_id,
+                            "rect": {"height": 40, "width": left, "x": 0, "y": 0},
+                        },
                         {
                             "pane_id": right_id,
                             "rect": {"height": 40, "width": right, "x": left, "y": 0},
                         },
                     ],
                     "splits": [
-                        {"direction": "right", "rect": {"height": 40, "width": total, "x": 0, "y": 0}},
+                        {
+                            "direction": "right",
+                            "rect": {"height": 40, "width": total, "x": 0, "y": 0},
+                        },
                     ],
                 }
             },
         }
-        path = self.pane_layout_after_resize_path if after_resize else self.pane_layout_path
+        path = (
+            self.pane_layout_after_resize_path
+            if after_resize
+            else self.pane_layout_path
+        )
         path.write_text(json.dumps(layout) + "\n")
 
     def run_helper(
@@ -358,7 +393,10 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         env["HOME"] = str(self.home_dir)
         env["PATH"] = f"{self.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"
         env.pop("HERDR_AGENTS_CODEX_PROFILE", None)
+        env.pop("HERDR_AGENTS_WORKER_PROFILE", None)
+        env.pop("HERDR_AGENTS_WORKER_KIND", None)
         env.pop("HERDR_AGENTS_CLAUDE_ARGS", None)
+        env.pop("HERDR_AGENTS_CLAUDE_WORKER_ARGS", None)
         env.pop("FPATH", None)
         if extra_env:
             env.update(extra_env)
@@ -393,12 +431,23 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         managed_layout: bool = False,
         workspace_id: str = "w-attach",
         pane_id: str = "w-attach:p1",
+        extra_env: dict[str, str] | None = None,
     ) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env["HOME"] = str(self.home_dir)
         env["PATH"] = f"{self.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"
         env.pop("FPATH", None)
-        for key in ("HERDR_ENV", "HERDR_PANE_ID", "HERDR_WORKSPACE_ID", "HERDR_AGENTS_LAYOUT"):
+        env.pop("HERDR_AGENTS_WORKER_KIND", None)
+        env.pop("HERDR_AGENTS_WORKER_PROFILE", None)
+        env.pop("HERDR_AGENTS_CODEX_PROFILE", None)
+        if extra_env:
+            env.update(extra_env)
+        for key in (
+            "HERDR_ENV",
+            "HERDR_PANE_ID",
+            "HERDR_WORKSPACE_ID",
+            "HERDR_AGENTS_LAYOUT",
+        ):
             env.pop(key, None)
         if in_herdr:
             env.update(
@@ -458,11 +507,17 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             f"pane split w-attach:p1 --direction right --cwd {self.workdir.resolve()} --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus",
             calls,
         )
-        codex_start = next(call for call in calls if call.startswith("agent start codex-worker-w-attach "))
+        codex_start = next(
+            call
+            for call in calls
+            if call.startswith("agent start codex-worker-w-attach ")
+        )
         self.assertIn("--kind codex --pane w-attach:p3", codex_start)
         self.assertNotIn("--cwd", codex_start)
         self.assertIn("pane rename w-attach:p1 claude-orchestrator", calls)
-        self.assertFalse(any(call.startswith("pane run w-attach:p1 ") for call in calls))
+        self.assertFalse(
+            any(call.startswith("pane run w-attach:p1 ") for call in calls)
+        )
         self.assertFalse(any(call.startswith("workspace create ") for call in calls))
 
     def test_attach_lowercases_and_validates_derived_agent_name(self) -> None:
@@ -493,7 +548,9 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Invalid Herdr agent name", result.stderr)
-        calls = self.calls_path.read_text().splitlines() if self.calls_path.exists() else []
+        calls = (
+            self.calls_path.read_text().splitlines() if self.calls_path.exists() else []
+        )
         self.assertFalse(
             any(call.startswith("agent start codex-worker-") for call in calls)
         )
@@ -511,7 +568,14 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
-        self.assertFalse(any(call.startswith(("agent start ", "pane rename ", "pane run ", "pane split ")) for call in calls))
+        self.assertFalse(
+            any(
+                call.startswith(
+                    ("agent start ", "pane rename ", "pane run ", "pane split ")
+                )
+                for call in calls
+            )
+        )
 
     def test_attach_repairs_codex_claude_order_with_one_swap(self) -> None:
         self.write_workspace_state(
@@ -598,7 +662,9 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         )
         widths = [
             pane["rect"]["width"]
-            for pane in json.loads(self.pane_layout_path.read_text())["result"]["layout"]["panes"]
+            for pane in json.loads(self.pane_layout_path.read_text())["result"][
+                "layout"
+            ]["panes"]
         ]
         self.assertLessEqual(max(widths) - min(widths), 2)
 
@@ -639,7 +705,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
                 '{"result":{"layout":{"panes":['
                 '{"pane_id":"w-attach:p1","rect":{"x":0,"width":"wide"}},'
                 '{"pane_id":"w-attach:p2","rect":{"x":40,"width":40}}'
-                ']}}}\n',
+                "]}}}\n",
                 0,
             ),
             (
@@ -667,7 +733,9 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
                     )
                 )
 
-    def test_attach_legacy_files_pane_refuses_repair_without_layout_mutation(self) -> None:
+    def test_attach_legacy_files_pane_refuses_repair_without_layout_mutation(
+        self,
+    ) -> None:
         self.write_workspace_state(
             "w-attach",
             f'{{"agent":"claude","cwd":"{self.workdir}","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
@@ -683,7 +751,16 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         mutations = [
             call
             for call in self.calls_path.read_text().splitlines()
-            if call.startswith(("agent start ", "pane rename ", "pane run ", "pane split ", "pane swap ", "pane resize "))
+            if call.startswith(
+                (
+                    "agent start ",
+                    "pane rename ",
+                    "pane run ",
+                    "pane split ",
+                    "pane swap ",
+                    "pane resize ",
+                )
+            )
         ]
         self.assertEqual(mutations, ["pane rename w-attach:p1 claude-orchestrator"])
 
@@ -813,12 +890,11 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("Skipping agmsg bootstrap for $HOME", result.stderr)
-        calls = self.calls_path.read_text().splitlines() if self.calls_path.exists() else []
+        calls = (
+            self.calls_path.read_text().splitlines() if self.calls_path.exists() else []
+        )
         self.assertFalse(
-            any(
-                call.startswith(("delivery ", "identities "))
-                for call in calls
-            )
+            any(call.startswith(("delivery ", "identities ")) for call in calls)
         )
 
     def test_attach_reports_agmsg_skip_when_not_installed(self) -> None:
@@ -830,7 +906,9 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         result = self.run_attach_helper(in_herdr=True)
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("agmsg delivery script not found; skipping bootstrap", result.stderr)
+        self.assertIn(
+            "agmsg delivery script not found; skipping bootstrap", result.stderr
+        )
 
     def test_attach_ignores_agmsg_bootstrap_failure(self) -> None:
         self.install_agmsg_fakes(delivery_exit=42, identities_output="")
@@ -861,7 +939,9 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             ],
         )
 
-    def test_bootstrap_only_sets_claude_delivery_once_when_hook_is_missing(self) -> None:
+    def test_bootstrap_only_sets_claude_delivery_once_when_hook_is_missing(
+        self,
+    ) -> None:
         scripts = self.install_agmsg_fakes()
         self.write_agmsg_turn_hook(scripts)
 
@@ -899,7 +979,9 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue((self.home_dir / ".config/herdr").is_dir())
 
-    def test_bootstrap_only_warns_for_missing_claude_identity_without_joining(self) -> None:
+    def test_bootstrap_only_warns_for_missing_claude_identity_without_joining(
+        self,
+    ) -> None:
         scripts = self.install_agmsg_fakes(claude_identities_output="")
         self.write_agmsg_turn_hook(scripts)
         self.write_agmsg_claude_hooks(scripts)
@@ -910,14 +992,16 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertIn("No agmsg Claude Code identity", result.stderr)
         self.assertIn("join.sh <team> <agent-name> claude-code", result.stderr)
         self.assertFalse(
-            any(call.startswith("join ") for call in self.calls_path.read_text().splitlines())
+            any(
+                call.startswith("join ")
+                for call in self.calls_path.read_text().splitlines()
+            )
         )
 
     def test_bootstrap_only_warns_for_multiple_claude_identities(self) -> None:
         scripts = self.install_agmsg_fakes(
             claude_identities_output=(
-                "dotfiles-conformance\tclaude-a\n"
-                "dotfiles-conformance\tclaude-b"
+                "dotfiles-conformance\tclaude-a\ndotfiles-conformance\tclaude-b"
             )
         )
         self.write_agmsg_turn_hook(scripts)
@@ -928,7 +1012,10 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("Multiple agmsg Claude Code identities", result.stderr)
         self.assertFalse(
-            any(call.startswith("join ") for call in self.calls_path.read_text().splitlines())
+            any(
+                call.startswith("join ")
+                for call in self.calls_path.read_text().splitlines()
+            )
         )
 
     def test_bootstrap_only_does_not_call_herdr_or_agents(self) -> None:
@@ -941,10 +1028,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
         self.assertFalse(
-            any(
-                call.startswith(("workspace ", "pane ", "agent "))
-                for call in calls
-            )
+            any(call.startswith(("workspace ", "pane ", "agent ")) for call in calls)
         )
 
     def test_bootstrap_only_skips_home_without_agmsg_calls(self) -> None:
@@ -955,12 +1039,11 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("Skipping agmsg bootstrap for $HOME", result.stderr)
-        calls = self.calls_path.read_text().splitlines() if self.calls_path.exists() else []
+        calls = (
+            self.calls_path.read_text().splitlines() if self.calls_path.exists() else []
+        )
         self.assertFalse(
-            any(
-                call.startswith(("delivery ", "identities "))
-                for call in calls
-            )
+            any(call.startswith(("delivery ", "identities ")) for call in calls)
         )
 
     def test_make_update_and_upgrade_include_agmsg_bootstrap(self) -> None:
@@ -1008,7 +1091,9 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
     def test_herdr_session_does_not_prebuild_agent_layout(self) -> None:
         self.assertNotIn("herdr-agents", HERDR_SESSION_SCRIPT.read_text())
 
-    def test_uses_initial_workspace_pane_for_claude_and_splits_codex_right(self) -> None:
+    def test_uses_initial_workspace_pane_for_claude_and_splits_codex_right(
+        self,
+    ) -> None:
         result = self.run_helper()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
@@ -1032,11 +1117,20 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
                 removed in call
                 for call in calls
                 if call.startswith("agent start ")
-                for removed in ("--cwd", "--workspace", "--split", "--env", "--focus", "--no-focus")
+                for removed in (
+                    "--cwd",
+                    "--workspace",
+                    "--split",
+                    "--env",
+                    "--focus",
+                    "--no-focus",
+                )
             )
         )
 
-    def test_new_pane_waits_for_shell_and_retries_agent_start_once_on_timeout(self) -> None:
+    def test_new_pane_waits_for_shell_and_retries_agent_start_once_on_timeout(
+        self,
+    ) -> None:
         self.agent_start_failures_path.write_text("1\n")
 
         result = self.run_helper()
@@ -1052,16 +1146,14 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         )
         self.assertGreaterEqual(
             len(
-                [
-                    call
-                    for call in calls
-                    if call == "pane process-info --pane w-test:p1"
-                ]
+                [call for call in calls if call == "pane process-info --pane w-test:p1"]
             ),
             2,
         )
 
-    def test_registered_agent_not_ready_waits_for_idle_without_duplicate_start(self) -> None:
+    def test_registered_agent_not_ready_waits_for_idle_without_duplicate_start(
+        self,
+    ) -> None:
         self.agent_start_not_ready_path.write_text("1\n")
 
         result = self.run_helper()
@@ -1104,9 +1196,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         profiles.parent.mkdir(parents=True)
         profiles.write_text("MODEL_PROFILE_INTERACTIVE=review\n")
 
-        result = self.run_helper(
-            extra_env={"HERDR_AGENTS_CODEX_PROFILE": "express"}
-        )
+        result = self.run_helper(extra_env={"HERDR_AGENTS_CODEX_PROFILE": "express"})
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue(
@@ -1126,6 +1216,106 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertIn(
             "agent start claude-orchestrator-w-test --kind claude --pane w-test:p1 --timeout 30000 -- --model haiku --effort low",
             self.calls_path.read_text().splitlines(),
+        )
+
+    def test_worker_kind_rejects_an_unknown_value(self) -> None:
+        result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "banana"})
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn(
+            "HERDR_AGENTS_WORKER_KIND must be codex or claude",
+            result.stderr,
+        )
+        self.assertFalse(self.calls_path.exists())
+
+    def test_worker_kind_claude_starts_a_claude_worker_pane_with_profile_args(
+        self,
+    ) -> None:
+        profiles = self.home_dir / ".agents/model-profiles.env"
+        profiles.parent.mkdir(parents=True)
+        profiles.write_text(
+            'MODEL_PROFILE_INTERACTIVE="standard"\n'
+            'MODEL_PROFILE_STANDARD_CLAUDE_ARGS="--model sonnet --effort high"\n'
+        )
+
+        result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"})
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn(
+            "agent start claude-worker-w-test --kind claude --pane w-test:p3 "
+            "--timeout 30000 -- --model sonnet --effort high",
+            calls,
+        )
+        self.assertIn("pane rename w-test:p3 claude-worker", calls)
+        self.assertFalse(any("codex" in call for call in calls))
+
+    def test_worker_kind_claude_does_not_require_codex(self) -> None:
+        (self.bin_dir / "codex").unlink()
+
+        result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"})
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_worker_kind_claude_appends_extra_worker_args(self) -> None:
+        profiles = self.home_dir / ".agents/model-profiles.env"
+        profiles.parent.mkdir(parents=True)
+        profiles.write_text('MODEL_PROFILE_STANDARD_CLAUDE_ARGS="--model sonnet"\n')
+
+        result = self.run_helper(
+            extra_env={
+                "HERDR_AGENTS_WORKER_KIND": "claude",
+                "HERDR_AGENTS_WORKER_PROFILE": "standard",
+                "HERDR_AGENTS_CLAUDE_WORKER_ARGS": "--effort low",
+            }
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            "agent start claude-worker-w-test --kind claude --pane w-test:p3 "
+            "--timeout 30000 -- --model sonnet --effort low",
+            self.calls_path.read_text().splitlines(),
+        )
+
+    def test_worker_profile_env_takes_priority_over_deprecated_codex_alias(
+        self,
+    ) -> None:
+        result = self.run_helper(
+            extra_env={
+                "HERDR_AGENTS_WORKER_PROFILE": "express",
+                "HERDR_AGENTS_CODEX_PROFILE": "review",
+            }
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue(
+            any(
+                call.endswith("--sandbox workspace-write --profile express")
+                for call in self.calls_path.read_text().splitlines()
+                if call.startswith("agent start codex-worker-")
+            )
+        )
+
+    def test_worker_kind_claude_accepts_a_workspace_trust_dialog(self) -> None:
+        self.trust_dialog_match_path.write_text("1\n")
+
+        result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"})
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            "pane send-keys w-test:p3 Down Enter",
+            self.calls_path.read_text().splitlines(),
+        )
+
+    def test_worker_kind_claude_skips_send_keys_without_a_trust_dialog(self) -> None:
+        result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"})
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(
+            any(
+                call.startswith("pane send-keys ")
+                for call in self.calls_path.read_text().splitlines()
+            )
         )
 
     def test_pane_creation_propagates_explicit_fpath(self) -> None:
@@ -1229,7 +1419,9 @@ fi
         self.assertIn("workspace focus w-old", calls)
         self.assertFalse(any(call.startswith("workspace create ") for call in calls))
 
-    def test_existing_workspace_with_legacy_files_pane_focuses_without_mutation(self) -> None:
+    def test_existing_workspace_with_legacy_files_pane_focuses_without_mutation(
+        self,
+    ) -> None:
         self.write_workspace_state(
             "w-old",
             f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
@@ -1242,12 +1434,17 @@ fi
 
         calls = self.calls_path.read_text().splitlines()
         self.assertIn("workspace focus w-old", calls)
-        self.assertNotIn(f"workspace create --cwd {self.workdir} --label project agents --focus", calls)
+        self.assertNotIn(
+            f"workspace create --cwd {self.workdir} --label project agents --focus",
+            calls,
+        )
         self.assertFalse(any(call.startswith("agent start ") for call in calls))
         self.assertFalse(any(call.startswith("pane split ") for call in calls))
         self.assertFalse(any(call.startswith("pane run w-old:p9 ") for call in calls))
 
-    def test_existing_legacy_files_pane_is_not_reused_for_claude_or_split_again(self) -> None:
+    def test_existing_legacy_files_pane_is_not_reused_for_claude_or_split_again(
+        self,
+    ) -> None:
         self.write_workspace_state(
             "w-old",
             f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}},'
@@ -1267,7 +1464,9 @@ fi
             calls,
         )
         self.assertFalse(any("--ratio" in call for call in calls))
-        self.assertFalse(any(call.startswith("pane rename w-old:p9 ") for call in calls))
+        self.assertFalse(
+            any(call.startswith("pane rename w-old:p9 ") for call in calls)
+        )
         self.assertFalse(any(call.startswith("pane run w-old:p9 ") for call in calls))
 
     def test_existing_workspace_restarts_missing_codex_agent(self) -> None:
@@ -1285,10 +1484,15 @@ fi
             calls,
         )
         self.assertIn("pane rename w-old:p3 codex-worker", calls)
-        self.assertNotIn(f"workspace create --cwd {self.workdir} --label project agents --focus", calls)
+        self.assertNotIn(
+            f"workspace create --cwd {self.workdir} --label project agents --focus",
+            calls,
+        )
         self.assertIn("workspace focus w-old", calls)
 
-    def test_claude_repair_skips_just_restarted_codex_pane_without_agent_field(self) -> None:
+    def test_claude_repair_skips_just_restarted_codex_pane_without_agent_field(
+        self,
+    ) -> None:
         self.write_workspace_state(
             "w-old",
             f'{{"agent":null,"cwd":"{self.workdir}","pane_id":"w-old:p2","workspace_id":"w-old"}},'
@@ -1338,7 +1542,9 @@ fi
         )
         self.assertIn("workspace focus w-old", calls)
 
-    def test_existing_workspace_splits_when_missing_claude_has_no_empty_pane(self) -> None:
+    def test_existing_workspace_splits_when_missing_claude_has_no_empty_pane(
+        self,
+    ) -> None:
         self.write_workspace_state(
             "w-old",
             f'{{"agent":"codex","cwd":"{self.workdir}","pane_id":"w-old:p2","workspace_id":"w-old"}}',
@@ -1478,7 +1684,9 @@ printf 'codex cwd=%s\\n' "$PWD" >> {e2e_log}
             ],
         )
         e2e_lines = e2e_log.read_text()
-        self.assertIn(f"attached workspace from cwd={self.workdir.resolve()}", e2e_lines)
+        self.assertIn(
+            f"attached workspace from cwd={self.workdir.resolve()}", e2e_lines
+        )
         self.assertNotIn("claude cwd=", e2e_lines)
         self.assertNotIn("codex cwd=", e2e_lines)
 
@@ -1517,14 +1725,20 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
     def test_herdr_prefix_alt_a_runs_helper_from_active_pane(self) -> None:
         config = tomllib.loads(HERDR_CONFIG.read_text())
-        command = next(item for item in config["keys"]["command"] if item["key"] == "prefix+alt+a")
+        command = next(
+            item for item in config["keys"]["command"] if item["key"] == "prefix+alt+a"
+        )
 
         self.assertEqual(command["type"], "shell")
-        self.assertEqual(command["command"], 'herdr-agents "${HERDR_ACTIVE_PANE_CWD:-$PWD}"')
+        self.assertEqual(
+            command["command"], 'herdr-agents "${HERDR_ACTIVE_PANE_CWD:-$PWD}"'
+        )
 
     def test_herdr_prefix_f_opens_file_viewer_popup(self) -> None:
         config = tomllib.loads(HERDR_CONFIG.read_text())
-        command = next(item for item in config["keys"]["command"] if item["key"] == "prefix+f")
+        command = next(
+            item for item in config["keys"]["command"] if item["key"] == "prefix+f"
+        )
 
         self.assertEqual(command["type"], "popup")
         self.assertEqual(command["width"], "90%")
@@ -1552,10 +1766,16 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         )
 
         editor_calls = self.temp_dir / "editor-calls.txt"
-        self.write_executable("editor", f'#!/usr/bin/env bash\nprintf "%s\\n" "$*" > {editor_calls}\n')
+        self.write_executable(
+            "editor", f'#!/usr/bin/env bash\nprintf "%s\\n" "$*" > {editor_calls}\n'
+        )
         env = {"PATH": f"{self.bin_dir}:/usr/bin:/bin", "EDITOR": "editor"}
         result = subprocess.run(
-            ["bash", "-c", config["opener"]["edit"][0]["run"].replace("%s", "example.txt")],
+            [
+                "bash",
+                "-c",
+                config["opener"]["edit"][0]["run"].replace("%s", "example.txt"),
+            ],
             env=env,
             check=False,
             text=True,
@@ -1567,10 +1787,16 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(editor_calls.read_text(), "example.txt\n")
 
         zed_calls = self.temp_dir / "zed-calls.txt"
-        self.write_executable("zed", f'#!/usr/bin/env bash\nprintf "%s\\n" "$*" > {zed_calls}\n')
+        self.write_executable(
+            "zed", f'#!/usr/bin/env bash\nprintf "%s\\n" "$*" > {zed_calls}\n'
+        )
         editor_calls.unlink()
         result = subprocess.run(
-            ["bash", "-c", config["opener"]["edit"][0]["run"].replace("%s", "example.txt")],
+            [
+                "bash",
+                "-c",
+                config["opener"]["edit"][0]["run"].replace("%s", "example.txt"),
+            ],
             env=env,
             check=False,
             text=True,

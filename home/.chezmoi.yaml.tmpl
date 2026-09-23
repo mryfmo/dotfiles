@@ -8,6 +8,8 @@
 {{- $name := "" -}}
 {{- if hasKey . "name" -}}
 {{-   $name = .name -}}
+{{- else if eq (env "CI") "true" -}}
+{{-   $name = "CI" -}}
 {{- else -}}
 {{-   $name = promptString "Full name" -}}
 {{- end -}}
@@ -28,6 +30,8 @@
 {{- $usePrivate := false -}}
 {{- if hasKey . "usePrivate" -}}
 {{-   $usePrivate = .usePrivate -}}
+{{- else if eq (env "CI") "true" -}}
+{{-   $usePrivate = false -}}
 {{- /* Default to the private layer on the MacOS default system, like $system */ -}}
 {{- else if eq .chezmoi.os "darwin" -}}
 {{-   $usePrivate = true -}}

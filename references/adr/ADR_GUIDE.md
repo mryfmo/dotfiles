@@ -46,13 +46,13 @@ stateDiagram-v2
 | 6 決定を書く | 「採用：**案X**。…ため。」と、どの決め手を優先したかを書く | 「総合的に優れる」で終わっていない |
 | 7 確認方法を決める | 実装がこの判断に従っているかを、何でいつ誰が確かめるか | 「テストで確認」で終わっていない |
 | 8 受理する | 決定権者が受理し status を accepted にする | 決定権者・日付が front matter にある |
-| 9 変えるとき | 新しい ADR を proposed で起票し `supersedes` に旧IDを書く。受理されたら旧 ADR の status を superseded、`superseded-by` を新IDにする | 双方向に結ばれている（リンター E086） |
+| 9 変えるとき | 新しい ADR を proposed で起票し `supersedes` に旧IDを書く。受理されたら旧 ADR の status を superseded、`superseded-by` を新IDにする。**現在のリンター（E086）は新 ADR の status に関わらず、旧 ADR 側の `superseded-by`・`status: superseded` を即時に要求する一方向の検査であり、proposed の間だけ許す猶予はまだ無い（リンターの状態依存化は次版）。それまでは新 ADR を起票する時点で旧 ADR 側も同時に書き換える** | 双方向に結ばれている（リンター E086） |
 
 ## 4. 章ごとの書き方
 
 | 章 | 書くこと | 不合格の例 |
 |---|---|---|
-| front matter | MADR 4.0.0 の5項目（status・date・decision-makers・consulted・informed）に、id・title・addresses・supersedes・superseded-by・confidence を加えたもの | 決定権者が空。AI が生成した氏名 |
+| front matter | MADR 4.0.0 の5項目（status・date・decision-makers・consulted・informed。MADR 4.0.0 テンプレート原文の front matter はこの5項目のみ。[02_RESEARCH_AND_DECISIONS.md](../02_RESEARCH_AND_DECISIONS.md) の S03 参照）に、id・title・addresses・supersedes・superseded-by・confidence を加えたもの。`proposed-on`（起票日）はキットが追加を検討している拡張だが、既存の accepted／superseded な ADR の front matter に新しいキーを追加できないため、`ADR_TEMPLATE.md` にはまだ加えていない。`status` が `proposed` でない文書では任意キーとして扱えるようリンターを直してから（次版）テンプレートへ追加する | 決定権者が空。AI が生成した氏名 |
 | 1 背景と課題 | どの要件・制約のもとで何を決めるか。2〜5文、最後は疑問文。判断に関係する境界だけの図 | 製品の一般的な説明。全体構成図 |
 | 2 判断の決め手 | 必須と比較の区別、出所、確かめ方 | 「速さを重視」だけ |
 | 3 検討した選択肢 | `- **案A**：…` の形で2つ以上 | 採用案だけが詳しい |

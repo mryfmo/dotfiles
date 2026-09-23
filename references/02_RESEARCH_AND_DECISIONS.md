@@ -53,7 +53,7 @@
 | 非機能要件の書き方 | ①形容詞 ②数値のみ ③品質シナリオ（刺激・環境・合格基準・検証） | ③ | 数値だけでは測り方が決まらない。特性の棚卸しは S12 の9特性で行う |
 | ADR の形式 | ①Nygard 形式 ②MADR 4.0.0 ③独自形式 | ②に確信度・再検討のきっかけ・要件IDを追加 | 選択肢の比較を構造として持ち、道具や事例が多い。追加項目は S04 に基づく |
 | ADR の変更 | ①本文を更新し続ける ②追記専用 | ② | 判断当時の文脈が残る（S04）。accepted 後に変えてよいのは status と superseded-by だけ |
-| Gherkin の置き場 | ①.feature が正本 ②Markdown のフェンスが正本で .feature を生成 ③Markdown with Gherkin | ②。`kit_lint.py extract` が Markdown のフェンスから `.feature` を生成する（一方向）。`.feature` を正本にする逆方向（`mirror`、E122・E123）は refkit-P2-A で設計・実装されたが、この枝（`feat/references-kit-v4-p3`）にはまだ取り込まれていない | ③は JavaScript 実装だけで可搬性が無い（S08）。編集は Markdown → `.feature` の片方向に限り、`check` が不一致を検出する（E121） |
+| Gherkin の置き場 | ①.feature が正本 ②Markdown のフェンスが正本で .feature を生成 ③Markdown with Gherkin | 文書ごとの front matter `gherkin_source` で選ぶ（既定は②＝`markdown`）。`markdown`：フェンスが正本、`extract` が marker 付きの `.feature` を生成。`feature`：`.feature` が正本、`mirror` が対応するフェンスを書き戻す。どちらのモードでも編集は選んだ正本側だけに限る | ③は JavaScript 実装だけで可搬性が無い（S08）。`check` は両方向とも不一致を検出する（E121）。`markdown` でのマーカー無し孤立 `.feature` は削除せず検出する（E122）。`feature` での `extract` は書き込まず `mirror` を案内する（E123） |
 | Gherkin のキーワード言語 | ①英語キーワード＋日本語本文 ②日本語キーワード | ②を既定、①は実行ツールや編集環境の制約があるとき | BDD の目的は業務側との共通理解であり、読み手が日本語話者なら全文が日本語の方が読める。公式 parser で `ルール` を含め有効（S09で実行確認）。1ファイル1言語で `# language:` を必ず書く |
 | Rule の粒度 | ①機能ごとに1つ ②業務ルール1つにつき1つ | ② | 公式の定義（S05）と Example Mapping の構造に合う |
 | タグの形式 | ①`@req_FR_001` のように変換 ②`@FR-001` | ② | 変換は不要で、IDが1種類になり検索しやすい（公式 parser で確認） |

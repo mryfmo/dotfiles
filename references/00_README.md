@@ -17,7 +17,7 @@
 | 共通 | 内容 |
 |---|---|
 | [01_ADVERSARIAL_REVIEW.md](01_ADVERSARIAL_REVIEW.md) | 元キットへの指摘19件（証拠・根本原因・是正・再発を止める検査） |
-| [02_RESEARCH_AND_DECISIONS.md](02_RESEARCH_AND_DECISIONS.md) | 出典（今回確認したものと継承したものを区別）と採用判断 |
+| [02_RESEARCH_AND_DECISIONS.md](02_RESEARCH_AND_DECISIONS.md) | 出典（取得して確認・概要のみ・継承を区別）と採用判断 |
 | [03_CONVENTIONS.md](03_CONVENTIONS.md) | 正本・ID・関係・状態・ゲート・Markdown と Mermaid の規約 |
 | [04_TRACEABILITY.md](04_TRACEABILITY.md) | 追跡表（**自動生成**。手で編集しない） |
 | [05_AI_AGENT_INSTRUCTIONS.md](05_AI_AGENT_INSTRUCTIONS.md) | AI エージェントと人への作業指示、レビュー指示、実装への引き継ぎ |
@@ -25,15 +25,15 @@
 | [90_VALIDATION_REPORT.md](90_VALIDATION_REPORT.md) | 実際に行った検証と結果、未実施の範囲 |
 | `features/` | BDD 記入例から生成した `.feature`（**自動生成**） |
 | `examples/flowapprove_core/` | UT・CT の記入例を実際に実行するための最小の参考実装（ドメイン規則と決裁サービス）とテストコード。製品ではない |
-| `tools/`・`kit.toml`・`evidence/` | リンター、Mermaid 描画検証、参考実装のテスト実行、移植性試験、設定、検証の証跡 |
-| `archive/` | 過去に配布された zip 一式（v1〜v3、および平坦化した配布用 zip）の履歴保存。作業対象ではない（詳細は archive/README.md） |
+| `tools/`・`kit.toml`・`evidence/` | リンター（`kit_lint.py`）、共有 Mermaid モジュール（`tools/mermaid_common.py`）、描画検証、参考実装のテスト実行、移植性試験、設定、検証の証跡。前提条件とサブコマンドは [tools/README.md](tools/README.md) |
+| `archive/` | 過去に配布された zip 一式（v2〜v3、および平坦化した配布用 zip）の履歴保存。作業対象ではない（詳細は archive/README.md） |
 
 ## 使い方
 
 1. テンプレートを自分のリポジトリにコピーし、`kit.toml` の `[docs]` を自分の文書のパスに書き換える。
 2. 記載指示書に沿って記入する。見出しに「（任意）」が付く節は、不要なら節ごと削除する。
 3. `python tools/kit_lint.py trace`、`extract`、`check` の順に実行する。前提条件（Python の版、依存の入れ方、`gherkin_source` の意味）とサブコマンド一覧は [tools/README.md](tools/README.md) を見る。テスト設計書を使わない場合は、`kit.toml` の `ut`・`ct`・`st`・`uat` の行と `[tests]` を消す。対応する `[templates]` と `[vocab.*]` の該当水準の行も消す。
-4. 図を変えたら `python tools/render_mermaid.py --mermaid-dir <npm の mermaid>` を実行する。
+4. 図を変えたら `python tools/render_mermaid.py --mermaid-dir <npm の mermaid>` を実行する。既定で Chromium のサンドボックスを有効にしたまま描画する。動かない環境では `--allow-no-sandbox` を付ける（証跡に記録される）。
 
 ## 記入例について
 

@@ -33,7 +33,7 @@ flowchart LR
 | 要件と設計判断の対応 | ADR の front matter `addresses` | 追跡表は生成する |
 | 要件とルールの対応 | PRD の「受入」列と、シナリオの `@FR-nnn` タグ（両方に書き、リンターが一致を検査） | 追跡表は生成する |
 | 期待する振る舞い | BDD のルールとシナリオ | 実装やテストコードから逆算して書き換えない |
-| Gherkin | front matter `gherkin_source` が指す側（`markdown` または `feature`） | 反対側は生成物。手で直さない |
+| Gherkin | front matter `gherkin_source` が指す側（`markdown`：フェンスが正本、`extract` が marker 付き `.feature` を生成／`feature`：`.feature` が正本、`mirror` が対応するフェンスを書き戻す） | 反対側は生成物。手で直さない。不一致は両方向とも `check` が検出する（E121）。`markdown` でのマーカー無し孤立 `.feature` は削除せず検出する（E122）。`feature` での `extract` は書き込まず `mirror` を案内する（E123） |
 | 追跡表・.feature | 生成物 | 手で直すと check が不合格にする |
 
 ## 3. ID
@@ -63,7 +63,9 @@ IDは削除しても再利用しない。複数の製品を同じ場所で管理
 | designs | UT／CT／E2E／UAT → FR／RULE／NVT／ADR／GOAL | テスト設計書の「由来」に書かれている | テスト設計書 |
 | allocates | NVT・FEAT → 水準 | NVT はちょうど1つ、FEAT は1つ以上のテスト設計書の表にある | テスト設計書 |
 | verifies | 実行証跡 → FR／SCN／NVT など | 確かめるIDの印が付いたテストが合格し、証跡のハッシュが現行の入力と一致する | `evidence/example_tests.json`（記入例では UT と CT の一部だけ） |
-| supersedes | 新ADR → 旧ADR | 双方の front matter に書かれている | ADR |
+| supersedes | 新ADR → 旧ADR | 双方の front matter に書かれている（E086） | ADR |
+
+新ADR が proposed のまま旧ADR だけ superseded になっている期間の整合は、E086 が状態（status）まで検査するようになるまで人が確認する（予定：refkit-P4b）。
 
 タグが付いているだけの状態は specifies であって verifies ではない。
 
@@ -81,12 +83,7 @@ IDは削除しても再利用しない。複数の製品を同じ場所で管理
 
 ## 6. ゲート
 
-| ゲート | 単位 | 通過の条件 |
-|---|---|---|
-| G1 実装着手 | 対象スライス | 要件・ルール・具体例が合意済み。必要な ADR が accepted。未決事項に保留範囲がある |
-| G2 受入 | 実装した版 | シナリオと G2 対象の NVT を実行して合格。逸脱は判定者が記録 |
-| G3 本番導入 | リリース | 運用・復旧・移行・権限の確認 |
-| G4 成果評価 | 利用期間 | KPI・ガードレール・SLO の実測に基づく継続・改修・撤回の判断 |
+ゲートの通過条件の正本は PRD 9 章。ここではゲート名（G1 実装着手／G2 受入／G3 本番導入／G4 成果評価）だけを定義する。各ゲートで使われる水準の対応は [06_TEST_STRATEGY.md](06_TEST_STRATEGY.md) 4章を見る。
 
 未決の部分だけを保留し、独立した部分の調査や試作は止めない。
 
@@ -113,8 +110,8 @@ IDは削除しても再利用しない。複数の製品を同じ場所で管理
 | `python tools/kit_lint.py extract` | `gherkin_source: markdown` の BDD 文書について、Markdown の Gherkin から `features/*.feature` を生成 |
 | `python tools/kit_lint.py mirror` | `gherkin_source: feature` の BDD 文書について、`features/*.feature` から Markdown のフェンスを書き戻す |
 | `python tools/kit_lint.py selftest` | 欠陥を注入してリンターが検出できるかを確認 |
-| `python tools/render_mermaid.py --mermaid-dir <mermaidパッケージ>` | 全図を解析・描画し、図ごとのハッシュ付きで証跡を記録 |
-| `python tools/run_examples.py [--mutation]` | 参考実装の UT・CT を実行し、テストごとの結果と確かめたID、入力ファイルのハッシュを証跡に記録 |
+| `python tools/render_mermaid.py --mermaid-dir <mermaidパッケージ> [--allow-no-sandbox]` | 全図を解析・描画し、図ごとのハッシュ付きで証跡を記録。既定は Chromium のサンドボックスを有効のまま起動。動かない環境では `--allow-no-sandbox` |
+| `python tools/run_examples.py [--mutation] [--out PATH]` | 参考実装の UT・CT を実行し、テストごとの結果と確かめたID、入力ファイルのハッシュを証跡に記録（既定の出力先は `kit.toml` の `[tests] evidence`。`--out` で変更可） |
 | `python tools/portability_test.py` | 全テンプレートだけから別構成のプロジェクトを作り、リンターが通ることを確認 |
 
 前提条件（Python の版を含む）と各コマンドの詳しいエラーは [tools/README.md](tools/README.md)

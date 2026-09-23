@@ -15,7 +15,7 @@
 | **UT の実行** | 参考実装のドメイン規則に対し、pytest＋Hypothesis（状態機械のプロパティを含む） | <P9> | `evidence/example_tests.json` |
 | **ミューテーションテスト** | mutmut で `domain.py` に変異を注入 | <P9> | 同上 |
 | **CT の実行（BDD の実行を含む）** | BDD 文書から生成した `features/FEAT-004.feature`（`# language: ja`、`ルール`、シナリオアウトライン）を、pytest-bdd で無加工のまま決裁サービスに対して実行。同時実行・障害注入・認可の決定表のテストを追加 | <P9> | 同上 |
-| 実行証跡の鮮度と数値 | 証跡に記録した対象コード・テストコード・`.feature` の SHA-256 を現行と照合。設計書に書いた件数・カバレッジ・スコア（現状は `durations` 等の証跡キーへの参照に置換済み。refkit-P7）を証跡と照合 | <P9> | `evidence/kit_lint_check.json` |
+| 実行証跡の鮮度と数値 | 証跡に記録した対象コード・テストコード・`.feature` の SHA-256 を現行と照合。設計書に書いた件数・カバレッジ・スコア（現状は各テストの `duration_s`（JUnit XML の time）等の証跡キーへの参照に置換済み。refkit-P7）を証跡と照合 | <P9> | `evidence/kit_lint_check.json` |
 | ST 記入例のコード | Playwright の例を `@playwright/test`（3章の環境の版）の型定義で TypeScript の型検査（strict）。k6 の例を `node --check` で構文検査 | <P9>（いずれも実行はしていない） | 証跡ファイルなし（5章の手順で再現） |
 | Mermaid の描画 | 公式 npm 配布物の Mermaid（3章の環境の版）を Chromium で実行し、全図を解析・描画。不正な図が拒否されることも確認 | <P9> | `evidence/mermaid_render.json` |
 | リンターの変異試験 | 欠陥を1つずつ注入する `selftest`。版 2.0.0 の18種に、テスト設計書関連の欠陥を追加 | <P9> | `evidence/kit_lint_selftest.json` |

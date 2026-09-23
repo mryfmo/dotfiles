@@ -36,6 +36,7 @@ import yaml
 from gherkin.parser import Parser
 from gherkin.pickles.compiler import Compiler
 from gherkin.stream.id_generator import IdGenerator
+from mermaid_common import diagram_type, mermaid_blocks
 
 FENCE = re.compile(r'^ {0,3}(`{3,}|~{3,})\s*([\w+-]*)\s*$')
 MARKER_PREFIX = '# generated-by: kit_lint extract'
@@ -530,14 +531,18 @@ class Lint:
 
     # ---------- Mermaid 証跡 ----------
     def check_mermaid(self, docs):
+        # render_mermaid.py と同じ mermaid_blocks()（tools/mermaid_common.py）で抽出する。
+        # 文書ごとに d.text から直接数え直すため、d.fences（全言語のフェンス）とは独立。
+        allowed_types = set(self.cfg['mermaid']['allowed_types'])
         blocks = {}
         for d in docs:
-            i = 0
-            for lang, line, code in d.fences:
-                if lang != 'mermaid': continue
-                i += 1; blocks[f'{d.rel}#{i}'] = hashlib.sha256(code.encode()).hexdigest()
+            for i, (line, code) in enumerate(mermaid_blocks(d.text), 1):
+                blocks[f'{d.rel}#{i}'] = hashlib.sha256(code.encode()).hexdigest()
                 if re.search(r'(?im)^\s*click\b|<script|javascript:', code): self.err('E100', f'{d.rel}:{line}', 'Mermaid に click/script')
                 if 'accTitle' not in code: self.err('E101', f'{d.rel}:{line}', 'Mermaid に accTitle（代替テキスト）がない')
+                dtype = diagram_type(code)
+                if dtype not in allowed_types:
+                    self.err('E104', f'{d.rel}:{line}', f'Mermaid の図の種類 {dtype!r} は許可リストにない（{sorted(allowed_types)}）')
         self.stats['mermaid_blocks'] = len(blocks)
         ev = self.root / self.cfg['evidence']['mermaid']
         if not ev.is_file(): self.warn('W102', ev.name, 'Mermaid 描画証跡がない（tools/render_mermaid.py を実行）'); return
@@ -694,6 +699,7 @@ MUTATIONS = [  # (名前, 対象, 置換前の正規表現, 置換後, 検出す
     ('リンク切れ', 'prd', r'\]\(\.\./adr/ADR-0001', '](../adr/ADR-9999', 'E016'),
     ('表の列数不揃い', 'prd', r'^(\| GOAL-001 \|)', r'\1 余分 |', 'E011'),
     ('図を変えると描画証跡が古くなる', 'prd', r'(accTitle: [^\n]+)', r'\1（変更）', 'E103'),
+    ('Mermaidの図種が許可リストに無い', 'adr', r'^flowchart LR$', 'classDiagram', 'E104'),
     ('追跡表の手修正', 'trace', r'(\[FR-001\]\([^|]*\) \| )Must', r'\1Should', 'E120'),
     ('.feature の手修正', 'feature', r'(@SCN-001[\s\S]*?)ならば ', r'\1ならば  ', 'E121'),
     ('NVTの割当が1つでない', 'st', r'^\| NVT-001 \|', '| NVT-010 |', 'E146'),
@@ -916,9 +922,18 @@ def selftest(root: Path) -> list[dict]:
             errs = Lint(t).run()['errors']
             res.append({'mutation': name, 'expect': 'E030', 'status': 'detected' if any(e.startswith('E030') for e in errs) else 'MISSED'})
 
+    def _codes(rep):
+        return {m.split(' ', 1)[0] for m in rep['errors'] + rep['warnings']}
+
+    def _no_new_codes(baseline_rep, mutated_rep):
+        # 既存の無関係な失敗（例：E153）はここでは無視し、変異が新たに持ち込んだ
+        # コードだけを見る。ベースラインが failed でも、この差集合が空なら合格。
+        return _codes(mutated_rep) - _codes(baseline_rep)
+
     name = 'UATを2文書に分割してもcheckが通る'
     tmp, t = _copy()
     with tmp:
+        baseline = Lint(t).run()
         uat_path = Lint(t).globs('uat')[0]
         original = uat_path.read_text(encoding='utf-8')
         keep_a, n_a = re.subn(r'^\| UAT-00[234567] \|[^\n]*\n', '', original, count=0, flags=re.M)
@@ -930,7 +945,7 @@ def selftest(root: Path) -> list[dict]:
         keep_b = keep_b.replace('GOAL-001・GOAL-002、KPI-001、GRD-001・GRD-002、ACT-001〜ACT-004',
                                 'GOAL-001・GOAL-002、KPI-001、GRD-001・GRD-002')
         if n_a < 1 or n_b < 1:
-            res.append({'mutation': name, 'expect': 'E150', 'status': 'FIXTURE_MISSING'})
+            res.append({'mutation': name, 'expect': 'no-new-errors', 'status': 'FIXTURE_MISSING'})
         else:
             uat_path.write_text(keep_a, encoding='utf-8')
             second = uat_path.parent / 'UAT_SAMPLE_2.md'
@@ -944,24 +959,60 @@ def selftest(root: Path) -> list[dict]:
                 count=1,
             )
             if n < 1:
-                res.append({'mutation': name, 'expect': 'E150', 'status': 'FIXTURE_MISSING'})
+                res.append({'mutation': name, 'expect': 'no-new-errors', 'status': 'FIXTURE_MISSING'})
             else:
                 kit_path.write_text(new_kit, encoding='utf-8')
                 Lint(t).run(write_trace=True)  # 文書構成を分割したので trace を再生成してから check する（通常の運用手順どおり）
                 rep_ = Lint(t).run()
-                status = 'detected' if rep_['status'] == 'passed' else 'MISSED'
-                res.append({'mutation': name, 'expect': 'passed', 'status': status})
+                new_codes = _no_new_codes(baseline, rep_)
+                status = 'detected' if not new_codes else 'MISSED'
+                res.append({'mutation': name, 'expect': 'no-new-errors', 'status': status})
 
     name = 'SHA-256のような文字列が本文にあってもIDとして誤検出されない'
     tmp, t = _copy()
     with tmp:
+        baseline = Lint(t).run()
         prd_path = Lint(t).globs('prd')[0]
         text = prd_path.read_text(encoding='utf-8')
         new_text, n = re.subn(r'\Z', '\nSHA-256 のようなIDに見える文字列が本文にあっても検査に影響しない。\n', text, count=1)
         prd_path.write_text(new_text, encoding='utf-8')
         rep_ = Lint(t).run()
-        status = 'detected' if rep_['status'] == 'passed' else 'MISSED'
-        res.append({'mutation': name, 'expect': 'passed', 'status': status})
+        new_codes = _no_new_codes(baseline, rep_)
+        status = 'detected' if not new_codes else 'MISSED'
+        res.append({'mutation': name, 'expect': 'no-new-errors', 'status': status})
+
+    name = 'kit.tomlのdocsグロブ外のMarkdownにMermaid図があってもE103にならない'
+    tmp, t = _copy()
+    with tmp:
+        baseline = Lint(t).run()
+        stray = t / 'scratch' / 'stray.md'
+        stray.parent.mkdir(parents=True, exist_ok=True)
+        stray.write_text(
+            '# stray\n\n対象外の文書に描いた図。check の対象文書集合（kit.toml の [docs]）には含まれない。\n\n'
+            '```mermaid\nflowchart LR\n    accTitle: 対象外\n    A --> B\n```\n',
+            encoding='utf-8',
+        )
+        rep_ = Lint(t).run()
+        new_codes = _no_new_codes(baseline, rep_)
+        status = 'detected' if not new_codes else 'MISSED'
+        res.append({'mutation': name, 'expect': 'no-new-errors', 'status': status})
+
+    name = '~~~フェンスのMermaid図もcheckが認識し証跡と一致する（E103にならない）'
+    tmp, t = _copy()
+    with tmp:
+        baseline = Lint(t).run()
+        conv = t / '03_CONVENTIONS.md'
+        text = conv.read_text(encoding='utf-8')
+        m = re.search(r'^```mermaid\n(.*?)\n^```\s*$', text, re.M | re.S)
+        if not m:
+            res.append({'mutation': name, 'expect': 'no-new-errors', 'status': 'FIXTURE_MISSING'})
+        else:
+            new_text = text[:m.start()] + '~~~mermaid\n' + m.group(1) + '\n~~~' + text[m.end():]
+            conv.write_text(new_text, encoding='utf-8')
+            rep_ = Lint(t).run()
+            new_codes = _no_new_codes(baseline, rep_)
+            status = 'detected' if not new_codes else 'MISSED'
+            res.append({'mutation': name, 'expect': 'no-new-errors', 'status': status})
 
     return res
 

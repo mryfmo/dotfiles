@@ -99,7 +99,7 @@ IDは削除しても再利用しない。複数の製品を同じ場所で管理
 | リンク | 相対パス。文書内の位置は明示アンカー `<a id="..."></a>` にだけ張る（見出しから自動生成されるアンカーは表示環境によって異なる） |
 | 表 | 列数を揃える。セルに縦棒を書かない |
 | front matter | テンプレートと同じキーを持つ（サンプルは `sample: true` を追加） |
-| 図の種類 | flowchart、sequenceDiagram、stateDiagram-v2 に限る |
+| 図の種類 | flowchart、sequenceDiagram、stateDiagram-v2 に限る（`kit.toml` の `[mermaid] allowed_types` を **E104** で検査）。フェンスは列0の ``` と ~~~、4個以上のバッククォート、字下げも認識する（`tools/mermaid_common.py` を `render_mermaid.py`・`check` の両方が使う） |
 | 図の書き方 | ノードIDは英数字、ラベルは二重引用符で囲む。`click`・HTML・スクリプトを書かない。`accTitle` と `accDescr` を必ず書く |
 | 図と本文 | 図は本文の説明であり、仕様を図だけで決めない。食い違えば本文が正しい |
 | Mermaid の版 | 12.0.0 から既定のレイアウトと見た目が変わったため、ノードの位置や色に意味を持たせない。配置を固定したい図だけ、図の先頭に設定（`layout: dagre` など）を書く。表示環境が採用している版は環境ごとに確認する |

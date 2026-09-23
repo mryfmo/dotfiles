@@ -32,6 +32,9 @@ max_steps = 7
 max_unique_step_ratio = 0.60
 forbidden_terms = ["テストダブル", "fixture", "スタブ", "モック", "SQL", "DOM", "クリック", "テーブル行"]
 
+[mermaid]
+allowed_types = ["flowchart", "sequenceDiagram", "stateDiagram-v2"]   # Mermaid公式の図種キーワード（E104）
+
 [evidence]
 mermaid = "evidence/mermaid_render.json"
 

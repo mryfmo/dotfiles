@@ -75,9 +75,11 @@ UT・CT・ST・UAT のテンプレートは、証跡と数値で照合する専�
 ```
 
 「証跡のキー」は証跡 JSON（`evidence/example_tests.json` 等）内の値を指す。`<水準>.total` は
-その水準のテスト件数、`<水準>.passed` は合格数、`<水準>.branch_coverage_percent` は分岐カバ
-レッジ、`mutation.total`／`mutation.killed`／`mutation.score_percent` はミューテーション試験
-の対象数・検出数・スコアを指す。`check` はこの表だけを見る。文章中に同じ数値が書いてあっても見ない。
+その水準のテスト件数、`<水準>.passed` は合格数、`<水準>.branch_coverage_percent` は真の
+分岐カバレッジ、`<水準>.line_and_branch_percent` は行＋分岐の合成値（下記「`run_examples.py`
+の証跡フィールド」参照）、`mutation.total`／`mutation.killed`／`mutation.score_percent` は
+ミューテーション試験の対象数・検出数・スコアを指す。`check` はこの表だけを見る。文章中に
+同じ数値が書いてあっても見ない。
 
 文書自身の水準（`doc_type`）が証跡に存在するのに、その行の「証跡のキー」が解決できない場合
 （誤記・存在しない節）は **E159** で不合格にする。キーを空欄にしてよいのは、文書自身の水準が
@@ -120,6 +122,53 @@ marker 行を付ける：
 文章ではなく、テンプレートの見出し・表・front matter キー・Gherkin のタグのような**構造**で
 対象を探す（例：`FR-001` という ID や `@SCN-001` というタグは規約上どの記入例にも存在する
 契約なので対象にしてよいが、記入例だけの日本語文は対象にしない）。
+
+## Mermaid（`render_mermaid.py`・`check_mermaid`）
+
+`tools/mermaid_common.py` は両者が共有する、stdlib のみに依存する小さなモジュール
+（`kit_lint.py` の `gherkin-official`／`PyYAML`、`render_mermaid.py` の `playwright` を
+互いに引き込まないため）。フェンス抽出（`iter_fences`／`mermaid_blocks`）は
+CommonMark のフェンスコードブロック定義に従う：列0から3文字までのインデント、
+3個以上の ``` か ~~~（4個以上のバッククォートも同様）。対象文書集合
+（`document_paths`）は `kit.toml` の `[docs]` にある全グロブの和集合（テンプレート・
+PRD・ADR・BDD・UT/CT/ST/UAT・other・追跡表）で、`Lint.run()` が `all_docs` を組み立てる
+手順と同じ順序・同じ重複排除規則を再現する。`kit.toml` の `[docs]` を変更したときは、
+`tools/mermaid_common.py` の `document_paths()` も見直すこと（唯一の重複源）。
+
+図の種類は `kit.toml` の `[mermaid] allowed_types`（既定 `flowchart`・`sequenceDiagram`・
+`stateDiagram-v2`）に限り、フェンス本文の先頭の非空行・非ディレクティブ行（`%%` で
+始まる行を除く）から取り出したキーワードで判定する。それ以外（`graph`・
+`stateDiagram`（v1）・`classDiagram` 等）は **E104**。
+
+`render_mermaid.py` は既定で Chromium のサンドボックスを有効のまま起動する
+（Playwright 公式の既定）。動かない環境向けに `--allow-no-sandbox` を渡すと
+`--no-sandbox` を付けて起動し、その旨を証跡の `no_sandbox` に記録する。
+
+## `run_examples.py` の証跡フィールド
+
+`coverage.py` は「行のみ」と「行＋分岐」を別の値として持つ（公式ドキュメント・
+ソースの定義）。`percent_covered` は実行された行数＋分岐数の合計を、行数＋分岐数の
+合計で割った値（行と分岐を合成した％）、`covered_branches`／`num_branches` の比が
+真の分岐カバレッジ。旧版は前者を `branch_coverage_percent` と誤って呼んでいた
+（表示名の誤り。E-13）。現在は：
+
+- `branch_coverage_percent`：`covered_branches / num_branches * 100`（真の分岐カバレッジ。
+  分岐が1つも無ければ 100.0）。
+- `line_and_branch_percent`：`percent_covered`（行＋分岐の合成値。旧版の
+  `branch_coverage_percent` はこの値だった）。
+
+各テストケースの `duration_s` は pytest の JUnit XML（`--junitxml`）の `testcase` 要素
+自身が持つ `time` 属性から転記する（setup／teardown を含む合計時間。pytest の既定
+挙動）。`tools` には `pytest`・`hypothesis`・`pytest-bdd`・`coverage`・`mutmut` の各
+バージョンを記録する。
+
+ミューテーション対象（`mutation.target`）と対象テスト（`mutation.tests`）は
+`examples/flowapprove_core/pyproject.toml` の `[tool.mutmut]` から読む
+（`source_paths`／`pytest_add_cli_args_test_selection`。mutmut 3 系の現行キーで、
+mutmut 2 系の `paths_to_mutate`／`tests_dir` はもう存在しない）。`mutmut run` の
+タイムアウト（既定 1800 秒）を捕捉すると、証跡全体の `status` は `passed`／`failed`
+ではなく `timeout` になる。`--out PATH` で証跡の出力先を変更できる（既定は `kit.toml`
+の `[tests] evidence`）。
 
 ## `portability_test.py`
 

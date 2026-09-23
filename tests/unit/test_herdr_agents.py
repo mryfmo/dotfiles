@@ -125,7 +125,7 @@ if [[ $1 == pane && $2 == wait-output ]]; then
     exit 0
 fi
 if [[ $1 == pane && $2 == process-info ]]; then
-    printf '%s\\n' '{{"id":"cli:pane:process_info","result":{{"process_info":{{"foreground_processes":[{{"argv0":"zsh","name":"zsh"}}]}}}}}}'
+    printf '%s\\n' '{{"id":"cli:pane:process_info","result":{{"process_info":{{"foreground_processes":[{{"argv":["/bin/zsh"],"cmdline":"/bin/zsh","name":"zsh","pid":4242}}]}}}}}}'
     exit 0
 fi
 if [[ $1 == agent && $2 == start ]]; then

@@ -113,7 +113,7 @@ function wait_for_shell_prompt() {
             printf '%s\n' "${process_json}" | jq -e \
                 '.result.process_info.foreground_processes as $processes
                  | ($processes | length) == 1
-                   and ($processes[0].argv0 | test("(^|/)-?(ba|z|fi)?sh$"))' > /dev/null; then
+                   and (($processes[0].argv[0] // $processes[0].name // "") | test("(^|/)-?(ba|z|fi)?sh$"))' > /dev/null; then
             herdr pane wait-output "${pane_id}" --regex '[$#%❯➜>]+[[:space:]]*$' --source visible --lines 5 --timeout 10000 > /dev/null || return 1
             sleep 0.2
             return 0

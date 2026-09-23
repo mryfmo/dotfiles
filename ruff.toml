@@ -1,0 +1,4 @@
+# Keep repository-wide ruff defaults; exclude the vendored documentation kit, which is
+# validated by its own tools (references/tools/kit_lint.py, run_examples.py).
+extend-exclude = ["references"]
+force-exclude = true

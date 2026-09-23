@@ -1,0 +1,3 @@
+# The documentation kit under references/ has its own Markdown conventions (references/03_CONVENTIONS.md §7);
+# editor formatters must not rewrite it.
+references/

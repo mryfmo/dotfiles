@@ -1353,6 +1353,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../../home/dot_local/bin/common/executable_provision-machine-key/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_provision-machine-key
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../../home/dot_local/bin/common/executable_remove-agent-asset/" class="md-nav__link">
         
   
@@ -3633,7 +3661,7 @@
 
 
 <h1 id="installmacoscommonmiscsh">install/macos/common/misc.sh<a class="headerlink" href="#installmacoscommonmiscsh" title="Permanent link">&para;</a></h1>
-<p>Installs non-essential brew packages, casks, and user-specific extras for daily development use.</p>
+<p>Installs non-essential brew packages and casks for daily development use.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>install/macos/common/misc.sh</code></li>
@@ -3642,7 +3670,6 @@
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>install_additional_brew_packages</code></li>
 <li><code>install_brew_cask_packages</code></li>
 <li><code>install_brew_packages</code></li>
 <li><code>is_brew_package_installed</code></li>
@@ -3655,8 +3682,7 @@
 <span class="c1"># @file install/macos/common/misc.sh</span>
 <span class="c1"># @brief Install optional macOS utilities and GUI applications.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Installs non-essential brew packages, casks, and user-specific extras for</span>
-<span class="c1">#   daily development use.</span>
+<span class="c1">#   Installs non-essential brew packages and casks for daily development use.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
@@ -3666,6 +3692,7 @@
 
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">BREW_PACKAGES</span><span class="o">=(</span>
 <span class="w">    </span>htop
+<span class="w">    </span>tailscale
 <span class="o">)</span>
 
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">CASK_PACKAGES</span><span class="o">=(</span>
@@ -3674,11 +3701,6 @@
 <span class="w">    </span>google-japanese-ime
 <span class="w">    </span>rectangle
 <span class="w">    </span>zed
-<span class="o">)</span>
-
-<span class="c1"># Additional brew packages installed only for user mryfmo.</span>
-<span class="nb">readonly</span><span class="w"> </span><span class="nv">ADDITIONAL_BREW_PACKAGES</span><span class="o">=(</span>
-<span class="w">    </span>tailscale
 <span class="o">)</span>
 
 <span class="c1">#</span>
@@ -3734,32 +3756,6 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Install additional brew packages for the primary user only.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>install_additional_brew_packages<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="c1"># Restrict personal packages to the primary user account.</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>whoami<span class="k">)</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"mryfmo"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
-
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">missing_packages</span><span class="o">=()</span>
-
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>package<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">ADDITIONAL_BREW_PACKAGES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>is_brew_package_installed<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nv">missing_packages</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">package</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
-<span class="w">        </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">done</span>
-
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${#</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CI</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"true"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span>brew<span class="w"> </span>info<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">        </span><span class="k">else</span>
-<span class="w">            </span>brew<span class="w"> </span>install<span class="w"> </span>--force<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">missing_packages</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">        </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="o">}</span>
-
-<span class="c1">#</span>
 <span class="c1"># @description Open Google Chrome and prompt it to become the default browser.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>setup_google_chrome<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -3772,7 +3768,6 @@
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span>install_brew_packages
 <span class="w">    </span>install_brew_cask_packages
-<span class="w">    </span>install_additional_brew_packages
 
 <span class="w">    </span><span class="c1"># setup_google_chrome</span>
 <span class="o">}</span>

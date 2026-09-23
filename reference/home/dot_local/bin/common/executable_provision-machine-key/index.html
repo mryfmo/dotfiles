@@ -11,25 +11,25 @@
       
       
       
-        <link rel="prev" href="../setup_timezone/">
+        <link rel="prev" href="../executable_permgate/">
       
       
-        <link rel="next" href="../starship/">
+        <link rel="next" href="../executable_remove-agent-asset/">
       
       
         
       
       
-      <link rel="icon" href="../../../../../assets/images/favicon.png">
+      <link rel="icon" href="../../../../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
-        <title>install/ubuntu/server/ssh_server.sh - Dotfiles Docs</title>
+        <title>home/dot_local/bin/common/executable_provision-machine-key - Dotfiles Docs</title>
       
     
     
-      <link rel="stylesheet" href="../../../../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../../../../../assets/stylesheets/main.ec1eaa64.min.css">
       
       
 
@@ -48,9 +48,9 @@
       
     
     
-      <link rel="stylesheet" href="../../../../../assets/stylesheets/extra.css">
+      <link rel="stylesheet" href="../../../../../../assets/stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -68,7 +68,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#installubuntuserverssh_serversh" class="md-skip">
+        <a href="#homedot_localbincommonexecutable_provision-machine-key" class="md-skip">
           Skip to content
         </a>
       
@@ -84,7 +84,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../../.." title="Dotfiles Docs" class="md-header__button md-logo" aria-label="Dotfiles Docs" data-md-component="logo">
+    <a href="../../../../../.." title="Dotfiles Docs" class="md-header__button md-logo" aria-label="Dotfiles Docs" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -104,7 +104,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              install/ubuntu/server/ssh_server.sh
+              home/dot_local/bin/common/executable_provision-machine-key
             
           </span>
         </div>
@@ -182,7 +182,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../../.." title="Dotfiles Docs" class="md-nav__button md-logo" aria-label="Dotfiles Docs" data-md-component="logo">
+    <a href="../../../../../.." title="Dotfiles Docs" class="md-nav__button md-logo" aria-label="Dotfiles Docs" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -200,7 +200,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../.." class="md-nav__link">
+      <a href="../../../../../.." class="md-nav__link">
         
   
   
@@ -227,7 +227,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../catalog/" class="md-nav__link">
+      <a href="../../../../../../catalog/" class="md-nav__link">
         
   
   
@@ -301,7 +301,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../plans/nix-first-architecture/" class="md-nav__link">
+      <a href="../../../../../../plans/nix-first-architecture/" class="md-nav__link">
         
   
   
@@ -329,7 +329,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../plans/nix-migration/" class="md-nav__link">
+      <a href="../../../../../../plans/nix-migration/" class="md-nav__link">
         
   
   
@@ -413,7 +413,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../chezmoi-templates/" class="md-nav__link">
+      <a href="../../../../../chezmoi-templates/" class="md-nav__link">
         
   
   
@@ -438,18 +438,20 @@
                 
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" checked>
         
           
           <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
@@ -470,7 +472,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -582,7 +584,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_claude/hooks/executable_enforce-uv/" class="md-nav__link">
+      <a href="../../../../dot_claude/hooks/executable_enforce-uv/" class="md-nav__link">
         
   
   
@@ -610,7 +612,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_claude/hooks/executable_format-edited-files.py/" class="md-nav__link">
+      <a href="../../../../dot_claude/hooks/executable_format-edited-files.py/" class="md-nav__link">
         
   
   
@@ -748,7 +750,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_config/alias/client/" class="md-nav__link">
+      <a href="../../../../dot_config/alias/client/" class="md-nav__link">
         
   
   
@@ -776,7 +778,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_config/alias/common/" class="md-nav__link">
+      <a href="../../../../dot_config/alias/common/" class="md-nav__link">
         
   
   
@@ -804,7 +806,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_config/alias/server/" class="md-nav__link">
+      <a href="../../../../dot_config/alias/server/" class="md-nav__link">
         
   
   
@@ -845,18 +847,20 @@
                 
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_3" checked>
         
           
           <label class="md-nav__link" for="__nav_4_2_3" id="__nav_4_2_3_label" tabindex="0">
@@ -877,7 +881,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_2_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_2_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_2_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -892,18 +896,20 @@
                 
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_3_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_3_1" checked>
         
           
           <label class="md-nav__link" for="__nav_4_2_3_1" id="__nav_4_2_3_1_label" tabindex="0">
@@ -924,7 +930,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_3_1_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_3_1_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_2_3_1">
             <span class="md-nav__icon md-icon"></span>
             
@@ -939,18 +945,20 @@
                 
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_3_1_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_3_1_1" checked>
         
           
           <label class="md-nav__link" for="__nav_4_2_3_1_1" id="__nav_4_2_3_1_1_label" tabindex="0">
@@ -971,7 +979,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_3_1_1_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_3_1_1_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_2_3_1_1">
             <span class="md-nav__icon md-icon"></span>
             
@@ -989,7 +997,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_agent-fanout/" class="md-nav__link">
+      <a href="../executable_agent-fanout/" class="md-nav__link">
         
   
   
@@ -1017,7 +1025,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_agent-session-staleness/" class="md-nav__link">
+      <a href="../executable_agent-session-staleness/" class="md-nav__link">
         
   
   
@@ -1045,7 +1053,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_cdgwq/" class="md-nav__link">
+      <a href="../executable_cdgwq/" class="md-nav__link">
         
   
   
@@ -1073,7 +1081,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_cdw/" class="md-nav__link">
+      <a href="../executable_cdw/" class="md-nav__link">
         
   
   
@@ -1101,7 +1109,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_chezmoi-cd/" class="md-nav__link">
+      <a href="../executable_chezmoi-cd/" class="md-nav__link">
         
   
   
@@ -1129,7 +1137,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_compactiondb-install/" class="md-nav__link">
+      <a href="../executable_compactiondb-install/" class="md-nav__link">
         
   
   
@@ -1157,7 +1165,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_contextdb-codex-notify/" class="md-nav__link">
+      <a href="../executable_contextdb-codex-notify/" class="md-nav__link">
         
   
   
@@ -1185,7 +1193,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_dev/" class="md-nav__link">
+      <a href="../executable_dev/" class="md-nav__link">
         
   
   
@@ -1213,7 +1221,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_fgc/" class="md-nav__link">
+      <a href="../executable_fgc/" class="md-nav__link">
         
   
   
@@ -1241,7 +1249,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_git-delete-merged-branches/" class="md-nav__link">
+      <a href="../executable_git-delete-merged-branches/" class="md-nav__link">
         
   
   
@@ -1269,7 +1277,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_herdr-agents/" class="md-nav__link">
+      <a href="../executable_herdr-agents/" class="md-nav__link">
         
   
   
@@ -1297,7 +1305,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_herdr-session/" class="md-nav__link">
+      <a href="../executable_herdr-session/" class="md-nav__link">
         
   
   
@@ -1325,7 +1333,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_permgate/" class="md-nav__link">
+      <a href="../executable_permgate/" class="md-nav__link">
         
   
   
@@ -1350,10 +1358,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_provision-machine-key/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_provision-machine-key
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1369,6 +1404,59 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metadata
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1381,7 +1469,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_remove-agent-asset/" class="md-nav__link">
+      <a href="../executable_remove-agent-asset/" class="md-nav__link">
         
   
   
@@ -1409,7 +1497,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_setup-gh/" class="md-nav__link">
+      <a href="../executable_setup-gh/" class="md-nav__link">
         
   
   
@@ -1437,7 +1525,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_setup-gpg/" class="md-nav__link">
+      <a href="../executable_setup-gpg/" class="md-nav__link">
         
   
   
@@ -1465,7 +1553,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_setup-python-env/" class="md-nav__link">
+      <a href="../executable_setup-python-env/" class="md-nav__link">
         
   
   
@@ -1493,7 +1581,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/common/executable_uv-format/" class="md-nav__link">
+      <a href="../executable_uv-format/" class="md-nav__link">
         
   
   
@@ -1576,7 +1664,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/server/cache/" class="md-nav__link">
+      <a href="../../server/cache/" class="md-nav__link">
         
   
   
@@ -1604,7 +1692,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/server/cuda/" class="md-nav__link">
+      <a href="../../server/cuda/" class="md-nav__link">
         
   
   
@@ -1632,7 +1720,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/server/history/" class="md-nav__link">
+      <a href="../../server/history/" class="md-nav__link">
         
   
   
@@ -1660,7 +1748,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../home/dot_local/bin/server/ssh_agent/" class="md-nav__link">
+      <a href="../../server/ssh_agent/" class="md-nav__link">
         
   
   
@@ -1717,20 +1805,18 @@
                 
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" >
         
           
           <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
@@ -1751,7 +1837,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1816,7 +1902,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../common/chezmoi_private/" class="md-nav__link">
+      <a href="../../../../../install/common/chezmoi_private/" class="md-nav__link">
         
   
   
@@ -1844,7 +1930,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../common/gh_extensions/" class="md-nav__link">
+      <a href="../../../../../install/common/gh_extensions/" class="md-nav__link">
         
   
   
@@ -1872,7 +1958,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../common/mise/" class="md-nav__link">
+      <a href="../../../../../install/common/mise/" class="md-nav__link">
         
   
   
@@ -1900,7 +1986,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../common/sheldon/" class="md-nav__link">
+      <a href="../../../../../install/common/sheldon/" class="md-nav__link">
         
   
   
@@ -2030,7 +2116,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/arm64/prepare_arm64_system/" class="md-nav__link">
+      <a href="../../../../../install/macos/arm64/prepare_arm64_system/" class="md-nav__link">
         
   
   
@@ -2058,7 +2144,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/arm64/run/" class="md-nav__link">
+      <a href="../../../../../install/macos/arm64/run/" class="md-nav__link">
         
   
   
@@ -2141,7 +2227,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/common/brew/" class="md-nav__link">
+      <a href="../../../../../install/macos/common/brew/" class="md-nav__link">
         
   
   
@@ -2169,7 +2255,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/common/command_line_tool/" class="md-nav__link">
+      <a href="../../../../../install/macos/common/command_line_tool/" class="md-nav__link">
         
   
   
@@ -2197,7 +2283,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/common/defaults/" class="md-nav__link">
+      <a href="../../../../../install/macos/common/defaults/" class="md-nav__link">
         
   
   
@@ -2225,7 +2311,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/common/dependencies/" class="md-nav__link">
+      <a href="../../../../../install/macos/common/dependencies/" class="md-nav__link">
         
   
   
@@ -2253,7 +2339,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/common/docker/" class="md-nav__link">
+      <a href="../../../../../install/macos/common/docker/" class="md-nav__link">
         
   
   
@@ -2281,7 +2367,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/common/ghostty/" class="md-nav__link">
+      <a href="../../../../../install/macos/common/ghostty/" class="md-nav__link">
         
   
   
@@ -2309,7 +2395,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../macos/common/misc/" class="md-nav__link">
+      <a href="../../../../../install/macos/common/misc/" class="md-nav__link">
         
   
   
@@ -2350,20 +2436,18 @@
                 
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3_3" >
         
           
           <label class="md-nav__link" for="__nav_4_3_3" id="__nav_4_3_3_label" tabindex="0">
@@ -2384,7 +2468,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_3_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_3_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_3_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2449,7 +2533,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../client/default_shell/" class="md-nav__link">
+      <a href="../../../../../install/ubuntu/client/default_shell/" class="md-nav__link">
         
   
   
@@ -2477,7 +2561,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../client/docker/" class="md-nav__link">
+      <a href="../../../../../install/ubuntu/client/docker/" class="md-nav__link">
         
   
   
@@ -2505,7 +2589,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../client/ghostty/" class="md-nav__link">
+      <a href="../../../../../install/ubuntu/client/ghostty/" class="md-nav__link">
         
   
   
@@ -2533,7 +2617,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../client/gnome_settings/" class="md-nav__link">
+      <a href="../../../../../install/ubuntu/client/gnome_settings/" class="md-nav__link">
         
   
   
@@ -2561,7 +2645,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../client/misc/" class="md-nav__link">
+      <a href="../../../../../install/ubuntu/client/misc/" class="md-nav__link">
         
   
   
@@ -2589,7 +2673,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../client/tailscale/" class="md-nav__link">
+      <a href="../../../../../install/ubuntu/client/tailscale/" class="md-nav__link">
         
   
   
@@ -2617,7 +2701,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../client/zed/" class="md-nav__link">
+      <a href="../../../../../install/ubuntu/client/zed/" class="md-nav__link">
         
   
   
@@ -2700,7 +2784,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/aws_cli/" class="md-nav__link">
+      <a href="../../../../../install/ubuntu/common/aws_cli/" class="md-nav__link">
         
   
   
@@ -2728,7 +2812,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/dependencies/" class="md-nav__link">
+      <a href="../../../../../install/ubuntu/common/dependencies/" class="md-nav__link">
         
   
   
@@ -2756,7 +2840,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/setup_locale/" class="md-nav__link">
+      <a href="../../../../../install/ubuntu/common/setup_locale/" class="md-nav__link">
         
   
   
@@ -2784,7 +2868,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/ssh/" class="md-nav__link">
+      <a href="../../../../../install/ubuntu/common/ssh/" class="md-nav__link">
         
   
   
@@ -2817,20 +2901,18 @@
                 
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3_3_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3_3_3" >
         
           
           <label class="md-nav__link" for="__nav_4_3_3_3" id="__nav_4_3_3_3_label" tabindex="0">
@@ -2851,7 +2933,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_3_3_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_3_3_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_3_3_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2869,7 +2951,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../misc/" class="md-nav__link">
+      <a href="../../../../../install/ubuntu/server/misc/" class="md-nav__link">
         
   
   
@@ -2897,7 +2979,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../setup_timezone/" class="md-nav__link">
+      <a href="../../../../../install/ubuntu/server/setup_timezone/" class="md-nav__link">
         
   
   
@@ -2922,37 +3004,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    install/ubuntu/server/ssh_server.sh
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../../../../install/ubuntu/server/ssh_server/" class="md-nav__link">
         
   
   
@@ -2968,59 +3023,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#metadata" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Metadata
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#functions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Functions
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#source" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Source
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -3033,7 +3035,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../starship/" class="md-nav__link">
+      <a href="../../../../../install/ubuntu/server/starship/" class="md-nav__link">
         
   
   
@@ -3132,7 +3134,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../scripts/check-tools/" class="md-nav__link">
+      <a href="../../../../../scripts/check-tools/" class="md-nav__link">
         
   
   
@@ -3160,7 +3162,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../scripts/generate-docs/" class="md-nav__link">
+      <a href="../../../../../scripts/generate-docs/" class="md-nav__link">
         
   
   
@@ -3188,7 +3190,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../scripts/run_benchmark/" class="md-nav__link">
+      <a href="../../../../../scripts/run_benchmark/" class="md-nav__link">
         
   
   
@@ -3216,7 +3218,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../scripts/run_unit_test/" class="md-nav__link">
+      <a href="../../../../../scripts/run_unit_test/" class="md-nav__link">
         
   
   
@@ -3244,7 +3246,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../scripts/update-agent-assets/" class="md-nav__link">
+      <a href="../../../../../scripts/update-agent-assets/" class="md-nav__link">
         
   
   
@@ -3272,7 +3274,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../scripts/upgrade-tools/" class="md-nav__link">
+      <a href="../../../../../scripts/upgrade-tools/" class="md-nav__link">
         
   
   
@@ -3300,7 +3302,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../scripts/usage-snapshot/" class="md-nav__link">
+      <a href="../../../../../scripts/usage-snapshot/" class="md-nav__link">
         
   
   
@@ -3375,7 +3377,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../scripts/lib/asset-manifest/" class="md-nav__link">
+      <a href="../../../../../scripts/lib/asset-manifest/" class="md-nav__link">
         
   
   
@@ -3403,7 +3405,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../scripts/lib/installer-pins/" class="md-nav__link">
+      <a href="../../../../../scripts/lib/installer-pins/" class="md-nav__link">
         
   
   
@@ -3548,7 +3550,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../verification/acceptance/005/" class="md-nav__link">
+      <a href="../../../../../../verification/acceptance/005/" class="md-nav__link">
         
   
   
@@ -3660,112 +3662,87 @@
 
 
 
-<h1 id="installubuntuserverssh_serversh">install/ubuntu/server/ssh_server.sh<a class="headerlink" href="#installubuntuserverssh_serversh" title="Permanent link">&para;</a></h1>
-<p>Installs <code>openssh-server</code>, relaxes the container-oriented SSH settings used by this repository, and starts the SSH service when running inside Docker.</p>
+<h1 id="homedot_localbincommonexecutable_provision-machine-key">home/dot_local/bin/common/executable_provision-machine-key<a class="headerlink" href="#homedot_localbincommonexecutable_provision-machine-key" title="Permanent link">&para;</a></h1>
+<p>Generates ~/.ssh/id_ed25519 non-interactively when it does not already exist, then prints the exact <code>gh ssh-key add</code> commands needed to register it with the operator's GitHub account for both authentication and commit signing. Idempotent: an existing key is only displayed, never regenerated.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Source: <code>install/ubuntu/server/ssh_server.sh</code></li>
-<li>Category: install script</li>
+<li>Source: <code>home/dot_local/bin/common/executable_provision-machine-key</code></li>
+<li>Category: shell executable</li>
 <li>Renderer: <code>shell-fallback</code></li>
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>configure_accept_env</code></li>
-<li><code>install_openssh_server</code></li>
+<li><code>ensure_machine_ssh_key</code></li>
 <li><code>main</code></li>
-<li><code>run_sshd</code></li>
-<li><code>setup_sshd</code></li>
+<li><code>print_registration_instructions</code></li>
+<li><code>ssh_key_email</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
 
-<span class="c1"># @file install/ubuntu/server/ssh_server.sh</span>
-<span class="c1"># @brief Install and configure an Ubuntu SSH server.</span>
+<span class="c1"># @file home/dot_local/bin/common/executable_provision-machine-key</span>
+<span class="c1"># @brief Provision a per-machine SSH key for commit signing and push authentication.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Installs `openssh-server`, relaxes the container-oriented SSH settings used</span>
-<span class="c1">#   by this repository, and starts the SSH service when running inside Docker.</span>
+<span class="c1">#   Generates ~/.ssh/id_ed25519 non-interactively when it does not already</span>
+<span class="c1">#   exist, then prints the exact `gh ssh-key add` commands needed to register</span>
+<span class="c1">#   it with the operator's GitHub account for both authentication and commit</span>
+<span class="c1">#   signing. Idempotent: an existing key is only displayed, never regenerated.</span>
+<span class="c1"># @example</span>
+<span class="c1">#   provision-machine-key</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
-<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">DOTFILES_DEBUG</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span><span class="nb">set</span><span class="w"> </span>-x
-<span class="k">fi</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">MACHINE_SSH_KEY_PATH</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.ssh/id_ed25519"</span>
+<span class="nb">readonly</span><span class="w"> </span><span class="nv">MACHINE_SSH_PUBLIC_KEY_PATH</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">MACHINE_SSH_KEY_PATH</span><span class="si">}</span><span class="s2">.pub"</span>
 
-<span class="nb">declare</span><span class="w"> </span>-r<span class="w"> </span><span class="nv">SSH_PORT</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">DOTFILES_SERVER_SSH_PORT</span><span class="k">:-</span><span class="nv">22</span><span class="si">}</span><span class="s2">"</span>
+<span class="c1"># @description Return the email address used as the SSH key comment.</span>
+<span class="k">function</span><span class="w"> </span>ssh_key_email<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>configured_email
+<span class="w">    </span><span class="nv">configured_email</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>--get<span class="w"> </span>user.email<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span><span class="s2">"</span>
 
-<span class="c1">#</span>
-<span class="c1"># @description Install the Ubuntu OpenSSH server package and its prerequisites.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>install_openssh_server<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="c1"># install openssh-server and vim</span>
-<span class="w">    </span>sudo<span class="w"> </span>--preserve-env<span class="o">=</span>http_proxy,https_proxy,no_proxy<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>--no-install-recommends<span class="w"> </span>-y<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span>vim<span class="w"> </span><span class="se">\</span>
-<span class="w">        </span>openssh-server
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">configured_email</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">configured_email</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s@%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">USER</span><span class="k">:-</span><span class="nv">user</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>hostname<span class="w"> </span>-s<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span>hostname<span class="k">)</span><span class="s2">"</span>
 <span class="o">}</span>
 
-<span class="c1">#</span>
-<span class="c1"># @description Merge proxy-related variables into `AcceptEnv` in `sshd_config`.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>configure_accept_env<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>current<span class="w"> </span>add<span class="w"> </span>merged
+<span class="c1"># @description Generate the machine SSH key through ssh-keygen when it does not already exist.</span>
+<span class="k">function</span><span class="w"> </span>ensure_machine_ssh_key<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-r<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MACHINE_SSH_PUBLIC_KEY_PATH</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Machine SSH key already exists: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MACHINE_SSH_PUBLIC_KEY_PATH</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="c1"># Get existing AcceptEnv values (empty if not set)</span>
-<span class="w">    </span><span class="nv">current</span><span class="o">=</span><span class="k">$(</span>grep<span class="w"> </span><span class="s1">'^AcceptEnv'</span><span class="w"> </span>/etc/ssh/sshd_config<span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span><span class="s1">'s/^AcceptEnv //'</span><span class="k">)</span>
+<span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.ssh"</span>
+<span class="w">    </span>chmod<span class="w"> </span><span class="m">0700</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.ssh"</span>
 
-<span class="w">    </span><span class="c1"># Variables to append</span>
-<span class="w">    </span><span class="nv">add</span><span class="o">=</span><span class="s2">"HTTP_PROXY HTTPS_PROXY NO_PROXY http_proxy https_proxy no_proxy"</span>
-
-<span class="w">    </span><span class="c1"># Merge and remove duplicates</span>
-<span class="w">    </span><span class="nv">merged</span><span class="o">=</span><span class="k">$(</span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="nv">$current</span><span class="s2"> </span><span class="nv">$add</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">' '</span><span class="w"> </span><span class="s1">'\n'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">'\n'</span><span class="w"> </span><span class="s1">' '</span><span class="k">)</span>
-
-<span class="w">    </span><span class="c1"># Remove existing entries and keep a single AcceptEnv line</span>
-<span class="w">    </span>sudo<span class="w"> </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s1">'/^AcceptEnv/d'</span><span class="w"> </span>/etc/ssh/sshd_config
-<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"AcceptEnv </span><span class="nv">$merged</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sudo<span class="w"> </span>tee<span class="w"> </span>-a<span class="w"> </span>/etc/ssh/sshd_config
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Generating machine SSH key: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MACHINE_SSH_KEY_PATH</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span>ssh-keygen<span class="w"> </span>-t<span class="w"> </span>ed25519<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>ssh_key_email<span class="k">)</span><span class="s2"> (</span><span class="k">$(</span>hostname<span class="w"> </span>-s<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span>hostname<span class="k">)</span><span class="s2">)"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MACHINE_SSH_KEY_PATH</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-N<span class="w"> </span><span class="s2">""</span>
+<span class="w">    </span>chmod<span class="w"> </span><span class="m">0600</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MACHINE_SSH_KEY_PATH</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span>chmod<span class="w"> </span><span class="m">0644</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MACHINE_SSH_PUBLIC_KEY_PATH</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
-<span class="c1">#</span>
-<span class="c1"># @description Configure `sshd` for the repository's container-oriented setup.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>setup_sshd<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>sudo<span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>/var/run/sshd
-<span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.ssh"</span>
-
-<span class="w">    </span>sudo<span class="w"> </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s1">'s/^#PermitRootLogin prohibit-password/PermitRootLogin yes/'</span><span class="w"> </span>/etc/ssh/sshd_config<span class="w"> </span><span class="o">&amp;&amp;</span>
-<span class="w">        </span>sudo<span class="w"> </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s2">"s/^#\?Port .*/Port </span><span class="si">${</span><span class="nv">SSH_PORT</span><span class="si">}</span><span class="s2">/"</span><span class="w"> </span>/etc/ssh/sshd_config<span class="w"> </span><span class="o">&amp;&amp;</span>
-<span class="w">        </span>sudo<span class="w"> </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s1">'s/^#ListenAddress 0.0.0.0/ListenAddress 0.0.0.0/'</span><span class="w"> </span>/etc/ssh/sshd_config<span class="w"> </span><span class="o">&amp;&amp;</span>
-<span class="w">        </span>sudo<span class="w"> </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s1">'s/^#PubkeyAuthentication yes/PubkeyAuthentication yes/'</span><span class="w"> </span>/etc/ssh/sshd_config<span class="w"> </span><span class="o">&amp;&amp;</span>
-<span class="w">        </span>sudo<span class="w"> </span>sed<span class="w"> </span><span class="s1">'s@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g'</span><span class="w"> </span>-i<span class="w"> </span>/etc/pam.d/sshd
-
-<span class="w">    </span>configure_accept_env
-
-<span class="w">    </span><span class="c1"># check the /etc/ssh/sshd_config</span>
-<span class="w">    </span>sudo<span class="w"> </span>/usr/sbin/sshd<span class="w"> </span>-t
-
-<span class="w">    </span><span class="c1"># create .ssh/authorized_keys if not exists</span>
-<span class="w">    </span>touch<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.ssh/authorized_keys"</span>
+<span class="c1"># @description Print the manual GitHub registration steps for the public key.</span>
+<span class="k">function</span><span class="w"> </span>print_registration_instructions<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'\nRegister the public key with the operator'</span><span class="se">\'</span><span class="s1">'s GitHub account for BOTH scopes:\n\n'</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'  gh ssh-key add %q --type authentication\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MACHINE_SSH_PUBLIC_KEY_PATH</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'  gh ssh-key add %q --type signing\n\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MACHINE_SSH_PUBLIC_KEY_PATH</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Without the signing registration, commit.gpgsign=true environments cannot create commits.\n\n'</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Public key:\n'</span>
+<span class="w">    </span>cat<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MACHINE_SSH_PUBLIC_KEY_PATH</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
-<span class="c1">#</span>
-<span class="c1"># @description Start the SSH service after configuration has been validated.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>run_sshd<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="c1"># run sshd</span>
-<span class="w">    </span>sudo<span class="w"> </span>/usr/sbin/service<span class="w"> </span>ssh<span class="w"> </span>start
-<span class="o">}</span>
-
-<span class="c1">#</span>
-<span class="c1"># @description Install, configure, and start the Ubuntu SSH server.</span>
-<span class="c1">#</span>
+<span class="c1"># @description Run the machine key provisioning flow.</span>
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span>install_openssh_server
-<span class="w">    </span>setup_sshd
-<span class="w">    </span>run_sshd
+<span class="w">    </span>ensure_machine_ssh_key
+<span class="w">    </span>print_registration_instructions
 <span class="o">}</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">"/.dockerenv"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>main
-<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>main
 <span class="k">fi</span>
 </code></pre></div>
 
@@ -3823,10 +3800,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../..", "features": ["navigation.top", "content.code.copy"], "search": "../../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../../..", "features": ["navigation.top", "content.code.copy"], "search": "../../../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../../../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

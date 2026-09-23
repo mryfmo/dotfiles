@@ -1353,6 +1353,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../home/dot_local/bin/common/executable_provision-machine-key/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/executable_provision-machine-key
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../home/dot_local/bin/common/executable_remove-agent-asset/" class="md-nav__link">
         
   
@@ -3641,8 +3669,10 @@
 <li><code>check_command</code></li>
 <li><code>check_gh_extensions</code></li>
 <li><code>check_homebrew</code></li>
+<li><code>check_machine_ssh_key</code></li>
 <li><code>check_private_chezmoi</code></li>
 <li><code>main</code></li>
+<li><code>private_layer_enabled</code></li>
 <li><code>run_required_doctor</code></li>
 <li><code>section</code></li>
 <li><code>warn_optional</code></li>
@@ -3732,11 +3762,32 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Return success when the rendered chezmoi config enables the private layer.</span>
+<span class="c1">#   Defaults to enabled when chezmoi/jq are unavailable or the config predates the</span>
+<span class="c1">#   usePrivate key, matching the owner's existing machines' behavior.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>private_layer_enabled<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>use_private
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>chezmoi<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>!<span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>jq<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="nv">use_private</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>chezmoi<span class="w"> </span>data<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.usePrivate'</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">use_private</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"false"</span><span class="w"> </span><span class="o">]</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Print the configured private chezmoi source state.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>check_private_chezmoi<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">private_source</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.local/share/chezmoi-private"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">private_config</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.config/chezmoi-private/chezmoi.yaml"</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>private_layer_enabled<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'not applicable: private layer (usePrivate=false)\n'</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">private_source</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'found:   private source -&gt; %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">private_source</span><span class="si">}</span><span class="s2">"</span>
@@ -3763,6 +3814,19 @@
 <span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span>check_command<span class="w"> </span>brew<span class="w"> </span>--version
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Print whether the per-machine signing/push SSH key exists.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>check_machine_ssh_key<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">key_path</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.ssh/id_ed25519.pub"</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">key_path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'found:   machine SSH key -&gt; %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">key_path</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span>warn_optional<span class="w"> </span><span class="s2">"machine SSH key is missing: </span><span class="si">${</span><span class="nv">key_path</span><span class="si">}</span><span class="s2"> (run provision-machine-key)"</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3795,6 +3859,9 @@
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">"Homebrew"</span>
 <span class="w">    </span>check_homebrew
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">"SSH"</span>
+<span class="w">    </span>check_machine_ssh_key
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">"GitHub CLI extensions"</span>
 <span class="w">    </span>check_gh_extensions

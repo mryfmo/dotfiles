@@ -3,8 +3,7 @@
 # @file install/macos/common/misc.sh
 # @brief Install optional macOS utilities and GUI applications.
 # @description
-#   Installs non-essential brew packages, casks, and user-specific extras for
-#   daily development use.
+#   Installs non-essential brew packages and casks for daily development use.
 
 set -Eeuo pipefail
 
@@ -14,6 +13,7 @@ fi
 
 readonly BREW_PACKAGES=(
     htop
+    tailscale
 )
 
 readonly CASK_PACKAGES=(
@@ -22,11 +22,6 @@ readonly CASK_PACKAGES=(
     google-japanese-ime
     rectangle
     zed
-)
-
-# Additional brew packages installed only for user mryfmo.
-readonly ADDITIONAL_BREW_PACKAGES=(
-    tailscale
 )
 
 #
@@ -82,32 +77,6 @@ function install_brew_cask_packages() {
 }
 
 #
-# @description Install additional brew packages for the primary user only.
-#
-function install_additional_brew_packages() {
-    # Restrict personal packages to the primary user account.
-    if [[ "$(whoami)" != "mryfmo" ]]; then
-        return 0
-    fi
-
-    local missing_packages=()
-
-    for package in "${ADDITIONAL_BREW_PACKAGES[@]}"; do
-        if ! is_brew_package_installed "${package}"; then
-            missing_packages+=("${package}")
-        fi
-    done
-
-    if [[ ${#missing_packages[@]} -gt 0 ]]; then
-        if [[ "${CI:-}" == "true" ]]; then
-            brew info "${missing_packages[@]}"
-        else
-            brew install --force "${missing_packages[@]}"
-        fi
-    fi
-}
-
-#
 # @description Open Google Chrome and prompt it to become the default browser.
 #
 function setup_google_chrome() {
@@ -120,7 +89,6 @@ function setup_google_chrome() {
 function main() {
     install_brew_packages
     install_brew_cask_packages
-    install_additional_brew_packages
 
     # setup_google_chrome
 }

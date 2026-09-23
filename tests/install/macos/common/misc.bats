@@ -41,37 +41,12 @@ function setup() {
     [[ " ${CASK_PACKAGES[*]} " == *" zed "* ]]
 }
 
-@test "[macos] install_additional_brew_packages installs tailscale only for mryfmo" {
-    local calls_path="${BATS_TEST_TMPDIR}/additional_brew_calls.txt"
-    : > "${calls_path}"
+@test "[macos] tailscale is a regular brew package installed for every user" {
+    [[ " ${BREW_PACKAGES[*]} " == *" tailscale "* ]]
+    ! declare -F install_additional_brew_packages > /dev/null
+    ! declare -p ADDITIONAL_BREW_PACKAGES > /dev/null 2>&1
 
-    run env CALLS_PATH="${calls_path}" CI=false bash -c '
-        source "'"${SCRIPT_PATH}"'"
-
-        whoami() {
-            echo "mryfmo"
-        }
-
-        is_brew_package_installed() {
-            return 1
-        }
-
-        brew() {
-            echo "$*" >> "${CALLS_PATH}"
-        }
-
-        install_additional_brew_packages
-    '
-
-    [ "${status}" -eq 0 ]
-
-    run cat "${calls_path}"
-    [ "${status}" -eq 0 ]
-    [ "${output}" = "install --force tailscale" ]
-}
-
-@test "[macos] install_additional_brew_packages skips tailscale for other users" {
-    local calls_path="${BATS_TEST_TMPDIR}/additional_brew_calls_other_user.txt"
+    local calls_path="${BATS_TEST_TMPDIR}/brew_calls.txt"
     : > "${calls_path}"
 
     run env CALLS_PATH="${calls_path}" CI=false bash -c '
@@ -82,16 +57,19 @@ function setup() {
         }
 
         is_brew_package_installed() {
-            return 1
+            [ "$1" != "tailscale" ]
         }
 
         brew() {
             echo "$*" >> "${CALLS_PATH}"
         }
 
-        install_additional_brew_packages
+        install_brew_packages
     '
 
     [ "${status}" -eq 0 ]
-    [ ! -s "${calls_path}" ]
+
+    run cat "${calls_path}"
+    [ "${status}" -eq 0 ]
+    [ "${output}" = "install --force tailscale" ]
 }

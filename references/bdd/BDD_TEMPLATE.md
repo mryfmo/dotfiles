@@ -8,7 +8,7 @@ version: "0.1.0"
 owner: "{{業務ルールの責任者}}"
 updated: "{{YYYY-MM-DD}}"
 requirements: "{{要件正本のパスと版}}"
-gherkin_source: markdown   # markdown＝この文書のフェンスが正本で .feature は生成物｜feature＝.feature が正本でこの文書は写し
+gherkin_source: markdown   # markdown＝この文書のフェンスが正本で .feature は生成物（extract で生成）｜feature＝.feature が正本でこの文書は写し（mirror で書き戻す）
 automation: not_implemented   # not_implemented | partial | implemented
 last_run: not_run             # not_run | passed | failed（自動化済みの範囲の最新結果。実行証跡は実行した水準のテスト設計書に書く）
 ---

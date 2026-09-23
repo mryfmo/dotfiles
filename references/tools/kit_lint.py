@@ -11,12 +11,23 @@ PRD/ADR/BDD 文書を検査する。Gherkin は Cucumber 公式 parser で解析
   python tools/kit_lint.py check        全検査（終了コード 0=合格 / 1=不合格）。テスト設計書（UT・CT・ST・UAT）が
                                         kit.toml にあれば、その割当・由来・テスト名・実行証跡も検査する
   python tools/kit_lint.py trace        追跡表を生成して書き出す
-  python tools/kit_lint.py extract      Markdown 内 Gherkin から .feature を生成
+  python tools/kit_lint.py extract      gherkin_source: markdown の BDD 文書について、Markdown 内 Gherkin から
+                                        .feature を生成する（生成物には marker 行を付ける）。
+                                        gherkin_source: feature の文書には手を出さない（E123、mirror を案内）
+  python tools/kit_lint.py mirror       gherkin_source: feature の BDD 文書について、features/*.feature から
+                                        Markdown のフェンスを書き戻す（marker 行は除く）
   python tools/kit_lint.py selftest     リンター自身の変異試験
 文書検査であり、製品の試験ではない。
 """
 from __future__ import annotations
-import argparse, hashlib, json, os, re, shutil, sys, tempfile, tomllib
+import sys
+if sys.version_info < (3, 11):
+    sys.stderr.write(
+        'kit_lint.py: Python 3.11 以上が必要（tomllib が標準ライブラリに加わったのは '
+        f'3.11: https://docs.python.org/3/library/tomllib.html）。現在: {sys.version.split()[0]}\n'
+    )
+    raise SystemExit(2)
+import argparse, hashlib, json, os, re, shutil, tempfile, tomllib
 import importlib.metadata as im
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -27,6 +38,39 @@ from gherkin.pickles.compiler import Compiler
 from gherkin.stream.id_generator import IdGenerator
 
 FENCE = re.compile(r'^ {0,3}(`{3,}|~{3,})\s*([\w+-]*)\s*$')
+MARKER_PREFIX = '# generated-by: kit_lint extract'
+
+
+def _with_marker(code: str, source_rel: str) -> str:
+    head, nl, rest = code.partition('\n')
+    return head + nl + f'{MARKER_PREFIX} — do not edit; source: {source_rel}\n' + rest
+
+
+def _has_marker(text: str) -> bool:
+    _, _, rest = text.partition('\n')
+    second, _, _ = rest.partition('\n')
+    return second.startswith(MARKER_PREFIX)
+
+
+def _strip_marker(text: str) -> str:
+    head, nl, rest = text.partition('\n')
+    second, nl2, tail = rest.partition('\n')
+    return head + nl + tail if second.startswith(MARKER_PREFIX) else text
+
+
+def _fence_ranges(text: str) -> list[tuple[int, int]]:
+    """d.fences と同じ順序で、各フェンスの (開始行, 終了行) を0始まりの行番号で返す。"""
+    lines = text.splitlines()
+    ranges: list[tuple[int, int]] = []
+    opener, start = None, 0
+    for i, line in enumerate(lines):
+        m = FENCE.match(line)
+        if opener is None:
+            if m: opener, start = (m[1], m[2]), i
+        else:
+            if m and m[1][0] == opener[0][0] and len(m[1]) >= len(opener[0]) and not m[2]:
+                ranges.append((start, i)); opener = None
+    return ranges
 EARS = {
     '常時': r'^システムは、.+$',
     'イベント': r'^.+とき、システムは.+$',
@@ -149,7 +193,10 @@ class Lint:
                 p, _, frag = href.partition('#')
                 target = (d.path.parent / p).resolve() if p else d.path
                 if not target.is_file(): self.err('E016', d.rel, f'リンク切れ: {href}'); continue
-                trel = str(target.relative_to(self.root.resolve())).replace('\\', '/')
+                try:
+                    trel = str(target.relative_to(self.root.resolve())).replace('\\', '/')
+                except ValueError:
+                    self.err('E018', d.rel, f'ルート外へのリンク: {href}'); continue
                 if frag and frag not in anchors.get(trel, set()):
                     self.err('E017', d.rel, f'アンカーが存在しない（明示アンカーのみ可）: {href}')
         self.stats['relative_links'] = nlinks
@@ -481,6 +528,14 @@ class Lint:
         prd = prds[0]; pm = self.parse_prd(prd); self.check_prd(prd, pm)
         parsed = [(d, self.parse_bdd(d)) for d in bdds]
         self.parse_bdd(tpl['bdd'])                       # テンプレートの Gherkin も公式 parser を通す
+        tagmode: dict[str, tuple[str | None, str]] = {}
+        for d, b in parsed:
+            gs = d.meta.get('gherkin_source')
+            if gs not in ('markdown', 'feature'):
+                self.err('E124', d.rel, f'gherkin_source は markdown か feature のいずれかが必要: {gs!r}')
+                gs = None
+            for f in b['features']:
+                if f['tag']: tagmode[f['tag']] = (gs, d.rel)
         rules, scn_by_req = self.check_cross(prd, pm, parsed)
         amap = {a.meta.get('id'): a for a in adrs}
         for a in adrs: self.check_adr(a, pm, amap)
@@ -495,12 +550,35 @@ class Lint:
             self.err('E120', self.cfg['docs']['trace'], '追跡表が正本と不一致（trace を再生成）')
         feats = {f'{f["tag"]}.feature': f['code'] for _, b in parsed for f in b['features'] if f['tag']}
         fdir = self.root / self.cfg['docs']['features_dir']
+        features_rel = self.cfg['docs']['features_dir']
         if write_features:
             fdir.mkdir(exist_ok=True)
-            for old in fdir.glob('*.feature'): old.unlink()
-            for n, c in feats.items(): (fdir / n).write_text(c, encoding='utf-8')
-        have = {p.name: p.read_text(encoding='utf-8') for p in fdir.glob('*.feature')} if fdir.is_dir() else {}
-        if have != feats: self.err('E121', self.cfg['docs']['features_dir'], '.feature が Markdown の Gherkin と不一致（extract を再実行。編集は片方向のみ）')
+            for name, code in feats.items():
+                tag = name[:-len('.feature')]
+                mode, src = tagmode.get(tag, (None, ''))
+                if mode == 'markdown':
+                    (fdir / name).write_text(_with_marker(code, src), encoding='utf-8')
+                elif mode == 'feature':
+                    self.err('E123', f'{features_rel}/{name}', 'gherkin_source: feature のため extract できない（mirror を実行）')
+                # mode is None（front matter 不正）: E124 で既に報告済みなので書かない
+            for p in list(fdir.glob('*.feature')):
+                if p.name in feats: continue  # 既知のフェンスに対応する（markdown/feature どちらのモードでも extract の対象外）
+                if _has_marker(p.read_text(encoding='utf-8')):
+                    p.unlink()  # どのフェンスにも対応しない、かつて extract が生成したファイル＝安全に削除できる
+        have = {p.name: _strip_marker(p.read_text(encoding='utf-8')) for p in fdir.glob('*.feature')} if fdir.is_dir() else {}
+        for name, code in feats.items():
+            tag = name[:-len('.feature')]
+            mode, _src = tagmode.get(tag, (None, ''))
+            if mode is None: continue  # E124 で既に報告済み
+            if have.get(name) != code:
+                msg = ('Markdown のフェンスが .feature と不一致（mirror を再実行。編集は片方向のみ）' if mode == 'feature'
+                       else '.feature が Markdown の Gherkin と不一致（extract を再実行。編集は片方向のみ）')
+                self.err('E121', f'{features_rel}/{name}', msg)
+        if fdir.is_dir():
+            for p in fdir.glob('*.feature'):
+                if p.name in feats: continue
+                if not _has_marker(p.read_text(encoding='utf-8')):
+                    self.err('E122', f'{features_rel}/{p.name}', 'マーカーがない .feature（extract は削除しない。手動で確認する）')
         if tpath.is_file(): all_docs.append(self.load(tpath))
         self.check_markdown(all_docs); self.check_mermaid(all_docs)
         self.stats |= {'documents': len(all_docs), 'fr': len(pm['fr']), 'nfr': len(pm['nfr']), 'rules': len(rules),
@@ -517,13 +595,49 @@ class Lint:
                 'scope': '文書検査のみ。製品試験・承認ではない'}
 
 
+def do_mirror(root: Path) -> dict:
+    """gherkin_source: feature の BDD 文書について、Markdown のフェンスを
+    features/*.feature の内容（マーカー行を除く）で書き戻す。それ以外は触らない。"""
+    lint = Lint(root)
+    bdds = [lint.load(p) for p in lint.globs('bdd')]
+    fdir = root / lint.cfg['docs']['features_dir']
+    changed = []
+    for d in bdds:
+        if d.meta.get('gherkin_source') != 'feature': continue
+        b = lint.parse_bdd(d)
+        ranges = _fence_ranges(d.text)
+        if len(ranges) != len(d.fences): continue  # フェンス走査の不整合。安全のため何もしない
+        lines = d.text.splitlines()
+        edits = []
+        gi = 0
+        for (start, end), (lang, _line, _code) in zip(ranges, d.fences):
+            if lang != 'gherkin': continue
+            tag = b['features'][gi]['tag']; gi += 1
+            if not tag: continue
+            fpath = fdir / f'{tag}.feature'
+            if not fpath.is_file():
+                lint.err('E121', f"{lint.cfg['docs']['features_dir']}/{tag}.feature", 'mirror の対象の .feature が存在しない')
+                continue
+            new_code = _strip_marker(fpath.read_text(encoding='utf-8'))
+            if not new_code.endswith('\n'): new_code += '\n'
+            edits.append((start, end, new_code.splitlines()))
+        for start, end, body_lines in sorted(edits, key=lambda e: -e[0]):
+            lines[start + 1:end] = body_lines
+        new_text = '\n'.join(lines) + '\n'
+        if new_text != d.text:
+            d.path.write_text(new_text, encoding='utf-8')
+            changed.append(d.rel)
+    return {'status': 'passed' if not lint.errors else 'failed', 'changed': changed, 'errors': lint.errors,
+            'executed_at_utc': datetime.now(timezone.utc).isoformat(timespec='seconds')}
+
+
 MUTATIONS = [  # (名前, 対象, 置換前の正規表現, 置換後, 検出すべきコード)
     ('FRを2文にする', 'prd', r'(<a id="FR-001"></a>FR-001 \| [^|]+ \| [^|]+?)。', r'\1。さらに別の義務も負わなければならない。', 'E034'),
     ('FRの型と構文の不一致', 'prd', r'(<a id="FR-001"></a>FR-001 \| )[^|]+ \|', r'\1イベント |', 'E033'),
     ('存在しない根拠ID', 'prd', r'(<a id="FR-001"></a>FR-001 \|[^\n]*?)GOAL-\d{3}', r'\1GOAL-999', 'E037'),
     ('NFRの検証計画欠落', 'prd', r'(<a id="NFR-001"></a>NFR-001 \|[^\n]*?)NVT-\d{3}', r'\1なし', 'E043'),
     ('必須節の改名', 'prd', r'^## 5\. .*$', '## 5. 勝手な節', 'E020'),
-    ('Gherkin構文破壊', 'bdd', r'^(\s+)ならば ', r'\1ナラバ ', 'E050'),
+    ('Gherkin構文破壊', 'bdd', r'ならば (申請者Aに受付番号と内容版 1 と提出日時が表示される)', r'ナラバ \1', 'E050'),
     ('SCN重複', 'bdd', r'@SCN-002', '@SCN-001', 'E064'),
     ('未知の要件タグ', 'bdd', r'(@SCN-001 )@FR-\d{3}', r'\1@FR-999', 'E070'),
     ('PRD受入とBDDタグの不一致', 'bdd', r'(@SCN-001 @FR-\d{3})', r'\1 @FR-020', 'E072'),
@@ -534,8 +648,8 @@ MUTATIONS = [  # (名前, 対象, 置換前の正規表現, 置換後, 検出す
     ('リンク切れ', 'prd', r'\]\(\.\./adr/ADR-0001', '](../adr/ADR-9999', 'E016'),
     ('表の列数不揃い', 'prd', r'^(\| GOAL-001 \|)', r'\1 余分 |', 'E011'),
     ('図を変えると描画証跡が古くなる', 'prd', r'(accTitle: [^\n]+)', r'\1（変更）', 'E103'),
-    ('追跡表の手修正', 'trace', r'\| Must \|', '| Should |', 'E120'),
-    ('.feature の手修正', 'feature', r'ならば ', 'ならば  ', 'E121'),
+    ('追跡表の手修正', 'trace', r'(\[FR-001\]\([^|]*\) \| )Must', r'\1Should', 'E120'),
+    ('.feature の手修正', 'feature', r'ならば (申請者Aに受付番号と内容版 1 と提出日時が表示される)', r'ならば  \1', 'E121'),
     ('NVTの割当が1つでない', 'st', r'^\| NVT-001 \|', '| NVT-010 |', 'E146'),
     ('テスト項目の由来が存在しない', 'ut', r'(\| UT-001 \|[^\n]*?)FR-\d{3}', r'\1FR-999', 'E142'),
     ('設計書のテスト名がコードにない', 'ut', r'`test_valid_draft_has_no_violations`', '`test_renamed_only_in_doc`', 'E152'),
@@ -563,17 +677,93 @@ def selftest(root: Path) -> list[dict]:
         with tempfile.TemporaryDirectory() as tmp:
             t = Path(tmp) / 'k'; shutil.copytree(root, t, ignore=shutil.ignore_patterns('node_modules', '_render', '__pycache__', 'mutants', '.hypothesis', '.pytest_cache'))
             f = t / keys[key].relative_to(root); s = f.read_text(encoding='utf-8')
-            new, n = re.subn(pat, rep, s, count=rest[0] if rest else 1, flags=re.M | re.S)
-            if n < 1: res.append({'mutation': name, 'expect': code, 'status': 'FIXTURE_MISSING'}); continue
+            if rest:
+                # 明示的な count（0＝無制限）が指定された変異は、複数箇所への一括適用を意図している
+                new, n = re.subn(pat, rep, s, count=rest[0], flags=re.M | re.S)
+                if n < 1: res.append({'mutation': name, 'expect': code, 'status': 'FIXTURE_MISSING'}); continue
+            else:
+                # v2 の規則を復元：既定では正規表現はちょうど1箇所に一致しなければならない
+                n_matches = len(re.findall(pat, s, flags=re.M | re.S))
+                if n_matches < 1: res.append({'mutation': name, 'expect': code, 'status': 'FIXTURE_MISSING'}); continue
+                if n_matches > 1: res.append({'mutation': name, 'expect': code, 'status': 'FIXTURE_AMBIGUOUS'}); continue
+                new, n = re.subn(pat, rep, s, count=1, flags=re.M | re.S)
             f.write_text(new, encoding='utf-8')
             errs = Lint(t).run()['errors']
             res.append({'mutation': name, 'expect': code, 'status': 'detected' if any(e.startswith(code) for e in errs) else 'MISSED'})
+
+    def _copy():
+        tmp = tempfile.TemporaryDirectory()
+        t = Path(tmp.name) / 'k'
+        shutil.copytree(root, t, ignore=shutil.ignore_patterns('node_modules', '_render', '__pycache__', 'mutants', '.hypothesis', '.pytest_cache'))
+        return tmp, t
+
+    # gherkin_source: markdown/feature の3変異は、単純な正規表現置換の枠組みに収まらない
+    # （extract/mirror の副作用と、ファイルの生存・不存在を確認する必要がある）ため個別に実装する。
+    name = 'gherkin_source: feature で extract → E123'
+    tmp, t = _copy()
+    with tmp:
+        bdd_path = Lint(t).globs('bdd')[0]
+        text = bdd_path.read_text(encoding='utf-8')
+        new_text, n = re.subn(r'^gherkin_source: markdown.*$', 'gherkin_source: feature', text, count=1, flags=re.M)
+        if n < 1:
+            res.append({'mutation': name, 'expect': 'E123', 'status': 'FIXTURE_MISSING'})
+        else:
+            bdd_path.write_text(new_text, encoding='utf-8')
+            errs = Lint(t).run(write_features=True)['errors']
+            res.append({'mutation': name, 'expect': 'E123', 'status': 'detected' if any(e.startswith('E123') for e in errs) else 'MISSED'})
+
+    name = 'markdown モードでマーカーなし .feature が存在 → E122・削除されない'
+    tmp, t = _copy()
+    with tmp:
+        fdir = t / Lint(t).cfg['docs']['features_dir']
+        rogue = fdir / 'FEAT-900.feature'
+        rogue.write_text('# language: ja\n@FEAT-900\n機能: 手動追加（対応するフェンスなし）\n', encoding='utf-8')
+        errs = Lint(t).run(write_features=True)['errors']
+        status = 'detected' if rogue.is_file() and any(e.startswith('E122') for e in errs) else 'MISSED'
+        res.append({'mutation': name, 'expect': 'E122', 'status': status})
+
+    name = 'feature モードで mirror 後にフェンスを手編集 → E121'
+    tmp, t = _copy()
+    with tmp:
+        bdd_path = Lint(t).globs('bdd')[0]
+        text = bdd_path.read_text(encoding='utf-8')
+        new_text, n = re.subn(r'^gherkin_source: markdown.*$', 'gherkin_source: feature', text, count=1, flags=re.M)
+        if n < 1:
+            res.append({'mutation': name, 'expect': 'E121', 'status': 'FIXTURE_MISSING'})
+        else:
+            bdd_path.write_text(new_text, encoding='utf-8')
+            do_mirror(t)
+            text2 = bdd_path.read_text(encoding='utf-8')
+            text3, n2 = re.subn(r'ならば (申請者Aに受付番号と内容版 1 と提出日時が表示される)', r'ならば  \1', text2, count=1)
+            if n2 < 1:
+                res.append({'mutation': name, 'expect': 'E121', 'status': 'FIXTURE_MISSING'})
+            else:
+                bdd_path.write_text(text3, encoding='utf-8')
+                errs = Lint(t).run()['errors']
+                res.append({'mutation': name, 'expect': 'E121', 'status': 'detected' if any(e.startswith('E121') for e in errs) else 'MISSED'})
+
+    name = 'ルート外への相対リンク → E018'
+    tmp, t = _copy()
+    with tmp:
+        # copytree は root（references/）の中身しか複製しないので、ルート外に実在するリンク先を
+        # 用意するには複製先の兄弟ディレクトリに置く必要がある。
+        (Path(tmp.name) / 'outside.md').write_text('# outside\n', encoding='utf-8')
+        prd_path = Lint(t).globs('prd')[0]
+        text = prd_path.read_text(encoding='utf-8')
+        new_text, n = re.subn(r'\]\(\.\./adr/ADR-0001-ai-authority-boundary\.md\)', '](../../outside.md)', text, count=1)
+        if n < 1:
+            res.append({'mutation': name, 'expect': 'E018', 'status': 'FIXTURE_MISSING'})
+        else:
+            prd_path.write_text(new_text, encoding='utf-8')
+            errs = Lint(t).run()['errors']
+            res.append({'mutation': name, 'expect': 'E018', 'status': 'detected' if any(e.startswith('E018') for e in errs) else 'MISSED'})
+
     return res
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('cmd', choices=['check', 'trace', 'extract', 'selftest'])
+    ap.add_argument('cmd', choices=['check', 'trace', 'extract', 'mirror', 'selftest'])
     ap.add_argument('--root', type=Path, default=Path(__file__).resolve().parents[1])
     ap.add_argument('--json', type=Path, help='結果 JSON の出力先')
     a = ap.parse_args()
@@ -582,6 +772,9 @@ def main() -> int:
         res = selftest(a.root)
         rep = {'status': 'passed' if base['status'] == 'passed' and all(r['status'] in ('detected', 'skipped（対象の文書が無い）') for r in res) else 'failed',
                'baseline': base['status'], 'mutations': res, 'executed_at_utc': base['executed_at_utc']}
+        show = rep
+    elif a.cmd == 'mirror':
+        rep = do_mirror(a.root)
         show = rep
     else:
         rep = Lint(a.root).run(write_trace=a.cmd == 'trace', write_features=a.cmd == 'extract')

@@ -110,10 +110,12 @@ IDは削除しても再利用しない。複数の製品を同じ場所で管理
 |---|---|
 | `python tools/kit_lint.py check` | 全検査。不合格なら終了コード1 |
 | `python tools/kit_lint.py trace` | 追跡表を生成 |
-| `python tools/kit_lint.py extract` | Markdown の Gherkin から `features/*.feature` を生成 |
+| `python tools/kit_lint.py extract` | `gherkin_source: markdown` の BDD 文書について、Markdown の Gherkin から `features/*.feature` を生成 |
+| `python tools/kit_lint.py mirror` | `gherkin_source: feature` の BDD 文書について、`features/*.feature` から Markdown のフェンスを書き戻す |
 | `python tools/kit_lint.py selftest` | 欠陥を注入してリンターが検出できるかを確認 |
 | `python tools/render_mermaid.py --mermaid-dir <mermaidパッケージ>` | 全図を解析・描画し、図ごとのハッシュ付きで証跡を記録 |
 | `python tools/run_examples.py [--mutation]` | 参考実装の UT・CT を実行し、テストごとの結果と確かめたID、入力ファイルのハッシュを証跡に記録 |
 | `python tools/portability_test.py` | 全テンプレートだけから別構成のプロジェクトを作り、リンターが通ることを確認 |
 
-依存は `gherkin-official` と `PyYAML`（描画は `playwright` と npm の `mermaid`、参考実装の実行は `pytest`・`hypothesis`・`pytest-bdd`・`coverage`・`mutmut`）。自分の案件で使うときは `kit.toml` の `[docs]` を自分の文書のパスに書き換える。
+前提条件（Python の版を含む）と各コマンドの詳しいエラーは [tools/README.md](tools/README.md)
+を見る。依存は `gherkin-official` と `PyYAML`（描画は `playwright` と npm の `mermaid`、参考実装の実行は `pytest`・`hypothesis`・`pytest-bdd`・`coverage`・`mutmut`）。自分の案件で使うときは `kit.toml` の `[docs]` を自分の文書のパスに書き換える。

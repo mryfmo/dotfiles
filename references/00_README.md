@@ -31,7 +31,7 @@
 
 1. テンプレートを自分のリポジトリにコピーし、`kit.toml` の `[docs]` を自分の文書のパスに書き換える。
 2. 記載指示書に沿って記入する。見出しに「（任意）」が付く節は、不要なら節ごと削除する。
-3. `python tools/kit_lint.py trace`、`extract`、`check` の順に実行する。依存は `pip install gherkin-official PyYAML`。テスト設計書を使わない場合は、`kit.toml` の `ut`・`ct`・`st`・`uat` の行と `[tests]` を消す。
+3. `python tools/kit_lint.py trace`、`extract`、`check` の順に実行する。前提条件（Python の版、依存の入れ方、`gherkin_source` の意味）とサブコマンド一覧は [tools/README.md](tools/README.md) を見る。テスト設計書を使わない場合は、`kit.toml` の `ut`・`ct`・`st`・`uat` の行と `[tests]` を消す。
 4. 図を変えたら `python tools/render_mermaid.py --mermaid-dir <npm の mermaid>` を実行する。
 
 ## 記入例について

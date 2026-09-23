@@ -1072,6 +1072,34 @@ def read_scannable_text(path: Path) -> str | None:
         return None
 
 
+def git_visible_files(root: Path) -> list[Path] | None:
+    """Every file `git` would let get committed from `root`: tracked files plus
+    untracked files not covered by .gitignore. Returns None (caller falls back to a
+    full filesystem walk) when `root` isn't a git repository or `git` is unavailable,
+    so a gitignored cache or virtualenv anywhere under `root` (e.g. an example
+    project's `.venv`) is never scanned."""
+    try:
+        result = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(root),
+                "ls-files",
+                "-z",
+                "--cached",
+                "--others",
+                "--exclude-standard",
+            ],
+            capture_output=True,
+            check=False,
+        )
+    except OSError:
+        return None
+    if result.returncode != 0:
+        return None
+    return [root / part for part in result.stdout.decode("utf-8").split("\0") if part]
+
+
 def validate_no_obvious_secrets() -> None:
     allowed_secret_placeholders = {
         "GITHUB_PERSONAL_ACCESS_TOKEN",
@@ -1084,7 +1112,15 @@ def validate_no_obvious_secrets() -> None:
         Path("vendor/compactiondb/tests/test_redaction.py"),
         Path("vendor/compactiondb/.claude/contextdb/contextdb/redaction.py"),
     }
-    for path in ROOT.rglob("*"):
+    candidates = git_visible_files(ROOT)
+    if candidates is None:
+        print(
+            f"{ROOT} is not a git repository (or git is unavailable); "
+            "validate_no_obvious_secrets is scanning every file on disk instead",
+            file=sys.stderr,
+        )
+        candidates = list(ROOT.rglob("*"))
+    for path in candidates:
         if not path.is_file():
             continue
         if any(part in {".git", "site", "__pycache__"} for part in path.parts):

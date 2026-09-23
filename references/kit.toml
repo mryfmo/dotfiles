@@ -11,6 +11,9 @@ other = ["*.md", "*/*_GUIDE.md"]
 trace = "04_TRACEABILITY.md"         # 自動生成物
 features_dir = "features"            # 自動生成物（gherkin_source: markdown のとき）
 
+[ids]
+prefix = ""                          # 複数製品を同じ場所で管理するときの接頭辞（例："PAY-"）。空なら無し
+
 [templates]
 prd = "prd/PRD_TEMPLATE.md"
 adr = "adr/ADR_TEMPLATE.md"
@@ -28,6 +31,9 @@ language = "ja"
 max_steps = 7
 max_unique_step_ratio = 0.60
 forbidden_terms = ["テストダブル", "fixture", "スタブ", "モック", "SQL", "DOM", "クリック", "テーブル行"]
+
+[mermaid]
+allowed_types = ["flowchart", "sequenceDiagram", "stateDiagram-v2"]   # Mermaid公式の図種キーワード（E104）
 
 [evidence]
 mermaid = "evidence/mermaid_render.json"

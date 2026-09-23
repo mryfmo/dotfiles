@@ -109,7 +109,12 @@ flowchart LR
 | 実行の契機 | プルリクエストと主ブランチへの統合 |
 | 大きさの宣言 | medium。モジュール全体に `pytest.mark.medium` を付けている |
 | 証跡 | [evidence/example_tests.json](../evidence/example_tests.json)。Gherkin のタグ（SCN・FR・RULE・FEAT）は実行時に `req` の印へ写され、テストごとに記録される |
-| 直近の結果 | 29件すべて合格（BDD 16ケース＋固有のテスト13ケース）。所要時間は証跡 `durations` を参照。`service.py` の分岐カバレッジ 94.4% |
+
+| 項目 | 値 | 証跡のキー |
+|---|---|---|
+| CT件数 | 29 | ct.total |
+| CT合格 | 29 | ct.passed |
+| CT分岐カバレッジ（全体） | 88.4% | ct.branch_coverage_percent |
 
 ## 9. 変更履歴
 

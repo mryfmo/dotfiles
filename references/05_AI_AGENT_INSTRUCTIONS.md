@@ -56,7 +56,7 @@ AI コーディングエージェント（製品は問わない）に PRD・ADR�
 - python tools/kit_lint.py check   → 不合格なら原因を直して再実行する。
   検査を通すために、要件・シナリオ・期待値を削ったり弱めたりしない。
   直せない場合は、不合格の内容と理由を報告する。
-- 図を変えたら python tools/render_mermaid.py を再実行する（古い証跡は check が不合格にする）。
+- 図を変えたら python tools/render_mermaid.py --mermaid-dir <mermaid パッケージ> を再実行する（古い証跡は check が不合格にする）。
 - テストコード・対象コード・.feature を変えたら、テストを再実行して実行証跡を更新する（記入例では
   python tools/run_examples.py --mutation。古い証跡は check が不合格にする）。
 - UT を書いたら、対象モジュールにミューテーションテストをかけ、生き残りの全件に判断を書く。

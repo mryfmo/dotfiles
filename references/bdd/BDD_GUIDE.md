@@ -113,7 +113,7 @@ flowchart LR
 | 非同期 | 観測の期限、確認の間隔、重複の定義を決める |
 | 合否 | 未定義・曖昧・保留のステップ、必要なシナリオのスキップは不合格。通すために期待値を弱めない。期待値を変えるなら、業務の変更か実装の不具合かを7章に書く |
 | 実行ツール | `ルール` と `# language: ja` を解釈できることを確かめる。公式 parser を使う実装（Cucumber-JVM、Cucumber.js、pytest-bdd 8 以降、Reqnroll など）なら解釈できる |
-| 正本の移管 | 実行ツールを入れたら、`extract` で生成した `.feature` を正本にし、front matter を `gherkin_source: feature` に変える。以後は `.feature` だけを編集する。両方を手で直す運用はしない |
+| 正本の移管 | 実行ツールを入れたら、`extract` で生成した `.feature` を正本にし、front matter を `gherkin_source: feature` に変える。以後は `.feature` だけを編集し、Markdown 側のフェンスは `mirror` で書き戻す（Markdown を直接編集しない）。両方を手で直す運用はしない |
 
 BDD で確かめないもの（負荷、復旧、内部の一貫性、アクセシビリティ、AI の統計的な品質）は、6章に NVT のIDで書く。
 

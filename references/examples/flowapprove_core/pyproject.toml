@@ -20,5 +20,5 @@ branch = true
 source = ["flowapprove"]
 
 [tool.mutmut]
-paths_to_mutate = ["flowapprove/domain.py"]
-tests_dir = ["tests/unit"]
+source_paths = ["flowapprove/domain.py"]
+pytest_add_cli_args_test_selection = ["tests/unit"]

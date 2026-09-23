@@ -8,6 +8,7 @@ import importlib.util
 import io
 import json
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -486,6 +487,25 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         path = self.temp_dir / "docs/reference/leaky-utf16.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(("to" + 'ken = "real-secret"\n').encode("utf-16"))
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_no_obvious_secrets()
+
+    def init_git_repo(self) -> None:
+        subprocess.run(["git", "init", "-q", str(self.temp_dir)], check=True)
+
+    def test_secret_scan_ignores_gitignored_files(self) -> None:
+        self.init_git_repo()
+        self.write_text_file(".gitignore", "ignored_secret.md\n")
+        self.write_text_file("tracked_clean.md", "nothing interesting here\n")
+        self.write_text_file("ignored_secret.md", "to" + 'ken = "real-secret"\n')
+
+        self.module.validate_no_obvious_secrets()
+
+    def test_secret_scan_checks_git_visible_files(self) -> None:
+        self.init_git_repo()
+        self.write_text_file(".gitignore", "ignored_secret.md\n")
+        self.write_text_file("visible_secret.md", "to" + 'ken = "real-secret"\n')
 
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_no_obvious_secrets()

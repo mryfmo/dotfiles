@@ -5,6 +5,13 @@
 {{-   $email = promptString "Email address" -}}
 {{- end -}}
 
+{{- $name := "" -}}
+{{- if hasKey . "name" -}}
+{{-   $name = .name -}}
+{{- else -}}
+{{-   $name = promptString "Full name" -}}
+{{- end -}}
+
 {{- $system := "" -}}
 {{- if hasKey . "system" -}}
 {{-   $system = .system -}}
@@ -25,6 +32,7 @@ sourceDir: {{ .chezmoi.workingTree | quote }}
 
 data:
     email: {{ $email | quote }}
+    name: {{ $name | quote }}
     system: {{ $system | quote }}
     homeDir: {{ $homeDir | quote }}
     homeDirName: {{ $homeDirName | quote }}

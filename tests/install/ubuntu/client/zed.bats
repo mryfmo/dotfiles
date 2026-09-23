@@ -31,8 +31,6 @@ function setup() {
 }
 
 @test "[ubuntu-client] main downloads, verifies, and links zed when not already installed" {
-    mkdir -p "${BATS_TEST_TMPDIR}/.local/share"
-
     run env HOME="${BATS_TEST_TMPDIR}" bash -c '
         source "'"${PINS_PATH}"'"
         source "'"${SCRIPT_PATH}"'"

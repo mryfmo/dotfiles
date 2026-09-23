@@ -68,9 +68,9 @@ function install_pinned_zed() (
     }
 
     tar -xzf "${download}" -C "${tmpdir}" || return
+    mkdir -p "$(dirname "${ZED_APP_DIR}")" || return
     rm -rf "${staging}"
     mv "${tmpdir}/zed.app" "${staging}" || return
-    mkdir -p "$(dirname "${ZED_APP_DIR}")" || return
     rm -rf "${ZED_APP_DIR}"
     mv "${staging}" "${ZED_APP_DIR}"
 )

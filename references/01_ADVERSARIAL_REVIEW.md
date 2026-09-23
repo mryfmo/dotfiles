@@ -59,3 +59,152 @@
 ## 5. このレビューの限界
 
 サンプルの業務内容（FlowApprove）は架空で、実在の業務責任者による妥当性確認は受けていない。意味の十分性（シナリオが業務上足りているか）は機械検査の対象外である。出典のうち今回再確認していないものは 02 に明示した。
+
+## 6. v4 での追補
+
+この節は v1 レビュー本文（上記1〜5章）を書き換えずに追記する。対象は、この後の敵対的レビュー（`/home/moriya/Workspace/dotfiles/.agents/worklog/claude/ai-references-vivid-sparrow.md` 第1部、v3 に対する指摘91件）と、それに対する是正プログラム（refkit-P0〜P10）の進捗である。凡例：**済**＝この枝（`feat/references-kit-v4-p3`）が実際に持つ内容として受入済み。**予定**＝受入済みまたは計画済みのタスクが担当するが未着手・未反映。「設計判断により不採用」の例は、現時点の受入記録に一件も無い。
+
+### (a) 91件の指摘の対応状況
+
+#### A. パッケージ層
+
+| ID | 指摘 | 対応タスク | 状態 |
+|---|---|---|---|
+| A-01 | loose層がv2/v3のキメラ | refkit-P1 | 済 |
+| A-02 | 04がloose PRD/BDDと矛盾 | refkit-P1 | 済 |
+| A-03 | 90_TEST_SUITEの是正が反映されていない | refkit-P1 | 済 |
+| A-04 | README/02/90が2組、正本不明 | refkit-P1 | 済 |
+| A-05 | loose層の相対リンク約95件ダングリング | refkit-P1 | 済 |
+| A-06 | loose文書の依存先がzipの中にしかない | refkit-P1 | 済 |
+| A-07 | ファイル名誤字（DEVISIONS） | refkit-P1 | 済 |
+| A-08 | 四重の重複とzip-in-zip | refkit-P1 | 済 |
+| A-09 | 時刻基準の混在 | refkit-P1 | 済（archive/README に記録） |
+| A-10 | 完全性の錨（SHA256SUMS）がない | refkit-P1 | 済 |
+| A-11 | Git衛生（未追跡・gitignore漏れ） | refkit-P1 | 済 |
+| A-12 | READMEの手順がloose層で実行不能 | refkit-P1 | 済 |
+| A-13 | 数値の照合（指摘19件／図11／図20等） | （第2部に対応タスクの明記なし） | 済（refkit-P1 の基準再現で確認。v1「25ファイル／16図」は検証不能のまま＝既知の限界） |
+
+#### B. PRD
+
+| ID | 指摘 | 対応タスク | 状態 |
+|---|---|---|---|
+| B-01 | GRD-002とFR-022の矛盾 | refkit-P3・refkit-P4（ADR-0003） | 済 |
+| B-02 | FR-015とFR-028の優先関係未定義 | refkit-P3・refkit-P4（ADR-0004） | 済 |
+| B-03 | GRD-001がFR-014の監査記録から計測不能 | refkit-P3（FR-029）・refkit-P5 | 済 |
+| B-04 | KPI-001基準値が計測不能 | refkit-P3 | 済 |
+| B-05 | 版の取り違え（1章 vs front matter） | refkit-P3 | 済 |
+| B-06 | FR-017優先度の不整合（実質Must） | refkit-P3・refkit-P4 | 済 |
+| B-07 | Could要件（FR-023）がG2を塞ぐ | refkit-P3・refkit-P5 | 済 |
+| B-08 | SUBMITTEDの自動取消設計の破綻 | refkit-P3・refkit-P5 | 済 |
+| B-09 | 「内容版」定義がPRDとBDDで不一致 | refkit-P3・refkit-P5 | 済 |
+| B-10 | 15章0.4.0の影響ID不完全 | refkit-P3 | 済 |
+| B-11 | KPI-002計測手段が成立しない | refkit-P3・refkit-P8-a（KPI-002 計測手段セル） | 済 |
+| B-12 | 理由文の長さの置き場がずれている | refkit-P3 | 済 |
+| B-13 | 単位の不統一（コードポイント） | refkit-P3 | 済 |
+| B-14 | 検査ID範囲の不一致（E032〜E038等） | refkit-P3 | 済 |
+| B-15 | 未起票ADRとG1条件の抜け | refkit-P3 | 済 |
+
+#### C. ADR
+
+| ID | 指摘 | 対応タスク | 状態 |
+|---|---|---|---|
+| C-01 | ADR-0002案Aで通知監視手段が未定義 | refkit-P4（ADR-0004） | 済 |
+| C-02 | ADR-0001のaddressesが過大（FR-024） | refkit-P4（ADR-0003） | 済 |
+| C-03 | 案Cの文言がシステム主体の状態変更を排除 | refkit-P3（ACT-006）・refkit-P4（ADR-0003） | 済 |
+| C-04 | 悪い点に掃除と再送競合の接続がない | refkit-P3・refkit-P4 | 済 |
+| C-05 | 関連欄がRULE-010を誤って含む | refkit-P4 | 済 |
+| C-06 | 置換手順とE086の順序問題（proposed中の片方向） | refkit-P4b | 予定（refkit-P4b） |
+| C-07 | ADRのdateとPRD履歴の関係（起票日欠如） | refkit-P4（テンプレートの proposed-on 追加） | 済（テンプレート対応）。ADR-0003／0004本体への付与は予定（refkit-P4b） |
+
+#### D. BDD
+
+| ID | 指摘 | 対応タスク | 状態 |
+|---|---|---|---|
+| D-01 | BDDがPRDに無い要求（履歴）を作っている | refkit-P3（FR-029）・refkit-P5 | 済 |
+| D-02 | fault injectionをGherkinに書いている | refkit-P5（SCN-022置換） | 済。`forbidden_terms` への追加は予定（refkit-P4b） |
+| D-03 | last_run:passedに証跡結び付きがない | refkit-P2-B・refkit-P5 | 済 |
+| D-04 | ステップ語彙表が登録簿として機能していない | refkit-P5（内容） | 済（内容）。機械検査（E063）自体は予定（refkit-P4b） |
+| D-05 | 網羅表の委譲先誤り（NVT-002） | refkit-P5 | 済 |
+| D-06 | 検索に対する「対象なし」拒否 | refkit-P3（FR-002注記）・refkit-P5（SCN-007変更） | 済 |
+| D-07 | SCN-018の期待値が弱い（拒否理由未検証） | refkit-P5 | 済 |
+| D-08 | 境界日（90日当日／96日）の未検証 | refkit-P5 | 済 |
+| D-09 | 2章Discovery記録が生成物に委ねている | refkit-P5 | 済 |
+| D-10 | 7章「実行結果」列の語彙不統一 | refkit-P5 | 済 |
+
+#### E. ツール・証跡
+
+| ID | 指摘 | 対応タスク | 状態 |
+|---|---|---|---|
+| E-01 | gherkin_source未実装、extractが.featureを破壊 | refkit-P2-A | 予定（この枝には未反映。P2-A の `gherkin_source`／`mirror`／E122・E123 は `feat/references-kit-v4` 側の実装で、`feat/references-kit-v4-p3` の `tools/kit_lint.py` には無い。この枝には `extract`／E120・E121 のみがある） |
+| E-02 | 報告parser版（42.0.1）と証跡（29.0.0）の食い違い | refkit-P1（原因確認）・refkit-P8-a／refkit-P9（記述修正・証跡再生成） | 済（原因特定・90 §3／§5 の記述修正はrefkit-P8-aで実施）。証跡の再生成は予定（refkit-P9） |
+| E-03 | selftestがサンプル専用でF-02と矛盾 | refkit-P2-C | 予定（refkit-P2-C） |
+| E-04 | BDD文書で証跡なしpassedが通る | refkit-P2-B | 予定（この枝には未反映。E155 はこの枝の `kit_lint.py` に無い） |
+| E-05 | モジュール単位reqマーカーによるverifies水増し | refkit-P6 | 予定（refkit-P6） |
+| E-06 | Mermaid証跡検査対象範囲が描画側と食い違う | refkit-P2-C | 予定（refkit-P2-C） |
+| E-07 | 図種制限が未実装 | refkit-P2-C | 予定（refkit-P2-C） |
+| E-08 | ルート外リンクで例外停止 | refkit-P2-A | 予定（この枝には未反映） |
+| E-09 | 移植性試験が失敗する設定節を省いている | refkit-P2-B | 予定（この枝には未反映） |
+| E-10 | E158が部分文字列検査で誤魔化せる | refkit-P2-B | 予定（この枝には未反映。E159 はこの枝の `kit_lint.py` に無い） |
+| E-11 | IDの過不足（SHA-256誤検出等） | refkit-P2-B | 予定（この枝には未反映。`[ids] prefix` はこの枝の `kit.toml` に無い） |
+| E-12 | E150/E151がUAT複数文書前提 | refkit-P2-B | 予定（この枝には未反映） |
+| E-13 | run_examples.pyの脆さと分岐カバレッジ誤記 | refkit-P2-C | 予定（refkit-P2-C） |
+| E-14 | Python≥3.11要件が利用者向けに書かれていない | refkit-P2-A | 予定（この枝には未反映） |
+| E-15 | selftestの網羅が検査コードの約半分 | refkit-P2-B | 予定（この枝には未反映） |
+| E-16 | 証跡は署名なし、Chromium --no-sandbox | refkit-P2-C | 予定（refkit-P2-C） |
+| E-17 | selftestのre.subn一致回数が緩んでいる | refkit-P2-A | 予定（この枝には未反映） |
+
+注：E-01・E-04・E-08〜E-12・E-14・E-15・E-17 は、`feat/references-kit-v4` 枝（`dotfiles-w1` ワークツリー）の refkit-P2-A／P2-B としては受入済みだが、本枝（`feat/references-kit-v4-p3`、`dotfiles-w2`）の `tools/kit_lint.py`・`kit.toml` には未だ取り込まれていないことを、この節の執筆時（refkit-P8-a）に直接確認した（`grep` で `gherkin_source`・`mirror`・`[ids]`・`prefix`・E122・E123・E159 のいずれも本枝のコードに存在しない）。プログラム全体としては済んでいるが、本枝の実装としては予定として扱う。
+
+#### F. 共通文書
+
+| ID | 指摘 | 対応タスク | 状態 |
+|---|---|---|---|
+| F-01 | 03§6ゲート表が第3の正本になっている | refkit-P8-b | 予定（refkit-P8-b。`03_CONVENTIONS.md` は本タスク refkit-P8-a の対象外） |
+| F-02 | 「汎用リンター」の主張と実装の食い違い | refkit-P8-a（本節） | 済（記述訂正）。実装（`[ids] prefix`・複数PRD対応）自体はrefkit-P2-Bだが、本枝には未反映（下記(b)参照） |
+| F-03 | 「反対側は生成物」が片方向にしか成立しない | refkit-P8-a（02判断表への反映） | 済（本枝の実装＝`extract`／E121の一方向を正しく記述）。`mirror`／E122・E123 を含む双方向対応は refkit-P2-A 側のみで、本枝には未反映 |
+| F-04 | 06§5テスト名検査がPython限定 | refkit-P8-a（本節） | 済 |
+| F-05 | 02の出典の一部が「今回確認」根拠が弱い | refkit-P8-a（本節） | 済 |
+| F-06 | 04_TRACEABILITYの検証空白がW160として現れない | refkit-P4b（linter W160）・refkit-P7（文書側） | 済（文書側：UT_SAMPLE §1 の FR-005・FR-009・FR-026 記述）。リンターへの W160 実装は予定（refkit-P4b） |
+| F-07 | 05§2役割宣言が古い（テスト設計書が抜けている） | refkit-P8-a（本節） | 済 |
+| F-08 | 00_README削除手順が不完全 | refkit-P8-a（本節） | 済 |
+
+#### G. テスト設計書層・参考実装
+
+| ID | 指摘 | 対応タスク | 状態 |
+|---|---|---|---|
+| G-01 | 終端状態の申請を編集できる | refkit-P3（PRD側=FR-005一般化）・refkit-P6（実装） | 済（PRD側）。実装（service.py）の欠陥自体は予定（refkit-P6） |
+| G-02 | 冪等キーがグローバルで衝突する | refkit-P3（PRD側=FR-015の識別定義）・refkit-P6（実装） | 済（PRD側）。実装は予定（refkit-P6） |
+| G-03 | 非所有者が監査行を偽造できる | refkit-P6 | 予定（refkit-P6） |
+| G-04 | 未検証actionと不在申請で素の例外 | refkit-P6 | 予定（refkit-P6） |
+| G-05 | 観測API（state_of/history/notifications）に認可がない | refkit-P6 | 予定（refkit-P6） |
+| G-06 | トランザクションロールバックが別名で漏れる | refkit-P6 | 予定（refkit-P6） |
+| G-07 | test_transition_table_is_exhaustiveがトートロジー | refkit-P6 | 予定（refkit-P6） |
+| G-08 | 変異スコア98.5%が業務定数を含まない | refkit-P6 | 予定（refkit-P6） |
+| G-09 | モジュール一括reqマーカーによるverified_ids水増し | refkit-P6 | 予定（refkit-P6） |
+| G-10 | CTがストア内部を直接読む | refkit-P6 | 予定（refkit-P6） |
+| G-11 | UT_GUIDE§5禁止パターン（ループ期待値、normalize再実装） | refkit-P6 | 予定（refkit-P6） |
+| G-12 | CT-003決定表が大半退化 | refkit-P6 | 予定（refkit-P6） |
+| G-13 | 同時実行テストが順序では失敗し得ない | refkit-P6 | 予定（refkit-P6） |
+| G-14 | 測っていない数値が測定値として書かれている | refkit-P2-C（実測）・refkit-P6（Hypothesis derandomize）・refkit-P7（文書側） | 済（文書側：prose→証跡キー参照化）。実測部分は予定（refkit-P2-C・refkit-P6） |
+| G-15 | 設計書由来とコードreqマーカーの不一致 | refkit-P6 | 予定（refkit-P6） |
+| G-16 | largeマーカーが未宣言 | refkit-P6 | 予定（refkit-P6） |
+| G-17 | k6の例が測るべき操作を測っていない | refkit-P7 | 済 |
+| G-18 | ST_SAMPLE認証状態の扱いが自己矛盾 | refkit-P7 | 済 |
+| G-19 | 暫定結果でゲートを通す | refkit-P7 | 済 |
+| G-20 | PTセッションの実施者が品質担当 | refkit-P7 | 済 |
+| G-21 | 出典の無い主張（CT_GUIDE§1） | refkit-P7 | 済 |
+
+### 集計
+
+- 済：A-01〜A-13（全13）、B-01〜B-15（全15）、C-01〜C-05・C-07（6／7。C-06のみ予定）、D-01〜D-10（全10、一部は内容のみ済で機械検査は予定）、E-00（0／17。全件が本枝には未反映）、F-02〜F-08（全8。ただし F-02／F-03 は「記述の訂正」が済で、根拠の実装は別枝）、G-01・G-02・G-17〜G-21（7／21）
+- 予定：C-06、D-02・D-04（機械検査のみ）、E-01〜E-17（全17。本枝には未反映）、F-01、F-06（リンター側）、G-03〜G-16（14／21）
+- 設計判断により不採用：0件（refkit-P0〜P7 の受入記録にこの分類の例は無い）
+
+### (b) F-02／F-14 の是正記述（v3 実装への注記）
+
+本文の F-02・F-14（上記2章）は、v1 キットに対する指摘であり、本文自体は変更しない。v3・v4 の実装状況を踏まえた注記のみ、ここに追記する。
+
+- **F-02**：本質的な是正は「`kit.toml` で対象を指定する汎用リンターへの置換」だったが、v3 でも `kit.toml` の `prd` は単一ファイル（`prd = ["prd/PRD_SAMPLE.md"] # 要件正本（1件）`）に限られ、ID の正規表現も接頭辞に対応していなかった（`03_CONVENTIONS.md` §3 に「リンターの ID パターンは接頭辞に対応していない」という但し書きがあった）。この残存ギャップは、複数 PRD 対応と `kit.toml [ids] prefix` 設定を実装する refkit-P2-B（計画上の P2-02）で解消される。ただし本枝（`feat/references-kit-v4-p3`）の `tools/kit_lint.py`・`kit.toml` を直接確認した限り、`[ids]` セクション・`prefix` キーは存在せず、`ID` 正規表現は `r'[A-Z]+-\d{3,4}'` のまま固定、`run()` も `prd = prds[0]` で単一 PRD 前提のままである。refkit-P2-B は `feat/references-kit-v4` 枝（`dotfiles-w1` ワークツリー）で実装・受入済みだが、本枝にはまだ取り込まれていない。したがって「汎用リンター」の主張は、プログラム全体としては refkit-P2-B で満たされる予定だが、本枝の現状はまだ満たしていない。
+- **F-14**：本質的な是正（`@FR-001` をそのまま使い、NFR タグも許可）は v2 以降ずっと維持されており、これは今も正しい。ただし、当時「不要」と判定した `@req_FR_001` への変換に代えて、複数 PRD 運用時の名前空間付き ID（接頭辞つき ID）を検査器が拒否する、という別の残存課題があった。これも refkit-P2-B の `[ids] prefix` 対応で解消される計画だが、上記と同様、本枝にはまだ反映されていない。
+
+これらの記述は、01 本文の是正欄を書き換えるのではなく、v4 の実装状況に照らした状態注記として本節に置く（task refkit-P8-a item 2(b) の指示どおり）。

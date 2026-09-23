@@ -1,25 +1,25 @@
 # 検証報告
 
-版 3.0.0（2026-09-19）。版 2.0.0 の PRD・ADR・BDD に、UT・CT・ST／E2E・UAT／PT を加えた全体について、何を実行して確かめ、何を確かめていないかを記録する。
+版 4.0.0（<P9>）。版3.0.0 の PRD・ADR・BDD・UT・CT・ST／E2E・UAT／PT について、敵対的レビュー（01_ADVERSARIAL_REVIEW.md の「v4 での追補」）で見つかった指摘を是正した全体について、何を実行して確かめ、何を確かめていないかを記録する。数値・結果は次回の検証実行（refkit-P9）まで `<P9>` とする。
 
 ## 1. 実行した検証と結果
 
 | 検証 | 方法 | 結果 | 証跡 |
 |---|---|---|---|
-| 文書の全検査 | `python tools/kit_lint.py check` | 合格（エラー0・警告0）。文書 30、FR 28・NFR 9・ルール 23・シナリオ 41（展開後 68 ケース）・ADR 2・図 20。テスト項目は UT 18・CT 6・旅程 5・受入シナリオ 7・探索セッション 4、ペルソナ 6 | `evidence/kit_lint_check.json` |
-| Gherkin の構文 | Cucumber 公式 parser（gherkin-official 42.0.1）で、記入例の8機能とテンプレートの1機能を解析し pickle に展開 | すべて成功 | 同上 |
-| テンプレートと記入例の一致 | 必須節・節の順序・表の見出し・front matter のキーと語彙を機械照合 | PRD・ADR 2件・BDD・UT・CT・ST・UAT とも一致 | 同上 |
-| 要件・ルール・ADR の整合 | 版 2.0.0 と同じ検査（EARS、根拠、受入、双方向照合、ADR の語彙と選択肢） | 適合 | 同上 |
-| テスト設計書の整合 | 由来のIDの実在、1章の由来が本文で扱われているか、旅程が通るシナリオ・ペルソナの主体の実在、全 NVT がちょうど1つの水準に割当、BDD の全機能が CT か ST に割当、accepted の ADR を由来とするテスト項目の存在、全 GOAL に受入シナリオ、全主体の扱い | 適合。NVT は CT に3件・ST に8件 | 同上 |
-| 設計書とテストコードの対応 | 設計書の「テスト名」22件が、テストコードに実在するか | すべて実在 | 同上 |
-| **UT の実行** | 参考実装のドメイン規則に対し、pytest＋Hypothesis（状態機械のプロパティを含む） | 125件すべて合格。`domain.py` の分岐カバレッジ 100% | `evidence/example_tests.json` |
-| **ミューテーションテスト** | mutmut で `domain.py` に68件の変異を注入 | 67件を検出（98.5%）。生き残り1件は例外メッセージの文言で、仕様でないため受容。**初回は5件が生き残り、弱いテスト2種を見つけて是正した**（UT_SAMPLE 6章） | 同上 |
-| **CT の実行（BDD の実行を含む）** | BDD 文書から生成した `features/FEAT-004.feature`（`# language: ja`、`ルール`、シナリオアウトライン）を、pytest-bdd で無加工のまま決裁サービスに対して実行。同時実行・障害注入・認可の決定表のテストを追加 | 29件すべて合格（BDD 16ケース＋固有13ケース）。`service.py` の分岐カバレッジ 94.4% | 同上 |
-| 実行証跡の鮮度と数値 | 証跡に記録した対象コード・テストコード・`.feature` の SHA-256 を現行と照合。設計書に書いた件数・カバレッジ・スコアを証跡と照合 | 一致。**この照合で、CT_SAMPLE のカバレッジの記載が再実行後の値とずれていたのを検出して直した** | `evidence/kit_lint_check.json` |
-| ST 記入例のコード | Playwright の例を `@playwright/test` 1.63.0 の型定義で TypeScript の型検査（strict）。k6 の例を `node --check` で構文検査 | どちらも合格。**実行はしていない** | 証跡ファイルなし（5章の手順で再現） |
-| Mermaid の描画 | 公式 npm 配布物の Mermaid 11.14.0 と 12.0.0 を Chromium で実行し、全20図を解析・描画。不正な図が拒否されることも確認 | 両方の版で 20/20 成功。全図に代替テキストあり | `evidence/mermaid_render.json` |
-| リンターの変異試験 | 30種類の欠陥を1つずつ注入。版 2.0.0 の18種に、NVT の二重割当、存在しない由来、コードに無いテスト名、古い実行証跡、受入シナリオの無い目的、未割当の機能、front matter の語彙外、証跡の無い合格、存在しない主体とシナリオ、本文に出てこない由来、証跡と食い違う結果の12種を追加 | 30件とも検出 | `evidence/kit_lint_selftest.json` |
-| 移植性 | 7種類のテンプレートだけから、別名・別ディレクトリ構成でテストコードの無い最小プロジェクトを作り、`trace`・`extract`・`check` を実行 | 合格（Mermaid 証跡が無い旨の警告のみ） | `evidence/portability_test.json` |
+| 文書の全検査 | `python tools/kit_lint.py check` | <P9> | `evidence/kit_lint_check.json` |
+| Gherkin の構文 | Cucumber 公式 parser（3章の環境の版）で、記入例の8機能とテンプレートの1機能を解析し pickle に展開 | <P9> | 同上 |
+| テンプレートと記入例の一致 | 必須節・節の順序・表の見出し・front matter のキーと語彙を機械照合 | <P9> | 同上 |
+| 要件・ルール・ADR の整合 | 版 2.0.0 と同じ検査（EARS、根拠、受入、双方向照合、ADR の語彙と選択肢） | <P9> | 同上 |
+| テスト設計書の整合 | 由来のIDの実在、1章の由来が本文で扱われているか、旅程が通るシナリオ・ペルソナの主体の実在、全 NVT がちょうど1つの水準に割当、BDD の全機能が CT か ST に割当、accepted の ADR を由来とするテスト項目の存在、全 GOAL に受入シナリオ、全主体の扱い | <P9> | 同上 |
+| 設計書とテストコードの対応 | 設計書の「テスト名」がテストコードに実在するか（Python の関数名一致。06_TEST_STRATEGY.md §5） | <P9> | 同上 |
+| **UT の実行** | 参考実装のドメイン規則に対し、pytest＋Hypothesis（状態機械のプロパティを含む） | <P9> | `evidence/example_tests.json` |
+| **ミューテーションテスト** | mutmut で `domain.py` に変異を注入 | <P9> | 同上 |
+| **CT の実行（BDD の実行を含む）** | BDD 文書から生成した `features/FEAT-004.feature`（`# language: ja`、`ルール`、シナリオアウトライン）を、pytest-bdd で無加工のまま決裁サービスに対して実行。同時実行・障害注入・認可の決定表のテストを追加 | <P9> | 同上 |
+| 実行証跡の鮮度と数値 | 証跡に記録した対象コード・テストコード・`.feature` の SHA-256 を現行と照合。設計書に書いた件数・カバレッジ・スコア（現状は `durations` 等の証跡キーへの参照に置換済み。refkit-P7）を証跡と照合 | <P9> | `evidence/kit_lint_check.json` |
+| ST 記入例のコード | Playwright の例を `@playwright/test`（3章の環境の版）の型定義で TypeScript の型検査（strict）。k6 の例を `node --check` で構文検査 | <P9>（いずれも実行はしていない） | 証跡ファイルなし（5章の手順で再現） |
+| Mermaid の描画 | 公式 npm 配布物の Mermaid（3章の環境の版）を Chromium で実行し、全図を解析・描画。不正な図が拒否されることも確認 | <P9> | `evidence/mermaid_render.json` |
+| リンターの変異試験 | 欠陥を1つずつ注入する `selftest`。版 2.0.0 の18種に、テスト設計書関連の欠陥を追加 | <P9> | `evidence/kit_lint_selftest.json` |
+| 移植性 | 7種類のテンプレートだけから、別名・別ディレクトリ構成でテストコードの無い最小プロジェクトを作り、`trace`・`extract`・`check` を実行 | <P9> | `evidence/portability_test.json` |
 
 ## 2. 作成物に対する敵対的レビューで見つけ、直したもの
 
@@ -39,14 +39,18 @@
 
 ## 3. 環境
 
-| 項目 | 値 |
-|---|---|
-| Python | 3.12.3 |
-| gherkin-official・PyYAML | 42.0.1、6.0.3 |
-| pytest・Hypothesis・pytest-bdd・coverage.py・mutmut | 9.1.1、6.168.0、8.1.0、7.16.1、3.8.0 |
-| Node.js・TypeScript・@playwright/test | 22.22.2、7.0.2、1.63.0（型検査のみ） |
-| Mermaid | 11.14.0、12.0.0。いずれも npm の公式配布物 `dist/mermaid.min.js` |
-| ブラウザ | Playwright 同梱の Chromium（版は `evidence/mermaid_render.json` に記録） |
+検査は最低2つの独立した Python 環境で行う。`gherkin-official` の解決結果がインストール経路で変わるため（`kit_lint.py check`・`trace`・`extract`・`selftest` は `gherkin-official`・`PyYAML` だけを直接インストールし PyPI の最新版が解決される。`run_examples.py` は同じ環境に `pytest-bdd` も入れるため、その依存ピンにより古い `gherkin-official` が解決される場合がある。これは証跡の破損ではなくインストール経路の違いによる。根本原因は refkit-P1 の報告に詳しい）。値は次回の検証実行（refkit-P9）で埋める。
+
+| 項目 | 値 | どの検査で使うか |
+|---|---|---|
+| Python | <P9> | 共通 |
+| gherkin-official（環境A：`kit_lint.py` 単独導入） | <P9> | `kit_lint.py check`・`trace`・`extract`・`selftest` |
+| gherkin-official（環境B：`pytest-bdd` 経由の解決） | <P9> | `run_examples.py`（UT・CT の実行） |
+| PyYAML | <P9> | `kit_lint.py` 全般（環境A） |
+| pytest・Hypothesis・pytest-bdd・coverage.py・mutmut | <P9> | `run_examples.py`（環境B） |
+| Node.js・TypeScript・@playwright/test | <P9> | ST 記入例のコードの型検査 |
+| Mermaid | <P9> | `render_mermaid.py` |
+| ブラウザ | <P9> | `render_mermaid.py`（Chromium） |
 
 ## 4. 実施していないこと
 
@@ -57,23 +61,28 @@
 | 実物の DB に対する CT | 参考実装の保存先はメモリ上のフェイク。トランザクションと同時更新の確認は、フェイクに対してだけ成立している。CT-005（フェイクと実物の契約テスト）は未実装で、CT_SAMPLE 7章に「未達」と明記 |
 | 契約テスト（CT-006 ほか）、FEAT-004 以外の BDD の自動化、NVT-011、NVT-002 の決裁以外の分岐 | 未実装。CT_SAMPLE に「未自動化」「未実行」と明記 |
 | Playwright・k6・評価基盤・Testcontainers・Pact・Schemathesis などの動作確認 | 版をレジストリで確認しただけ。06_TEST_STRATEGY.md 6章で「実行」と書いたもの以外は動かしていない。JVM の道具は版も確認していない |
-| 一次資料の本文の確認 | ISTQB シラバスの PDF、ISO/IEC/IEEE 29119-3・ISO/IEC 25019 の本文（有償）、SBTM の原文、Google Testing Blog の記事全文は取得していない。公式の概要ページと複数の解説で確認した範囲を 02_RESEARCH_AND_DECISIONS.md に明記 |
+| 一次資料の本文の確認 | ISO/IEC/IEEE 29119-3・ISO/IEC 25019 の本文（有償）、SBTM の原文、Google Testing Blog の記事全文は取得していない（ISTQB シラバスは v4 で PDF 本文を取得。02_RESEARCH_AND_DECISIONS.md S16）。公式の概要ページと複数の解説で確認した範囲を 02_RESEARCH_AND_DECISIONS.md に明記 |
 | GitHub・GitLab・VS Code などでの表示確認 | 各環境が採用する Mermaid の版と Markdown の方言は環境ごとに異なる |
 | 業務責任者による内容の妥当性確認、独立した第三者によるレビュー | 未実施。テスト条件が業務上足りているかは機械検査の対象外 |
 
 ## 5. 再現手順
 
 ```text
-pip install gherkin-official PyYAML playwright pytest hypothesis pytest-bdd coverage mutmut
-playwright install chromium
-npm install mermaid@11.14.0          # 任意のディレクトリで。12.0.0 も同様
+# 環境A：kit_lint.py 単独（gherkin-official は PyPI の最新版が解決される）
+pip install gherkin-official PyYAML
 python tools/kit_lint.py trace
 python tools/kit_lint.py extract
-python tools/render_mermaid.py --mermaid-dir <node_modules/mermaid のパス>
-python tools/run_examples.py --mutation
 python tools/kit_lint.py check --json evidence/kit_lint_check.json
 python tools/kit_lint.py selftest --json evidence/kit_lint_selftest.json
 python tools/portability_test.py
+
+# 環境B：参考実装の実行（pytest-bdd の依存ピンにより、環境Aと異なる gherkin-official の版が解決される場合がある。3章）
+pip install playwright pytest hypothesis pytest-bdd coverage mutmut
+playwright install chromium
+python tools/run_examples.py --mutation
+
+npm install mermaid@11.14.0          # 任意のディレクトリで。12.0.0 も同様
+python tools/render_mermaid.py --mermaid-dir <node_modules/mermaid のパス>
 
 # ST 記入例のコードの検査（任意）
 npm install @playwright/test typescript @types/node

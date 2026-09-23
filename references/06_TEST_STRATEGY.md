@@ -74,7 +74,8 @@ flowchart TD
 | 文書の役割 | 各水準の文書は**テスト設計書**である。何を・なぜ・どの技法で・どこまで確かめるかを書く。個々のテストの手順と期待値は**テストコードが正本**で、文書に写さない（UAT だけは人が読んで実施するため、文書が正本） |
 | ID | テスト条件：UT-001・CT-001、旅程：E2E-001、受入シナリオ：UAT-001、探索セッション：PT-001、ペルソナ：PER-001 |
 | 由来 | すべてのテスト条件に、由来のID（FR・NFR・RULE・SCN・NVT・ADR・GOAL）を書く。由来の無いテスト条件は、要件の欠落かテストの無駄のどちらかである |
-| テスト名 | 設計書の「テスト名」はコード上の識別子と一致させる。リンターが、その名前がコードに実在するかを検査する |
+| テスト名 | 設計書の「テスト名」はコード上の識別子と一致させる。リンターが、その名前がコードに実在するかを検査する（現状：Python の関数名との文字列一致のみ。他言語は `kit.toml` の `[tests] code` に glob パターンを追加すれば対象にできるが、名前の抽出規則自体は言語別に設定できない） |
+| 逆方向の検査（予定） | Must の要件・NFR に、対応するテスト条件や NVT が1件も無い場合を警告する（コード W160）。現状は未実装（refkit-P4b で `kit_lint.py` に追加予定）。文書側の理由付けは、対応するテスト条件が無い要件について UT_SAMPLE §1 が扱う（FR-005・FR-009・FR-026、refkit-P7） |
 | コード側の追跡 | テストに、確かめるIDの印（例：pytest の `req` マーカー、JUnit のタグ）を付ける。Gherkin のタグは実行時に同じ印へ写す |
 | 大きさの宣言 | テストに small・medium・large を宣言し、small のテストが入出力や実時間の待ちを行わないことを保つ |
 | 実行証跡 | 対象の版・環境・日時・結果・確かめたIDを機械可読で残す。証跡には入力ファイルのハッシュを含め、古い証跡を検出する。証跡のある合格だけが verifies の関係を作る |
@@ -85,23 +86,23 @@ flowchart TD
 
 ## 6. 道具の候補
 
-上級者向けの選択肢を、水準ごとに示す。版は 2026-09-19 に PyPI と npm のレジストリで確認した最新版。**実行**＝本キットの参考実装で実際に動かした。それ以外は版の確認のみで、動作は確認していない。JVM の道具は版を確認していない。
+上級者向けの選択肢を、水準ごとに示す。版は 2026-09-23 に PyPI と npm のレジストリで確認した最新版（02_RESEARCH_AND_DECISIONS.md S28 のとおり）。**実行**＝本キットの参考実装で実際に動かした。それ以外は版の確認のみで、動作は確認していない。JVM の道具は版を確認していない。npm の一部（`@playwright/test`・Vitest・dependency-cruiser）は、レジストリに公開日が記録されておらず「確認した最新版」の日付を個別には示せない。
 
 | 用途 | Python | TypeScript／JavaScript | JVM |
 |---|---|---|---|
 | UT の実行 | pytest 9.1.1（実行） | Vitest 5.0.1 | JUnit |
-| プロパティベーステスト（状態機械を含む） | Hypothesis 6.168.0（実行） | fast-check 4.10.1 | jqwik |
+| プロパティベーステスト（状態機械を含む） | Hypothesis 6.168.1（実行） | fast-check 4.10.2 | jqwik |
 | ミューテーションテスト | mutmut 3.8.0（実行）、cosmic-ray 8.7.0 | StrykerJS 10.0.0 | PIT |
 | カバレッジ | coverage.py 7.16.1（実行、分岐） | Vitest のカバレッジ機能 | JaCoCo |
-| 構造の検査（ADR の確認） | import-linter 2.15、pytest-archon 0.0.7 | dependency-cruiser 18.3.1 | ArchUnit |
+| 構造の検査（ADR の確認） | import-linter 2.15、pytest-archon 0.0.7 | dependency-cruiser 18.4.0 | ArchUnit |
 | 時刻の制御 | time-machine 3.5.1、または時計の注入（実行） | Vitest の擬似タイマー | 時計の注入 |
 | BDD の実行 | pytest-bdd 8.1.0（実行。日本語キーワードと `ルール` を確認） | @cucumber/cucumber 13.2.1 | Cucumber-JVM |
 | 実物の依存をコンテナで | testcontainers 4.15.0 | testcontainers | Testcontainers |
 | 契約テスト | pact-python 3.4.1 | @pact-foundation/pact 17.1.4 | Pact JVM |
-| API 仕様からのプロパティベーステスト | Schemathesis 4.27.4 | — | — |
+| API 仕様からのプロパティベーステスト | Schemathesis 4.28.0 | — | — |
 | ブラウザ経由の E2E | Playwright 1.63.0 | @playwright/test 1.63.0 | Playwright for Java |
 | アクセシビリティの自動検査 | axe-core を Playwright から読み込む | @axe-core/playwright 4.13.0 | axe-core を Playwright から読み込む |
 | 負荷（到着率を固定するオープンモデル） | Grafana k6（`constant-arrival-rate`）。言語に依存しない | 同左 | 同左 |
-| AI の評価 | Inspect AI 0.3.265、DeepEval 4.2.3 | promptfoo 0.123.1 | — |
+| AI の評価 | Inspect AI 0.3.268、DeepEval 4.2.5 | promptfoo 0.123.1 | — |
 
 道具は入れ替わる。選ぶ基準は、(1) 公式の parser・仕様に従っている、(2) 決定的に実行できる、(3) 結果を機械可読で出せる、(4) 保守が続いている、の4点である。

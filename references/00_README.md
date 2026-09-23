@@ -1,4 +1,4 @@
-# PRD・ADR・BDD・テスト 文書キット（版 3.0.0）
+# PRD・ADR・BDD・テスト 文書キット（版 4.0.0）
 
 確認日：2026-09-19。受領した `PRD_ADR_BDD_Kit_20260919.zip`（版1.0.0）を敵対的にレビューして作り直した版2.0.0に、PRD・ADR・BDD の後に続く4つのテスト水準（UT・CT・ST／E2E・UAT／PT）を加えたもの。形式は UTF-8 の Markdown と Mermaid。特定のベンダー・言語・AI 製品に依存しない。
 
@@ -7,7 +7,7 @@
 | 分類 | テンプレート | 記入例 | 記載指示書 |
 |---|---|---|---|
 | PRD | [prd/PRD_TEMPLATE.md](prd/PRD_TEMPLATE.md) | [prd/PRD_SAMPLE.md](prd/PRD_SAMPLE.md) | [prd/PRD_GUIDE.md](prd/PRD_GUIDE.md) |
-| ADR | [adr/ADR_TEMPLATE.md](adr/ADR_TEMPLATE.md) | [ADR-0001](adr/ADR-0001-ai-authority-boundary.md)・[ADR-0002](adr/ADR-0002-decision-consistency.md) | [adr/ADR_GUIDE.md](adr/ADR_GUIDE.md) |
+| ADR | [adr/ADR_TEMPLATE.md](adr/ADR_TEMPLATE.md) | [ADR-0001](adr/ADR-0001-ai-authority-boundary.md)・[ADR-0002](adr/ADR-0002-decision-consistency.md)（superseded）／[ADR-0003](adr/ADR-0003-ai-authority-boundary.md)・[ADR-0004](adr/ADR-0004-decision-consistency.md)（proposed） | [adr/ADR_GUIDE.md](adr/ADR_GUIDE.md) |
 | BDD | [bdd/BDD_TEMPLATE.md](bdd/BDD_TEMPLATE.md) | [bdd/BDD_SAMPLE.md](bdd/BDD_SAMPLE.md) | [bdd/BDD_GUIDE.md](bdd/BDD_GUIDE.md) |
 | UT（単体テスト） | [ut/UT_TEMPLATE.md](ut/UT_TEMPLATE.md) | [ut/UT_SAMPLE.md](ut/UT_SAMPLE.md)（実行済み） | [ut/UT_GUIDE.md](ut/UT_GUIDE.md) |
 | CT（コンポーネントテスト） | [ct/CT_TEMPLATE.md](ct/CT_TEMPLATE.md) | [ct/CT_SAMPLE.md](ct/CT_SAMPLE.md)（一部実行済み） | [ct/CT_GUIDE.md](ct/CT_GUIDE.md) |
@@ -26,12 +26,13 @@
 | `features/` | BDD 記入例から生成した `.feature`（**自動生成**） |
 | `examples/flowapprove_core/` | UT・CT の記入例を実際に実行するための最小の参考実装（ドメイン規則と決裁サービス）とテストコード。製品ではない |
 | `tools/`・`kit.toml`・`evidence/` | リンター、Mermaid 描画検証、参考実装のテスト実行、移植性試験、設定、検証の証跡 |
+| `archive/` | 過去に配布された zip 一式（v1〜v3、および平坦化した配布用 zip）の履歴保存。作業対象ではない（詳細は archive/README.md） |
 
 ## 使い方
 
 1. テンプレートを自分のリポジトリにコピーし、`kit.toml` の `[docs]` を自分の文書のパスに書き換える。
 2. 記載指示書に沿って記入する。見出しに「（任意）」が付く節は、不要なら節ごと削除する。
-3. `python tools/kit_lint.py trace`、`extract`、`check` の順に実行する。依存は `pip install gherkin-official PyYAML`。テスト設計書を使わない場合は、`kit.toml` の `ut`・`ct`・`st`・`uat` の行と `[tests]` を消す。
+3. `python tools/kit_lint.py trace`、`extract`、`check` の順に実行する。依存は `pip install gherkin-official PyYAML`。テスト設計書を使わない場合は、`kit.toml` の `ut`・`ct`・`st`・`uat` の行と `[tests]` を消す。対応する `[templates]` と `[vocab.*]` の該当水準の行も消す。
 4. 図を変えたら `python tools/render_mermaid.py --mermaid-dir <npm の mermaid>` を実行する。
 
 ## 記入例について

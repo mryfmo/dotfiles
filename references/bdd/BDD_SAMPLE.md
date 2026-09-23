@@ -11,6 +11,7 @@ requirements: "../prd/PRD_SAMPLE.md 版0.4.0"
 gherkin_source: markdown
 automation: partial
 last_run: passed
+evidence: "../evidence/example_tests.json"
 ---
 # BDD：FlowApprove（申請・AI参考意見・決裁）
 

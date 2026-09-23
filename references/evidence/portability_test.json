@@ -2,15 +2,15 @@
   "status": "passed",
   "errors": [],
   "warnings": [
-    "W102 mermaid_render.json: Mermaid 描画証跡がない（tools/render_mermaid.py を実行）"
+    "W154 example_tests.json: テストの実行証跡がない（tools/run_examples.py を実行）"
   ],
   "stats": {
     "steps": 7,
-    "unique_step_patterns": 6,
-    "unique_step_ratio": 0.857,
-    "relative_links": 10,
-    "mermaid_blocks": 10,
-    "documents": 16,
+    "unique_step_patterns": 4,
+    "unique_step_ratio": 0.571,
+    "relative_links": 2,
+    "mermaid_blocks": 9,
+    "documents": 15,
     "fr": 1,
     "nfr": 1,
     "rules": 1,
@@ -26,5 +26,6 @@
     },
     "personas": 1
   },
-  "note": "PRD・ADR・BDD・UT・CT・ST・UAT の全テンプレートのプレースホルダを機械的に埋め、PRD の任意節を全て削除した、別名・別ディレクトリ構成のプロジェクト（テストコードなし）"
+  "mermaid": "rendered via /home/moriya/Workspace/dotfiles-w1/references/.mermaid/11/node_modules/mermaid",
+  "note": "PRD・ADR・BDD・UT・CT・ST・UAT の全テンプレートのプレースホルダを機械的に埋め、PRD の任意節を全て削除した、別名・別ディレクトリ構成のプロジェクト。kit.toml は実物のコピー（パスのみ書き換え）。[tests] は最小のテストコード（test_name 関数1つ）で E152 まで検査する"
 }

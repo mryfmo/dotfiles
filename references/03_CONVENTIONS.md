@@ -49,7 +49,7 @@ flowchart LR
 | 質問 | Q-001 | BDD 2章 | — |
 | テスト条件・旅程・受入シナリオ・探索セッション・ペルソナ | UT-001・CT-001・E2E-001・UAT-001・PT-001・PER-001 | 各水準のテスト設計書 | 「由来」に FR・RULE・SCN・NVT・ADR・GOAL のIDを書く |
 
-IDは削除しても再利用しない。複数の製品を同じ場所で管理するなら `PAY-FR-001` のように接頭辞を付ける（リンターの ID パターンは接頭辞に対応していないため、その場合は `kit_lint.py` の `ID` を変更する）。
+IDは削除しても再利用しない。複数の製品を同じ場所で管理するなら `PAY-FR-001` のように接頭辞を付ける。接頭辞は `kit.toml` の `[ids] prefix` で指定する（例：`prefix = "PAY-"`）。設定していない接頭辞付きの ID は認識されず、他所からの参照が「存在しない」扱いになる（無視されて見過ごされることはない）。
 
 ## 4. 関係の種類
 
@@ -74,7 +74,7 @@ IDは削除しても再利用しない。複数の製品を同じ場所で管理
 | PRD | draft → in_review → approved → retired | approved は製品の合格でも効果の実証でもない |
 | ADR | proposed → accepted ／ rejected、accepted → deprecated ／ superseded | accepted は実装済みを意味しない。deprecated は使うのをやめた、superseded は後継に置き換えた |
 | BDD | draft → agreed | agreed は関係者の合意で、試験の合格ではない |
-| 自動化・実行 | `automation`：not_implemented／partial／implemented、`last_run`：not_run／passed／failed（自動化済みの範囲の最新結果） | 未定義・保留・スキップを passed に読み替えない。passed と書くなら `evidence` に実行証跡のパスを書く |
+| 自動化・実行 | `automation`：not_implemented／partial／implemented、`last_run`：not_run／passed／failed（自動化済みの範囲の最新結果） | 未定義・保留・スキップを passed に読み替えない。`last_run` が passed／failed のときは `evidence` に実行証跡のパスを書く（BDD を含む全文書種別で必須。無い・存在しないパスなら check が E155 で不合格にする） |
 | サンプル | front matter `sample: true` | 架空であることは status ではなくこのキーで示す |
 
 承認は、承認者・日時・対象の版・条件を変更履歴の表に書く。役職名だけの記載や、AI が生成した承認欄は承認ではない。

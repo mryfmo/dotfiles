@@ -43,6 +43,46 @@ uv run --python 3.12 --with gherkin-official --with PyYAML python tools/kit_lint
 単独で実行しても `gherkin_source` の不整合（**E124**：`markdown`／`feature` 以外の値）や
 `.feature` とフェンスの不一致（**E121**）は検出できる。
 
+## ID とプレフィックス（`[ids] prefix`）
+
+ID の正規表現は、決まった種別の一覧（`FR｜NFR｜GOAL｜KPI｜GRD｜EVID｜ACT｜RISK｜NVT｜ADR｜FEAT｜RULE｜SCN｜Q｜UT｜CT｜E2E｜UAT｜PT｜PER`）
+から組み立てる。`SHA-256`・`APP-001`・`SPEC-001` のような、たまたま「英字＋ハイフン＋数字」に
+見える文字列は種別に無いので ID として誤検出しない。複数の製品を同じ場所で管理するときは
+`kit.toml` の `[ids] prefix`（例：`PAY-`）で全 ID に接頭辞を要求できる。接頭辞を設定して
+いないのに `PAY-FR-001` のように書いても、その ID は認識されず（`FR-001` として書いた場合と
+違って）他所からの参照が軒並み「存在しない」扱いになるので、無視されて見過ごされることはない。
+
+## 複数の PRD
+
+`kit.toml` の `[docs] prd` は 1 件以上の PRD を指定できる。FR・NFR・GOAL・KPI・GRD・NVT の
+ID は全 PRD をまたいで重複できない（重複は **E030**）。`trace` が生成する追跡表は、PRD が
+2 件以上あるときだけ機能要件・非機能要件の節を PRD ごとに分ける（1 件のときは今までどおり）。
+
+## 実行証跡が必須になる条件（E155）
+
+`last_run` が `passed`／`failed` の文書は、`evidence` に実在するファイルへのパスを書かな
+ければならない（BDD を含む全文書種別。前提として `evidence` キー自体が front matter に無い
+場合も不合格にする）。
+
+## 「実行結果」表と E158
+
+UT・CT・ST・UAT のテンプレートは、証跡と数値で照合する専用の表を持つ：
+
+```
+| 項目 | 値 | 証跡のキー |
+|---|---|---|
+| UT件数 | 125 | ut.total |
+```
+
+「証跡のキー」は証跡 JSON（`evidence/example_tests.json` 等）内の値を指す。`<水準>.total` は
+その水準のテスト件数、`<水準>.passed` は合格数、`<水準>.branch_coverage_percent` は分岐カバ
+レッジ、`mutation.total`／`mutation.killed`／`mutation.score_percent` はミューテーション試験
+の対象数・検出数・スコアを指す。`check` はこの表だけを見る。文章中に同じ数値が書いてあっても見ない。
+
+文書自身の水準（`doc_type`）が証跡に存在するのに、その行の「証跡のキー」が解決できない場合
+（誤記・存在しない節）は **E159** で不合格にする。キーを空欄にしてよいのは、文書自身の水準が
+証跡に無い場合だけ（ST／UAT の `not_run` のように、そもそも証跡が無い水準）。
+
 ## `gherkin_source` の 2 モード
 
 BDD 文書の front matter `gherkin_source` は、その文書中の Gherkin フェンスと対応する
@@ -71,3 +111,23 @@ marker 行を付ける：
 一致していれば `check` に合格する）。`features/` に marker のない `.feature` が
 どのフェンスにも対応しない状態で残っている場合は、手で置いたものとみなして削除せず
 **E122** を報告する。
+
+## `selftest` の網羅性
+
+`selftest` はリンター自身のソースを `self.err(`／`self.warn(` で正規表現走査し、実際に発行
+され得る全 E／W コードの一覧を作る。変異の一覧（`MUTATIONS`）がこの一覧を1つでも欠くと
+`selftest` 自体を不合格にする（`uncovered_codes` に列挙する）。変異は、この記入例に固有の
+文章ではなく、テンプレートの見出し・表・front matter キー・Gherkin のタグのような**構造**で
+対象を探す（例：`FR-001` という ID や `@SCN-001` というタグは規約上どの記入例にも存在する
+契約なので対象にしてよいが、記入例だけの日本語文は対象にしない）。
+
+## `portability_test.py`
+
+実物の `kit.toml` をコピーし、パスに関わる値だけを書き換える（`[vocab.*]`・`[ids]`・
+`[adr]`・`[gherkin]`（`max_unique_step_ratio` 等の閾値を含む）・`[evidence]` はそのまま）。
+そのため、記入例に固有の甘さで検査が通っているのではなく、実物と同じ閾値・語彙・ID規則で
+全テンプレートを埋めたときに `check` が通ることを確かめる。`[tests]` 用に最小のテストコード
+（`test_name` という関数1つ）も生成し、E152 まで実際に検査させる。`render_mermaid.py` は
+`references/.mermaid/11/node_modules/mermaid` が無い場合、または実行している Python から
+`playwright` を import できない場合はスキップし、その理由を結果の `mermaid` キーに記録する
+（スキップも含めてどの分岐でも終了コードは 0）。

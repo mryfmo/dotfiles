@@ -1250,6 +1250,25 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertIn("pane rename w-test:p3 claude-worker", calls)
         self.assertFalse(any("codex" in call for call in calls))
 
+    def test_worker_kind_claude_starts_with_no_resolved_args(self) -> None:
+        # No model-profiles.env and no HERDR_AGENTS_CLAUDE_WORKER_ARGS: both
+        # worker_args and extra_worker_args stay empty arrays. bash 3.2
+        # (macOS's /bin/bash) treats "${arr[@]}" as unbound under `set -u`
+        # for a zero-element array; bash 4.4+ (this test's interpreter)
+        # does not, so this only proves the args-empty path still starts
+        # the agent successfully here — the bash-3.2-specific unbound
+        # failure itself is left to macOS CI to catch (see the
+        # ${arr[@]+"${arr[@]}"} idiom used at both expansion sites instead
+        # of a bare "${arr[@]}").
+        result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"})
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn(
+            "agent start claude-worker-w-test --kind claude --pane w-test:p3 --timeout 30000 --",
+            calls,
+        )
+
     def test_worker_kind_claude_does_not_require_codex(self) -> None:
         (self.bin_dir / "codex").unlink()
 

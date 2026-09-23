@@ -268,9 +268,13 @@ function start_worker_agent() {
         fi
         if [[ -n ${HERDR_AGENTS_CLAUDE_WORKER_ARGS:-} ]]; then
             read -r -a extra_worker_args <<< "${HERDR_AGENTS_CLAUDE_WORKER_ARGS}"
-            worker_args+=("${extra_worker_args[@]}")
+            # bash 3.2 (macOS's /bin/bash) treats "${arr[@]}" as unbound under
+            # set -u when arr has zero elements; bash 4.4+ does not. The
+            # ${arr[@]+"${arr[@]}"} idiom expands to nothing instead of
+            # erroring on either version.
+            worker_args+=(${extra_worker_args[@]+"${extra_worker_args[@]}"})
         fi
-        start_agent_in_pane claude "${agent_name}" "${pane_id}" "${newly_created}" "${worker_args[@]}" > /dev/null
+        start_agent_in_pane claude "${agent_name}" "${pane_id}" "${newly_created}" ${worker_args[@]+"${worker_args[@]}"} > /dev/null
         accept_claude_workspace_trust_dialog "${pane_id}"
     else
         start_agent_in_pane codex "${agent_name}" "${pane_id}" "${newly_created}" \

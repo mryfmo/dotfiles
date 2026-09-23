@@ -1,0 +1,387 @@
+{
+  "status": "passed",
+  "executed_at_utc": "2026-09-19T08:16:21+00:00",
+  "scope": "図の構文解析と描画のみ。図の意味の正しさ・全ホストでの表示は保証しない",
+  "runs": [
+    {
+      "mermaid_version": "11.14.0",
+      "mermaid_min_js_sha256": "217b66ef4279c33c141b4afe22effad10a91c02558dc70917be2c0981e78ed87",
+      "chromium": "141.0.7390.37",
+      "invalid_diagram_rejected": true,
+      "diagrams": 20,
+      "failed": [],
+      "results": [
+        {
+          "key": "03_CONVENTIONS.md#1",
+          "sha256": "5a37f987663055741206ac699f7a49344aad2a548fbacd9c40f657b78b1e6e04",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 886,
+          "height": 218,
+          "has_title": true
+        },
+        {
+          "key": "06_TEST_STRATEGY.md#1",
+          "sha256": "d45384790edc336c9adbd0f690dc0e44d19e470c46227c353c3b7e692fc0aa9f",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 1100,
+          "height": 334,
+          "has_title": true
+        },
+        {
+          "key": "adr/ADR-0001-ai-authority-boundary.md#1",
+          "sha256": "4d7978ba2612750a6d67a8f1a5a766734842996536772f846600a69819d2296d",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 1061,
+          "height": 164,
+          "has_title": true
+        },
+        {
+          "key": "adr/ADR-0002-decision-consistency.md#1",
+          "sha256": "561bc6fac2b32d02deac1933c0e66c29f0b004573a1715264bcd169878115534",
+          "ok": true,
+          "type": "sequence",
+          "width": 1074,
+          "height": 502,
+          "has_title": true
+        },
+        {
+          "key": "adr/ADR_GUIDE.md#1",
+          "sha256": "800465acc282fab0e79e02b35f0c71ec3a27724695496f58c877794f3eb91f32",
+          "ok": true,
+          "type": "stateDiagram",
+          "width": 418,
+          "height": 396,
+          "has_title": true
+        },
+        {
+          "key": "adr/ADR_TEMPLATE.md#1",
+          "sha256": "951152a2d49c10bda2ae656c5f2a20450c57f5de65a8b5f67f833d68c0c4de19",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 277,
+          "height": 54,
+          "has_title": true
+        },
+        {
+          "key": "bdd/BDD_GUIDE.md#1",
+          "sha256": "db3fcbb39e4fd04889a123862b49fc6f78706d486d84be9a7e80e03f9a516296",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 965,
+          "height": 113,
+          "has_title": true
+        },
+        {
+          "key": "bdd/BDD_SAMPLE.md#1",
+          "sha256": "3a4ead425aaad8ff8c49c3164b540fd3df9f23c89815e47050b6bb62add8633e",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 880,
+          "height": 382,
+          "has_title": true
+        },
+        {
+          "key": "bdd/BDD_TEMPLATE.md#1",
+          "sha256": "a073a24e876496ded86659ba5895511112604ed4a517040d5d50b6ba7422e3e4",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 536,
+          "height": 262,
+          "has_title": true
+        },
+        {
+          "key": "ct/CT_GUIDE.md#1",
+          "sha256": "a40910c1ad932fbc7f646570be1064492ff6b7946b61b2d8355a1b3b951d5248",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 861,
+          "height": 614,
+          "has_title": true
+        },
+        {
+          "key": "ct/CT_SAMPLE.md#1",
+          "sha256": "150025eb9e5cb5290fd7f838b252f8a45ada5926292b1d57e51331378a8cd23d",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 776,
+          "height": 310,
+          "has_title": true
+        },
+        {
+          "key": "ct/CT_TEMPLATE.md#1",
+          "sha256": "c293826e12ae701b84b934000377bb9f184c22887a217031c1a38d4561d7818e",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 675,
+          "height": 158,
+          "has_title": true
+        },
+        {
+          "key": "prd/PRD_GUIDE.md#1",
+          "sha256": "2ead299f091a9b1ca6f0e65ea53d48681905d4862c464689b42889feec71e351",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 560,
+          "height": 822,
+          "has_title": true
+        },
+        {
+          "key": "prd/PRD_SAMPLE.md#1",
+          "sha256": "26ce3e66de46e69fb422714e3170de96f8ffb1bf721535408128b042f39f5bde",
+          "ok": true,
+          "type": "stateDiagram",
+          "width": 581,
+          "height": 510,
+          "has_title": true
+        },
+        {
+          "key": "prd/PRD_TEMPLATE.md#1",
+          "sha256": "7caa9d4a412e1d9ce915a775123d5a2150eac8639746ad51b7f49af92a6e1784",
+          "ok": true,
+          "type": "stateDiagram",
+          "width": 85,
+          "height": 282,
+          "has_title": true
+        },
+        {
+          "key": "st/ST_GUIDE.md#1",
+          "sha256": "12967520b91d6bb068e5e8c7f2fad6fa82504e46d8b1c33ac3849c2e29c486f6",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 570,
+          "height": 846,
+          "has_title": true
+        },
+        {
+          "key": "st/ST_SAMPLE.md#1",
+          "sha256": "169971041b52d55744bbd8a77e2417af2588ab1efe489afd1870d5267dd5d0fd",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 1484,
+          "height": 78,
+          "has_title": true
+        },
+        {
+          "key": "st/ST_TEMPLATE.md#1",
+          "sha256": "498d843b6778a4134008f02df555eda5b7983053434f64c9f81adb906ea87163",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 632,
+          "height": 54,
+          "has_title": true
+        },
+        {
+          "key": "uat/UAT_GUIDE.md#1",
+          "sha256": "3b26c189673bf37e67ee1fb8e86da34af56f366760fc1b0abfb770c8645f689f",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 554,
+          "height": 894,
+          "has_title": true
+        },
+        {
+          "key": "ut/UT_GUIDE.md#1",
+          "sha256": "90b594fc981e15eed92d7c8ba9425dd1ab1e39502548538e1bed82e81b380fe9",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 653,
+          "height": 998,
+          "has_title": true
+        }
+      ]
+    },
+    {
+      "mermaid_version": "12.0.0",
+      "mermaid_min_js_sha256": "28fca7ae6ebc7ed7bb63bde63136a74bfef14f296a57e403657eeb8b32836073",
+      "chromium": "141.0.7390.37",
+      "invalid_diagram_rejected": true,
+      "diagrams": 20,
+      "failed": [],
+      "results": [
+        {
+          "key": "03_CONVENTIONS.md#1",
+          "sha256": "5a37f987663055741206ac699f7a49344aad2a548fbacd9c40f657b78b1e6e04",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 944,
+          "height": 203,
+          "has_title": true
+        },
+        {
+          "key": "06_TEST_STRATEGY.md#1",
+          "sha256": "d45384790edc336c9adbd0f690dc0e44d19e470c46227c353c3b7e692fc0aa9f",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 1028,
+          "height": 425,
+          "has_title": true
+        },
+        {
+          "key": "adr/ADR-0001-ai-authority-boundary.md#1",
+          "sha256": "4d7978ba2612750a6d67a8f1a5a766734842996536772f846600a69819d2296d",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 1086,
+          "height": 151,
+          "has_title": true
+        },
+        {
+          "key": "adr/ADR-0002-decision-consistency.md#1",
+          "sha256": "561bc6fac2b32d02deac1933c0e66c29f0b004573a1715264bcd169878115534",
+          "ok": true,
+          "type": "sequence",
+          "width": 1074,
+          "height": 518,
+          "has_title": true
+        },
+        {
+          "key": "adr/ADR_GUIDE.md#1",
+          "sha256": "800465acc282fab0e79e02b35f0c71ec3a27724695496f58c877794f3eb91f32",
+          "ok": true,
+          "type": "stateDiagram",
+          "width": 434,
+          "height": 441,
+          "has_title": true
+        },
+        {
+          "key": "adr/ADR_TEMPLATE.md#1",
+          "sha256": "951152a2d49c10bda2ae656c5f2a20450c57f5de65a8b5f67f833d68c0c4de19",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 344,
+          "height": 45,
+          "has_title": true
+        },
+        {
+          "key": "bdd/BDD_GUIDE.md#1",
+          "sha256": "db3fcbb39e4fd04889a123862b49fc6f78706d486d84be9a7e80e03f9a516296",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 688,
+          "height": 103,
+          "has_title": true
+        },
+        {
+          "key": "bdd/BDD_SAMPLE.md#1",
+          "sha256": "3a4ead425aaad8ff8c49c3164b540fd3df9f23c89815e47050b6bb62add8633e",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 536,
+          "height": 383,
+          "has_title": true
+        },
+        {
+          "key": "bdd/BDD_TEMPLATE.md#1",
+          "sha256": "a073a24e876496ded86659ba5895511112604ed4a517040d5d50b6ba7422e3e4",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 440,
+          "height": 257,
+          "has_title": true
+        },
+        {
+          "key": "ct/CT_GUIDE.md#1",
+          "sha256": "a40910c1ad932fbc7f646570be1064492ff6b7946b61b2d8355a1b3b951d5248",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 493,
+          "height": 574,
+          "has_title": true
+        },
+        {
+          "key": "ct/CT_SAMPLE.md#1",
+          "sha256": "150025eb9e5cb5290fd7f838b252f8a45ada5926292b1d57e51331378a8cd23d",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 536,
+          "height": 278,
+          "has_title": true
+        },
+        {
+          "key": "ct/CT_TEMPLATE.md#1",
+          "sha256": "c293826e12ae701b84b934000377bb9f184c22887a217031c1a38d4561d7818e",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 536,
+          "height": 172,
+          "has_title": true
+        },
+        {
+          "key": "prd/PRD_GUIDE.md#1",
+          "sha256": "2ead299f091a9b1ca6f0e65ea53d48681905d4862c464689b42889feec71e351",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 384,
+          "height": 805,
+          "has_title": true
+        },
+        {
+          "key": "prd/PRD_SAMPLE.md#1",
+          "sha256": "26ce3e66de46e69fb422714e3170de96f8ffb1bf721535408128b042f39f5bde",
+          "ok": true,
+          "type": "stateDiagram",
+          "width": 537,
+          "height": 635,
+          "has_title": true
+        },
+        {
+          "key": "prd/PRD_TEMPLATE.md#1",
+          "sha256": "7caa9d4a412e1d9ce915a775123d5a2150eac8639746ad51b7f49af92a6e1784",
+          "ok": true,
+          "type": "stateDiagram",
+          "width": 136,
+          "height": 283,
+          "has_title": true
+        },
+        {
+          "key": "st/ST_GUIDE.md#1",
+          "sha256": "12967520b91d6bb068e5e8c7f2fad6fa82504e46d8b1c33ac3849c2e29c486f6",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 344,
+          "height": 889,
+          "has_title": true
+        },
+        {
+          "key": "st/ST_SAMPLE.md#1",
+          "sha256": "169971041b52d55744bbd8a77e2417af2588ab1efe489afd1870d5267dd5d0fd",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 920,
+          "height": 66,
+          "has_title": true
+        },
+        {
+          "key": "st/ST_TEMPLATE.md#1",
+          "sha256": "498d843b6778a4134008f02df555eda5b7983053434f64c9f81adb906ea87163",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 536,
+          "height": 66,
+          "has_title": true
+        },
+        {
+          "key": "uat/UAT_GUIDE.md#1",
+          "sha256": "3b26c189673bf37e67ee1fb8e86da34af56f366760fc1b0abfb770c8645f689f",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 344,
+          "height": 871,
+          "has_title": true
+        },
+        {
+          "key": "ut/UT_GUIDE.md#1",
+          "sha256": "90b594fc981e15eed92d7c8ba9425dd1ab1e39502548538e1bed82e81b380fe9",
+          "ok": true,
+          "type": "flowchart-v2",
+          "width": 521,
+          "height": 871,
+          "has_title": true
+        }
+      ]
+    }
+  ]
+}

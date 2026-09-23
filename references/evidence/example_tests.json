@@ -1,0 +1,2185 @@
+{
+  "status": "passed",
+  "executed_at_utc": "2026-09-19T08:22:13+00:00",
+  "scope": "参考実装（ドメイン中核と決裁サービス）に対する UT・CT の実行結果。製品全体の試験ではない",
+  "tools": {
+    "pytest": "9.1.1",
+    "hypothesis": "6.168.0",
+    "pytest-bdd": "8.1.0",
+    "coverage": "7.16.1",
+    "python": "3.12.3"
+  },
+  "inputs_sha256": {
+    "examples/flowapprove_core/flowapprove/__init__.py": "226d6615e74fd9b4b65d729bf3708d7fb66c4bf23d2de177b7177ae8d0aec933",
+    "examples/flowapprove_core/flowapprove/domain.py": "c3f6e93521c22dd5bc051efbab1cac1f5d9d1f1e0beee06977e481a4f80665ba",
+    "examples/flowapprove_core/flowapprove/service.py": "e50c3b05b4f48577aa04ca4f60385a954a3f6a02720e176ff199e43312827b6c",
+    "examples/flowapprove_core/pyproject.toml": "ac72b71b96d3e365f29c7f5b426a8e53f925536af669f26dc633132c1b28d884",
+    "examples/flowapprove_core/tests/component/test_decision_component.py": "3ad7a5ab0a87a8c0f39dd662ce80756fb8f29eb55badcf9f05e4b2a4a36b3134",
+    "examples/flowapprove_core/tests/component/test_feat_004_decision.py": "1d2d7e4a362014ea8faa092b2cd4248efd63c3c0f3ce9717c898319e647d4785",
+    "examples/flowapprove_core/tests/conftest.py": "c9d7abb26012943b81a52fedceedc1dad5860f2d0f617afbffc8c7b87c9177ca",
+    "examples/flowapprove_core/tests/unit/test_domain.py": "f78c9c3358c00a9afed456d7a1c9640e8ff7efa978ec53a9dec7b50a0081b8b3",
+    "features/FEAT-004.feature": "962493738260b9ca8fd5d3a827244b770262b77bbe1fac241b34c6c402057d24"
+  },
+  "levels": {
+    "UT": {
+      "exit_code": 0,
+      "tests": 125,
+      "passed": 125,
+      "branch_coverage_percent": 44.4,
+      "coverage_by_file": {
+        "flowapprove/__init__.py": 100.0,
+        "flowapprove/domain.py": 100.0,
+        "flowapprove/service.py": 0.0
+      },
+      "functions": [
+        "runTest",
+        "test_all_violations_are_reported_in_field_order",
+        "test_blank_required_field_is_reported",
+        "test_classification_is_a_closed_set",
+        "test_deletion_due_boundary",
+        "test_invalid_url_is_reported_as_the_url_field",
+        "test_length_boundary",
+        "test_length_is_counted_after_nfc_normalization",
+        "test_length_rule_depends_only_on_normalized_text",
+        "test_normalize_is_idempotent",
+        "test_notice_and_auto_withdraw_boundaries",
+        "test_only_submitted_can_be_decided",
+        "test_reason_length_boundary",
+        "test_refusal_precedence_decision_table",
+        "test_terminal_applications_are_never_auto_withdrawn",
+        "test_transition_table_is_exhaustive",
+        "test_url_rule",
+        "test_valid_draft_has_no_violations"
+      ],
+      "cases": [
+        {
+          "name": "test_valid_draft_has_no_violations",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-003"
+          ]
+        },
+        {
+          "name": "test_blank_required_field_is_reported[-\\u88fd\\u54c1\\u540d]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_blank_required_field_is_reported[-\\u63d0\\u4f9b\\u5143URL]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_blank_required_field_is_reported[-\\u5229\\u7528\\u30d0\\u30fc\\u30b8\\u30e7\\u30f3]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_blank_required_field_is_reported[-\\u5229\\u7528\\u76ee\\u7684]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_blank_required_field_is_reported[-\\u60c5\\u5831\\u5206\\u985e]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_blank_required_field_is_reported[   -\\u88fd\\u54c1\\u540d]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_blank_required_field_is_reported[   -\\u63d0\\u4f9b\\u5143URL]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_blank_required_field_is_reported[   -\\u5229\\u7528\\u30d0\\u30fc\\u30b8\\u30e7\\u30f3]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_blank_required_field_is_reported[   -\\u5229\\u7528\\u76ee\\u7684]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_blank_required_field_is_reported[   -\\u60c5\\u5831\\u5206\\u985e]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_blank_required_field_is_reported[\\u3000-\\u88fd\\u54c1\\u540d]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_blank_required_field_is_reported[\\u3000-\\u63d0\\u4f9b\\u5143URL]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_blank_required_field_is_reported[\\u3000-\\u5229\\u7528\\u30d0\\u30fc\\u30b8\\u30e7\\u30f3]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_blank_required_field_is_reported[\\u3000-\\u5229\\u7528\\u76ee\\u7684]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_blank_required_field_is_reported[\\u3000-\\u60c5\\u5831\\u5206\\u985e]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_length_boundary[\\u88fd\\u54c1\\u540d-100]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-003",
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_length_boundary[\\u5229\\u7528\\u30d0\\u30fc\\u30b8\\u30e7\\u30f3-50]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-003",
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_length_boundary[\\u5229\\u7528\\u76ee\\u7684-1000]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-003",
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_length_is_counted_after_nfc_normalization",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-003"
+          ]
+        },
+        {
+          "name": "test_length_rule_depends_only_on_normalized_text",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-003"
+          ]
+        },
+        {
+          "name": "test_normalize_is_idempotent",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-003"
+          ]
+        },
+        {
+          "name": "test_url_rule[https://vendor.example/product-True]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_url_rule[http://vendor.example/product-False]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_url_rule[https://user:secret@vendor.example/product-False]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_url_rule[https://user@vendor.example/-False]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_url_rule[not-a-url-False]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_url_rule[https:///path-only-False]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_url_rule[https://[broken-False]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_url_rule[https://vendor.example/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-True]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_url_rule[https://vendor.example/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-False]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_classification_is_a_closed_set[\\u516c\\u958b-True]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_classification_is_a_closed_set[\\u793e\\u5185-True]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_classification_is_a_closed_set[\\u6a5f\\u5bc6-True]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_classification_is_a_closed_set[\\u6975\\u79d8-False]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_invalid_url_is_reported_as_the_url_field",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_all_violations_are_reported_in_field_order",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-004"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[DRAFT-\\u63d0\\u51fa]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[DRAFT-\\u627f\\u8a8d]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[DRAFT-\\u5374\\u4e0b]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[DRAFT-\\u5dee\\u623b\\u3057]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[DRAFT-\\u4fee\\u6b63]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[DRAFT-\\u53d6\\u6d88]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[SUBMITTED-\\u63d0\\u51fa]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[SUBMITTED-\\u627f\\u8a8d]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[SUBMITTED-\\u5374\\u4e0b]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[SUBMITTED-\\u5dee\\u623b\\u3057]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[SUBMITTED-\\u4fee\\u6b63]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[SUBMITTED-\\u53d6\\u6d88]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[APPROVED-\\u63d0\\u51fa]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[APPROVED-\\u627f\\u8a8d]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[APPROVED-\\u5374\\u4e0b]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[APPROVED-\\u5dee\\u623b\\u3057]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[APPROVED-\\u4fee\\u6b63]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[APPROVED-\\u53d6\\u6d88]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[REJECTED-\\u63d0\\u51fa]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[REJECTED-\\u627f\\u8a8d]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[REJECTED-\\u5374\\u4e0b]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[REJECTED-\\u5dee\\u623b\\u3057]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[REJECTED-\\u4fee\\u6b63]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[REJECTED-\\u53d6\\u6d88]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[RETURNED-\\u63d0\\u51fa]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[RETURNED-\\u627f\\u8a8d]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[RETURNED-\\u5374\\u4e0b]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[RETURNED-\\u5dee\\u623b\\u3057]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[RETURNED-\\u4fee\\u6b63]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[RETURNED-\\u53d6\\u6d88]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[WITHDRAWN-\\u63d0\\u51fa]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[WITHDRAWN-\\u627f\\u8a8d]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[WITHDRAWN-\\u5374\\u4e0b]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[WITHDRAWN-\\u5dee\\u623b\\u3057]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[WITHDRAWN-\\u4fee\\u6b63]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_transition_table_is_exhaustive[WITHDRAWN-\\u53d6\\u6d88]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011",
+            "FR-018",
+            "FR-019",
+            "FR-020"
+          ]
+        },
+        {
+          "name": "runTest",
+          "file": "tests.unit.test_domain.test_terminal_states_are_absorbing",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags0]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags1]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags2]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags3]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags4]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags5]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags6]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags7]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags8]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags9]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags10]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags11]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags12]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags13]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags14]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags15]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags16]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags17]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags18]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags19]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags20]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags21]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags22]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags23]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags24]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags25]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags26]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags27]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags28]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags29]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags30]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_refusal_precedence_decision_table[flags31]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-002",
+            "FR-012",
+            "FR-013",
+            "FR-020",
+            "FR-028"
+          ]
+        },
+        {
+          "name": "test_only_submitted_can_be_decided[DRAFT]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_only_submitted_can_be_decided[APPROVED]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_only_submitted_can_be_decided[REJECTED]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_only_submitted_can_be_decided[RETURNED]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_only_submitted_can_be_decided[WITHDRAWN]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-020"
+          ]
+        },
+        {
+          "name": "test_reason_length_boundary[0-False]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011"
+          ]
+        },
+        {
+          "name": "test_reason_length_boundary[1-True]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011"
+          ]
+        },
+        {
+          "name": "test_reason_length_boundary[1000-True]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011"
+          ]
+        },
+        {
+          "name": "test_reason_length_boundary[1001-False]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-011"
+          ]
+        },
+        {
+          "name": "test_deletion_due_boundary[89-False]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-021"
+          ]
+        },
+        {
+          "name": "test_deletion_due_boundary[90-True]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-021"
+          ]
+        },
+        {
+          "name": "test_deletion_due_boundary[91-True]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-021"
+          ]
+        },
+        {
+          "name": "test_notice_and_auto_withdraw_boundaries[165-False-False]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-022",
+            "FR-023"
+          ]
+        },
+        {
+          "name": "test_notice_and_auto_withdraw_boundaries[166-True-False]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-022",
+            "FR-023"
+          ]
+        },
+        {
+          "name": "test_notice_and_auto_withdraw_boundaries[179-True-False]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-022",
+            "FR-023"
+          ]
+        },
+        {
+          "name": "test_notice_and_auto_withdraw_boundaries[180-False-True]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-022",
+            "FR-023"
+          ]
+        },
+        {
+          "name": "test_terminal_applications_are_never_auto_withdrawn[APPROVED]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-022"
+          ]
+        },
+        {
+          "name": "test_terminal_applications_are_never_auto_withdrawn[REJECTED]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-022"
+          ]
+        },
+        {
+          "name": "test_terminal_applications_are_never_auto_withdrawn[WITHDRAWN]",
+          "file": "tests.unit.test_domain",
+          "passed": true,
+          "size": "small",
+          "req": [
+            "FR-022"
+          ]
+        }
+      ]
+    },
+    "CT": {
+      "exit_code": 0,
+      "tests": 29,
+      "passed": 29,
+      "branch_coverage_percent": 88.4,
+      "coverage_by_file": {
+        "flowapprove/__init__.py": 100.0,
+        "flowapprove/domain.py": 81.0,
+        "flowapprove/service.py": 94.4
+      },
+      "functions": [
+        "test_ai_principal_has_no_path_to_decide",
+        "test_audit_failure_rolls_back_every_write",
+        "test_authorization_decision_table_for_decide",
+        "test_same_request_id_sent_concurrently_decides_and_notifies_once",
+        "test_古い版を指定した終端状態の申請への決裁は競合になる",
+        "test_同時に届いた2つの決裁は一方だけ成立する",
+        "test_審査者を兼ねる人の自己申請は承認できない",
+        "test_応答を受け取れなかった承認を再送すると最初の結果が返る",
+        "test_時間を過ぎた再送は新しい要求として扱われ競合になる",
+        "test_権限が失効した後の再送には結果を返さない",
+        "test_権限のない相手には終端状態であることも明かさない",
+        "test_決裁の種類に応じて状態が変わり履歴に残る",
+        "test_理由は1文字以上1000文字以下でなければ決裁できない",
+        "test_監査記録を残せないときは決裁も成立しない",
+        "test_開いた後に更新された申請は承認できない"
+      ],
+      "cases": [
+        {
+          "name": "test_audit_failure_rolls_back_every_write",
+          "file": "tests.component.test_decision_component",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "ADR-0002",
+            "FR-014",
+            "NVT-010"
+          ]
+        },
+        {
+          "name": "test_same_request_id_sent_concurrently_decides_and_notifies_once",
+          "file": "tests.component.test_decision_component",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "ADR-0002",
+            "FR-015",
+            "FR-016"
+          ]
+        },
+        {
+          "name": "test_authorization_decision_table_for_decide[\\u5be9\\u67fb\\u8005A-False]",
+          "file": "tests.component.test_decision_component",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "FR-001",
+            "FR-002",
+            "NVT-002"
+          ]
+        },
+        {
+          "name": "test_authorization_decision_table_for_decide[\\u5be9\\u67fb\\u8005A-True]",
+          "file": "tests.component.test_decision_component",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "FR-001",
+            "FR-002",
+            "NVT-002"
+          ]
+        },
+        {
+          "name": "test_authorization_decision_table_for_decide[\\u5be9\\u67fb\\u8005B-False]",
+          "file": "tests.component.test_decision_component",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "FR-001",
+            "FR-002",
+            "NVT-002"
+          ]
+        },
+        {
+          "name": "test_authorization_decision_table_for_decide[\\u5be9\\u67fb\\u8005B-True]",
+          "file": "tests.component.test_decision_component",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "FR-001",
+            "FR-002",
+            "NVT-002"
+          ]
+        },
+        {
+          "name": "test_authorization_decision_table_for_decide[\\u7533\\u8acb\\u8005A-False]",
+          "file": "tests.component.test_decision_component",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "FR-001",
+            "FR-002",
+            "NVT-002"
+          ]
+        },
+        {
+          "name": "test_authorization_decision_table_for_decide[\\u7533\\u8acb\\u8005A-True]",
+          "file": "tests.component.test_decision_component",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "FR-001",
+            "FR-002",
+            "NVT-002"
+          ]
+        },
+        {
+          "name": "test_authorization_decision_table_for_decide[\\u904b\\u7528\\u8005A-False]",
+          "file": "tests.component.test_decision_component",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "FR-001",
+            "FR-002",
+            "NVT-002"
+          ]
+        },
+        {
+          "name": "test_authorization_decision_table_for_decide[\\u904b\\u7528\\u8005A-True]",
+          "file": "tests.component.test_decision_component",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "FR-001",
+            "FR-002",
+            "NVT-002"
+          ]
+        },
+        {
+          "name": "test_authorization_decision_table_for_decide[AI\\u51e6\\u7406\\u4e3b\\u4f53-False]",
+          "file": "tests.component.test_decision_component",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "FR-001",
+            "FR-002",
+            "NVT-002"
+          ]
+        },
+        {
+          "name": "test_authorization_decision_table_for_decide[AI\\u51e6\\u7406\\u4e3b\\u4f53-True]",
+          "file": "tests.component.test_decision_component",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "FR-001",
+            "FR-002",
+            "NVT-002"
+          ]
+        },
+        {
+          "name": "test_ai_principal_has_no_path_to_decide",
+          "file": "tests.component.test_decision_component",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "ADR-0001",
+            "FR-008"
+          ]
+        },
+        {
+          "name": "test_決裁の種類に応じて状態が変わり履歴に残る[\\u627f\\u8a8d-APPROVED]",
+          "file": "tests.component.test_feat_004_decision",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "ADR-0002",
+            "FEAT-004",
+            "FR-011",
+            "FR-012",
+            "FR-013",
+            "FR-014",
+            "FR-015",
+            "FR-028",
+            "RULE-008",
+            "SCN-017"
+          ]
+        },
+        {
+          "name": "test_決裁の種類に応じて状態が変わり履歴に残る[\\u5374\\u4e0b-REJECTED]",
+          "file": "tests.component.test_feat_004_decision",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "ADR-0002",
+            "FEAT-004",
+            "FR-011",
+            "FR-012",
+            "FR-013",
+            "FR-014",
+            "FR-015",
+            "FR-028",
+            "RULE-008",
+            "SCN-017"
+          ]
+        },
+        {
+          "name": "test_決裁の種類に応じて状態が変わり履歴に残る[\\u5dee\\u623b\\u3057-RETURNED]",
+          "file": "tests.component.test_feat_004_decision",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "ADR-0002",
+            "FEAT-004",
+            "FR-011",
+            "FR-012",
+            "FR-013",
+            "FR-014",
+            "FR-015",
+            "FR-028",
+            "RULE-008",
+            "SCN-017"
+          ]
+        },
+        {
+          "name": "test_理由は1文字以上1000文字以下でなければ決裁できない[0-SUBMITTED]",
+          "file": "tests.component.test_feat_004_decision",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "ADR-0002",
+            "FEAT-004",
+            "FR-011",
+            "FR-012",
+            "FR-013",
+            "FR-014",
+            "FR-015",
+            "FR-028",
+            "RULE-008",
+            "SCN-018"
+          ]
+        },
+        {
+          "name": "test_理由は1文字以上1000文字以下でなければ決裁できない[1-APPROVED]",
+          "file": "tests.component.test_feat_004_decision",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "ADR-0002",
+            "FEAT-004",
+            "FR-011",
+            "FR-012",
+            "FR-013",
+            "FR-014",
+            "FR-015",
+            "FR-028",
+            "RULE-008",
+            "SCN-018"
+          ]
+        },
+        {
+          "name": "test_理由は1文字以上1000文字以下でなければ決裁できない[1000-APPROVED]",
+          "file": "tests.component.test_feat_004_decision",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "ADR-0002",
+            "FEAT-004",
+            "FR-011",
+            "FR-012",
+            "FR-013",
+            "FR-014",
+            "FR-015",
+            "FR-028",
+            "RULE-008",
+            "SCN-018"
+          ]
+        },
+        {
+          "name": "test_理由は1文字以上1000文字以下でなければ決裁できない[1001-SUBMITTED]",
+          "file": "tests.component.test_feat_004_decision",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "ADR-0002",
+            "FEAT-004",
+            "FR-011",
+            "FR-012",
+            "FR-013",
+            "FR-014",
+            "FR-015",
+            "FR-028",
+            "RULE-008",
+            "SCN-018"
+          ]
+        },
+        {
+          "name": "test_審査者を兼ねる人の自己申請は承認できない",
+          "file": "tests.component.test_feat_004_decision",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "ADR-0002",
+            "FEAT-004",
+            "FR-011",
+            "FR-012",
+            "FR-013",
+            "FR-014",
+            "FR-015",
+            "FR-028",
+            "RULE-009",
+            "SCN-019"
+          ]
+        },
+        {
+          "name": "test_開いた後に更新された申請は承認できない",
+          "file": "tests.component.test_feat_004_decision",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "ADR-0002",
+            "FEAT-004",
+            "FR-011",
+            "FR-012",
+            "FR-013",
+            "FR-014",
+            "FR-015",
+            "FR-028",
+            "RULE-010",
+            "SCN-020"
+          ]
+        },
+        {
+          "name": "test_同時に届いた2つの決裁は一方だけ成立する",
+          "file": "tests.component.test_feat_004_decision",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "ADR-0002",
+            "FEAT-004",
+            "FR-011",
+            "FR-012",
+            "FR-013",
+            "FR-014",
+            "FR-015",
+            "FR-028",
+            "RULE-010",
+            "SCN-021"
+          ]
+        },
+        {
+          "name": "test_監査記録を残せないときは決裁も成立しない",
+          "file": "tests.component.test_feat_004_decision",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "ADR-0002",
+            "FEAT-004",
+            "FR-011",
+            "FR-012",
+            "FR-013",
+            "FR-014",
+            "FR-015",
+            "FR-028",
+            "RULE-011",
+            "SCN-022"
+          ]
+        },
+        {
+          "name": "test_応答を受け取れなかった承認を再送すると最初の結果が返る",
+          "file": "tests.component.test_feat_004_decision",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "ADR-0002",
+            "FEAT-004",
+            "FR-011",
+            "FR-012",
+            "FR-013",
+            "FR-014",
+            "FR-015",
+            "FR-028",
+            "RULE-012",
+            "SCN-023"
+          ]
+        },
+        {
+          "name": "test_権限が失効した後の再送には結果を返さない",
+          "file": "tests.component.test_feat_004_decision",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "ADR-0002",
+            "FEAT-004",
+            "FR-001",
+            "FR-011",
+            "FR-012",
+            "FR-013",
+            "FR-014",
+            "FR-015",
+            "FR-028",
+            "RULE-012",
+            "SCN-024"
+          ]
+        },
+        {
+          "name": "test_時間を過ぎた再送は新しい要求として扱われ競合になる",
+          "file": "tests.component.test_feat_004_decision",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "ADR-0002",
+            "FEAT-004",
+            "FR-011",
+            "FR-012",
+            "FR-013",
+            "FR-014",
+            "FR-015",
+            "FR-028",
+            "RULE-012",
+            "SCN-025"
+          ]
+        },
+        {
+          "name": "test_古い版を指定した終端状態の申請への決裁は競合になる",
+          "file": "tests.component.test_feat_004_decision",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "ADR-0002",
+            "FEAT-004",
+            "FR-011",
+            "FR-012",
+            "FR-013",
+            "FR-014",
+            "FR-015",
+            "FR-028",
+            "RULE-023",
+            "SCN-041"
+          ]
+        },
+        {
+          "name": "test_権限のない相手には終端状態であることも明かさない",
+          "file": "tests.component.test_feat_004_decision",
+          "passed": true,
+          "size": "medium",
+          "req": [
+            "ADR-0002",
+            "FEAT-004",
+            "FR-011",
+            "FR-012",
+            "FR-013",
+            "FR-014",
+            "FR-015",
+            "FR-028",
+            "RULE-023",
+            "SCN-042"
+          ]
+        }
+      ]
+    }
+  },
+  "verified_ids": {
+    "FR-003": {
+      "levels": [
+        "UT"
+      ],
+      "passed": 7,
+      "failed": 0
+    },
+    "FR-004": {
+      "levels": [
+        "UT"
+      ],
+      "passed": 33,
+      "failed": 0
+    },
+    "FR-011": {
+      "levels": [
+        "UT",
+        "CT"
+      ],
+      "passed": 56,
+      "failed": 0
+    },
+    "FR-018": {
+      "levels": [
+        "UT"
+      ],
+      "passed": 36,
+      "failed": 0
+    },
+    "FR-019": {
+      "levels": [
+        "UT"
+      ],
+      "passed": 36,
+      "failed": 0
+    },
+    "FR-020": {
+      "levels": [
+        "UT"
+      ],
+      "passed": 74,
+      "failed": 0
+    },
+    "FR-002": {
+      "levels": [
+        "UT",
+        "CT"
+      ],
+      "passed": 42,
+      "failed": 0
+    },
+    "FR-012": {
+      "levels": [
+        "UT",
+        "CT"
+      ],
+      "passed": 48,
+      "failed": 0
+    },
+    "FR-013": {
+      "levels": [
+        "UT",
+        "CT"
+      ],
+      "passed": 48,
+      "failed": 0
+    },
+    "FR-028": {
+      "levels": [
+        "UT",
+        "CT"
+      ],
+      "passed": 48,
+      "failed": 0
+    },
+    "FR-021": {
+      "levels": [
+        "UT"
+      ],
+      "passed": 3,
+      "failed": 0
+    },
+    "FR-022": {
+      "levels": [
+        "UT"
+      ],
+      "passed": 7,
+      "failed": 0
+    },
+    "FR-023": {
+      "levels": [
+        "UT"
+      ],
+      "passed": 4,
+      "failed": 0
+    },
+    "ADR-0002": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 18,
+      "failed": 0
+    },
+    "FR-014": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 17,
+      "failed": 0
+    },
+    "NVT-010": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 1,
+      "failed": 0
+    },
+    "FR-015": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 17,
+      "failed": 0
+    },
+    "FR-016": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 1,
+      "failed": 0
+    },
+    "FR-001": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 11,
+      "failed": 0
+    },
+    "NVT-002": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 10,
+      "failed": 0
+    },
+    "ADR-0001": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 1,
+      "failed": 0
+    },
+    "FR-008": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 1,
+      "failed": 0
+    },
+    "FEAT-004": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 16,
+      "failed": 0
+    },
+    "RULE-008": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 7,
+      "failed": 0
+    },
+    "SCN-017": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 3,
+      "failed": 0
+    },
+    "SCN-018": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 4,
+      "failed": 0
+    },
+    "RULE-009": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 1,
+      "failed": 0
+    },
+    "SCN-019": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 1,
+      "failed": 0
+    },
+    "RULE-010": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 2,
+      "failed": 0
+    },
+    "SCN-020": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 1,
+      "failed": 0
+    },
+    "SCN-021": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 1,
+      "failed": 0
+    },
+    "RULE-011": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 1,
+      "failed": 0
+    },
+    "SCN-022": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 1,
+      "failed": 0
+    },
+    "RULE-012": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 3,
+      "failed": 0
+    },
+    "SCN-023": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 1,
+      "failed": 0
+    },
+    "SCN-024": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 1,
+      "failed": 0
+    },
+    "SCN-025": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 1,
+      "failed": 0
+    },
+    "RULE-023": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 2,
+      "failed": 0
+    },
+    "SCN-041": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 1,
+      "failed": 0
+    },
+    "SCN-042": {
+      "levels": [
+        "CT"
+      ],
+      "passed": 1,
+      "failed": 0
+    }
+  },
+  "mutation": {
+    "tool": "mutmut 3.8.0",
+    "target": "flowapprove/domain.py",
+    "tests": "tests/unit",
+    "mutants": 68,
+    "killed": 67,
+    "survived": [
+      "flowapprove.domain.x_next_state__mutmut_1"
+    ],
+    "score_percent": 98.5
+  }
+}

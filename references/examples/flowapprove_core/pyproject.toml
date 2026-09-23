@@ -1,0 +1,24 @@
+[project]
+name = "flowapprove-core-example"
+version = "0.0.0"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+  "req(*ids): このテストが確かめる要件・ルール・設計判断のID（追跡用）",
+  "small: 単一プロセス・入出力なし・実時間待ちなし",
+  "medium: 単一マシン内。プロセス内フェイクまたはローカルの実物",
+]
+bdd_features_base_dir = "../../features"
+junit_family = "xunit1"
+addopts = "--strict-markers -p no:cacheprovider"
+
+[tool.coverage.run]
+branch = true
+source = ["flowapprove"]
+
+[tool.mutmut]
+paths_to_mutate = ["flowapprove/domain.py"]
+tests_dir = ["tests/unit"]

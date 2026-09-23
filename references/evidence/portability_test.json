@@ -1,0 +1,30 @@
+{
+  "status": "passed",
+  "errors": [],
+  "warnings": [
+    "W102 mermaid_render.json: Mermaid 描画証跡がない（tools/render_mermaid.py を実行）"
+  ],
+  "stats": {
+    "steps": 7,
+    "unique_step_patterns": 6,
+    "unique_step_ratio": 0.857,
+    "relative_links": 10,
+    "mermaid_blocks": 10,
+    "documents": 16,
+    "fr": 1,
+    "nfr": 1,
+    "rules": 1,
+    "scenarios": 2,
+    "expanded_cases": 3,
+    "adr": 1,
+    "feature_files": 1,
+    "test_items": {
+      "ut": 1,
+      "ct": 1,
+      "st": 1,
+      "uat": 2
+    },
+    "personas": 1
+  },
+  "note": "PRD・ADR・BDD・UT・CT・ST・UAT の全テンプレートのプレースホルダを機械的に埋め、PRD の任意節を全て削除した、別名・別ディレクトリ構成のプロジェクト（テストコードなし）"
+}

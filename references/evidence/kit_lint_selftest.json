@@ -1,0 +1,157 @@
+{
+  "status": "passed",
+  "baseline": "passed",
+  "mutations": [
+    {
+      "mutation": "FRを2文にする",
+      "expect": "E034",
+      "status": "detected"
+    },
+    {
+      "mutation": "FRの型と構文の不一致",
+      "expect": "E033",
+      "status": "detected"
+    },
+    {
+      "mutation": "存在しない根拠ID",
+      "expect": "E037",
+      "status": "detected"
+    },
+    {
+      "mutation": "NFRの検証計画欠落",
+      "expect": "E043",
+      "status": "detected"
+    },
+    {
+      "mutation": "必須節の改名",
+      "expect": "E020",
+      "status": "detected"
+    },
+    {
+      "mutation": "Gherkin構文破壊",
+      "expect": "E050",
+      "status": "detected"
+    },
+    {
+      "mutation": "SCN重複",
+      "expect": "E064",
+      "status": "detected"
+    },
+    {
+      "mutation": "未知の要件タグ",
+      "expect": "E070",
+      "status": "detected"
+    },
+    {
+      "mutation": "PRD受入とBDDタグの不一致",
+      "expect": "E072",
+      "status": "detected"
+    },
+    {
+      "mutation": "試験用語の混入",
+      "expect": "E060",
+      "status": "detected"
+    },
+    {
+      "mutation": "ADR採用案が一覧にない",
+      "expect": "E090",
+      "status": "detected"
+    },
+    {
+      "mutation": "ADR addresses不正",
+      "expect": "E083",
+      "status": "detected"
+    },
+    {
+      "mutation": "ADR status語彙外",
+      "expect": "E080",
+      "status": "detected"
+    },
+    {
+      "mutation": "リンク切れ",
+      "expect": "E016",
+      "status": "detected"
+    },
+    {
+      "mutation": "表の列数不揃い",
+      "expect": "E011",
+      "status": "detected"
+    },
+    {
+      "mutation": "図を変えると描画証跡が古くなる",
+      "expect": "E103",
+      "status": "detected"
+    },
+    {
+      "mutation": "追跡表の手修正",
+      "expect": "E120",
+      "status": "detected"
+    },
+    {
+      "mutation": ".feature の手修正",
+      "expect": "E121",
+      "status": "detected"
+    },
+    {
+      "mutation": "NVTの割当が1つでない",
+      "expect": "E146",
+      "status": "detected"
+    },
+    {
+      "mutation": "テスト項目の由来が存在しない",
+      "expect": "E142",
+      "status": "detected"
+    },
+    {
+      "mutation": "設計書のテスト名がコードにない",
+      "expect": "E152",
+      "status": "detected"
+    },
+    {
+      "mutation": "テストコードを変えると実行証跡が古くなる",
+      "expect": "E153",
+      "status": "detected"
+    },
+    {
+      "mutation": "目的に受入シナリオがない",
+      "expect": "E150",
+      "status": "detected"
+    },
+    {
+      "mutation": "機能がどの水準にも割り当てられていない",
+      "expect": "E148",
+      "status": "detected"
+    },
+    {
+      "mutation": "front matter の語彙外",
+      "expect": "E025",
+      "status": "detected"
+    },
+    {
+      "mutation": "合格と書いて実行証跡がない",
+      "expect": "E155",
+      "status": "detected"
+    },
+    {
+      "mutation": "ペルソナの主体が存在しない",
+      "expect": "E145",
+      "status": "detected"
+    },
+    {
+      "mutation": "1章の由来が本文に出てこない",
+      "expect": "E157",
+      "status": "detected"
+    },
+    {
+      "mutation": "文書の実行結果が証跡と食い違う",
+      "expect": "E158",
+      "status": "detected"
+    },
+    {
+      "mutation": "旅程が通るシナリオが存在しない",
+      "expect": "E143",
+      "status": "detected"
+    }
+  ],
+  "executed_at_utc": "2026-09-19T08:24:37+00:00"
+}

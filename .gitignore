@@ -28,3 +28,12 @@ __pycache__/
 !.claude/contextdb/spool/quarantine/.gitkeep
 .claude/contextdb/health/*
 !.claude/contextdb/health/.gitkeep
+
+# references kit: local toolchains and test artefacts
+references/.mermaid/
+references/examples/flowapprove_core/.venv/
+references/examples/flowapprove_core/.hypothesis/
+references/examples/flowapprove_core/mutants/
+references/examples/flowapprove_core/.coverage
+references/**/__pycache__/
+references/**/.pytest_cache/

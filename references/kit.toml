@@ -1,0 +1,62 @@
+# kit_lint.py の設定。自分の案件では paths を差し替えるだけで使える（件数やファイル名の決め打ちはない）。
+[docs]
+prd = ["prd/PRD_SAMPLE.md"]          # 要件正本（1件）
+adr = ["adr/ADR-*.md"]
+bdd = ["bdd/BDD_SAMPLE.md"]
+ut = ["ut/UT_SAMPLE.md"]            # テスト設計書（任意。無ければ行ごと消す）
+ct = ["ct/CT_SAMPLE.md"]
+st = ["st/ST_SAMPLE.md"]
+uat = ["uat/UAT_SAMPLE.md"]
+other = ["*.md", "*/*_GUIDE.md"]
+trace = "04_TRACEABILITY.md"         # 自動生成物
+features_dir = "features"            # 自動生成物（gherkin_source: markdown のとき）
+
+[templates]
+prd = "prd/PRD_TEMPLATE.md"
+adr = "adr/ADR_TEMPLATE.md"
+bdd = "bdd/BDD_TEMPLATE.md"
+ut = "ut/UT_TEMPLATE.md"
+ct = "ct/CT_TEMPLATE.md"
+st = "st/ST_TEMPLATE.md"
+uat = "uat/UAT_TEMPLATE.md"
+
+[adr]
+statuses = ["proposed", "accepted", "rejected", "deprecated", "superseded"]
+
+[gherkin]
+language = "ja"
+max_steps = 7
+max_unique_step_ratio = 0.60
+forbidden_terms = ["テストダブル", "fixture", "スタブ", "モック", "SQL", "DOM", "クリック", "テーブル行"]
+
+[evidence]
+mermaid = "evidence/mermaid_render.json"
+
+[tests]                               # 任意。テストコードがあるときだけ書く
+project = "examples/flowapprove_core"
+code = ["examples/flowapprove_core/tests/**/*.py"]          # 設計書の「テスト名」をここから探す
+inputs = ["examples/flowapprove_core/flowapprove/*.py", "examples/flowapprove_core/tests/**/*.py", "examples/flowapprove_core/pyproject.toml", "features/FEAT-004.feature"]
+evidence = "evidence/example_tests.json"
+
+[vocab.prd]
+status = ["draft", "in_review", "approved", "retired"]
+[vocab.bdd]
+status = ["draft", "agreed"]
+automation = ["not_implemented", "partial", "implemented"]
+last_run = ["not_run", "passed", "failed"]
+[vocab.ut]
+status = ["draft", "agreed"]
+automation = ["not_implemented", "partial", "implemented"]
+last_run = ["not_run", "passed", "failed"]
+[vocab.ct]
+status = ["draft", "agreed"]
+automation = ["not_implemented", "partial", "implemented"]
+last_run = ["not_run", "passed", "failed"]
+[vocab.st]
+status = ["draft", "agreed"]
+automation = ["not_implemented", "partial", "implemented"]
+last_run = ["not_run", "passed", "failed"]
+[vocab.uat]
+status = ["draft", "agreed"]
+automation = ["not_implemented", "partial", "implemented"]
+last_run = ["not_run", "passed", "failed"]

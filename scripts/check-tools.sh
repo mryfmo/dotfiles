@@ -137,6 +137,19 @@ function check_homebrew() {
 }
 
 #
+# @description Print whether the per-machine signing/push SSH key exists.
+#
+function check_machine_ssh_key() {
+    local key_path="${HOME%/}/.ssh/id_ed25519.pub"
+
+    if [ -f "${key_path}" ]; then
+        printf 'found:   machine SSH key -> %s\n' "${key_path}"
+    else
+        warn_optional "machine SSH key is missing: ${key_path} (run provision-machine-key)"
+    fi
+}
+
+#
 # @description Print the current GitHub CLI extension state when gh is installed.
 #
 function check_gh_extensions() {
@@ -166,6 +179,9 @@ function main() {
 
     section "Homebrew"
     check_homebrew
+
+    section "SSH"
+    check_machine_ssh_key
 
     section "GitHub CLI extensions"
     check_gh_extensions

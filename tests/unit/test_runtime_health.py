@@ -351,8 +351,7 @@ EOF
             result.stdout,
         )
         self.assertIn(
-            "Run `codex login`, then `codex plugin add "
-            "superpowers@openai-curated`.",
+            "Run `codex login`, then `codex plugin add superpowers@openai-curated`.",
             result.stdout,
         )
         self.assertNotIn("Error:", result.stdout + result.stderr)
@@ -480,9 +479,7 @@ EOF
         target = home / ".local/bin/crit"
         self.assertTrue(target.stat().st_mode & stat.S_IXUSR)
         self.assertIn("crit v9.9.9", self.run_test_command([str(target)]).stdout)
-        self.assertIn(
-            "/v9.9.9/crit-linux-amd64", (repo / "commands.log").read_text()
-        )
+        self.assertIn("/v9.9.9/crit-linux-amd64", (repo / "commands.log").read_text())
         manifest = json.loads((home / ".agents/.installed-manifest.json").read_text())
         self.assertEqual([str(target)], manifest["steps"]["ensure_crit_cli"]["paths"])
 
@@ -573,7 +570,11 @@ EOF
         self.assertNotIn("unbound variable", result.stderr)
 
     def update_fixture(
-        self, *, branch: str = "main", upstream: str = "origin/main", dirty: bool = False
+        self,
+        *,
+        branch: str = "main",
+        upstream: str = "origin/main",
+        dirty: bool = False,
     ) -> tuple[subprocess.CompletedProcess[str], Path]:
         repo = self.temp_dir / f"update-{'dirty' if dirty else 'clean'}"
         home = repo / "home"
@@ -592,8 +593,10 @@ EOF
             esac
             """,
         )
-        self.executable(bin_dir / "chezmoi", "printf 'chezmoi %s\\n' \"$*\" >> \"$TEST_LOG\"\n")
-        self.executable(bin_dir / "mise", "printf 'mise %s\\n' \"$*\" >> \"$TEST_LOG\"\n")
+        self.executable(
+            bin_dir / "chezmoi", 'printf \'chezmoi %s\\n\' "$*" >> "$TEST_LOG"\n'
+        )
+        self.executable(bin_dir / "mise", 'printf \'mise %s\\n\' "$*" >> "$TEST_LOG"\n')
         self.executable(
             bin_dir / "herdr",
             """
@@ -839,6 +842,8 @@ EOF
         private_config = home / ".config/chezmoi-private/chezmoi.yaml"
         private_config.parent.mkdir(parents=True, exist_ok=True)
         private_config.touch()
+        (home / ".ssh").mkdir(parents=True, exist_ok=True)
+        (home / ".ssh/id_ed25519.pub").touch()
         return {
             **os.environ,
             "HOME": str(home),

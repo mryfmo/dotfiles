@@ -1,1 +1,3 @@
-{{ include "../install/common/chezmoi_private.sh" }}
+{{ if or (not (hasKey . "usePrivate")) .usePrivate -}}
+{{   include "../install/common/chezmoi_private.sh" }}
+{{ end -}}

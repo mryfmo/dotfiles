@@ -5,8 +5,14 @@ readonly SCRIPT_TEMPLATE_PATH="./home/.chezmoiscripts/common/run_once_before_01-
 function render_decrypt_script() {
     local source_dir="$1"
     local output_path="$2"
+    local extra_data="${3:-}"
 
-    sed "s|{{ .chezmoi.sourceDir }}|${source_dir}|g" "${SCRIPT_TEMPLATE_PATH}" > "${output_path}"
+    {
+        printf '{{- define "script" -}}\n'
+        cat "${SCRIPT_TEMPLATE_PATH}"
+        printf '{{- end -}}{{ $c := dict "sourceDir" "%s" }}{{ $d := dict "chezmoi" $c %s }}{{ template "script" $d }}' \
+            "${source_dir}" "${extra_data}"
+    } | CI=true chezmoi execute-template > "${output_path}"
 }
 
 @test "[common] decrypt_age_private_key continues when passphrase decrypt fails" {
@@ -82,4 +88,29 @@ function render_decrypt_script() {
     [ "${status}" -eq 0 ]
     [ -z "${output}" ]
     [ ! -e "${home_dir}/.config/age/key.txt" ]
+}
+
+@test "[common] usePrivate=false renders an empty gate with no decrypt function" {
+    local source_dir="${BATS_TEST_TMPDIR}/source"
+    local script_path="${BATS_TEST_TMPDIR}/decrypt-private-key.sh"
+
+    mkdir -p "${source_dir}"
+    render_decrypt_script "${source_dir}" "${script_path}" '"usePrivate" false'
+
+    run bash -c "source '${script_path}'; declare -F decrypt_age_private_key"
+    [ "${status}" -ne 0 ]
+}
+
+@test "[common] usePrivate=true or missing renders the decrypt function" {
+    local source_dir="${BATS_TEST_TMPDIR}/source"
+
+    for extra_data in '' '"usePrivate" true'; do
+        local script_path="${BATS_TEST_TMPDIR}/decrypt-private-key-${RANDOM}.sh"
+
+        mkdir -p "${source_dir}"
+        render_decrypt_script "${source_dir}" "${script_path}" "${extra_data}"
+
+        run bash -c "source '${script_path}'; declare -F decrypt_age_private_key"
+        [ "${status}" -eq 0 ]
+    done
 }

@@ -82,11 +82,32 @@ function warn_optional() {
 }
 
 #
+# @description Return success when the rendered chezmoi config enables the private layer.
+#   Defaults to enabled when chezmoi/jq are unavailable or the config predates the
+#   usePrivate key, matching the owner's existing machines' behavior.
+#
+function private_layer_enabled() {
+    local use_private
+
+    if ! command -v chezmoi > /dev/null 2>&1 || ! command -v jq > /dev/null 2>&1; then
+        return 0
+    fi
+
+    use_private="$(chezmoi data 2> /dev/null | jq -r '.usePrivate' 2> /dev/null)"
+    [ "${use_private}" != "false" ]
+}
+
+#
 # @description Print the configured private chezmoi source state.
 #
 function check_private_chezmoi() {
     local private_source="${HOME%/}/.local/share/chezmoi-private"
     local private_config="${HOME%/}/.config/chezmoi-private/chezmoi.yaml"
+
+    if ! private_layer_enabled; then
+        printf 'not applicable: private layer (usePrivate=false)\n'
+        return 0
+    fi
 
     if [ -d "${private_source}" ]; then
         printf 'found:   private source -> %s\n' "${private_source}"

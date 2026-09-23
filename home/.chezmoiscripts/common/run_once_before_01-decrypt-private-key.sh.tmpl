@@ -9,6 +9,7 @@ if [ "${DOTFILES_DEBUG:-}" ]; then
     set -x
 fi
 
+{{ if or (not (hasKey . "usePrivate")) .usePrivate -}}
 # @description Return success when standard input is attached to a terminal.
 function stdin_is_tty() {
     [ -t 0 ]
@@ -58,3 +59,4 @@ function main() {
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     main
 fi
+{{ end -}}

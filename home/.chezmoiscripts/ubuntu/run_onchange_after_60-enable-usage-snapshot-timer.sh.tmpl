@@ -16,6 +16,16 @@ if ! command -v systemctl > /dev/null 2>&1 || [ -z "${XDG_RUNTIME_DIR:-}" ] || !
     exit 0
 fi
 
+# systemctl --user always reads the real user's XDG config dir, regardless of
+# any $HOME override chezmoi applied under (e.g. CI's RUNNER_TEMP destDir).
+# Guard on the unit actually being visible there, not just on chezmoi having
+# rendered it: this covers both a temp-destDir apply (unit written but never
+# in this path) and any future run-order regression, with a single check.
+if [ ! -f "${XDG_CONFIG_HOME:-${HOME}/.config}/systemd/user/usage-snapshot.timer" ]; then
+    echo "unit not visible to the user manager (temp destDir apply?); skipping" >&2
+    exit 0
+fi
+
 systemctl --user daemon-reload
 systemctl --user enable --now usage-snapshot.timer
 {{     end -}}

@@ -3688,6 +3688,7 @@
 <li><code>repair_attach_pane_order</code></li>
 <li><code>repair_attach_pane_ratio</code></li>
 <li><code>require_command</code></li>
+<li><code>resolve_worker_kind</code></li>
 <li><code>resolve_worker_profile</code></li>
 <li><code>split_agent_pane</code></li>
 <li><code>start_agent_in_pane</code></li>
@@ -3709,7 +3710,8 @@
 <span class="c1"># @option --bootstrap-agmsg Configure repo-scoped agmsg hooks without changing Herdr panes.</span>
 <span class="c1"># @arg DIR Optional directory for the Herdr workspace. Defaults to the current directory.</span>
 <span class="c1"># @arg HERDR_AGENTS_WORKER_KIND Worker agent kind, `codex` or `claude`. Defaults</span>
-<span class="c1">#   to `codex`, unchanged from the historical hardcoded behavior.</span>
+<span class="c1">#   to `worker_kind` from the manifest via ~/.agents/model-profiles.env, then</span>
+<span class="c1">#   `codex`.</span>
 <span class="c1"># @arg HERDR_AGENTS_WORKER_PROFILE Environment variable naming the worker's</span>
 <span class="c1">#   model profile: `--profile &lt;name&gt;` for a codex worker, or the profile whose</span>
 <span class="c1">#   `MODEL_PROFILE_&lt;NAME&gt;_CLAUDE_ARGS` supplies arguments for a claude worker.</span>
@@ -3743,7 +3745,8 @@
 <span class="s">Claude Code, and the worker's own CLI (codex, or claude when</span>
 <span class="s">HERDR_AGENTS_WORKER_KIND=claude) are required. DIR defaults to the current</span>
 <span class="s">directory. HERDR_AGENTS_WORKER_KIND selects the worker pane's agent kind</span>
-<span class="s">(codex or claude; default codex).</span>
+<span class="s">(codex or claude); it defaults to worker_kind from ~/.agents/model-profiles.env,</span>
+<span class="s">then codex.</span>
 <span class="s">Attach mode uses the current Herdr pane for Claude.</span>
 <span class="s">Bootstrap mode only configures missing repo-scoped agmsg hooks.</span>
 <span class="s">USAGE</span>
@@ -3786,6 +3789,21 @@
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MODEL_PROFILE_INTERACTIVE</span><span class="k">:-</span><span class="nv">standard</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
+<span class="c1"># @description Resolve the worker kind: explicit environment first, then the</span>
+<span class="c1">#   manifest-generated ~/.agents/model-profiles.env, then codex.</span>
+<span class="k">function</span><span class="w"> </span>resolve_worker_kind<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">HERDR_AGENTS_WORKER_KIND</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HERDR_AGENTS_WORKER_KIND</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">HERDR_AGENTS_WORKER_KIND</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span>/.agents/model-profiles.env<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="c1"># shellcheck source=/dev/null</span>
+<span class="w">        </span><span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/model-profiles.env"</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HERDR_AGENTS_WORKER_KIND</span><span class="k">:-</span><span class="nv">codex</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
 <span class="c1"># @description Derive and validate a herdr 0.8.2 agent registration name.</span>
 <span class="c1"># @arg $1 string Agent role prefix.</span>
 <span class="c1"># @arg $2 string Herdr workspace id.</span>
@@ -3813,7 +3831,7 @@
 <span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">process_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-e<span class="w"> </span><span class="se">\</span>
 <span class="w">                </span><span class="s1">'.result.process_info.foreground_processes as $processes</span>
 <span class="s1">                 | ($processes | length) == 1</span>
-<span class="s1">                   and ($processes[0].argv0 | test("(^|/)-?(ba|z|fi)?sh$"))'</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="s1">                   and (($processes[0].argv[0] // $processes[0].name // "") | test("(^|/)-?(ba|z|fi)?sh$"))'</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span>herdr<span class="w"> </span>pane<span class="w"> </span>wait-output<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--regex<span class="w"> </span><span class="s1">'[$#%❯➜&gt;]+[[:space:]]*$'</span><span class="w"> </span>--source<span class="w"> </span>visible<span class="w"> </span>--lines<span class="w"> </span><span class="m">5</span><span class="w"> </span>--timeout<span class="w"> </span><span class="m">10000</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">            </span>sleep<span class="w"> </span><span class="m">0</span>.2
 <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
@@ -4322,7 +4340,7 @@
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="k">fi</span>
 
-<span class="nv">worker_kind</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HERDR_AGENTS_WORKER_KIND</span><span class="k">:-</span><span class="nv">codex</span><span class="si">}</span><span class="s2">"</span>
+<span class="nv">worker_kind</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>resolve_worker_kind<span class="k">)</span><span class="s2">"</span>
 <span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_kind</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
 codex<span class="w"> </span><span class="p">|</span><span class="w"> </span>claude<span class="o">)</span><span class="w"> </span><span class="p">;;</span>
 *<span class="o">)</span>

@@ -52,6 +52,14 @@ model_profiles:
       model: gpt-daybreak-blue-latest
       model_reasoning_effort: high
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
+  remediation:
+    # references-kit remediation orchestrator: Fable 5.1 at reduced effort;
+    # workers stay on `standard`.
+    claude: { model: claude-fable-5-1, effort: medium }
+    codex:
+      model: gpt-5.6-terra
+      model_reasoning_effort: medium
+      notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
   # ADH V4 program profile; fallback and effort downgrade are forbidden.
   # Edit here only; profiles/model_profiles.json is a validation view.
   adh:

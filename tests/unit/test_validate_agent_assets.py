@@ -85,7 +85,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                                     {
                                         "type": "command",
                                         "command": command,
-                                        "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"],
+                                        "args": [
+                                            "${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"
+                                        ],
                                     }
                                 ],
                             }
@@ -155,7 +157,14 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 "claude": {"model": "claude-model", "effort": "high"},
                 "codex": {"model": "codex-model", "model_reasoning_effort": "high"},
             }
-            for name in ("express", "standard", "review", "deep", "security")
+            for name in (
+                "express",
+                "standard",
+                "review",
+                "deep",
+                "security",
+                "remediation",
+            )
         }
         profiles["security"]["codex"]["model"] = "gpt-daybreak-blue-latest"
         manifest = {
@@ -179,6 +188,13 @@ class ValidateAgentAssetsTest(unittest.TestCase):
     def test_agent_manifest_rejects_missing_security_profile(self) -> None:
         manifest = self.write_valid_agent_manifest()
         del manifest["model_profiles"]["security"]
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_agent_manifest()
+
+    def test_agent_manifest_rejects_missing_remediation_profile(self) -> None:
+        manifest = self.write_valid_agent_manifest()
+        del manifest["model_profiles"]["remediation"]
 
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_agent_manifest()

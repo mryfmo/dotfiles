@@ -465,6 +465,26 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertIn("{{ .chezmoi.homeDir }}/.local/bin/common/permgate codex", codex)
         self.assertIn("~/.local/bin/common/permgate claude", claude)
 
+    def test_model_profiles_env_renders_worker_kind(self) -> None:
+        manifest = sample_manifest()
+        manifest["worker_kind"] = "claude"
+
+        env = self.module.render_model_profiles_env(manifest)
+
+        self.assertIn('HERDR_AGENTS_WORKER_KIND="claude"', env)
+
+    def test_worker_kind_defaults_to_codex(self) -> None:
+        env = self.module.render_model_profiles_env(sample_manifest())
+
+        self.assertIn('HERDR_AGENTS_WORKER_KIND="codex"', env)
+
+    def test_unknown_worker_kind_fails(self) -> None:
+        manifest = sample_manifest()
+        manifest["worker_kind"] = "banana"
+
+        with self.assertRaises(SystemExit):
+            self.module.render_model_profiles_env(manifest)
+
     def test_unknown_interactive_profile_fails(self) -> None:
         manifest = sample_manifest()
         manifest["interactive_profile"] = "missing"

@@ -9,7 +9,8 @@
 # @option --bootstrap-agmsg Configure repo-scoped agmsg hooks without changing Herdr panes.
 # @arg DIR Optional directory for the Herdr workspace. Defaults to the current directory.
 # @arg HERDR_AGENTS_WORKER_KIND Worker agent kind, `codex` or `claude`. Defaults
-#   to `codex`, unchanged from the historical hardcoded behavior.
+#   to `worker_kind` from the manifest via ~/.agents/model-profiles.env, then
+#   `codex`.
 # @arg HERDR_AGENTS_WORKER_PROFILE Environment variable naming the worker's
 #   model profile: `--profile <name>` for a codex worker, or the profile whose
 #   `MODEL_PROFILE_<NAME>_CLAUDE_ARGS` supplies arguments for a claude worker.
@@ -43,7 +44,8 @@ panes from left to right, and open DIR in Zed when available. Herdr, jq,
 Claude Code, and the worker's own CLI (codex, or claude when
 HERDR_AGENTS_WORKER_KIND=claude) are required. DIR defaults to the current
 directory. HERDR_AGENTS_WORKER_KIND selects the worker pane's agent kind
-(codex or claude; default codex).
+(codex or claude); it defaults to worker_kind from ~/.agents/model-profiles.env,
+then codex.
 Attach mode uses the current Herdr pane for Claude.
 Bootstrap mode only configures missing repo-scoped agmsg hooks.
 USAGE
@@ -84,6 +86,21 @@ function resolve_worker_profile() {
         source "${HOME}/.agents/model-profiles.env"
     fi
     printf '%s\n' "${MODEL_PROFILE_INTERACTIVE:-standard}"
+}
+
+# @description Resolve the worker kind: explicit environment first, then the
+#   manifest-generated ~/.agents/model-profiles.env, then codex.
+function resolve_worker_kind() {
+    if [[ -n ${HERDR_AGENTS_WORKER_KIND:-} ]]; then
+        printf '%s\n' "${HERDR_AGENTS_WORKER_KIND}"
+        return
+    fi
+    local HERDR_AGENTS_WORKER_KIND=""
+    if [[ -f ${HOME}/.agents/model-profiles.env ]]; then
+        # shellcheck source=/dev/null
+        source "${HOME}/.agents/model-profiles.env"
+    fi
+    printf '%s\n' "${HERDR_AGENTS_WORKER_KIND:-codex}"
 }
 
 # @description Derive and validate a herdr 0.8.2 agent registration name.
@@ -622,7 +639,7 @@ if [[ ${bootstrap_mode} == true ]]; then
     exit 0
 fi
 
-worker_kind="${HERDR_AGENTS_WORKER_KIND:-codex}"
+worker_kind="$(resolve_worker_kind)"
 case "${worker_kind}" in
 codex | claude) ;;
 *)

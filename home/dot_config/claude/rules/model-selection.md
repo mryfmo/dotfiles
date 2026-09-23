@@ -1,6 +1,7 @@
 ## Model selection
 
 - Interactive model IDs and efforts live only in `model_profiles` in `home/dot_agents/agent-config.yaml` (dotfiles). Profiles render into Claude settings, `~/.codex/<profile>.config.toml`, and `~/.agents/model-profiles.env`; change interactive models there, never in launchers, rules, or ad-hoc flags. Permgate classifier IDs are separately pinned in its security policy.
+- The herdr-agents worker pane kind (`codex` or `claude`) lives in `worker_kind` in the same manifest and renders into `~/.agents/model-profiles.env`; change it there, not with ad-hoc `HERDR_AGENTS_WORKER_KIND` exports.
 - Launch disposable E2E/test-subject agent sessions with the `express` profile arguments sourced from `~/.agents/model-profiles.env` (`MODEL_PROFILE_EXPRESS_CLAUDE_ARGS` / `MODEL_PROFILE_EXPRESS_CODEX_ARGS`); ad-hoc `--model` flags remain prohibited even for throwaway sessions.
 - Keep the main session on its startup model. Switching models mid-session invalidates the prompt cache and re-reads the whole history; escalate or downgrade at task boundaries with `/model` and `/effort`, or by launching with another profile.
 - Delegate read-heavy exploration (searches, file location, log digests) to the `express-explorer` subagent instead of spending the main model on it.

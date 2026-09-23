@@ -291,11 +291,13 @@ when the wrapper changes.
 The workspace layout stays centralized in `herdr-agents`, which is also bound
 inside Herdr at `prefix+alt+a`. The target layout is deliberately fixed at
 exactly two managed panes, split 50/50: `claude-orchestrator` on the left and
-`${HERDR_AGENTS_WORKER_KIND}-worker-${workspace_id}` on the right, defaulting
-to a `codex-worker-${workspace_id}` pane unchanged from the historical
-codex-only behavior. Set `HERDR_AGENTS_WORKER_KIND=claude` to switch the
-worker pane to a resident Claude Code session instead — useful when Codex is
-unavailable (for example, not logged in) — inheriting the same managed
+`<worker_kind>-worker-${workspace_id}` on the right. The worker kind comes
+from `worker_kind` in `home/dot_agents/agent-config.yaml` (currently `claude`;
+`codex` when the key is absent), rendered into `~/.agents/model-profiles.env`
+as `HERDR_AGENTS_WORKER_KIND`; exporting that variable explicitly overrides
+the manifest for one launch. A `claude` worker is a resident Claude Code
+session — useful when Codex is unavailable (for example, not logged in) —
+inheriting the same managed
 lifecycle: dedicated workspace creation, pane wait/prompt handling, layout
 repair, and attach-mode healing. A claude worker also gets an unattended
 `Down`+`Enter` sent to its workspace-trust dialog on first start, since that

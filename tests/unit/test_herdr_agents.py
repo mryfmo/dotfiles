@@ -1218,6 +1218,41 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             self.calls_path.read_text().splitlines(),
         )
 
+    def test_worker_kind_defaults_to_generated_env_fragment(self) -> None:
+        profiles = self.home_dir / ".agents/model-profiles.env"
+        profiles.parent.mkdir(parents=True)
+        profiles.write_text(
+            'MODEL_PROFILE_INTERACTIVE="standard"\n'
+            'HERDR_AGENTS_WORKER_KIND="claude"\n'
+            'MODEL_PROFILE_STANDARD_CLAUDE_ARGS="--model sonnet --effort high"\n'
+        )
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn(
+            "agent start claude-worker-w-test --kind claude --pane w-test:p3 "
+            "--timeout 30000 -- --model sonnet --effort high",
+            calls,
+        )
+        self.assertFalse(any("codex" in call for call in calls))
+
+    def test_worker_kind_env_override_wins_over_generated_env_fragment(self) -> None:
+        profiles = self.home_dir / ".agents/model-profiles.env"
+        profiles.parent.mkdir(parents=True)
+        profiles.write_text(
+            'MODEL_PROFILE_INTERACTIVE="standard"\n'
+            'HERDR_AGENTS_WORKER_KIND="claude"\n'
+        )
+
+        result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "codex"})
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertTrue(any(call.startswith("agent start codex-worker-") for call in calls))
+        self.assertFalse(any(call.startswith("agent start claude-worker-") for call in calls))
+
     def test_worker_kind_rejects_an_unknown_value(self) -> None:
         result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "banana"})
 

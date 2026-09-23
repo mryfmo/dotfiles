@@ -61,6 +61,10 @@ model_profiles:
       model_reasoning_effort: xhigh
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
 interactive_profile: deep
+# Worker pane agent for herdr-agents: codex or claude. Renders into
+# ~/.agents/model-profiles.env as HERDR_AGENTS_WORKER_KIND; an explicit
+# HERDR_AGENTS_WORKER_KIND in the environment still overrides it.
+worker_kind: claude
 
 codex:
   config_path: home/.chezmoitemplates/codex-config-managed.toml

@@ -136,6 +136,16 @@ def validate_adh_profile(manifest: dict[str, Any]) -> None:
         )
 
 
+WORKER_KINDS = ("codex", "claude")
+
+
+def worker_kind(manifest: dict[str, Any]) -> str:
+    kind = manifest.get("worker_kind", "codex")
+    if kind not in WORKER_KINDS:
+        fail(f"worker_kind must be one of {WORKER_KINDS}: {kind!r}")
+    return kind
+
+
 def interactive_profile(manifest: dict[str, Any]) -> dict[str, Any]:
     profiles = model_profiles(manifest)
     name = manifest.get("interactive_profile")
@@ -657,6 +667,7 @@ def render_model_profiles_env(manifest: dict[str, Any]) -> str:
         "# Shell fragment sourced by agent launchers (herdr-agents, agent-fanout).",
         f"# {GENERATED_HEADER}",
         f'MODEL_PROFILE_INTERACTIVE="{manifest["interactive_profile"]}"',
+        f'HERDR_AGENTS_WORKER_KIND="{worker_kind(manifest)}"',
     ]
     for name, profile in sorted(profiles.items()):
         var = str(name).upper()

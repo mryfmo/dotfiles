@@ -3,14 +3,14 @@ doc_type: adr
 sample: true
 id: "ADR-0002"
 title: "決裁・監査記録・アプリ内通知・再送結果を同じデータベーストランザクションで確定する"
-status: accepted
+status: superseded
 date: "2026-09-19"
 decision-makers: ["（架空）技術責任者"]
 consulted: ["（架空）運用責任者", "（架空）品質責任者"]
 informed: ["（架空）製品責任者", "（架空）セキュリティ責任者"]
 addresses: ["FR-014", "FR-015", "FR-016", "FR-017", "NFR-005"]
 supersedes: []
-superseded-by: null
+superseded-by: "ADR-0004"
 confidence: "中"
 ---
 # ADR-0002：決裁・監査記録・アプリ内通知・再送結果を同じデータベーストランザクションで確定する

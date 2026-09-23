@@ -3,14 +3,14 @@ doc_type: adr
 sample: true
 id: "ADR-0001"
 title: "AI処理主体には決裁インターフェースの資格を発行しない"
-status: accepted
+status: superseded
 date: "2026-09-19"
 decision-makers: ["（架空）技術責任者", "（架空）セキュリティ責任者"]
 consulted: ["（架空）AI責任者", "（架空）運用責任者"]
 informed: ["（架空）製品責任者", "（架空）品質責任者"]
 addresses: ["FR-008", "FR-010", "FR-024"]
 supersedes: []
-superseded-by: null
+superseded-by: "ADR-0003"
 confidence: "中"
 ---
 # ADR-0001：AI処理主体には決裁インターフェースの資格を発行しない

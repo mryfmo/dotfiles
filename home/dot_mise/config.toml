@@ -1,6 +1,6 @@
 [tools]
 # Versions are reviewed and updated only by `make upgrade` with the lock diff.
-node = "26.8.2"
+node = "26.9.0"
 rust = "1.98.1"
 python = "3.14.7"
 
@@ -22,7 +22,7 @@ shfmt = "3.14.1"
 "aqua:watchexec/watchexec" = "2.7.3"
 
 "npm:@anthropic-ai/claude-code" = { version = "2.1.280", allow_builds = ["@anthropic-ai/claude-code"] }
-"npm:@openai/codex" = "0.155.1"
+"npm:@openai/codex" = "0.156.1"
 "npm:bash-language-server" = "5.6.0"
 "npm:ccstatusline" = "2.2.29"
 "npm:ccusage" = "20.0.20"

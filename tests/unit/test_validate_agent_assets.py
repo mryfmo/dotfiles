@@ -72,6 +72,40 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             )
         )
 
+    def write_repo_claude_settings(self, command: str) -> None:
+        (self.temp_dir / ".claude").mkdir(parents=True, exist_ok=True)
+        (self.temp_dir / ".claude/settings.json").write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "SessionEnd": [
+                            {
+                                "matcher": "*",
+                                "hooks": [
+                                    {
+                                        "type": "command",
+                                        "command": command,
+                                        "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"],
+                                    }
+                                ],
+                            }
+                        ]
+                    }
+                }
+            )
+        )
+
+    def test_repo_claude_settings_reject_machine_specific_interpreter(self) -> None:
+        self.write_repo_claude_settings(
+            "/Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14"
+        )
+        with self.assertRaises(SystemExit):
+            self.module.validate_repo_claude_settings_portable()
+
+    def test_repo_claude_settings_accept_portable_interpreter(self) -> None:
+        self.write_repo_claude_settings("python3")
+        self.module.validate_repo_claude_settings_portable()
+
     def test_codex_modify_script_requires_executable_source(self) -> None:
         path = self.temp_dir / "home/dot_codex/modify_private_config.toml"
         path.write_text(

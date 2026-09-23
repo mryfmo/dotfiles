@@ -41,6 +41,24 @@ class InstallerTests(unittest.TestCase):
         self.assertTrue(any(g["hooks"][0]["command"] == "other-tool" for g in groups))
         self.assertTrue(any(g["hooks"][0]["command"] == "/new/python" for g in groups))
 
+    def test_installer_defaults_to_a_portable_interpreter(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "project"
+            target.mkdir()
+            subprocess.run([sys.executable, str(ROOT / "install.py"), "--project", str(target), "--skip-instructions"], check=True, capture_output=True)
+            settings = json.loads((target / ".claude" / "settings.json").read_text())
+            commands = {handler["command"] for groups in settings["hooks"].values() for group in groups for handler in group["hooks"]}
+            self.assertEqual(commands, {"python3"})
+
+    def test_installer_keeps_an_explicit_interpreter_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "project"
+            target.mkdir()
+            subprocess.run([sys.executable, str(ROOT / "install.py"), "--project", str(target), "--skip-instructions", "--python", sys.executable], check=True, capture_output=True)
+            settings = json.loads((target / ".claude" / "settings.json").read_text())
+            commands = {handler["command"] for groups in settings["hooks"].values() for group in groups for handler in group["hooks"]}
+            self.assertEqual(commands, {str(Path(sys.executable).resolve())})
+
     def test_installer_is_idempotent_in_a_separate_project(self) -> None:
         with tempfile.TemporaryDirectory(prefix="contextdb-install-") as temp:
             target = Path(temp) / "target"

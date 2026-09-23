@@ -1094,6 +1094,22 @@ def validate_no_obvious_secrets() -> None:
             fail(f"possible committed secret in {path.relative_to(ROOT)}")
 
 
+def validate_repo_claude_settings_portable() -> None:
+    """Hook commands committed in the repo's own .claude/settings.json must not pin one machine's home."""
+    settings_path = ROOT / ".claude/settings.json"
+    if not settings_path.exists():
+        return
+    data = json.loads(settings_path.read_text())
+    for event, groups in data.get("hooks", {}).items():
+        for group in groups:
+            for handler in group.get("hooks", []):
+                command = str(handler.get("command") or "")
+                if command.startswith(("/Users/", "/home/")):
+                    fail(
+                        f"{settings_path} hook {event} must not hard-code a machine-specific home path: {command}"
+                    )
+
+
 def main() -> None:
     manifest = validate_agent_manifest()
     validate_adh_profile(manifest)
@@ -1105,6 +1121,7 @@ def main() -> None:
     validate_manifest_home_paths()
     validate_agmsg_script_modes()
     validate_claude_settings(manifest)
+    validate_repo_claude_settings_portable()
     validate_codex_plugins()
     validate_codex_modify_script()
     codex = validate_codex_config(manifest)

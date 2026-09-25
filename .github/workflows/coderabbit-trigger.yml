@@ -36,6 +36,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number || inputs.pr }}
+          # Manual runs and the review-requested label re-request after a
+          # rate-limited or failed request; only automatic events dedupe on the marker.
+          EXPLICIT: ${{ github.event_name == 'workflow_dispatch' || github.event.action == 'labeled' }}
         run: |
           set -euo pipefail
           [[ "${PR}" =~ ^[0-9]+$ ]] || { echo "invalid PR number: ${PR}" >&2; exit 1; }
@@ -44,13 +47,20 @@ jobs:
           for attempt in 1 2 3; do
             sha="$(gh api "repos/${REPO}/pulls/${PR}" --jq .head.sha)"
             marker="<!-- coderabbit-trigger:${sha} -->"
+            # A posted request is not a review: CodeRabbit may decline it when rate
+            # limited. Skip only once CodeRabbit has reviewed this head, or, for an
+            # automatic event, once this workflow already requested it.
+            reviewed="$(gh api --paginate "repos/${REPO}/pulls/${PR}/reviews" \
+              --jq "any(.[]; .user.login == \"coderabbitai[bot]\" and .commit_id == \"${sha}\")")"
             # Count a marker only in this workflow's own request comment, so another
             # commenter cannot pre-post it to suppress the review. Capture instead of
             # piping into grep -q, which can SIGPIPE gh under pipefail.
             found="$(gh api --paginate "repos/${REPO}/issues/${PR}/comments" \
               --jq "any(.[]; .user.login == \"github-actions[bot]\" and (.body | startswith(\"@coderabbitai full review\")) and (.body | contains(\"${marker}\")))")"
-            if [[ "${found}" == *true* ]]; then
-              echo "A full review was already requested for ${sha}."
+            if [[ "${reviewed}" == *true* ]]; then
+              echo "CodeRabbit already reviewed ${sha}."
+            elif [[ "${found}" == *true* && "${EXPLICIT}" != true ]]; then
+              echo "A full review was already requested for ${sha}; re-request with the review-requested label or a manual run."
             else
               gh api "repos/${REPO}/issues/${PR}/comments" -f body="@coderabbitai full review
           ${marker}" > /dev/null

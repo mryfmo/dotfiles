@@ -433,14 +433,21 @@ BASE=origin/main PR_FEEDBACK_EVIDENCE=.orchestration/validation/<task>-pr-feedba
   make require-crit-review
 ```
 
-With `BASE=<ref>` (`--base <ref>` on the script), the guard also reviews the committed `<base>...HEAD` changes and
-requires `PR_FEEDBACK_EVIDENCE`. It rejects a missing, external, or malformed
-file, any item without a `fixed:<commit>` or `not-applicable:<reason>`
-disposition, a `fixed:` commit that does not exist, and a `failure`-level item
-marked `not-applicable` with a reason shorter than 20 characters.
+With `BASE=<ref>` (`--base <ref>` on the script), the guard also reviews the
+committed `<ref>...HEAD` changes and requires `PR_FEEDBACK_EVIDENCE`. It
+rejects a missing, external, or malformed file; evidence whose `head_sha` is
+not the current `HEAD`; any item without a `fixed:<commit>` or
+`not-applicable:<reason>` disposition; a `fixed:` commit that does not exist
+or lies outside `<ref>..HEAD`; and a `not-applicable` reason shorter than 20
+characters on an item that failed or did not finish (`failure`, `error`,
+`cancelled`, `timed_out`, `action_required`, `startup_failure`, `stale`,
+`in_progress`, `queued`, or `pending`). The evidence file itself is not
+counted toward the diff that decides whether review is required.
 `.github/workflows/coderabbit-trigger.yml` comments `@coderabbitai full review`
 once per head SHA when a pull request opens, leaves draft, or gets the
-`review-requested` label (never on every push). Whether CodeRabbit acts on a
+`review-requested` label (never on every push); a manual run or the label
+re-requests a head CodeRabbit has not reviewed yet, for example after a
+rate-limited request. Whether CodeRabbit acts on a
 command posted by `github-actions[bot]` is not yet verified, so the manual
 comment above stays required. `.coderabbit.yaml` writes reviews in Japanese,
 excludes `.orchestration/`, `reviews/`, and `.ua/`, turns off automatic reviews

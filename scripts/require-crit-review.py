@@ -123,6 +123,19 @@ def git_root() -> Path:
     return Path(result.stdout.strip())
 
 
+def is_ignored(root: Path, path: str) -> bool:
+    """Skip worklogs and the PR feedback evidence file itself when sizing a diff."""
+    if path.startswith(IGNORED_PREFIXES):
+        return True
+    evidence = os.environ.get(PR_FEEDBACK_ENV, "").strip()
+    if not evidence:
+        return False
+    evidence_path = Path(evidence)
+    if not evidence_path.is_absolute():
+        evidence_path = root / evidence_path
+    return evidence_path.resolve() == (root / path).resolve()
+
+
 def changed_paths(root: Path, base: str | None = None) -> list[str]:
     paths: set[str] = set()
     commands = [
@@ -136,7 +149,7 @@ def changed_paths(root: Path, base: str | None = None) -> list[str]:
         result = run_git(command, root)
         if result.returncode == 0:
             paths.update(line.strip() for line in result.stdout.splitlines() if line.strip())
-    return sorted(path for path in paths if not path.startswith(IGNORED_PREFIXES))
+    return sorted(path for path in paths if not is_ignored(root, path))
 
 
 def numstat_line_count(root: Path, base: str | None = None) -> int:
@@ -150,7 +163,7 @@ def numstat_line_count(root: Path, base: str | None = None) -> int:
             continue
         for line in result.stdout.splitlines():
             fields = line.split("\t")
-            if len(fields) < 3 or fields[2].startswith(IGNORED_PREFIXES):
+            if len(fields) < 3 or is_ignored(root, fields[2]):
                 continue
             for count in fields[:2]:
                 if count.isdigit():
@@ -158,7 +171,7 @@ def numstat_line_count(root: Path, base: str | None = None) -> int:
     untracked = run_git(["ls-files", "--others", "--exclude-standard"], root)
     if untracked.returncode == 0:
         for path in untracked.stdout.splitlines():
-            if path.startswith(IGNORED_PREFIXES):
+            if is_ignored(root, path):
                 continue
             file_path = root / path
             if file_path.is_file():

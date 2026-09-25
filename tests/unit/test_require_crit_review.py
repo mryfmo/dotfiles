@@ -452,6 +452,22 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertIn(f"PR feedback evidence accepted: {feedback}", result.stdout)
         self.assertIn("Review not required", result.stdout)
 
+    def test_pr_feedback_evidence_file_is_not_counted_as_a_change(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        items = [
+            {"source": "annotation", "level": "notice", "disposition": f"not-applicable:runner notice {index}"}
+            for index in range(60)
+        ]
+        feedback = self.write_feedback(items)
+        path = self.temp_dir / feedback
+        path.write_text(json.dumps(json.loads(path.read_text()), indent=2))
+        self.assertGreater(len(path.read_text().splitlines()), 200)
+
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("Review not required", result.stdout)
+
     def test_pr_feedback_fixed_commit_must_be_in_the_pr_range(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
         base_commit = self.head_commit()

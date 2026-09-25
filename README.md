@@ -443,8 +443,9 @@ once per head SHA when a pull request opens, leaves draft, or gets the
 `review-requested` label (never on every push). Whether CodeRabbit acts on a
 command posted by `github-actions[bot]` is not yet verified, so the manual
 comment above stays required. `.coderabbit.yaml` writes reviews in Japanese,
-excludes `.orchestration/`, `reviews/`, and `.ua/`, turns off per-push
-incremental reviews, and lets CodeRabbit request changes.
+excludes `.orchestration/`, `reviews/`, and `.ua/`, turns off automatic reviews
+(on open and per push) so only the explicit request runs, and lets CodeRabbit
+request changes.
 
 `main` has no branch protection yet. A repository admin can require the
 integration checks and resolved review threads with this ruleset (not applied

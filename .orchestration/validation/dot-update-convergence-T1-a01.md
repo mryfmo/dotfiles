@@ -1,0 +1,2778 @@
+# Validation — dot-update-convergence-T1-a01
+
+## PR #170 P2 revision
+
+Command: uv run python -m unittest tests.unit.test_runtime_health.RuntimeHealthTest.test_make_update_reports_unmerged_feature_branch_before_branch_notice -v (red)
+Exit code: 1
+```text
+test_make_update_reports_unmerged_feature_branch_before_branch_notice (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_update_reports_unmerged_feature_branch_before_branch_notice) ... FAIL
+
+======================================================================
+FAIL: test_make_update_reports_unmerged_feature_branch_before_branch_notice (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_update_reports_unmerged_feature_branch_before_branch_notice)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/update-convergence/tests/unit/test_runtime_health.py", line 665, in test_make_update_reports_unmerged_feature_branch_before_branch_notice
+    self.assertIn("index has unmerged files", result.stdout)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'index has unmerged files' not found in "Notice: local source not pulled (current branch is feature/x, not main); run 'git -C /private/var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/runtime-health-test-q8uebijp/update-clean pull' to fetch remote updates.\nchezmoi apply --verbose\nWarning: private chezmoi source/config not found. Skipping private dotfiles.\nmise install --locked node\nmise install --locked npm:ccstatusline npm:ccusage\n./scripts/update-agent-assets.sh\nHerdr server is not running; skipping config reload.\n/Library/Developer/CommandLineTools/usr/bin/make agmsg-bootstrap\nHerdr agents source helper not found; skipping agmsg bootstrap.\n"
+
+----------------------------------------------------------------------
+Ran 1 test in 0.055s
+
+FAILED (failures=1)
+```
+
+Command: uv run --with pyyaml python scripts/generate-agent-configs.py --check && uv run --with pyyaml python scripts/validate-agent-assets.py && uv run --with pyyaml python /Users/mryfmo/.codex/skills/.system/skill-creator/scripts/quick_validate.py home/dot_agents/skills/agmsg-orchestration
+Exit code: 0
+```text
+generated agent configs are up to date
+agent asset validation ok
+Skill is valid!
+```
+
+Command: review gate and diff checks
+Exit code: 0
+```text
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+ Makefile                                            | 6 +++---
+ home/dot_agents/skills/agmsg-orchestration/SKILL.md | 2 +-
+ tests/unit/test_runtime_health.py                   | 8 ++++++++
+ 3 files changed, 12 insertions(+), 4 deletions(-)
+```
+
+Command: make unit-test
+Exit code: 0
+```text
+uv run python -m unittest discover -s tests/unit -v
+test_bounded_scan_finishes_under_wall_limit (test_agent_session_staleness.AgentSessionStalenessTest.test_bounded_scan_finishes_under_wall_limit) ... ok
+test_check_is_silent_when_assets_predate_session (test_agent_session_staleness.AgentSessionStalenessTest.test_check_is_silent_when_assets_predate_session) ... ok
+test_check_reports_new_versions_and_mtimes_deduplicated_by_root (test_agent_session_staleness.AgentSessionStalenessTest.test_check_reports_new_versions_and_mtimes_deduplicated_by_root) ... ok
+test_doctor_delegates_session_staleness_to_installed_script (test_agent_session_staleness.AgentSessionStalenessTest.test_doctor_delegates_session_staleness_to_installed_script) ... ok
+test_hook_first_call_writes_private_baseline_and_is_silent (test_agent_session_staleness.AgentSessionStalenessTest.test_hook_first_call_writes_private_baseline_and_is_silent) ... ok
+test_hook_missing_or_garbage_stdin_is_silent_success (test_agent_session_staleness.AgentSessionStalenessTest.test_hook_missing_or_garbage_stdin_is_silent_success) ... ok
+test_hook_prunes_state_files_older_than_seven_days (test_agent_session_staleness.AgentSessionStalenessTest.test_hook_prunes_state_files_older_than_seven_days) ... ok
+test_hook_second_call_detects_asset_updated_after_baseline (test_agent_session_staleness.AgentSessionStalenessTest.test_hook_second_call_detects_asset_updated_after_baseline) ... ok
+test_internal_failure_is_silent_success_with_one_stderr_line (test_agent_session_staleness.AgentSessionStalenessTest.test_internal_failure_is_silent_success_with_one_stderr_line) ... ok
+test_no_arguments_prints_ten_recent_updates (test_agent_session_staleness.AgentSessionStalenessTest.test_no_arguments_prints_ten_recent_updates) ... ok
+test_runtime_state_and_sqlite_files_are_excluded (test_agent_session_staleness.AgentSessionStalenessTest.test_runtime_state_and_sqlite_files_are_excluded) ... ok
+test_identifier_grammar_has_one_source_of_truth (test_agmsg_send.AgmsgRegistrationGrammarTest.test_identifier_grammar_has_one_source_of_truth) ... ok
+test_join_rejects_invalid_team_and_agent_without_mutation (test_agmsg_send.AgmsgRegistrationGrammarTest.test_join_rejects_invalid_team_and_agent_without_mutation) ... ok
+test_rename_rejects_invalid_identifiers_without_mutation (test_agmsg_send.AgmsgRegistrationGrammarTest.test_rename_rejects_invalid_identifiers_without_mutation) ... /Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/pathlib/_local.py:128: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108b72980>
+  path = os.fspath(arg)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_team_rename_rejects_invalid_names_without_mutation (test_agmsg_send.AgmsgRegistrationGrammarTest.test_team_rename_rejects_invalid_names_without_mutation) ... ok
+test_valid_registration_and_renames_still_work (test_agmsg_send.AgmsgRegistrationGrammarTest.test_valid_registration_and_renames_still_work) ... ok
+test_invalid_identifiers_fail_before_storage_access (test_agmsg_send.AgmsgSendTest.test_invalid_identifiers_fail_before_storage_access) ... ok
+test_quote_bearing_body_round_trips (test_agmsg_send.AgmsgSendTest.test_quote_bearing_body_round_trips) ... ok
+test_touched_shell_entrypoints_have_shdoc_headers (test_agmsg_send.AgmsgSendTest.test_touched_shell_entrypoints_have_shdoc_headers) ... ok
+test_valid_identifiers_store_message (test_agmsg_send.AgmsgSendTest.test_valid_identifiers_store_message) ... ok
+test_chezmoi_rendered_updater_uses_exported_source_root (test_asset_manifest.AssetManifestTest.test_chezmoi_rendered_updater_uses_exported_source_root) ... ok
+test_chezmoi_rendered_updater_uses_inlined_manifest_library (test_asset_manifest.AssetManifestTest.test_chezmoi_rendered_updater_uses_inlined_manifest_library) ... ok
+test_chezmoi_wrapper_renders_shebang_and_source_root (test_asset_manifest.AssetManifestTest.test_chezmoi_wrapper_renders_shebang_and_source_root) ... ok
+test_failed_atomic_commit_leaves_previous_manifest_intact (test_asset_manifest.AssetManifestTest.test_failed_atomic_commit_leaves_previous_manifest_intact) ... ok
+test_records_schema_two_steps_and_replaces_one_whole_entry (test_asset_manifest.AssetManifestTest.test_records_schema_two_steps_and_replaces_one_whole_entry) ... ok
+test_rendered_updater_fails_when_no_source_root_is_valid (test_asset_manifest.AssetManifestTest.test_rendered_updater_fails_when_no_source_root_is_valid) ... ok
+test_same_run_mise_repairs_preserve_both_identity_steps (test_asset_manifest.AssetManifestTest.test_same_run_mise_repairs_preserve_both_identity_steps) ... ok
+test_two_real_install_steps_record_under_fake_home (test_asset_manifest.AssetManifestTest.test_two_real_install_steps_record_under_fake_home) ... ok
+test_unwritable_destination_warns_once_without_failing (test_asset_manifest.AssetManifestTest.test_unwritable_destination_warns_once_without_failing) ... ok
+test_updater_direct_source_resolves_repository_root (test_asset_manifest.AssetManifestTest.test_updater_direct_source_resolves_repository_root) ... ok
+test_updater_has_one_recording_call_for_each_install_step (test_asset_manifest.AssetManifestTest.test_updater_has_one_recording_call_for_each_install_step) ... ok
+test_exit_zero_install_with_expected_fake_binary_passes_postcondition (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_exit_zero_install_with_expected_fake_binary_passes_postcondition) ... ok
+test_exit_zero_install_with_wrong_version_fails_postcondition (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_exit_zero_install_with_wrong_version_fails_postcondition) ... ok
+test_exit_zero_partial_install_without_binary_fails_postcondition (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_exit_zero_partial_install_without_binary_fails_postcondition) ... ok
+test_gpgv_failure_preserves_existing_aws_and_skips_unzip (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_gpgv_failure_preserves_existing_aws_and_skips_unzip) ... ok
+test_key_metadata_failures_stop_before_dearmor_and_gpgv (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_key_metadata_failures_stop_before_dearmor_and_gpgv) ... ok
+test_linux_urls_are_versioned_and_unknown_architecture_fails (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_linux_urls_are_versioned_and_unknown_architecture_fails) ... ok
+test_platform_package_managers_and_wrapper_own_aws_cli (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_platform_package_managers_and_wrapper_own_aws_cli) ... ok
+test_repository_key_has_expected_current_fingerprint (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_repository_key_has_expected_current_fingerprint) ... ok
+test_verified_archive_runs_installer_with_user_local_update_arguments (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_verified_archive_runs_installer_with_user_local_update_arguments) ... ok
+test_wrong_staged_version_preserves_existing_aws_and_skips_installer (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_wrong_staged_version_preserves_existing_aws_and_skips_installer) ... ok
+test_agmsg_runtime_paths_are_ignored_on_both_sides (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_runtime_paths_are_ignored_on_both_sides) ... ok
+test_agmsg_separate_store_prefix_is_ignored (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_separate_store_prefix_is_ignored) ... ok
+test_asset_repair_invokes_only_the_detected_step (test_check_agent_runtime.CheckAgentRuntimeTest.test_asset_repair_invokes_only_the_detected_step) ... ok
+test_check_uses_same_modified_for_codex_profiles (test_check_agent_runtime.CheckAgentRuntimeTest.test_check_uses_same_modified_for_codex_profiles) ... ok
+test_chezmoi_drift_status_failure_is_warning (test_check_agent_runtime.CheckAgentRuntimeTest.test_chezmoi_drift_status_failure_is_warning) ... <frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1086a36a0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108b72980>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108b725c0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108b72890>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108b724d0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108b726b0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108b723e0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108b722f0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108b72200>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108b72110>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108b71f30>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108b71d50>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108b71c60>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108b73100>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108b732e0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108b735b0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108b736a0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108b73970>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108b73e20>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108b73f10>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108c44040>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108c44130>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x108c445e0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_chezmoi_drift_warnings_classify_status_and_mode_only (test_check_agent_runtime.CheckAgentRuntimeTest.test_chezmoi_drift_warnings_classify_status_and_mode_only) ... ok
+test_compare_claude_skills_ignores_cowork_synced_subtree (test_check_agent_runtime.CheckAgentRuntimeTest.test_compare_claude_skills_ignores_cowork_synced_subtree) ... ok
+test_content_drift_still_fails (test_check_agent_runtime.CheckAgentRuntimeTest.test_content_drift_still_fails) ... ok
+test_crit_codex_skills_are_not_orphans (test_check_agent_runtime.CheckAgentRuntimeTest.test_crit_codex_skills_are_not_orphans) ... ok
+test_deleted_shared_skill_file_repair_converges (test_check_agent_runtime.CheckAgentRuntimeTest.test_deleted_shared_skill_file_repair_converges) ... ok
+test_every_generated_chezmoi_repair_action_is_forced (test_check_agent_runtime.CheckAgentRuntimeTest.test_every_generated_chezmoi_repair_action_is_forced) ... ok
+test_executable_prefix_is_compared_against_deployed_name (test_check_agent_runtime.CheckAgentRuntimeTest.test_executable_prefix_is_compared_against_deployed_name) ... ok
+test_executable_prefix_requires_deployed_execute_bit (test_check_agent_runtime.CheckAgentRuntimeTest.test_executable_prefix_requires_deployed_execute_bit) ... ok
+test_execute_repair_calls_each_mapped_command_once (test_check_agent_runtime.CheckAgentRuntimeTest.test_execute_repair_calls_each_mapped_command_once) ... ok
+test_ignored_paths_suppress_receipt_linked_tree_entries (test_check_agent_runtime.CheckAgentRuntimeTest.test_ignored_paths_suppress_receipt_linked_tree_entries) ... ok
+test_installed_manifest_integrity_reasons (test_check_agent_runtime.CheckAgentRuntimeTest.test_installed_manifest_integrity_reasons) ... ok
+test_invalid_manifest_is_one_error_and_skips_dependent_checks (test_check_agent_runtime.CheckAgentRuntimeTest.test_invalid_manifest_is_one_error_and_skips_dependent_checks) ... ok
+test_json_modifier_accepts_cosmetic_reserialization (test_check_agent_runtime.CheckAgentRuntimeTest.test_json_modifier_accepts_cosmetic_reserialization) ... ok
+test_json_modifier_rejects_real_value_drift (test_check_agent_runtime.CheckAgentRuntimeTest.test_json_modifier_rejects_real_value_drift) ... ok
+test_managed_top_level_extra_still_fails_with_unmanaged_warning_mode (test_check_agent_runtime.CheckAgentRuntimeTest.test_managed_top_level_extra_still_fails_with_unmanaged_warning_mode) ... ok
+test_manifest_drift_requires_recorded_step_with_missing_path (test_check_agent_runtime.CheckAgentRuntimeTest.test_manifest_drift_requires_recorded_step_with_missing_path) ... ok
+test_missing_crit_asset_is_repairable (test_check_agent_runtime.CheckAgentRuntimeTest.test_missing_crit_asset_is_repairable) ... ok
+test_missing_terminal_browser_receipt_is_harmless (test_check_agent_runtime.CheckAgentRuntimeTest.test_missing_terminal_browser_receipt_is_harmless) ... ok
+test_only_exact_agmsg_root_legacy_database_names_are_ignored (test_check_agent_runtime.CheckAgentRuntimeTest.test_only_exact_agmsg_root_legacy_database_names_are_ignored) ... ok
+test_orphan_detection_classifies_accounted_stale_and_orphan (test_check_agent_runtime.CheckAgentRuntimeTest.test_orphan_detection_classifies_accounted_stale_and_orphan) ... ok
+test_parameterized_mise_step_uses_key_identity (test_check_agent_runtime.CheckAgentRuntimeTest.test_parameterized_mise_step_uses_key_identity) ... ok
+test_private_prefix_is_compared_against_deployed_name (test_check_agent_runtime.CheckAgentRuntimeTest.test_private_prefix_is_compared_against_deployed_name) ... ok
+test_repair_actions_map_only_detected_file_drift (test_check_agent_runtime.CheckAgentRuntimeTest.test_repair_actions_map_only_detected_file_drift) ... ok
+test_repair_mode_converges_once_and_reports_each_action (test_check_agent_runtime.CheckAgentRuntimeTest.test_repair_mode_converges_once_and_reports_each_action) ... ok
+test_repair_mode_fails_after_one_non_convergent_round (test_check_agent_runtime.CheckAgentRuntimeTest.test_repair_mode_fails_after_one_non_convergent_round) ... ok
+test_repair_mode_never_acts_on_stale_or_orphan_warnings (test_check_agent_runtime.CheckAgentRuntimeTest.test_repair_mode_never_acts_on_stale_or_orphan_warnings) ... ok
+test_repair_unset_is_byte_identical_and_never_mutates (test_check_agent_runtime.CheckAgentRuntimeTest.test_repair_unset_is_byte_identical_and_never_mutates) ... ok
+test_sourced_asset_repair_runs_no_main_or_sibling_step (test_check_agent_runtime.CheckAgentRuntimeTest.test_sourced_asset_repair_runs_no_main_or_sibling_step) ... ok
+test_terminal_browser_receipt_links_are_not_orphans (test_check_agent_runtime.CheckAgentRuntimeTest.test_terminal_browser_receipt_links_are_not_orphans) ... ok
+test_unexpected_non_runtime_file_still_fails (test_check_agent_runtime.CheckAgentRuntimeTest.test_unexpected_non_runtime_file_still_fails) ... ok
+test_unmanaged_top_level_skill_dir_warns (test_check_agent_runtime.CheckAgentRuntimeTest.test_unmanaged_top_level_skill_dir_warns) ... ok
+test_current_only_key_is_preserved (test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_only_key_is_preserved) ... ok
+test_current_session_start_order_is_preserved (test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_session_start_order_is_preserved)
+Order is preserved; a stale bare herdr-agents command still migrates. ... ok
+test_desired_current_output_is_byte_identical (test_claude_settings_merge.ClaudeSettingsMergeTest.test_desired_current_output_is_byte_identical) ... ok
+test_empty_stdin_outputs_managed (test_claude_settings_merge.ClaudeSettingsMergeTest.test_empty_stdin_outputs_managed) ... ok
+test_enabled_plugins_are_preserved_from_current (test_claude_settings_merge.ClaudeSettingsMergeTest.test_enabled_plugins_are_preserved_from_current) ... ok
+test_invalid_json_outputs_managed (test_claude_settings_merge.ClaudeSettingsMergeTest.test_invalid_json_outputs_managed) ... ok
+test_managed_hook_object_key_order_is_preserved (test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_hook_object_key_order_is_preserved) ... ok
+test_managed_permgate_replaces_stale_current_ccgate_hook (test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_permgate_replaces_stale_current_ccgate_hook) ... ok
+test_managed_session_start_replacement_keeps_hook_order (test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_session_start_replacement_keeps_hook_order)
+Replacing a managed entry must not reorder SessionStart. ... ok
+test_managed_session_start_replaces_stale_hard_coded_home_hook (test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_session_start_replaces_stale_hard_coded_home_hook)
+Upgrade path: a machine that received the old hard-coded managed hook. ... ok
+test_managed_wins_for_managed_key (test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_wins_for_managed_key) ... ok
+test_merge_is_idempotent (test_claude_settings_merge.ClaudeSettingsMergeTest.test_merge_is_idempotent) ... ok
+test_permission_merge_preserves_custom_hook_in_mixed_entry (test_claude_settings_merge.ClaudeSettingsMergeTest.test_permission_merge_preserves_custom_hook_in_mixed_entry) ... ok
+test_permission_merge_preserves_unrelated_current_hooks (test_claude_settings_merge.ClaudeSettingsMergeTest.test_permission_merge_preserves_unrelated_current_hooks) ... ok
+test_real_template_preserves_herdr_matcher_and_converges (test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_template_preserves_herdr_matcher_and_converges) ... ok
+test_real_value_change_is_redumped (test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_value_change_is_redumped) ... ok
+test_reordered_but_equal_current_is_byte_identical (test_claude_settings_merge.ClaudeSettingsMergeTest.test_reordered_but_equal_current_is_byte_identical) ... ok
+test_trailing_newline (test_claude_settings_merge.ClaudeSettingsMergeTest.test_trailing_newline) ... ok
+test_current_only_runtime_tables_keep_current_group_order (test_codex_config_merge.CodexConfigMergeTest.test_current_only_runtime_tables_keep_current_group_order) ... ok
+test_fresh_machine_outputs_managed_baseline (test_codex_config_merge.CodexConfigMergeTest.test_fresh_machine_outputs_managed_baseline) ... ok
+test_managed_permgate_replaces_stale_private_ccgate_hook (test_codex_config_merge.CodexConfigMergeTest.test_managed_permgate_replaces_stale_private_ccgate_hook) ... ok
+test_managed_templates_are_rendered_before_merge (test_codex_config_merge.CodexConfigMergeTest.test_managed_templates_are_rendered_before_merge) ... ok
+test_managed_wins_for_managed_keys (test_codex_config_merge.CodexConfigMergeTest.test_managed_wins_for_managed_keys) ... ok
+test_repeated_runtime_tables_are_preserved_in_order (test_codex_config_merge.CodexConfigMergeTest.test_repeated_runtime_tables_are_preserved_in_order) ... ok
+test_runtime_tables_are_preserved (test_codex_config_merge.CodexConfigMergeTest.test_runtime_tables_are_preserved) ... ok
+test_runtime_tables_seed_from_managed_when_absent (test_codex_config_merge.CodexConfigMergeTest.test_runtime_tables_seed_from_managed_when_absent) ... ok
+test_unknown_current_tables_are_preserved (test_codex_config_merge.CodexConfigMergeTest.test_unknown_current_tables_are_preserved) ... ok
+test_working_tree_placeholder_falls_back_to_source_dir_parent (test_codex_config_merge.CodexConfigMergeTest.test_working_tree_placeholder_falls_back_to_source_dir_parent) ... ok
+test_working_tree_placeholder_prefers_env_override (test_codex_config_merge.CodexConfigMergeTest.test_working_tree_placeholder_prefers_env_override) ... ok
+test_missing_trusted_runtime_is_silent (test_contextdb_codex_notify.ContextdbCodexNotifyTest.test_missing_trusted_runtime_is_silent) ... ok
+test_non_opted_project_is_silent_even_with_trusted_runtime (test_contextdb_codex_notify.ContextdbCodexNotifyTest.test_non_opted_project_is_silent_even_with_trusted_runtime) ... ok
+test_project_cli_is_data_only_and_trusted_cli_gets_explicit_root (test_contextdb_codex_notify.ContextdbCodexNotifyTest.test_project_cli_is_data_only_and_trusted_cli_gets_explicit_root) ... ok
+test_coverage_gems_are_compatible_and_exact (test_files_fixture.FilesFixtureTest.test_coverage_gems_are_compatible_and_exact) ... ok
+test_fixture_uses_chezmoi_binary_outside_mise_shims (test_files_fixture.FilesFixtureTest.test_fixture_uses_chezmoi_binary_outside_mise_shims) ... ok
+test_legacy_file_workflows_initialize_required_fixture_paths (test_files_fixture.FilesFixtureTest.test_legacy_file_workflows_initialize_required_fixture_paths) ... ok
+test_claude_deny_rules_use_edit_for_file_mutations (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_deny_rules_use_edit_for_file_mutations) ... ok
+test_claude_settings_renders_session_start_hooks (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_renders_session_start_hooks) ... ok
+test_claude_settings_use_interactive_profile_with_permgate (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_use_interactive_profile_with_permgate) ... ok
+test_claude_skill_symlink_outputs_strip_executable_target_prefix (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_skill_symlink_outputs_strip_executable_target_prefix) ... ok
+test_codex_config_renders_permgate_permission_request (test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_permgate_permission_request) ... ok
+test_codex_config_renders_working_tree_project_key (test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_working_tree_project_key) ... ok
+test_expected_outputs_uses_codex_baseline_path (test_generate_agent_configs.GenerateAgentConfigsTest.test_expected_outputs_uses_codex_baseline_path) ... ok
+test_managed_hooks_use_installed_permgate_paths (test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_hooks_use_installed_permgate_paths) ... ok
+test_manifest_keeps_model_ids_only_in_profiles (test_generate_agent_configs.GenerateAgentConfigsTest.test_manifest_keeps_model_ids_only_in_profiles) ... ok
+test_model_profiles_env_renders_worker_kind (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_kind) ... ok
+test_model_profiles_reject_incomplete_or_unsafe_entries (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_incomplete_or_unsafe_entries) ... ERROR: model profile standard is missing codex
+ERROR: model profile standard.claude.model must be a launcher-safe string
+ERROR: model_profiles must define the express profile
+ok
+test_profile_modify_scripts_are_byte_idempotent_with_runtime_state (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_byte_idempotent_with_runtime_state) ... ok
+test_profile_modify_scripts_are_quiet_for_matching_hook_trust (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_quiet_for_matching_hook_trust) ... ok
+test_profile_modify_scripts_preserve_repeated_runtime_tables (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_repeated_runtime_tables) ... ok
+test_profile_modify_scripts_preserve_runtime_state (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_runtime_state) ... ok
+test_profile_modify_scripts_seed_base_hook_trust (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_seed_base_hook_trust) ... ok
+test_profile_modify_scripts_warn_on_hook_trust_divergence (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_warn_on_hook_trust_divergence) ... ok
+test_repository_marketplace_is_a_runtime_owned_seed (test_generate_agent_configs.GenerateAgentConfigsTest.test_repository_marketplace_is_a_runtime_owned_seed) ... ok
+test_security_profile_renders_launcher_and_expanded_notify (test_generate_agent_configs.GenerateAgentConfigsTest.test_security_profile_renders_launcher_and_expanded_notify) ... ok
+test_unknown_interactive_profile_fails (test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_interactive_profile_fails) ... ERROR: interactive_profile must name a model profile: 'missing'
+ok
+test_unknown_worker_kind_fails (test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_kind_fails) ... ERROR: worker_kind must be one of ('codex', 'claude'): 'banana'
+ok
+test_worker_kind_defaults_to_codex (test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_kind_defaults_to_codex) ... ok
+test_attach_bootstraps_agmsg_after_codex_reuse (test_herdr_agents.HerdrAgentsTest.test_attach_bootstraps_agmsg_after_codex_reuse) ... ok
+test_attach_bootstraps_agmsg_after_codex_start (test_herdr_agents.HerdrAgentsTest.test_attach_bootstraps_agmsg_after_codex_start) ... ok
+test_attach_builds_codex_right_of_current_claude_pane (test_herdr_agents.HerdrAgentsTest.test_attach_builds_codex_right_of_current_claude_pane) ... ok
+test_attach_complete_workspace_is_idempotent (test_herdr_agents.HerdrAgentsTest.test_attach_complete_workspace_is_idempotent) ... ok
+test_attach_correct_order_does_not_swap (test_herdr_agents.HerdrAgentsTest.test_attach_correct_order_does_not_swap) ... ok
+test_attach_does_not_restart_codex_agent_from_another_tab (test_herdr_agents.HerdrAgentsTest.test_attach_does_not_restart_codex_agent_from_another_tab) ... ok
+test_attach_equal_halves_does_not_resize (test_herdr_agents.HerdrAgentsTest.test_attach_equal_halves_does_not_resize) ... ok
+test_attach_ignores_agmsg_bootstrap_failure (test_herdr_agents.HerdrAgentsTest.test_attach_ignores_agmsg_bootstrap_failure) ... ok
+test_attach_ignores_extra_panes_on_other_tabs (test_herdr_agents.HerdrAgentsTest.test_attach_ignores_extra_panes_on_other_tabs) ... ok
+test_attach_legacy_files_pane_refuses_repair_without_layout_mutation (test_herdr_agents.HerdrAgentsTest.test_attach_legacy_files_pane_refuses_repair_without_layout_mutation) ... ok
+test_attach_lowercases_and_validates_derived_agent_name (test_herdr_agents.HerdrAgentsTest.test_attach_lowercases_and_validates_derived_agent_name) ... ok
+test_attach_noops_for_full_mode_managed_layout (test_herdr_agents.HerdrAgentsTest.test_attach_noops_for_full_mode_managed_layout) ... ok
+test_attach_noops_without_herdr_environment (test_herdr_agents.HerdrAgentsTest.test_attach_noops_without_herdr_environment) ... ok
+test_attach_ratio_repair_skips_unsafe_layouts (test_herdr_agents.HerdrAgentsTest.test_attach_ratio_repair_skips_unsafe_layouts) ... ok
+test_attach_rejects_invalid_derived_agent_name (test_herdr_agents.HerdrAgentsTest.test_attach_rejects_invalid_derived_agent_name) ... ok
+test_attach_repairs_codex_claude_order_with_one_swap (test_herdr_agents.HerdrAgentsTest.test_attach_repairs_codex_claude_order_with_one_swap) ... ok
+test_attach_repairs_skewed_widths_to_equal_halves (test_herdr_agents.HerdrAgentsTest.test_attach_repairs_skewed_widths_to_equal_halves) ... ok
+test_attach_reports_agmsg_skip_when_not_installed (test_herdr_agents.HerdrAgentsTest.test_attach_reports_agmsg_skip_when_not_installed) ... ok
+test_attach_skips_delivery_when_turn_hook_exists (test_herdr_agents.HerdrAgentsTest.test_attach_skips_delivery_when_turn_hook_exists) ... ok
+test_attach_warns_after_one_nonconverging_resize (test_herdr_agents.HerdrAgentsTest.test_attach_warns_after_one_nonconverging_resize) ... ok
+test_attach_warns_when_multiple_agmsg_identities_exist (test_herdr_agents.HerdrAgentsTest.test_attach_warns_when_multiple_agmsg_identities_exist) ... ok
+test_bare_herdr_in_ghostty_starts_plain_session (test_herdr_agents.HerdrAgentsTest.test_bare_herdr_in_ghostty_starts_plain_session) ... ok
+test_bare_herdr_outside_ghostty_uses_real_cli (test_herdr_agents.HerdrAgentsTest.test_bare_herdr_outside_ghostty_uses_real_cli) ... ok
+test_bootstrap_accepts_same_identity_in_multiple_teams (test_herdr_agents.HerdrAgentsTest.test_bootstrap_accepts_same_identity_in_multiple_teams) ... ok
+test_bootstrap_only_creates_missing_herdr_log_directory (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_creates_missing_herdr_log_directory) ... ok
+test_bootstrap_only_does_not_call_herdr_or_agents (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_does_not_call_herdr_or_agents) ... ok
+test_bootstrap_only_sets_claude_delivery_once_when_hook_is_missing (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_sets_claude_delivery_once_when_hook_is_missing) ... ok
+test_bootstrap_only_sets_each_missing_delivery_once (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_sets_each_missing_delivery_once) ... ok
+test_bootstrap_only_skips_all_delivery_when_both_hooks_exist (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_skips_all_delivery_when_both_hooks_exist) ... ok
+test_bootstrap_only_skips_home_without_agmsg_calls (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_skips_home_without_agmsg_calls) ... ok
+test_bootstrap_only_warns_for_missing_claude_identity_without_joining (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_warns_for_missing_claude_identity_without_joining) ... ok
+test_bootstrap_only_warns_for_multiple_claude_identities (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_warns_for_multiple_claude_identities) ... ok
+test_claude_agent_accepts_manifest_profile_arguments_for_e2e (test_herdr_agents.HerdrAgentsTest.test_claude_agent_accepts_manifest_profile_arguments_for_e2e) ... ok
+test_claude_repair_skips_just_restarted_codex_pane_without_agent_field (test_herdr_agents.HerdrAgentsTest.test_claude_repair_skips_just_restarted_codex_pane_without_agent_field) ... ok
+test_claude_settings_add_herdr_attach_session_hook (test_herdr_agents.HerdrAgentsTest.test_claude_settings_add_herdr_attach_session_hook) ... ok
+test_codex_profile_defaults_to_generated_interactive_profile (test_herdr_agents.HerdrAgentsTest.test_codex_profile_defaults_to_generated_interactive_profile) ... ok
+test_codex_profile_env_override_wins_over_generated_profile (test_herdr_agents.HerdrAgentsTest.test_codex_profile_env_override_wins_over_generated_profile) ... ok
+test_existing_legacy_files_pane_is_not_reused_for_claude_or_split_again (test_herdr_agents.HerdrAgentsTest.test_existing_legacy_files_pane_is_not_reused_for_claude_or_split_again) ... ok
+test_existing_two_pane_workspace_repairs_skewed_widths (test_herdr_agents.HerdrAgentsTest.test_existing_two_pane_workspace_repairs_skewed_widths) ... ok
+test_existing_workspace_matches_canonical_macos_workdir (test_herdr_agents.HerdrAgentsTest.test_existing_workspace_matches_canonical_macos_workdir) ... ok
+test_existing_workspace_restarts_missing_claude_in_empty_pane (test_herdr_agents.HerdrAgentsTest.test_existing_workspace_restarts_missing_claude_in_empty_pane) ... ok
+test_existing_workspace_restarts_missing_codex_agent (test_herdr_agents.HerdrAgentsTest.test_existing_workspace_restarts_missing_codex_agent) ... ok
+test_existing_workspace_splits_when_missing_claude_has_no_empty_pane (test_herdr_agents.HerdrAgentsTest.test_existing_workspace_splits_when_missing_claude_has_no_empty_pane) ... ok
+test_existing_workspace_with_legacy_files_pane_focuses_without_mutation (test_herdr_agents.HerdrAgentsTest.test_existing_workspace_with_legacy_files_pane_focuses_without_mutation) ... ok
+test_file_viewer_plugin_config_sets_micro_editor (test_herdr_agents.HerdrAgentsTest.test_file_viewer_plugin_config_sets_micro_editor) ... ok
+test_full_mode_skips_agmsg_bootstrap_for_home (test_herdr_agents.HerdrAgentsTest.test_full_mode_skips_agmsg_bootstrap_for_home) ... ok
+test_ghostty_config_does_not_auto_start_herdr_session (test_herdr_agents.HerdrAgentsTest.test_ghostty_config_does_not_auto_start_herdr_session) ... ok
+test_ghostty_herdr_starts_plain_workspace (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_plain_workspace) ... ok
+test_herdr_prefix_alt_a_runs_helper_from_active_pane (test_herdr_agents.HerdrAgentsTest.test_herdr_prefix_alt_a_runs_helper_from_active_pane) ... ok
+test_herdr_prefix_f_opens_file_viewer_popup (test_herdr_agents.HerdrAgentsTest.test_herdr_prefix_f_opens_file_viewer_popup) ... ok
+test_herdr_session_does_not_prebuild_agent_layout (test_herdr_agents.HerdrAgentsTest.test_herdr_session_does_not_prebuild_agent_layout) ... ok
+test_herdr_session_execs_herdr_without_prebuilding_agents (test_herdr_agents.HerdrAgentsTest.test_herdr_session_execs_herdr_without_prebuilding_agents) ... ok
+test_herdr_session_passes_syntax_check (test_herdr_agents.HerdrAgentsTest.test_herdr_session_passes_syntax_check) ... ok
+test_herdr_session_rejects_arguments (test_herdr_agents.HerdrAgentsTest.test_herdr_session_rejects_arguments) ... ok
+test_herdr_with_args_in_ghostty_uses_real_cli (test_herdr_agents.HerdrAgentsTest.test_herdr_with_args_in_ghostty_uses_real_cli) ... ok
+test_interactive_ghostty_shell_attaches_plain_session (test_herdr_agents.HerdrAgentsTest.test_interactive_ghostty_shell_attaches_plain_session) ... ok
+test_make_update_and_upgrade_include_agmsg_bootstrap (test_herdr_agents.HerdrAgentsTest.test_make_update_and_upgrade_include_agmsg_bootstrap) ... ok
+test_new_pane_waits_for_shell_and_retries_agent_start_once_on_timeout (test_herdr_agents.HerdrAgentsTest.test_new_pane_waits_for_shell_and_retries_agent_start_once_on_timeout) ... ok
+test_pane_creation_propagates_explicit_fpath (test_herdr_agents.HerdrAgentsTest.test_pane_creation_propagates_explicit_fpath) ... ok
+test_registered_agent_not_ready_waits_for_idle_without_duplicate_start (test_herdr_agents.HerdrAgentsTest.test_registered_agent_not_ready_waits_for_idle_without_duplicate_start) ... ok
+test_start_keeps_node_global_without_mise_tool_install (test_herdr_agents.HerdrAgentsTest.test_start_keeps_node_global_without_mise_tool_install) ... ok
+test_start_removes_node_global_agent_clis_shadowing_mise (test_herdr_agents.HerdrAgentsTest.test_start_removes_node_global_agent_clis_shadowing_mise) ... ok
+test_start_skips_node_global_removal_without_stray (test_herdr_agents.HerdrAgentsTest.test_start_skips_node_global_removal_without_stray) ... ok
+test_uses_initial_workspace_pane_for_claude_and_splits_codex_right (test_herdr_agents.HerdrAgentsTest.test_uses_initial_workspace_pane_for_claude_and_splits_codex_right) ... ok
+test_worker_kind_claude_accepts_a_workspace_trust_dialog (test_herdr_agents.HerdrAgentsTest.test_worker_kind_claude_accepts_a_workspace_trust_dialog) ... ok
+test_worker_kind_claude_appends_extra_worker_args (test_herdr_agents.HerdrAgentsTest.test_worker_kind_claude_appends_extra_worker_args) ... ok
+test_worker_kind_claude_does_not_require_codex (test_herdr_agents.HerdrAgentsTest.test_worker_kind_claude_does_not_require_codex) ... ok
+test_worker_kind_claude_skips_send_keys_without_a_trust_dialog (test_herdr_agents.HerdrAgentsTest.test_worker_kind_claude_skips_send_keys_without_a_trust_dialog) ... ok
+test_worker_kind_claude_starts_a_claude_worker_pane_with_profile_args (test_herdr_agents.HerdrAgentsTest.test_worker_kind_claude_starts_a_claude_worker_pane_with_profile_args) ... ok
+test_worker_kind_claude_starts_with_no_resolved_args (test_herdr_agents.HerdrAgentsTest.test_worker_kind_claude_starts_with_no_resolved_args) ... ok
+test_worker_kind_defaults_to_generated_env_fragment (test_herdr_agents.HerdrAgentsTest.test_worker_kind_defaults_to_generated_env_fragment) ... ok
+test_worker_kind_env_override_wins_over_generated_env_fragment (test_herdr_agents.HerdrAgentsTest.test_worker_kind_env_override_wins_over_generated_env_fragment) ... ok
+test_worker_kind_rejects_an_unknown_value (test_herdr_agents.HerdrAgentsTest.test_worker_kind_rejects_an_unknown_value) ... ok
+test_worker_profile_env_takes_priority_over_deprecated_codex_alias (test_herdr_agents.HerdrAgentsTest.test_worker_profile_env_takes_priority_over_deprecated_codex_alias) ... ok
+test_yazi_edit_opener_prefers_zed_with_editor_fallback (test_herdr_agents.HerdrAgentsTest.test_yazi_edit_opener_prefers_zed_with_editor_fallback) ... ok
+test_zprofile_adds_common_bin_to_login_shell_path (test_herdr_agents.HerdrAgentsTest.test_zprofile_adds_common_bin_to_login_shell_path) ... ok
+test_allow_pattern_rejects_shell_chaining (test_permgate.PermgateTest.test_allow_pattern_rejects_shell_chaining) ... ok
+test_apply_patch_is_never_deterministically_allowed (test_permgate.PermgateTest.test_apply_patch_is_never_deterministically_allowed) ... ok
+test_bash_credentials_skip_classifier (test_permgate.PermgateTest.test_bash_credentials_skip_classifier) ... ok
+test_bench_runs_five_layer_two_fixtures (test_permgate.PermgateTest.test_bench_runs_five_layer_two_fixtures) ... ok
+test_bench_with_no_eligible_fixtures_is_not_ready (test_permgate.PermgateTest.test_bench_with_no_eligible_fixtures_is_not_ready) ... ok
+test_classifier_receives_metadata_without_raw_values (test_permgate.PermgateTest.test_classifier_receives_metadata_without_raw_values) ... ok
+test_classifier_rejects_path_qualified_executables (test_permgate.PermgateTest.test_classifier_rejects_path_qualified_executables) ... ok
+test_claude_and_codex_hook_outputs_match_golden_bytes (test_permgate.PermgateTest.test_claude_and_codex_hook_outputs_match_golden_bytes) ... ok
+test_cli_bash_send_lane_is_removed (test_permgate.PermgateTest.test_cli_bash_send_lane_is_removed) ... ok
+test_cli_catastrophic_deny_precedes_workspace (test_permgate.PermgateTest.test_cli_catastrophic_deny_precedes_workspace) ... ok
+test_cli_policy_pins_shared_layers_and_disables_llm (test_permgate.PermgateTest.test_cli_policy_pins_shared_layers_and_disables_llm) ... ok
+test_cli_protocol_emits_each_compact_decision (test_permgate.PermgateTest.test_cli_protocol_emits_each_compact_decision) ... ok
+test_cli_protocol_internal_failure_is_nonzero (test_permgate.PermgateTest.test_cli_protocol_internal_failure_is_nonzero) ... ok
+test_cli_protocol_rejects_malformed_normalized_action (test_permgate.PermgateTest.test_cli_protocol_rejects_malformed_normalized_action) ... ok
+test_cli_read_allows_plain_resolvable_path_outside_workspace (test_permgate.PermgateTest.test_cli_read_allows_plain_resolvable_path_outside_workspace) ... ok
+test_cli_read_denies_each_sensitive_path_family (test_permgate.PermgateTest.test_cli_read_denies_each_sensitive_path_family) ... ok
+test_cli_read_resolves_symlinks_and_asks_for_unresolvable_paths (test_permgate.PermgateTest.test_cli_read_resolves_symlinks_and_asks_for_unresolvable_paths) ... ok
+test_cli_reuses_every_shared_bash_allow_pattern (test_permgate.PermgateTest.test_cli_reuses_every_shared_bash_allow_pattern) ... ok
+test_cli_workspace_allows_in_cwd_read_write_and_edit (test_permgate.PermgateTest.test_cli_workspace_allows_in_cwd_read_write_and_edit) ... ok
+test_cli_workspace_asks_for_looping_or_missing_parent (test_permgate.PermgateTest.test_cli_workspace_asks_for_looping_or_missing_parent) ... ok
+test_cli_workspace_never_writes_through_final_symlink (test_permgate.PermgateTest.test_cli_workspace_never_writes_through_final_symlink) ... ok
+test_cli_workspace_rejects_path_escapes_root_and_symlink_escape (test_permgate.PermgateTest.test_cli_workspace_rejects_path_escapes_root_and_symlink_escape) ... ok
+test_cli_workspace_resolves_macos_var_alias_identically (test_permgate.PermgateTest.test_cli_workspace_resolves_macos_var_alias_identically) ... ok
+test_codex_classifier_is_ephemeral_read_only_and_hook_free (test_permgate.PermgateTest.test_codex_classifier_is_ephemeral_read_only_and_hook_free) ... ok
+test_each_agent_uses_only_its_own_authenticated_cli (test_permgate.PermgateTest.test_each_agent_uses_only_its_own_authenticated_cli) ... ok
+test_enabled_classifier_only_allows_whitelisted_confident_category (test_permgate.PermgateTest.test_enabled_classifier_only_allows_whitelisted_confident_category) ... ok
+test_git_diff_output_option_is_never_automatically_allowed (test_permgate.PermgateTest.test_git_diff_output_option_is_never_automatically_allowed) ... ok
+test_invalid_classifier_policy_fields_fail_closed (test_permgate.PermgateTest.test_invalid_classifier_policy_fields_fail_closed) ... ok
+test_invalid_policy_returns_ask_and_logs_config_error (test_permgate.PermgateTest.test_invalid_policy_returns_ask_and_logs_config_error) ... ok
+test_layer_one_allows_documented_claude_and_codex_contracts (test_permgate.PermgateTest.test_layer_one_allows_documented_claude_and_codex_contracts) ... ok
+test_layer_one_deny_uses_both_hook_output_schemas (test_permgate.PermgateTest.test_layer_one_deny_uses_both_hook_output_schemas) ... ok
+test_log_shape_redacts_command_and_output (test_permgate.PermgateTest.test_log_shape_redacts_command_and_output) ... ok
+test_malformed_classifier_output_returns_ask (test_permgate.PermgateTest.test_malformed_classifier_output_returns_ask) ... ok
+test_missing_or_nonzero_classifier_returns_ask (test_permgate.PermgateTest.test_missing_or_nonzero_classifier_returns_ask) ... ok
+test_mutating_or_executable_read_options_never_reach_classifier (test_permgate.PermgateTest.test_mutating_or_executable_read_options_never_reach_classifier) ... ok
+test_provider_enablement_never_enables_the_sibling_provider (test_permgate.PermgateTest.test_provider_enablement_never_enables_the_sibling_provider) ... ok
+test_recursion_sentinel_is_a_complete_no_op (test_permgate.PermgateTest.test_recursion_sentinel_is_a_complete_no_op) ... ok
+test_script_named_version_is_not_a_version_check (test_permgate.PermgateTest.test_script_named_version_is_not_a_version_check) ... ok
+test_shadow_log_contains_reviewable_non_secret_classification (test_permgate.PermgateTest.test_shadow_log_contains_reviewable_non_secret_classification) ... ok
+test_structured_secret_skips_classifier_and_redacts_summary (test_permgate.PermgateTest.test_structured_secret_skips_classifier_and_redacts_summary) ... ok
+test_timeout_returns_ask_within_hook_cap (test_permgate.PermgateTest.test_timeout_returns_ask_within_hook_cap) ... ok
+test_unconstrained_native_reads_never_reach_classifier (test_permgate.PermgateTest.test_unconstrained_native_reads_never_reach_classifier) ... ok
+test_unknown_shadow_classification_returns_native_ask (test_permgate.PermgateTest.test_unknown_shadow_classification_returns_native_ask) ... ok
+test_all_paths_are_preflighted_before_any_deletion (test_remove_agent_asset.RemoveAgentAssetTest.test_all_paths_are_preflighted_before_any_deletion) ... ok
+test_brew_refuses_ambiguous_formula (test_remove_agent_asset.RemoveAgentAssetTest.test_brew_refuses_ambiguous_formula) ... ok
+test_brew_uses_uninstall_for_unambiguous_formula (test_remove_agent_asset.RemoveAgentAssetTest.test_brew_uses_uninstall_for_unambiguous_formula) ... ok
+test_crit_plugin_falls_back_to_data_path_but_not_config (test_remove_agent_asset.RemoveAgentAssetTest.test_crit_plugin_falls_back_to_data_path_but_not_config) ... ok
+test_default_and_explicit_dry_run_print_without_mutating (test_remove_agent_asset.RemoveAgentAssetTest.test_default_and_explicit_dry_run_print_without_mutating) ... ok
+test_integration_uses_verified_herdr_uninstall (test_remove_agent_asset.RemoveAgentAssetTest.test_integration_uses_verified_herdr_uninstall) ... ok
+test_invalid_manifest_is_rejected (test_remove_agent_asset.RemoveAgentAssetTest.test_invalid_manifest_is_rejected) ... ok
+test_parameterized_step_removal_preserves_sibling_identity (test_remove_agent_asset.RemoveAgentAssetTest.test_parameterized_step_removal_preserves_sibling_identity) ... ok
+test_plugin_uses_verified_claude_uninstall (test_remove_agent_asset.RemoveAgentAssetTest.test_plugin_uses_verified_claude_uninstall) ... ok
+test_plugin_uses_verified_codex_remove (test_remove_agent_asset.RemoveAgentAssetTest.test_plugin_uses_verified_codex_remove) ... ok
+test_recorded_symlink_is_removed_without_following_target (test_remove_agent_asset.RemoveAgentAssetTest.test_recorded_symlink_is_removed_without_following_target) ... ok
+test_tampered_manifest_outside_safe_roots_is_refused (test_remove_agent_asset.RemoveAgentAssetTest.test_tampered_manifest_outside_safe_roots_is_refused) ... ok
+test_unknown_step_lists_known_steps_without_guessing (test_remove_agent_asset.RemoveAgentAssetTest.test_unknown_step_lists_known_steps_without_guessing) ... ok
+test_yes_removes_only_recorded_path_and_preserves_other_steps (test_remove_agent_asset.RemoveAgentAssetTest.test_yes_removes_only_recorded_path_and_preserves_other_steps) ... ok
+test_agent_lifecycle_script_change_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_lifecycle_script_change_requires_review) ... ok
+test_agent_lifecycle_surfaces_require_review (test_require_crit_review.ReviewGuardTest.test_agent_lifecycle_surfaces_require_review) ... ok
+test_agent_lifecycle_tokens_require_review (test_require_crit_review.ReviewGuardTest.test_agent_lifecycle_tokens_require_review) ... ok
+test_agent_reviewer_rejects_empty_or_malformed_crit_data (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_rejects_empty_or_malformed_crit_data) ... ok
+test_agent_reviewer_rejects_invalid_review_outcome (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_rejects_invalid_review_outcome) ... ok
+test_agent_reviewer_with_command_string_source_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_command_string_source_still_requires_review) ... ok
+test_agent_reviewer_with_crit_data_satisfies_required_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_crit_data_satisfies_required_review) ... ok
+test_agent_reviewer_with_crit_reviewed_marker_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_crit_reviewed_marker_still_requires_review) ... ok
+test_agent_reviewer_with_external_crit_json_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_external_crit_json_still_requires_review) ... ok
+test_agent_reviewer_with_non_review_crit_json_object_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_non_review_crit_json_object_still_requires_review) ... ok
+test_agent_reviewer_with_resolved_line_comment_satisfies_required_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_resolved_line_comment_satisfies_required_review) ... ok
+test_agent_reviewer_with_unresolved_crit_json_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_unresolved_crit_json_still_requires_review) ... ok
+test_agent_self_review_flag_evidence_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_self_review_flag_evidence_still_requires_review) ... ok
+test_agent_self_reviewer_evidence_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_self_reviewer_evidence_still_requires_review) ... ok
+test_broad_diff_requires_review (test_require_crit_review.ReviewGuardTest.test_broad_diff_requires_review) ... ok
+test_explicit_disable_skips_guard (test_require_crit_review.ReviewGuardTest.test_explicit_disable_skips_guard) ... ok
+test_high_risk_markdown_change_requires_review (test_require_crit_review.ReviewGuardTest.test_high_risk_markdown_change_requires_review) ... ok
+test_large_untracked_file_requires_broad_diff_review (test_require_crit_review.ReviewGuardTest.test_large_untracked_file_requires_broad_diff_review) ... ok
+test_native_reviewed_environment_rejects_human_reviewer (test_require_crit_review.ReviewGuardTest.test_native_reviewed_environment_rejects_human_reviewer) ... ok
+test_native_reviewed_without_evidence_still_requires_review (test_require_crit_review.ReviewGuardTest.test_native_reviewed_without_evidence_still_requires_review) ... ok
+test_no_diff_does_not_require_review (test_require_crit_review.ReviewGuardTest.test_no_diff_does_not_require_review) ... ok
+test_reviewed_environment_satisfies_required_review (test_require_crit_review.ReviewGuardTest.test_reviewed_environment_satisfies_required_review) ... ok
+test_reviewed_with_blank_evidence_values_still_requires_review (test_require_crit_review.ReviewGuardTest.test_reviewed_with_blank_evidence_values_still_requires_review) ... ok
+test_reviewed_with_incomplete_evidence_still_requires_review (test_require_crit_review.ReviewGuardTest.test_reviewed_with_incomplete_evidence_still_requires_review) ... ok
+test_small_docs_only_change_does_not_require_review (test_require_crit_review.ReviewGuardTest.test_small_docs_only_change_does_not_require_review) ... ok
+test_agent_asset_update_removes_node_global_shadows_before_agent_commands (test_runtime_health.RuntimeHealthTest.test_agent_asset_update_removes_node_global_shadows_before_agent_commands) ... ok
+test_agent_asset_update_repairs_broken_claude_with_npm_backend (test_runtime_health.RuntimeHealthTest.test_agent_asset_update_repairs_broken_claude_with_npm_backend) ... ok
+test_agent_asset_update_runs_gh_extension_ensure (test_runtime_health.RuntimeHealthTest.test_agent_asset_update_runs_gh_extension_ensure) ... ok
+test_agent_fanout_applies_profile_args_from_generated_fragment (test_runtime_health.RuntimeHealthTest.test_agent_fanout_applies_profile_args_from_generated_fragment) ... ok
+test_agent_fanout_preserves_caller_umask_for_child_agents (test_runtime_health.RuntimeHealthTest.test_agent_fanout_preserves_caller_umask_for_child_agents) ... ok
+test_agent_fanout_refuses_symlink_artifacts (test_runtime_health.RuntimeHealthTest.test_agent_fanout_refuses_symlink_artifacts) ... ok
+test_agent_fanout_restricts_preexisting_output_artifacts (test_runtime_health.RuntimeHealthTest.test_agent_fanout_restricts_preexisting_output_artifacts) ... ok
+test_agent_launchers_do_not_hardcode_model_ids (test_runtime_health.RuntimeHealthTest.test_agent_launchers_do_not_hardcode_model_ids) ... ok
+test_agent_runs_are_private_and_ignored (test_runtime_health.RuntimeHealthTest.test_agent_runs_are_private_and_ignored) ... ok
+test_client_bashrc_treats_private_sources_as_optional (test_runtime_health.RuntimeHealthTest.test_client_bashrc_treats_private_sources_as_optional) ... ok
+test_codex_crit_normalizes_managed_marketplace_mode (test_runtime_health.RuntimeHealthTest.test_codex_crit_normalizes_managed_marketplace_mode) ... ok
+test_codex_superpowers_reports_login_step_when_curated_catalog_is_missing (test_runtime_health.RuntimeHealthTest.test_codex_superpowers_reports_login_step_when_curated_catalog_is_missing) ... ok
+test_doctor_required_optional_and_healthy_statuses (test_runtime_health.RuntimeHealthTest.test_doctor_required_optional_and_healthy_statuses) ... ok
+test_linux_crit_checksum_failure_preserves_existing_binary (test_runtime_health.RuntimeHealthTest.test_linux_crit_checksum_failure_preserves_existing_binary) ... ok
+test_linux_crit_correct_version_is_download_free (test_runtime_health.RuntimeHealthTest.test_linux_crit_correct_version_is_download_free) ... ok
+test_linux_crit_failure_does_not_leak_cleanup_trap (test_runtime_health.RuntimeHealthTest.test_linux_crit_failure_does_not_leak_cleanup_trap) ... ok
+test_linux_crit_install_is_pinned_atomic_and_recorded (test_runtime_health.RuntimeHealthTest.test_linux_crit_install_is_pinned_atomic_and_recorded) ... ok
+test_linux_crit_prefers_pinned_target_over_older_path_binary (test_runtime_health.RuntimeHealthTest.test_linux_crit_prefers_pinned_target_over_older_path_binary) ... ok
+test_make_doctor_does_not_skip_runtime_check_when_deployed_root_is_missing (test_runtime_health.RuntimeHealthTest.test_make_doctor_does_not_skip_runtime_check_when_deployed_root_is_missing) ... ok
+test_make_doctor_passes_repair_variable_to_runtime_check (test_runtime_health.RuntimeHealthTest.test_make_doctor_passes_repair_variable_to_runtime_check) ... ok
+test_make_doctor_propagates_runtime_drift_after_tool_checks (test_runtime_health.RuntimeHealthTest.test_make_doctor_propagates_runtime_drift_after_tool_checks) ... ok
+test_make_update_pulls_clean_main_before_apply (test_runtime_health.RuntimeHealthTest.test_make_update_pulls_clean_main_before_apply) ... ok
+test_make_update_reports_unmerged_feature_branch_before_branch_notice (test_runtime_health.RuntimeHealthTest.test_make_update_reports_unmerged_feature_branch_before_branch_notice) ... ok
+test_make_update_reports_unmerged_index_before_dirty_notice (test_runtime_health.RuntimeHealthTest.test_make_update_reports_unmerged_index_before_dirty_notice) ... ok
+test_make_update_skips_dirty_main_with_manual_pull_notice (test_runtime_health.RuntimeHealthTest.test_make_update_skips_dirty_main_with_manual_pull_notice) ... ok
+test_upgrade_bumps_terminal_and_crit_pins_from_fetched_artifacts (test_runtime_health.RuntimeHealthTest.test_upgrade_bumps_terminal_and_crit_pins_from_fetched_artifacts) ... ok
+test_upgrade_github_extensions_are_warning_only (test_runtime_health.RuntimeHealthTest.test_upgrade_github_extensions_are_warning_only) ... ok
+test_upgrade_reports_ccr_adoption_gate_values (test_runtime_health.RuntimeHealthTest.test_upgrade_reports_ccr_adoption_gate_values) ... ok
+test_upgrade_required_failures_are_nonzero_and_independent (test_runtime_health.RuntimeHealthTest.test_upgrade_required_failures_are_nonzero_and_independent) ... ok
+test_upgrade_skips_ccr_notice_when_gh_is_unavailable (test_runtime_health.RuntimeHealthTest.test_upgrade_skips_ccr_notice_when_gh_is_unavailable) ... ok
+test_upgrade_skips_unavailable_mise_self_update (test_runtime_health.RuntimeHealthTest.test_upgrade_skips_unavailable_mise_self_update) ... ok
+test_upgrade_uses_current_mise_node_after_runtime_replacement (test_runtime_health.RuntimeHealthTest.test_upgrade_uses_current_mise_node_after_runtime_replacement)
+Reject ambient npm after mise replaces the active Node runtime. ... ok
+test_ci_smokes_exact_tools_with_network_denied (test_statusline_tools.StatuslineToolsTest.test_ci_smokes_exact_tools_with_network_denied) ... ok
+test_direct_commands_use_offline_path_binaries (test_statusline_tools.StatuslineToolsTest.test_direct_commands_use_offline_path_binaries) ... ok
+test_generated_commands_are_direct_and_static (test_statusline_tools.StatuslineToolsTest.test_generated_commands_are_direct_and_static) ... ok
+test_mise_config_and_lock_pin_exact_npm_versions (test_statusline_tools.StatuslineToolsTest.test_mise_config_and_lock_pin_exact_npm_versions) ... ok
+test_missing_binary_fails_immediately (test_statusline_tools.StatuslineToolsTest.test_missing_binary_fails_immediately) ... ok
+test_binary_installers_replace_from_same_directory_stages (test_supply_chain_policy.SupplyChainPolicyTest.test_binary_installers_replace_from_same_directory_stages) ... ok
+test_dependabot_owns_github_action_updates (test_supply_chain_policy.SupplyChainPolicyTest.test_dependabot_owns_github_action_updates) ... ok
+test_executable_downloads_are_verified_and_not_piped_to_shell (test_supply_chain_policy.SupplyChainPolicyTest.test_executable_downloads_are_verified_and_not_piped_to_shell) ... ok
+test_external_checksum_failure_preserves_destination (test_supply_chain_policy.SupplyChainPolicyTest.test_external_checksum_failure_preserves_destination) ... ok
+test_externals_render_without_network_discovery (test_supply_chain_policy.SupplyChainPolicyTest.test_externals_render_without_network_discovery) ... ok
+test_externals_use_fixed_urls_and_checksums (test_supply_chain_policy.SupplyChainPolicyTest.test_externals_use_fixed_urls_and_checksums) ... ok
+test_installer_cleanup_preserves_failure_status (test_supply_chain_policy.SupplyChainPolicyTest.test_installer_cleanup_preserves_failure_status) ... ok
+test_installer_cleanup_survives_mock_function_returns (test_supply_chain_policy.SupplyChainPolicyTest.test_installer_cleanup_survives_mock_function_returns) ... ok
+test_mise_lock_matches_config_and_supported_platforms (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_lock_matches_config_and_supported_platforms) ... ok
+test_mise_lock_url_entries_have_checksums (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_lock_url_entries_have_checksums) ... ok
+test_mise_main_preserves_install_failure (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_main_preserves_install_failure) ... ok
+test_mise_npm_backend_uses_npm_and_limits_lifecycle_scripts (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_npm_backend_uses_npm_and_limits_lifecycle_scripts) ... ok
+test_mise_versions_are_exact_and_locking_is_enforced (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_versions_are_exact_and_locking_is_enforced) ... ok
+test_nix_inputs_lock_and_ci_use_2605 (test_supply_chain_policy.SupplyChainPolicyTest.test_nix_inputs_lock_and_ci_use_2605) ... ok
+test_setup_ci_rejects_and_preserves_local_drift (test_supply_chain_policy.SupplyChainPolicyTest.test_setup_ci_rejects_and_preserves_local_drift) ... ok
+test_sheldon_git_sources_have_revisions (test_supply_chain_policy.SupplyChainPolicyTest.test_sheldon_git_sources_have_revisions) ... ok
+test_sheldon_uses_locked_crates_io_source (test_supply_chain_policy.SupplyChainPolicyTest.test_sheldon_uses_locked_crates_io_source) ... ok
+test_candidate_is_no_when_another_claude_family_is_larger (test_usage_review.UsageReviewTests.test_candidate_is_no_when_another_claude_family_is_larger) ... ok
+test_malformed_latest_snapshot_warns_and_never_raises (test_usage_review.UsageReviewTests.test_malformed_latest_snapshot_warns_and_never_raises) ... ok
+test_report_computes_share_ratio_and_baseline_deltas (test_usage_review.UsageReviewTests.test_report_computes_share_ratio_and_baseline_deltas) ... ok
+test_report_emits_due_windows_and_matching_notes_suppress_them (test_usage_review.UsageReviewTests.test_report_emits_due_windows_and_matching_notes_suppress_them) ... ok
+test_snapshot_does_not_rewrite_existing_daily_file (test_usage_review.UsageReviewTests.test_snapshot_does_not_rewrite_existing_daily_file) ... ok
+test_agent_manifest_accepts_exact_security_profile_set (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_exact_security_profile_set) ... ok
+test_agent_manifest_rejects_missing_security_profile (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_security_profile) ... ok
+test_agent_manifest_rejects_wrong_security_codex_model (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_wrong_security_codex_model) ... ok
+test_agmsg_script_modes_accept_prefixed_entrypoints_and_lib_helpers (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_script_modes_accept_prefixed_entrypoints_and_lib_helpers) ... ok
+test_agmsg_script_modes_reject_non_executable_prefixed_entrypoint (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_script_modes_reject_non_executable_prefixed_entrypoint) ... ok
+test_agmsg_script_modes_reject_unprefixed_direct_entrypoint (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_script_modes_reject_unprefixed_direct_entrypoint) ... ok
+test_claude_command_parity_accepts_symlink_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_command_parity_accepts_symlink_only) ... ok
+test_claude_command_parity_rejects_dangling_target (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_command_parity_rejects_dangling_target) ... ok
+test_claude_command_parity_rejects_restored_duplicate (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_command_parity_rejects_restored_duplicate) ... ok
+test_claude_command_parity_rejects_wrong_target (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_command_parity_rejects_wrong_target) ... ok
+test_codex_modify_script_requires_executable_source (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_modify_script_requires_executable_source) ... ok
+test_codex_projects_accept_working_tree_placeholder (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_accept_working_tree_placeholder) ... ok
+test_codex_projects_reject_hard_coded_macos_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_hard_coded_macos_home) ... ok
+test_codex_projects_reject_missing_working_tree_placeholder (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_missing_working_tree_placeholder) ... ok
+test_codex_sandbox_workspace_write_accepts_matching_manifest (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_accepts_matching_manifest) ... ok
+test_codex_sandbox_workspace_write_must_match_manifest (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_must_match_manifest) ... ok
+test_codex_sandbox_workspace_write_requires_all_agmsg_roots (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_requires_all_agmsg_roots) ... ok
+test_hook_composition_accepts_managed_source_fixture (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_accepts_managed_source_fixture) ... ok
+test_hook_composition_pins_sessionstart_order (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_pins_sessionstart_order) ... ok
+test_hook_composition_rejects_duplicate_command (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_duplicate_command) ... ok
+test_hook_composition_rejects_sync_timeout_over_budget (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_sync_timeout_over_budget) ... ok
+test_hook_composition_requires_permgate_first (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_requires_permgate_first) ... ok
+test_manifest_home_paths_allow_chezmoi_home_dir (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_chezmoi_home_dir) ... ok
+test_manifest_home_paths_allow_flow_style_projects (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_flow_style_projects) ... ok
+test_manifest_home_paths_exempt_runtime_owned_projects (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_exempt_runtime_owned_projects) ... ok
+test_manifest_home_paths_only_exempt_the_projects_subtree (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_only_exempt_the_projects_subtree) ... ok
+test_manifest_home_paths_reject_hard_coded_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_home) ... ok
+test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
+test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
+test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/validate-agent-assets-test-gkt3wlal/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+ok
+test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
+test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
+test_secret_scan_checks_extensionless_executables (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_extensionless_executables) ... ok
+test_secret_scan_checks_utf16_bom_text (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_utf16_bom_text) ... ok
+test_secret_scan_rejects_placeholder_with_suffix (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_placeholder_with_suffix) ... ok
+test_checkout_does_not_persist_credentials_without_explicit_exemption (test_workflow_security.WorkflowSecurityTest.test_checkout_does_not_persist_credentials_without_explicit_exemption) ... ok
+test_checkout_rejects_duplicate_or_non_false_credential_settings (test_workflow_security.WorkflowSecurityTest.test_checkout_rejects_duplicate_or_non_false_credential_settings) ... ok
+test_checkout_setting_does_not_leak_from_the_next_step (test_workflow_security.WorkflowSecurityTest.test_checkout_setting_does_not_leak_from_the_next_step) ... ok
+test_external_actions_use_full_commit_shas (test_workflow_security.WorkflowSecurityTest.test_external_actions_use_full_commit_shas) ... ok
+test_quoted_unnamed_checkout_is_detected (test_workflow_security.WorkflowSecurityTest.test_quoted_unnamed_checkout_is_detected) ... ok
+test_unnamed_checkout_setting_does_not_leak_from_the_next_step (test_workflow_security.WorkflowSecurityTest.test_unnamed_checkout_setting_does_not_leak_from_the_next_step) ... ok
+test_workflows_have_exact_top_level_permissions (test_workflow_security.WorkflowSecurityTest.test_workflows_have_exact_top_level_permissions) ... ok
+test_workflows_have_no_job_level_permission_overrides (test_workflow_security.WorkflowSecurityTest.test_workflows_have_no_job_level_permission_overrides) ... ok
+
+----------------------------------------------------------------------
+Ran 395 tests in 47.899s
+
+OK
+```
+
+
+## CI revision validation
+
+```sh
+gh run view 36076905673 --log-failed
+```
+Exit code: 0
+```text
+validate	Validate agent assets	﻿2026-09-25T00:18:17.5870219Z ##[group]Run uv run --with pyyaml scripts/validate-agent-assets.py
+validate	Validate agent assets	2026-09-25T00:18:17.5870837Z ^[[36;1muv run --with pyyaml scripts/validate-agent-assets.py^[[0m
+validate	Validate agent assets	2026-09-25T00:18:17.5945123Z shell: /usr/bin/bash -e {0}
+validate	Validate agent assets	2026-09-25T00:18:17.5945455Z env:
+validate	Validate agent assets	2026-09-25T00:18:17.5945810Z   UV_PYTHON_INSTALL_DIR: /home/runner/work/_temp/uv-python-dir
+validate	Validate agent assets	2026-09-25T00:18:17.5946217Z ##[endgroup]
+validate	Validate agent assets	2026-09-25T00:18:17.7784969Z Installed 1 package in 2ms
+validate	Validate agent assets	2026-09-25T00:18:19.1828066Z ERROR: ERROR: generated agent configs are stale: home/.chezmoitemplates/claude-settings-managed.json
+validate	Validate agent assets	2026-09-25T00:18:19.1955239Z ##[error]Process completed with exit code 1.
+```
+
+```sh
+uv run --with pyyaml python scripts/validate-agent-assets.py
+```
+Exit code: 1
+```text
+ERROR: ERROR: generated agent configs are stale: home/.chezmoitemplates/claude-settings-managed.json
+```
+
+```sh
+uv run --with pyyaml python scripts/generate-agent-configs.py && uv run --with pyyaml python scripts/validate-agent-assets.py
+```
+Exit code: 0
+```text
+generated agent configs updated
+agent asset validation ok
+```
+
+```sh
+AGENT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/dot-update-convergence-T1-a01-review.md make require-crit-review && git diff --check && git diff --stat
+```
+Exit code: 0
+```text
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+ home/dot_agents/agent-config.yaml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+```
+
+```sh
+make unit-test
+```
+Exit code: 0
+```text
+uv run python -m unittest discover -s tests/unit -v
+test_bounded_scan_finishes_under_wall_limit (test_agent_session_staleness.AgentSessionStalenessTest.test_bounded_scan_finishes_under_wall_limit) ... ok
+test_check_is_silent_when_assets_predate_session (test_agent_session_staleness.AgentSessionStalenessTest.test_check_is_silent_when_assets_predate_session) ... ok
+test_check_reports_new_versions_and_mtimes_deduplicated_by_root (test_agent_session_staleness.AgentSessionStalenessTest.test_check_reports_new_versions_and_mtimes_deduplicated_by_root) ... ok
+test_doctor_delegates_session_staleness_to_installed_script (test_agent_session_staleness.AgentSessionStalenessTest.test_doctor_delegates_session_staleness_to_installed_script) ... ok
+test_hook_first_call_writes_private_baseline_and_is_silent (test_agent_session_staleness.AgentSessionStalenessTest.test_hook_first_call_writes_private_baseline_and_is_silent) ... ok
+test_hook_missing_or_garbage_stdin_is_silent_success (test_agent_session_staleness.AgentSessionStalenessTest.test_hook_missing_or_garbage_stdin_is_silent_success) ... ok
+test_hook_prunes_state_files_older_than_seven_days (test_agent_session_staleness.AgentSessionStalenessTest.test_hook_prunes_state_files_older_than_seven_days) ... ok
+test_hook_second_call_detects_asset_updated_after_baseline (test_agent_session_staleness.AgentSessionStalenessTest.test_hook_second_call_detects_asset_updated_after_baseline) ... ok
+test_internal_failure_is_silent_success_with_one_stderr_line (test_agent_session_staleness.AgentSessionStalenessTest.test_internal_failure_is_silent_success_with_one_stderr_line) ... ok
+test_no_arguments_prints_ten_recent_updates (test_agent_session_staleness.AgentSessionStalenessTest.test_no_arguments_prints_ten_recent_updates) ... ok
+test_runtime_state_and_sqlite_files_are_excluded (test_agent_session_staleness.AgentSessionStalenessTest.test_runtime_state_and_sqlite_files_are_excluded) ... ok
+test_identifier_grammar_has_one_source_of_truth (test_agmsg_send.AgmsgRegistrationGrammarTest.test_identifier_grammar_has_one_source_of_truth) ... ok
+test_join_rejects_invalid_team_and_agent_without_mutation (test_agmsg_send.AgmsgRegistrationGrammarTest.test_join_rejects_invalid_team_and_agent_without_mutation) ... ok
+test_rename_rejects_invalid_identifiers_without_mutation (test_agmsg_send.AgmsgRegistrationGrammarTest.test_rename_rejects_invalid_identifiers_without_mutation) ... /Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/pathlib/_local.py:508: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a2980>
+  return object.__new__(cls)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/mryfmo/.local/share/uv/python/cpython-3.13.15-macos-aarch64-none/lib/python3.13/pathlib/_local.py:508: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a27a0>
+  return object.__new__(cls)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_team_rename_rejects_invalid_names_without_mutation (test_agmsg_send.AgmsgRegistrationGrammarTest.test_team_rename_rejects_invalid_names_without_mutation) ... ok
+test_valid_registration_and_renames_still_work (test_agmsg_send.AgmsgRegistrationGrammarTest.test_valid_registration_and_renames_still_work) ... ok
+test_invalid_identifiers_fail_before_storage_access (test_agmsg_send.AgmsgSendTest.test_invalid_identifiers_fail_before_storage_access) ... ok
+test_quote_bearing_body_round_trips (test_agmsg_send.AgmsgSendTest.test_quote_bearing_body_round_trips) ... ok
+test_touched_shell_entrypoints_have_shdoc_headers (test_agmsg_send.AgmsgSendTest.test_touched_shell_entrypoints_have_shdoc_headers) ... ok
+test_valid_identifiers_store_message (test_agmsg_send.AgmsgSendTest.test_valid_identifiers_store_message) ... ok
+test_chezmoi_rendered_updater_uses_exported_source_root (test_asset_manifest.AssetManifestTest.test_chezmoi_rendered_updater_uses_exported_source_root) ... ok
+test_chezmoi_rendered_updater_uses_inlined_manifest_library (test_asset_manifest.AssetManifestTest.test_chezmoi_rendered_updater_uses_inlined_manifest_library) ... ok
+test_chezmoi_wrapper_renders_shebang_and_source_root (test_asset_manifest.AssetManifestTest.test_chezmoi_wrapper_renders_shebang_and_source_root) ... ok
+test_failed_atomic_commit_leaves_previous_manifest_intact (test_asset_manifest.AssetManifestTest.test_failed_atomic_commit_leaves_previous_manifest_intact) ... ok
+test_records_schema_two_steps_and_replaces_one_whole_entry (test_asset_manifest.AssetManifestTest.test_records_schema_two_steps_and_replaces_one_whole_entry) ... ok
+test_rendered_updater_fails_when_no_source_root_is_valid (test_asset_manifest.AssetManifestTest.test_rendered_updater_fails_when_no_source_root_is_valid) ... ok
+test_same_run_mise_repairs_preserve_both_identity_steps (test_asset_manifest.AssetManifestTest.test_same_run_mise_repairs_preserve_both_identity_steps) ... ok
+test_two_real_install_steps_record_under_fake_home (test_asset_manifest.AssetManifestTest.test_two_real_install_steps_record_under_fake_home) ... ok
+test_unwritable_destination_warns_once_without_failing (test_asset_manifest.AssetManifestTest.test_unwritable_destination_warns_once_without_failing) ... ok
+test_updater_direct_source_resolves_repository_root (test_asset_manifest.AssetManifestTest.test_updater_direct_source_resolves_repository_root) ... ok
+test_updater_has_one_recording_call_for_each_install_step (test_asset_manifest.AssetManifestTest.test_updater_has_one_recording_call_for_each_install_step) ... ok
+test_exit_zero_install_with_expected_fake_binary_passes_postcondition (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_exit_zero_install_with_expected_fake_binary_passes_postcondition) ... ok
+test_exit_zero_install_with_wrong_version_fails_postcondition (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_exit_zero_install_with_wrong_version_fails_postcondition) ... ok
+test_exit_zero_partial_install_without_binary_fails_postcondition (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_exit_zero_partial_install_without_binary_fails_postcondition) ... ok
+test_gpgv_failure_preserves_existing_aws_and_skips_unzip (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_gpgv_failure_preserves_existing_aws_and_skips_unzip) ... ok
+test_key_metadata_failures_stop_before_dearmor_and_gpgv (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_key_metadata_failures_stop_before_dearmor_and_gpgv) ... ok
+test_linux_urls_are_versioned_and_unknown_architecture_fails (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_linux_urls_are_versioned_and_unknown_architecture_fails) ... ok
+test_platform_package_managers_and_wrapper_own_aws_cli (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_platform_package_managers_and_wrapper_own_aws_cli) ... ok
+test_repository_key_has_expected_current_fingerprint (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_repository_key_has_expected_current_fingerprint) ... ok
+test_verified_archive_runs_installer_with_user_local_update_arguments (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_verified_archive_runs_installer_with_user_local_update_arguments) ... ok
+test_wrong_staged_version_preserves_existing_aws_and_skips_installer (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_wrong_staged_version_preserves_existing_aws_and_skips_installer) ... ok
+test_agmsg_runtime_paths_are_ignored_on_both_sides (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_runtime_paths_are_ignored_on_both_sides) ... ok
+test_agmsg_separate_store_prefix_is_ignored (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_separate_store_prefix_is_ignored) ... ok
+test_asset_repair_invokes_only_the_detected_step (test_check_agent_runtime.CheckAgentRuntimeTest.test_asset_repair_invokes_only_the_detected_step) ... ok
+test_check_uses_same_modified_for_codex_profiles (test_check_agent_runtime.CheckAgentRuntimeTest.test_check_uses_same_modified_for_codex_profiles) ... ok
+test_chezmoi_drift_status_failure_is_warning (test_check_agent_runtime.CheckAgentRuntimeTest.test_chezmoi_drift_status_failure_is_warning) ... <frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x105fd36a0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a2a70>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a27a0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a2980>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a25c0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a2890>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a24d0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a26b0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a23e0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a22f0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a2200>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a2110>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a1f30>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a1d50>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a1c60>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a32e0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a34c0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a3790>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a3880>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x1064a3b50>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x106574040>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x106574130>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_chezmoi_drift_warnings_classify_status_and_mode_only (test_check_agent_runtime.CheckAgentRuntimeTest.test_chezmoi_drift_warnings_classify_status_and_mode_only) ... ok
+test_compare_claude_skills_ignores_cowork_synced_subtree (test_check_agent_runtime.CheckAgentRuntimeTest.test_compare_claude_skills_ignores_cowork_synced_subtree) ... ok
+test_content_drift_still_fails (test_check_agent_runtime.CheckAgentRuntimeTest.test_content_drift_still_fails) ... ok
+test_crit_codex_skills_are_not_orphans (test_check_agent_runtime.CheckAgentRuntimeTest.test_crit_codex_skills_are_not_orphans) ... ok
+test_deleted_shared_skill_file_repair_converges (test_check_agent_runtime.CheckAgentRuntimeTest.test_deleted_shared_skill_file_repair_converges) ... ok
+test_every_generated_chezmoi_repair_action_is_forced (test_check_agent_runtime.CheckAgentRuntimeTest.test_every_generated_chezmoi_repair_action_is_forced) ... ok
+test_executable_prefix_is_compared_against_deployed_name (test_check_agent_runtime.CheckAgentRuntimeTest.test_executable_prefix_is_compared_against_deployed_name) ... ok
+test_executable_prefix_requires_deployed_execute_bit (test_check_agent_runtime.CheckAgentRuntimeTest.test_executable_prefix_requires_deployed_execute_bit) ... ok
+test_execute_repair_calls_each_mapped_command_once (test_check_agent_runtime.CheckAgentRuntimeTest.test_execute_repair_calls_each_mapped_command_once) ... ok
+test_ignored_paths_suppress_receipt_linked_tree_entries (test_check_agent_runtime.CheckAgentRuntimeTest.test_ignored_paths_suppress_receipt_linked_tree_entries) ... ok
+test_installed_manifest_integrity_reasons (test_check_agent_runtime.CheckAgentRuntimeTest.test_installed_manifest_integrity_reasons) ... ok
+test_invalid_manifest_is_one_error_and_skips_dependent_checks (test_check_agent_runtime.CheckAgentRuntimeTest.test_invalid_manifest_is_one_error_and_skips_dependent_checks) ... ok
+test_json_modifier_accepts_cosmetic_reserialization (test_check_agent_runtime.CheckAgentRuntimeTest.test_json_modifier_accepts_cosmetic_reserialization) ... ok
+test_json_modifier_rejects_real_value_drift (test_check_agent_runtime.CheckAgentRuntimeTest.test_json_modifier_rejects_real_value_drift) ... ok
+test_managed_top_level_extra_still_fails_with_unmanaged_warning_mode (test_check_agent_runtime.CheckAgentRuntimeTest.test_managed_top_level_extra_still_fails_with_unmanaged_warning_mode) ... ok
+test_manifest_drift_requires_recorded_step_with_missing_path (test_check_agent_runtime.CheckAgentRuntimeTest.test_manifest_drift_requires_recorded_step_with_missing_path) ... ok
+test_missing_crit_asset_is_repairable (test_check_agent_runtime.CheckAgentRuntimeTest.test_missing_crit_asset_is_repairable) ... ok
+test_missing_terminal_browser_receipt_is_harmless (test_check_agent_runtime.CheckAgentRuntimeTest.test_missing_terminal_browser_receipt_is_harmless) ... ok
+test_only_exact_agmsg_root_legacy_database_names_are_ignored (test_check_agent_runtime.CheckAgentRuntimeTest.test_only_exact_agmsg_root_legacy_database_names_are_ignored) ... ok
+test_orphan_detection_classifies_accounted_stale_and_orphan (test_check_agent_runtime.CheckAgentRuntimeTest.test_orphan_detection_classifies_accounted_stale_and_orphan) ... ok
+test_parameterized_mise_step_uses_key_identity (test_check_agent_runtime.CheckAgentRuntimeTest.test_parameterized_mise_step_uses_key_identity) ... ok
+test_private_prefix_is_compared_against_deployed_name (test_check_agent_runtime.CheckAgentRuntimeTest.test_private_prefix_is_compared_against_deployed_name) ... ok
+test_repair_actions_map_only_detected_file_drift (test_check_agent_runtime.CheckAgentRuntimeTest.test_repair_actions_map_only_detected_file_drift) ... ok
+test_repair_mode_converges_once_and_reports_each_action (test_check_agent_runtime.CheckAgentRuntimeTest.test_repair_mode_converges_once_and_reports_each_action) ... ok
+test_repair_mode_fails_after_one_non_convergent_round (test_check_agent_runtime.CheckAgentRuntimeTest.test_repair_mode_fails_after_one_non_convergent_round) ... ok
+test_repair_mode_never_acts_on_stale_or_orphan_warnings (test_check_agent_runtime.CheckAgentRuntimeTest.test_repair_mode_never_acts_on_stale_or_orphan_warnings) ... ok
+test_repair_unset_is_byte_identical_and_never_mutates (test_check_agent_runtime.CheckAgentRuntimeTest.test_repair_unset_is_byte_identical_and_never_mutates) ... ok
+test_sourced_asset_repair_runs_no_main_or_sibling_step (test_check_agent_runtime.CheckAgentRuntimeTest.test_sourced_asset_repair_runs_no_main_or_sibling_step) ... ok
+test_terminal_browser_receipt_links_are_not_orphans (test_check_agent_runtime.CheckAgentRuntimeTest.test_terminal_browser_receipt_links_are_not_orphans) ... ok
+test_unexpected_non_runtime_file_still_fails (test_check_agent_runtime.CheckAgentRuntimeTest.test_unexpected_non_runtime_file_still_fails) ... ok
+test_unmanaged_top_level_skill_dir_warns (test_check_agent_runtime.CheckAgentRuntimeTest.test_unmanaged_top_level_skill_dir_warns) ... ok
+test_current_only_key_is_preserved (test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_only_key_is_preserved) ... ok
+test_current_session_start_order_is_preserved (test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_session_start_order_is_preserved)
+Order is preserved; a stale bare herdr-agents command still migrates. ... ok
+test_desired_current_output_is_byte_identical (test_claude_settings_merge.ClaudeSettingsMergeTest.test_desired_current_output_is_byte_identical) ... ok
+test_empty_stdin_outputs_managed (test_claude_settings_merge.ClaudeSettingsMergeTest.test_empty_stdin_outputs_managed) ... ok
+test_enabled_plugins_are_preserved_from_current (test_claude_settings_merge.ClaudeSettingsMergeTest.test_enabled_plugins_are_preserved_from_current) ... ok
+test_invalid_json_outputs_managed (test_claude_settings_merge.ClaudeSettingsMergeTest.test_invalid_json_outputs_managed) ... ok
+test_managed_hook_object_key_order_is_preserved (test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_hook_object_key_order_is_preserved) ... ok
+test_managed_permgate_replaces_stale_current_ccgate_hook (test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_permgate_replaces_stale_current_ccgate_hook) ... ok
+test_managed_session_start_replacement_keeps_hook_order (test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_session_start_replacement_keeps_hook_order)
+Replacing a managed entry must not reorder SessionStart. ... ok
+test_managed_session_start_replaces_stale_hard_coded_home_hook (test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_session_start_replaces_stale_hard_coded_home_hook)
+Upgrade path: a machine that received the old hard-coded managed hook. ... ok
+test_managed_wins_for_managed_key (test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_wins_for_managed_key) ... ok
+test_merge_is_idempotent (test_claude_settings_merge.ClaudeSettingsMergeTest.test_merge_is_idempotent) ... ok
+test_permission_merge_preserves_custom_hook_in_mixed_entry (test_claude_settings_merge.ClaudeSettingsMergeTest.test_permission_merge_preserves_custom_hook_in_mixed_entry) ... ok
+test_permission_merge_preserves_unrelated_current_hooks (test_claude_settings_merge.ClaudeSettingsMergeTest.test_permission_merge_preserves_unrelated_current_hooks) ... ok
+test_real_template_preserves_herdr_matcher_and_converges (test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_template_preserves_herdr_matcher_and_converges) ... ok
+test_real_value_change_is_redumped (test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_value_change_is_redumped) ... ok
+test_reordered_but_equal_current_is_byte_identical (test_claude_settings_merge.ClaudeSettingsMergeTest.test_reordered_but_equal_current_is_byte_identical) ... ok
+test_trailing_newline (test_claude_settings_merge.ClaudeSettingsMergeTest.test_trailing_newline) ... ok
+test_current_only_runtime_tables_keep_current_group_order (test_codex_config_merge.CodexConfigMergeTest.test_current_only_runtime_tables_keep_current_group_order) ... ok
+test_fresh_machine_outputs_managed_baseline (test_codex_config_merge.CodexConfigMergeTest.test_fresh_machine_outputs_managed_baseline) ... ok
+test_managed_permgate_replaces_stale_private_ccgate_hook (test_codex_config_merge.CodexConfigMergeTest.test_managed_permgate_replaces_stale_private_ccgate_hook) ... ok
+test_managed_templates_are_rendered_before_merge (test_codex_config_merge.CodexConfigMergeTest.test_managed_templates_are_rendered_before_merge) ... ok
+test_managed_wins_for_managed_keys (test_codex_config_merge.CodexConfigMergeTest.test_managed_wins_for_managed_keys) ... ok
+test_repeated_runtime_tables_are_preserved_in_order (test_codex_config_merge.CodexConfigMergeTest.test_repeated_runtime_tables_are_preserved_in_order) ... ok
+test_runtime_tables_are_preserved (test_codex_config_merge.CodexConfigMergeTest.test_runtime_tables_are_preserved) ... ok
+test_runtime_tables_seed_from_managed_when_absent (test_codex_config_merge.CodexConfigMergeTest.test_runtime_tables_seed_from_managed_when_absent) ... ok
+test_unknown_current_tables_are_preserved (test_codex_config_merge.CodexConfigMergeTest.test_unknown_current_tables_are_preserved) ... ok
+test_working_tree_placeholder_falls_back_to_source_dir_parent (test_codex_config_merge.CodexConfigMergeTest.test_working_tree_placeholder_falls_back_to_source_dir_parent) ... ok
+test_working_tree_placeholder_prefers_env_override (test_codex_config_merge.CodexConfigMergeTest.test_working_tree_placeholder_prefers_env_override) ... ok
+test_missing_trusted_runtime_is_silent (test_contextdb_codex_notify.ContextdbCodexNotifyTest.test_missing_trusted_runtime_is_silent) ... ok
+test_non_opted_project_is_silent_even_with_trusted_runtime (test_contextdb_codex_notify.ContextdbCodexNotifyTest.test_non_opted_project_is_silent_even_with_trusted_runtime) ... ok
+test_project_cli_is_data_only_and_trusted_cli_gets_explicit_root (test_contextdb_codex_notify.ContextdbCodexNotifyTest.test_project_cli_is_data_only_and_trusted_cli_gets_explicit_root) ... ok
+test_coverage_gems_are_compatible_and_exact (test_files_fixture.FilesFixtureTest.test_coverage_gems_are_compatible_and_exact) ... ok
+test_fixture_uses_chezmoi_binary_outside_mise_shims (test_files_fixture.FilesFixtureTest.test_fixture_uses_chezmoi_binary_outside_mise_shims) ... ok
+test_legacy_file_workflows_initialize_required_fixture_paths (test_files_fixture.FilesFixtureTest.test_legacy_file_workflows_initialize_required_fixture_paths) ... ok
+test_claude_deny_rules_use_edit_for_file_mutations (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_deny_rules_use_edit_for_file_mutations) ... ok
+test_claude_settings_renders_session_start_hooks (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_renders_session_start_hooks) ... ok
+test_claude_settings_use_interactive_profile_with_permgate (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_use_interactive_profile_with_permgate) ... ok
+test_claude_skill_symlink_outputs_strip_executable_target_prefix (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_skill_symlink_outputs_strip_executable_target_prefix) ... ok
+test_codex_config_renders_permgate_permission_request (test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_permgate_permission_request) ... ok
+test_codex_config_renders_working_tree_project_key (test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_working_tree_project_key) ... ok
+test_expected_outputs_uses_codex_baseline_path (test_generate_agent_configs.GenerateAgentConfigsTest.test_expected_outputs_uses_codex_baseline_path) ... ok
+test_managed_hooks_use_installed_permgate_paths (test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_hooks_use_installed_permgate_paths) ... ok
+test_manifest_keeps_model_ids_only_in_profiles (test_generate_agent_configs.GenerateAgentConfigsTest.test_manifest_keeps_model_ids_only_in_profiles) ... ok
+test_model_profiles_env_renders_worker_kind (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_kind) ... ok
+test_model_profiles_reject_incomplete_or_unsafe_entries (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_incomplete_or_unsafe_entries) ... ERROR: model profile standard is missing codex
+ERROR: model profile standard.claude.model must be a launcher-safe string
+ERROR: model_profiles must define the express profile
+ok
+test_profile_modify_scripts_are_byte_idempotent_with_runtime_state (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_byte_idempotent_with_runtime_state) ... ok
+test_profile_modify_scripts_are_quiet_for_matching_hook_trust (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_quiet_for_matching_hook_trust) ... ok
+test_profile_modify_scripts_preserve_repeated_runtime_tables (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_repeated_runtime_tables) ... ok
+test_profile_modify_scripts_preserve_runtime_state (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_runtime_state) ... ok
+test_profile_modify_scripts_seed_base_hook_trust (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_seed_base_hook_trust) ... ok
+test_profile_modify_scripts_warn_on_hook_trust_divergence (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_warn_on_hook_trust_divergence) ... ok
+test_repository_marketplace_is_a_runtime_owned_seed (test_generate_agent_configs.GenerateAgentConfigsTest.test_repository_marketplace_is_a_runtime_owned_seed) ... ok
+test_security_profile_renders_launcher_and_expanded_notify (test_generate_agent_configs.GenerateAgentConfigsTest.test_security_profile_renders_launcher_and_expanded_notify) ... ok
+test_unknown_interactive_profile_fails (test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_interactive_profile_fails) ... ERROR: interactive_profile must name a model profile: 'missing'
+ok
+test_unknown_worker_kind_fails (test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_kind_fails) ... ERROR: worker_kind must be one of ('codex', 'claude'): 'banana'
+ok
+test_worker_kind_defaults_to_codex (test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_kind_defaults_to_codex) ... ok
+test_attach_bootstraps_agmsg_after_codex_reuse (test_herdr_agents.HerdrAgentsTest.test_attach_bootstraps_agmsg_after_codex_reuse) ... ok
+test_attach_bootstraps_agmsg_after_codex_start (test_herdr_agents.HerdrAgentsTest.test_attach_bootstraps_agmsg_after_codex_start) ... ok
+test_attach_builds_codex_right_of_current_claude_pane (test_herdr_agents.HerdrAgentsTest.test_attach_builds_codex_right_of_current_claude_pane) ... ok
+test_attach_complete_workspace_is_idempotent (test_herdr_agents.HerdrAgentsTest.test_attach_complete_workspace_is_idempotent) ... ok
+test_attach_correct_order_does_not_swap (test_herdr_agents.HerdrAgentsTest.test_attach_correct_order_does_not_swap) ... ok
+test_attach_does_not_restart_codex_agent_from_another_tab (test_herdr_agents.HerdrAgentsTest.test_attach_does_not_restart_codex_agent_from_another_tab) ... ok
+test_attach_equal_halves_does_not_resize (test_herdr_agents.HerdrAgentsTest.test_attach_equal_halves_does_not_resize) ... ok
+test_attach_ignores_agmsg_bootstrap_failure (test_herdr_agents.HerdrAgentsTest.test_attach_ignores_agmsg_bootstrap_failure) ... ok
+test_attach_ignores_extra_panes_on_other_tabs (test_herdr_agents.HerdrAgentsTest.test_attach_ignores_extra_panes_on_other_tabs) ... ok
+test_attach_legacy_files_pane_refuses_repair_without_layout_mutation (test_herdr_agents.HerdrAgentsTest.test_attach_legacy_files_pane_refuses_repair_without_layout_mutation) ... ok
+test_attach_lowercases_and_validates_derived_agent_name (test_herdr_agents.HerdrAgentsTest.test_attach_lowercases_and_validates_derived_agent_name) ... ok
+test_attach_noops_for_full_mode_managed_layout (test_herdr_agents.HerdrAgentsTest.test_attach_noops_for_full_mode_managed_layout) ... ok
+test_attach_noops_without_herdr_environment (test_herdr_agents.HerdrAgentsTest.test_attach_noops_without_herdr_environment) ... ok
+test_attach_ratio_repair_skips_unsafe_layouts (test_herdr_agents.HerdrAgentsTest.test_attach_ratio_repair_skips_unsafe_layouts) ... ok
+test_attach_rejects_invalid_derived_agent_name (test_herdr_agents.HerdrAgentsTest.test_attach_rejects_invalid_derived_agent_name) ... ok
+test_attach_repairs_codex_claude_order_with_one_swap (test_herdr_agents.HerdrAgentsTest.test_attach_repairs_codex_claude_order_with_one_swap) ... ok
+test_attach_repairs_skewed_widths_to_equal_halves (test_herdr_agents.HerdrAgentsTest.test_attach_repairs_skewed_widths_to_equal_halves) ... ok
+test_attach_reports_agmsg_skip_when_not_installed (test_herdr_agents.HerdrAgentsTest.test_attach_reports_agmsg_skip_when_not_installed) ... ok
+test_attach_skips_delivery_when_turn_hook_exists (test_herdr_agents.HerdrAgentsTest.test_attach_skips_delivery_when_turn_hook_exists) ... ok
+test_attach_warns_after_one_nonconverging_resize (test_herdr_agents.HerdrAgentsTest.test_attach_warns_after_one_nonconverging_resize) ... ok
+test_attach_warns_when_multiple_agmsg_identities_exist (test_herdr_agents.HerdrAgentsTest.test_attach_warns_when_multiple_agmsg_identities_exist) ... ok
+test_bare_herdr_in_ghostty_starts_plain_session (test_herdr_agents.HerdrAgentsTest.test_bare_herdr_in_ghostty_starts_plain_session) ... ok
+test_bare_herdr_outside_ghostty_uses_real_cli (test_herdr_agents.HerdrAgentsTest.test_bare_herdr_outside_ghostty_uses_real_cli) ... ok
+test_bootstrap_accepts_same_identity_in_multiple_teams (test_herdr_agents.HerdrAgentsTest.test_bootstrap_accepts_same_identity_in_multiple_teams) ... ok
+test_bootstrap_only_creates_missing_herdr_log_directory (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_creates_missing_herdr_log_directory) ... ok
+test_bootstrap_only_does_not_call_herdr_or_agents (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_does_not_call_herdr_or_agents) ... ok
+test_bootstrap_only_sets_claude_delivery_once_when_hook_is_missing (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_sets_claude_delivery_once_when_hook_is_missing) ... ok
+test_bootstrap_only_sets_each_missing_delivery_once (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_sets_each_missing_delivery_once) ... ok
+test_bootstrap_only_skips_all_delivery_when_both_hooks_exist (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_skips_all_delivery_when_both_hooks_exist) ... ok
+test_bootstrap_only_skips_home_without_agmsg_calls (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_skips_home_without_agmsg_calls) ... ok
+test_bootstrap_only_warns_for_missing_claude_identity_without_joining (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_warns_for_missing_claude_identity_without_joining) ... ok
+test_bootstrap_only_warns_for_multiple_claude_identities (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_warns_for_multiple_claude_identities) ... ok
+test_claude_agent_accepts_manifest_profile_arguments_for_e2e (test_herdr_agents.HerdrAgentsTest.test_claude_agent_accepts_manifest_profile_arguments_for_e2e) ... ok
+test_claude_repair_skips_just_restarted_codex_pane_without_agent_field (test_herdr_agents.HerdrAgentsTest.test_claude_repair_skips_just_restarted_codex_pane_without_agent_field) ... ok
+test_claude_settings_add_herdr_attach_session_hook (test_herdr_agents.HerdrAgentsTest.test_claude_settings_add_herdr_attach_session_hook) ... ok
+test_codex_profile_defaults_to_generated_interactive_profile (test_herdr_agents.HerdrAgentsTest.test_codex_profile_defaults_to_generated_interactive_profile) ... ok
+test_codex_profile_env_override_wins_over_generated_profile (test_herdr_agents.HerdrAgentsTest.test_codex_profile_env_override_wins_over_generated_profile) ... ok
+test_existing_legacy_files_pane_is_not_reused_for_claude_or_split_again (test_herdr_agents.HerdrAgentsTest.test_existing_legacy_files_pane_is_not_reused_for_claude_or_split_again) ... ok
+test_existing_two_pane_workspace_repairs_skewed_widths (test_herdr_agents.HerdrAgentsTest.test_existing_two_pane_workspace_repairs_skewed_widths) ... ok
+test_existing_workspace_matches_canonical_macos_workdir (test_herdr_agents.HerdrAgentsTest.test_existing_workspace_matches_canonical_macos_workdir) ... ok
+test_existing_workspace_restarts_missing_claude_in_empty_pane (test_herdr_agents.HerdrAgentsTest.test_existing_workspace_restarts_missing_claude_in_empty_pane) ... ok
+test_existing_workspace_restarts_missing_codex_agent (test_herdr_agents.HerdrAgentsTest.test_existing_workspace_restarts_missing_codex_agent) ... ok
+test_existing_workspace_splits_when_missing_claude_has_no_empty_pane (test_herdr_agents.HerdrAgentsTest.test_existing_workspace_splits_when_missing_claude_has_no_empty_pane) ... ok
+test_existing_workspace_with_legacy_files_pane_focuses_without_mutation (test_herdr_agents.HerdrAgentsTest.test_existing_workspace_with_legacy_files_pane_focuses_without_mutation) ... ok
+test_file_viewer_plugin_config_sets_micro_editor (test_herdr_agents.HerdrAgentsTest.test_file_viewer_plugin_config_sets_micro_editor) ... ok
+test_full_mode_skips_agmsg_bootstrap_for_home (test_herdr_agents.HerdrAgentsTest.test_full_mode_skips_agmsg_bootstrap_for_home) ... ok
+test_ghostty_config_does_not_auto_start_herdr_session (test_herdr_agents.HerdrAgentsTest.test_ghostty_config_does_not_auto_start_herdr_session) ... ok
+test_ghostty_herdr_starts_plain_workspace (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_plain_workspace) ... ok
+test_herdr_prefix_alt_a_runs_helper_from_active_pane (test_herdr_agents.HerdrAgentsTest.test_herdr_prefix_alt_a_runs_helper_from_active_pane) ... ok
+test_herdr_prefix_f_opens_file_viewer_popup (test_herdr_agents.HerdrAgentsTest.test_herdr_prefix_f_opens_file_viewer_popup) ... ok
+test_herdr_session_does_not_prebuild_agent_layout (test_herdr_agents.HerdrAgentsTest.test_herdr_session_does_not_prebuild_agent_layout) ... ok
+test_herdr_session_execs_herdr_without_prebuilding_agents (test_herdr_agents.HerdrAgentsTest.test_herdr_session_execs_herdr_without_prebuilding_agents) ... ok
+test_herdr_session_passes_syntax_check (test_herdr_agents.HerdrAgentsTest.test_herdr_session_passes_syntax_check) ... ok
+test_herdr_session_rejects_arguments (test_herdr_agents.HerdrAgentsTest.test_herdr_session_rejects_arguments) ... ok
+test_herdr_with_args_in_ghostty_uses_real_cli (test_herdr_agents.HerdrAgentsTest.test_herdr_with_args_in_ghostty_uses_real_cli) ... ok
+test_interactive_ghostty_shell_attaches_plain_session (test_herdr_agents.HerdrAgentsTest.test_interactive_ghostty_shell_attaches_plain_session) ... ok
+test_make_update_and_upgrade_include_agmsg_bootstrap (test_herdr_agents.HerdrAgentsTest.test_make_update_and_upgrade_include_agmsg_bootstrap) ... ok
+test_new_pane_waits_for_shell_and_retries_agent_start_once_on_timeout (test_herdr_agents.HerdrAgentsTest.test_new_pane_waits_for_shell_and_retries_agent_start_once_on_timeout) ... ok
+test_pane_creation_propagates_explicit_fpath (test_herdr_agents.HerdrAgentsTest.test_pane_creation_propagates_explicit_fpath) ... ok
+test_registered_agent_not_ready_waits_for_idle_without_duplicate_start (test_herdr_agents.HerdrAgentsTest.test_registered_agent_not_ready_waits_for_idle_without_duplicate_start) ... ok
+test_start_keeps_node_global_without_mise_tool_install (test_herdr_agents.HerdrAgentsTest.test_start_keeps_node_global_without_mise_tool_install) ... ok
+test_start_removes_node_global_agent_clis_shadowing_mise (test_herdr_agents.HerdrAgentsTest.test_start_removes_node_global_agent_clis_shadowing_mise) ... ok
+test_start_skips_node_global_removal_without_stray (test_herdr_agents.HerdrAgentsTest.test_start_skips_node_global_removal_without_stray) ... ok
+test_uses_initial_workspace_pane_for_claude_and_splits_codex_right (test_herdr_agents.HerdrAgentsTest.test_uses_initial_workspace_pane_for_claude_and_splits_codex_right) ... ok
+test_worker_kind_claude_accepts_a_workspace_trust_dialog (test_herdr_agents.HerdrAgentsTest.test_worker_kind_claude_accepts_a_workspace_trust_dialog) ... ok
+test_worker_kind_claude_appends_extra_worker_args (test_herdr_agents.HerdrAgentsTest.test_worker_kind_claude_appends_extra_worker_args) ... ok
+test_worker_kind_claude_does_not_require_codex (test_herdr_agents.HerdrAgentsTest.test_worker_kind_claude_does_not_require_codex) ... ok
+test_worker_kind_claude_skips_send_keys_without_a_trust_dialog (test_herdr_agents.HerdrAgentsTest.test_worker_kind_claude_skips_send_keys_without_a_trust_dialog) ... ok
+test_worker_kind_claude_starts_a_claude_worker_pane_with_profile_args (test_herdr_agents.HerdrAgentsTest.test_worker_kind_claude_starts_a_claude_worker_pane_with_profile_args) ... ok
+test_worker_kind_claude_starts_with_no_resolved_args (test_herdr_agents.HerdrAgentsTest.test_worker_kind_claude_starts_with_no_resolved_args) ... ok
+test_worker_kind_defaults_to_generated_env_fragment (test_herdr_agents.HerdrAgentsTest.test_worker_kind_defaults_to_generated_env_fragment) ... ok
+test_worker_kind_env_override_wins_over_generated_env_fragment (test_herdr_agents.HerdrAgentsTest.test_worker_kind_env_override_wins_over_generated_env_fragment) ... ok
+test_worker_kind_rejects_an_unknown_value (test_herdr_agents.HerdrAgentsTest.test_worker_kind_rejects_an_unknown_value) ... ok
+test_worker_profile_env_takes_priority_over_deprecated_codex_alias (test_herdr_agents.HerdrAgentsTest.test_worker_profile_env_takes_priority_over_deprecated_codex_alias) ... ok
+test_yazi_edit_opener_prefers_zed_with_editor_fallback (test_herdr_agents.HerdrAgentsTest.test_yazi_edit_opener_prefers_zed_with_editor_fallback) ... ok
+test_zprofile_adds_common_bin_to_login_shell_path (test_herdr_agents.HerdrAgentsTest.test_zprofile_adds_common_bin_to_login_shell_path) ... ok
+test_allow_pattern_rejects_shell_chaining (test_permgate.PermgateTest.test_allow_pattern_rejects_shell_chaining) ... ok
+test_apply_patch_is_never_deterministically_allowed (test_permgate.PermgateTest.test_apply_patch_is_never_deterministically_allowed) ... ok
+test_bash_credentials_skip_classifier (test_permgate.PermgateTest.test_bash_credentials_skip_classifier) ... ok
+test_bench_runs_five_layer_two_fixtures (test_permgate.PermgateTest.test_bench_runs_five_layer_two_fixtures) ... ok
+test_bench_with_no_eligible_fixtures_is_not_ready (test_permgate.PermgateTest.test_bench_with_no_eligible_fixtures_is_not_ready) ... ok
+test_classifier_receives_metadata_without_raw_values (test_permgate.PermgateTest.test_classifier_receives_metadata_without_raw_values) ... ok
+test_classifier_rejects_path_qualified_executables (test_permgate.PermgateTest.test_classifier_rejects_path_qualified_executables) ... ok
+test_claude_and_codex_hook_outputs_match_golden_bytes (test_permgate.PermgateTest.test_claude_and_codex_hook_outputs_match_golden_bytes) ... ok
+test_cli_bash_send_lane_is_removed (test_permgate.PermgateTest.test_cli_bash_send_lane_is_removed) ... ok
+test_cli_catastrophic_deny_precedes_workspace (test_permgate.PermgateTest.test_cli_catastrophic_deny_precedes_workspace) ... ok
+test_cli_policy_pins_shared_layers_and_disables_llm (test_permgate.PermgateTest.test_cli_policy_pins_shared_layers_and_disables_llm) ... ok
+test_cli_protocol_emits_each_compact_decision (test_permgate.PermgateTest.test_cli_protocol_emits_each_compact_decision) ... ok
+test_cli_protocol_internal_failure_is_nonzero (test_permgate.PermgateTest.test_cli_protocol_internal_failure_is_nonzero) ... ok
+test_cli_protocol_rejects_malformed_normalized_action (test_permgate.PermgateTest.test_cli_protocol_rejects_malformed_normalized_action) ... ok
+test_cli_read_allows_plain_resolvable_path_outside_workspace (test_permgate.PermgateTest.test_cli_read_allows_plain_resolvable_path_outside_workspace) ... ok
+test_cli_read_denies_each_sensitive_path_family (test_permgate.PermgateTest.test_cli_read_denies_each_sensitive_path_family) ... ok
+test_cli_read_resolves_symlinks_and_asks_for_unresolvable_paths (test_permgate.PermgateTest.test_cli_read_resolves_symlinks_and_asks_for_unresolvable_paths) ... ok
+test_cli_reuses_every_shared_bash_allow_pattern (test_permgate.PermgateTest.test_cli_reuses_every_shared_bash_allow_pattern) ... ok
+test_cli_workspace_allows_in_cwd_read_write_and_edit (test_permgate.PermgateTest.test_cli_workspace_allows_in_cwd_read_write_and_edit) ... ok
+test_cli_workspace_asks_for_looping_or_missing_parent (test_permgate.PermgateTest.test_cli_workspace_asks_for_looping_or_missing_parent) ... ok
+test_cli_workspace_never_writes_through_final_symlink (test_permgate.PermgateTest.test_cli_workspace_never_writes_through_final_symlink) ... ok
+test_cli_workspace_rejects_path_escapes_root_and_symlink_escape (test_permgate.PermgateTest.test_cli_workspace_rejects_path_escapes_root_and_symlink_escape) ... ok
+test_cli_workspace_resolves_macos_var_alias_identically (test_permgate.PermgateTest.test_cli_workspace_resolves_macos_var_alias_identically) ... ok
+test_codex_classifier_is_ephemeral_read_only_and_hook_free (test_permgate.PermgateTest.test_codex_classifier_is_ephemeral_read_only_and_hook_free) ... ok
+test_each_agent_uses_only_its_own_authenticated_cli (test_permgate.PermgateTest.test_each_agent_uses_only_its_own_authenticated_cli) ... ok
+test_enabled_classifier_only_allows_whitelisted_confident_category (test_permgate.PermgateTest.test_enabled_classifier_only_allows_whitelisted_confident_category) ... ok
+test_git_diff_output_option_is_never_automatically_allowed (test_permgate.PermgateTest.test_git_diff_output_option_is_never_automatically_allowed) ... ok
+test_invalid_classifier_policy_fields_fail_closed (test_permgate.PermgateTest.test_invalid_classifier_policy_fields_fail_closed) ... ok
+test_invalid_policy_returns_ask_and_logs_config_error (test_permgate.PermgateTest.test_invalid_policy_returns_ask_and_logs_config_error) ... ok
+test_layer_one_allows_documented_claude_and_codex_contracts (test_permgate.PermgateTest.test_layer_one_allows_documented_claude_and_codex_contracts) ... ok
+test_layer_one_deny_uses_both_hook_output_schemas (test_permgate.PermgateTest.test_layer_one_deny_uses_both_hook_output_schemas) ... ok
+test_log_shape_redacts_command_and_output (test_permgate.PermgateTest.test_log_shape_redacts_command_and_output) ... ok
+test_malformed_classifier_output_returns_ask (test_permgate.PermgateTest.test_malformed_classifier_output_returns_ask) ... ok
+test_missing_or_nonzero_classifier_returns_ask (test_permgate.PermgateTest.test_missing_or_nonzero_classifier_returns_ask) ... ok
+test_mutating_or_executable_read_options_never_reach_classifier (test_permgate.PermgateTest.test_mutating_or_executable_read_options_never_reach_classifier) ... ok
+test_provider_enablement_never_enables_the_sibling_provider (test_permgate.PermgateTest.test_provider_enablement_never_enables_the_sibling_provider) ... ok
+test_recursion_sentinel_is_a_complete_no_op (test_permgate.PermgateTest.test_recursion_sentinel_is_a_complete_no_op) ... ok
+test_script_named_version_is_not_a_version_check (test_permgate.PermgateTest.test_script_named_version_is_not_a_version_check) ... ok
+test_shadow_log_contains_reviewable_non_secret_classification (test_permgate.PermgateTest.test_shadow_log_contains_reviewable_non_secret_classification) ... ok
+test_structured_secret_skips_classifier_and_redacts_summary (test_permgate.PermgateTest.test_structured_secret_skips_classifier_and_redacts_summary) ... ok
+test_timeout_returns_ask_within_hook_cap (test_permgate.PermgateTest.test_timeout_returns_ask_within_hook_cap) ... ok
+test_unconstrained_native_reads_never_reach_classifier (test_permgate.PermgateTest.test_unconstrained_native_reads_never_reach_classifier) ... ok
+test_unknown_shadow_classification_returns_native_ask (test_permgate.PermgateTest.test_unknown_shadow_classification_returns_native_ask) ... ok
+test_all_paths_are_preflighted_before_any_deletion (test_remove_agent_asset.RemoveAgentAssetTest.test_all_paths_are_preflighted_before_any_deletion) ... ok
+test_brew_refuses_ambiguous_formula (test_remove_agent_asset.RemoveAgentAssetTest.test_brew_refuses_ambiguous_formula) ... ok
+test_brew_uses_uninstall_for_unambiguous_formula (test_remove_agent_asset.RemoveAgentAssetTest.test_brew_uses_uninstall_for_unambiguous_formula) ... ok
+test_crit_plugin_falls_back_to_data_path_but_not_config (test_remove_agent_asset.RemoveAgentAssetTest.test_crit_plugin_falls_back_to_data_path_but_not_config) ... ok
+test_default_and_explicit_dry_run_print_without_mutating (test_remove_agent_asset.RemoveAgentAssetTest.test_default_and_explicit_dry_run_print_without_mutating) ... ok
+test_integration_uses_verified_herdr_uninstall (test_remove_agent_asset.RemoveAgentAssetTest.test_integration_uses_verified_herdr_uninstall) ... ok
+test_invalid_manifest_is_rejected (test_remove_agent_asset.RemoveAgentAssetTest.test_invalid_manifest_is_rejected) ... ok
+test_parameterized_step_removal_preserves_sibling_identity (test_remove_agent_asset.RemoveAgentAssetTest.test_parameterized_step_removal_preserves_sibling_identity) ... ok
+test_plugin_uses_verified_claude_uninstall (test_remove_agent_asset.RemoveAgentAssetTest.test_plugin_uses_verified_claude_uninstall) ... ok
+test_plugin_uses_verified_codex_remove (test_remove_agent_asset.RemoveAgentAssetTest.test_plugin_uses_verified_codex_remove) ... ok
+test_recorded_symlink_is_removed_without_following_target (test_remove_agent_asset.RemoveAgentAssetTest.test_recorded_symlink_is_removed_without_following_target) ... ok
+test_tampered_manifest_outside_safe_roots_is_refused (test_remove_agent_asset.RemoveAgentAssetTest.test_tampered_manifest_outside_safe_roots_is_refused) ... ok
+test_unknown_step_lists_known_steps_without_guessing (test_remove_agent_asset.RemoveAgentAssetTest.test_unknown_step_lists_known_steps_without_guessing) ... ok
+test_yes_removes_only_recorded_path_and_preserves_other_steps (test_remove_agent_asset.RemoveAgentAssetTest.test_yes_removes_only_recorded_path_and_preserves_other_steps) ... ok
+test_agent_lifecycle_script_change_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_lifecycle_script_change_requires_review) ... ok
+test_agent_lifecycle_surfaces_require_review (test_require_crit_review.ReviewGuardTest.test_agent_lifecycle_surfaces_require_review) ... ok
+test_agent_lifecycle_tokens_require_review (test_require_crit_review.ReviewGuardTest.test_agent_lifecycle_tokens_require_review) ... ok
+test_agent_reviewer_rejects_empty_or_malformed_crit_data (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_rejects_empty_or_malformed_crit_data) ... ok
+test_agent_reviewer_rejects_invalid_review_outcome (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_rejects_invalid_review_outcome) ... ok
+test_agent_reviewer_with_command_string_source_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_command_string_source_still_requires_review) ... ok
+test_agent_reviewer_with_crit_data_satisfies_required_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_crit_data_satisfies_required_review) ... ok
+test_agent_reviewer_with_crit_reviewed_marker_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_crit_reviewed_marker_still_requires_review) ... ok
+test_agent_reviewer_with_external_crit_json_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_external_crit_json_still_requires_review) ... ok
+test_agent_reviewer_with_non_review_crit_json_object_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_non_review_crit_json_object_still_requires_review) ... ok
+test_agent_reviewer_with_resolved_line_comment_satisfies_required_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_resolved_line_comment_satisfies_required_review) ... ok
+test_agent_reviewer_with_unresolved_crit_json_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_unresolved_crit_json_still_requires_review) ... ok
+test_agent_self_review_flag_evidence_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_self_review_flag_evidence_still_requires_review) ... ok
+test_agent_self_reviewer_evidence_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_self_reviewer_evidence_still_requires_review) ... ok
+test_broad_diff_requires_review (test_require_crit_review.ReviewGuardTest.test_broad_diff_requires_review) ... ok
+test_explicit_disable_skips_guard (test_require_crit_review.ReviewGuardTest.test_explicit_disable_skips_guard) ... ok
+test_high_risk_markdown_change_requires_review (test_require_crit_review.ReviewGuardTest.test_high_risk_markdown_change_requires_review) ... ok
+test_large_untracked_file_requires_broad_diff_review (test_require_crit_review.ReviewGuardTest.test_large_untracked_file_requires_broad_diff_review) ... ok
+test_native_reviewed_environment_rejects_human_reviewer (test_require_crit_review.ReviewGuardTest.test_native_reviewed_environment_rejects_human_reviewer) ... ok
+test_native_reviewed_without_evidence_still_requires_review (test_require_crit_review.ReviewGuardTest.test_native_reviewed_without_evidence_still_requires_review) ... ok
+test_no_diff_does_not_require_review (test_require_crit_review.ReviewGuardTest.test_no_diff_does_not_require_review) ... ok
+test_reviewed_environment_satisfies_required_review (test_require_crit_review.ReviewGuardTest.test_reviewed_environment_satisfies_required_review) ... ok
+test_reviewed_with_blank_evidence_values_still_requires_review (test_require_crit_review.ReviewGuardTest.test_reviewed_with_blank_evidence_values_still_requires_review) ... ok
+test_reviewed_with_incomplete_evidence_still_requires_review (test_require_crit_review.ReviewGuardTest.test_reviewed_with_incomplete_evidence_still_requires_review) ... ok
+test_small_docs_only_change_does_not_require_review (test_require_crit_review.ReviewGuardTest.test_small_docs_only_change_does_not_require_review) ... ok
+test_agent_asset_update_removes_node_global_shadows_before_agent_commands (test_runtime_health.RuntimeHealthTest.test_agent_asset_update_removes_node_global_shadows_before_agent_commands) ... ok
+test_agent_asset_update_repairs_broken_claude_with_npm_backend (test_runtime_health.RuntimeHealthTest.test_agent_asset_update_repairs_broken_claude_with_npm_backend) ... ok
+test_agent_asset_update_runs_gh_extension_ensure (test_runtime_health.RuntimeHealthTest.test_agent_asset_update_runs_gh_extension_ensure) ... ok
+test_agent_fanout_applies_profile_args_from_generated_fragment (test_runtime_health.RuntimeHealthTest.test_agent_fanout_applies_profile_args_from_generated_fragment) ... ok
+test_agent_fanout_preserves_caller_umask_for_child_agents (test_runtime_health.RuntimeHealthTest.test_agent_fanout_preserves_caller_umask_for_child_agents) ... ok
+test_agent_fanout_refuses_symlink_artifacts (test_runtime_health.RuntimeHealthTest.test_agent_fanout_refuses_symlink_artifacts) ... ok
+test_agent_fanout_restricts_preexisting_output_artifacts (test_runtime_health.RuntimeHealthTest.test_agent_fanout_restricts_preexisting_output_artifacts) ... ok
+test_agent_launchers_do_not_hardcode_model_ids (test_runtime_health.RuntimeHealthTest.test_agent_launchers_do_not_hardcode_model_ids) ... ok
+test_agent_runs_are_private_and_ignored (test_runtime_health.RuntimeHealthTest.test_agent_runs_are_private_and_ignored) ... ok
+test_client_bashrc_treats_private_sources_as_optional (test_runtime_health.RuntimeHealthTest.test_client_bashrc_treats_private_sources_as_optional) ... ok
+test_codex_crit_normalizes_managed_marketplace_mode (test_runtime_health.RuntimeHealthTest.test_codex_crit_normalizes_managed_marketplace_mode) ... ok
+test_codex_superpowers_reports_login_step_when_curated_catalog_is_missing (test_runtime_health.RuntimeHealthTest.test_codex_superpowers_reports_login_step_when_curated_catalog_is_missing) ... ok
+test_doctor_required_optional_and_healthy_statuses (test_runtime_health.RuntimeHealthTest.test_doctor_required_optional_and_healthy_statuses) ... ok
+test_linux_crit_checksum_failure_preserves_existing_binary (test_runtime_health.RuntimeHealthTest.test_linux_crit_checksum_failure_preserves_existing_binary) ... ok
+test_linux_crit_correct_version_is_download_free (test_runtime_health.RuntimeHealthTest.test_linux_crit_correct_version_is_download_free) ... ok
+test_linux_crit_failure_does_not_leak_cleanup_trap (test_runtime_health.RuntimeHealthTest.test_linux_crit_failure_does_not_leak_cleanup_trap) ... ok
+test_linux_crit_install_is_pinned_atomic_and_recorded (test_runtime_health.RuntimeHealthTest.test_linux_crit_install_is_pinned_atomic_and_recorded) ... ok
+test_linux_crit_prefers_pinned_target_over_older_path_binary (test_runtime_health.RuntimeHealthTest.test_linux_crit_prefers_pinned_target_over_older_path_binary) ... ok
+test_make_doctor_does_not_skip_runtime_check_when_deployed_root_is_missing (test_runtime_health.RuntimeHealthTest.test_make_doctor_does_not_skip_runtime_check_when_deployed_root_is_missing) ... ok
+test_make_doctor_passes_repair_variable_to_runtime_check (test_runtime_health.RuntimeHealthTest.test_make_doctor_passes_repair_variable_to_runtime_check) ... ok
+test_make_doctor_propagates_runtime_drift_after_tool_checks (test_runtime_health.RuntimeHealthTest.test_make_doctor_propagates_runtime_drift_after_tool_checks) ... ok
+test_make_update_pulls_clean_main_before_apply (test_runtime_health.RuntimeHealthTest.test_make_update_pulls_clean_main_before_apply) ... ok
+test_make_update_reports_unmerged_index_before_dirty_notice (test_runtime_health.RuntimeHealthTest.test_make_update_reports_unmerged_index_before_dirty_notice) ... ok
+test_make_update_skips_dirty_main_with_manual_pull_notice (test_runtime_health.RuntimeHealthTest.test_make_update_skips_dirty_main_with_manual_pull_notice) ... ok
+test_upgrade_bumps_terminal_and_crit_pins_from_fetched_artifacts (test_runtime_health.RuntimeHealthTest.test_upgrade_bumps_terminal_and_crit_pins_from_fetched_artifacts) ... ok
+test_upgrade_github_extensions_are_warning_only (test_runtime_health.RuntimeHealthTest.test_upgrade_github_extensions_are_warning_only) ... ok
+test_upgrade_reports_ccr_adoption_gate_values (test_runtime_health.RuntimeHealthTest.test_upgrade_reports_ccr_adoption_gate_values) ... ok
+test_upgrade_required_failures_are_nonzero_and_independent (test_runtime_health.RuntimeHealthTest.test_upgrade_required_failures_are_nonzero_and_independent) ... ok
+test_upgrade_skips_ccr_notice_when_gh_is_unavailable (test_runtime_health.RuntimeHealthTest.test_upgrade_skips_ccr_notice_when_gh_is_unavailable) ... ok
+test_upgrade_skips_unavailable_mise_self_update (test_runtime_health.RuntimeHealthTest.test_upgrade_skips_unavailable_mise_self_update) ... ok
+test_upgrade_uses_current_mise_node_after_runtime_replacement (test_runtime_health.RuntimeHealthTest.test_upgrade_uses_current_mise_node_after_runtime_replacement)
+Reject ambient npm after mise replaces the active Node runtime. ... ok
+test_ci_smokes_exact_tools_with_network_denied (test_statusline_tools.StatuslineToolsTest.test_ci_smokes_exact_tools_with_network_denied) ... ok
+test_direct_commands_use_offline_path_binaries (test_statusline_tools.StatuslineToolsTest.test_direct_commands_use_offline_path_binaries) ... ok
+test_generated_commands_are_direct_and_static (test_statusline_tools.StatuslineToolsTest.test_generated_commands_are_direct_and_static) ... ok
+test_mise_config_and_lock_pin_exact_npm_versions (test_statusline_tools.StatuslineToolsTest.test_mise_config_and_lock_pin_exact_npm_versions) ... ok
+test_missing_binary_fails_immediately (test_statusline_tools.StatuslineToolsTest.test_missing_binary_fails_immediately) ... ok
+test_binary_installers_replace_from_same_directory_stages (test_supply_chain_policy.SupplyChainPolicyTest.test_binary_installers_replace_from_same_directory_stages) ... ok
+test_dependabot_owns_github_action_updates (test_supply_chain_policy.SupplyChainPolicyTest.test_dependabot_owns_github_action_updates) ... ok
+test_executable_downloads_are_verified_and_not_piped_to_shell (test_supply_chain_policy.SupplyChainPolicyTest.test_executable_downloads_are_verified_and_not_piped_to_shell) ... ok
+test_external_checksum_failure_preserves_destination (test_supply_chain_policy.SupplyChainPolicyTest.test_external_checksum_failure_preserves_destination) ... ok
+test_externals_render_without_network_discovery (test_supply_chain_policy.SupplyChainPolicyTest.test_externals_render_without_network_discovery) ... ok
+test_externals_use_fixed_urls_and_checksums (test_supply_chain_policy.SupplyChainPolicyTest.test_externals_use_fixed_urls_and_checksums) ... ok
+test_installer_cleanup_preserves_failure_status (test_supply_chain_policy.SupplyChainPolicyTest.test_installer_cleanup_preserves_failure_status) ... ok
+test_installer_cleanup_survives_mock_function_returns (test_supply_chain_policy.SupplyChainPolicyTest.test_installer_cleanup_survives_mock_function_returns) ... ok
+test_mise_lock_matches_config_and_supported_platforms (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_lock_matches_config_and_supported_platforms) ... ok
+test_mise_lock_url_entries_have_checksums (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_lock_url_entries_have_checksums) ... ok
+test_mise_main_preserves_install_failure (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_main_preserves_install_failure) ... ok
+test_mise_npm_backend_uses_npm_and_limits_lifecycle_scripts (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_npm_backend_uses_npm_and_limits_lifecycle_scripts) ... ok
+test_mise_versions_are_exact_and_locking_is_enforced (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_versions_are_exact_and_locking_is_enforced) ... ok
+test_nix_inputs_lock_and_ci_use_2605 (test_supply_chain_policy.SupplyChainPolicyTest.test_nix_inputs_lock_and_ci_use_2605) ... ok
+test_setup_ci_rejects_and_preserves_local_drift (test_supply_chain_policy.SupplyChainPolicyTest.test_setup_ci_rejects_and_preserves_local_drift) ... ok
+test_sheldon_git_sources_have_revisions (test_supply_chain_policy.SupplyChainPolicyTest.test_sheldon_git_sources_have_revisions) ... ok
+test_sheldon_uses_locked_crates_io_source (test_supply_chain_policy.SupplyChainPolicyTest.test_sheldon_uses_locked_crates_io_source) ... ok
+test_candidate_is_no_when_another_claude_family_is_larger (test_usage_review.UsageReviewTests.test_candidate_is_no_when_another_claude_family_is_larger) ... ok
+test_malformed_latest_snapshot_warns_and_never_raises (test_usage_review.UsageReviewTests.test_malformed_latest_snapshot_warns_and_never_raises) ... ok
+test_report_computes_share_ratio_and_baseline_deltas (test_usage_review.UsageReviewTests.test_report_computes_share_ratio_and_baseline_deltas) ... ok
+test_report_emits_due_windows_and_matching_notes_suppress_them (test_usage_review.UsageReviewTests.test_report_emits_due_windows_and_matching_notes_suppress_them) ... ok
+test_snapshot_does_not_rewrite_existing_daily_file (test_usage_review.UsageReviewTests.test_snapshot_does_not_rewrite_existing_daily_file) ... ok
+test_agent_manifest_accepts_exact_security_profile_set (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_exact_security_profile_set) ... ok
+test_agent_manifest_rejects_missing_security_profile (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_security_profile) ... ok
+test_agent_manifest_rejects_wrong_security_codex_model (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_wrong_security_codex_model) ... ok
+test_agmsg_script_modes_accept_prefixed_entrypoints_and_lib_helpers (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_script_modes_accept_prefixed_entrypoints_and_lib_helpers) ... ok
+test_agmsg_script_modes_reject_non_executable_prefixed_entrypoint (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_script_modes_reject_non_executable_prefixed_entrypoint) ... ok
+test_agmsg_script_modes_reject_unprefixed_direct_entrypoint (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_script_modes_reject_unprefixed_direct_entrypoint) ... ok
+test_claude_command_parity_accepts_symlink_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_command_parity_accepts_symlink_only) ... ok
+test_claude_command_parity_rejects_dangling_target (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_command_parity_rejects_dangling_target) ... ok
+test_claude_command_parity_rejects_restored_duplicate (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_command_parity_rejects_restored_duplicate) ... ok
+test_claude_command_parity_rejects_wrong_target (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_command_parity_rejects_wrong_target) ... ok
+test_codex_modify_script_requires_executable_source (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_modify_script_requires_executable_source) ... ok
+test_codex_projects_accept_working_tree_placeholder (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_accept_working_tree_placeholder) ... ok
+test_codex_projects_reject_hard_coded_macos_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_hard_coded_macos_home) ... ok
+test_codex_projects_reject_missing_working_tree_placeholder (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_missing_working_tree_placeholder) ... ok
+test_codex_sandbox_workspace_write_accepts_matching_manifest (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_accepts_matching_manifest) ... ok
+test_codex_sandbox_workspace_write_must_match_manifest (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_must_match_manifest) ... ok
+test_codex_sandbox_workspace_write_requires_all_agmsg_roots (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_requires_all_agmsg_roots) ... ok
+test_hook_composition_accepts_managed_source_fixture (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_accepts_managed_source_fixture) ... ok
+test_hook_composition_pins_sessionstart_order (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_pins_sessionstart_order) ... ok
+test_hook_composition_rejects_duplicate_command (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_duplicate_command) ... ok
+test_hook_composition_rejects_sync_timeout_over_budget (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_sync_timeout_over_budget) ... ok
+test_hook_composition_requires_permgate_first (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_requires_permgate_first) ... ok
+test_manifest_home_paths_allow_chezmoi_home_dir (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_chezmoi_home_dir) ... ok
+test_manifest_home_paths_allow_flow_style_projects (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_flow_style_projects) ... ok
+test_manifest_home_paths_exempt_runtime_owned_projects (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_exempt_runtime_owned_projects) ... ok
+test_manifest_home_paths_only_exempt_the_projects_subtree (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_only_exempt_the_projects_subtree) ... ok
+test_manifest_home_paths_reject_hard_coded_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_home) ... ok
+test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
+test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
+test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/validate-agent-assets-test-909x_y7s/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+ok
+test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
+test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
+test_secret_scan_checks_extensionless_executables (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_extensionless_executables) ... ok
+test_secret_scan_checks_utf16_bom_text (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_utf16_bom_text) ... ok
+test_secret_scan_rejects_placeholder_with_suffix (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_placeholder_with_suffix) ... ok
+test_checkout_does_not_persist_credentials_without_explicit_exemption (test_workflow_security.WorkflowSecurityTest.test_checkout_does_not_persist_credentials_without_explicit_exemption) ... ok
+test_checkout_rejects_duplicate_or_non_false_credential_settings (test_workflow_security.WorkflowSecurityTest.test_checkout_rejects_duplicate_or_non_false_credential_settings) ... ok
+test_checkout_setting_does_not_leak_from_the_next_step (test_workflow_security.WorkflowSecurityTest.test_checkout_setting_does_not_leak_from_the_next_step) ... ok
+test_external_actions_use_full_commit_shas (test_workflow_security.WorkflowSecurityTest.test_external_actions_use_full_commit_shas) ... ok
+test_quoted_unnamed_checkout_is_detected (test_workflow_security.WorkflowSecurityTest.test_quoted_unnamed_checkout_is_detected) ... ok
+test_unnamed_checkout_setting_does_not_leak_from_the_next_step (test_workflow_security.WorkflowSecurityTest.test_unnamed_checkout_setting_does_not_leak_from_the_next_step) ... ok
+test_workflows_have_exact_top_level_permissions (test_workflow_security.WorkflowSecurityTest.test_workflows_have_exact_top_level_permissions) ... ok
+test_workflows_have_no_job_level_permission_overrides (test_workflow_security.WorkflowSecurityTest.test_workflows_have_no_job_level_permission_overrides) ... ok
+
+----------------------------------------------------------------------
+Ran 394 tests in 48.823s
+
+OK
+```
+
+Crit retrieved JSON:
+```json
+[
+  {
+    "scope": "review",
+    "id": "r_48817a",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Reviewed dot-update-convergence-T1-a01: canonical matcher converges, unmerged index takes precedence over dirty state, and identity names are deduplicated for both runtimes. Three regressions failed before fixes; final validation recorded separately. No code findings. This is local process evidence; orchestrator acceptance remains pending.",
+    "author": "Codex",
+    "created_at": "2026-09-25T00:09:59Z",
+    "updated_at": "2026-09-25T00:14:32Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_4bfc5a",
+        "body": "No findings; resolved approval record per repository AGENTS.md. Unit suite: 125 tests passed. Orchestrator acceptance and CI bats remain separate.",
+        "author": "Codex",
+        "created_at": "2026-09-25T00:14:32Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_db7060",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "CI revision: inspected the authoritative YAML and generator. The one-line manifest matcher change regenerates the already-correct JSON without other source changes; asset validator now passes. Previous review missed generated-source consistency; added full generator validation to the work plan.",
+    "author": "Codex",
+    "created_at": "2026-09-25T00:23:10Z",
+    "updated_at": "2026-09-25T00:23:41Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_a233a5",
+        "body": "Manifest corrected; generator and asset validator pass; make unit-test passes all 394 tests. One-line manifest-only revision approved as local process evidence.",
+        "author": "Codex",
+        "created_at": "2026-09-25T00:23:41Z",
+        "review_round": 1
+      }
+    ]
+  }
+]
+```
+
+
+Working directory unless stated: /Users/mryfmo/Workspace/dotfiles/.claude/worktrees/update-convergence.
+No local bats or operator-home apply executed.
+
+## red
+
+Command:
+```sh
+uv run pytest tests/unit/test_claude_settings_merge.py tests/unit/test_herdr_agents.py tests/unit/test_runtime_health.py -q -k 'real_template_preserves or accepts_same_identity or reports_unmerged'
+```
+Exit code: 2
+
+Verbatim output:
+```text
+error: Failed to spawn: `pytest`
+  cause: No such file or directory (os error 2)
+```
+
+## redresult
+
+Command:
+```sh
+uv run python -m unittest tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_template_preserves_herdr_matcher_and_converges tests.unit.test_herdr_agents tests.unit.test_runtime_health -q
+```
+Exit code: 1
+
+Verbatim output:
+```text
+======================================================================
+FAIL: test_real_template_preserves_herdr_matcher_and_converges (tests.unit.test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_template_preserves_herdr_matcher_and_converges)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/update-convergence/tests/unit/test_claude_settings_merge.py", line 431, in test_real_template_preserves_herdr_matcher_and_converges
+    self.assertEqual(state_entries[0]["matcher"], canonical_matcher)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '*' != '^(startup|resume|clear|compact|fork)$'
+- *
++ ^(startup|resume|clear|compact|fork)$
+
+
+======================================================================
+FAIL: test_bootstrap_accepts_same_identity_in_multiple_teams (tests.unit.test_herdr_agents.HerdrAgentsTest.test_bootstrap_accepts_same_identity_in_multiple_teams)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/update-convergence/tests/unit/test_herdr_agents.py", line 1012, in test_bootstrap_accepts_same_identity_in_multiple_teams
+    self.assertNotIn("Multiple agmsg", result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'Multiple agmsg' unexpectedly found in 'Multiple agmsg Codex identities are registered for /private/var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/herdr-agents-test-igb1bthe/project; worker identity is ambiguous.\nMultiple agmsg Claude Code identities are registered for /private/var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/herdr-agents-test-igb1bthe/project; worker identity is ambiguous.\n'
+
+======================================================================
+FAIL: test_make_update_reports_unmerged_index_before_dirty_notice (tests.unit.test_runtime_health.RuntimeHealthTest.test_make_update_reports_unmerged_index_before_dirty_notice)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/mryfmo/Workspace/dotfiles/.claude/worktrees/update-convergence/tests/unit/test_runtime_health.py", line 653, in test_make_update_reports_unmerged_index_before_dirty_notice
+    self.assertIn(
+    ~~~~~~~~~~~~~^
+        "index has unmerged files; resolve the conflict "
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "(git add/commit or git reset) before pulling",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        result.stdout,
+        ^^^^^^^^^^^^^^
+    )
+    ^
+AssertionError: 'index has unmerged files; resolve the conflict (git add/commit or git reset) before pulling' not found in "Notice: local source not pulled (tracked files have staged or unstaged changes); run 'git -C /private/var/folders/r2/_gkywj713g54lbxkc_hv7j400000gn/T/runtime-health-test-nex8fuj4/update-dirty pull' to fetch remote updates.\nchezmoi apply --verbose\nWarning: private chezmoi source/config not found. Skipping private dotfiles.\nmise install --locked node\nmise install --locked npm:ccstatusline npm:ccusage\n./scripts/update-agent-assets.sh\nHerdr server is not running; skipping config reload.\n/Library/Developer/CommandLineTools/usr/bin/make agmsg-bootstrap\nHerdr agents source helper not found; skipping agmsg bootstrap.\n"
+
+----------------------------------------------------------------------
+Ran 108 tests in 29.968s
+
+FAILED (failures=3)
+```
+
+## greenresult
+
+Command:
+```sh
+uv run python -m unittest tests.unit.test_claude_settings_merge tests.unit.test_herdr_agents tests.unit.test_runtime_health -q
+```
+Exit code: 0
+
+Verbatim output:
+```text
+----------------------------------------------------------------------
+Ran 125 tests in 28.654s
+
+OK
+```
+
+## pytest
+
+Command:
+```sh
+uv run pytest tests/unit/test_claude_settings_merge.py tests/unit/test_herdr_agents.py tests/unit/test_runtime_health.py -q
+```
+Exit code: 2
+
+Verbatim output:
+```text
+error: Failed to spawn: `pytest`
+  cause: No such file or directory (os error 2)
+```
+
+## lint_full
+
+Command:
+```sh
+shellcheck home/dot_local/bin/common/executable_herdr-agents && shfmt -d home/dot_local/bin/common/executable_herdr-agents
+```
+Exit code: 1
+
+Verbatim output:
+```text
+diff home/dot_local/bin/common/executable_herdr-agents.orig home/dot_local/bin/common/executable_herdr-agents
+--- home/dot_local/bin/common/executable_herdr-agents.orig
++++ home/dot_local/bin/common/executable_herdr-agents
+@@ -34,7 +34,7 @@
+ 
+ # @description Print usage information.
+ function usage() {
+-    cat << 'USAGE'
++	cat <<'USAGE'
+ Usage: herdr-agents [DIR]
+        herdr-agents --attach
+        herdr-agents --bootstrap-agmsg [DIR]
+@@ -53,17 +53,17 @@
+ 
+ # @description Extract a Herdr workspace id from workspace JSON on stdin.
+ function json_workspace_id() {
+-    jq -r '.result.workspace.workspace_id // .workspace.workspace_id // .workspace_id // empty' 2> /dev/null || true
++	jq -r '.result.workspace.workspace_id // .workspace.workspace_id // .workspace_id // empty' 2>/dev/null || true
+ }
+ 
+ # @description Extract the initial Herdr pane id from workspace JSON on stdin.
+ function json_root_pane_id() {
+-    jq -r '.result.root_pane.pane_id // .root_pane.pane_id // .pane_id // empty' 2> /dev/null || true
++	jq -r '.result.root_pane.pane_id // .root_pane.pane_id // .pane_id // empty' 2>/dev/null || true
+ }
+ 
+ # @description Extract an agent pane id from Herdr JSON on stdin.
+ function json_agent_pane_id() {
+-    jq -r '.result.pane.pane_id // .result.agent.pane_id // .result.terminal.pane_id // .result.pane_id // .pane.pane_id // .agent.pane_id // .terminal.pane_id // .pane_id // empty' 2> /dev/null || true
++	jq -r '.result.pane.pane_id // .result.agent.pane_id // .result.terminal.pane_id // .result.pane_id // .pane.pane_id // .agent.pane_id // .terminal.pane_id // .pane_id // empty' 2>/dev/null || true
+ }
+ 
+ # @description Resolve the worker profile without duplicating the manifest default.
+@@ -71,36 +71,36 @@
+ #   deprecated HERDR_AGENTS_CODEX_PROFILE alias, before falling back to the
+ #   manifest-generated interactive default.
+ function resolve_worker_profile() {
+-    local MODEL_PROFILE_INTERACTIVE=""
+-
+-    if [[ -n ${HERDR_AGENTS_WORKER_PROFILE:-} ]]; then
+-        printf '%s\n' "${HERDR_AGENTS_WORKER_PROFILE}"
+-        return
+-    fi
+-    if [[ -n ${HERDR_AGENTS_CODEX_PROFILE:-} ]]; then
+-        printf '%s\n' "${HERDR_AGENTS_CODEX_PROFILE}"
+-        return
+-    fi
+-    if [[ -f ${HOME}/.agents/model-profiles.env ]]; then
+-        # shellcheck source=/dev/null
+-        source "${HOME}/.agents/model-profiles.env"
+-    fi
+-    printf '%s\n' "${MODEL_PROFILE_INTERACTIVE:-standard}"
++	local MODEL_PROFILE_INTERACTIVE=""
++
++	if [[ -n ${HERDR_AGENTS_WORKER_PROFILE:-} ]]; then
++		printf '%s\n' "${HERDR_AGENTS_WORKER_PROFILE}"
++		return
++	fi
++	if [[ -n ${HERDR_AGENTS_CODEX_PROFILE:-} ]]; then
++		printf '%s\n' "${HERDR_AGENTS_CODEX_PROFILE}"
++		return
++	fi
++	if [[ -f ${HOME}/.agents/model-profiles.env ]]; then
++		# shellcheck source=/dev/null
++		source "${HOME}/.agents/model-profiles.env"
++	fi
++	printf '%s\n' "${MODEL_PROFILE_INTERACTIVE:-standard}"
+ }
+ 
+ # @description Resolve the worker kind: explicit environment first, then the
+ #   manifest-generated ~/.agents/model-profiles.env, then codex.
+ function resolve_worker_kind() {
+-    if [[ -n ${HERDR_AGENTS_WORKER_KIND:-} ]]; then
+-        printf '%s\n' "${HERDR_AGENTS_WORKER_KIND}"
+-        return
+-    fi
+-    local HERDR_AGENTS_WORKER_KIND=""
+-    if [[ -f ${HOME}/.agents/model-profiles.env ]]; then
+-        # shellcheck source=/dev/null
+-        source "${HOME}/.agents/model-profiles.env"
+-    fi
+-    printf '%s\n' "${HERDR_AGENTS_WORKER_KIND:-codex}"
++	if [[ -n ${HERDR_AGENTS_WORKER_KIND:-} ]]; then
++		printf '%s\n' "${HERDR_AGENTS_WORKER_KIND}"
++		return
++	fi
++	local HERDR_AGENTS_WORKER_KIND=""
++	if [[ -f ${HOME}/.agents/model-profiles.env ]]; then
++		# shellcheck source=/dev/null
++		source "${HOME}/.agents/model-profiles.env"
++	fi
++	printf '%s\n' "${HERDR_AGENTS_WORKER_KIND:-codex}"
+ }
+ 
+ # @description Derive and validate a herdr 0.8.2 agent registration name.
+@@ -107,14 +107,14 @@
+ # @arg $1 string Agent role prefix.
+ # @arg $2 string Herdr workspace id.
+ function agent_name_for_workspace() {
+-    local name
+-
+-    name="$(printf '%s-%s' "$1" "$2" | tr '[:upper:]' '[:lower:]')"
+-    if [[ ! ${name} =~ ^[a-z][a-z0-9_-]{0,31}$ ]]; then
+-        printf 'Invalid Herdr agent name: %s\n' "${name}" >&2
+-        return 1
+-    fi
+-    printf '%s\n' "${name}"
++	local name
++
++	name="$(printf '%s-%s' "$1" "$2" | tr '[:upper:]' '[:lower:]')"
++	if [[ ! ${name} =~ ^[a-z][a-z0-9_-]{0,31}$ ]]; then
++		printf 'Invalid Herdr agent name: %s\n' "${name}" >&2
++		return 1
++	fi
++	printf '%s\n' "${name}"
+ }
+ 
+ # @description Wait for a shell prompt after pane creation.
+@@ -122,22 +122,22 @@
+ #   that window injects bracketed-paste control bytes into the line editor.
+ # @arg $1 pane_id Herdr pane id to inspect.
+ function wait_for_shell_prompt() {
+-    local pane_id="$1"
+-    local process_json
+-
+-    for _ in {1..50}; do
+-        if process_json="$(herdr pane process-info --pane "${pane_id}" 2> /dev/null)" &&
+-            printf '%s\n' "${process_json}" | jq -e \
+-                '.result.process_info.foreground_processes as $processes
++	local pane_id="$1"
++	local process_json
++
++	for _ in {1..50}; do
++		if process_json="$(herdr pane process-info --pane "${pane_id}" 2>/dev/null)" &&
++			printf '%s\n' "${process_json}" | jq -e \
++				'.result.process_info.foreground_processes as $processes
+                  | ($processes | length) == 1
+-                   and (($processes[0].argv[0] // $processes[0].name // "") | test("(^|/)-?(ba|z|fi)?sh$"))' > /dev/null; then
+-            herdr pane wait-output "${pane_id}" --regex '[$#%❯➜>]+[[:space:]]*$' --source visible --lines 5 --timeout 10000 > /dev/null || return 1
+-            sleep 0.2
+-            return 0
+-        fi
+-        sleep 0.2
+-    done
+-    return 1
++                   and (($processes[0].argv[0] // $processes[0].name // "") | test("(^|/)-?(ba|z|fi)?sh$"))' >/dev/null; then
++			herdr pane wait-output "${pane_id}" --regex '[$#%❯➜>]+[[:space:]]*$' --source visible --lines 5 --timeout 10000 >/dev/null || return 1
++			sleep 0.2
++			return 0
++		fi
++		sleep 0.2
++	done
++	return 1
+ }
+ 
+ # @description Split a pane and return the id reported by herdr.
+@@ -145,37 +145,37 @@
+ # @arg $2 path Working directory for the new pane.
+ # @arg $@ option Additional pane split options.
+ function split_agent_pane() {
+-    local source_pane_id="$1"
+-    local workdir="$2"
+-    local split_json
+-    local pane_id
+-    shift 2
+-
+-    if [[ -n ${FPATH:-} ]]; then
+-        split_json="$(herdr pane split "${source_pane_id}" --direction right --cwd "${workdir}" --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --env "FPATH=${FPATH}" "$@" --no-focus)"
+-    else
+-        split_json="$(herdr pane split "${source_pane_id}" --direction right --cwd "${workdir}" --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 "$@" --no-focus)"
+-    fi
+-    pane_id="$(printf '%s\n' "${split_json}" | json_agent_pane_id)"
+-    if [[ -z ${pane_id} ]]; then
+-        printf 'Unable to read split pane id from Herdr response: %s\n' "${split_json}" >&2
+-        return 1
+-    fi
+-    printf '%s\n' "${pane_id}"
++	local source_pane_id="$1"
++	local workdir="$2"
++	local split_json
++	local pane_id
++	shift 2
++
++	if [[ -n ${FPATH:-} ]]; then
++		split_json="$(herdr pane split "${source_pane_id}" --direction right --cwd "${workdir}" --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --env "FPATH=${FPATH}" "$@" --no-focus)"
++	else
++		split_json="$(herdr pane split "${source_pane_id}" --direction right --cwd "${workdir}" --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 "$@" --no-focus)"
++	fi
++	pane_id="$(printf '%s\n' "${split_json}" | json_agent_pane_id)"
++	if [[ -z ${pane_id} ]]; then
++		printf 'Unable to read split pane id from Herdr response: %s\n' "${split_json}" >&2
++		return 1
++	fi
++	printf '%s\n' "${pane_id}"
+ }
+ 
+ # @description Wait for a newly registered agent to become interactive.
+ # @arg $1 string Herdr agent registration name.
+ function wait_for_agent_ready() {
+-    local agent_name="$1"
+-
+-    for _ in {1..30}; do
+-        if herdr agent wait "${agent_name}" --until "idle" --until "working" --until "done" --timeout 1000 > /dev/null 2>&1; then
+-            return 0
+-        fi
+-        sleep 0.2
+-    done
+-    return 1
++	local agent_name="$1"
++
++	for _ in {1..30}; do
++		if herdr agent wait "${agent_name}" --until "idle" --until "working" --until "done" --timeout 1000 >/dev/null 2>&1; then
++			return 0
++		fi
++		sleep 0.2
++	done
++	return 1
+ }
+ 
+ # @description Start a supported agent in a shell-ready pane.
+@@ -185,37 +185,37 @@
+ # @arg $4 boolean Whether the pane was newly created.
+ # @arg $@ string Agent arguments after the first four parameters.
+ function start_agent_in_pane() {
+-    local kind="$1"
+-    local agent_name="$2"
+-    local pane_id="$3"
+-    local newly_created="$4"
+-    local agent_output
+-    shift 4
+-
+-    if [[ ${newly_created} == true ]] && ! wait_for_shell_prompt "${pane_id}"; then
+-        printf 'Herdr pane %s did not reach an interactive shell prompt; refusing agent start.\n' "${pane_id}" >&2
+-        return 1
+-    fi
+-    if agent_output="$(herdr agent start "${agent_name}" --kind "${kind}" --pane "${pane_id}" --timeout 30000 -- "$@" 2>&1)"; then
+-        printf '%s\n' "${pane_id}"
+-        return
+-    fi
+-    if [[ ${agent_output} == *agent_not_ready* ]] && wait_for_agent_ready "${agent_name}"; then
+-        printf '%s\n' "${pane_id}"
+-        return
+-    fi
+-    case "${agent_output}" in
+-    *timeout* | *Timeout* | *timed\ out* | *TIMED_OUT*)
+-        if [[ ${newly_created} == true ]] && wait_for_shell_prompt "${pane_id}"; then
+-            if agent_output="$(herdr agent start "${agent_name}" --kind "${kind}" --pane "${pane_id}" --timeout 30000 -- "$@" 2>&1)"; then
+-                printf '%s\n' "${pane_id}"
+-                return
+-            fi
+-        fi
+-        ;;
+-    esac
+-    printf 'Failed to start %s agent %s: %s\n' "${kind}" "${agent_name}" "${agent_output}" >&2
+-    return 1
++	local kind="$1"
++	local agent_name="$2"
++	local pane_id="$3"
++	local newly_created="$4"
++	local agent_output
++	shift 4
++
++	if [[ ${newly_created} == true ]] && ! wait_for_shell_prompt "${pane_id}"; then
++		printf 'Herdr pane %s did not reach an interactive shell prompt; refusing agent start.\n' "${pane_id}" >&2
++		return 1
++	fi
++	if agent_output="$(herdr agent start "${agent_name}" --kind "${kind}" --pane "${pane_id}" --timeout 30000 -- "$@" 2>&1)"; then
++		printf '%s\n' "${pane_id}"
++		return
++	fi
++	if [[ ${agent_output} == *agent_not_ready* ]] && wait_for_agent_ready "${agent_name}"; then
++		printf '%s\n' "${pane_id}"
++		return
++	fi
++	case "${agent_output}" in
++	*timeout* | *Timeout* | *timed\ out* | *TIMED_OUT*)
++		if [[ ${newly_created} == true ]] && wait_for_shell_prompt "${pane_id}"; then
++			if agent_output="$(herdr agent start "${agent_name}" --kind "${kind}" --pane "${pane_id}" --timeout 30000 -- "$@" 2>&1)"; then
++				printf '%s\n' "${pane_id}"
++				return
++			fi
++		fi
++		;;
++	esac
++	printf 'Failed to start %s agent %s: %s\n' "${kind}" "${agent_name}" "${agent_output}" >&2
++	return 1
+ }
+ 
+ # @description Start Claude in an existing pane.
+@@ -223,26 +223,26 @@
+ # @arg $2 string Herdr workspace id.
+ # @arg $3 boolean Whether the pane was newly created.
+ function start_claude_in_pane() {
+-    local pane_id="$1"
+-    local workspace_id="$2"
+-    local newly_created="$3"
+-    local agent_name
+-    local -a claude_args=()
+-
+-    agent_name="$(agent_name_for_workspace claude-orchestrator "${workspace_id}")"
+-    if [[ -n ${HERDR_AGENTS_CLAUDE_ARGS:-} ]]; then
+-        read -r -a claude_args <<< "${HERDR_AGENTS_CLAUDE_ARGS}"
+-    fi
+-    if [[ ${newly_created} == false ]]; then
+-        herdr pane run "${pane_id}" "export CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed" > /dev/null
+-        wait_for_shell_prompt "${pane_id}" || return 1
+-    fi
+-    herdr pane rename "${pane_id}" claude-orchestrator > /dev/null
+-    if [[ ${#claude_args[@]} -gt 0 ]]; then
+-        start_agent_in_pane claude "${agent_name}" "${pane_id}" "${newly_created}" "${claude_args[@]}" > /dev/null
+-    else
+-        start_agent_in_pane claude "${agent_name}" "${pane_id}" "${newly_created}" > /dev/null
+-    fi
++	local pane_id="$1"
++	local workspace_id="$2"
++	local newly_created="$3"
++	local agent_name
++	local -a claude_args=()
++
++	agent_name="$(agent_name_for_workspace claude-orchestrator "${workspace_id}")"
++	if [[ -n ${HERDR_AGENTS_CLAUDE_ARGS:-} ]]; then
++		read -r -a claude_args <<<"${HERDR_AGENTS_CLAUDE_ARGS}"
++	fi
++	if [[ ${newly_created} == false ]]; then
++		herdr pane run "${pane_id}" "export CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed" >/dev/null
++		wait_for_shell_prompt "${pane_id}" || return 1
++	fi
++	herdr pane rename "${pane_id}" claude-orchestrator >/dev/null
++	if [[ ${#claude_args[@]} -gt 0 ]]; then
++		start_agent_in_pane claude "${agent_name}" "${pane_id}" "${newly_created}" "${claude_args[@]}" >/dev/null
++	else
++		start_agent_in_pane claude "${agent_name}" "${pane_id}" "${newly_created}" >/dev/null
++	fi
+ }
+ 
+ # @description Accept a claude workspace-trust dialog when one appears.
+@@ -251,11 +251,11 @@
+ #   folder" (Down then Enter) instead of leaving the default in place.
+ # @arg $1 pane_id Target pane id.
+ function accept_claude_workspace_trust_dialog() {
+-    local pane_id="$1"
+-
+-    if herdr pane wait-output "${pane_id}" --match 'trust this folder' --timeout 3000 > /dev/null 2>&1; then
+-        herdr pane send-keys "${pane_id}" Down Enter > /dev/null
+-    fi
++	local pane_id="$1"
++
++	if herdr pane wait-output "${pane_id}" --match 'trust this folder' --timeout 3000 >/dev/null 2>&1; then
++		herdr pane send-keys "${pane_id}" Down Enter >/dev/null
++	fi
+ }
+ 
+ # @description Start a worker agent (codex or claude) in an existing pane and return its pane id.
+@@ -264,41 +264,41 @@
+ # @arg $3 pane_id Target pane id.
+ # @arg $4 boolean Whether the pane was newly created.
+ function start_worker_agent() {
+-    local kind="$1"
+-    local agent_name="$2"
+-    local pane_id="$3"
+-    local newly_created="$4"
+-    local -a worker_args=()
+-
+-    if [[ ${kind} == claude ]]; then
+-        local profile_env_key
+-        local profile_args
+-        local -a extra_worker_args=()
+-        profile_env_key="MODEL_PROFILE_$(printf '%s' "${HERDR_AGENTS_WORKER_PROFILE}" | tr '[:lower:]' '[:upper:]')_CLAUDE_ARGS"
+-        if [[ -f ${HOME}/.agents/model-profiles.env ]]; then
+-            # shellcheck source=/dev/null
+-            source "${HOME}/.agents/model-profiles.env"
+-        fi
+-        profile_args="${!profile_env_key:-}"
+-        if [[ -n ${profile_args} ]]; then
+-            read -r -a worker_args <<< "${profile_args}"
+-        fi
+-        if [[ -n ${HERDR_AGENTS_CLAUDE_WORKER_ARGS:-} ]]; then
+-            read -r -a extra_worker_args <<< "${HERDR_AGENTS_CLAUDE_WORKER_ARGS}"
+-            # bash 3.2 (macOS's /bin/bash) treats "${arr[@]}" as unbound under
+-            # set -u when arr has zero elements; bash 4.4+ does not. The
+-            # ${arr[@]+"${arr[@]}"} idiom expands to nothing instead of
+-            # erroring on either version.
+-            worker_args+=(${extra_worker_args[@]+"${extra_worker_args[@]}"})
+-        fi
+-        start_agent_in_pane claude "${agent_name}" "${pane_id}" "${newly_created}" ${worker_args[@]+"${worker_args[@]}"} > /dev/null
+-        accept_claude_workspace_trust_dialog "${pane_id}"
+-    else
+-        start_agent_in_pane codex "${agent_name}" "${pane_id}" "${newly_created}" \
+-            --sandbox workspace-write --profile "${HERDR_AGENTS_WORKER_PROFILE:-standard}" > /dev/null
+-    fi
+-    herdr pane rename "${pane_id}" "${kind}-worker" > /dev/null
+-    printf '%s\n' "${pane_id}"
++	local kind="$1"
++	local agent_name="$2"
++	local pane_id="$3"
++	local newly_created="$4"
++	local -a worker_args=()
++
++	if [[ ${kind} == claude ]]; then
++		local profile_env_key
++		local profile_args
++		local -a extra_worker_args=()
++		profile_env_key="MODEL_PROFILE_$(printf '%s' "${HERDR_AGENTS_WORKER_PROFILE}" | tr '[:lower:]' '[:upper:]')_CLAUDE_ARGS"
++		if [[ -f ${HOME}/.agents/model-profiles.env ]]; then
++			# shellcheck source=/dev/null
++			source "${HOME}/.agents/model-profiles.env"
++		fi
++		profile_args="${!profile_env_key:-}"
++		if [[ -n ${profile_args} ]]; then
++			read -r -a worker_args <<<"${profile_args}"
++		fi
++		if [[ -n ${HERDR_AGENTS_CLAUDE_WORKER_ARGS:-} ]]; then
++			read -r -a extra_worker_args <<<"${HERDR_AGENTS_CLAUDE_WORKER_ARGS}"
++			# bash 3.2 (macOS's /bin/bash) treats "${arr[@]}" as unbound under
++			# set -u when arr has zero elements; bash 4.4+ does not. The
++			# ${arr[@]+"${arr[@]}"} idiom expands to nothing instead of
++			# erroring on either version.
++			worker_args+=(${extra_worker_args[@]+"${extra_worker_args[@]}"})
++		fi
++		start_agent_in_pane claude "${agent_name}" "${pane_id}" "${newly_created}" ${worker_args[@]+"${worker_args[@]}"} >/dev/null
++		accept_claude_workspace_trust_dialog "${pane_id}"
++	else
++		start_agent_in_pane codex "${agent_name}" "${pane_id}" "${newly_created}" \
++			--sandbox workspace-write --profile "${HERDR_AGENTS_WORKER_PROFILE:-standard}" >/dev/null
++	fi
++	herdr pane rename "${pane_id}" "${kind}-worker" >/dev/null
++	printf '%s\n' "${pane_id}"
+ }
+ 
+ # @description Find an existing agents workspace for a workdir.
+@@ -305,31 +305,31 @@
+ # @arg $1 label Expected Herdr workspace label.
+ # @arg $2 workdir Absolute workdir path.
+ function find_existing_workspace() {
+-    local label="$1"
+-    local workdir="$2"
+-    local workspace_list_json
+-    local workspace_id
+-    local panes_json
+-
+-    workspace_list_json="$(herdr workspace list)"
+-    while IFS= read -r workspace_id; do
+-        [[ -n ${workspace_id} ]] || continue
+-        if ! panes_json="$(herdr pane list --workspace "${workspace_id}")"; then
+-            continue
+-        fi
+-        if printf '%s\n' "${panes_json}" | jq -e --arg cwd "${workdir}" '.result.panes[]? | select(.cwd == $cwd)' > /dev/null; then
+-            printf '%s\n' "${workspace_id}"
+-            return 0
+-        fi
+-    done < <(printf '%s\n' "${workspace_list_json}" | jq -r --arg label "${label}" '.result.workspaces[]? | select(.label == $label) | .workspace_id // empty')
++	local label="$1"
++	local workdir="$2"
++	local workspace_list_json
++	local workspace_id
++	local panes_json
++
++	workspace_list_json="$(herdr workspace list)"
++	while IFS= read -r workspace_id; do
++		[[ -n ${workspace_id} ]] || continue
++		if ! panes_json="$(herdr pane list --workspace "${workspace_id}")"; then
++			continue
++		fi
++		if printf '%s\n' "${panes_json}" | jq -e --arg cwd "${workdir}" '.result.panes[]? | select(.cwd == $cwd)' >/dev/null; then
++			printf '%s\n' "${workspace_id}"
++			return 0
++		fi
++	done < <(printf '%s\n' "${workspace_list_json}" | jq -r --arg label "${label}" '.result.workspaces[]? | select(.label == $label) | .workspace_id // empty')
+ }
+ 
+ # @description Return success when a Claude pane is present.
+ # @arg $1 json Herdr pane list JSON.
+ function has_claude_pane() {
+-    local panes_json="$1"
+-
+-    printf '%s\n' "${panes_json}" | jq -e '.result.panes[]? | select(.agent == "claude")' > /dev/null
++	local panes_json="$1"
++
++	printf '%s\n' "${panes_json}" | jq -e '.result.panes[]? | select(.agent == "claude")' >/dev/null
+ }
+ 
+ # @description Return the worker pane id when the registered agent points to a live pane.
+@@ -336,18 +336,18 @@
+ # @arg $1 agent_name Herdr worker agent registration name.
+ # @arg $2 json Herdr pane list JSON.
+ function live_worker_pane_id() {
+-    local agent_name="$1"
+-    local panes_json="$2"
+-    local agent_json
+-    local pane_id
+-
+-    if ! agent_json="$(herdr agent get "${agent_name}" 2> /dev/null)"; then
+-        return 1
+-    fi
+-    pane_id="$(printf '%s\n' "${agent_json}" | json_agent_pane_id)"
+-    [[ -n ${pane_id} ]] || return 1
+-    printf '%s\n' "${panes_json}" | jq -e --arg pane_id "${pane_id}" '.result.panes[]? | select(.pane_id == $pane_id)' > /dev/null || return 1
+-    printf '%s\n' "${pane_id}"
++	local agent_name="$1"
++	local panes_json="$2"
++	local agent_json
++	local pane_id
++
++	if ! agent_json="$(herdr agent get "${agent_name}" 2>/dev/null)"; then
++		return 1
++	fi
++	pane_id="$(printf '%s\n' "${agent_json}" | json_agent_pane_id)"
++	[[ -n ${pane_id} ]] || return 1
++	printf '%s\n' "${panes_json}" | jq -e --arg pane_id "${pane_id}" '.result.panes[]? | select(.pane_id == $pane_id)' >/dev/null || return 1
++	printf '%s\n' "${pane_id}"
+ }
+ 
+ # @description Return pane-list JSON filtered to the tab containing a pane.
+@@ -354,11 +354,11 @@
+ # @arg $1 json Herdr pane list JSON.
+ # @arg $2 pane_id Pane whose tab should be retained.
+ function panes_on_pane_tab() {
+-    local panes_json="$1"
+-    local pane_id="$2"
+-
+-    printf '%s\n' "${panes_json}" | jq -ce --arg pane_id "${pane_id}" \
+-        '.result.panes as $panes
++	local panes_json="$1"
++	local pane_id="$2"
++
++	printf '%s\n' "${panes_json}" | jq -ce --arg pane_id "${pane_id}" \
++		'.result.panes as $panes
+          | ($panes | map(select(.pane_id == $pane_id and (.tab_id | type) == "string"))) as $current
+          | if ($current | length) == 1
+            then .result.panes = [$panes[] | select(.tab_id == $current[0].tab_id)]
+@@ -371,17 +371,17 @@
+ # @arg $2 pane_id Current Claude pane id.
+ # @arg $3 pane_id Live Codex pane id, or empty when missing.
+ function attach_panes_are_unambiguous() {
+-    local panes_json="$1"
+-    local claude_pane_id="$2"
+-    local codex_pane_id="$3"
+-
+-    printf '%s\n' "${panes_json}" | jq -e \
+-        --arg claude "${claude_pane_id}" \
+-        --arg codex "${codex_pane_id}" \
+-        '.result.panes | map(.pane_id) as $actual
++	local panes_json="$1"
++	local claude_pane_id="$2"
++	local codex_pane_id="$3"
++
++	printf '%s\n' "${panes_json}" | jq -e \
++		--arg claude "${claude_pane_id}" \
++		--arg codex "${codex_pane_id}" \
++		'.result.panes | map(.pane_id) as $actual
+          | ([$claude, $codex] | map(select(length > 0)) | unique) as $managed
+          | ($actual | length) == ($managed | length)
+-           and all($actual[]; . as $pane_id | ($managed | index($pane_id)) != null)' > /dev/null
++           and all($actual[]; . as $pane_id | ($managed | index($pane_id)) != null)' >/dev/null
+ }
+ 
+ # @description Repair the left-to-right order of the two attach-mode panes.
+@@ -389,25 +389,25 @@
+ # @arg $2 pane_id Current Claude pane id.
+ # @arg $3 pane_id Live Codex pane id.
+ function repair_attach_pane_order() {
+-    local panes_json="$1"
+-    local claude_pane_id="$2"
+-    local codex_pane_id="$3"
+-    local layout_json
+-    local left_pane
+-
+-    if [[ -z ${codex_pane_id} ]] || ! attach_panes_are_unambiguous "${panes_json}" "${claude_pane_id}" "${codex_pane_id}"; then
+-        printf 'Herdr attach panes are ambiguous or include unmanaged panes; refusing order repair.\n' >&2
+-        return 0
+-    fi
+-    if ! layout_json="$(herdr pane layout --pane "${claude_pane_id}")"; then
+-        printf 'Unable to inspect Herdr attach pane order; refusing order repair.\n' >&2
+-        return 0
+-    fi
+-    if ! left_pane="$(
+-        printf '%s\n' "${layout_json}" | jq -er \
+-            --arg claude "${claude_pane_id}" \
+-            --arg codex "${codex_pane_id}" \
+-            '[.result.layout.panes[]? | select(.pane_id == $claude or .pane_id == $codex)] as $panes
++	local panes_json="$1"
++	local claude_pane_id="$2"
++	local codex_pane_id="$3"
++	local layout_json
++	local left_pane
++
++	if [[ -z ${codex_pane_id} ]] || ! attach_panes_are_unambiguous "${panes_json}" "${claude_pane_id}" "${codex_pane_id}"; then
++		printf 'Herdr attach panes are ambiguous or include unmanaged panes; refusing order repair.\n' >&2
++		return 0
++	fi
++	if ! layout_json="$(herdr pane layout --pane "${claude_pane_id}")"; then
++		printf 'Unable to inspect Herdr attach pane order; refusing order repair.\n' >&2
++		return 0
++	fi
++	if ! left_pane="$(
++		printf '%s\n' "${layout_json}" | jq -er \
++			--arg claude "${claude_pane_id}" \
++			--arg codex "${codex_pane_id}" \
++			'[.result.layout.panes[]? | select(.pane_id == $claude or .pane_id == $codex)] as $panes
+              | if ($panes | length) == 2
+                   and all($panes[]; .rect.x | type == "number")
+                   and ([$panes[].rect.x] | unique | length) == 2
+@@ -414,14 +414,14 @@
+                then ($panes | min_by(.rect.x) | .pane_id)
+                else error("ambiguous pane layout")
+                end'
+-    )"; then
+-        printf 'Herdr attach pane layout is ambiguous; refusing order repair.\n' >&2
+-        return 0
+-    fi
+-
+-    if [[ ${left_pane} != "${claude_pane_id}" ]]; then
+-        herdr pane swap --source-pane "${left_pane}" --target-pane "${claude_pane_id}"
+-    fi
++	)"; then
++		printf 'Herdr attach pane layout is ambiguous; refusing order repair.\n' >&2
++		return 0
++	fi
++
++	if [[ ${left_pane} != "${claude_pane_id}" ]]; then
++		herdr pane swap --source-pane "${left_pane}" --target-pane "${claude_pane_id}"
++	fi
+ }
+ 
+ # @description Repair a safe two-pane attach layout to equal halves.
+@@ -429,22 +429,22 @@
+ # @arg $2 pane_id Current Claude pane id.
+ # @arg $3 pane_id Live Codex pane id.
+ function repair_attach_pane_ratio() {
+-    local panes_json="$1"
+-    local claude_pane_id="$2"
+-    local codex_pane_id="$3"
+-    local layout_json
+-    local metrics
+-    local direction
+-    local amount
+-    local geometry_filter
+-
+-    if [[ -z ${codex_pane_id} ]] || ! attach_panes_are_unambiguous "${panes_json}" "${claude_pane_id}" "${codex_pane_id}"; then
+-        printf 'Herdr attach panes are ambiguous or include unmanaged panes; refusing ratio repair.\n' >&2
+-        return 0
+-    fi
+-
+-    # shellcheck disable=SC2016 # jq variables are intentional literal input.
+-    geometry_filter='
++	local panes_json="$1"
++	local claude_pane_id="$2"
++	local codex_pane_id="$3"
++	local layout_json
++	local metrics
++	local direction
++	local amount
++	local geometry_filter
++
++	if [[ -z ${codex_pane_id} ]] || ! attach_panes_are_unambiguous "${panes_json}" "${claude_pane_id}" "${codex_pane_id}"; then
++		printf 'Herdr attach panes are ambiguous or include unmanaged panes; refusing ratio repair.\n' >&2
++		return 0
++	fi
++
++	# shellcheck disable=SC2016 # jq variables are intentional literal input.
++	geometry_filter='
+         ([.result.layout.panes[]?
+           | select(.pane_id == $claude or .pane_id == $codex)]
+          | sort_by(.rect.x)) as $panes
+@@ -476,97 +476,97 @@
+           else error("unsafe pane geometry")
+           end'
+ 
+-    if ! layout_json="$(herdr pane layout --pane "${claude_pane_id}")" ||
+-        ! metrics="$(printf '%s\n' "${layout_json}" | jq -er \
+-            --arg claude "${claude_pane_id}" \
+-            --arg codex "${codex_pane_id}" \
+-            "${geometry_filter}")"; then
+-        printf 'Unable to inspect a safe Herdr attach layout; refusing ratio repair.\n' >&2
+-        return 0
+-    fi
+-    IFS=$'\t' read -r direction amount <<< "${metrics}"
+-    [[ ${direction} == none ]] && return 0
+-
+-    if ! herdr pane resize --pane "${claude_pane_id}" --direction "${direction}" --amount "${amount}" > /dev/null; then
+-        printf 'Unable to resize the Herdr split; refusing further ratio repair.\n' >&2
+-        return 0
+-    fi
+-    if ! layout_json="$(herdr pane layout --pane "${claude_pane_id}")" ||
+-        ! metrics="$(printf '%s\n' "${layout_json}" | jq -er \
+-            --arg claude "${claude_pane_id}" \
+-            --arg codex "${codex_pane_id}" \
+-            "${geometry_filter}")"; then
+-        printf 'Unable to verify the resized Herdr layout; refusing further ratio repair.\n' >&2
+-        return 0
+-    fi
+-    IFS=$'\t' read -r direction _ <<< "${metrics}"
+-    if [[ ${direction} != none ]]; then
+-        printf 'Herdr attach pane widths did not converge; refusing further ratio repair.\n' >&2
+-    fi
++	if ! layout_json="$(herdr pane layout --pane "${claude_pane_id}")" ||
++		! metrics="$(printf '%s\n' "${layout_json}" | jq -er \
++			--arg claude "${claude_pane_id}" \
++			--arg codex "${codex_pane_id}" \
++			"${geometry_filter}")"; then
++		printf 'Unable to inspect a safe Herdr attach layout; refusing ratio repair.\n' >&2
++		return 0
++	fi
++	IFS=$'\t' read -r direction amount <<<"${metrics}"
++	[[ ${direction} == none ]] && return 0
++
++	if ! herdr pane resize --pane "${claude_pane_id}" --direction "${direction}" --amount "${amount}" >/dev/null; then
++		printf 'Unable to resize the Herdr split; refusing further ratio repair.\n' >&2
++		return 0
++	fi
++	if ! layout_json="$(herdr pane layout --pane "${claude_pane_id}")" ||
++		! metrics="$(printf '%s\n' "${layout_json}" | jq -er \
++			--arg claude "${claude_pane_id}" \
++			--arg codex "${codex_pane_id}" \
++			"${geometry_filter}")"; then
++		printf 'Unable to verify the resized Herdr layout; refusing further ratio repair.\n' >&2
++		return 0
++	fi
++	IFS=$'\t' read -r direction _ <<<"${metrics}"
++	if [[ ${direction} != none ]]; then
++		printf 'Herdr attach pane widths did not converge; refusing further ratio repair.\n' >&2
++	fi
+ }
+ 
+ # @description Skip $HOME or ensure Codex and Claude Code agmsg delivery hooks.
+ # @arg $1 workdir Repository path used for repo-scoped agmsg registration.
+ function bootstrap_agmsg() {
+-    local workdir="$1"
+-
+-    if [[ "$(cd -- "${workdir}" && pwd -P)" == "$(cd -- "${HOME}" && pwd -P)" ]]; then
+-        printf "Skipping agmsg bootstrap for \$HOME; use a repository directory instead.\n" >&2
+-        return 0
+-    fi
+-
+-    local scripts="${HOME}/.agents/skills/agmsg/scripts"
+-    local delivery="${scripts}/delivery.sh"
+-    local identities="${scripts}/identities.sh"
+-    local codex_hooks_file="${workdir}/.codex/hooks.json"
+-    local claude_hooks_file="${workdir}/.claude/settings.local.json"
+-    local log_file="${HOME}/.config/herdr/herdr-agents.log"
+-    local agent_type
+-    local agent_label
+-    local identity_list
+-
+-    if [[ ! -f ${delivery} ]]; then
+-        printf 'agmsg delivery script not found; skipping bootstrap: %s\n' "${delivery}" >&2
+-        return 0
+-    fi
+-    mkdir -p "${log_file%/*}"
+-    if ! { [[ -f ${codex_hooks_file} ]] && jq -e \
+-        'any(.hooks.Stop[]?.hooks[]?; ((.bash // .command // "") | contains("agmsg/scripts/check-inbox.sh")))' \
+-        "${codex_hooks_file}" > /dev/null 2>&1; }; then
+-        if "${delivery}" set turn codex "${workdir}" >> "${log_file}" 2>&1; then
+-            printf 'Codex loads the new repo hook only after the project .codex layer is trusted; run /hooks or trust the repo in Codex.\n' >&2
+-        fi
+-    fi
+-    if ! { [[ -f ${claude_hooks_file} ]] && jq -e \
+-        'any(.hooks.SessionStart[]?.hooks[]?; ((.command // "") | contains("agmsg/scripts/session-start.sh")))' \
+-        "${claude_hooks_file}" > /dev/null 2>&1; }; then
+-        if "${delivery}" set both claude-code "${workdir}" >> "${log_file}" 2>&1; then
+-            printf 'First-time Claude Code agmsg setup may stop one same-repo watcher once; the hooks apply in the next Claude Code session.\n' >&2
+-        fi
+-    fi
+-
+-    if [[ ! -f ${identities} ]]; then
+-        printf 'agmsg identities script not found; skipping identity checks: %s\n' "${identities}" >&2
+-        return 0
+-    fi
+-    for agent_type in codex claude-code; do
+-        if [[ ${agent_type} == codex ]]; then
+-            agent_label=Codex
+-        else
+-            agent_label="Claude Code"
+-        fi
+-        if ! identity_list="$("${identities}" "${workdir}" "${agent_type}" 2>> "${log_file}")"; then
+-            continue
+-        fi
+-        identity_list="$(printf '%s\n' "${identity_list}" | cut -f 2 | sort -u)"
+-        if [[ -z ${identity_list} ]]; then
+-            printf 'No agmsg %s identity for %s; run: %s/join.sh <team> <agent-name> %s "%s"\n' \
+-                "${agent_label}" "${workdir}" "${scripts}" "${agent_type}" "${workdir}" >&2
+-        elif [[ ${identity_list} == *$'\n'* ]]; then
+-            printf 'Multiple agmsg %s identities are registered for %s; worker identity is ambiguous.\n' \
+-                "${agent_label}" "${workdir}" >&2
+-        fi
+-    done
++	local workdir="$1"
++
++	if [[ "$(cd -- "${workdir}" && pwd -P)" == "$(cd -- "${HOME}" && pwd -P)" ]]; then
++		printf "Skipping agmsg bootstrap for \$HOME; use a repository directory instead.\n" >&2
++		return 0
++	fi
++
++	local scripts="${HOME}/.agents/skills/agmsg/scripts"
++	local delivery="${scripts}/delivery.sh"
++	local identities="${scripts}/identities.sh"
++	local codex_hooks_file="${workdir}/.codex/hooks.json"
++	local claude_hooks_file="${workdir}/.claude/settings.local.json"
++	local log_file="${HOME}/.config/herdr/herdr-agents.log"
++	local agent_type
++	local agent_label
++	local identity_list
++
++	if [[ ! -f ${delivery} ]]; then
++		printf 'agmsg delivery script not found; skipping bootstrap: %s\n' "${delivery}" >&2
++		return 0
++	fi
++	mkdir -p "${log_file%/*}"
++	if ! { [[ -f ${codex_hooks_file} ]] && jq -e \
++		'any(.hooks.Stop[]?.hooks[]?; ((.bash // .command // "") | contains("agmsg/scripts/check-inbox.sh")))' \
++		"${codex_hooks_file}" >/dev/null 2>&1; }; then
++		if "${delivery}" set turn codex "${workdir}" >>"${log_file}" 2>&1; then
++			printf 'Codex loads the new repo hook only after the project .codex layer is trusted; run /hooks or trust the repo in Codex.\n' >&2
++		fi
++	fi
++	if ! { [[ -f ${claude_hooks_file} ]] && jq -e \
++		'any(.hooks.SessionStart[]?.hooks[]?; ((.command // "") | contains("agmsg/scripts/session-start.sh")))' \
++		"${claude_hooks_file}" >/dev/null 2>&1; }; then
++		if "${delivery}" set both claude-code "${workdir}" >>"${log_file}" 2>&1; then
++			printf 'First-time Claude Code agmsg setup may stop one same-repo watcher once; the hooks apply in the next Claude Code session.\n' >&2
++		fi
++	fi
++
++	if [[ ! -f ${identities} ]]; then
++		printf 'agmsg identities script not found; skipping identity checks: %s\n' "${identities}" >&2
++		return 0
++	fi
++	for agent_type in codex claude-code; do
++		if [[ ${agent_type} == codex ]]; then
++			agent_label=Codex
++		else
++			agent_label="Claude Code"
++		fi
++		if ! identity_list="$("${identities}" "${workdir}" "${agent_type}" 2>>"${log_file}")"; then
++			continue
++		fi
++		identity_list="$(printf '%s\n' "${identity_list}" | cut -f 2 | sort -u)"
++		if [[ -z ${identity_list} ]]; then
++			printf 'No agmsg %s identity for %s; run: %s/join.sh <team> <agent-name> %s "%s"\n' \
++				"${agent_label}" "${workdir}" "${scripts}" "${agent_type}" "${workdir}" >&2
++		elif [[ ${identity_list} == *$'\n'* ]]; then
++			printf 'Multiple agmsg %s identities are registered for %s; worker identity is ambiguous.\n' \
++				"${agent_label}" "${workdir}" >&2
++		fi
++	done
+ }
+ 
+ # @description Return the first pane id without an attached agent.
+@@ -573,11 +573,11 @@
+ # @arg $1 json Herdr pane list JSON.
+ # @arg $2 pane_id Optional pane id to exclude.
+ function empty_pane_id() {
+-    local panes_json="$1"
+-    local exclude_pane_id="${2:-}"
+-
+-    # Preserve legacy files panes as unmanaged operator-owned panes.
+-    printf '%s\n' "${panes_json}" | jq -r --arg exclude "${exclude_pane_id}" '.result.panes[]? | select((.agent? // "") == "" and .label? != "files" and .pane_id != $exclude) | .pane_id // empty' | head -n 1
++	local panes_json="$1"
++	local exclude_pane_id="${2:-}"
++
++	# Preserve legacy files panes as unmanaged operator-owned panes.
++	printf '%s\n' "${panes_json}" | jq -r --arg exclude "${exclude_pane_id}" '.result.panes[]? | select((.agent? // "") == "" and .label? != "files" and .pane_id != $exclude) | .pane_id // empty' | head -n 1
+ }
+ 
+ # @description Remove a node-global npm copy that shadows the dedicated mise tool install.
+@@ -584,60 +584,60 @@
+ # @arg $1 string mise npm tool name, for example npm:@scope/package.
+ # @arg $2 string npm package name, for example @scope/package.
+ function remove_shadowing_node_global() {
+-    local mise_tool="$1"
+-    local npm_package="$2"
+-
+-    command -v npm > /dev/null 2>&1 || return 0
+-    command -v mise > /dev/null 2>&1 || return 0
+-    # Never delete the only copy: heal only when the dedicated mise tool install exists.
+-    mise where "${mise_tool}" > /dev/null 2>&1 || return 0
+-    if npm list -g "${npm_package}" --depth=0 > /dev/null 2>&1; then
+-        npm uninstall -g "${npm_package}" > /dev/null || true
+-    fi
++	local mise_tool="$1"
++	local npm_package="$2"
++
++	command -v npm >/dev/null 2>&1 || return 0
++	command -v mise >/dev/null 2>&1 || return 0
++	# Never delete the only copy: heal only when the dedicated mise tool install exists.
++	mise where "${mise_tool}" >/dev/null 2>&1 || return 0
++	if npm list -g "${npm_package}" --depth=0 >/dev/null 2>&1; then
++		npm uninstall -g "${npm_package}" >/dev/null || true
++	fi
+ }
+ 
+ # @description Require a command before starting a partial layout.
+ # @arg $1 string Command name.
+ function require_command() {
+-    local command_name="$1"
+-
+-    if ! command -v "${command_name}" > /dev/null 2>&1; then
+-        printf '%s command not found\n' "${command_name}" >&2
+-        exit 127
+-    fi
++	local command_name="$1"
++
++	if ! command -v "${command_name}" >/dev/null 2>&1; then
++		printf '%s command not found\n' "${command_name}" >&2
++		exit 127
++	fi
+ }
+ 
+ if [[ ${1:-} == "--help" || ${1:-} == "-h" ]]; then
+-    usage
+-    exit 0
++	usage
++	exit 0
+ fi
+ 
+ attach_mode=false
+ bootstrap_mode=false
+ if [[ ${1:-} == "--attach" ]]; then
+-    attach_mode=true
+-    shift
+-    if [[ -z ${HERDR_ENV:-} || -z ${HERDR_PANE_ID:-} || -z ${HERDR_WORKSPACE_ID:-} ]]; then
+-        exit 0
+-    fi
+-    [[ ${HERDR_AGENTS_LAYOUT:-} == managed ]] && exit 0
++	attach_mode=true
++	shift
++	if [[ -z ${HERDR_ENV:-} || -z ${HERDR_PANE_ID:-} || -z ${HERDR_WORKSPACE_ID:-} ]]; then
++		exit 0
++	fi
++	[[ ${HERDR_AGENTS_LAYOUT:-} == managed ]] && exit 0
+ elif [[ ${1:-} == "--bootstrap-agmsg" ]]; then
+-    bootstrap_mode=true
+-    shift
++	bootstrap_mode=true
++	shift
+ fi
+ 
+ if { [[ ${attach_mode} == true ]] && [[ $# -gt 0 ]]; } || [[ $# -gt 1 ]]; then
+-    usage >&2
+-    exit 2
++	usage >&2
++	exit 2
+ fi
+ 
+ if [[ ${bootstrap_mode} == true ]]; then
+-    require_command jq
+-    workdir="${1:-$PWD}"
+-    cd -- "${workdir}"
+-    workdir="$(pwd -P)"
+-    bootstrap_agmsg "${workdir}"
+-    exit 0
++	require_command jq
++	workdir="${1:-$PWD}"
++	cd -- "${workdir}"
++	workdir="$(pwd -P)"
++	bootstrap_agmsg "${workdir}"
++	exit 0
+ fi
+ 
+ worker_kind="$(resolve_worker_kind)"
+@@ -644,9 +644,9 @@
+ case "${worker_kind}" in
+ codex | claude) ;;
+ *)
+-    printf 'HERDR_AGENTS_WORKER_KIND must be codex or claude; got %q\n' "${worker_kind}" >&2
+-    exit 2
+-    ;;
++	printf 'HERDR_AGENTS_WORKER_KIND must be codex or claude; got %q\n' "${worker_kind}" >&2
++	exit 2
++	;;
+ esac
+ 
+ require_command herdr
+@@ -653,7 +653,7 @@
+ require_command jq
+ require_command "${worker_kind}"
+ if [[ ${attach_mode} == false ]]; then
+-    require_command claude
++	require_command claude
+ fi
+ # Heal PATH shadowing left behind by the agent CLIs' own `npm install -g`
+ # updaters so the mise-pinned versions are what the panes actually run.
+@@ -661,9 +661,9 @@
+ remove_shadowing_node_global "npm:@anthropic-ai/claude-code" "@anthropic-ai/claude-code"
+ 
+ if [[ ${attach_mode} == true ]]; then
+-    workdir="$PWD"
+-else
+-    workdir="${1:-$PWD}"
++	workdir="$PWD"
++else
++	workdir="${1:-$PWD}"
+ fi
+ cd -- "${workdir}"
+ workdir="$(pwd -P)"
+@@ -670,43 +670,43 @@
+ HERDR_AGENTS_WORKER_PROFILE="$(resolve_worker_profile)"
+ 
+ if [[ ${attach_mode} == true ]]; then
+-    workspace_id="${HERDR_WORKSPACE_ID}"
+-    claude_pane_id="${HERDR_PANE_ID}"
+-    worker_agent_name="$(agent_name_for_workspace "${worker_kind}-worker" "${workspace_id}")"
+-    panes_json="$(herdr pane list --workspace "${workspace_id}")"
+-    workspace_worker_pane_id="$(live_worker_pane_id "${worker_agent_name}" "${panes_json}")" || workspace_worker_pane_id=""
+-    if ! panes_json="$(panes_on_pane_tab "${panes_json}" "${claude_pane_id}")"; then
+-        printf 'Unable to identify the current Herdr tab; refusing attach repair.\n' >&2
+-        exit 0
+-    fi
+-    worker_pane_id="$(live_worker_pane_id "${worker_agent_name}" "${panes_json}")" || worker_pane_id=""
+-
+-    if ! printf '%s\n' "${panes_json}" | jq -e --arg pane_id "${claude_pane_id}" '.result.panes[]? | select(.pane_id == $pane_id and .label == "claude-orchestrator")' > /dev/null; then
+-        herdr pane rename "${claude_pane_id}" claude-orchestrator
+-    fi
+-    if ! attach_panes_are_unambiguous "${panes_json}" "${claude_pane_id}" "${worker_pane_id}"; then
+-        printf 'Herdr attach panes are ambiguous or include unmanaged panes; refusing repair.\n' >&2
+-        exit 0
+-    fi
+-    if [[ -z ${worker_pane_id} && -n ${workspace_worker_pane_id} ]]; then
+-        printf 'The existing %s worker agent is on another Herdr tab; refusing to start a duplicate.\n' "${worker_kind}" >&2
+-    fi
+-
+-    if [[ -z ${worker_pane_id} && -z ${workspace_worker_pane_id} ]]; then
+-        worker_pane_id="$(split_agent_pane "${claude_pane_id}" "${workdir}")"
+-        start_worker_agent "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" true > /dev/null
+-    fi
+-    panes_json="$(herdr pane list --workspace "${workspace_id}")"
+-    if ! panes_json="$(panes_on_pane_tab "${panes_json}" "${claude_pane_id}")"; then
+-        printf 'Unable to identify the current Herdr tab; refusing order repair.\n' >&2
+-        exit 0
+-    fi
+-    repair_attach_pane_order "${panes_json}" "${claude_pane_id}" "${worker_pane_id}"
+-    repair_attach_pane_ratio "${panes_json}" "${claude_pane_id}" "${worker_pane_id}"
+-    bootstrap_agmsg "${workdir}"
+-
+-    printf 'Herdr agents workspace: %s\n' "${workspace_id}"
+-    exit 0
++	workspace_id="${HERDR_WORKSPACE_ID}"
++	claude_pane_id="${HERDR_PANE_ID}"
++	worker_agent_name="$(agent_name_for_workspace "${worker_kind}-worker" "${workspace_id}")"
++	panes_json="$(herdr pane list --workspace "${workspace_id}")"
++	workspace_worker_pane_id="$(live_worker_pane_id "${worker_agent_name}" "${panes_json}")" || workspace_worker_pane_id=""
++	if ! panes_json="$(panes_on_pane_tab "${panes_json}" "${claude_pane_id}")"; then
++		printf 'Unable to identify the current Herdr tab; refusing attach repair.\n' >&2
++		exit 0
++	fi
++	worker_pane_id="$(live_worker_pane_id "${worker_agent_name}" "${panes_json}")" || worker_pane_id=""
++
++	if ! printf '%s\n' "${panes_json}" | jq -e --arg pane_id "${claude_pane_id}" '.result.panes[]? | select(.pane_id == $pane_id and .label == "claude-orchestrator")' >/dev/null; then
++		herdr pane rename "${claude_pane_id}" claude-orchestrator
++	fi
++	if ! attach_panes_are_unambiguous "${panes_json}" "${claude_pane_id}" "${worker_pane_id}"; then
++		printf 'Herdr attach panes are ambiguous or include unmanaged panes; refusing repair.\n' >&2
++		exit 0
++	fi
++	if [[ -z ${worker_pane_id} && -n ${workspace_worker_pane_id} ]]; then
++		printf 'The existing %s worker agent is on another Herdr tab; refusing to start a duplicate.\n' "${worker_kind}" >&2
++	fi
++
++	if [[ -z ${worker_pane_id} && -z ${workspace_worker_pane_id} ]]; then
++		worker_pane_id="$(split_agent_pane "${claude_pane_id}" "${workdir}")"
++		start_worker_agent "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" true >/dev/null
++	fi
++	panes_json="$(herdr pane list --workspace "${workspace_id}")"
++	if ! panes_json="$(panes_on_pane_tab "${panes_json}" "${claude_pane_id}")"; then
++		printf 'Unable to identify the current Herdr tab; refusing order repair.\n' >&2
++		exit 0
++	fi
++	repair_attach_pane_order "${panes_json}" "${claude_pane_id}" "${worker_pane_id}"
++	repair_attach_pane_ratio "${panes_json}" "${claude_pane_id}" "${worker_pane_id}"
++	bootstrap_agmsg "${workdir}"
++
++	printf 'Herdr agents workspace: %s\n' "${workspace_id}"
++	exit 0
+ fi
+ 
+ workspace_label="$(basename "${workdir}") agents"
+@@ -713,80 +713,80 @@
+ existing_workspace_id="$(find_existing_workspace "${workspace_label}" "${workdir}")"
+ 
+ if [[ -n ${existing_workspace_id} ]]; then
+-    workspace_id="${existing_workspace_id}"
+-    worker_agent_name="$(agent_name_for_workspace "${worker_kind}-worker" "${workspace_id}")"
+-    panes_json="$(herdr pane list --workspace "${workspace_id}")"
+-    worker_pane_id="$(live_worker_pane_id "${worker_agent_name}" "${panes_json}")" || worker_pane_id=""
+-
+-    if [[ -z ${worker_pane_id} ]]; then
+-        worker_pane_id="$(empty_pane_id "${panes_json}")"
+-        worker_pane_is_new=false
+-        if [[ -z ${worker_pane_id} ]]; then
+-            split_source_pane_id="$(printf '%s\n' "${panes_json}" | jq -r '.result.panes[0].pane_id // empty')"
+-            if [[ -z ${split_source_pane_id} ]]; then
+-                printf 'Unable to find a pane for %s worker repair in Herdr workspace: %s\n' "${worker_kind}" "${workspace_id}" >&2
+-                exit 1
+-            fi
+-            worker_pane_id="$(split_agent_pane "${split_source_pane_id}" "${workdir}")"
+-            worker_pane_is_new=true
+-        fi
+-        start_worker_agent "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" "${worker_pane_is_new}" > /dev/null
+-        panes_json="$(herdr pane list --workspace "${workspace_id}")"
+-    fi
+-
+-    if ! has_claude_pane "${panes_json}"; then
+-        claude_pane_id="$(empty_pane_id "${panes_json}" "${worker_pane_id}")"
+-        claude_pane_is_new=false
+-        if [[ -z ${claude_pane_id} ]]; then
+-            claude_pane_id="$(split_agent_pane "${worker_pane_id}" "${workdir}" --env HERDR_AGENTS_LAYOUT=managed)"
+-            claude_pane_is_new=true
+-            herdr pane swap --pane "${claude_pane_id}" --direction left
+-        fi
+-        start_claude_in_pane "${claude_pane_id}" "${workspace_id}" "${claude_pane_is_new}"
+-    fi
+-
+-    panes_json="$(herdr pane list --workspace "${workspace_id}")"
+-    if panes_json="$(panes_on_pane_tab "${panes_json}" "${worker_pane_id}")"; then
+-        claude_pane_id="$(printf '%s\n' "${panes_json}" | jq -r \
+-            '.result.panes[]? | select(.agent == "claude" or .label == "claude-orchestrator") | .pane_id // empty')"
+-        repair_attach_pane_order "${panes_json}" "${claude_pane_id}" "${worker_pane_id}"
+-        repair_attach_pane_ratio "${panes_json}" "${claude_pane_id}" "${worker_pane_id}"
+-    else
+-        printf 'Unable to identify the existing Herdr tab; refusing layout repair.\n' >&2
+-    fi
+-    bootstrap_agmsg "${workdir}"
+-
+-    herdr workspace focus "${workspace_id}"
+-    printf 'Herdr agents workspace: %s\n' "${workspace_id}"
+-    exit 0
++	workspace_id="${existing_workspace_id}"
++	worker_agent_name="$(agent_name_for_workspace "${worker_kind}-worker" "${workspace_id}")"
++	panes_json="$(herdr pane list --workspace "${workspace_id}")"
++	worker_pane_id="$(live_worker_pane_id "${worker_agent_name}" "${panes_json}")" || worker_pane_id=""
++
++	if [[ -z ${worker_pane_id} ]]; then
++		worker_pane_id="$(empty_pane_id "${panes_json}")"
++		worker_pane_is_new=false
++		if [[ -z ${worker_pane_id} ]]; then
++			split_source_pane_id="$(printf '%s\n' "${panes_json}" | jq -r '.result.panes[0].pane_id // empty')"
++			if [[ -z ${split_source_pane_id} ]]; then
++				printf 'Unable to find a pane for %s worker repair in Herdr workspace: %s\n' "${worker_kind}" "${workspace_id}" >&2
++				exit 1
++			fi
++			worker_pane_id="$(split_agent_pane "${split_source_pane_id}" "${workdir}")"
++			worker_pane_is_new=true
++		fi
++		start_worker_agent "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" "${worker_pane_is_new}" >/dev/null
++		panes_json="$(herdr pane list --workspace "${workspace_id}")"
++	fi
++
++	if ! has_claude_pane "${panes_json}"; then
++		claude_pane_id="$(empty_pane_id "${panes_json}" "${worker_pane_id}")"
++		claude_pane_is_new=false
++		if [[ -z ${claude_pane_id} ]]; then
++			claude_pane_id="$(split_agent_pane "${worker_pane_id}" "${workdir}" --env HERDR_AGENTS_LAYOUT=managed)"
++			claude_pane_is_new=true
++			herdr pane swap --pane "${claude_pane_id}" --direction left
++		fi
++		start_claude_in_pane "${claude_pane_id}" "${workspace_id}" "${claude_pane_is_new}"
++	fi
++
++	panes_json="$(herdr pane list --workspace "${workspace_id}")"
++	if panes_json="$(panes_on_pane_tab "${panes_json}" "${worker_pane_id}")"; then
++		claude_pane_id="$(printf '%s\n' "${panes_json}" | jq -r \
++			'.result.panes[]? | select(.agent == "claude" or .label == "claude-orchestrator") | .pane_id // empty')"
++		repair_attach_pane_order "${panes_json}" "${claude_pane_id}" "${worker_pane_id}"
++		repair_attach_pane_ratio "${panes_json}" "${claude_pane_id}" "${worker_pane_id}"
++	else
++		printf 'Unable to identify the existing Herdr tab; refusing layout repair.\n' >&2
++	fi
++	bootstrap_agmsg "${workdir}"
++
++	herdr workspace focus "${workspace_id}"
++	printf 'Herdr agents workspace: %s\n' "${workspace_id}"
++	exit 0
+ fi
+ 
+ if [[ -n ${FPATH:-} ]]; then
+-    workspace_json="$(herdr workspace create --cwd "${workdir}" --label "${workspace_label}" --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --env HERDR_AGENTS_LAYOUT=managed --env "FPATH=${FPATH}" --focus)"
+-else
+-    workspace_json="$(herdr workspace create --cwd "${workdir}" --label "${workspace_label}" --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --env HERDR_AGENTS_LAYOUT=managed --focus)"
++	workspace_json="$(herdr workspace create --cwd "${workdir}" --label "${workspace_label}" --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --env HERDR_AGENTS_LAYOUT=managed --env "FPATH=${FPATH}" --focus)"
++else
++	workspace_json="$(herdr workspace create --cwd "${workdir}" --label "${workspace_label}" --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --env HERDR_AGENTS_LAYOUT=managed --focus)"
+ fi
+ workspace_id="$(printf '%s\n' "${workspace_json}" | json_workspace_id)"
+ root_pane_id="$(printf '%s\n' "${workspace_json}" | json_root_pane_id)"
+ 
+ if [[ -z ${workspace_id} ]]; then
+-    printf 'Unable to read Herdr workspace id from: %s\n' "${workspace_json}" >&2
+-    exit 1
++	printf 'Unable to read Herdr workspace id from: %s\n' "${workspace_json}" >&2
++	exit 1
+ fi
+ 
+ if [[ -z ${root_pane_id} ]]; then
+-    printf 'Unable to read Herdr root pane id from: %s\n' "${workspace_json}" >&2
+-    exit 1
++	printf 'Unable to read Herdr root pane id from: %s\n' "${workspace_json}" >&2
++	exit 1
+ fi
+ 
+ worker_agent_name="$(agent_name_for_workspace "${worker_kind}-worker" "${workspace_id}")"
+ start_claude_in_pane "${root_pane_id}" "${workspace_id}" true
+ worker_pane_id="$(split_agent_pane "${root_pane_id}" "${workdir}")"
+-start_worker_agent "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" true > /dev/null
++start_worker_agent "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" true >/dev/null
+ bootstrap_agmsg "${workdir}"
+ 
+-if command -v zed > /dev/null 2>&1; then
+-    zed "${workdir}" > /dev/null 2>&1 &
++if command -v zed >/dev/null 2>&1; then
++	zed "${workdir}" >/dev/null 2>&1 &
+ fi
+ 
+ printf 'Herdr agents workspace: %s\n' "${workspace_id}"
+```
+
+## lint_repo
+
+Command:
+```sh
+shellcheck home/dot_local/bin/common/executable_herdr-agents && shfmt --indent 4 --space-redirects -d home/dot_local/bin/common/executable_herdr-agents
+```
+Exit code: 0
+
+Verbatim output:
+```text
+```
+
+## proof
+
+Command:
+```sh
+uv run python - <<'PY'
+import json, os, subprocess, tempfile
+from pathlib import Path
+root = Path.cwd()
+with tempfile.TemporaryDirectory(prefix="convergence-proof-") as temporary:
+    env = {**os.environ, "CHEZMOI_SOURCE_DIR": str(root / "home"), "CHEZMOI_HOME_DIR": temporary}
+    matcher = "^(startup|resume|clear|compact|fork)$"
+    fixture = json.dumps({"hooks": {"SessionStart": [{"matcher": matcher, "hooks": [{"type": "command", "command": f"bash '{temporary}/.claude/hooks/herdr-agent-state.sh' session", "timeout": 10}]}]}})
+    def merge(current):
+        return subprocess.run(["uv", "run", "python", str(root / "home/dot_claude/modify_private_settings.json")], input=current, capture_output=True, text=True, env=env, check=True).stdout
+    once = merge(fixture)
+    twice = merge(once)
+    entries = [e for e in json.loads(once)["hooks"]["SessionStart"] if any("herdr-agent-state.sh" in h["command"] for h in e["hooks"])]
+    assert len(entries) == 1 and entries[0]["matcher"] == matcher
+    assert once.encode() == twice.encode()
+    print("Canonical matcher preserved:", matcher)
+    print("Second pass byte-identical:", once.encode() == twice.encode())
+    print("Rendered bytes:", len(once.encode()))
+PY
+```
+Exit code: 2
+
+Verbatim output:
+```text
+error: Failed to initialize cache at `/Users/mryfmo/.cache/uv`
+  cause: failed to open file `/Users/mryfmo/.cache/uv/sdists-v9/.git`: Operation not permitted (os error 1)
+```
+
+## proofretry
+
+Command:
+```sh
+uv run python - <<'PY'
+import json, os, subprocess, tempfile
+from pathlib import Path
+root = Path.cwd()
+with tempfile.TemporaryDirectory(prefix="convergence-proof-") as temporary:
+    env = {**os.environ, "CHEZMOI_SOURCE_DIR": str(root / "home"), "CHEZMOI_HOME_DIR": temporary}
+    matcher = "^(startup|resume|clear|compact|fork)$"
+    fixture = json.dumps({"hooks": {"SessionStart": [{"matcher": matcher, "hooks": [{"type": "command", "command": f"bash '{temporary}/.claude/hooks/herdr-agent-state.sh' session", "timeout": 10}]}]}})
+    def merge(current):
+        return subprocess.run(["uv", "run", "python", str(root / "home/dot_claude/modify_private_settings.json")], input=current, capture_output=True, text=True, env=env, check=True).stdout
+    once = merge(fixture)
+    twice = merge(once)
+    entries = [e for e in json.loads(once)["hooks"]["SessionStart"] if any("herdr-agent-state.sh" in h["command"] for h in e["hooks"])]
+    assert len(entries) == 1 and entries[0]["matcher"] == matcher
+    assert once.encode() == twice.encode()
+    print("Canonical matcher preserved:", matcher)
+    print("Second pass byte-identical:", once.encode() == twice.encode())
+    print("Rendered bytes:", len(once.encode()))
+PY
+```
+Exit code: 0
+
+Verbatim output:
+```text
+Canonical matcher preserved: ^(startup|resume|clear|compact|fork)$
+Second pass byte-identical: True
+Rendered bytes: 2773
+```
+
+## diff
+
+Command:
+```sh
+git diff --check && git diff --stat && git diff -- home/.chezmoitemplates/claude-settings-managed.json Makefile home/dot_local/bin/common/executable_herdr-agents tests/unit/test_claude_settings_merge.py tests/unit/test_runtime_health.py tests/unit/test_herdr_agents.py tests/install/common/lifecycle.bats
+```
+Exit code: 0
+
+Verbatim output:
+```text
+ Makefile                                           |  2 ++
+ .../.chezmoitemplates/claude-settings-managed.json |  2 +-
+ home/dot_local/bin/common/executable_herdr-agents  |  1 +
+ tests/install/common/lifecycle.bats                | 10 +++++++++
+ tests/unit/test_claude_settings_merge.py           | 25 ++++++++++++++++++++++
+ tests/unit/test_herdr_agents.py                    | 14 ++++++++++++
+ tests/unit/test_runtime_health.py                  | 14 ++++++++++++
+ 7 files changed, 67 insertions(+), 1 deletion(-)
+diff --git a/Makefile b/Makefile
+index d9a875d..ab0da62 100644
+--- a/Makefile
++++ b/Makefile
+@@ -50,6 +50,8 @@ update:
+ 		reason="current branch is $${branch:-detached}, not main"; \
+ 	elif [ "$$upstream" != origin/main ]; then \
+ 		reason="upstream is $${upstream:-unset}, not origin/main"; \
++	elif [ -n "$$(git ls-files -u)" ]; then \
++		reason="index has unmerged files; resolve the conflict (git add/commit or git reset) before pulling"; \
+ 	elif ! git diff --quiet || ! git diff --cached --quiet; then \
+ 		reason="tracked files have staged or unstaged changes"; \
+ 	fi; \
+diff --git a/home/.chezmoitemplates/claude-settings-managed.json b/home/.chezmoitemplates/claude-settings-managed.json
+index c8229e6..72750d5 100644
+--- a/home/.chezmoitemplates/claude-settings-managed.json
++++ b/home/.chezmoitemplates/claude-settings-managed.json
+@@ -43,7 +43,7 @@
+     ],
+     "SessionStart": [
+       {
+-        "matcher": "*",
++        "matcher": "^(startup|resume|clear|compact|fork)$",
+         "hooks": [
+           {
+             "type": "command",
+diff --git a/home/dot_local/bin/common/executable_herdr-agents b/home/dot_local/bin/common/executable_herdr-agents
+index 719ac77..d12c554 100644
+--- a/home/dot_local/bin/common/executable_herdr-agents
++++ b/home/dot_local/bin/common/executable_herdr-agents
+@@ -558,6 +558,7 @@ function bootstrap_agmsg() {
+         if ! identity_list="$("${identities}" "${workdir}" "${agent_type}" 2>> "${log_file}")"; then
+             continue
+         fi
++        identity_list="$(printf '%s\n' "${identity_list}" | cut -f 2 | sort -u)"
+         if [[ -z ${identity_list} ]]; then
+             printf 'No agmsg %s identity for %s; run: %s/join.sh <team> <agent-name> %s "%s"\n' \
+                 "${agent_label}" "${workdir}" "${scripts}" "${agent_type}" "${workdir}" >&2
+diff --git a/tests/install/common/lifecycle.bats b/tests/install/common/lifecycle.bats
+index d9a97c2..b6f374e 100644
+--- a/tests/install/common/lifecycle.bats
++++ b/tests/install/common/lifecycle.bats
+@@ -24,6 +24,7 @@ function run_update_fixture() {
+     local git_upstream="${9:-origin/feature/test}"
+     local git_dirty="${10:-0}"
+     local git_pull_exit="${11:-0}"
++    local git_unmerged="${12:-0}"
+     local fixture="${BATS_TEST_TMPDIR}/update-${BATS_TEST_NUMBER}"
+ 
+     mkdir -p "${fixture}/bin" "${fixture}/scripts" \
+@@ -50,6 +51,7 @@ case "\$*" in
+     "branch --show-current") printf '%s\n' '${git_branch}' ;;
+     "rev-parse --abbrev-ref --symbolic-full-name @{upstream}") printf '%s\n' '${git_upstream}' ;;
+     "diff --quiet"|"diff --cached --quiet") exit ${git_dirty} ;;
++    "ls-files -u") if [ ${git_unmerged} -eq 1 ]; then printf '100644 conflict 1\\tfile\\n'; fi ;;
+     "pull --ff-only") printf 'git pull --ff-only\n' >> "${fixture}/calls"; exit ${git_pull_exit} ;;
+ esac
+ EOF
+@@ -95,6 +97,14 @@ EOF
+     [[ "$output" == *"Notice: local source not pulled (tracked files have staged or unstaged changes); run 'git -C ${UPDATE_FIXTURE_PHYSICAL} pull' to fetch remote updates."* ]]
+ }
+ 
++@test "[common] update reports unmerged files before the dirty notice" {
++    run_update_fixture running 0 0 0 0 0 "" main origin/main 1 0 1
++    [ "$status" -eq 0 ]
++    ! grep -q '^git pull --ff-only$' "${UPDATE_FIXTURE}/calls"
++    [[ "$output" == *"index has unmerged files; resolve the conflict (git add/commit or git reset) before pulling"* ]]
++    [[ "$output" != *"tracked files have staged or unstaged changes"* ]]
++}
++
+ @test "[common] update reloads a running Herdr server exactly once" {
+     run_update_fixture running
+     [ "$status" -eq 0 ]
+diff --git a/tests/unit/test_claude_settings_merge.py b/tests/unit/test_claude_settings_merge.py
+index 6b3dd91..bd6024a 100644
+--- a/tests/unit/test_claude_settings_merge.py
++++ b/tests/unit/test_claude_settings_merge.py
+@@ -406,6 +406,31 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
+         self.assertEqual(json.loads(output)["effortLevel"], "high")
+         self.assertTrue(output.endswith("\n"))
+ 
++    def test_real_template_preserves_herdr_matcher_and_converges(self) -> None:
++        managed = json.loads(
++            (ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()
++        )
++        canonical_matcher = "^(startup|resume|clear|compact|fork)$"
++        current = json.dumps({
++            "hooks": {"SessionStart": [{
++                "matcher": canonical_matcher,
++                "hooks": [{
++                    "type": "command",
++                    "command": f"bash '{self.home_dir}/.claude/hooks/herdr-agent-state.sh' session",
++                    "timeout": 10,
++                }],
++            }]},
++        })
++
++        once = self.merge(managed, current)
++        state_entries = [
++            entry for entry in json.loads(once)["hooks"]["SessionStart"]
++            if any("herdr-agent-state.sh" in hook["command"] for hook in entry["hooks"])
++        ]
++        self.assertEqual(len(state_entries), 1)
++        self.assertEqual(state_entries[0]["matcher"], canonical_matcher)
++        self.assertEqual(self.merge(managed, once), once)
++
+     def test_trailing_newline(self) -> None:
+         output = self.merge({"model": "managed", "enabledPlugins": {}}, "")
+ 
+diff --git a/tests/unit/test_herdr_agents.py b/tests/unit/test_herdr_agents.py
+index e2bd12b..e633e5c 100644
+--- a/tests/unit/test_herdr_agents.py
++++ b/tests/unit/test_herdr_agents.py
+@@ -998,6 +998,20 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
+             )
+         )
+ 
++    def test_bootstrap_accepts_same_identity_in_multiple_teams(self) -> None:
++        scripts = self.install_agmsg_fakes(
++            identities_output="team-a\tcodex-worker\nteam-b\tcodex-worker",
++            claude_identities_output="team-a\tclaude-deep-dot\nteam-b\tclaude-deep-dot",
++        )
++        self.write_agmsg_turn_hook(scripts)
++        self.write_agmsg_claude_hooks(scripts)
++
++        result = self.run_agmsg_bootstrap_helper()
++
++        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
++        self.assertNotIn("Multiple agmsg", result.stderr)
++        self.assertNotIn("No agmsg", result.stderr)
++
+     def test_bootstrap_only_warns_for_multiple_claude_identities(self) -> None:
+         scripts = self.install_agmsg_fakes(
+             claude_identities_output=(
+diff --git a/tests/unit/test_runtime_health.py b/tests/unit/test_runtime_health.py
+index 43140bb..6c910de 100644
+--- a/tests/unit/test_runtime_health.py
++++ b/tests/unit/test_runtime_health.py
+@@ -575,6 +575,7 @@ EOF
+         branch: str = "main",
+         upstream: str = "origin/main",
+         dirty: bool = False,
++        unmerged: bool = False,
+     ) -> tuple[subprocess.CompletedProcess[str], Path]:
+         repo = self.temp_dir / f"update-{'dirty' if dirty else 'clean'}"
+         home = repo / "home"
+@@ -589,6 +590,7 @@ EOF
+                 "branch --show-current") printf '{branch}\\n' ;;
+                 "rev-parse --abbrev-ref --symbolic-full-name @{{upstream}}") printf '{upstream}\\n' ;;
+                 "diff --quiet"|"diff --cached --quiet") exit {int(dirty)} ;;
++                "ls-files -u") if [ {int(unmerged)} -eq 1 ]; then printf '100644 conflict 1\\tfile\\n'; fi ;;
+                 "pull --ff-only") printf 'git pull --ff-only\\n' >> "$TEST_LOG" ;;
+             esac
+             """,
+@@ -643,6 +645,18 @@ EOF
+         )
+         self.assertIn(" pull' to fetch remote updates.", result.stdout)
+ 
++    def test_make_update_reports_unmerged_index_before_dirty_notice(self) -> None:
++        result, log = self.update_fixture(dirty=True, unmerged=True)
++
++        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
++        self.assertNotIn("git pull --ff-only", log.read_text())
++        self.assertIn(
++            "index has unmerged files; resolve the conflict "
++            "(git add/commit or git reset) before pulling",
++            result.stdout,
++        )
++        self.assertNotIn("tracked files have staged or unstaged changes", result.stdout)
++
+     def test_agent_launchers_do_not_hardcode_model_ids(self) -> None:
+         herdr = (ROOT / "home/dot_local/bin/common/executable_herdr-agents").read_text()
+         fanout = (
+```
+
+## stat
+
+Command (cwd: canonical dotfiles):
+```sh
+git -C .claude/worktrees/update-convergence diff --stat
+```
+Exit code: 0
+
+Verbatim output:
+```text
+ Makefile                                           |  2 ++
+ .../.chezmoitemplates/claude-settings-managed.json |  2 +-
+ home/dot_local/bin/common/executable_herdr-agents  |  1 +
+ tests/install/common/lifecycle.bats                | 10 +++++++++
+ tests/unit/test_claude_settings_merge.py           | 25 ++++++++++++++++++++++
+ tests/unit/test_herdr_agents.py                    | 14 ++++++++++++
+ tests/unit/test_runtime_health.py                  | 14 ++++++++++++
+ 7 files changed, 67 insertions(+), 1 deletion(-)
+```
+
+## memory1
+
+Command (cwd: herdr-sheldon):
+```sh
+python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'The managed Claude SessionStart matcher for herdr-agent-state.sh is the herdr canonical regex ^(startup|resume|clear|compact|fork)$, not *, so chezmoi and herdr integrations converge.'
+```
+Exit code: 0
+
+Verbatim output:
+```text
+765fbe2f-5c75-4793-b602-0dabbcd2e8d2
+```
+
+## memory2
+
+Command (cwd: herdr-sheldon):
+```sh
+python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content 'herdr-agents identity ambiguity is judged on distinct identity names, not on the number of team registrations.'
+```
+Exit code: 0
+
+Verbatim output:
+```text
+0554a3c9-27b0-43a7-a4d2-ee99faf4e2a1
+```
+
+## gate
+
+Command:
+```sh
+make require-crit-review
+```
+Exit code: 2
+
+Verbatim output:
+```text
+Native agent review required before completion.
+- tracked policy/config file changed: home/dot_local/bin/common/executable_herdr-agents
+- broad diff touches 7 files
+Use the active agent's review path, not a browser by default:
+- Codex: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Claude Code: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Use browser Crit review only when the user explicitly asks for Crit web UI or Crit data is unavailable.
+Record a receipt with `review_surface:`, `reviewer:`, and `review_outcome:`.
+For agent judgment, locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` to a repo-local JSON file.
+Evidence must contain at least one resolved record; for a finding-free review, add and resolve one review-scope approval record.
+This local evidence is process evidence, not reviewer authentication.
+Then use `review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`, and `review_source: <json path>`.
+After addressing review feedback, rerun with AGENT_REVIEWED=1 or CRIT_REVIEWED=1 plus REVIEW_EVIDENCE=<path>.
+make: *** [require-crit-review] Error 1
+```
+
+## gatepass
+
+Command:
+```sh
+AGENT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/dot-update-convergence-T1-a01-review.md make require-crit-review
+```
+Exit code: 0
+
+Verbatim output:
+```text
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+```
+
+## Crit JSON evidence
+
+Command: `crit comments --all --json /Users/mryfmo/.crit/reviews/0f45e00730ad/review.json`
+```json
+[
+  {
+    "scope": "review",
+    "id": "r_48817a",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Reviewed dot-update-convergence-T1-a01: canonical matcher converges, unmerged index takes precedence over dirty state, and identity names are deduplicated for both runtimes. Three regressions failed before fixes; final validation recorded separately. No code findings. This is local process evidence; orchestrator acceptance remains pending.",
+    "author": "Codex",
+    "created_at": "2026-09-25T00:09:59Z",
+    "updated_at": "2026-09-25T00:14:32Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_4bfc5a",
+        "body": "No findings; resolved approval record per repository AGENTS.md. Unit suite: 125 tests passed. Orchestrator acceptance and CI bats remain separate.",
+        "author": "Codex",
+        "created_at": "2026-09-25T00:14:32Z",
+        "review_round": 1
+      }
+    ]
+  }
+]
+```

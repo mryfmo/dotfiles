@@ -8,6 +8,7 @@ import json
 import re
 import subprocess
 import sys
+from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -1033,6 +1034,14 @@ def validate_generated_agent_configs() -> None:
         fail(result.stdout.strip() or "generated agent configs are stale")
 
 
+@cache
+def is_nested_git_tree(directory: Path) -> bool:
+    """Check directory ancestors for a Git boundary, excluding ROOT itself."""
+    if directory == ROOT:
+        return False
+    return (directory / ".git").exists() or is_nested_git_tree(directory.parent)
+
+
 def validate_no_removed_claude_skill() -> None:
     removed_skill = "high-impact" + "-journal-publishing"
     matches = []
@@ -1040,6 +1049,8 @@ def validate_no_removed_claude_skill() -> None:
         if not path.is_file():
             continue
         if any(part in {".git", "site", "__pycache__"} for part in path.parts):
+            continue
+        if is_nested_git_tree(path.parent):
             continue
         if removed_skill in path.read_text(errors="ignore"):
             matches.append(path)
@@ -1081,6 +1092,8 @@ def validate_no_obvious_secrets() -> None:
         if not path.is_file():
             continue
         if any(part in {".git", "site", "__pycache__"} for part in path.parts):
+            continue
+        if is_nested_git_tree(path.parent):
             continue
         if path.relative_to(ROOT) in compactiondb_dummy_secret_fixtures:
             continue

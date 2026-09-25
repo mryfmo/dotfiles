@@ -545,8 +545,11 @@ INSTALLING_ASSET_SOURCES = {
     "installer-script",
     "vendored",
 }
+# A literal value is double-quoted without $, single-quoted, or an unquoted
+# token without quotes, $, backticks, or parentheses; derived values pass.
 LITERAL_VERSION_ASSIGNMENT = re.compile(
-    r'^\s*(?:readonly |export |local )?([A-Z0-9_]*_VERSION|[a-z0-9_]*version)="[^"$]*"',
+    r"""^\s*(?:readonly |export |local )?([A-Z0-9_]*_VERSION|[a-z0-9_]*version)="""
+    r"""(?:"[^"$`]*"|'[^']*'|[^\s"'$`;()]+)(?=\s|;|$)""",
     re.M,
 )
 

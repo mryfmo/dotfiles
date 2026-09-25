@@ -312,6 +312,8 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             ("install/ubuntu/common/copy.sh", 'readonly MISE_VERSION="v0"\n', "MISE_VERSION"),
             ("scripts/lib/other.sh", 'OTHER_VERSION="2"\n', "OTHER_VERSION"),
             ("scripts/tool.sh", '    local version="3.0"\n', "version"),
+            ("install/ubuntu/common/bare.sh", "readonly TOOL_VERSION=1.2.3\n", "TOOL_VERSION"),
+            ("install/ubuntu/common/single.sh", "TOOL_VERSION='1.2.3'; export TOOL_VERSION\n", "TOOL_VERSION"),
         )
         for relative, content, constant in cases:
             with self.subTest(file=relative):
@@ -322,10 +324,14 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 self.assertIn(f"{relative} hard-codes {constant}", stderr.getvalue())
                 path.unlink()
 
-        self.write_text_file(
-            "install/ubuntu/common/tool.sh", 'readonly TOOL_VERSION="${MISE_VERSION}"\n'
-        )
-        self.module.validate_assets(self.asset_manifest())
+        for derived in (
+            'readonly TOOL_VERSION="${MISE_VERSION}"\n',
+            "TOOL_VERSION=${MISE_VERSION}\n",
+            'version="$(tool --version)"\n',
+            "local version\n",
+        ):
+            self.write_text_file("install/ubuntu/common/tool.sh", derived)
+            self.module.validate_assets(self.asset_manifest())
 
     def test_agent_manifest_rejects_missing_security_profile(self) -> None:
         manifest = self.write_valid_agent_manifest()

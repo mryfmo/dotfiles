@@ -205,18 +205,20 @@ linked skill); Codex runtime files are provisioned from the version-matched Clau
 
 On Linux, Crit itself is installed from the pinned amd64 or arm64 GitHub
 release binary after SHA-256 verification; macOS continues to use Homebrew.
-Both Linux checksums and the version live in `scripts/lib/installer-pins.sh`
-and are refreshed by `make upgrade`. Linux lifecycle checks inspect the
+Both Linux checksums and the version are declared under `assets.crit` in
+`home/dot_agents/agent-config.yaml`, rendered into
+`scripts/lib/installer-pins.sh`, and refreshed by `make upgrade`. Linux lifecycle checks inspect the
 authoritative `~/.local/bin/crit` directly, prepend `~/.local/bin` to `PATH`,
 and run `hash -r` so an older ambient Crit cannot shadow it. If that managed
 binary is missing, `REPAIR=1 make doctor` can restore it.
 
 The zenbu-labs terminal tools — terminal-code (`tode`) and `terminal-browser` —
 install through their sha256-verified upstream curl installers, pinned by
-version and installer checksum in `scripts/lib/installer-pins.sh`.
+version and installer checksum under `assets:` (rendered into
+`scripts/lib/installer-pins.sh`).
 `make update` converges both tools to the pinned versions; `make upgrade`
-rewrites the pin file to the latest upstream release and installs it in the
-same run — like the rest of `make upgrade`, that is trust-now-and-record, and
+writes the latest upstream release into `assets:` (re-rendering the pin file)
+and installs it in the same run — like the rest of `make upgrade`, that is trust-now-and-record, and
 the pin diff is then reviewed and committed like a mise config/lock bump.
 terminal-browser links its bundled agent skills into `~/.agents/skills`
 (expected unmanaged-skill WARNs in `make doctor`, tracked by its
@@ -466,6 +468,27 @@ with the platform-native binary. Codex has no package lifecycle script and
 does not receive that permission. If an older aube-backed agent CLI cannot run,
 `scripts/update-agent-assets.sh` force-reinstalls only that broken CLI through
 the npm backend before refreshing plugins.
+
+**Asset manifest.** Every third-party component the lifecycle installs outside
+mise — the mise binary itself, sheldon, starship, the AWS CLI, the Homebrew
+installer, Crit, Zed, tode, terminal-browser, the Understand-Anything
+installer, the vendored CompactionDB and agmsg trees, and the Claude/Codex
+plugins and GitHub CLI extensions — has one declaration under `assets:` in
+`home/dot_agents/agent-config.yaml`, with its upstream, pin, verification
+method, install path, and installer step. mise tools are listed there as a
+pointer to `home/dot_mise/config.toml` and `mise.lock`, which stay the mise
+manifest. `scripts/generate-agent-configs.py` renders each pinned value into
+the installer that uses it (`install/**/*.sh`, `scripts/lib/installer-pins.sh`,
+`scripts/update-agent-assets.sh`, and the Codex config template), and
+`scripts/validate-agent-assets.py` rejects incomplete declarations, rendered
+drift, and any hand-written `*_VERSION="..."` or `version="..."` literal left
+in `install/` or `scripts/`. Change a pin only in the manifest, then
+regenerate. `make upgrade` does this for tode, terminal-browser, Crit, and Zed
+by writing the fetched pins and checksums into `assets:` with
+`generate-agent-configs.py --set-asset NAME.FIELD=VALUE`, which re-renders
+`scripts/lib/installer-pins.sh`. `pin: unknown` marks a component with no
+recorded upstream version, and plugin pins record the installed versions,
+which `make update` does not enforce yet.
 
 ### 💡 Develop the Setup Scripts
 

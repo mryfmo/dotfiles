@@ -229,6 +229,110 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             self.module.validate_agent_manifest()
         self.assertIn("(currently `codex`;", stderr.getvalue())
 
+    def asset_manifest(self) -> dict:
+        return {
+            "assets": {
+                "mise": {
+                    "source": "github-release",
+                    "upstream": "jdx/mise",
+                    "pin": "v1",
+                    "verify": "release-shasums",
+                    "install_path": "~/.local/bin/mise",
+                    "installer": "install/common/mise.sh",
+                    "render": {
+                        "file": "install/common/mise.sh",
+                        "constants": {"MISE_VERSION": "pin"},
+                    },
+                },
+                "brew": {
+                    "source": "git-commit",
+                    "upstream": "Homebrew/install",
+                    "pin": "abc",
+                    "verify": "sha256",
+                    "sha256": "def",
+                    "install_path": "/opt/homebrew",
+                    "installer": "install/macos/common/brew.sh",
+                },
+                "aws": {
+                    "source": "https-download",
+                    "upstream": "https://awscli.amazonaws.com",
+                    "pin": "2",
+                    "verify": "gpg",
+                    "gpg_fingerprint": "FB5D",
+                    "install_path": "~/.local/share/aws-cli",
+                    "installer": "install/ubuntu/common/aws_cli.sh",
+                },
+                "plugins": {
+                    "source": "claude-plugin",
+                    "upstream": "marketplaces",
+                    "pin": "per-plugin",
+                    "verify": "none",
+                    "plugins": {"crit": {"marketplace": "tomasz-tomczyk/crit", "pin": "1.8.10"}},
+                },
+            }
+        }
+
+    def test_assets_accept_complete_declarations_and_rendered_versions(self) -> None:
+        self.write_text_file("install/common/mise.sh", 'readonly MISE_VERSION="v1"\n')
+
+        self.module.validate_assets(self.asset_manifest())
+
+    def test_assets_reject_each_incomplete_declaration(self) -> None:
+        cases = {
+            "missing pin": lambda assets: assets["mise"].pop("pin"),
+            "unknown source": lambda assets: assets["mise"].update(source="ftp"),
+            "verify not valid for source": lambda assets: assets["brew"].update(
+                verify="gpg"
+            ),
+            "missing sha256": lambda assets: assets["brew"].pop("sha256"),
+            "missing gpg fingerprint": lambda assets: assets["aws"].pop(
+                "gpg_fingerprint"
+            ),
+            "missing install_path": lambda assets: assets["brew"].pop("install_path"),
+            "missing installer": lambda assets: assets["aws"].pop("installer"),
+            "float pin": lambda assets: assets["aws"].update(pin=1.1),
+            "float plugin pin": lambda assets: assets["plugins"]["plugins"]["crit"].update(
+                pin=1.1
+            ),
+        }
+        for name, breaks in cases.items():
+            with self.subTest(case=name):
+                manifest = self.asset_manifest()
+                breaks(manifest["assets"])
+                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(
+                    SystemExit
+                ):
+                    self.module.validate_assets(manifest)
+
+    def test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts(
+        self,
+    ) -> None:
+        cases = (
+            ("install/ubuntu/common/tool.sh", 'readonly TOOL_VERSION="1.2.3"\n', "TOOL_VERSION"),
+            ("install/ubuntu/common/copy.sh", 'readonly MISE_VERSION="v0"\n', "MISE_VERSION"),
+            ("scripts/lib/other.sh", 'OTHER_VERSION="2"\n', "OTHER_VERSION"),
+            ("scripts/tool.sh", '    local version="3.0"\n', "version"),
+            ("install/ubuntu/common/bare.sh", "readonly TOOL_VERSION=1.2.3\n", "TOOL_VERSION"),
+            ("install/ubuntu/common/single.sh", "TOOL_VERSION='1.2.3'; export TOOL_VERSION\n", "TOOL_VERSION"),
+        )
+        for relative, content, constant in cases:
+            with self.subTest(file=relative):
+                path = self.write_text_file(relative, content)
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_assets(self.asset_manifest())
+                self.assertIn(f"{relative} hard-codes {constant}", stderr.getvalue())
+                path.unlink()
+
+        for derived in (
+            'readonly TOOL_VERSION="${MISE_VERSION}"\n',
+            "TOOL_VERSION=${MISE_VERSION}\n",
+            'version="$(tool --version)"\n',
+            "local version\n",
+        ):
+            self.write_text_file("install/ubuntu/common/tool.sh", derived)
+            self.module.validate_assets(self.asset_manifest())
+
     def test_agent_manifest_rejects_missing_security_profile(self) -> None:
         manifest = self.write_valid_agent_manifest()
         del manifest["model_profiles"]["security"]

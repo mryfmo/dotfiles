@@ -375,7 +375,7 @@ function fetch_installer_pin() {
     version="$(sed -n 's/^VERSION="\(.*\)"$/\1/p' "${installer}" | head -n 1)"
     # The value is upstream-controlled and later written into a sourced shell
     # file; reject anything that is not a plausible version tag so a malicious
-    # VERSION line cannot inject executable shell into installer-pins.sh.
+    # VERSION line cannot inject executable shell into the rendered pins.
     [[ "${version}" =~ ^[A-Za-z0-9._+-]+$ ]] || return 1
     printf '%s\n' "${version}"
     shasum -a 256 "${installer}" | awk '{ print $1 }'
@@ -424,16 +424,17 @@ function fetch_zed_pin() {
 #
 # @description Bump terminal tool installers, Crit, and Zed binaries to the latest upstream releases.
 # @description
-#   Rewrites scripts/lib/installer-pins.sh wholesale; the diff is reviewed and
-#   committed like a mise config/lock bump. The subsequent agent asset
-#   regeneration phase installs the newly pinned versions.
+#   Writes the fetched pins and SHA256 values into assets: in
+#   home/dot_agents/agent-config.yaml through scripts/generate-agent-configs.py,
+#   which then renders scripts/lib/installer-pins.sh. Review and commit the
+#   manifest and rendered diff like a mise config/lock bump. The subsequent
+#   agent asset regeneration phase installs the newly pinned versions.
 #
 function bump_terminal_tool_pins() {
-    local repo_root pins tode_pin tb_pin crit_pin zed_pin
+    local repo_root tode_pin tb_pin crit_pin zed_pin
 
     section "terminal tool pins"
     repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-    pins="${repo_root}/scripts/lib/installer-pins.sh"
     tode_pin="$(fetch_installer_pin "https://tode.sh/install")" || {
         printf 'warning: unable to fetch the tode installer pin; keeping current pins\n' >&2
         return 1
@@ -451,36 +452,21 @@ function bump_terminal_tool_pins() {
         return 1
     }
 
-    if ! cat > "${pins}" << EOF
-#!/usr/bin/env bash
-# shellcheck disable=SC2034 # Variables are consumed by the scripts that source this file.
-
-# @file scripts/lib/installer-pins.sh
-# @brief Pinned upstream tool versions and artifact checksums.
-# @description
-#   Holds reviewed versions and SHA256 values for upstream installers and
-#   release binaries. The file is rewritten
-#   wholesale by scripts/upgrade-tools.sh (bump_terminal_tool_pins) and
-#   consumed by scripts/update-agent-assets.sh. Review and commit the diff
-#   like a mise config/lock bump. Assignments stay non-readonly so the file
-#   can be sourced again after a rewrite within the same process.
-
-TERMINAL_CODE_PIN_VERSION="$(sed -n 1p <<< "${tode_pin}")"
-TERMINAL_CODE_INSTALLER_SHA256="$(sed -n 2p <<< "${tode_pin}")"
-TERMINAL_BROWSER_PIN_VERSION="$(sed -n 1p <<< "${tb_pin}")"
-TERMINAL_BROWSER_INSTALLER_SHA256="$(sed -n 2p <<< "${tb_pin}")"
-CRIT_PIN_VERSION="$(sed -n 1p <<< "${crit_pin}")"
-CRIT_LINUX_AMD64_SHA256="$(sed -n 2p <<< "${crit_pin}")"
-CRIT_LINUX_ARM64_SHA256="$(sed -n 3p <<< "${crit_pin}")"
-ZED_PIN_VERSION="$(sed -n 1p <<< "${zed_pin}")"
-ZED_LINUX_AMD64_SHA256="$(sed -n 2p <<< "${zed_pin}")"
-ZED_LINUX_ARM64_SHA256="$(sed -n 3p <<< "${zed_pin}")"
-EOF
-    then
-        printf 'warning: unable to write %s; keeping current pins\n' "${pins}" >&2
+    if ! (cd "${repo_root}" && uv run --with pyyaml scripts/generate-agent-configs.py \
+        --set-asset "tode.pin=$(sed -n 1p <<< "${tode_pin}")" \
+        --set-asset "tode.sha256=$(sed -n 2p <<< "${tode_pin}")" \
+        --set-asset "terminal-browser.pin=$(sed -n 1p <<< "${tb_pin}")" \
+        --set-asset "terminal-browser.sha256=$(sed -n 2p <<< "${tb_pin}")" \
+        --set-asset "crit.pin=$(sed -n 1p <<< "${crit_pin}")" \
+        --set-asset "crit.sha256.linux-amd64=$(sed -n 2p <<< "${crit_pin}")" \
+        --set-asset "crit.sha256.linux-arm64=$(sed -n 3p <<< "${crit_pin}")" \
+        --set-asset "zed.pin=$(sed -n 1p <<< "${zed_pin}")" \
+        --set-asset "zed.sha256.linux-amd64=$(sed -n 2p <<< "${zed_pin}")" \
+        --set-asset "zed.sha256.linux-arm64=$(sed -n 3p <<< "${zed_pin}")"); then
+        printf 'warning: unable to write the asset manifest pins; keeping current pins\n' >&2
         return 1
     fi
-    printf 'Pinned tode %s, terminal-browser %s, crit %s, and zed %s; review and commit the installer-pins diff.\n' \
+    printf 'Pinned tode %s, terminal-browser %s, crit %s, and zed %s; review and commit the assets and installer-pins diff.\n' \
         "$(sed -n 1p <<< "${tode_pin}")" "$(sed -n 1p <<< "${tb_pin}")" "$(sed -n 1p <<< "${crit_pin}")" "$(sed -n 1p <<< "${zed_pin}")"
 }
 

@@ -37,11 +37,15 @@ def fail(message: str) -> NoReturn:
 
 
 def load_manifest() -> dict[str, Any]:
+    return parse_manifest(MANIFEST_PATH.read_text())
+
+
+def parse_manifest(text: str) -> dict[str, Any]:
     if yaml is None:
         fail(
             "PyYAML is required: uv run --with pyyaml scripts/generate-agent-configs.py"
         )
-    data = yaml.safe_load(MANIFEST_PATH.read_text())
+    data = yaml.safe_load(text)
     if not isinstance(data, dict):
         fail(f"{MANIFEST_PATH} must contain a YAML mapping")
     if data.get("schema_version") != 1:
@@ -154,6 +158,76 @@ def interactive_profile(manifest: dict[str, Any]) -> dict[str, Any]:
     return profiles[name]
 
 
+def codex_marketplace_revision(manifest: dict[str, Any], name: str) -> dict[str, Any]:
+    """Return the pinned marketplace revision recorded in assets.codex-plugins."""
+    plugin = (
+        manifest.get("assets", {}).get("codex-plugins", {}).get("plugins", {}).get(name, {})
+    )
+    return {key: plugin[key] for key in ("last_updated", "last_revision") if key in plugin}
+
+
+def asset_field(asset: dict[str, Any], path: str) -> str:
+    value: Any = asset
+    for part in path.split("."):
+        value = value[part]
+    return str(value)
+
+
+PLAIN_PIN_VALUE = re.compile(r"[A-Za-z0-9._+-]+")
+SETTABLE_ASSET_FIELD = re.compile(r"pin|sha256|sha256\.[A-Za-z0-9-]+")
+
+
+def set_asset_field(text: str, name: str, path: str, value: str) -> str:
+    """Rewrite one scalar under assets.<name> in the manifest text, keeping comments."""
+    if not SETTABLE_ASSET_FIELD.fullmatch(path):
+        fail(f"--set-asset may change only pin, sha256, or sha256.<arch>: {name}.{path}")
+    if not PLAIN_PIN_VALUE.fullmatch(value):
+        fail(f"assets.{name}.{path} is not a plain pin value: {value!r}")
+    lines = text.splitlines(keepends=True)
+    try:
+        index = lines.index("assets:\n")
+        index = lines.index(f"  {name}:\n", index)
+    except ValueError:
+        fail(f"agent-config.yaml has no assets.{name} entry")
+    parts = path.split(".")
+    for depth, part in enumerate(parts):
+        indent = " " * (4 + 2 * depth)
+        key = f"{indent}{part}:"
+        for index in range(index + 1, len(lines)):
+            line = lines[index]
+            if line.strip() and len(line) - len(line.lstrip(" ")) < len(indent):
+                fail(f"assets.{name} has no field {path}")
+            if line.startswith(key + " ") or line.rstrip("\n") == key:
+                break
+        else:
+            fail(f"assets.{name} has no field {path}")
+    lines[index] = f"{' ' * (4 + 2 * (len(parts) - 1))}{parts[-1]}: {value}\n"
+    return "".join(lines)
+
+
+def render_asset_constants(manifest: dict[str, Any]) -> dict[Path, str]:
+    """Rewrite each asset's NAME="..." assignment in its render target file."""
+    outputs: dict[Path, str] = {}
+    for name, asset in manifest.get("assets", {}).items():
+        render = asset.get("render")
+        if not render:
+            continue
+        path = ROOT / render["file"]
+        text = outputs.get(path)
+        if text is None:
+            text = path.read_text()
+        for constant, field in render["constants"].items():
+            pattern = re.compile(rf'^((?:readonly )?{re.escape(constant)}=)"[^"$`\\]*"$', re.M)
+            value = asset_field(asset, field)
+            if not PLAIN_PIN_VALUE.fullmatch(value):
+                fail(f"assets.{name}.{field} is not a plain pin value: {value!r}")
+            text, count = pattern.subn(lambda match: f'{match.group(1)}"{value}"', text)
+            if count != 1:
+                fail(f"{render['file']} must assign {constant} exactly once for assets.{name}")
+        outputs[path] = text
+    return outputs
+
+
 def render_codex(manifest: dict[str, Any]) -> str:
     codex = manifest["codex"]
     lines = [
@@ -259,6 +333,10 @@ def render_codex(manifest: dict[str, Any]) -> str:
             lines.append(f"{quote_toml_key(str(key))} = {quote_toml(value)}")
     for marketplace_name, marketplace_config in codex.get("marketplaces", {}).items():
         lines.extend(["", f"[marketplaces.{quote_toml_key(marketplace_name)}]"])
+        marketplace_config = {
+            **codex_marketplace_revision(manifest, marketplace_name),
+            **marketplace_config,
+        }
         for key, value in marketplace_config.items():
             lines.append(f"{quote_toml_key(str(key))} = {quote_toml(value)}")
     hooks = codex.get("hooks", {})
@@ -721,6 +799,7 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
             ROOT / "home/dot_agents" / source_path / ".codex-plugin/plugin.json"
         ] = render_codex_plugin(plugin)
     outputs.update(claude_skill_symlink_outputs())
+    outputs.update(render_asset_constants(manifest))
     return outputs
 
 
@@ -763,7 +842,44 @@ def main() -> None:
     parser.add_argument(
         "--check", action="store_true", help="verify generated files are up to date"
     )
+    parser.add_argument(
+        "--set-asset",
+        action="append",
+        default=[],
+        metavar="NAME.FIELD=VALUE",
+        help="rewrite one assets: pin or checksum in the manifest, then regenerate",
+    )
     args = parser.parse_args()
+    if args.set_asset and args.check:
+        fail("--set-asset cannot be combined with --check")
+
+    if args.set_asset:
+        manifest_path = ROOT / "home/dot_agents/agent-config.yaml"
+        text = manifest_path.read_text()
+        updates = []
+        for assignment in args.set_asset:
+            target, separator, value = assignment.partition("=")
+            name, dot, path = target.partition(".")
+            if not separator or not dot:
+                fail(f"--set-asset expects NAME.FIELD=VALUE: {assignment!r}")
+            text = set_asset_field(text, name, path, value)
+            updates.append((name, path, value))
+        yaml_error = yaml.YAMLError if yaml is not None else ()
+        try:
+            manifest = parse_manifest(text)
+        except yaml_error as error:
+            fail(f"--set-asset produced an unparsable manifest: {error}")
+        for name, path, value in updates:
+            current: Any = manifest["assets"][name]
+            for part in path.split("."):
+                current = current[part]
+            if not isinstance(current, str) or current != value:
+                fail(f"assets.{name}.{path} did not update to the string {value!r}: {current!r}")
+        outputs = render_asset_constants(manifest)
+        manifest_path.write_text(text)
+        write_outputs(outputs)
+        print("asset pins updated: " + ", ".join(f"{name}.{path}" for name, path, _ in updates))
+        return
 
     manifest = load_manifest()
     outputs = expected_outputs(manifest)

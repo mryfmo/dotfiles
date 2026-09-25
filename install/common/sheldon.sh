@@ -13,6 +13,7 @@ fi
 
 readonly BIN_DIR="${HOME}/.local/bin"
 readonly MISE_BIN="${HOME}/.local/bin/mise"
+# Rendered from assets.sheldon in home/dot_agents/agent-config.yaml; change it there.
 readonly SHELDON_VERSION="0.8.5"
 # crates.io API: https://crates.io/api/v1/crates/sheldon/0.8.5
 # Registry SHA-256: 43a2d8fc0be4474cfe2d603992c7e9765c9a0f87465aabcfc0603c1de4290b4d

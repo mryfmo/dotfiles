@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -1347,17 +1348,28 @@ EOF
             "Pinned tode v9.9.9, terminal-browser v9.9.9, crit v9.9.9, and zed v9.9.9",
             result.stdout,
         )
-        pins = (repo / "scripts/lib/installer-pins.sh").read_text()
-        self.assertIn('TERMINAL_CODE_PIN_VERSION="v9.9.9"', pins)
-        self.assertIn('TERMINAL_BROWSER_PIN_VERSION="v9.9.9"', pins)
-        self.assertIn('CRIT_PIN_VERSION="v9.9.9"', pins)
-        self.assertIn('ZED_PIN_VERSION="v9.9.9"', pins)
-        self.assertRegex(pins, r'TERMINAL_CODE_INSTALLER_SHA256="[0-9a-f]{64}"')
-        self.assertRegex(pins, r'CRIT_LINUX_AMD64_SHA256="[0-9a-f]{64}"')
-        self.assertRegex(pins, r'CRIT_LINUX_ARM64_SHA256="[0-9a-f]{64}"')
-        self.assertRegex(pins, r'ZED_LINUX_AMD64_SHA256="[0-9a-f]{64}"')
-        self.assertRegex(pins, r'ZED_LINUX_ARM64_SHA256="[0-9a-f]{64}"')
+        # The bump writes assets: through the generator; it never writes the
+        # rendered installer-pins.sh itself.
+        self.assertEqual(
+            (ROOT / "scripts/lib/installer-pins.sh").read_text(),
+            (repo / "scripts/lib/installer-pins.sh").read_text(),
+        )
         log = (repo / "commands.log").read_text()
+        generator = next(
+            line for line in log.splitlines()
+            if line.startswith("uv run --with pyyaml scripts/generate-agent-configs.py ")
+        )
+        for name in ("tode", "terminal-browser", "crit", "zed"):
+            self.assertIn(f"--set-asset {name}.pin=v9.9.9", generator)
+        for field in (
+            "tode.sha256",
+            "terminal-browser.sha256",
+            "crit.sha256.linux-amd64",
+            "crit.sha256.linux-arm64",
+            "zed.sha256.linux-amd64",
+            "zed.sha256.linux-arm64",
+        ):
+            self.assertRegex(generator, rf"--set-asset {re.escape(field)}=[0-9a-f]{{64}}(?: |$)")
         self.assertIn("curl -fsSL https://tode.sh/install", log)
         self.assertIn("curl -fsSL https://terminal-browser.sh/install", log)
         self.assertIn("crit-linux-amd64", log)

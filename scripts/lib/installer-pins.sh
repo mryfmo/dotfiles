@@ -10,6 +10,8 @@
 #   consumed by scripts/update-agent-assets.sh. Review and commit the diff
 #   like a mise config/lock bump. Assignments stay non-readonly so the file
 #   can be sourced again after a rewrite within the same process.
+#   The values render from assets: in home/dot_agents/agent-config.yaml
+#   through scripts/generate-agent-configs.py.
 
 TERMINAL_CODE_PIN_VERSION="v0.3.4"
 TERMINAL_CODE_INSTALLER_SHA256="026192e9f377af44f48c1c1e9f008c081369013d96901e5bff898f210272813c"

@@ -3,12 +3,15 @@
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
 
@@ -107,6 +110,250 @@ class GenerateAgentConfigsTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.module.ROOT = self.old_root
         shutil.rmtree(self.temp_dir)
+
+    def write_asset_fixture(self) -> dict:
+        pins = self.temp_dir / "scripts/lib/installer-pins.sh"
+        pins.parent.mkdir(parents=True)
+        pins.write_text('#!/usr/bin/env bash\nCRIT_PIN_VERSION="v0.0.1"\nCRIT_LINUX_AMD64_SHA256="old"\n')
+        installer = self.temp_dir / "install/common/mise.sh"
+        installer.parent.mkdir(parents=True)
+        installer.write_text('#!/usr/bin/env bash\nreadonly MISE_VERSION="v0.0.1"\necho "${MISE_VERSION}"\n')
+        return {
+            "assets": {
+                "mise": {
+                    "pin": "v2026.9.12",
+                    "render": {
+                        "file": "install/common/mise.sh",
+                        "constants": {"MISE_VERSION": "pin"},
+                    },
+                },
+                "crit": {
+                    "pin": "v0.20.3",
+                    "sha256": {"linux-amd64": "d3a3"},
+                    "render": {
+                        "file": "scripts/lib/installer-pins.sh",
+                        "constants": {
+                            "CRIT_PIN_VERSION": "pin",
+                            "CRIT_LINUX_AMD64_SHA256": "sha256.linux-amd64",
+                        },
+                    },
+                },
+                "agmsg": {"pin": "snapshot"},
+            }
+        }
+
+    def test_asset_constants_render_into_their_files(self) -> None:
+        outputs = self.module.render_asset_constants(self.write_asset_fixture())
+
+        self.assertEqual(
+            outputs[self.temp_dir / "install/common/mise.sh"],
+            '#!/usr/bin/env bash\nreadonly MISE_VERSION="v2026.9.12"\necho "${MISE_VERSION}"\n',
+        )
+        self.assertEqual(
+            outputs[self.temp_dir / "scripts/lib/installer-pins.sh"],
+            '#!/usr/bin/env bash\nCRIT_PIN_VERSION="v0.20.3"\nCRIT_LINUX_AMD64_SHA256="d3a3"\n',
+        )
+        self.assertEqual(len(outputs), 2)
+
+    def test_asset_constant_must_be_assigned_exactly_once(self) -> None:
+        manifest = self.write_asset_fixture()
+        manifest["assets"]["mise"]["render"]["constants"] = {"MISSING_VERSION": "pin"}
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.render_asset_constants(manifest)
+
+    def test_asset_pin_must_be_a_plain_value(self) -> None:
+        manifest = self.write_asset_fixture()
+        manifest["assets"]["mise"]["pin"] = "v1$(touch /tmp/x)"
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.render_asset_constants(manifest)
+
+    def test_check_reports_asset_render_drift(self) -> None:
+        manifest = self.write_asset_fixture()
+        self.module.load_manifest = lambda: manifest
+        self.module.expected_outputs = self.module.render_asset_constants
+        self.module.stale_profile_outputs = lambda _manifest: []
+        old_argv = sys.argv
+        self.addCleanup(setattr, sys, "argv", old_argv)
+
+        sys.argv = ["generate-agent-configs.py", "--check"]
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.main()
+        self.assertIn("install/common/mise.sh", stderr.getvalue())
+        self.assertIn("scripts/lib/installer-pins.sh", stderr.getvalue())
+
+        sys.argv = ["generate-agent-configs.py"]
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.module.main()
+        sys.argv = ["generate-agent-configs.py", "--check"]
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            self.module.main()
+        self.assertIn("up to date", stdout.getvalue())
+
+    MANIFEST_TEXT = (
+        "schema_version: 1\n"
+        "assets:\n"
+        "  # Pins live here.\n"
+        "  crit:\n"
+        "    pin: v0.0.1\n"
+        "    sha256:\n"
+        "      linux-amd64: old\n"
+        "    render:\n"
+        "      file: scripts/lib/installer-pins.sh\n"
+        "  zed:\n"
+        "    pin: v0.0.2\n"
+    )
+
+    def test_set_asset_field_rewrites_only_the_named_scalar(self) -> None:
+        text = self.module.set_asset_field(self.MANIFEST_TEXT, "crit", "pin", "v0.20.3")
+        text = self.module.set_asset_field(text, "crit", "sha256.linux-amd64", "d3a3")
+
+        self.assertEqual(
+            text,
+            self.MANIFEST_TEXT.replace("pin: v0.0.1", "pin: v0.20.3").replace(
+                "linux-amd64: old", "linux-amd64: d3a3"
+            ),
+        )
+        self.assertIn("  # Pins live here.\n", text)
+        self.assertIn("    pin: v0.0.2\n", text)
+
+    def test_set_asset_field_rejects_unknown_targets_and_unsafe_values(self) -> None:
+        cases = (
+            ("nosuch", "pin", "v1"),
+            ("crit", "nosuch", "v1"),
+            ("crit", "sha256.linux-arm64", "v1"),
+            ("zed", "sha256", "v1"),
+            ("crit", "pin", "v1$(id)"),
+        )
+        for name, path, value in cases:
+            with self.subTest(target=f"{name}.{path}", value=value):
+                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(
+                    SystemExit
+                ):
+                    self.module.set_asset_field(self.MANIFEST_TEXT, name, path, value)
+
+    @staticmethod
+    def parse_indented_mapping(text: str) -> dict:
+        """Parse the fixture's nested key: value lines without PyYAML."""
+        root: dict = {}
+        stack = [(-1, root)]
+        for line in text.splitlines():
+            if not line.strip() or line.lstrip().startswith("#"):
+                continue
+            indent = len(line) - len(line.lstrip(" "))
+            key, _, value = line.strip().partition(":")
+            while stack[-1][0] >= indent:
+                stack.pop()
+            if value.strip():
+                stack[-1][1][key] = value.strip()
+            else:
+                stack[-1][1][key] = {}
+                stack.append((indent, stack[-1][1][key]))
+        return root
+
+    def test_set_asset_updates_the_manifest_and_renders_its_pins(self) -> None:
+        manifest_path = self.temp_dir / "home/dot_agents/agent-config.yaml"
+        manifest_path.parent.mkdir(parents=True)
+        manifest_path.write_text(self.MANIFEST_TEXT)
+        pins = self.temp_dir / "scripts/lib/installer-pins.sh"
+        pins.parent.mkdir(parents=True)
+        pins.write_text('CRIT_PIN_VERSION="v0.0.1"\nCRIT_LINUX_AMD64_SHA256="old"\n')
+        self.module.parse_manifest = self.parse_indented_mapping
+        real_render = self.module.render_asset_constants
+
+        def render(manifest: dict) -> dict:
+            manifest["assets"]["crit"]["render"]["constants"] = {
+                "CRIT_PIN_VERSION": "pin",
+                "CRIT_LINUX_AMD64_SHA256": "sha256.linux-amd64",
+            }
+            return real_render(manifest)
+
+        self.module.render_asset_constants = render
+        old_argv = sys.argv
+        self.addCleanup(setattr, sys, "argv", old_argv)
+        sys.argv = [
+            "generate-agent-configs.py",
+            "--set-asset",
+            "crit.pin=v0.20.3",
+            "--set-asset",
+            "crit.sha256.linux-amd64=d3a3",
+        ]
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            self.module.main()
+
+        self.assertIn("asset pins updated: crit.pin, crit.sha256.linux-amd64", stdout.getvalue())
+        self.assertIn("    pin: v0.20.3\n", manifest_path.read_text())
+        self.assertEqual(
+            pins.read_text(), 'CRIT_PIN_VERSION="v0.20.3"\nCRIT_LINUX_AMD64_SHA256="d3a3"\n'
+        )
+
+    def test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid(self) -> None:
+        manifest_path = self.temp_dir / "home/dot_agents/agent-config.yaml"
+        manifest_path.parent.mkdir(parents=True)
+        manifest_path.write_text(self.MANIFEST_TEXT)
+        old_argv = sys.argv
+        self.addCleanup(setattr, sys, "argv", old_argv)
+        sys.argv = [
+            "generate-agent-configs.py",
+            "--set-asset",
+            "crit.pin=v0.20.3",
+            "--set-asset",
+            "crit.nosuch=1",
+        ]
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.main()
+        self.assertEqual(manifest_path.read_text(), self.MANIFEST_TEXT)
+
+    def test_set_asset_refuses_fields_other_than_pins_and_checksums(self) -> None:
+        for path in ("render.file", "upstream", "sha256.linux-amd64.extra"):
+            with self.subTest(path=path):
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.set_asset_field(self.MANIFEST_TEXT, "crit", path, "v1")
+                self.assertIn("may change only pin, sha256, or sha256.<arch>", stderr.getvalue())
+
+    def run_set_asset_with_parser(self, parser) -> str:
+        manifest_path = self.temp_dir / "home/dot_agents/agent-config.yaml"
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        manifest_path.write_text(self.MANIFEST_TEXT)
+        self.module.parse_manifest = parser
+        old_argv = sys.argv
+        self.addCleanup(setattr, sys, "argv", old_argv)
+        sys.argv = ["generate-agent-configs.py", "--set-asset", "crit.sha256.linux-amd64=1234"]
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.main()
+        self.assertEqual(manifest_path.read_text(), self.MANIFEST_TEXT)
+        return stderr.getvalue()
+
+    def test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string(self) -> None:
+        def parse_digits_as_int(text: str) -> dict:
+            manifest = self.parse_indented_mapping(text)
+            sha256 = manifest["assets"]["crit"]["sha256"]
+            sha256["linux-amd64"] = int(sha256["linux-amd64"])
+            return manifest
+
+        stderr = self.run_set_asset_with_parser(parse_digits_as_int)
+
+        self.assertIn("did not update to the string '1234': 1234", stderr)
+
+    def test_set_asset_reports_an_unparsable_manifest_without_a_traceback(self) -> None:
+        class YAMLError(Exception):
+            pass
+
+        self.module.yaml = types.SimpleNamespace(YAMLError=YAMLError)
+
+        def broken(_text: str) -> dict:
+            raise YAMLError("mapping values are not allowed here")
+
+        stderr = self.run_set_asset_with_parser(broken)
+
+        self.assertIn("--set-asset produced an unparsable manifest: mapping values", stderr)
+        self.assertNotIn("Traceback", stderr)
 
     def test_repository_marketplace_is_a_runtime_owned_seed(self) -> None:
         manifest = (ROOT / "home/dot_agents/agent-config.yaml").read_text()

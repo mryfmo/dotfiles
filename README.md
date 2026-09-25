@@ -310,10 +310,19 @@ lifecycle: dedicated workspace creation, pane wait/prompt handling, layout
 repair, and attach-mode healing. A claude worker also gets an unattended
 `Down`+`Enter` sent to its workspace-trust dialog on first start, since that
 dialog otherwise defaults to "No" and exits. Because agmsg resolves identity by
-project path and agent type, a claude worker would share the orchestrator's
-`claude-code` identity, so `herdr-agents` exits 2 before touching panes unless
-a second `claude-code` identity (the worker role) is registered for the
-directory; this is a temporary guard until agmsg roles replace it. Attach mode renames the current
+project path and agent type, a claude worker shares the orchestrator's
+`claude-code` identity, so `herdr-agents` exits 2 before touching panes until
+a second `claude-code` identity is registered for the directory with
+`~/.agents/skills/agmsg/scripts/join.sh <team> <role> claude-code <dir>`.
+Registering it only lifts this temporary guard: both sessions still resolve to
+the same inbox (`whoami.sh` reports multiple identities and `check-inbox.sh`
+takes the first), so separate delivery needs `worker_kind=codex` until agmsg
+roles replace the guard. With `worker_kind: claude` applied by `make update`,
+the Claude Code SessionStart `herdr-agents --attach` hook therefore also exits
+2 on every session start in a Herdr pane outside a `herdr-agents`-managed
+layout, logging only to `~/.config/herdr/herdr-agents.log`, until that identity
+exists or `worker_kind` is `codex`; `herdr-agents --bootstrap-agmsg` prints a
+hint while the worker identity is missing. Attach mode renames the current
 Claude pane, creates a missing worker pane with
 `herdr pane split <claude-pane> --direction right --cwd <worktree>`, then starts
 the worker with `herdr agent start <name> --kind <worker_kind> --pane <id>`.

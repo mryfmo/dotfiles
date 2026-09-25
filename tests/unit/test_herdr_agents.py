@@ -1399,12 +1399,17 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
                 result = run()
 
                 self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                scripts = self.home_dir / ".agents/skills/agmsg/scripts"
                 self.assertIn(
                     "herdr-agents: worker_kind=claude would share the orchestrator's "
-                    f"agmsg identity on {self.workdir.resolve()} (only 1 claude-code "
-                    "identity registered). Register a worker role first (join.sh "
-                    f"<team> <role> claude-code {self.workdir.resolve()}) or use "
-                    "worker_kind=codex. See remediation-plan-20260925.md §Phase 3.",
+                    f"claude-code agmsg identity on {self.workdir.resolve()} (1 "
+                    "claude-code identity registered); refusing so messages do not "
+                    "collide silently. Registering a second identity "
+                    f"({scripts}/join.sh <team> <role> claude-code "
+                    f"{self.workdir.resolve()}) lifts this guard but does not give "
+                    "the two sessions distinct delivery until agmsg roles land; use "
+                    "worker_kind=codex for separate delivery now. See the "
+                    "herdr-agents section of the dotfiles README.",
                     result.stderr,
                 )
                 calls = self.calls_path.read_text().splitlines()
@@ -1468,6 +1473,28 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
                     "Multiple agmsg Claude Code identities" in result.stderr,
                     result.stderr,
                 )
+
+    def test_bootstrap_with_claude_worker_hints_at_a_missing_worker_identity(
+        self,
+    ) -> None:
+        scripts = self.install_agmsg_fakes()
+        self.write_agmsg_claude_hooks(scripts)
+
+        claude = self.run_agmsg_bootstrap_helper(
+            extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"}
+        )
+        codex = self.run_agmsg_bootstrap_helper(
+            extra_env={"HERDR_AGENTS_WORKER_KIND": "codex"}
+        )
+
+        self.assertEqual(claude.returncode, 0, claude.stdout + claude.stderr)
+        self.assertIn(
+            f"No agmsg Claude Code worker identity for {self.workdir}; herdr-agents "
+            "full and --attach modes refuse a claude worker until a second "
+            "claude-code identity is registered.",
+            claude.stderr,
+        )
+        self.assertNotIn("worker identity for", codex.stderr)
 
     def test_bootstrap_with_claude_worker_leaves_codex_hooks_alone(self) -> None:
         scripts = self.install_agmsg_fakes(identities_output="")

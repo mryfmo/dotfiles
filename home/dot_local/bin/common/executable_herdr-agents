@@ -528,7 +528,8 @@ function distinct_agmsg_identity_count() {
 # @description Refuse a worker that would share the orchestrator's agmsg identity.
 #   agmsg resolves identity by (project path, agent type), so a claude worker on
 #   the orchestrator's workdir needs a second registered claude-code identity.
-#   Temporary guard until the agmsg role/seat model (remediation plan Phase 3).
+#   A second identity only lifts this guard; it does not give distinct delivery.
+#   Temporary guard until the agmsg role/seat model replaces it.
 # @arg $1 string Worker kind.
 # @arg $2 workdir Resolved project directory.
 # @exitcode 2 If the worker would resolve to the orchestrator's identity.
@@ -540,8 +541,8 @@ function require_distinct_worker_identity() {
     [[ "$(worker_agmsg_type "${kind}")" == claude-code ]] || return 0
     count="$(distinct_agmsg_identity_count "${workdir}" claude-code)"
     if ((count < 2)); then
-        printf "herdr-agents: worker_kind=%s would share the orchestrator's agmsg identity on %s (only %s claude-code identity registered). Register a worker role first (join.sh <team> <role> claude-code %s) or use worker_kind=codex. See remediation-plan-20260925.md §Phase 3.\n" \
-            "${kind}" "${workdir}" "${count}" "${workdir}" >&2
+        printf "herdr-agents: worker_kind=%s would share the orchestrator's claude-code agmsg identity on %q (%s claude-code identity registered); refusing so messages do not collide silently. Registering a second identity (%s/join.sh <team> <role> claude-code %q) lifts this guard but does not give the two sessions distinct delivery until agmsg roles land; use worker_kind=codex for separate delivery now. See the herdr-agents section of the dotfiles README.\n" \
+            "${kind}" "${workdir}" "${count}" "${HOME}/.agents/skills/agmsg/scripts" "${workdir}" >&2
         exit 2
     fi
 }
@@ -613,6 +614,9 @@ function bootstrap_agmsg() {
         if [[ -z ${identity_list} ]]; then
             printf 'No agmsg %s identity for %s; run: %s/join.sh <team> <agent-name> %s "%s"\n' \
                 "${agent_label}" "${workdir}" "${scripts}" "${agent_type}" "${workdir}" >&2
+        elif ((max_identities == 2)) && [[ ${identity_list} != *$'\n'* ]]; then
+            printf 'No agmsg Claude Code worker identity for %s; herdr-agents full and --attach modes refuse a claude worker until a second claude-code identity is registered.\n' \
+                "${workdir}" >&2
         elif (($(grep -c . <<< "${identity_list}") > max_identities)); then
             printf 'Multiple agmsg %s identities are registered for %s; worker identity is ambiguous.\n' \
                 "${agent_label}" "${workdir}" >&2

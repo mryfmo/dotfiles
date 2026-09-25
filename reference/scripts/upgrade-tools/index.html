@@ -3657,7 +3657,7 @@
 
 
 <h1 id="scriptsupgrade-toolssh">scripts/upgrade-tools.sh<a class="headerlink" href="#scriptsupgrade-toolssh" title="Permanent link">&para;</a></h1>
-<p>Keeps the bootstrap path stable by moving package-manager upgrades into an intentional lifecycle command. The default mode upgrades user-level tooling and Homebrew-managed packages when those managers are available. Pass <code>--system</code> to include operating-system package upgrades such as apt.</p>
+<p>Keeps the bootstrap path stable by moving package-manager upgrades into an intentional lifecycle command. The default mode upgrades user-level tooling and Homebrew-managed packages when those managers are available. Pass <code>--system</code> to include operating-system package upgrades such as apt. Upgrades edit this checkout's home/dot_mise; ~/.config/mise is an applied copy.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>scripts/upgrade-tools.sh</code></li>
@@ -3666,6 +3666,7 @@
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
+<li><code>apply_upgraded_mise_config</code></li>
 <li><code>bump_terminal_tool_pins</code></li>
 <li><code>current_mise_tools</code></li>
 <li><code>fetch_crit_pin</code></li>
@@ -3705,8 +3706,13 @@
 <span class="c1">#   intentional lifecycle command. The default mode upgrades user-level tooling</span>
 <span class="c1">#   and Homebrew-managed packages when those managers are available. Pass</span>
 <span class="c1">#   `--system` to include operating-system package upgrades such as apt.</span>
+<span class="c1">#   Upgrades edit this checkout's home/dot_mise; ~/.config/mise is an applied copy.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
+
+<span class="nv">repo_root</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">/.."</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="k">)</span><span class="s2">"</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">MISE_CONFIG_DIR</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_CONFIG_DIR</span><span class="k">:-</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="p">/home/dot_mise</span><span class="si">}</span><span class="s2">"</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">MISE_CEILING_PATHS</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">"</span>
 
 <span class="nv">include_system</span><span class="o">=</span><span class="nb">false</span>
 <span class="nv">DEFAULT_FORBIDDEN_HOMEBREW_FORMULAE</span><span class="o">=</span><span class="s2">"node node@* python python@* python3 pip npm pnpm yarn claude"</span>
@@ -3881,7 +3887,7 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>mise_config_dir
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>status
 
-<span class="w">    </span><span class="nv">mise_config_dir</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_CONFIG_DIR</span><span class="k">:-</span><span class="si">${</span><span class="nv">XDG_CONFIG_HOME</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="p">/.config</span><span class="si">}</span><span class="p">/mise</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">mise_config_dir</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">MISE_CONFIG_DIR</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="nv">isolated_xdg_config_home</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">TMPDIR</span><span class="k">:-</span><span class="p">/tmp</span><span class="si">}</span><span class="s2">/mise-git-config.XXXXXX"</span><span class="k">)</span><span class="s2">"</span>
 <span class="w">    </span><span class="nv">GIT_CONFIG_NOSYSTEM</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
 <span class="w">        </span><span class="nv">GIT_CONFIG_GLOBAL</span><span class="o">=</span>/dev/null<span class="w"> </span><span class="se">\</span>
@@ -4271,6 +4277,19 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Apply updated mise pins only from the configured chezmoi checkout.</span>
+<span class="k">function</span><span class="w"> </span>apply_upgraded_mise_config<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>source_path<span class="w"> </span>source_root
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">source_path</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>chezmoi<span class="w"> </span>source-path<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">        </span><span class="nv">source_root</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="nv">$source_path</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--show-toplevel<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">        </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="nv">$source_root</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="nv">$repo_root</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>chezmoi<span class="w"> </span>apply<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.config/mise/config.toml"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.config/mise/mise.lock"</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'pins updated in %s; ~/.config/mise follows after merge and make update\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$repo_root</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Run explicit upgrades for managed tooling.</span>
 <span class="c1"># @arg $@ string Command-line arguments.</span>
 <span class="c1">#</span>
@@ -4287,6 +4306,9 @@
 <span class="w">    </span>run_optional_phase<span class="w"> </span><span class="s2">"GitHub CLI extension upgrade"</span><span class="w"> </span>upgrade_gh_extensions
 <span class="w">    </span>run_optional_phase<span class="w"> </span><span class="s2">"CCR adoption gate notice"</span><span class="w"> </span>report_ccr_adoption_gates
 <span class="w">    </span>run_required_phase<span class="w"> </span><span class="s2">"apt system upgrade"</span><span class="w"> </span>upgrade_apt_packages
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">required_failures</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>run_required_phase<span class="w"> </span><span class="s2">"apply upgraded mise config"</span><span class="w"> </span>apply_upgraded_mise_config
+<span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'\nUpgrade summary: required failures: %d; optional warnings: %d\n'</span><span class="w"> </span><span class="se">\</span>
 <span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">required_failures</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">optional_warnings</span><span class="si">}</span><span class="s2">"</span>

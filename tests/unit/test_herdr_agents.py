@@ -998,6 +998,20 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             )
         )
 
+    def test_bootstrap_accepts_same_identity_in_multiple_teams(self) -> None:
+        scripts = self.install_agmsg_fakes(
+            identities_output="team-a\tcodex-worker\nteam-b\tcodex-worker",
+            claude_identities_output="team-a\tclaude-deep-dot\nteam-b\tclaude-deep-dot",
+        )
+        self.write_agmsg_turn_hook(scripts)
+        self.write_agmsg_claude_hooks(scripts)
+
+        result = self.run_agmsg_bootstrap_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn("Multiple agmsg", result.stderr)
+        self.assertNotIn("No agmsg", result.stderr)
+
     def test_bootstrap_only_warns_for_multiple_claude_identities(self) -> None:
         scripts = self.install_agmsg_fakes(
             claude_identities_output=(

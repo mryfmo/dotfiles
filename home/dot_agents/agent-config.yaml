@@ -175,7 +175,7 @@ claude:
       timeout: 10
       status_message: Evaluating permission request
     session_start:
-      - matcher: "*"
+      - matcher: "^(startup|resume|clear|compact|fork)$"
         hooks:
           - type: command
             # Must stay byte-identical to herdr's own SessionStart entry after

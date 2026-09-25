@@ -24,6 +24,7 @@ function run_update_fixture() {
     local git_upstream="${9:-origin/feature/test}"
     local git_dirty="${10:-0}"
     local git_pull_exit="${11:-0}"
+    local git_unmerged="${12:-0}"
     local fixture="${BATS_TEST_TMPDIR}/update-${BATS_TEST_NUMBER}"
 
     mkdir -p "${fixture}/bin" "${fixture}/scripts" \
@@ -50,6 +51,7 @@ case "\$*" in
     "branch --show-current") printf '%s\n' '${git_branch}' ;;
     "rev-parse --abbrev-ref --symbolic-full-name @{upstream}") printf '%s\n' '${git_upstream}' ;;
     "diff --quiet"|"diff --cached --quiet") exit ${git_dirty} ;;
+    "ls-files -u") if [ ${git_unmerged} -eq 1 ]; then printf '100644 conflict 1\\tfile\\n'; fi ;;
     "pull --ff-only") printf 'git pull --ff-only\n' >> "${fixture}/calls"; exit ${git_pull_exit} ;;
 esac
 EOF
@@ -93,6 +95,14 @@ EOF
     [ "$status" -eq 0 ]
     [ "$(grep -c '^git pull --ff-only$' "${UPDATE_FIXTURE}/calls")" -eq 0 ]
     [[ "$output" == *"Notice: local source not pulled (tracked files have staged or unstaged changes); run 'git -C ${UPDATE_FIXTURE_PHYSICAL} pull' to fetch remote updates."* ]]
+}
+
+@test "[common] update reports unmerged files before the dirty notice" {
+    run_update_fixture running 0 0 0 0 0 "" main origin/main 1 0 1
+    [ "$status" -eq 0 ]
+    ! grep -q '^git pull --ff-only$' "${UPDATE_FIXTURE}/calls"
+    [[ "$output" == *"index has unmerged files; resolve the conflict (git add/commit or git reset) before pulling"* ]]
+    [[ "$output" != *"tracked files have staged or unstaged changes"* ]]
 }
 
 @test "[common] update reloads a running Herdr server exactly once" {

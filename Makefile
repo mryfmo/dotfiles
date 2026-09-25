@@ -46,7 +46,9 @@ update:
 	@branch="$$(git branch --show-current 2>/dev/null || true)"; \
 	upstream="$$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true)"; \
 	reason=""; \
-	if [ "$$branch" != main ]; then \
+	if [ -n "$$(git ls-files -u)" ]; then \
+		reason="index has unmerged files; resolve the conflict (git add/commit or git reset) before pulling"; \
+	elif [ "$$branch" != main ]; then \
 		reason="current branch is $${branch:-detached}, not main"; \
 	elif [ "$$upstream" != origin/main ]; then \
 		reason="upstream is $${upstream:-unset}, not origin/main"; \

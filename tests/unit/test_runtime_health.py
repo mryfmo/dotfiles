@@ -575,6 +575,7 @@ EOF
         branch: str = "main",
         upstream: str = "origin/main",
         dirty: bool = False,
+        unmerged: bool = False,
     ) -> tuple[subprocess.CompletedProcess[str], Path]:
         repo = self.temp_dir / f"update-{'dirty' if dirty else 'clean'}"
         home = repo / "home"
@@ -589,6 +590,7 @@ EOF
                 "branch --show-current") printf '{branch}\\n' ;;
                 "rev-parse --abbrev-ref --symbolic-full-name @{{upstream}}") printf '{upstream}\\n' ;;
                 "diff --quiet"|"diff --cached --quiet") exit {int(dirty)} ;;
+                "ls-files -u") if [ {int(unmerged)} -eq 1 ]; then printf '100644 conflict 1\\tfile\\n'; fi ;;
                 "pull --ff-only") printf 'git pull --ff-only\\n' >> "$TEST_LOG" ;;
             esac
             """,
@@ -642,6 +644,26 @@ EOF
             result.stdout,
         )
         self.assertIn(" pull' to fetch remote updates.", result.stdout)
+
+    def test_make_update_reports_unmerged_index_before_dirty_notice(self) -> None:
+        result, log = self.update_fixture(dirty=True, unmerged=True)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertNotIn("git pull --ff-only", log.read_text())
+        self.assertIn(
+            "index has unmerged files; resolve the conflict "
+            "(git add/commit or git reset) before pulling",
+            result.stdout,
+        )
+        self.assertNotIn("tracked files have staged or unstaged changes", result.stdout)
+
+    def test_make_update_reports_unmerged_feature_branch_before_branch_notice(self) -> None:
+        result, log = self.update_fixture(branch="feature/x", unmerged=True)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertNotIn("git pull --ff-only", log.read_text())
+        self.assertIn("index has unmerged files", result.stdout)
+        self.assertNotIn("current branch is", result.stdout)
 
     def test_agent_launchers_do_not_hardcode_model_ids(self) -> None:
         herdr = (ROOT / "home/dot_local/bin/common/executable_herdr-agents").read_text()

@@ -1092,6 +1092,50 @@ EOF
         }
         return repo, env
 
+    def test_upgrade_changes_checkout_not_live_mise_symlink_target(self) -> None:
+        for override in (False, True):
+            with self.subTest(override=override):
+                repo, env = self.upgrade_fixture(f"symlink-{override}")
+                main_config = self.temp_dir / f"main-{override}"
+                main_config.mkdir()
+                checkout_config = repo / "home/dot_mise"
+                checkout_config.mkdir()
+                selected_config = repo / "override" if override else checkout_config
+                selected_config.mkdir(exist_ok=True)
+                live_config = Path(env["HOME"]) / ".config/mise"
+                live_config.mkdir(parents=True)
+                for name in ("config.toml", "mise.lock"):
+                    (main_config / name).write_text("main-original\n")
+                    (selected_config / name).write_text("checkout-original\n")
+                    (live_config / name).symlink_to(main_config / name)
+                env.pop("MISE_CONFIG_DIR", None)
+                env.pop("MISE_CEILING_PATHS", None)
+                if override:
+                    env["MISE_CONFIG_DIR"] = str(selected_config)
+                original_mise = repo / "bin/mise-original"
+                (repo / "bin/mise").rename(original_mise)
+                self.executable(
+                    repo / "bin/mise",
+                    f"""
+                    if [ "$1" = upgrade ] || [ "$1" = use ]; then
+                        target="${{MISE_CONFIG_DIR:-$HOME/.config/mise}}"
+                        [ "${{MISE_CEILING_PATHS:-}}" = "{repo.resolve()}" ] || target="$HOME/.config/mise"
+                        printf 'generated config\\n' > "$target/config.toml"
+                        printf 'generated lock\\n' > "$target/mise.lock"
+                    fi
+                    exec "{original_mise}" "$@"
+                    """,
+                )
+                result = self.run_test_command(
+                    ["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env
+                )
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                for name in ("config.toml", "mise.lock"):
+                    self.assertEqual((main_config / name).read_text(), "main-original\n")
+                    self.assertNotEqual(
+                        (selected_config / name).read_text(), "checkout-original\n"
+                    )
+
     def test_upgrade_required_failures_are_nonzero_and_independent(self) -> None:
         cases = (
             ("homebrew", "Darwin", []),

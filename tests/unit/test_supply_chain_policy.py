@@ -184,7 +184,51 @@ install_starship
         self.assertIn("locked = true", config)
         self.assertIn("lockfile = true", config)
         self.assertTrue((ROOT / "home/dot_mise/mise.lock").is_file())
-        self.assertTrue((ROOT / "home/dot_config/mise/symlink_mise.lock.tmpl").is_file())
+        for name in ("config.toml", "mise.lock"):
+            self.assertFalse((ROOT / f"home/dot_config/mise/symlink_{name}.tmpl").exists())
+            template = ROOT / f"home/dot_config/mise/{name}.tmpl"
+            self.assertTrue(template.is_file())
+            with tempfile.TemporaryDirectory() as temporary:
+                config = Path(temporary) / "chezmoi.toml"
+                config.write_text("")
+                result = subprocess.run(
+                    ["chezmoi", "--config", str(config), "--source", str(ROOT / "home"),
+                     "execute-template", template.read_text()],
+                    check=True, capture_output=True,
+                )
+            self.assertEqual(result.stdout, (ROOT / f"home/dot_mise/{name}").read_bytes())
+
+    def test_mise_apply_replaces_live_symlinks_with_independent_copies(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Path(temporary)
+            source = fixture / "source"
+            destination = fixture / "home"
+            managed = source / "dot_config/mise"
+            applied = destination / ".config/mise"
+            pins = source / "dot_mise"
+            for directory in (managed, applied, pins):
+                directory.mkdir(parents=True)
+            for name in ("config.toml", "mise.lock"):
+                (pins / name).write_bytes((ROOT / f"home/dot_mise/{name}").read_bytes())
+                (managed / f"{name}.tmpl").write_text(
+                    (ROOT / f"home/dot_config/mise/{name}.tmpl").read_text()
+                )
+                (applied / name).symlink_to(pins / name)
+            config = fixture / "chezmoi.toml"
+            config.write_text("")
+            subprocess.run(
+                ["chezmoi", "--config", str(config), "--source", str(source),
+                 "--destination", str(destination), "--persistent-state", str(fixture / "state.boltdb"),
+                 "apply", "--force"],
+                check=True, capture_output=True,
+            )
+            for name in ("config.toml", "mise.lock"):
+                self.assertFalse((applied / name).is_symlink())
+                self.assertEqual((applied / name).read_bytes(), (pins / name).read_bytes())
+                (applied / name).write_text("runtime-only change\n")
+                self.assertEqual(
+                    (pins / name).read_bytes(), (ROOT / f"home/dot_mise/{name}").read_bytes()
+                )
 
     def test_mise_npm_backend_uses_npm_and_limits_lifecycle_scripts(self):
         with (ROOT / "home/dot_mise/config.toml").open("rb") as config_file:

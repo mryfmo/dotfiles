@@ -1,0 +1,2 @@
+# Sandbox
+OpenSandbox not used. Read-only analysis in the main checkout: git log/show/diff/merge-tree (merge-tree --write-tree writes only unreferenced objects to the shared object store; no ref, index, or worktree change), gh api GETs, and one CompactionDB `memory add`. No tracked edit, no git state change, no W1/W2 write, no chezmoi apply, no tests run. An attempted `git archive b43e36b | tar -x` into the session scratchpad to run the merged-tree unittest was denied by the permission prompt and not retried.

@@ -1,0 +1,36 @@
+# AGMSG-TASK refkit-P6: 参考実装とテストの是正（examples/flowapprove_core）
+
+Covers plan tasks P6-01 … P6-11 (第 2 部 §8). Findings G-01 … G-16, E-05. Plan: `/home/moriya/Workspace/dotfiles/.agents/worklog/claude/ai-references-vivid-sparrow.md` — read 第 1 部 §G fully. Sources: `/home/moriya/Workspace/dotfiles/.orchestration/reports/P0-04-sources.md` §3 (pytest-bdd tags→markers), §4 (mutmut 3 scope/config), §6 (Hypothesis derandomize/database), §7 (pytest strict markers / JUnit time). Prerequisites are all on your branch `feat/references-kit-v4` as of merge commit 126e465 (PRD 0.5.0, BDD 0.5.0 incl. SCN-043〜053, ADR-0003/0004, P2-A/B/C tools). Evidence field for per-test time is `duration_s` (per case); UT_SAMPLE §5 wording is fixed later by P8-b — do not touch it. Requirements are the PRD/BDD text — derive every expected value from them, never from the implementation.
+
+Toolchain: `references/examples/flowapprove_core/.venv` (created in P1: pytest, hypothesis, pytest-bdd, coverage, mutmut; add nothing). Run tests with that venv's python from `references/examples/flowapprove_core/`. `extract` may be run so `features/FEAT-004.feature` reflects BDD 0.5.0 for local runs, but do not commit `features/`, `04_TRACEABILITY.md` or `evidence/` (P9).
+
+## Scope (allowed_files)
+`references/examples/flowapprove_core/**` (except `.venv`), `references/ut/UT_SAMPLE.md` and `references/ct/CT_SAMPLE.md` (test-condition tables, 由来, テスト名, 実行結果 table shape from P2-B — values stay `not_run`/blank until P9; prose claims about coverage/mutation/durations must be replaced by references to the evidence keys), `references/ut/UT_GUIDE.md` §7 (mutmut scope note only), `.orchestration/{reports,validation,sandboxes,learning,autoskill/runs}/refkit-P6.md`.
+
+## Required changes (red→green evidence required where marked ★)
+1. ★ **G-01** `edit()` refuses every state except DRAFT/RETURNED with a new `Refusal.NOT_EDITABLE` (「編集できない状態」; PRD FR-005 0.5.0). UT: edit × {SUBMITTED, APPROVED, REJECTED, WITHDRAWN} → refused, fields unchanged, `content_version`/`rev` unchanged. Show the new tests failing on the old code (git stash or a scratch copy) and passing after.
+2. ★ **G-02** idempotency key = (actor, app_id, action, request_id) per PRD 10 章 用語集「同じ決裁要求」; add `sweep(now)` (or in-`decide` eviction) removing saved results older than `RESEND_WINDOW`. CT: same `request_id` from another actor / on another app / with another action is evaluated normally (not replayed); replay after 25h → 競合 (SCN-025); replay by the same key → same result, one audit row (SCN-023). Red→green shown.
+3. ★ **G-03 / G-04 / G-06** split `create()` (stores a new DRAFT owned by the actor) from `submit(actor, app_id)` (loads the stored object, checks owner/state, never stores the caller's object); unknown or foreign `app_id` → `Refusal.NOT_FOUND` for `edit`, `submit`, `decide` alike (byte-identical `Result` for missing vs foreign — assert it); `decide` with `action ∉ DECISIONS` → `Refusal.BAD_REQUEST`(「入力不備」) — use the existing `DECISIONS` constant; transactions mutate copies and swap on commit so a failed transaction leaves callers' objects untouched. Red→green for the forged-audit case and for the existence oracle.
+4. **G-05** `state_of/history/notifications(actor, …)` apply authorization (org, role, owner); other-org/AI actors get NOT_FOUND. Extend CT-003 to 一覧/詳細 branches of NVT-002 and update CT_SAMPLE §5 (remove 「未着手」 for those branches).
+5. **G-07** rewrite `test_transition_table_is_exhaustive` with a literal 36-row expected table transcribed from PRD 6 章 状態表 (docstring cites PRD version 0.5.0); it must not import `TRANSITIONS`. Prove by a manual mutation (remove one row from `TRANSITIONS`) that the test fails.
+6. **G-08** confirm from sources §4 what mutmut 3 mutates; write the fact into UT_GUIDE §7 (定数は対象外 if that is what the docs say; if the docs do not say, state 「公式文書に明記なし。本キットでの実行では定数の変異は生成されなかった」 and show the mutant list). Add a 「境界カタログ」 test: a table {constant: (PRD id, value)} with both-side boundary tests for 100/50/1000/2048/90/166/180/24h; manual ±1 mutation of each constant makes ≥1 test fail (paste one example per constant).
+7. **E-05 / G-09 / G-15** delete the module-level `pytestmark = [... req(...)]` in `test_feat_004_decision.py`; `req` for BDD scenarios comes only from Gherkin tags via `conftest.py`; each non-BDD test carries the minimal `req` set it actually asserts. UT `req` markers include the RULE/SCN IDs listed as 由来 in UT_SAMPLE (so the doc 由来 ⊆ code markers). Produce a table ID → number of tests marking it (from `pytest --collect-only -q` + marker introspection) and compare with the old evidence's inflated counts.
+8. **G-10** CTs obtain `rev`/receipt from the public API (`submit` returns them; add `get(actor, app_id)`); `grep -n 'store\.' tests/component` must return only the fault-injection assertions. Update CT_SAMPLE §1 claim accordingly (now true).
+9. **G-11** replace the loop-computed expected values in `test_refusal_precedence_decision_table` with a literal decision table (write it from PRD FR-028 0.5.0 order incl. 再送); replace the test that re-implements `normalize` with literal (input, expected) pairs (NFC examples: composed vs decomposed é, full-width space U+3000 trimming).
+10. **G-12 / G-13** CT-003 authorization table with distinct inputs per cell (主体 5 × {権限あり, 失効, 権限なし}); concurrency: implement the rev check as compare-and-set inside the transaction and run the SCN-021 test with the global lock removed for that test (or a lock-free store variant), N=200 iterations, asserting exactly one success; if you cannot make it lock-free safely, keep the lock and rewrite CT_SAMPLE §6 to say what is actually verified (再送と版検査の直列化された確認).
+11. **G-14 / G-16** `conftest.py`: `settings.register_profile("kit", derandomize=True, database=DirectoryBasedExampleDatabase(...))` and load it (cite §6); declare `large` in `pyproject.toml` markers; keep `--strict-markers`.
+12. UT_SAMPLE/CT_SAMPLE: update テスト名/由来 tables for every added/renamed test; move any number that is not in the evidence out of prose; keep 実行結果 tables in the P2-B fixed shape with `not_run` (P9 fills them).
+
+## Validation file must contain verbatim
+`git diff --stat`; full `pytest -q --strict-markers` output (UT and CT), `coverage run --branch -m pytest` + `coverage report`, `mutmut run` + `mutmut results` summary (in the example project), the manual-mutation transcripts for items 5 and 6, the marker-count table, `grep -n 'store\.' tests/component`, `kit_lint.py check` (E120/E121/E153 tolerated only for the generated artefacts; E141–E152 must be clean), `git show --stat HEAD`, contextdb output (decisions: idempotency key shape, NOT_EDITABLE/BAD_REQUEST refusals, concurrency approach).
+
+## Editing discipline
+Bash/python writes only (the formatter hook would reflow Python and Markdown); `git diff` must contain only intended hunks.
+
+## Commit
+`fix(references/examples): close authorization, idempotency and audit gaps in the reference implementation and strengthen its tests`.
+
+## Forbidden
+push; pr-create; editing PRD/BDD/ADR/tools; committing generated artefacts; deleting tests to make mutation/coverage look better; deriving expectations from the implementation.
+
+max_turns=60

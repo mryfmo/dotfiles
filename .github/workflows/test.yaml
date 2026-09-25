@@ -120,9 +120,10 @@ jobs:
         run: |
           if [ "${OS}" == "macos-14" ]; then
             # GitHub macOS runners can include preconfigured taps that Homebrew
-            # warns about during install operations. Trust them explicitly so CI
-            # logs stay warning-clean as Homebrew tightens tap trust defaults.
-            brew trust aws/tap azure/bicep || true
+            # warns about during install operations. Trust the taps this job
+            # actually installs from so CI fails loudly (not silently) if a
+            # future tap goes untrusted.
+            brew trust aws/tap azure/bicep
 
             # `bashcov` on macOS must use Homebrew Bash (>=5) to avoid the
             # system Bash 3.2 parser limitations that produced empty coverage.

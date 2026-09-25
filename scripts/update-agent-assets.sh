@@ -134,13 +134,6 @@ function ensure_gh_extensions() {
 }
 
 #
-# @description Return success when the current OS is macOS.
-#
-function is_macos() {
-    [ "$(uname)" = "Darwin" ]
-}
-
-#
 # @description Return success when a command's output contains a fixed string.
 # @arg $1 string Fixed string to search for.
 # @arg $@ string Command and arguments to run.
@@ -212,13 +205,13 @@ function ensure_claude_superpowers_marketplace() {
 }
 
 #
-# @description Download, verify, and atomically install one pinned Linux Crit binary.
+# @description Download, verify, and atomically install one pinned Crit release binary.
 # @arg $1 string Release artifact name.
 # @arg $2 string Expected binary SHA256.
 # @arg $3 path Destination executable path.
 # @arg $4 string Expected version without a leading v.
 #
-function install_pinned_linux_crit() (
+function install_pinned_crit() (
     local artifact="$1"
     local checksum="$2"
     local target="$3"
@@ -247,34 +240,41 @@ function install_pinned_linux_crit() (
 function ensure_crit_cli() {
     local artifact checksum target version
 
-    if is_macos; then
-        if ! has_command crit && has_command brew; then
-            section "Crit CLI"
-            brew install crit || true
-        fi
-        has_command crit || {
-            printf 'Skipping Crit integrations: crit command not found.\n'
+    case "$(uname -s)" in
+    Linux)
+        case "$(uname -m)" in
+        x86_64 | amd64)
+            artifact="crit-linux-amd64"
+            checksum="${CRIT_LINUX_AMD64_SHA256}"
+            ;;
+        aarch64 | arm64)
+            artifact="crit-linux-arm64"
+            checksum="${CRIT_LINUX_ARM64_SHA256}"
+            ;;
+        *)
+            printf 'Skipping Crit integrations: unsupported Linux architecture %s.\n' "$(uname -m)"
             return 1
-        }
-        return 0
-    fi
-
-    if [ "$(uname -s)" != "Linux" ]; then
-        printf 'Skipping Crit integrations: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
-        return 1
-    fi
-
-    case "$(uname -m)" in
-    x86_64 | amd64)
-        artifact="crit-linux-amd64"
-        checksum="${CRIT_LINUX_AMD64_SHA256}"
+            ;;
+        esac
         ;;
-    aarch64 | arm64)
-        artifact="crit-linux-arm64"
-        checksum="${CRIT_LINUX_ARM64_SHA256}"
+    Darwin)
+        case "$(uname -m)" in
+        x86_64 | amd64)
+            artifact="crit-darwin-amd64"
+            checksum="${CRIT_DARWIN_AMD64_SHA256}"
+            ;;
+        arm64 | aarch64)
+            artifact="crit-darwin-arm64"
+            checksum="${CRIT_DARWIN_ARM64_SHA256}"
+            ;;
+        *)
+            printf 'Skipping Crit integrations: unsupported macOS architecture %s.\n' "$(uname -m)"
+            return 1
+            ;;
+        esac
         ;;
     *)
-        printf 'Skipping Crit integrations: unsupported Linux architecture %s.\n' "$(uname -m)"
+        printf 'Skipping Crit integrations: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
         return 1
         ;;
     esac
@@ -283,7 +283,7 @@ function ensure_crit_cli() {
     version="${CRIT_PIN_VERSION#v}"
     if ! [ -x "${target}" ] || ! "${target}" --version 2> /dev/null | awk -v expected="${version}" '$1 == "crit" { sub(/^v/, "", $2); if ($2 == expected) found = 1 } END { exit !found }'; then
         section "Crit CLI"
-        install_pinned_linux_crit "${artifact}" "${checksum}" "${target}" "${version}" || return 1
+        install_pinned_crit "${artifact}" "${checksum}" "${target}" "${version}" || return 1
     fi
     export PATH="${HOME}/.local/bin:${PATH}"
     hash -r

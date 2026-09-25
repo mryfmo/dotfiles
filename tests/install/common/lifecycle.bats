@@ -339,7 +339,9 @@ herdr server reload-config" ]
 @test "[common] agent asset lifecycle installs Crit integrations for Claude Code and Codex" {
     grep -q 'CLAUDE_CRIT_PLUGIN="crit@crit"' scripts/update-agent-assets.sh
     grep -q 'CLAUDE_CRIT_MARKETPLACE="tomasz-tomczyk/crit"' scripts/update-agent-assets.sh
-    grep -q 'brew install crit' scripts/update-agent-assets.sh
+    grep -q 'crit-darwin-amd64' scripts/update-agent-assets.sh
+    grep -q 'crit-darwin-arm64' scripts/update-agent-assets.sh
+    ! grep -q 'brew install crit' scripts/update-agent-assets.sh
     grep -q 'python3 -c' scripts/update-agent-assets.sh
     grep -q 'plugin.get("id") == plugin_id' scripts/update-agent-assets.sh
     grep -q 'if claude_crit_plugin_is_enabled; then' scripts/update-agent-assets.sh

@@ -203,14 +203,15 @@ installer clones `~/.understand-anything/repo` and symlinks its skills into
 `~/.agents/skills` (expected unmanaged-skill WARNs in `make doctor`, one per
 linked skill); Codex runtime files are provisioned from the version-matched Claude release artifact when available.
 
-On Linux, Crit itself is installed from the pinned amd64 or arm64 GitHub
-release binary after SHA-256 verification; macOS continues to use Homebrew.
-Both Linux checksums and the version are declared under `assets.crit` in
+Crit itself is installed on both Linux and macOS from the pinned amd64/arm64
+GitHub release binary for the matching OS, after SHA-256 verification. All
+four checksums and the version are declared under `assets.crit` in
 `home/dot_agents/agent-config.yaml`, rendered into
-`scripts/lib/installer-pins.sh`, and refreshed by `make upgrade`. Linux lifecycle checks inspect the
-authoritative `~/.local/bin/crit` directly, prepend `~/.local/bin` to `PATH`,
-and run `hash -r` so an older ambient Crit cannot shadow it. If that managed
-binary is missing, `REPAIR=1 make doctor` can restore it.
+`scripts/lib/installer-pins.sh`, and refreshed by `make upgrade`. Lifecycle
+checks on both platforms inspect the authoritative `~/.local/bin/crit`
+directly, prepend `~/.local/bin` to `PATH`, and run `hash -r` so an older
+ambient Crit cannot shadow it. If that managed binary is missing, `REPAIR=1
+make doctor` can restore it.
 
 The zenbu-labs terminal tools — terminal-code (`tode`) and `terminal-browser` —
 install through their sha256-verified upstream curl installers, pinned by

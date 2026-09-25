@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -216,6 +217,95 @@ class AssetManifestTest(unittest.TestCase):
             },
             set(self.manifest()["steps"]),
         )
+
+    def _fake_darwin_crit_tools(
+        self, bin_dir: Path, arch: str, payload: Path, brew_log: Path
+    ) -> None:
+        self._executable(
+            bin_dir / "uname",
+            f"""
+            case "$1" in
+            -s) printf 'Darwin\\n' ;;
+            -m) printf '{arch}\\n' ;;
+            esac
+            """,
+        )
+        self._executable(
+            bin_dir / "brew",
+            f'printf "brew invoked: %s\\n" "$*" >> "{brew_log}"; exit 1\n',
+        )
+        self._executable(
+            bin_dir / "curl",
+            f"""
+            out=""
+            args=("$@")
+            for ((i = 0; i < ${{#args[@]}}; i++)); do
+                if [[ "${{args[$i]}}" == "-o" ]]; then
+                    out="${{args[$((i + 1))]}}"
+                fi
+            done
+            cp {payload} "$out"
+            """,
+        )
+
+    def test_darwin_branch_installs_pinned_release_not_brew(self) -> None:
+        bin_dir = self.temp_dir / "bin"
+        bin_dir.mkdir()
+        jq = shutil.which("jq")
+        self.assertIsNotNone(jq, "jq is required for asset manifest tests")
+        (bin_dir / "jq").symlink_to(jq)
+        brew_log = self.temp_dir / "brew.log"
+        payload = self.temp_dir / "fake-crit"
+        payload.write_text(
+            "#!/usr/bin/env bash\n"
+            'if [ "$1" = "--version" ]; then printf \'crit 0.20.3\\n\'; fi\n'
+        )
+        payload.chmod(0o755)
+        payload_sha256 = hashlib.sha256(payload.read_bytes()).hexdigest()
+        self._fake_darwin_crit_tools(bin_dir, "arm64", payload, brew_log)
+
+        result = self.run_bash(
+            f"""
+            source {UPDATER}
+            CRIT_DARWIN_ARM64_SHA256="{payload_sha256}"
+            ensure_crit_cli
+            """,
+            env={"PATH": f"{bin_dir}:/usr/bin:/bin"},
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertFalse(
+            brew_log.exists(), "brew must not run on the Darwin pinned-release path"
+        )
+        self.assertIn("ensure_crit_cli", self.manifest()["steps"])
+        installed = self.home / ".local/bin/crit"
+        self.assertTrue(installed.is_file())
+        self.assertTrue(os.access(installed, os.X_OK))
+
+    def test_darwin_checksum_mismatch_fails_closed(self) -> None:
+        bin_dir = self.temp_dir / "bin"
+        bin_dir.mkdir()
+        jq = shutil.which("jq")
+        self.assertIsNotNone(jq, "jq is required for asset manifest tests")
+        (bin_dir / "jq").symlink_to(jq)
+        brew_log = self.temp_dir / "brew.log"
+        payload = self.temp_dir / "fake-crit-bad"
+        payload.write_text("#!/usr/bin/env bash\nprintf 'not the real binary\\n'\n")
+        payload.chmod(0o755)
+        self._fake_darwin_crit_tools(bin_dir, "arm64", payload, brew_log)
+
+        result = self.run_bash(
+            f"source {UPDATER}; ensure_crit_cli",
+            env={"PATH": f"{bin_dir}:/usr/bin:/bin"},
+        )
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("Crit checksum mismatch", result.stdout + result.stderr)
+        self.assertFalse(
+            brew_log.exists(), "brew must not run on the Darwin pinned-release path"
+        )
+        self.assertFalse((self.home / ".agents/.installed-manifest.json").exists())
+        self.assertFalse((self.home / ".local/bin/crit").exists())
 
     def test_updater_has_one_recording_call_for_each_install_step(self) -> None:
         updater = UPDATER.read_text()

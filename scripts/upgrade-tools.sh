@@ -382,23 +382,29 @@ function fetch_installer_pin() {
 }
 
 #
-# @description Print the latest Crit tag and SHA256 values for both Linux release binaries.
-# @stdout Three lines: release tag, amd64 SHA256, then arm64 SHA256.
+# @description Print the latest Crit tag and SHA256 values for Linux and macOS release binaries.
+# @stdout Five lines: release tag, then SHA256 for linux-amd64, linux-arm64, darwin-amd64, darwin-arm64.
 #
 function fetch_crit_pin() {
-    local amd64 arm64 tag
+    local linux_amd64 linux_arm64 darwin_amd64 darwin_arm64 tag
 
     has_command gh || return 1
     tag="$(gh api repos/tomasz-tomczyk/crit/releases/latest --jq .tag_name)" || return 1
     [[ "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 1
-    amd64="$(mktemp)"
-    arm64="$(mktemp)"
-    trap 'rm -f "${amd64}" "${arm64}"' RETURN
-    curl -fsSL "https://github.com/tomasz-tomczyk/crit/releases/download/${tag}/crit-linux-amd64" -o "${amd64}" || return 1
-    curl -fsSL "https://github.com/tomasz-tomczyk/crit/releases/download/${tag}/crit-linux-arm64" -o "${arm64}" || return 1
+    linux_amd64="$(mktemp)"
+    linux_arm64="$(mktemp)"
+    darwin_amd64="$(mktemp)"
+    darwin_arm64="$(mktemp)"
+    trap 'rm -f "${linux_amd64}" "${linux_arm64}" "${darwin_amd64}" "${darwin_arm64}"' RETURN
+    curl -fsSL "https://github.com/tomasz-tomczyk/crit/releases/download/${tag}/crit-linux-amd64" -o "${linux_amd64}" || return 1
+    curl -fsSL "https://github.com/tomasz-tomczyk/crit/releases/download/${tag}/crit-linux-arm64" -o "${linux_arm64}" || return 1
+    curl -fsSL "https://github.com/tomasz-tomczyk/crit/releases/download/${tag}/crit-darwin-amd64" -o "${darwin_amd64}" || return 1
+    curl -fsSL "https://github.com/tomasz-tomczyk/crit/releases/download/${tag}/crit-darwin-arm64" -o "${darwin_arm64}" || return 1
     printf '%s\n' "${tag}"
-    shasum -a 256 "${amd64}" | awk '{ print $1 }'
-    shasum -a 256 "${arm64}" | awk '{ print $1 }'
+    shasum -a 256 "${linux_amd64}" | awk '{ print $1 }'
+    shasum -a 256 "${linux_arm64}" | awk '{ print $1 }'
+    shasum -a 256 "${darwin_amd64}" | awk '{ print $1 }'
+    shasum -a 256 "${darwin_arm64}" | awk '{ print $1 }'
 }
 
 #
@@ -460,6 +466,8 @@ function bump_terminal_tool_pins() {
         --set-asset "crit.pin=$(sed -n 1p <<< "${crit_pin}")" \
         --set-asset "crit.sha256.linux-amd64=$(sed -n 2p <<< "${crit_pin}")" \
         --set-asset "crit.sha256.linux-arm64=$(sed -n 3p <<< "${crit_pin}")" \
+        --set-asset "crit.sha256.darwin-amd64=$(sed -n 4p <<< "${crit_pin}")" \
+        --set-asset "crit.sha256.darwin-arm64=$(sed -n 5p <<< "${crit_pin}")" \
         --set-asset "zed.pin=$(sed -n 1p <<< "${zed_pin}")" \
         --set-asset "zed.sha256.linux-amd64=$(sed -n 2p <<< "${zed_pin}")" \
         --set-asset "zed.sha256.linux-arm64=$(sed -n 3p <<< "${zed_pin}")"); then

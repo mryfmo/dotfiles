@@ -174,10 +174,13 @@ def asset_field(asset: dict[str, Any], path: str) -> str:
 
 
 PLAIN_PIN_VALUE = re.compile(r"[A-Za-z0-9._+-]+")
+SETTABLE_ASSET_FIELD = re.compile(r"pin|sha256|sha256\.[A-Za-z0-9-]+")
 
 
 def set_asset_field(text: str, name: str, path: str, value: str) -> str:
     """Rewrite one scalar under assets.<name> in the manifest text, keeping comments."""
+    if not SETTABLE_ASSET_FIELD.fullmatch(path):
+        fail(f"--set-asset may change only pin, sha256, or sha256.<arch>: {name}.{path}")
     if not PLAIN_PIN_VALUE.fullmatch(value):
         fail(f"assets.{name}.{path} is not a plain pin value: {value!r}")
     lines = text.splitlines(keepends=True)
@@ -861,10 +864,17 @@ def main() -> None:
                 fail(f"--set-asset expects NAME.FIELD=VALUE: {assignment!r}")
             text = set_asset_field(text, name, path, value)
             updates.append((name, path, value))
-        manifest = parse_manifest(text)
+        yaml_error = yaml.YAMLError if yaml is not None else ()
+        try:
+            manifest = parse_manifest(text)
+        except yaml_error as error:
+            fail(f"--set-asset produced an unparsable manifest: {error}")
         for name, path, value in updates:
-            if asset_field(manifest["assets"][name], path) != value:
-                fail(f"assets.{name}.{path} did not update to {value!r}")
+            current: Any = manifest["assets"][name]
+            for part in path.split("."):
+                current = current[part]
+            if not isinstance(current, str) or current != value:
+                fail(f"assets.{name}.{path} did not update to the string {value!r}: {current!r}")
         outputs = render_asset_constants(manifest)
         manifest_path.write_text(text)
         write_outputs(outputs)

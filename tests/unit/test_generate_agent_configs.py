@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
 
@@ -306,6 +307,53 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.main()
         self.assertEqual(manifest_path.read_text(), self.MANIFEST_TEXT)
+
+    def test_set_asset_refuses_fields_other_than_pins_and_checksums(self) -> None:
+        for path in ("render.file", "upstream", "sha256.linux-amd64.extra"):
+            with self.subTest(path=path):
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.set_asset_field(self.MANIFEST_TEXT, "crit", path, "v1")
+                self.assertIn("may change only pin, sha256, or sha256.<arch>", stderr.getvalue())
+
+    def run_set_asset_with_parser(self, parser) -> str:
+        manifest_path = self.temp_dir / "home/dot_agents/agent-config.yaml"
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        manifest_path.write_text(self.MANIFEST_TEXT)
+        self.module.parse_manifest = parser
+        old_argv = sys.argv
+        self.addCleanup(setattr, sys, "argv", old_argv)
+        sys.argv = ["generate-agent-configs.py", "--set-asset", "crit.sha256.linux-amd64=1234"]
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.main()
+        self.assertEqual(manifest_path.read_text(), self.MANIFEST_TEXT)
+        return stderr.getvalue()
+
+    def test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string(self) -> None:
+        def parse_digits_as_int(text: str) -> dict:
+            manifest = self.parse_indented_mapping(text)
+            sha256 = manifest["assets"]["crit"]["sha256"]
+            sha256["linux-amd64"] = int(sha256["linux-amd64"])
+            return manifest
+
+        stderr = self.run_set_asset_with_parser(parse_digits_as_int)
+
+        self.assertIn("did not update to the string '1234': 1234", stderr)
+
+    def test_set_asset_reports_an_unparsable_manifest_without_a_traceback(self) -> None:
+        class YAMLError(Exception):
+            pass
+
+        self.module.yaml = types.SimpleNamespace(YAMLError=YAMLError)
+
+        def broken(_text: str) -> dict:
+            raise YAMLError("mapping values are not allowed here")
+
+        stderr = self.run_set_asset_with_parser(broken)
+
+        self.assertIn("--set-asset produced an unparsable manifest: mapping values", stderr)
+        self.assertNotIn("Traceback", stderr)
 
     def test_repository_marketplace_is_a_runtime_owned_seed(self) -> None:
         manifest = (ROOT / "home/dot_agents/agent-config.yaml").read_text()

@@ -441,7 +441,11 @@ not the current `HEAD`; any item without a `fixed:<commit>` or
 or lies outside `<ref>..HEAD`; and a `not-applicable` reason shorter than 20
 characters on an item that failed or did not finish (`failure`, `error`,
 `cancelled`, `timed_out`, `action_required`, `startup_failure`, `stale`,
-`in_progress`, `queued`, or `pending`). The evidence file itself is not
+`in_progress`, `queued`, or `pending`). It also re-runs
+`scripts/pr-feedback.py` for the evidence's `pr` and fails unless GitHub's
+head for that PR is the local `HEAD` and every currently collected item is
+present in the evidence, so a hand-written or stale file cannot pass. Without
+`BASE` the evidence is only format-checked. The evidence file itself is not
 counted toward the diff that decides whether review is required.
 `.github/workflows/coderabbit-trigger.yml` comments `@coderabbitai full review`
 once per head SHA when a pull request opens, leaves draft, or gets the

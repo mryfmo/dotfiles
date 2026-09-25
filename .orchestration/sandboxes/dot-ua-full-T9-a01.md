@@ -1,0 +1,3 @@
+# T9 sandbox and side effects
+
+Dedicated .claude/worktrees/ua-full, branch chore/ua-full-rebuild at d906b00. Analysis used existing installed plugin/core and project read access. No OpenSandbox needed: only analysis scripts, no project installer or tests executed. Scoped writes: .ua plugin outputs, required canonical artifacts, ignored worker/review logs and required CompactionDB record. Four .ua files staged only. Scratch retained recoverably in ignored .ua/.trash-T9-20260925. No dashboard, installs, source changes, GitHub writes, commits or pushes. mise tracking warning is documented in validation; no successful external tracking write was claimed. Crit local process evidence exists at its ordinary review path.

@@ -86,7 +86,16 @@ update:
 		exit 1; \
 	fi; \
 	case "$$server_status" in \
-		running) herdr server reload-config ;; \
+		running) \
+			if reload_output="$$(herdr server reload-config 2>&1)"; then \
+				[ -z "$$reload_output" ] || printf '%s\n' "$$reload_output"; \
+			else \
+				[ -z "$$reload_output" ] || printf '%s\n' "$$reload_output" >&2; \
+				case "$$reload_output" in \
+					*protocol_mismatch*) printf '%s\n' "Herdr was updated; restart the server with 'herdr server stop' or recreate the Ghostty session, then run 'herdr server reload-config' manually." >&2 ;; \
+					*) exit 1 ;; \
+				esac; \
+			fi ;; \
 		not_running) echo "Herdr server is not running; skipping config reload." ;; \
 		*) echo "Unknown or missing Herdr server status: $${server_status:-<missing>}" >&2; exit 1 ;; \
 	esac

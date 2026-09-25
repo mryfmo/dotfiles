@@ -3,10 +3,10 @@
 # @file scripts/update-agent-assets.sh
 # @brief Install and refresh shared AI-agent plugins and skills.
 # @description
-#   Keeps Codex and Claude Code agent assets aligned with the dotfiles-managed
-#   skill tree. Skills are applied by chezmoi from `home/dot_agents/skills`;
-#   this script handles CLI-managed plugin marketplace refreshes and plugin
-#   installation that cannot be represented as plain files.
+#   Converges Codex and Claude Code marketplaces and plugins, GitHub CLI
+#   extensions, pinned Crit/tode/terminal-browser releases, the vendored
+#   CompactionDB tree, and Herdr integrations that cannot be represented as
+#   plain chezmoi-managed files.
 
 set -Eeuo pipefail
 

@@ -39,17 +39,27 @@ jobs:
         run: |
           set -euo pipefail
           [[ "${PR}" =~ ^[0-9]+$ ]] || { echo "invalid PR number: ${PR}" >&2; exit 1; }
-          sha="$(gh api "repos/${REPO}/pulls/${PR}" --jq .head.sha)"
-          marker="<!-- coderabbit-trigger:${sha} -->"
-          # Count a marker only in this workflow's own request comment, so another
-          # commenter cannot pre-post it to suppress the review. Capture instead of
-          # piping into grep -q, which can SIGPIPE gh under pipefail.
-          found="$(gh api --paginate "repos/${REPO}/issues/${PR}/comments" \
-            --jq "any(.[]; .user.login == \"github-actions[bot]\" and (.body | startswith(\"@coderabbitai full review\")) and (.body | contains(\"${marker}\")))")"
-          if [[ "${found}" == *true* ]]; then
-            echo "A full review was already requested for ${sha}."
-            exit 0
-          fi
-          gh api "repos/${REPO}/issues/${PR}/comments" -f body="@coderabbitai full review
+          # Re-read the head after posting: a push in between gets its own request
+          # on the next pass instead of leaving only a stale-SHA marker.
+          for attempt in 1 2 3; do
+            sha="$(gh api "repos/${REPO}/pulls/${PR}" --jq .head.sha)"
+            marker="<!-- coderabbit-trigger:${sha} -->"
+            # Count a marker only in this workflow's own request comment, so another
+            # commenter cannot pre-post it to suppress the review. Capture instead of
+            # piping into grep -q, which can SIGPIPE gh under pipefail.
+            found="$(gh api --paginate "repos/${REPO}/issues/${PR}/comments" \
+              --jq "any(.[]; .user.login == \"github-actions[bot]\" and (.body | startswith(\"@coderabbitai full review\")) and (.body | contains(\"${marker}\")))")"
+            if [[ "${found}" == *true* ]]; then
+              echo "A full review was already requested for ${sha}."
+            else
+              gh api "repos/${REPO}/issues/${PR}/comments" -f body="@coderabbitai full review
           ${marker}" > /dev/null
-          echo "Requested a CodeRabbit full review for ${sha}."
+              echo "Requested a CodeRabbit full review for ${sha}."
+            fi
+            if [[ "$(gh api "repos/${REPO}/pulls/${PR}" --jq .head.sha)" == "${sha}" ]]; then
+              exit 0
+            fi
+            echo "The head moved during attempt ${attempt}; checking the new head."
+          done
+          echo "The head kept moving; rerun this workflow once pushes settle." >&2
+          exit 1

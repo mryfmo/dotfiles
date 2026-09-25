@@ -429,11 +429,11 @@ gh pr comment <pr> --body '@coderabbitai full review'
 python3 scripts/pr-feedback.py <pr> --json .orchestration/validation/<task>-pr-feedback.json
 # Fill every item's disposition with fixed:<commit> or not-applicable:<reason>,
 # then run the integration guard against the base branch.
-PR_FEEDBACK_EVIDENCE=.orchestration/validation/<task>-pr-feedback.json \
-  python3 scripts/require-crit-review.py --base origin/main
+BASE=origin/main PR_FEEDBACK_EVIDENCE=.orchestration/validation/<task>-pr-feedback.json \
+  make require-crit-review
 ```
 
-With `--base`, the guard also reviews the committed `<base>...HEAD` changes and
+With `BASE=<ref>` (`--base <ref>` on the script), the guard also reviews the committed `<base>...HEAD` changes and
 requires `PR_FEEDBACK_EVIDENCE`. It rejects a missing, external, or malformed
 file, any item without a `fixed:<commit>` or `not-applicable:<reason>`
 disposition, a `fixed:` commit that does not exist, and a `failure`-level item

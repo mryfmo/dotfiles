@@ -23,7 +23,7 @@ For pull requests, keep the description aligned with the full current PR content
 5. If additional commits are pushed after PR creation, inspect the updated commits/diff with `gh` and refresh the PR description so it reflects the full current PR, not only the latest increment.
 6. Include inspected URLs in the response.
 7. Write commit messages in Conventional Commit format.
-8. Before merging or accepting a PR, follow the PR integration rule: comment `@coderabbitai full review` on the final head and wait for it, run `scripts/pr-feedback.py <pr> --json <out>`, give every item a `fixed:<commit>` (root-cause fix) or `not-applicable:<reason>` disposition, save the JSON as `.orchestration/validation/<task>-pr-feedback.json`, and pass it to `PR_FEEDBACK_EVIDENCE=<json> python3 scripts/require-crit-review.py --base origin/main`.
+8. Before merging or accepting a PR, follow the PR integration rule: comment `@coderabbitai full review` on the final head and wait for it, run `scripts/pr-feedback.py <pr> --json <out>`, give every item a `fixed:<commit>` (root-cause fix) or `not-applicable:<reason>` disposition, save the JSON as `.orchestration/validation/<task>-pr-feedback.json`, and pass it to `BASE=origin/main PR_FEEDBACK_EVIDENCE=<json> make require-crit-review`.
 
 ## Output Checklist
 

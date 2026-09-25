@@ -42,6 +42,7 @@
 - 全 item に disposition を付けてください。`fixed:<commit>`(その commit で根本原因を修正)か `not-applicable:<理由>` のどちらかです。stopgap・抑制・「後で」は disposition として認めません。`failure` と `warning` の annotation を未処分のまま残さず、`failure` を `not-applicable` にする場合は 20 文字以上の具体的な理由が必要です。
 - 記入済み JSON を `.orchestration/validation/<task>-pr-feedback.json` に保存し、`BASE=origin/main PR_FEEDBACK_EVIDENCE=<json> make require-crit-review` で統合ガードに渡し、disposition の要約を acceptance 記録に書いてください。
 - 新しい push の後は取得をやり直してください。disposition は記入した時点の head commit にだけ有効です。
+- 収束: 最終 head の full review の指摘が Minor・nit だけなら、それ以外を変えない 1 commit で修正して各 thread に返信し、その commit に対する bot の確認または resolve をもってレビュー完了とします。Major 以上の指摘がある場合、または追加 commit が指摘の修正以外を変える場合は、新しい full review が必要です。
 
 ## モデル選択
 

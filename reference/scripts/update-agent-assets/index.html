@@ -3657,7 +3657,7 @@
 
 
 <h1 id="scriptsupdate-agent-assetssh">scripts/update-agent-assets.sh<a class="headerlink" href="#scriptsupdate-agent-assetssh" title="Permanent link">&para;</a></h1>
-<p>Keeps Codex and Claude Code agent assets aligned with the dotfiles-managed skill tree. Skills are applied by chezmoi from <code>home/dot_agents/skills</code>; this script handles CLI-managed plugin marketplace refreshes and plugin installation that cannot be represented as plain files.</p>
+<p>Converges Codex and Claude Code marketplaces and plugins, GitHub CLI extensions, pinned Crit/tode/terminal-browser releases, the vendored CompactionDB tree, and Herdr integrations that cannot be represented as plain chezmoi-managed files.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>scripts/update-agent-assets.sh</code></li>
@@ -3709,10 +3709,10 @@
 <span class="c1"># @file scripts/update-agent-assets.sh</span>
 <span class="c1"># @brief Install and refresh shared AI-agent plugins and skills.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Keeps Codex and Claude Code agent assets aligned with the dotfiles-managed</span>
-<span class="c1">#   skill tree. Skills are applied by chezmoi from `home/dot_agents/skills`;</span>
-<span class="c1">#   this script handles CLI-managed plugin marketplace refreshes and plugin</span>
-<span class="c1">#   installation that cannot be represented as plain files.</span>
+<span class="c1">#   Converges Codex and Claude Code marketplaces and plugins, GitHub CLI</span>
+<span class="c1">#   extensions, pinned Crit/tode/terminal-browser releases, the vendored</span>
+<span class="c1">#   CompactionDB tree, and Herdr integrations that cannot be represented as</span>
+<span class="c1">#   plain chezmoi-managed files.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 

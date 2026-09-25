@@ -129,7 +129,7 @@ bash -c "$(curl -fsLS https://raw.githubusercontent.com/mryfmo/dotfiles/main/set
 # sourceDir.
 cd "$(git -C "$(chezmoi source-path)" rev-parse --show-toplevel)"
 
-# Update and apply managed dotfiles without upgrading tools.
+# Update and apply committed pinned state without advancing tool pins.
 make update
 
 # Inspect the current tool state without modifying it.
@@ -157,10 +157,14 @@ reason and the exact manual `git -C <repo> pull` command, then continues with
 the local source; a failed fast-forward pull also warns and continues. It then
 ensures the locked Node/npm runtime is installed before the two locked
 statusline tools required by the applied config, without upgrading other tools.
-After assets are refreshed, it reloads a running Herdr server, skips reload when
-the server is reported as not running or the command is unavailable, and fails
-on ambiguous status or reload errors. After
-correcting a reload error, run `herdr server reload-config` manually.
+The asset refresh also converges configured GitHub CLI extensions and syncs the
+vendored CompactionDB tree. It then reloads a running Herdr server, skips reload
+when the server is reported as not running or the command is unavailable, and
+fails on ambiguous status or reload errors other than `protocol_mismatch`. A
+protocol mismatch after updating Herdr prints instructions to stop and restart
+the server (or recreate the Ghostty session), then continues successfully; run
+`herdr server reload-config` manually after restarting. Finally,
+`make agmsg-bootstrap` converges repository-scoped agent message delivery hooks.
 
 Weekly model-usage measurement is informational and never changes
 `model_profiles`. Capture or report usage manually with:
@@ -184,7 +188,8 @@ Any model-profile decision still requires manual quality review and a PR.
 
 ### Agent review and permission assets
 
-`make update` also refreshes agent-managed assets after `chezmoi apply`.
+`make update` also refreshes agent-managed assets, configured GitHub CLI
+extensions, and the vendored CompactionDB tree after `chezmoi apply`.
 The generated `create_marketplace.json` seeds `~/.agents/plugins/marketplace.json`
 only when it is missing; plugin runtimes own later content and mode changes.
 This includes the Crit integrations, the Ponytail (`ponytail@ponytail`) plugin,
@@ -201,7 +206,10 @@ linked skill); Codex runtime files are provisioned from the version-matched Clau
 On Linux, Crit itself is installed from the pinned amd64 or arm64 GitHub
 release binary after SHA-256 verification; macOS continues to use Homebrew.
 Both Linux checksums and the version live in `scripts/lib/installer-pins.sh`
-and are refreshed by `make upgrade`.
+and are refreshed by `make upgrade`. Linux lifecycle checks inspect the
+authoritative `~/.local/bin/crit` directly, prepend `~/.local/bin` to `PATH`,
+and run `hash -r` so an older ambient Crit cannot shadow it. If that managed
+binary is missing, `REPAIR=1 make doctor` can restore it.
 
 The zenbu-labs terminal tools — terminal-code (`tode`) and `terminal-browser` —
 install through their sha256-verified upstream curl installers, pinned by
@@ -302,8 +310,10 @@ lifecycle: dedicated workspace creation, pane wait/prompt handling, layout
 repair, and attach-mode healing. A claude worker also gets an unattended
 `Down`+`Enter` sent to its workspace-trust dialog on first start, since that
 dialog otherwise defaults to "No" and exits. Attach mode renames the current
-Claude pane, starts the worker with `--split right` when it is missing, and
-repairs pane order (Claude left) and the 50/50 ratio, refusing any repair
+Claude pane, creates a missing worker pane with
+`herdr pane split <claude-pane> --direction right --cwd <worktree>`, then starts
+the worker with `herdr agent start <name> --kind <worker_kind> --pane <id>`.
+It repairs pane order (Claude left) and the 50/50 ratio, refusing any repair
 when the layout is ambiguous or contains unmanaged panes. Unmanaged panes —
 such as a legacy `files` pane restored from a pre-two-pane persisted session
 — are deliberately preserved, never closed, split, or reused. Full mode
@@ -324,9 +334,11 @@ follows `interactive_profile` in `home/dot_agents/agent-config.yaml`,
 escalating with `/model` and `/effort` only at task boundaries. Parallelism
 never adds panes
 to this workspace: one git worktree equals one resident worker in its own
-tab/workspace (started with `herdr agent start <agent-name> --cwd <worktree>`), completion
-is detected only through agmsg RESULT messages, and about three concurrent
-workers is the practical supervision ceiling.
+tab/workspace. Its pane receives the worktree through
+`herdr pane split <pane> --direction right --cwd <worktree>`, and its worker
+starts with `herdr agent start <name> --kind <worker_kind> --pane <id>`.
+Completion is detected only through agmsg RESULT messages, and about three
+concurrent workers is the practical supervision ceiling.
 
 New workspaces no longer create a persistent files pane; `prefix+f` opens the
 on-demand `herdr-file-viewer` popup instead. A legacy `files` pane restored
@@ -352,8 +364,10 @@ that Ghostty does not auto-start Herdr, `herdr-session`, bare `herdr` routing in
 Ghostty, argumented `herdr` routing in Ghostty, bare `herdr` routing outside
 Ghostty, and the Herdr `prefix+alt+a` command binding. Its sandbox E2E fakes
 Herdr deeply enough to execute fake Claude Code and Codex commands, verifies
-Claude Code is run in the root pane, Codex is started with `--split right` under the
-`codex-worker-${workspace_id}` Herdr agent name, covers existing workspace
+Claude Code is run in the root pane, and verifies a right-side worker pane is
+created with `pane split --direction right --cwd` before
+`agent start --kind <worker_kind> --pane` launches the
+`<worker_kind>-worker-${workspace_id}` Herdr agent. It also covers existing workspace
 focus and missing-agent repair paths, verifies the session entrypoint still
 attaches after `herdr-agents` failure, and proves agmsg is usable by sending a
 message from fake Claude Code to fake Codex through a temporary agmsg database.

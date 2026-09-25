@@ -25,6 +25,7 @@ function run_update_fixture() {
     local git_dirty="${10:-0}"
     local git_pull_exit="${11:-0}"
     local git_unmerged="${12:-0}"
+    local reload_output="${13:-}"
     local fixture="${BATS_TEST_TMPDIR}/update-${BATS_TEST_NUMBER}"
 
     mkdir -p "${fixture}/bin" "${fixture}/scripts" \
@@ -73,6 +74,7 @@ if [[ \$1 == status ]]; then
     esac
     exit ${status_exit}
 fi
+printf '%s\n' '${reload_output}' >&2
 exit ${reload_exit}
 EOF
     chmod +x "${fixture}/bin/chezmoi" "${fixture}/bin/git" "${fixture}/bin/mise" "${fixture}/bin/herdr" \
@@ -186,8 +188,16 @@ herdr server reload-config" ]
 }
 
 @test "[common] update propagates Herdr reload failure" {
-    run_update_fixture running 0 23
+    run_update_fixture running 0 23 0 0 0 "" feature/test origin/feature/test 0 0 0 "reload failed"
     [ "$status" -ne 0 ]
+    [ "$(grep -c '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls")" -eq 1 ]
+}
+
+@test "[common] update tolerates a Herdr protocol mismatch and explains recovery" {
+    run_update_fixture running 0 23 0 0 0 "" feature/test origin/feature/test 0 0 0 \
+        "protocol_mismatch: client protocol 20 is older than server protocol 22"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Herdr was updated; restart the server with 'herdr server stop' or recreate the Ghostty session, then run 'herdr server reload-config' manually."* ]]
     [ "$(grep -c '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls")" -eq 1 ]
 }
 

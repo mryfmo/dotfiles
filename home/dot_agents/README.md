@@ -34,7 +34,7 @@ Generated files include:
 5. Public dotfiles must not contain token literals. Credential-bearing servers inherit environment variables or refer to private configuration only.
 6. Claude plugins are not enabled by `settings.json` unless this repository also installs the marketplace/plugin. Shared workflows should live in skills first.
 7. Do not hand-edit generated files unless you immediately move the change back into `agent-config.yaml` and regenerate.
-9. For implementation tasks shared between Codex and Claude Code, use separate worktrees or make one agent a reviewer; do not let both write to the same worktree. This is an operational guideline and is intentionally not enforced by `validate-agent-assets.py`.
+8. For implementation tasks shared between Codex and Claude Code, use separate worktrees or make one agent a reviewer; do not let both write to the same worktree. This is an operational guideline and is intentionally not enforced by `validate-agent-assets.py`.
 
 ## Codex runtime state
 

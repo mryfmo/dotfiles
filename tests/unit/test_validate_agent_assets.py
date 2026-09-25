@@ -44,6 +44,39 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.module.ROOT = self.old_root
         shutil.rmtree(self.temp_dir)
 
+    def test_recursive_scans_skip_nested_git_trees_only(self) -> None:
+        (self.temp_dir / ".git").mkdir()
+        cases = (
+            ("validate_no_removed_claude_skill", "high-impact" + "-journal-publishing"),
+            ("validate_no_obvious_secrets", "ghp_" + "x" * 25),
+        )
+        for marker_kind in ("file", "directory"):
+            for scan_name, token in cases:
+                with self.subTest(marker_kind=marker_kind, scan=scan_name):
+                    nested = self.temp_dir / marker_kind / scan_name
+                    nested.mkdir(parents=True)
+                    marker = nested / ".git"
+                    if marker_kind == "file":
+                        marker.write_text("gitdir: /unused/worktree-metadata\n")
+                    else:
+                        marker.mkdir()
+                    deep_file = nested / "deep" / "nested.txt"
+                    deep_file.parent.mkdir()
+                    deep_file.write_text(token)
+                    scan = getattr(self.module, scan_name)
+                    with contextlib.redirect_stderr(io.StringIO()):
+                        scan()
+                    top_file = self.temp_dir / "top.txt"
+                    top_file.write_text(token)
+                    try:
+                        stderr = io.StringIO()
+                        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                            scan()
+                        self.assertIn("top.txt", stderr.getvalue())
+                        self.assertNotIn("nested.txt", stderr.getvalue())
+                    finally:
+                        top_file.unlink()
+
     def write_codex_config(
         self, sandbox_workspace_write: str, projects_toml: str = ""
     ) -> None:

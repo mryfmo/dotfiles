@@ -196,8 +196,8 @@ jobs:
           mise trust --yes "${RUNNER_TEMP}/statusline-mise/mise.toml"
           mise -C "${RUNNER_TEMP}/statusline-mise" install --locked node
           mise -C "${RUNNER_TEMP}/statusline-mise" install --locked \
-            npm:ccstatusline@2.2.29 \
-            npm:ccusage@20.0.20
+            npm:ccstatusline@2.2.30 \
+            npm:ccusage@20.0.22
 
       - name: Smoke-test statusline tools without network
         if: ${{ needs.changes.outputs.should_test == 'true' }}
@@ -207,8 +207,8 @@ jobs:
           statusline_mise_dir="${RUNNER_TEMP}/statusline-mise"
           ccstatusline_bin="$(mise -C "${statusline_mise_dir}" which ccstatusline)"
           ccusage_bin="$(mise -C "${statusline_mise_dir}" which ccusage)"
-          ccstatusline_root="$(mise -C "${statusline_mise_dir}" where npm:ccstatusline@2.2.29)"
-          ccusage_root="$(mise -C "${statusline_mise_dir}" where npm:ccusage@20.0.20)"
+          ccstatusline_root="$(mise -C "${statusline_mise_dir}" where npm:ccstatusline@2.2.30)"
+          ccusage_root="$(mise -C "${statusline_mise_dir}" where npm:ccusage@20.0.22)"
 
           case "${ccstatusline_bin}" in
             "${ccstatusline_root}"/*) ;;

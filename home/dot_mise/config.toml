@@ -8,7 +8,7 @@ age = "1.3.2"
 bun = "1.4.2"
 chezmoi = "2.72.2"
 cmake = "4.4.3"
-dotenvx = "2.26.1"
+dotenvx = "2.28.0"
 "cargo:eza" = "0.23.5"
 fd = "10.3.0"
 jq = "1.8.2"
@@ -21,18 +21,18 @@ shellcheck = "0.11.0"
 shfmt = "3.14.1"
 "aqua:watchexec/watchexec" = "2.7.3"
 
-"npm:@anthropic-ai/claude-code" = { version = "2.1.280", allow_builds = ["@anthropic-ai/claude-code"] }
+"npm:@anthropic-ai/claude-code" = { version = "2.1.282", allow_builds = ["@anthropic-ai/claude-code"] }
 "npm:@openai/codex" = "0.156.1"
-"npm:bash-language-server" = "5.6.0"
-"npm:ccstatusline" = "2.2.29"
-"npm:ccusage" = "20.0.20"
+"npm:bash-language-server" = "5.8.0"
+"npm:ccstatusline" = "2.2.30"
+"npm:ccusage" = "20.0.22"
 "npm:pyright" = "1.1.414"
 "npm:fast-cli" = "5.2.0"
 
 "github:x-motemen/ghq" = "1.10.1"
 "github:d-kuro/gwq" = "0.1.1"
 "github:cli/cli" = "2.101.0"
-"github:ogulcancelik/herdr" = "0.9.0"
+"github:ogulcancelik/herdr" = "0.9.1"
 "github:shuntaka9576/blocc" = { version = "0.6.0", os = ["linux/x64"] }
 
 "cargo:pueue" = "4.0.4"

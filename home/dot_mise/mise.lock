@@ -229,28 +229,28 @@ url = "https://github.com/Kitware/CMake/releases/download/v4.4.3/cmake-4.4.3-mac
 url_api = "https://api.github.com/repos/Kitware/CMake/releases/assets/529577557"
 
 [[tools.dotenvx]]
-version = "2.26.1"
+version = "2.28.0"
 backend = "aqua:dotenvx/dotenvx"
 
 [tools.dotenvx."platforms.linux-arm64"]
-checksum = "sha256:b5465a32e2f625ebcc6015253b7a67ef1c0367a57d832187d564b6b4708a130c"
-url = "https://github.com/dotenvx/dotenvx/releases/download/v2.26.1/dotenvx-2.26.1-linux-aarch64.tar.gz"
-url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/565572525"
+checksum = "sha256:d31270b20a5895c8fdd2c5209ef10506bfb9bc620791cdd67d822f89ef3faa1c"
+url = "https://github.com/dotenvx/dotenvx/releases/download/v2.28.0/dotenvx-2.28.0-linux-aarch64.tar.gz"
+url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/568780480"
 
 [tools.dotenvx."platforms.linux-x64"]
-checksum = "sha256:6e35999d06755acc1af310cee344e48245d4bf2cdd31ecee4856bbf81c2c67dc"
-url = "https://github.com/dotenvx/dotenvx/releases/download/v2.26.1/dotenvx-2.26.1-linux-amd64.tar.gz"
-url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/565572524"
+checksum = "sha256:d5e4401c9880ecaf83b101afc918f4aebb7c2c2ec16b67a41addd1fce12fbe6a"
+url = "https://github.com/dotenvx/dotenvx/releases/download/v2.28.0/dotenvx-2.28.0-linux-amd64.tar.gz"
+url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/568780474"
 
 [tools.dotenvx."platforms.macos-arm64"]
-checksum = "sha256:81e07b1b3a34d6ee138b5ac53b618870c6a71b7ded782ee6aa11e67111d928e7"
-url = "https://github.com/dotenvx/dotenvx/releases/download/v2.26.1/dotenvx-2.26.1-darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/565572547"
+checksum = "sha256:eb7156249da3044e907b1c85111d7fc6e08b62665c3cc96bd23f54c64c9e39c0"
+url = "https://github.com/dotenvx/dotenvx/releases/download/v2.28.0/dotenvx-2.28.0-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/568780475"
 
 [tools.dotenvx."platforms.macos-x64"]
-checksum = "sha256:1b22976f18590cc226d21b01a3deda2f0ae9dfe8c96ce3c4e8153c44c4e01763"
-url = "https://github.com/dotenvx/dotenvx/releases/download/v2.26.1/dotenvx-2.26.1-darwin-amd64.tar.gz"
-url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/565572521"
+checksum = "sha256:537131fbdf0b5a495167bb7b2b0760751664831bae7dd9c68fac2e35bc4f8ef7"
+url = "https://github.com/dotenvx/dotenvx/releases/download/v2.28.0/dotenvx-2.28.0-darwin-amd64.tar.gz"
+url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/568780496"
 
 [[tools.fd]]
 version = "10.3.0"
@@ -329,31 +329,31 @@ url = "https://github.com/d-kuro/gwq/releases/download/v0.1.1/gwq_Darwin_x86_64.
 url_api = "https://api.github.com/repos/d-kuro/gwq/releases/assets/410341155"
 
 [[tools."github:ogulcancelik/herdr"]]
-version = "0.9.0"
+version = "0.9.1"
 backend = "github:ogulcancelik/herdr"
 
 [tools."github:ogulcancelik/herdr"."platforms.linux-arm64"]
-checksum = "sha256:9c8db20fb7e7427b138d5367113f1621ffd319f2f65d6f009e2594029115f0d2"
-url = "https://github.com/herdrdev/herdr/releases/download/v0.9.0/herdr-linux-aarch64"
-url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/549270160"
+checksum = "sha256:f4ccf4de745f2cb9a39a983e9ba3703dad50ec2a58dea83026ceab721bbd8d9e"
+url = "https://github.com/herdrdev/herdr/releases/download/v0.9.1/herdr-linux-aarch64"
+url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/568559680"
 provenance = "github-attestations"
 
 [tools."github:ogulcancelik/herdr"."platforms.linux-x64"]
-checksum = "sha256:4fa1a01158dd8043da92d31b270780b0dcc10603038d9b61cac4d81ab63fb71f"
-url = "https://github.com/herdrdev/herdr/releases/download/v0.9.0/herdr-linux-x86_64"
-url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/549270163"
+checksum = "sha256:2a02fed16beb651ef006e1d43f048f652ca4dc58ad053cd2d44450563d5c54b7"
+url = "https://github.com/herdrdev/herdr/releases/download/v0.9.1/herdr-linux-x86_64"
+url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/568559679"
 provenance = "github-attestations"
 
 [tools."github:ogulcancelik/herdr"."platforms.macos-arm64"]
-checksum = "sha256:32b53df09872628059c789a69f02a6b8e29e14ddf26711421f3463f70c1aef17"
-url = "https://github.com/herdrdev/herdr/releases/download/v0.9.0/herdr-macos-aarch64"
-url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/549270162"
+checksum = "sha256:5fc7a7e7adfaca56fa80aa89dcb025693357268dab8285b9ce2d08a2313c89de"
+url = "https://github.com/herdrdev/herdr/releases/download/v0.9.1/herdr-macos-aarch64"
+url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/568559677"
 provenance = "github-attestations"
 
 [tools."github:ogulcancelik/herdr"."platforms.macos-x64"]
-checksum = "sha256:d0c920b2a126a74809fa1491411c9a097a44786cac9c2ca51b818a995581cf16"
-url = "https://github.com/herdrdev/herdr/releases/download/v0.9.0/herdr-macos-x86_64"
-url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/549270161"
+checksum = "sha256:053be0639935fe54ab5efbdb46651054e4f6a753a5b43153c88bd6912bce1e94"
+url = "https://github.com/herdrdev/herdr/releases/download/v0.9.1/herdr-macos-x86_64"
+url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/568559678"
 provenance = "github-attestations"
 
 [[tools."github:shuntaka9576/blocc"]]
@@ -510,7 +510,7 @@ checksum = "sha256:06b2e742ed9025dc84adc830243b3f731956eac9c321bccd0ede384209af0
 url = "https://nodejs.org/dist/v26.9.0/node-v26.9.0-darwin-x64.tar.gz"
 
 [[tools."npm:@anthropic-ai/claude-code"]]
-version = "2.1.280"
+version = "2.1.282"
 backend = "npm:@anthropic-ai/claude-code"
 
 [tools."npm:@anthropic-ai/claude-code".options]
@@ -521,15 +521,15 @@ version = "0.156.1"
 backend = "npm:@openai/codex"
 
 [[tools."npm:bash-language-server"]]
-version = "5.6.0"
+version = "5.8.0"
 backend = "npm:bash-language-server"
 
 [[tools."npm:ccstatusline"]]
-version = "2.2.29"
+version = "2.2.30"
 backend = "npm:ccstatusline"
 
 [[tools."npm:ccusage"]]
-version = "20.0.20"
+version = "20.0.22"
 backend = "npm:ccusage"
 
 [[tools."npm:fast-cli"]]

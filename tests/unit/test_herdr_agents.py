@@ -229,6 +229,15 @@ fi
         identities.chmod(0o755)
         return scripts
 
+    def register_claude_worker_identity(self) -> Path:
+        """Register the second claude-code identity a claude worker needs."""
+        return self.install_agmsg_fakes(
+            claude_identities_output=(
+                "dotfiles-conformance\tclaude-orchestrator\n"
+                "dotfiles-conformance\tclaude-worker"
+            )
+        )
+
     def write_agmsg_turn_hook(self, scripts: Path) -> None:
         hooks = self.workdir / ".codex/hooks.json"
         hooks.parent.mkdir(exist_ok=True)
@@ -467,10 +476,15 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             stderr=subprocess.PIPE,
         )
 
-    def run_agmsg_bootstrap_helper(self) -> subprocess.CompletedProcess[str]:
+    def run_agmsg_bootstrap_helper(
+        self, *, extra_env: dict[str, str] | None = None
+    ) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env["HOME"] = str(self.home_dir)
         env["PATH"] = f"{self.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"
+        env.pop("HERDR_AGENTS_WORKER_KIND", None)
+        if extra_env:
+            env.update(extra_env)
         return subprocess.run(
             ["bash", str(SCRIPT), "--bootstrap-agmsg", str(self.workdir)],
             cwd=ROOT,
@@ -1233,8 +1247,9 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         )
 
     def test_worker_kind_defaults_to_generated_env_fragment(self) -> None:
+        self.register_claude_worker_identity()
         profiles = self.home_dir / ".agents/model-profiles.env"
-        profiles.parent.mkdir(parents=True)
+        profiles.parent.mkdir(parents=True, exist_ok=True)
         profiles.write_text(
             'MODEL_PROFILE_INTERACTIVE="standard"\n'
             'HERDR_AGENTS_WORKER_KIND="claude"\n'
@@ -1280,8 +1295,9 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
     def test_worker_kind_claude_starts_a_claude_worker_pane_with_profile_args(
         self,
     ) -> None:
+        self.register_claude_worker_identity()
         profiles = self.home_dir / ".agents/model-profiles.env"
-        profiles.parent.mkdir(parents=True)
+        profiles.parent.mkdir(parents=True, exist_ok=True)
         profiles.write_text(
             'MODEL_PROFILE_INTERACTIVE="standard"\n'
             'MODEL_PROFILE_STANDARD_CLAUDE_ARGS="--model sonnet --effort high"\n'
@@ -1300,6 +1316,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertFalse(any("codex" in call for call in calls))
 
     def test_worker_kind_claude_starts_with_no_resolved_args(self) -> None:
+        self.register_claude_worker_identity()
         # No model-profiles.env and no HERDR_AGENTS_CLAUDE_WORKER_ARGS: both
         # worker_args and extra_worker_args stay empty arrays. bash 3.2
         # (macOS's /bin/bash) treats "${arr[@]}" as unbound under `set -u`
@@ -1319,6 +1336,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         )
 
     def test_worker_kind_claude_does_not_require_codex(self) -> None:
+        self.register_claude_worker_identity()
         (self.bin_dir / "codex").unlink()
 
         result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"})
@@ -1326,8 +1344,9 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_worker_kind_claude_appends_extra_worker_args(self) -> None:
+        self.register_claude_worker_identity()
         profiles = self.home_dir / ".agents/model-profiles.env"
-        profiles.parent.mkdir(parents=True)
+        profiles.parent.mkdir(parents=True, exist_ok=True)
         profiles.write_text('MODEL_PROFILE_STANDARD_CLAUDE_ARGS="--model sonnet"\n')
 
         result = self.run_helper(
@@ -1364,7 +1383,109 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             )
         )
 
+    def test_claude_worker_sharing_the_orchestrator_identity_is_refused(self) -> None:
+        self.install_agmsg_fakes()
+        runs = {
+            "full": lambda: self.run_helper(
+                extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"}
+            ),
+            "attach": lambda: self.run_attach_helper(
+                in_herdr=True, extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"}
+            ),
+        }
+        for mode, run in runs.items():
+            with self.subTest(mode=mode):
+                self.calls_path.write_text("")
+                result = run()
+
+                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                self.assertIn(
+                    "herdr-agents: worker_kind=claude would share the orchestrator's "
+                    f"agmsg identity on {self.workdir.resolve()} (only 1 claude-code "
+                    "identity registered). Register a worker role first (join.sh "
+                    f"<team> <role> claude-code {self.workdir.resolve()}) or use "
+                    "worker_kind=codex. See remediation-plan-20260925.md §Phase 3.",
+                    result.stderr,
+                )
+                calls = self.calls_path.read_text().splitlines()
+                self.assertFalse(
+                    any(
+                        call.startswith(("pane split", "agent start", "workspace create"))
+                        for call in calls
+                    ),
+                    calls,
+                )
+
+    def test_claude_worker_with_a_registered_worker_identity_proceeds(self) -> None:
+        self.register_claude_worker_identity()
+
+        result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"})
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue(
+            any(
+                call.startswith("agent start claude-worker-")
+                for call in self.calls_path.read_text().splitlines()
+            )
+        )
+
+    def test_codex_worker_is_not_subject_to_the_identity_guard(self) -> None:
+        self.install_agmsg_fakes()
+
+        result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "codex"})
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn("would share the orchestrator", result.stderr)
+        self.assertTrue(
+            any(
+                call.startswith("agent start codex-worker-")
+                for call in self.calls_path.read_text().splitlines()
+            )
+        )
+
+    def test_bootstrap_with_claude_worker_accepts_two_claude_identities(self) -> None:
+        cases = (
+            ("claude-orchestrator\nclaude-worker", False),
+            ("claude-orchestrator\nclaude-worker\nclaude-stale", True),
+        )
+        for names, ambiguous in cases:
+            with self.subTest(names=names):
+                shutil.rmtree(self.home_dir / ".agents", ignore_errors=True)
+                scripts = self.install_agmsg_fakes(
+                    claude_identities_output="\n".join(
+                        f"dotfiles-conformance\t{name}" for name in names.split("\n")
+                    )
+                )
+                self.write_agmsg_claude_hooks(scripts)
+
+                result = self.run_agmsg_bootstrap_helper(
+                    extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"}
+                )
+
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(
+                    ambiguous,
+                    "Multiple agmsg Claude Code identities" in result.stderr,
+                    result.stderr,
+                )
+
+    def test_bootstrap_with_claude_worker_leaves_codex_hooks_alone(self) -> None:
+        scripts = self.install_agmsg_fakes(identities_output="")
+        self.write_agmsg_claude_hooks(scripts)
+
+        result = self.run_agmsg_bootstrap_helper(
+            extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"}
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse((self.workdir / ".codex/hooks.json").exists())
+        self.assertNotIn("No agmsg Codex identity", result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertNotIn(f"delivery set turn codex {self.workdir}", calls)
+        self.assertFalse(any(call.endswith(" codex") for call in calls), calls)
+
     def test_worker_kind_claude_accepts_a_workspace_trust_dialog(self) -> None:
+        self.register_claude_worker_identity()
         self.trust_dialog_match_path.write_text("1\n")
 
         result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"})
@@ -1376,6 +1497,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         )
 
     def test_worker_kind_claude_skips_send_keys_without_a_trust_dialog(self) -> None:
+        self.register_claude_worker_identity()
         result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"})
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

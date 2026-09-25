@@ -309,7 +309,11 @@ inheriting the same managed
 lifecycle: dedicated workspace creation, pane wait/prompt handling, layout
 repair, and attach-mode healing. A claude worker also gets an unattended
 `Down`+`Enter` sent to its workspace-trust dialog on first start, since that
-dialog otherwise defaults to "No" and exits. Attach mode renames the current
+dialog otherwise defaults to "No" and exits. Because agmsg resolves identity by
+project path and agent type, a claude worker would share the orchestrator's
+`claude-code` identity, so `herdr-agents` exits 2 before touching panes unless
+a second `claude-code` identity (the worker role) is registered for the
+directory; this is a temporary guard until agmsg roles replace it. Attach mode renames the current
 Claude pane, creates a missing worker pane with
 `herdr pane split <claude-pane> --direction right --cwd <worktree>`, then starts
 the worker with `herdr agent start <name> --kind <worker_kind> --pane <id>`.

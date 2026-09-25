@@ -1,0 +1,501 @@
+{
+  "document_version": "4.0.0",
+  "checked_on": "2026-09-13",
+  "scope": "PLAN_ARTIFACT_SCHEMA_TRACEABILITY_ONLY",
+  "product_tests_executed": false,
+  "native_auth_verified": false,
+  "vm_verified": false,
+  "ai_performance_verified": false,
+  "checks": [
+    {
+      "id": "PQA001",
+      "name": "original requirement bytes retained",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA002",
+      "name": "32 work packages",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA003",
+      "name": "192 original parent conditions retained",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA004",
+      "name": "196 original nested conditions retained",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA005",
+      "name": "244 child checks unique, mandatory and NOT_RUN",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA006",
+      "name": "all parent states mandatory and NOT_RUN",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA007",
+      "name": "dependency DAG",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "32-node dependency DAG has no cycle"
+    },
+    {
+      "id": "PQA008",
+      "name": "original WP dependency edges retained",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA009",
+      "name": "every WP has detailed steps and unique step IDs",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA010",
+      "name": "every WP repository targets named",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA011",
+      "name": "checks assigned consistently to WP",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA012",
+      "name": "18 IC unique and concrete",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA013",
+      "name": "IC references resolve",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA014",
+      "name": "27 components with accountable owners",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA015",
+      "name": "24 guard IDs and mechanisms retained",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA016",
+      "name": "guard verification refs valid",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA017",
+      "name": "12 MO and10 DG retained",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA018",
+      "name": "legacy36+24 checks all mapped",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA019",
+      "name": "legacy task queues retired",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA020",
+      "name": "old model evaluation matrix retained bytewise",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA021",
+      "name": "old48 skill cases retained bytewise",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA022",
+      "name": "new12 Skill cases distinct and balanced",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA023",
+      "name": "10 Skill routes",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA024",
+      "name": "Skill authored assets",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "10 entries, frontmatter, descriptions and references valid"
+    },
+    {
+      "id": "PQA025",
+      "name": "model roles exact",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA026",
+      "name": "runtime setting authority unambiguous",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA027",
+      "name": "40 API operations, no duplicates",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA028",
+      "name": "31 original API definitions unchanged",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA029",
+      "name": "8 cross-component flows mapped",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA030",
+      "name": "knowledge andquality evaluation counts",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA031",
+      "name": "all JSON files parse",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "60 JSON documents parsed"
+    },
+    {
+      "id": "PQA032",
+      "name": "schema syntax model-execution.schema.json",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA033",
+      "name": "schema syntax guardrails.schema.json",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA034",
+      "name": "schema syntax stack-integration.schema.json",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA035",
+      "name": "schema syntax document-graph.schema.json",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA036",
+      "name": "example ReleaseSet",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA037",
+      "name": "example KnowledgeQuery",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA038",
+      "name": "example QualityPlan",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA039",
+      "name": "example LearningCandidate",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA040",
+      "name": "TaskPacket with integratedbinding example",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA041",
+      "name": "schema rejects check-only stage fix",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "non-edit fix rejected"
+    },
+    {
+      "id": "PQA042",
+      "name": "schema unknownfield rejection",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "unknown authority field rejected"
+    },
+    {
+      "id": "PQA043",
+      "name": "documentgraph schema",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA044",
+      "name": "graph node IDs",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA045",
+      "name": "graph edges reference knownnodes",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA046",
+      "name": "graph no duplicate semantic edge",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA047",
+      "name": "graph content digest valid",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA048",
+      "name": "graph only planned states",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA049",
+      "name": "old graphnodes retained",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA050",
+      "name": "old graphedges retained",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA051",
+      "name": "all requirement traces resolve",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA052",
+      "name": "local document links",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "all local Markdown file targets exist"
+    },
+    {
+      "id": "PQA053",
+      "name": "generated view modules",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "all generated view module hashes agree"
+    },
+    {
+      "id": "PQA054",
+      "name": "no product implementation files shipped",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA055",
+      "name": "no unsafe archive paths prepared",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA056",
+      "name": "execution ledger states",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA057",
+      "name": "active operational claims",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "current-facing version/count wording reconciled"
+    },
+    {
+      "id": "PQA058",
+      "name": "role profile schema A1",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA059",
+      "name": "role profile schema A2",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA060",
+      "name": "role profile schema A3",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA061",
+      "name": "retained guard contract OperationIntent",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA062",
+      "name": "retained guard contract GuardDecision",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA063",
+      "name": "retained guard contract GuardQualification",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA064",
+      "name": "TaskPacket closure consistency",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA065",
+      "name": "new skills no native modeloverride frontmatter",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA066",
+      "name": "required model identities only and no productqualification",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    },
+    {
+      "id": "PQA067",
+      "name": "release andpublication endpoint responsibilities separate",
+      "status": "PASS",
+      "scope": "PLAN_DATA_ONLY",
+      "detail": "verified"
+    }
+  ],
+  "summary": {
+    "total": 67,
+    "passed": 67,
+    "failed": 0
+  },
+  "artifact_counts": {
+    "work_packages": 32,
+    "parent_cases": 192,
+    "nested_cases": 244,
+    "integration_contracts": 18,
+    "components": 27,
+    "graph_nodes": 674,
+    "graph_edges": 3225,
+    "guards": 24,
+    "api_operations": 40
+  },
+  "limits": [
+    "Structural consistency is not semantic proof",
+    "Current source review not full upstream code audit",
+    "No libraries, native agents, VMs, hooks or E2E executed in this turn"
+  ]
+}

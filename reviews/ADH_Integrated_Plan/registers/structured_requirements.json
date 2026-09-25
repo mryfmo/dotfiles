@@ -1,0 +1,619 @@
+{
+  "document_version": "4.0.0",
+  "original_source": "contracts/requirements.json",
+  "not_mathematical_formal_specification": true,
+  "requirements": [
+    {
+      "id": "REQ-R01",
+      "refines": "R01",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "入力資料が登録または改訂されたとき",
+      "response": "Baseline Authorityは原本bytes/版/要求ID/必須属性/禁止変更/受入参照を保持する",
+      "observable_condition": "登録後のsource digestと要求台帳が原本と一致する",
+      "original_requirement_sha256": "71b906b28eed1c8ce2f25dbf5048380ad4e4608625bdbe7abd6253334891e5d9",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V00-02",
+        "V08-02",
+        "V08-03"
+      ]
+    },
+    {
+      "id": "REQ-R02",
+      "refines": "R02",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "task実行が要求されたとき",
+      "response": "Supervisorは成果・制約・予算・技術判断・外部作用・停止条件を持つ有効Mandateを照合する",
+      "observable_condition": "委任内実行とreserved decision待ちが区別される",
+      "original_requirement_sha256": "b75bb72b09d5f933994bdfbb559805382309a867cf8f7f7f067070dfa7607091",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V01-06",
+        "V08-01",
+        "V19-06",
+        "V23-05"
+      ]
+    },
+    {
+      "id": "REQ-R03",
+      "refines": "R03",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "設計判断に外部資料の主張を採用するとき",
+      "response": "Researchは一次資料locator/版/取得時点/許可された内容hashをsourceへ記録する",
+      "observable_condition": "claimから取得可能な原本と版へ戻れる",
+      "original_requirement_sha256": "31d19e2d4ad8741daa4b6f7d0c30b050328829c0403b65245c2cd86d457f52bc",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V18-01",
+        "V18-02"
+      ]
+    },
+    {
+      "id": "REQ-R04",
+      "refines": "R04",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "重要な設計論点を調査するとき",
+      "response": "Researchは関連producer/consumer、代案、反例、障害経路と未調査を調査台帳へ記録する",
+      "observable_condition": "独立レビューが論点の欠落と根拠の適合を確認する",
+      "original_requirement_sha256": "73e739aa11d538d14e9768e060234ec7bbf182a93a2c827a0900cf707e0e62a8",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V02-04",
+        "V18-06"
+      ]
+    },
+    {
+      "id": "REQ-R05",
+      "refines": "R05",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "While",
+      "condition": "重要な主張に矛盾または未検証が残っている間",
+      "response": "Design Gateは事実/推論/仮定/未検証を分離し、未解決のまま確定を許可しない",
+      "observable_condition": "未解決IDが保持される。文書の長さを完了根拠にしない",
+      "original_requirement_sha256": "251cdcdbd0af4b22eeee750249d82b6142377c1e48ed4096cff9690b1d1e4d2f",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V18-02",
+        "V18-03",
+        "V19-02"
+      ]
+    },
+    {
+      "id": "REQ-R06",
+      "refines": "R06",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "作業リポジトリを解析するとき",
+      "response": "SnapshotServiceは対象worktree/HEAD/index/working/untrackedの識別を記録する",
+      "observable_condition": "dirty内容の変化でfingerprintが変わりmainへすり替わらない",
+      "original_requirement_sha256": "da6f26f2219bd087cb38c1cbf24c618b22efe001b3c45fe90820ae5d8b77239b",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V09-01",
+        "V09-02",
+        "V18-04"
+      ]
+    },
+    {
+      "id": "REQ-R07",
+      "refines": "R07",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "未確定の実現方式を選ぶとき",
+      "response": "Architectは成立する候補、必須条件、不採用理由、反証条件を対応付ける",
+      "observable_condition": "候補間比較と変更され得る判断条件を独立確認できる",
+      "original_requirement_sha256": "bdae568b9ce9f7f85bab644c227e01587f950289a25c94890c592e42ea13ea8c",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V19-01",
+        "V19-03"
+      ]
+    },
+    {
+      "id": "REQ-R08",
+      "refines": "R08",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "採用に重要な仮説を検証するとき",
+      "response": "Experimentは開始前に判定基準を固定し、実条件・結果・限界を保存する",
+      "observable_condition": "失敗と未実行を成功と扱わない",
+      "original_requirement_sha256": "3e8eba28a1c07a41b16f5475f0129e23a5a201ca583bc3f7e0af6ef8f13bcb3f",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V02-03",
+        "V19-02"
+      ]
+    },
+    {
+      "id": "REQ-R09",
+      "refines": "R09",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "解決策の仕様を確定するとき",
+      "response": "Design Gateは機能・外部/内部契約・データ・異常時・NFRの整合を確認する",
+      "observable_condition": "要求に対する仕様項目と検査参照が欠けない",
+      "original_requirement_sha256": "b342db7d4734975c23ac87dfcb347f6bbfbcf7e1668e57b64c7f9aac12c65cf3",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V02-02",
+        "V19-04",
+        "V21-02"
+      ]
+    },
+    {
+      "id": "REQ-R10",
+      "refines": "R10",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "アーキテクチャ上の決定を記録するとき",
+      "response": "ArchitectはADRを要求・根拠・候補・実験へ結び付ける",
+      "observable_condition": "重要な決定に出典と結果を逆引きできる",
+      "original_requirement_sha256": "b96c94056c6097103e43ee9e98b743c92001738f841f51d54489ec1b5ff78030",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V02-04",
+        "V19-01",
+        "V19-04"
+      ]
+    },
+    {
+      "id": "REQ-R11",
+      "refines": "R11",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "While",
+      "condition": "SolutionBaselineが確定している間",
+      "response": "Authorityはworkerによる仕様と固定検査の緩和を拒否する",
+      "observable_condition": "正規CR以外ではdigestが不変",
+      "original_requirement_sha256": "6ff2cd5aa7258f8b299ae46c89d181b70d10939d6fa6c0db117b17337bf940f8",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V00-05",
+        "V08-02",
+        "V08-03",
+        "V08-04"
+      ]
+    },
+    {
+      "id": "REQ-R12",
+      "refines": "R12",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "実装計画を受け入れるとき",
+      "response": "PlannerはMUSTからADR/SPEC/task/checkへの対応と依存矛盾を検査する",
+      "observable_condition": "未対応・矛盾を解消するまでplan受入しない",
+      "original_requirement_sha256": "df6d8a00e3cf9a1685606a64ffbfc82f9d394b3da8dcc2b5eb2b97b180eaea6d",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V02-04",
+        "V19-04",
+        "V19-05"
+      ]
+    },
+    {
+      "id": "REQ-R13",
+      "refines": "R13",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "公式Agentを起動または再開するとき",
+      "response": "NativeAdapterは未改変の公式製品による本人認証を利用する",
+      "observable_condition": "Auth bytesをSupervisor/別providerに複製しない",
+      "original_requirement_sha256": "3628457d3cfaf4eb013f70763a81c010a8b851bfd4e2ec355dc28bd0d93d4991",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V01-01",
+        "V15-01",
+        "V15-06",
+        "V16-02",
+        "V26-01"
+      ]
+    },
+    {
+      "id": "REQ-R14",
+      "refines": "R14",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "必須拡張を利用するrunを開始するとき",
+      "response": "Qualificationはnative上でPlugin/Skill/Rule/Hookの実効設定と代表作用を確認する",
+      "observable_condition": "install指定だけではqualifiedにしない",
+      "original_requirement_sha256": "2922e8d4258fee580e6910b4a6450411a70c1de3adda0db7ad5a91aeb08b342d",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V06-02",
+        "V06-06",
+        "V15-04",
+        "V26-02"
+      ]
+    },
+    {
+      "id": "REQ-R15",
+      "refines": "R15",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "runを開始するとき",
+      "response": "QualificationはCLI/model/effort/plugin/skill/policyの版・hashをrun manifestへ固定する",
+      "observable_condition": "無断fallbackとlive driftで資格が無効になる",
+      "original_requirement_sha256": "0c147b7a029dad8fd52bc26c57d2b90c625c62ffebafcd2db5cb15b0e11a6962",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V01-04",
+        "V06-01",
+        "V26-03"
+      ]
+    },
+    {
+      "id": "REQ-R16",
+      "refines": "R16",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "While",
+      "condition": "writerが作業領域を所有している間",
+      "response": "Runnerは同領域への二人目のwriterと別task領域への作用を許可しない",
+      "observable_condition": "並列taskは別binding、停止未確認では再割当なし",
+      "original_requirement_sha256": "4a43dfd46672a72cec1c3bf674d9f755e1676922cd80a8a3486b34aba2404ff1",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V10-05",
+        "V13-02",
+        "V14-01",
+        "V14-05",
+        "V24-04"
+      ]
+    },
+    {
+      "id": "REQ-R17",
+      "refines": "R17",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "taskをclaimまたはresultを受け入れるとき",
+      "response": "Schedulerは依存DAG、所有者、version、attempt/fenceを照合する",
+      "observable_condition": "二重claim/旧result/依存未達を拒否する",
+      "original_requirement_sha256": "c3959d168a1fa3fa6b95a47f5410bf8c06548f56d7a52daa8dfe01e406307fe0",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V07-01",
+        "V10-01",
+        "V10-02",
+        "V10-03"
+      ]
+    },
+    {
+      "id": "REQ-R18",
+      "refines": "R18",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "While",
+      "condition": "有効な委任と予算の範囲に未完了作業がある間",
+      "response": "AgentとSupervisorは調査・編集・build・test・修正を逐次指示なしで進める",
+      "observable_condition": "通常失敗で完了や放棄にせず修正へ進む",
+      "original_requirement_sha256": "b26903ada8ba9ad003235e13c74221426355c8887bbcd3fad9637eeb13bb627a",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V22-01",
+        "V28-01",
+        "V28-02",
+        "V28-04"
+      ]
+    },
+    {
+      "id": "REQ-R19",
+      "refines": "R19",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "検証の環境不足を検出したとき",
+      "response": "Runnerは現在実施可・構築すれば可・外部条件必須を区分し前二者を実施する",
+      "observable_condition": "構築可能を実施不能とせず実機不足をmockで代替認定しない",
+      "original_requirement_sha256": "d141bba840564be07ee9d3d06f0c376e8c6b5bdf3dec8e2f3512e8cb76edc7de",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V01-05",
+        "V14-04",
+        "V22-02",
+        "V28-03"
+      ]
+    },
+    {
+      "id": "REQ-R20",
+      "refines": "R20",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "候補成果物を検証するとき",
+      "response": "Verifierは実装writerと別環境で固定suiteを実行して結果を収集する",
+      "observable_condition": "自己報告ではなくコマンド/件数/内容の証拠がある",
+      "original_requirement_sha256": "780d17bdc306cc361fe9c0841791b13c0298ab1c280609051604641ddf1f3695",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V20-01",
+        "V20-05",
+        "V26-04"
+      ]
+    },
+    {
+      "id": "REQ-R21",
+      "refines": "R21",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "候補成果物を意味レビューするとき",
+      "response": "Review Serviceは作者と別session/context/権限のreviewerへ仕様適合と品質確認を割り当てる",
+      "observable_condition": "自己reviewを独立reviewと表示しない",
+      "original_requirement_sha256": "9470e95e002a9d9761e30f50ce21750f4ca9532f01c8c6e0d03b085941987a7d",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V21-01",
+        "V21-02",
+        "V21-03",
+        "V21-04"
+      ]
+    },
+    {
+      "id": "REQ-R22",
+      "refines": "R22",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "検証結果を発行し受け入れるとき",
+      "response": "SignerとSupervisorはsnapshot/仕様/policy/環境/suite/task/試行を結果の署名と照合する",
+      "observable_condition": "偽署名・対象相違・古いchallengeを拒否する",
+      "original_requirement_sha256": "741044a4064e28c85ee25a2d4f1b7bbb717f80731754af762fa89217ea4f0cd4",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V04-02",
+        "V04-04",
+        "V20-03",
+        "V20-04"
+      ]
+    },
+    {
+      "id": "REQ-R23",
+      "refines": "R23",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "If",
+      "condition": "候補の必須検証またはレビューが不合格の場合",
+      "response": "Supervisorは原因を分類して修正/再計画へ戻し、予算切れはpauseへ分離する",
+      "observable_condition": "失敗をPASSに変えず新候補を再検証する",
+      "original_requirement_sha256": "bb0b74ac666628ee3870c20dbee1fdd89b02bce1c025e0c28a975b47bc573e64",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V21-05",
+        "V22-01",
+        "V22-03"
+      ]
+    },
+    {
+      "id": "REQ-R24",
+      "refines": "R24",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "If",
+      "condition": "runの異常終了またはlease失効が起きた場合",
+      "response": "Recoveryは旧process静止と外部作用を照合してから再割当する",
+      "observable_condition": "ACKのみやleaseのみで二重実行しない",
+      "original_requirement_sha256": "c1b5223909a9c6ca0a8f19a8b4744b6829e2637cceb27cb75375c94625f2b431",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V14-01",
+        "V22-04",
+        "V23-02",
+        "V23-06",
+        "V30-03"
+      ]
+    },
+    {
+      "id": "REQ-R25",
+      "refines": "R25",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "While",
+      "condition": "利用者停止・必要権限不足・予算超過の状態の間",
+      "response": "Supervisorは該当範囲の新規admissionを停止し正規再開条件を待つ",
+      "observable_condition": "目標activeを理由に自動解除しない",
+      "original_requirement_sha256": "104562ca672f204423701a062a398000d0baca1673ec1b6023c22a4d8609786e",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V11-03",
+        "V11-04",
+        "V11-05",
+        "V22-05"
+      ]
+    },
+    {
+      "id": "REQ-R26",
+      "refines": "R26",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "個別候補を統合するとき",
+      "response": "Integratorは新snapshotで統合suiteとE2Eを実行する",
+      "observable_condition": "個別PASSを足し合わせず統合不合格なら修正する",
+      "original_requirement_sha256": "eb3d7245d9718888453cf0ed12cd0a3bd1d0e194124c236bfe051bae6c00b915",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V24-02",
+        "V24-03",
+        "V28-05"
+      ]
+    },
+    {
+      "id": "REQ-R27",
+      "refines": "R27",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "成果物を受け入れるとき",
+      "response": "Release Gateは仕様/コード/試験/依存/起動手順/manifest/残課題を照合する",
+      "observable_condition": "必須成果物欠落や提出版相違で受入しない",
+      "original_requirement_sha256": "dabf4cea2fd6ecb7ed4c30f1a1b08c3d3f8537bd4933b897e3825fcdcc6de2b4",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V30-01",
+        "V30-05",
+        "V31-01",
+        "V31-05"
+      ]
+    },
+    {
+      "id": "REQ-R28",
+      "refines": "R28",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "push/merge/publish/deploy等の外部反映を要求するとき",
+      "response": "Effect Serviceは開発完了とは別の明示委任または承認を照合する",
+      "observable_condition": "公開未許可なら開発完了を保ち外部作用を行わない",
+      "original_requirement_sha256": "57dfa1ed7dda2ef27a1dc7ad09c91cf14bc299122b8aaf8e19d50ad9c58a1406",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V08-06",
+        "V23-05",
+        "V31-06"
+      ]
+    },
+    {
+      "id": "REQ-R29",
+      "refines": "R29",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "UA/CompactionDB/SDD等の記録を利用するとき",
+      "response": "Contextは版とsourceを確認した参照・投影として扱う",
+      "observable_condition": "記憶や要約から逆にbaseline/完了状態を書き換えない",
+      "original_requirement_sha256": "d02d5c0e8380fc7eb36e16624758f008da09b6e57d457e5b54e4b66897eadf4d",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V25-01",
+        "V25-02"
+      ]
+    },
+    {
+      "id": "REQ-R30",
+      "refines": "R30",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "外部Web/README/tool outputを読み込むとき",
+      "response": "Contextは出典と信頼区分を保持し、その命令文に権限を与えない",
+      "observable_condition": "保護作用の認可は独立。悪意文の検出完全性は主張しない",
+      "original_requirement_sha256": "14cfff3752ec875054ca694782d83f746e0f8d3d74e672b07b57f9bc33634893",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V18-05",
+        "V20-02",
+        "V29-01"
+      ]
+    },
+    {
+      "id": "REQ-R31",
+      "refines": "R31",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "runの状態や実行証拠を記録するとき",
+      "response": "Observerはproject/task/run/session/attempt/traceを関連付け秘密を除去する",
+      "observable_condition": "相関が辿れ、未実行は未実行、秘密は配布されない",
+      "original_requirement_sha256": "70ef8e342a805376c26d9bcc5cf9f9907ca7ec34407efa83769def745d646fab",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V03-06",
+        "V17-01",
+        "V25-03",
+        "V25-04",
+        "V25-06"
+      ]
+    },
+    {
+      "id": "REQ-R32",
+      "refines": "R32",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "While",
+      "condition": "runと反復処理を実施している間",
+      "response": "Budget Serviceは回数/時間/並列/取得可能利用量を外部の有限予算で管理する",
+      "observable_condition": "上限やunknown利用量を完了/ゼロ利用へ変換しない",
+      "original_requirement_sha256": "1ea1205b023f80e138e7a7f111893daa7e43a43ff1f4edaef400a8ee74e8efcd",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V01-06",
+        "V11-01",
+        "V22-03"
+      ]
+    },
+    {
+      "id": "REQ-R33",
+      "refines": "R33",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "CLI/plugin/skill/policy/環境を更新するとき",
+      "response": "Qualificationはpayloadまで固定した候補で契約・回帰・E2Eを通す",
+      "observable_condition": "旧資格を流用せず新runへ適用する",
+      "original_requirement_sha256": "aebb74d5879e78806a0cfc2cfb373b6ba151981aa5bf42d6e4fda06beac091d6",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V01-04",
+        "V06-01",
+        "V26-03",
+        "V30-04"
+      ]
+    },
+    {
+      "id": "REQ-R34",
+      "refines": "R34",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "検証を再実行するとき",
+      "response": "Verifierは基準/snapshot/環境/suiteを指定して再現する",
+      "observable_condition": "同じ対象の独立再実行結果を比較できる",
+      "original_requirement_sha256": "b9e3e54a80ffc5aceb321b1399ad6bcf66127a2a992c5d3b17869b416e17939e",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V03-01",
+        "V09-01",
+        "V20-01",
+        "V26-06",
+        "V30-03"
+      ]
+    },
+    {
+      "id": "REQ-R35",
+      "refines": "R35",
+      "normative": "MUST_REFINEMENT",
+      "ears_pattern": "When",
+      "condition": "試験や完成状態を報告するとき",
+      "response": "Reporterはmock/抽出関数/実CLI/実VM/実AIを区分し未実施を明示する",
+      "observable_condition": "文書QA・過去試験・署名形式だけを製品合格にしない",
+      "original_requirement_sha256": "fc3976e93ae74c42e93488b5dfcc21cd8dea577aa46dd1a89d5a543a3f0be8ec",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "formal_proof": false,
+      "test_refs": [
+        "V00-06",
+        "V03-03",
+        "V20-05",
+        "V31-02"
+      ]
+    }
+  ]
+}

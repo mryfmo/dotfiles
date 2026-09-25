@@ -1,0 +1,343 @@
+{
+  "document_version": "4.0.0",
+  "canonical": "registers/verification_cases.json",
+  "count": 48,
+  "cases": [
+    {
+      "integration_id": "U4-01",
+      "id": "V06-02-U4-01",
+      "parent_case": "V06-02",
+      "work_package": "WP06",
+      "contract": "IC15"
+    },
+    {
+      "integration_id": "U4-02",
+      "id": "V26-01-U4-02",
+      "parent_case": "V26-01",
+      "work_package": "WP26",
+      "contract": "IC15"
+    },
+    {
+      "integration_id": "U4-03",
+      "id": "V15-04-U4-03",
+      "parent_case": "V15-04",
+      "work_package": "WP15",
+      "contract": "IC15"
+    },
+    {
+      "integration_id": "U4-04",
+      "id": "V06-01-U4-04",
+      "parent_case": "V06-01",
+      "work_package": "WP06",
+      "contract": "IC15"
+    },
+    {
+      "integration_id": "U4-05",
+      "id": "V26-02-U4-05",
+      "parent_case": "V26-02",
+      "work_package": "WP26",
+      "contract": "IC15"
+    },
+    {
+      "integration_id": "U4-06",
+      "id": "V17-05-U4-06",
+      "parent_case": "V17-05",
+      "work_package": "WP17",
+      "contract": "IC15"
+    },
+    {
+      "integration_id": "U4-07",
+      "id": "V30-04-U4-07",
+      "parent_case": "V30-04",
+      "work_package": "WP30",
+      "contract": "IC15"
+    },
+    {
+      "integration_id": "U4-08",
+      "id": "V06-05-U4-08",
+      "parent_case": "V06-05",
+      "work_package": "WP06",
+      "contract": "IC15"
+    },
+    {
+      "integration_id": "U4-09",
+      "id": "V18-01-U4-09",
+      "parent_case": "V18-01",
+      "work_package": "WP18",
+      "contract": "IC16"
+    },
+    {
+      "integration_id": "U4-10",
+      "id": "V26-04-U4-10",
+      "parent_case": "V26-04",
+      "work_package": "WP26",
+      "contract": "IC16"
+    },
+    {
+      "integration_id": "U4-11",
+      "id": "V18-04-U4-11",
+      "parent_case": "V18-04",
+      "work_package": "WP18",
+      "contract": "IC16"
+    },
+    {
+      "integration_id": "U4-12",
+      "id": "V09-05-U4-12",
+      "parent_case": "V09-05",
+      "work_package": "WP09",
+      "contract": "IC16"
+    },
+    {
+      "integration_id": "U4-13",
+      "id": "V22-06-U4-13",
+      "parent_case": "V22-06",
+      "work_package": "WP22",
+      "contract": "IC16"
+    },
+    {
+      "integration_id": "U4-14",
+      "id": "V25-01-U4-14",
+      "parent_case": "V25-01",
+      "work_package": "WP25",
+      "contract": "IC16"
+    },
+    {
+      "integration_id": "U4-15",
+      "id": "V18-03-U4-15",
+      "parent_case": "V18-03",
+      "work_package": "WP18",
+      "contract": "IC16"
+    },
+    {
+      "integration_id": "U4-16",
+      "id": "V13-03-U4-16",
+      "parent_case": "V13-03",
+      "work_package": "WP13",
+      "contract": "IC16"
+    },
+    {
+      "integration_id": "U4-17",
+      "id": "V25-02-U4-17",
+      "parent_case": "V25-02",
+      "work_package": "WP25",
+      "contract": "IC16"
+    },
+    {
+      "integration_id": "U4-18",
+      "id": "V18-06-U4-18",
+      "parent_case": "V18-06",
+      "work_package": "WP18",
+      "contract": "IC16"
+    },
+    {
+      "integration_id": "U4-19",
+      "id": "V24-05-U4-19",
+      "parent_case": "V24-05",
+      "work_package": "WP24",
+      "contract": "IC16"
+    },
+    {
+      "integration_id": "U4-20",
+      "id": "V18-02-U4-20",
+      "parent_case": "V18-02",
+      "work_package": "WP18",
+      "contract": "IC16"
+    },
+    {
+      "integration_id": "U4-21",
+      "id": "V26-02-U4-21",
+      "parent_case": "V26-02",
+      "work_package": "WP26",
+      "contract": "IC16"
+    },
+    {
+      "integration_id": "U4-22",
+      "id": "V03-01-U4-22",
+      "parent_case": "V03-01",
+      "work_package": "WP03",
+      "contract": "IC17"
+    },
+    {
+      "integration_id": "U4-23",
+      "id": "V06-04-U4-23",
+      "parent_case": "V06-04",
+      "work_package": "WP06",
+      "contract": "IC17"
+    },
+    {
+      "integration_id": "U4-24",
+      "id": "V14-04-U4-24",
+      "parent_case": "V14-04",
+      "work_package": "WP14",
+      "contract": "IC17"
+    },
+    {
+      "integration_id": "U4-25",
+      "id": "V06-03-U4-25",
+      "parent_case": "V06-03",
+      "work_package": "WP06",
+      "contract": "IC17"
+    },
+    {
+      "integration_id": "U4-26",
+      "id": "V14-06-U4-26",
+      "parent_case": "V14-06",
+      "work_package": "WP14",
+      "contract": "IC17"
+    },
+    {
+      "integration_id": "U4-27",
+      "id": "V14-06-U4-27",
+      "parent_case": "V14-06",
+      "work_package": "WP14",
+      "contract": "IC17"
+    },
+    {
+      "integration_id": "U4-28",
+      "id": "V14-05-U4-28",
+      "parent_case": "V14-05",
+      "work_package": "WP14",
+      "contract": "IC17"
+    },
+    {
+      "integration_id": "U4-29",
+      "id": "V03-02-U4-29",
+      "parent_case": "V03-02",
+      "work_package": "WP03",
+      "contract": "IC17"
+    },
+    {
+      "integration_id": "U4-30",
+      "id": "V20-05-U4-30",
+      "parent_case": "V20-05",
+      "work_package": "WP20",
+      "contract": "IC17"
+    },
+    {
+      "integration_id": "U4-31",
+      "id": "V30-02-U4-31",
+      "parent_case": "V30-02",
+      "work_package": "WP30",
+      "contract": "IC17"
+    },
+    {
+      "integration_id": "U4-32",
+      "id": "V24-03-U4-32",
+      "parent_case": "V24-03",
+      "work_package": "WP24",
+      "contract": "IC17"
+    },
+    {
+      "integration_id": "U4-33",
+      "id": "V26-03-U4-33",
+      "parent_case": "V26-03",
+      "work_package": "WP26",
+      "contract": "IC17"
+    },
+    {
+      "integration_id": "U4-34",
+      "id": "V22-02-U4-34",
+      "parent_case": "V22-02",
+      "work_package": "WP22",
+      "contract": "IC17"
+    },
+    {
+      "integration_id": "U4-35",
+      "id": "V26-02-U4-35",
+      "parent_case": "V26-02",
+      "work_package": "WP26",
+      "contract": "IC16"
+    },
+    {
+      "integration_id": "U4-36",
+      "id": "V25-02-U4-36",
+      "parent_case": "V25-02",
+      "work_package": "WP25",
+      "contract": "IC18"
+    },
+    {
+      "integration_id": "U4-37",
+      "id": "V30-04-U4-37",
+      "parent_case": "V30-04",
+      "work_package": "WP30",
+      "contract": "IC18"
+    },
+    {
+      "integration_id": "U4-38",
+      "id": "V17-01-U4-38",
+      "parent_case": "V17-01",
+      "work_package": "WP17",
+      "contract": "IC15"
+    },
+    {
+      "integration_id": "U4-39",
+      "id": "V28-01-U4-39",
+      "parent_case": "V28-01",
+      "work_package": "WP28",
+      "contract": "IC16"
+    },
+    {
+      "integration_id": "U4-40",
+      "id": "V24-05-U4-40",
+      "parent_case": "V24-05",
+      "work_package": "WP24",
+      "contract": "IC15"
+    },
+    {
+      "integration_id": "U4-41",
+      "id": "V22-04-U4-41",
+      "parent_case": "V22-04",
+      "work_package": "WP22",
+      "contract": "IC16"
+    },
+    {
+      "integration_id": "U4-42",
+      "id": "V26-04-U4-42",
+      "parent_case": "V26-04",
+      "work_package": "WP26",
+      "contract": "IC15"
+    },
+    {
+      "integration_id": "U4-43",
+      "id": "V29-05-U4-43",
+      "parent_case": "V29-05",
+      "work_package": "WP29",
+      "contract": "IC17"
+    },
+    {
+      "integration_id": "U4-44",
+      "id": "V29-01-U4-44",
+      "parent_case": "V29-01",
+      "work_package": "WP29",
+      "contract": "IC18"
+    },
+    {
+      "integration_id": "U4-45",
+      "id": "V30-06-U4-45",
+      "parent_case": "V30-06",
+      "work_package": "WP30",
+      "contract": "IC15"
+    },
+    {
+      "integration_id": "U4-46",
+      "id": "V31-02-U4-46",
+      "parent_case": "V31-02",
+      "work_package": "WP31",
+      "contract": "IC15"
+    },
+    {
+      "integration_id": "U4-47",
+      "id": "V23-03-U4-47",
+      "parent_case": "V23-03",
+      "work_package": "WP23",
+      "contract": "IC18"
+    },
+    {
+      "integration_id": "U4-48",
+      "id": "V31-05-U4-48",
+      "parent_case": "V31-05",
+      "work_package": "WP31",
+      "contract": "IC18"
+    }
+  ]
+}

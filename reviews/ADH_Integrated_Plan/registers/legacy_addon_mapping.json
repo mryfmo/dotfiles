@@ -1,0 +1,902 @@
+{
+  "document_version": "4.0.0",
+  "source_plans": {
+    "SI": "36 checks from first add-on",
+    "DI": "24 checks from second add-on"
+  },
+  "check_mapping": [
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "S01",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V06-01-U4-04",
+        "V13-03-U4-16"
+      ],
+      "work_packages": [
+        "WP06",
+        "WP13"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "S02",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V13-03-U4-16"
+      ],
+      "work_packages": [
+        "WP13"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "S03",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V18-01-U4-09"
+      ],
+      "work_packages": [
+        "WP18"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "S04",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V18-04-U4-11"
+      ],
+      "work_packages": [
+        "WP18"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "S05",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V26-04-U4-10"
+      ],
+      "work_packages": [
+        "WP26"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "S06",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V25-01-U4-14"
+      ],
+      "work_packages": [
+        "WP25"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "S07",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V18-03-U4-15"
+      ],
+      "work_packages": [
+        "WP18"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "S08",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V18-03-U4-15"
+      ],
+      "work_packages": [
+        "WP18"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "S09",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V09-05-U4-12"
+      ],
+      "work_packages": [
+        "WP09"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "S10",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V22-06-U4-13"
+      ],
+      "work_packages": [
+        "WP22"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "S11",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V25-02-U4-17"
+      ],
+      "work_packages": [
+        "WP25"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "S12",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V18-02-U4-20"
+      ],
+      "work_packages": [
+        "WP18"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "S13",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V18-02-U4-20",
+        "V26-04-U4-42"
+      ],
+      "work_packages": [
+        "WP18",
+        "WP26"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "S14",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V18-01-U4-09",
+        "V26-02-U4-21"
+      ],
+      "work_packages": [
+        "WP18",
+        "WP26"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "S15",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V18-06-U4-18",
+        "V29-05-U4-43"
+      ],
+      "work_packages": [
+        "WP18",
+        "WP29"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "Q01",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V03-01-U4-22"
+      ],
+      "work_packages": [
+        "WP03"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "Q02",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V06-04-U4-23"
+      ],
+      "work_packages": [
+        "WP06"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "Q03",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V14-06-U4-26"
+      ],
+      "work_packages": [
+        "WP14"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "Q04",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V14-06-U4-26"
+      ],
+      "work_packages": [
+        "WP14"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "Q05",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V06-03-U4-25"
+      ],
+      "work_packages": [
+        "WP06"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "Q06",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V06-03-U4-25",
+        "V24-03-U4-32"
+      ],
+      "work_packages": [
+        "WP06",
+        "WP24"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "Q07",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V03-02-U4-29"
+      ],
+      "work_packages": [
+        "WP03"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "Q08",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V03-02-U4-29"
+      ],
+      "work_packages": [
+        "WP03"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "Q09",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V30-06-U4-45"
+      ],
+      "work_packages": [
+        "WP30"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "Q10",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V14-05-U4-28"
+      ],
+      "work_packages": [
+        "WP14"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "Q11",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V03-01-U4-22",
+        "V29-01-U4-44"
+      ],
+      "work_packages": [
+        "WP03",
+        "WP29"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "Q12",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V20-05-U4-30"
+      ],
+      "work_packages": [
+        "WP20"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "Q13",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V30-02-U4-31"
+      ],
+      "work_packages": [
+        "WP30"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "Q14",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V14-06-U4-27"
+      ],
+      "work_packages": [
+        "WP14"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "Q15",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V29-05-U4-43"
+      ],
+      "work_packages": [
+        "WP29"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "I01",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V22-02-U4-34"
+      ],
+      "work_packages": [
+        "WP22"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "I02",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V29-01-U4-44",
+        "V23-03-U4-47"
+      ],
+      "work_packages": [
+        "WP23",
+        "WP29"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "I03",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V26-02-U4-35",
+        "V28-01-U4-39"
+      ],
+      "work_packages": [
+        "WP26",
+        "WP28"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "I04",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V30-06-U4-45"
+      ],
+      "work_packages": [
+        "WP30"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "I05",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V30-04-U4-07",
+        "V30-04-U4-37"
+      ],
+      "work_packages": [
+        "WP30"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "SI",
+      "legacy_check": "I06",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V31-02-U4-46",
+        "V31-05-U4-48"
+      ],
+      "work_packages": [
+        "WP31"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "DI",
+      "legacy_check": "DV01",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V06-02-U4-01",
+        "V31-02-U4-46"
+      ],
+      "work_packages": [
+        "WP06",
+        "WP31"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "DI",
+      "legacy_check": "DV02",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V06-01-U4-04",
+        "V03-01-U4-22"
+      ],
+      "work_packages": [
+        "WP03",
+        "WP06"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "DI",
+      "legacy_check": "DV03",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V13-03-U4-16",
+        "V14-04-U4-24"
+      ],
+      "work_packages": [
+        "WP13",
+        "WP14"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "DI",
+      "legacy_check": "DV04",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V06-02-U4-01",
+        "V30-06-U4-45"
+      ],
+      "work_packages": [
+        "WP06",
+        "WP30"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "DI",
+      "legacy_check": "DV05",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V03-01-U4-22"
+      ],
+      "work_packages": [
+        "WP03"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "DI",
+      "legacy_check": "DV06",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V30-04-U4-07",
+        "V30-06-U4-45"
+      ],
+      "work_packages": [
+        "WP30"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "DI",
+      "legacy_check": "DV07",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V18-01-U4-09"
+      ],
+      "work_packages": [
+        "WP18"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "DI",
+      "legacy_check": "DV08",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V18-03-U4-15",
+        "V25-02-U4-17"
+      ],
+      "work_packages": [
+        "WP18",
+        "WP25"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "DI",
+      "legacy_check": "DV09",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V13-03-U4-16"
+      ],
+      "work_packages": [
+        "WP13"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "DI",
+      "legacy_check": "DV10",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V18-04-U4-11"
+      ],
+      "work_packages": [
+        "WP18"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "DI",
+      "legacy_check": "DV11",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V09-05-U4-12"
+      ],
+      "work_packages": [
+        "WP09"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "DI",
+      "legacy_check": "DV12",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V25-01-U4-14"
+      ],
+      "work_packages": [
+        "WP25"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "DI",
+      "legacy_check": "DV13",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V26-02-U4-35"
+      ],
+      "work_packages": [
+        "WP26"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "DI",
+      "legacy_check": "DV14",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V26-01-U4-02",
+        "V26-02-U4-05",
+        "V26-02-U4-21"
+      ],
+      "work_packages": [
+        "WP26"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "DI",
+      "legacy_check": "DV15",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V25-02-U4-17",
+        "V29-01-U4-44"
+      ],
+      "work_packages": [
+        "WP25",
+        "WP29"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "DI",
+      "legacy_check": "DV16",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V03-02-U4-29"
+      ],
+      "work_packages": [
+        "WP03"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "DI",
+      "legacy_check": "DV17",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V14-04-U4-24",
+        "V06-03-U4-25"
+      ],
+      "work_packages": [
+        "WP06",
+        "WP14"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "DI",
+      "legacy_check": "DV18",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V14-06-U4-26",
+        "V24-03-U4-32"
+      ],
+      "work_packages": [
+        "WP14",
+        "WP24"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "DI",
+      "legacy_check": "DV19",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V06-04-U4-23",
+        "V14-06-U4-27"
+      ],
+      "work_packages": [
+        "WP06",
+        "WP14"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "DI",
+      "legacy_check": "DV20",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V14-05-U4-28"
+      ],
+      "work_packages": [
+        "WP14"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "DI",
+      "legacy_check": "DV21",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V20-05-U4-30"
+      ],
+      "work_packages": [
+        "WP20"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "DI",
+      "legacy_check": "DV22",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V28-01-U4-39"
+      ],
+      "work_packages": [
+        "WP28"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "DI",
+      "legacy_check": "DV23",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V29-05-U4-43"
+      ],
+      "work_packages": [
+        "WP29"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "legacy_plan": "DI",
+      "legacy_check": "DV24",
+      "disposition": "INTEGRATED_NOT_A_SEPARATE_ACCEPTANCE",
+      "new_checks": [
+        "V31-02-U4-46",
+        "V31-05-U4-48"
+      ],
+      "work_packages": [
+        "WP31"
+      ],
+      "status": "NOT_RUN"
+    }
+  ],
+  "legacy_tasks": [
+    {
+      "legacy_task": "SI01",
+      "v4_work_packages": [
+        "WP00",
+        "WP01",
+        "WP06"
+      ],
+      "disposition": "scope redistributed into original WP; not executed independently"
+    },
+    {
+      "legacy_task": "SI02",
+      "v4_work_packages": [
+        "WP04",
+        "WP18"
+      ],
+      "disposition": "scope redistributed into original WP; not executed independently"
+    },
+    {
+      "legacy_task": "SI03",
+      "v4_work_packages": [
+        "WP09",
+        "WP18",
+        "WP25"
+      ],
+      "disposition": "scope redistributed into original WP; not executed independently"
+    },
+    {
+      "legacy_task": "SI04",
+      "v4_work_packages": [
+        "WP03",
+        "WP06",
+        "WP14"
+      ],
+      "disposition": "scope redistributed into original WP; not executed independently"
+    },
+    {
+      "legacy_task": "SI05",
+      "v4_work_packages": [
+        "WP14",
+        "WP24",
+        "WP30"
+      ],
+      "disposition": "scope redistributed into original WP; not executed independently"
+    },
+    {
+      "legacy_task": "SI06",
+      "v4_work_packages": [
+        "WP06",
+        "WP17",
+        "WP26"
+      ],
+      "disposition": "scope redistributed into original WP; not executed independently"
+    },
+    {
+      "legacy_task": "SI07",
+      "v4_work_packages": [
+        "WP30",
+        "WP31"
+      ],
+      "disposition": "scope redistributed into original WP; not executed independently"
+    },
+    {
+      "legacy_task": "DI00",
+      "v4_work_packages": [
+        "WP00",
+        "WP01"
+      ],
+      "disposition": "scope redistributed into original WP; not executed independently"
+    },
+    {
+      "legacy_task": "DI01",
+      "v4_work_packages": [
+        "WP06",
+        "WP30"
+      ],
+      "disposition": "scope redistributed into original WP; not executed independently"
+    },
+    {
+      "legacy_task": "DI02",
+      "v4_work_packages": [
+        "WP04",
+        "WP18"
+      ],
+      "disposition": "scope redistributed into original WP; not executed independently"
+    },
+    {
+      "legacy_task": "DI03",
+      "v4_work_packages": [
+        "WP09",
+        "WP18",
+        "WP25"
+      ],
+      "disposition": "scope redistributed into original WP; not executed independently"
+    },
+    {
+      "legacy_task": "DI04",
+      "v4_work_packages": [
+        "WP06",
+        "WP26"
+      ],
+      "disposition": "scope redistributed into original WP; not executed independently"
+    },
+    {
+      "legacy_task": "DI05",
+      "v4_work_packages": [
+        "WP03",
+        "WP14",
+        "WP20"
+      ],
+      "disposition": "scope redistributed into original WP; not executed independently"
+    },
+    {
+      "legacy_task": "DI06",
+      "v4_work_packages": [
+        "WP14",
+        "WP24",
+        "WP30"
+      ],
+      "disposition": "scope redistributed into original WP; not executed independently"
+    },
+    {
+      "legacy_task": "DI07",
+      "v4_work_packages": [
+        "WP26",
+        "WP28",
+        "WP29",
+        "WP30",
+        "WP31"
+      ],
+      "disposition": "scope redistributed into original WP; not executed independently"
+    }
+  ]
+}

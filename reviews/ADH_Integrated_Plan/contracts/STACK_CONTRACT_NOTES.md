@@ -1,0 +1,15 @@
+# 境界schemaの意味検証
+
+stack-integration.schema.jsonはV4の構造契約。認証や実在性をJSONだけで証明するものではない。
+
+ReleaseSetのrepository discriminatorはdotfiles/adh各スロットに対応すること、commitが存在すること、全digestとqualification対象が一致することを実装で再確認する。例のADH commitとdigestは構造例であり実リポジトリではない。
+
+SourceRefはstart_line <= end_lineかつ実source範囲内、hash一致、主体のACL適合が必要。schema parseだけで架空出典を受理しない。
+
+QualityPlanは対象数0ならcheckerを起動せず、事前適用表が非適用と認める場合だけNOT_APPLICABLE結果を別記録する。必須stageの必要対象が消えた場合は失敗。QualityResult PASSには、必須check全件実行、failed/skipped/unknown=0、timeoutなし、正常終了、check-only対象digest一致が必要。exit0単独は十分でない。
+
+LearningCandidateのAPPROVED/PROMOTEDには独立評価と実approvalが必要。例は未承認candidateのみを示す。queryの上限は初期設計上の資源制限でありSemanticaの性能保証値ではない。必要な規範closureが上限を超える場合はページ化/範囲取得し、必須条件を黙って切り捨てない。
+
+TaskPacket内のnormative_closure_digestとstack_binding内の同名digestは一致を検査する。role/profile IDも要求viewの実在IDへ照合し、文字列だけで資格を与えない。
+
+このschemaを公式CLIの設定JSONとして渡さない。フルOpenAPIとruntimeのimplementationはWP04以降で作成し、本計画に存在しない実動作を表示しない。

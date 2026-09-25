@@ -1,0 +1,82 @@
+[
+  {
+    "id": "P0",
+    "title": "入力・資格・仕様確定",
+    "work_packages": [
+      "WP00",
+      "WP01",
+      "WP02"
+    ]
+  },
+  {
+    "id": "P1",
+    "title": "開発基盤・契約・配送",
+    "work_packages": [
+      "WP03",
+      "WP04",
+      "WP05"
+    ]
+  },
+  {
+    "id": "P2",
+    "title": "拡張・状態・実行領域",
+    "work_packages": [
+      "WP06",
+      "WP07",
+      "WP08",
+      "WP09",
+      "WP10",
+      "WP11",
+      "WP12",
+      "WP13",
+      "WP14"
+    ]
+  },
+  {
+    "id": "P3",
+    "title": "Native・上流・独立検証",
+    "work_packages": [
+      "WP15",
+      "WP16",
+      "WP17",
+      "WP18",
+      "WP19",
+      "WP20",
+      "WP21"
+    ]
+  },
+  {
+    "id": "P4",
+    "title": "修正・復旧・統合・観測",
+    "work_packages": [
+      "WP22",
+      "WP23",
+      "WP24",
+      "WP25"
+    ]
+  },
+  {
+    "id": "P5",
+    "title": "統合資格・自己ホスト",
+    "work_packages": [
+      "WP26",
+      "WP27"
+    ]
+  },
+  {
+    "id": "P6",
+    "title": "全工程・敵対的受入",
+    "work_packages": [
+      "WP28",
+      "WP29"
+    ]
+  },
+  {
+    "id": "P7",
+    "title": "成果物・最終判定",
+    "work_packages": [
+      "WP30",
+      "WP31"
+    ]
+  }
+]

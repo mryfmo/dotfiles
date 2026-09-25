@@ -1,0 +1,1523 @@
+{
+  "document_version": "3.0.0",
+  "run_count": 72,
+  "arm_count": 4,
+  "per_arm": 18,
+  "model_qualification": "NOT_RUN",
+  "budget_approved": false,
+  "rules": "Freeze before live execution. Matched quartet inputs and code identical; prompt policy differs by assigned factor.",
+  "runs": [
+    {
+      "run_id": "MEV-U-1-H00",
+      "arm": "H00",
+      "scenario": "U",
+      "replicate": 1,
+      "execution_order": 1,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-U-1-H10",
+      "arm": "H10",
+      "scenario": "U",
+      "replicate": 1,
+      "execution_order": 2,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-U-1-H01",
+      "arm": "H01",
+      "scenario": "U",
+      "replicate": 1,
+      "execution_order": 3,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-U-1-H11",
+      "arm": "H11",
+      "scenario": "U",
+      "replicate": 1,
+      "execution_order": 4,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": true,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-U-2-H10",
+      "arm": "H10",
+      "scenario": "U",
+      "replicate": 2,
+      "execution_order": 5,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-U-2-H01",
+      "arm": "H01",
+      "scenario": "U",
+      "replicate": 2,
+      "execution_order": 6,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-U-2-H11",
+      "arm": "H11",
+      "scenario": "U",
+      "replicate": 2,
+      "execution_order": 7,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": true,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-U-2-H00",
+      "arm": "H00",
+      "scenario": "U",
+      "replicate": 2,
+      "execution_order": 8,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-U-3-H01",
+      "arm": "H01",
+      "scenario": "U",
+      "replicate": 3,
+      "execution_order": 9,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-U-3-H11",
+      "arm": "H11",
+      "scenario": "U",
+      "replicate": 3,
+      "execution_order": 10,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": true,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-U-3-H00",
+      "arm": "H00",
+      "scenario": "U",
+      "replicate": 3,
+      "execution_order": 11,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-U-3-H10",
+      "arm": "H10",
+      "scenario": "U",
+      "replicate": 3,
+      "execution_order": 12,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-B-1-H10",
+      "arm": "H10",
+      "scenario": "B",
+      "replicate": 1,
+      "execution_order": 13,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-B-1-H01",
+      "arm": "H01",
+      "scenario": "B",
+      "replicate": 1,
+      "execution_order": 14,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-B-1-H11",
+      "arm": "H11",
+      "scenario": "B",
+      "replicate": 1,
+      "execution_order": 15,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": true,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-B-1-H00",
+      "arm": "H00",
+      "scenario": "B",
+      "replicate": 1,
+      "execution_order": 16,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-B-2-H01",
+      "arm": "H01",
+      "scenario": "B",
+      "replicate": 2,
+      "execution_order": 17,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-B-2-H11",
+      "arm": "H11",
+      "scenario": "B",
+      "replicate": 2,
+      "execution_order": 18,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": true,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-B-2-H00",
+      "arm": "H00",
+      "scenario": "B",
+      "replicate": 2,
+      "execution_order": 19,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-B-2-H10",
+      "arm": "H10",
+      "scenario": "B",
+      "replicate": 2,
+      "execution_order": 20,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-B-3-H11",
+      "arm": "H11",
+      "scenario": "B",
+      "replicate": 3,
+      "execution_order": 21,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": true,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-B-3-H00",
+      "arm": "H00",
+      "scenario": "B",
+      "replicate": 3,
+      "execution_order": 22,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-B-3-H10",
+      "arm": "H10",
+      "scenario": "B",
+      "replicate": 3,
+      "execution_order": 23,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-B-3-H01",
+      "arm": "H01",
+      "scenario": "B",
+      "replicate": 3,
+      "execution_order": 24,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-E-1-H01",
+      "arm": "H01",
+      "scenario": "E",
+      "replicate": 1,
+      "execution_order": 25,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-E-1-H11",
+      "arm": "H11",
+      "scenario": "E",
+      "replicate": 1,
+      "execution_order": 26,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": true,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-E-1-H00",
+      "arm": "H00",
+      "scenario": "E",
+      "replicate": 1,
+      "execution_order": 27,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-E-1-H10",
+      "arm": "H10",
+      "scenario": "E",
+      "replicate": 1,
+      "execution_order": 28,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-E-2-H11",
+      "arm": "H11",
+      "scenario": "E",
+      "replicate": 2,
+      "execution_order": 29,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": true,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-E-2-H00",
+      "arm": "H00",
+      "scenario": "E",
+      "replicate": 2,
+      "execution_order": 30,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-E-2-H10",
+      "arm": "H10",
+      "scenario": "E",
+      "replicate": 2,
+      "execution_order": 31,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-E-2-H01",
+      "arm": "H01",
+      "scenario": "E",
+      "replicate": 2,
+      "execution_order": 32,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-E-3-H00",
+      "arm": "H00",
+      "scenario": "E",
+      "replicate": 3,
+      "execution_order": 33,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-E-3-H10",
+      "arm": "H10",
+      "scenario": "E",
+      "replicate": 3,
+      "execution_order": 34,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-E-3-H01",
+      "arm": "H01",
+      "scenario": "E",
+      "replicate": 3,
+      "execution_order": 35,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-E-3-H11",
+      "arm": "H11",
+      "scenario": "E",
+      "replicate": 3,
+      "execution_order": 36,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": true,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-R-1-H11",
+      "arm": "H11",
+      "scenario": "R",
+      "replicate": 1,
+      "execution_order": 37,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": true,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-R-1-H00",
+      "arm": "H00",
+      "scenario": "R",
+      "replicate": 1,
+      "execution_order": 38,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-R-1-H10",
+      "arm": "H10",
+      "scenario": "R",
+      "replicate": 1,
+      "execution_order": 39,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-R-1-H01",
+      "arm": "H01",
+      "scenario": "R",
+      "replicate": 1,
+      "execution_order": 40,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-R-2-H00",
+      "arm": "H00",
+      "scenario": "R",
+      "replicate": 2,
+      "execution_order": 41,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-R-2-H10",
+      "arm": "H10",
+      "scenario": "R",
+      "replicate": 2,
+      "execution_order": 42,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-R-2-H01",
+      "arm": "H01",
+      "scenario": "R",
+      "replicate": 2,
+      "execution_order": 43,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-R-2-H11",
+      "arm": "H11",
+      "scenario": "R",
+      "replicate": 2,
+      "execution_order": 44,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": true,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-R-3-H10",
+      "arm": "H10",
+      "scenario": "R",
+      "replicate": 3,
+      "execution_order": 45,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-R-3-H01",
+      "arm": "H01",
+      "scenario": "R",
+      "replicate": 3,
+      "execution_order": 46,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-R-3-H11",
+      "arm": "H11",
+      "scenario": "R",
+      "replicate": 3,
+      "execution_order": 47,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": true,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-R-3-H00",
+      "arm": "H00",
+      "scenario": "R",
+      "replicate": 3,
+      "execution_order": 48,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-I-1-H00",
+      "arm": "H00",
+      "scenario": "I",
+      "replicate": 1,
+      "execution_order": 49,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-I-1-H10",
+      "arm": "H10",
+      "scenario": "I",
+      "replicate": 1,
+      "execution_order": 50,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-I-1-H01",
+      "arm": "H01",
+      "scenario": "I",
+      "replicate": 1,
+      "execution_order": 51,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-I-1-H11",
+      "arm": "H11",
+      "scenario": "I",
+      "replicate": 1,
+      "execution_order": 52,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": true,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-I-2-H10",
+      "arm": "H10",
+      "scenario": "I",
+      "replicate": 2,
+      "execution_order": 53,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-I-2-H01",
+      "arm": "H01",
+      "scenario": "I",
+      "replicate": 2,
+      "execution_order": 54,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-I-2-H11",
+      "arm": "H11",
+      "scenario": "I",
+      "replicate": 2,
+      "execution_order": 55,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": true,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-I-2-H00",
+      "arm": "H00",
+      "scenario": "I",
+      "replicate": 2,
+      "execution_order": 56,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-I-3-H01",
+      "arm": "H01",
+      "scenario": "I",
+      "replicate": 3,
+      "execution_order": 57,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-I-3-H11",
+      "arm": "H11",
+      "scenario": "I",
+      "replicate": 3,
+      "execution_order": 58,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": true,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-I-3-H00",
+      "arm": "H00",
+      "scenario": "I",
+      "replicate": 3,
+      "execution_order": 59,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-I-3-H10",
+      "arm": "H10",
+      "scenario": "I",
+      "replicate": 3,
+      "execution_order": 60,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-C-1-H10",
+      "arm": "H10",
+      "scenario": "C",
+      "replicate": 1,
+      "execution_order": 61,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-C-1-H01",
+      "arm": "H01",
+      "scenario": "C",
+      "replicate": 1,
+      "execution_order": 62,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-C-1-H11",
+      "arm": "H11",
+      "scenario": "C",
+      "replicate": 1,
+      "execution_order": 63,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": true,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-C-1-H00",
+      "arm": "H00",
+      "scenario": "C",
+      "replicate": 1,
+      "execution_order": 64,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-C-2-H01",
+      "arm": "H01",
+      "scenario": "C",
+      "replicate": 2,
+      "execution_order": 65,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-C-2-H11",
+      "arm": "H11",
+      "scenario": "C",
+      "replicate": 2,
+      "execution_order": 66,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": true,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-C-2-H00",
+      "arm": "H00",
+      "scenario": "C",
+      "replicate": 2,
+      "execution_order": 67,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-C-2-H10",
+      "arm": "H10",
+      "scenario": "C",
+      "replicate": 2,
+      "execution_order": 68,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-C-3-H11",
+      "arm": "H11",
+      "scenario": "C",
+      "replicate": 3,
+      "execution_order": 69,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": true,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-C-3-H00",
+      "arm": "H00",
+      "scenario": "C",
+      "replicate": 3,
+      "execution_order": 70,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-C-3-H10",
+      "arm": "H10",
+      "scenario": "C",
+      "replicate": 3,
+      "execution_order": 71,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    },
+    {
+      "run_id": "MEV-C-3-H01",
+      "arm": "H01",
+      "scenario": "C",
+      "replicate": 3,
+      "execution_order": 72,
+      "requested_models": {
+        "A1": "claude-fable-5-1",
+        "A2": "gpt-6-astra",
+        "A3": "claude-fable-5-1"
+      },
+      "requested_efforts": {
+        "A1": "high",
+        "A2": "xhigh",
+        "A3": "high"
+      },
+      "status": "NOT_RUN",
+      "product_e2e_reuse_eligible": false,
+      "eligible_requires_exact_final_rc_and_profile": true,
+      "observed_metrics": null
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "lead": {
+    "product": "Claude Code",
+    "model": "claude-fable-5-1",
+    "effort": "high"
+  },
+  "worker": {
+    "product": "Codex",
+    "model": "gpt-6-astra",
+    "reasoning_effort": "xhigh"
+  },
+  "reviewer": {
+    "product": "Claude Code",
+    "model": "claude-fable-5-1",
+    "effort": "high",
+    "session": "fresh independent read-only"
+  },
+  "bus": {
+    "name": "agmsg",
+    "baseline_repo": "mryfmo/dotfiles",
+    "baseline_ref": "fdfa5f042e2e00a27a8320e5f37f749c422e8d91",
+    "runtime_authority": false
+  },
+  "live_qualification_status": "NOT_RUN",
+  "allow_model_fallback": false,
+  "allow_effort_downgrade": false,
+  "document_version": "4.0.0",
+  "evidence_note": "Model IDs/efforts are inherited user requirements, not runtime observations in this document integration. Requalify using actual official CLI/configuration/catalog.",
+  "model_profile_source": "profiles/model_profiles.json",
+  "instruction_source": "prompts/",
+  "skill_routes_source": "registers/skill_routes.json",
+  "api_parameters_not_native_flags": true
+}

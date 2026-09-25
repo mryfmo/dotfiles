@@ -1,0 +1,660 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:adh:v4:stack-integration",
+  "title": "V4 component integration contracts",
+  "description": "Declarative boundary schemas; not an implemented native configuration or authenticated authority.",
+  "$defs": {
+    "SourceBinding": {
+      "type": "object",
+      "properties": {
+        "repository": {
+          "enum": [
+            "dotfiles",
+            "adh"
+          ]
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "tree_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "repository",
+        "commit",
+        "tree_digest"
+      ],
+      "additionalProperties": false
+    },
+    "ReleaseSet": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "4.0"
+        },
+        "release_set_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dotfiles": {
+          "$ref": "#/$defs/SourceBinding"
+        },
+        "adh": {
+          "$ref": "#/$defs/SourceBinding"
+        },
+        "spec_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "composition_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "quality_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "knowledge_toolchain_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "policy_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "status": {
+          "enum": [
+            "CANDIDATE",
+            "QUALIFIED",
+            "ACTIVE",
+            "RETIRED",
+            "REJECTED"
+          ]
+        },
+        "qualification_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "activation_approval_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "release_set_id",
+        "dotfiles",
+        "adh",
+        "spec_digest",
+        "composition_digest",
+        "quality_digest",
+        "knowledge_toolchain_digest",
+        "policy_digest",
+        "status",
+        "qualification_refs",
+        "activation_approval_ref"
+      ],
+      "additionalProperties": false
+    },
+    "SourceRef": {
+      "type": "object",
+      "properties": {
+        "artifact_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "start_line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "end_line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "evidence_kind": {
+          "enum": [
+            "NORMATIVE",
+            "OBSERVATION",
+            "CANDIDATE",
+            "HISTORICAL"
+          ]
+        }
+      },
+      "required": [
+        "artifact_id",
+        "revision",
+        "path",
+        "content_digest",
+        "start_line",
+        "end_line",
+        "evidence_kind"
+      ],
+      "additionalProperties": false
+    },
+    "KnowledgeBinding": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "trust_domain_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "baseline_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "source_snapshot_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "acl_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "graph_schema_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "adapter_revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "upstream_revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "knowledge_snapshot_digest": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id",
+        "trust_domain_id",
+        "baseline_digest",
+        "source_snapshot_digest",
+        "acl_digest",
+        "graph_schema_version",
+        "adapter_revision",
+        "upstream_revision",
+        "knowledge_snapshot_digest"
+      ],
+      "additionalProperties": false
+    },
+    "KnowledgeQuery": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operation": {
+          "enum": [
+            "query",
+            "context",
+            "impact",
+            "verify"
+          ]
+        },
+        "binding": {
+          "$ref": "#/$defs/KnowledgeBinding"
+        },
+        "intent": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "required_artifact_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "max_results": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "max_output_bytes": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 1048576
+        },
+        "grant_ref": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "request_id",
+        "operation",
+        "binding",
+        "intent",
+        "required_artifact_ids",
+        "max_results",
+        "max_output_bytes",
+        "grant_ref"
+      ],
+      "additionalProperties": false
+    },
+    "KnowledgeResponse": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "binding": {
+          "$ref": "#/$defs/KnowledgeBinding"
+        },
+        "status": {
+          "enum": [
+            "OK",
+            "STALE",
+            "UNAVAILABLE",
+            "DENIED",
+            "INVALID"
+          ]
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          }
+        },
+        "mandatory_closure_satisfied": {
+          "type": "boolean"
+        },
+        "omitted": {
+          "type": "boolean"
+        },
+        "fallback_used": {
+          "type": "boolean"
+        },
+        "diagnostic_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "request_id",
+        "binding",
+        "status",
+        "source_refs",
+        "mandatory_closure_satisfied",
+        "omitted",
+        "fallback_used",
+        "diagnostic_ref"
+      ],
+      "additionalProperties": false
+    },
+    "QualityPlan": {
+      "type": "object",
+      "properties": {
+        "plan_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "project_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "release_set_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stage": {
+          "enum": [
+            "edit",
+            "pre_commit",
+            "candidate",
+            "integration",
+            "release"
+          ]
+        },
+        "mode": {
+          "enum": [
+            "check",
+            "fix"
+          ]
+        },
+        "source_basis": {
+          "enum": [
+            "worktree",
+            "index",
+            "candidate"
+          ]
+        },
+        "source_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "profile_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "rule_inventory_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "toolchain_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "trusted_config_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "required_check_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "execution_binding_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "grant_ref": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "plan_id",
+        "project_id",
+        "release_set_id",
+        "stage",
+        "mode",
+        "source_basis",
+        "source_digest",
+        "profile_digest",
+        "rule_inventory_digest",
+        "toolchain_digest",
+        "trusted_config_ref",
+        "targets",
+        "required_check_ids",
+        "execution_binding_ref",
+        "grant_ref"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "stage": {
+                "const": "pre_commit"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "source_basis": {
+                "const": "index"
+              },
+              "mode": {
+                "const": "check"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "stage": {
+                "enum": [
+                  "candidate",
+                  "integration",
+                  "release"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "source_basis": {
+                "const": "candidate"
+              },
+              "mode": {
+                "const": "check"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "fix"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "stage": {
+                "const": "edit"
+              },
+              "source_basis": {
+                "const": "worktree"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "QualityResult": {
+      "type": "object",
+      "properties": {
+        "invocation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "plan_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_digest_before": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "source_digest_after": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "status": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "NOT_APPLICABLE",
+            "INTERRUPTED"
+          ]
+        },
+        "exit_code": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "signal": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "timed_out": {
+          "type": "boolean"
+        },
+        "target_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "check_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "skipped": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unknown": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "raw_evidence_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "not_applicable_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "invocation_id",
+        "plan_id",
+        "source_digest_before",
+        "source_digest_after",
+        "status",
+        "exit_code",
+        "signal",
+        "timed_out",
+        "target_count",
+        "check_count",
+        "failed",
+        "skipped",
+        "unknown",
+        "raw_evidence_ref",
+        "not_applicable_reason"
+      ],
+      "additionalProperties": false
+    },
+    "LearningCandidate": {
+      "type": "object",
+      "properties": {
+        "candidate_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_task_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_snapshot_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "scope": {
+          "type": "string",
+          "minLength": 1
+        },
+        "proposed_asset_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "status": {
+          "enum": [
+            "CANDIDATE",
+            "EVALUATED",
+            "APPROVED",
+            "PROMOTED_TO_NEW_RELEASE",
+            "REJECTED",
+            "SUPERSEDED"
+          ]
+        },
+        "evaluation_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "approval_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target_release_set_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "candidate_id",
+        "source_task_id",
+        "source_snapshot_digest",
+        "evidence_refs",
+        "scope",
+        "proposed_asset_digest",
+        "status",
+        "evaluation_refs",
+        "approval_ref",
+        "target_release_set_id"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

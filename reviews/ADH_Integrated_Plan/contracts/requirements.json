@@ -1,0 +1,247 @@
+[
+  {
+    "id": "R01",
+    "name": "要求・制約の正本",
+    "normative": "MUST",
+    "requirement": "入力資料、要求ID、必須/任意、禁止変更、受入項目を版付きで保持する",
+    "gate": "G0"
+  },
+  {
+    "id": "R02",
+    "name": "委任範囲",
+    "normative": "MUST",
+    "requirement": "調査・技術選択・実装等の自動決定範囲をAutonomyMandateで定義する",
+    "gate": "G0"
+  },
+  {
+    "id": "R03",
+    "name": "調査根拠",
+    "normative": "MUST",
+    "requirement": "一次資料の版・取得時点・locator・内容hashを記録する",
+    "gate": "G1"
+  },
+  {
+    "id": "R04",
+    "name": "広さと深さ",
+    "normative": "MUST",
+    "requirement": "重要論点を分解し依存元/依存先/代替/反例/障害経路まで調べる",
+    "gate": "G1"
+  },
+  {
+    "id": "R05",
+    "name": "事実と不確実性",
+    "normative": "MUST",
+    "requirement": "事実/推論/仮定/未検証を区別し、重大矛盾を未解決のまま確定しない",
+    "gate": "G1"
+  },
+  {
+    "id": "R06",
+    "name": "現状snapshot",
+    "normative": "MUST",
+    "requirement": "mainへ勝手に移動せず、対象worktree/HEAD/index/working/untrackedを識別する",
+    "gate": "G1"
+  },
+  {
+    "id": "R07",
+    "name": "候補比較",
+    "normative": "MUST",
+    "requirement": "成立する複数案と不採用理由、判断が変わる条件を残す",
+    "gate": "G2"
+  },
+  {
+    "id": "R08",
+    "name": "技術実験",
+    "normative": "MUST",
+    "requirement": "採用上重要な仮説に最小実験と事前の判定基準を設ける",
+    "gate": "G2"
+  },
+  {
+    "id": "R09",
+    "name": "仕様策定",
+    "normative": "MUST",
+    "requirement": "機能一覧・外部/内部仕様・データ・異常時動作・NFRを確定する",
+    "gate": "G3"
+  },
+  {
+    "id": "R10",
+    "name": "設計判断",
+    "normative": "MUST",
+    "requirement": "ADRを要求・根拠・候補・実験に連結する",
+    "gate": "G3"
+  },
+  {
+    "id": "R11",
+    "name": "凍結baseline",
+    "normative": "MUST",
+    "requirement": "確定済み仕様とテスト契約をworkerが緩和できない",
+    "gate": "G3"
+  },
+  {
+    "id": "R12",
+    "name": "計画網羅",
+    "normative": "MUST",
+    "requirement": "MUST→ADR→task→checkの欠落/重複/矛盾を検出する",
+    "gate": "G4"
+  },
+  {
+    "id": "R13",
+    "name": "native Auth",
+    "normative": "MUST",
+    "requirement": "未改変の公式Claude Code/Codexで本人認証を保持する",
+    "gate": "G0"
+  },
+  {
+    "id": "R14",
+    "name": "native拡張",
+    "normative": "MUST",
+    "requirement": "Plugins/Skills/Rules/Hooksを公式runtimeで実行し有効状態を確認する",
+    "gate": "G0"
+  },
+  {
+    "id": "R15",
+    "name": "実効構成固定",
+    "normative": "MUST",
+    "requirement": "CLI/model/skill/plugin/policyの版とhashを実行ごとに束ねる",
+    "gate": "G0"
+  },
+  {
+    "id": "R16",
+    "name": "作業隔離",
+    "normative": "MUST",
+    "requirement": "一つの作業領域に同時writerは一つ。試行間も隔離する",
+    "gate": "G4"
+  },
+  {
+    "id": "R17",
+    "name": "並列整合",
+    "normative": "MUST",
+    "requirement": "依存DAG、所有権、fenceで二重着手と古い結果を防ぐ",
+    "gate": "G4"
+  },
+  {
+    "id": "R18",
+    "name": "実装自律",
+    "normative": "MUST",
+    "requirement": "承認範囲で調査・編集・build・test・修正を逐次指示なしで進める",
+    "gate": "G5"
+  },
+  {
+    "id": "R19",
+    "name": "環境準備",
+    "normative": "MUST",
+    "requirement": "既存環境可/構築すれば可/外部実機必須を区分し前二者を自動実行する",
+    "gate": "G5"
+  },
+  {
+    "id": "R20",
+    "name": "独立検証",
+    "normative": "MUST",
+    "requirement": "実装者の報告ではなく別検証環境で固定suiteを実行する",
+    "gate": "G5"
+  },
+  {
+    "id": "R21",
+    "name": "独立レビュー",
+    "normative": "MUST",
+    "requirement": "別session/権限で仕様適合性と品質を確認する",
+    "gate": "G5"
+  },
+  {
+    "id": "R22",
+    "name": "証拠署名",
+    "normative": "MUST",
+    "requirement": "snapshot・契約・環境・policy・suite・試行に署名結果を結び付ける",
+    "gate": "G5"
+  },
+  {
+    "id": "R23",
+    "name": "修正閉ループ",
+    "normative": "MUST",
+    "requirement": "不合格をready for repairへ戻し原因を分類する",
+    "gate": "G5"
+  },
+  {
+    "id": "R24",
+    "name": "復旧",
+    "normative": "MUST",
+    "requirement": "lease失効だけで再実行せず旧process停止と副作用を照合する",
+    "gate": "G5"
+  },
+  {
+    "id": "R25",
+    "name": "明示停止尊重",
+    "normative": "MUST",
+    "requirement": "人の停止・権限不足・予算上限を自動解除しない",
+    "gate": "G5"
+  },
+  {
+    "id": "R26",
+    "name": "統合検証",
+    "normative": "MUST",
+    "requirement": "各task合格を足し合わせず統合snapshotで再試験する",
+    "gate": "G6"
+  },
+  {
+    "id": "R27",
+    "name": "成果物完全性",
+    "normative": "MUST",
+    "requirement": "起動手順/仕様/コード/試験/依存/manifest/残課題を照合する",
+    "gate": "G6"
+  },
+  {
+    "id": "R28",
+    "name": "開発完了と公開分離",
+    "normative": "MUST",
+    "requirement": "外部push/merge/publish/deployは別の委任・承認に従う",
+    "gate": "G7"
+  },
+  {
+    "id": "R29",
+    "name": "記憶正本分離",
+    "normative": "MUST",
+    "requirement": "UA/CompactionDB/SDDは派生・参照、仕様/進捗を独立に確定しない",
+    "gate": "G1-G6"
+  },
+  {
+    "id": "R30",
+    "name": "prompt injection境界",
+    "normative": "MUST",
+    "requirement": "Web/README/tool outputを命令権限に昇格させない",
+    "gate": "G1-G6"
+  },
+  {
+    "id": "R31",
+    "name": "可観測性",
+    "normative": "MUST",
+    "requirement": "project/task/run/session/attempt/traceを関連付け秘密を除去する",
+    "gate": "G0-G7"
+  },
+  {
+    "id": "R32",
+    "name": "有限予算",
+    "normative": "MUST",
+    "requirement": "回数・時間・並列・利用量の予算を外部に保持、上限で完了にしない",
+    "gate": "G0-G7"
+  },
+  {
+    "id": "R33",
+    "name": "更新検証",
+    "normative": "MUST",
+    "requirement": "payloadまで固定し、候補更新に契約・回帰・E2Eを要求する",
+    "gate": "G0"
+  },
+  {
+    "id": "R34",
+    "name": "再現可能性",
+    "normative": "MUST",
+    "requirement": "基準・snapshot・環境・suiteから検証を再実行できる",
+    "gate": "G5-G6"
+  },
+  {
+    "id": "R35",
+    "name": "境界の誠実性",
+    "normative": "MUST",
+    "requirement": "モック/抽出関数/実CLI/実機の結果を混同せず未実施を明示する",
+    "gate": "G0-G7"
+  }
+]

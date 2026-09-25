@@ -1,0 +1,249 @@
+{
+  "document_version": "4.0.0",
+  "authorities": [
+    {
+      "subject": "original_requirements",
+      "canonical": "contracts/requirements.json",
+      "views": [
+        "artifacts/L3_REQ.md",
+        "traceability/REQUIREMENTS.md"
+      ],
+      "owner": "Baseline Authority",
+      "change_rule": "preserve original bytes; approved baseline change only"
+    },
+    {
+      "subject": "structured_requirements",
+      "canonical": "registers/structured_requirements.json",
+      "views": [
+        "artifacts/L3_REQ.md"
+      ],
+      "owner": "Requirements/A3",
+      "change_rule": "must refine original R without deleting any constraint"
+    },
+    {
+      "subject": "acceptance_scenarios",
+      "canonical": "registers/acceptance_scenarios.json",
+      "views": [
+        "artifacts/L4_ACCEPTANCE.md"
+      ],
+      "owner": "Specification/A3",
+      "change_rule": "representative expectation with test refs, not execution evidence"
+    },
+    {
+      "subject": "work_packages",
+      "canonical": "registers/work_packages.json",
+      "views": [
+        "work_packages/WP00.md",
+        "work_packages/WP01.md",
+        "work_packages/WP02.md",
+        "work_packages/WP03.md",
+        "work_packages/WP04.md",
+        "work_packages/WP05.md",
+        "work_packages/WP06.md",
+        "work_packages/WP07.md",
+        "work_packages/WP08.md",
+        "work_packages/WP09.md",
+        "work_packages/WP10.md",
+        "work_packages/WP11.md",
+        "work_packages/WP12.md",
+        "work_packages/WP13.md",
+        "work_packages/WP14.md",
+        "work_packages/WP15.md",
+        "work_packages/WP16.md",
+        "work_packages/WP17.md",
+        "work_packages/WP18.md",
+        "work_packages/WP19.md",
+        "work_packages/WP20.md",
+        "work_packages/WP21.md",
+        "work_packages/WP22.md",
+        "work_packages/WP23.md",
+        "work_packages/WP24.md",
+        "work_packages/WP25.md",
+        "work_packages/WP26.md",
+        "work_packages/WP27.md",
+        "work_packages/WP28.md",
+        "work_packages/WP29.md",
+        "work_packages/WP30.md",
+        "work_packages/WP31.md",
+        "docs/00_WBS_INDEX.md"
+      ],
+      "owner": "A1",
+      "change_rule": "same dependency and required scope; approved revisions only"
+    },
+    {
+      "subject": "verification_cases",
+      "canonical": "registers/verification_cases.json",
+      "views": [
+        "verification/VERIFICATION_CATALOG.md",
+        "work_packages/WP00.md",
+        "work_packages/WP01.md",
+        "work_packages/WP02.md",
+        "work_packages/WP03.md",
+        "work_packages/WP04.md",
+        "work_packages/WP05.md",
+        "work_packages/WP06.md",
+        "work_packages/WP07.md",
+        "work_packages/WP08.md",
+        "work_packages/WP09.md",
+        "work_packages/WP10.md",
+        "work_packages/WP11.md",
+        "work_packages/WP12.md",
+        "work_packages/WP13.md",
+        "work_packages/WP14.md",
+        "work_packages/WP15.md",
+        "work_packages/WP16.md",
+        "work_packages/WP17.md",
+        "work_packages/WP18.md",
+        "work_packages/WP19.md",
+        "work_packages/WP20.md",
+        "work_packages/WP21.md",
+        "work_packages/WP22.md",
+        "work_packages/WP23.md",
+        "work_packages/WP24.md",
+        "work_packages/WP25.md",
+        "work_packages/WP26.md",
+        "work_packages/WP27.md",
+        "work_packages/WP28.md",
+        "work_packages/WP29.md",
+        "work_packages/WP30.md",
+        "work_packages/WP31.md"
+      ],
+      "owner": "A4/oracle authority",
+      "change_rule": "fixed parent+mandatory subcases; tests cannot weaken themselves"
+    },
+    {
+      "subject": "guardrails",
+      "canonical": "registers/guardrails.json",
+      "views": [
+        "spec/09_GUARDRAILS.md",
+        "traceability/GUARDRAIL_MATRIX.md"
+      ],
+      "owner": "Policy authority/A3",
+      "change_rule": "CHG, threat review, positive-negative-fault-recovery qualification"
+    },
+    {
+      "subject": "document_contracts",
+      "canonical": "registers/document_contracts.json",
+      "views": [
+        "spec/08_DOCUMENT_GRAPH.md"
+      ],
+      "owner": "DocumentRegistry/A3",
+      "change_rule": "typed relation and meaning review"
+    },
+    {
+      "subject": "integrated_contract_records",
+      "canonical": "registers/integrated_contracts.json",
+      "views": [
+        "spec/03_INTEGRATED_CONTRACTS.md",
+        "traceability/INTEGRATION_PROVENANCE.md"
+      ],
+      "owner": "Architecture/A3",
+      "change_rule": "shared service contract reviewed at both ends"
+    },
+    {
+      "subject": "narrative_architecture",
+      "canonical": "spec/02_ARCHITECTURE.md",
+      "views": [
+        "DESIGN_JA.md",
+        "INTEGRATED_PLAN_JA.md",
+        "artifacts/L5_ARCH_ADR.md"
+      ],
+      "owner": "Architecture/A3",
+      "change_rule": "existing Native-first boundaries preserved; true changes use ADR/CHG"
+    },
+    {
+      "subject": "guard_composition_algorithm",
+      "canonical": "spec/09_GUARDRAILS.md",
+      "views": [
+        "DESIGN_JA.md",
+        "INTEGRATED_PLAN_JA.md"
+      ],
+      "owner": "Policy authority/A3",
+      "change_rule": "narrative owner separate from generated per-GR subsection"
+    },
+    {
+      "subject": "document_graph_relationship_rules",
+      "canonical": "spec/08_DOCUMENT_GRAPH.md",
+      "views": [
+        "DESIGN_JA.md",
+        "INTEGRATED_PLAN_JA.md"
+      ],
+      "owner": "DocumentRegistry/A3",
+      "change_rule": "graph itself generated as design traceability, never grants authority"
+    },
+    {
+      "subject": "change_control",
+      "canonical": "spec/10_CHANGE_AND_REGATE.md",
+      "views": [
+        "artifacts/L9_CHG.md",
+        "DESIGN_JA.md",
+        "INTEGRATED_PLAN_JA.md"
+      ],
+      "owner": "Baseline/Policy authority",
+      "change_rule": "targeted invalidation, audit preservation, authorized recovery"
+    },
+    {
+      "subject": "product_acceptance",
+      "canonical": "docs/07_COMPLETION_AND_RELEASE.md",
+      "views": [
+        "artifacts/L10_EVAL.md",
+        "START_HERE.md"
+      ],
+      "owner": "Release authority/A3/A4",
+      "change_rule": "all required runtime tiers executed; document QA excluded"
+    },
+    {
+      "subject": "distribution_composition",
+      "canonical": "dotfiles:home/dot_agents/agent-config.yaml#model_profiles.adh",
+      "views": [
+        "profiles/model_profiles.json",
+        "generated native settings",
+        "qualified ReleaseSet"
+      ],
+      "owner": "distribution maintainer; authorized change",
+      "change_rule": "document profile is requested constraint; edit native distribution source only, generate and compare before activation"
+    },
+    {
+      "subject": "component_disposition",
+      "canonical": "registers/component_catalog.json",
+      "views": [
+        "docs/17_COMPONENT_CATALOG.md"
+      ],
+      "owner": "A1/A3 specification",
+      "change_rule": "required vs optional explicitly selected and validated; no silent optional downgrade"
+    },
+    {
+      "subject": "knowledge",
+      "canonical": "normative source+evidence manifests",
+      "views": [
+        "Semantica graph snapshots",
+        "UA structure",
+        "CompactionDB memories"
+      ],
+      "owner": "source authority for facts; single publisher for index",
+      "change_rule": "derived data cannot mutate canonical facts or acceptance"
+    },
+    {
+      "subject": "quality",
+      "canonical": "trusted project QualityPlan and mandatory check inventory",
+      "views": [
+        "prek config binding",
+        "native quality command",
+        "CI/Verifier adapters"
+      ],
+      "owner": "quality owner and independent verifier",
+      "change_rule": "same rules and lock per profile; edits only explicit owner fix; test selection cannot weaken mandatory gates"
+    },
+    {
+      "subject": "release",
+      "canonical": "signed and qualified ReleaseSet",
+      "views": [
+        "active version pointer",
+        "installed manifests"
+      ],
+      "owner": "release authority",
+      "change_rule": "two repos are not atomically committed; activate staged compatible bundle and retain rollback"
+    }
+  ],
+  "rule": "Views are generated or navigational, never an independent approval or mutable truth. Narrative subsections and registry-generated tables have explicitly separate ownership."
+}

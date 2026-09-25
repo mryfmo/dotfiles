@@ -1,0 +1,19 @@
+{
+  "intent_id": "example-only",
+  "actor_ref": "example://unqualified-actor",
+  "project_id": "example-project",
+  "task_id": "example-task",
+  "run_id": "example-run",
+  "attempt": 1,
+  "fence": 1,
+  "operation": "runner.execute",
+  "target_ref": "example://no-workspace",
+  "payload_digest": "b2355f19f7423fda45024a5dcd74b20164b6f4673c3511925071332552a9bdbe",
+  "baseline_digest": "b2355f19f7423fda45024a5dcd74b20164b6f4673c3511925071332552a9bdbe",
+  "normative_closure_digest": "931a31bbe201f8e21eb4a833f1ef49c5bfe2c5fe646161ae29cdbd2c0d79660b",
+  "policy_digest": "b2355f19f7423fda45024a5dcd74b20164b6f4673c3511925071332552a9bdbe",
+  "qualification_ref": "example://NOT_RUN",
+  "grant_ref": "example://NO_VALID_GRANT",
+  "expires_at_epoch_ms": 1,
+  "example_only": true
+}

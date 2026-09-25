@@ -1,0 +1,13 @@
+{
+  "input_filename": "ADH_Model_Optimized_Implementation_Plan_v3_20260913.zip",
+  "sha256": "cf8bf8d650ede4a96741b019c85663c84e234fa9d97ec108039e5c1ea8a75b89",
+  "input_version": "3.0.0",
+  "output_version": "3.1.0",
+  "change_request": "User-requested integrated document-graph and guardrails revision",
+  "preserved_sources": [
+    "contracts/requirements.json",
+    "evaluation/run_matrix.json",
+    "evaluation/skill-routing-cases.json"
+  ],
+  "runtime_execution_performed": false
+}

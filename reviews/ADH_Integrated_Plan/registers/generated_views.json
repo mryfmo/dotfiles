@@ -1,0 +1,336 @@
+{
+  "document_version": "4.0.0",
+  "purpose": "generated reading views, edit canonical modules then regenerate; not separate baseline",
+  "views": [
+    {
+      "path": "DESIGN_JA.md",
+      "modules": [
+        {
+          "path": "spec/00_DECISION.md",
+          "sha256": "b28dae8e30f076237ade5f831f9525c76b4aca9f2311266f1ce8b821542f8e95"
+        },
+        {
+          "path": "spec/01_REQUIREMENTS.md",
+          "sha256": "9bab363c413b42aff998d4a202f4edf674927ca19973f3d57c2849daef65727a"
+        },
+        {
+          "path": "spec/02_ARCHITECTURE.md",
+          "sha256": "abbf5c76482089546e582f5fee5a55d76827776655437985e0f90c899119bf9c"
+        },
+        {
+          "path": "spec/03_INTEGRATED_CONTRACTS.md",
+          "sha256": "d50624fd541781c94deb64febede08fb71488f688f1df03387f9b3e3ee5e88df"
+        },
+        {
+          "path": "spec/04_STATE_SEQUENCES.md",
+          "sha256": "600865870fccb6b372203e6cebf1c8daa0e432c8c56ce99c4662ff456c016059"
+        },
+        {
+          "path": "spec/05_OPERATIONS_NFR.md",
+          "sha256": "879c9104ffb7b9ce47a80a1c6dbe926e1a067fed5532c0b4087905184c4f81e2"
+        },
+        {
+          "path": "spec/06_MODEL_OPTIMIZATION.md",
+          "sha256": "04281a54b00e9e12f38b3571c1be6335e507854390e4331e6643916cbddc033e"
+        },
+        {
+          "path": "spec/07_MODEL_CONTRACTS.md",
+          "sha256": "a957962185a85e25d624e1bcc430d0100635544bb35d0a5ff2383fd2fa12231c"
+        },
+        {
+          "path": "spec/08_DOCUMENT_GRAPH.md",
+          "sha256": "2c18286bef7385e6cf7c971e62aa268e1daee351786f8dc5ac857a9c3ab8bba8"
+        },
+        {
+          "path": "spec/09_GUARDRAILS.md",
+          "sha256": "b2e099d21c1bb6d083efdcbbb93d8d7448f21405f377fe42949dd1606490067b"
+        },
+        {
+          "path": "spec/10_CHANGE_AND_REGATE.md",
+          "sha256": "0bb8b3ff6834e7309914b38754bfaafeca3b0da5150d3fcdefcb7b5a44e48b6a"
+        },
+        {
+          "path": "spec/11_DISTRIBUTION_AND_COMPOSITION.md",
+          "sha256": "369cd2b2e4781581751a25cfaad7f6aa19f489a1a003952194041cb0606a607a"
+        },
+        {
+          "path": "spec/12_KNOWLEDGE_AND_CONTEXT.md",
+          "sha256": "a5edceff845b39af66912b4d6a95af44a4bd3be84ec816d4931e329531ba8491"
+        },
+        {
+          "path": "spec/13_QUALITY_AND_TOOLCHAIN.md",
+          "sha256": "760b1336442a6582e95a8e37ce26253ee095e515d3048d702b3a896a88ee3fea"
+        },
+        {
+          "path": "spec/14_LIFECYCLE_LEARNING_AND_REGATE.md",
+          "sha256": "8f2444ed61ef8f3422d0494f345e9891e98ca28fe65f8d9c47cd9c3fcb6d7e66"
+        }
+      ]
+    },
+    {
+      "path": "INTEGRATED_PLAN_JA.md",
+      "modules": [
+        {
+          "path": "spec/00_DECISION.md",
+          "sha256": "b28dae8e30f076237ade5f831f9525c76b4aca9f2311266f1ce8b821542f8e95"
+        },
+        {
+          "path": "spec/01_REQUIREMENTS.md",
+          "sha256": "9bab363c413b42aff998d4a202f4edf674927ca19973f3d57c2849daef65727a"
+        },
+        {
+          "path": "spec/02_ARCHITECTURE.md",
+          "sha256": "abbf5c76482089546e582f5fee5a55d76827776655437985e0f90c899119bf9c"
+        },
+        {
+          "path": "spec/03_INTEGRATED_CONTRACTS.md",
+          "sha256": "d50624fd541781c94deb64febede08fb71488f688f1df03387f9b3e3ee5e88df"
+        },
+        {
+          "path": "spec/04_STATE_SEQUENCES.md",
+          "sha256": "600865870fccb6b372203e6cebf1c8daa0e432c8c56ce99c4662ff456c016059"
+        },
+        {
+          "path": "spec/05_OPERATIONS_NFR.md",
+          "sha256": "879c9104ffb7b9ce47a80a1c6dbe926e1a067fed5532c0b4087905184c4f81e2"
+        },
+        {
+          "path": "spec/06_MODEL_OPTIMIZATION.md",
+          "sha256": "04281a54b00e9e12f38b3571c1be6335e507854390e4331e6643916cbddc033e"
+        },
+        {
+          "path": "spec/07_MODEL_CONTRACTS.md",
+          "sha256": "a957962185a85e25d624e1bcc430d0100635544bb35d0a5ff2383fd2fa12231c"
+        },
+        {
+          "path": "spec/08_DOCUMENT_GRAPH.md",
+          "sha256": "2c18286bef7385e6cf7c971e62aa268e1daee351786f8dc5ac857a9c3ab8bba8"
+        },
+        {
+          "path": "spec/09_GUARDRAILS.md",
+          "sha256": "b2e099d21c1bb6d083efdcbbb93d8d7448f21405f377fe42949dd1606490067b"
+        },
+        {
+          "path": "spec/10_CHANGE_AND_REGATE.md",
+          "sha256": "0bb8b3ff6834e7309914b38754bfaafeca3b0da5150d3fcdefcb7b5a44e48b6a"
+        },
+        {
+          "path": "spec/11_DISTRIBUTION_AND_COMPOSITION.md",
+          "sha256": "369cd2b2e4781581751a25cfaad7f6aa19f489a1a003952194041cb0606a607a"
+        },
+        {
+          "path": "spec/12_KNOWLEDGE_AND_CONTEXT.md",
+          "sha256": "a5edceff845b39af66912b4d6a95af44a4bd3be84ec816d4931e329531ba8491"
+        },
+        {
+          "path": "spec/13_QUALITY_AND_TOOLCHAIN.md",
+          "sha256": "760b1336442a6582e95a8e37ce26253ee095e515d3048d702b3a896a88ee3fea"
+        },
+        {
+          "path": "spec/14_LIFECYCLE_LEARNING_AND_REGATE.md",
+          "sha256": "8f2444ed61ef8f3422d0494f345e9891e98ca28fe65f8d9c47cd9c3fcb6d7e66"
+        },
+        {
+          "path": "docs/00_WBS_INDEX.md",
+          "sha256": "832a007578a9ed52cad862fea6ab543d5873ae88dfcfd8fbc3beb1bd6932caad"
+        },
+        {
+          "path": "docs/01_SCOPE_AND_BASELINE.md",
+          "sha256": "d2dcb491e3fe5e5c9e29d34f5130cb81e742f8d1ac97df68b3fb8512662b8b44"
+        },
+        {
+          "path": "docs/02_ROLES_AND_AGMSG.md",
+          "sha256": "745f85c17a744e6ad86c05a69eaac9d5b73133f211dca2cddd8aac6382d5a2ae"
+        },
+        {
+          "path": "docs/03_BOOTSTRAP_AND_RUN_ORDER.md",
+          "sha256": "49d4804c8773a5bbcdade6b7e08435fd2a8a16b21a141c890f8e7089f0ff452f"
+        },
+        {
+          "path": "docs/04_SPECIFICATION_COMPLETIONS.md",
+          "sha256": "1387f0192f5dac97384d63f1ba02151d9112a2476cabac6fd077f868951a43f7"
+        },
+        {
+          "path": "docs/05_VERIFICATION_STANDARD.md",
+          "sha256": "03fcde4b7b85f05e42d3554aa56d904937243566ba9af79a99ceabc5d2708101"
+        },
+        {
+          "path": "docs/06_ENVIRONMENT_AND_NATIVE.md",
+          "sha256": "a0ac3a7d85e1bc5e0ea25133b4acff3d24f28d3e7a7d73b0d51b433aa85b75e7"
+        },
+        {
+          "path": "docs/07_COMPLETION_AND_RELEASE.md",
+          "sha256": "b8e1100fa0f3897c6fbc6b55b5936013d43704219c892f271dc0c96c53c51912"
+        },
+        {
+          "path": "docs/08_CODING_AND_COMMANDS.md",
+          "sha256": "b24beccdbfb3e0b56b0e10d38cdb8f6600f400a57821753be9e30fd063316d21"
+        },
+        {
+          "path": "docs/09_RECOVERY_AND_HANDOFF.md",
+          "sha256": "b84cbce06c92e4d13c19cf930c25d2691bb44e18e6fc428e6b99d9c14207cafb"
+        },
+        {
+          "path": "docs/10_API_COMPLETION_PLAN.md",
+          "sha256": "8a8db17b10586a4f6db0bcdfee9556fa6ef4ce601968d6584d0807e69001c3da"
+        },
+        {
+          "path": "docs/11_ACCEPTANCE_FIXTURES.md",
+          "sha256": "a4e088d503b8295feb9fc29993f5aa6b71068c0c2689997573236c277b37c65c"
+        },
+        {
+          "path": "docs/12_DOCUMENT_USE_AND_DELIVERY.md",
+          "sha256": "2cc033eeb0cf5938128d9c6554862de16231772140f862462da1de1e4ca1a487"
+        },
+        {
+          "path": "docs/13_TASK_PROTOCOL_AND_CHECKPOINT.md",
+          "sha256": "cd461c151ddbc5c9d7a28bf9cfb9a15aaf7a923a02ff388ef3d1b8bf694ebfc7"
+        },
+        {
+          "path": "docs/14_MODEL_CONTEXT_AND_SKILLS.md",
+          "sha256": "e749e3208c85dbdf8e7982f0a8fe73ef0138f57123fa3173879905c758f1488f"
+        },
+        {
+          "path": "docs/15_MODEL_EVALUATION_AND_ROLLOUT.md",
+          "sha256": "15d44333844a17db32413ea7e792c71ed0530db701ea0d9fa3900f8bf1eab725"
+        },
+        {
+          "path": "docs/16_V4_RUNBOOK.md",
+          "sha256": "b7179116253bbea0b907d040521ef9921b5501c5eec246889f665dc22c21e52a"
+        },
+        {
+          "path": "docs/17_COMPONENT_CATALOG.md",
+          "sha256": "8d902ca10e8cfa3c1cdfd74ae245894a44336a14989655696acea9929c95bcf3"
+        },
+        {
+          "path": "work_packages/WP00.md",
+          "sha256": "4d79e43281f7f6bb870564ddfd62fe3cb6e36957d5ce5d8669086937cc4cb4fd"
+        },
+        {
+          "path": "work_packages/WP01.md",
+          "sha256": "cf0e009ee55102b6271ea4725f144be5ffcb13daccf6a85ef3c4a3cfc76a2808"
+        },
+        {
+          "path": "work_packages/WP02.md",
+          "sha256": "b0b24f73c9ed7941bf992238b313d1a2d7ec15dce55029707955906d9509c567"
+        },
+        {
+          "path": "work_packages/WP03.md",
+          "sha256": "04c20129ee47294527877e5339eb5fce0e671589f9c5d66ee3232a4ba64b0ee6"
+        },
+        {
+          "path": "work_packages/WP04.md",
+          "sha256": "184428fd929f545063f1e79c9352aed0622047ca78559679f985a50bdcdfa37d"
+        },
+        {
+          "path": "work_packages/WP05.md",
+          "sha256": "4d78d34765dd8798c99ecc5b7f76ad64137422c7d1e74a0326e2f69ea08d0994"
+        },
+        {
+          "path": "work_packages/WP06.md",
+          "sha256": "0df888df91c787bd37971cc1f275b4b355e808936e80ed2f0a7eb5c130860fe0"
+        },
+        {
+          "path": "work_packages/WP07.md",
+          "sha256": "b453926bf2799a8684f24534520659a2f3655487414a0ac5dcb9f6ff788fbc4c"
+        },
+        {
+          "path": "work_packages/WP08.md",
+          "sha256": "2818175714206c198eb4f9ea6aca4db89e05b224faf5e4d6675ac82547d5d23a"
+        },
+        {
+          "path": "work_packages/WP09.md",
+          "sha256": "317e605d416f749ea156b8292696ed329396b9ed5f178bf2bf5e60954e38ec70"
+        },
+        {
+          "path": "work_packages/WP10.md",
+          "sha256": "a4e190332fa07905563cc66795644961dec9800eb1f64e33949d1e6168de3c4d"
+        },
+        {
+          "path": "work_packages/WP11.md",
+          "sha256": "e1ada0f642be31e9779c3e83943d4455fb9557d6140f49f5ad41e1619323bc97"
+        },
+        {
+          "path": "work_packages/WP12.md",
+          "sha256": "dfbe5f4c68ecff08637ac1c72f7007581d9737c20046397e0309be7b21a5e83b"
+        },
+        {
+          "path": "work_packages/WP13.md",
+          "sha256": "c6907b24edbd36c5586fa4010b87957e0bd8ce658824c8f7c0dfdd26eab70dad"
+        },
+        {
+          "path": "work_packages/WP14.md",
+          "sha256": "6170e8a6793942885edd56045662fb061ef9c15574e353bc82a0df7cfffa94aa"
+        },
+        {
+          "path": "work_packages/WP15.md",
+          "sha256": "ffa87dd0ee94b68179fd9d7ecde2b64e272e6bc9b0109e44dc9888fc22f40222"
+        },
+        {
+          "path": "work_packages/WP16.md",
+          "sha256": "6ad532851481d29a1bfc89e25fbb0fdd73083f834fe110d461f98a1a1b549509"
+        },
+        {
+          "path": "work_packages/WP17.md",
+          "sha256": "aeec2a5ea962364ce37c0c485e8e2a22aca3e4ec0aa94367876c4c31e29078a8"
+        },
+        {
+          "path": "work_packages/WP18.md",
+          "sha256": "95a91d9a2ce5a6ae8476168f7c96120b4da7271a1ffb7944a63d838461caf8c2"
+        },
+        {
+          "path": "work_packages/WP19.md",
+          "sha256": "ee2e405ee55645994fb00dea0d1762712502e1088b6fc29fa968e003e838d9e1"
+        },
+        {
+          "path": "work_packages/WP20.md",
+          "sha256": "edd21f137a9b97a43768a6ccce3ef60c530115a67e16508d13cf75f9bc198a31"
+        },
+        {
+          "path": "work_packages/WP21.md",
+          "sha256": "1802c5d1515be644e10ef43a9a46ae69b699d3258fb291a1c47af068ab977e46"
+        },
+        {
+          "path": "work_packages/WP22.md",
+          "sha256": "5f430dde2a5ac21bfd3d7636acf2d83d297a2f54b6bf1b155d525e532261235a"
+        },
+        {
+          "path": "work_packages/WP23.md",
+          "sha256": "912584ec9fff6b67b8c81110fecd2d343006a3bd4efbdaa36b6e1390c8965340"
+        },
+        {
+          "path": "work_packages/WP24.md",
+          "sha256": "8f29192551fcfbb9dce722d4f51b62acf6eccbef45fc5e6f18e045fba5492f40"
+        },
+        {
+          "path": "work_packages/WP25.md",
+          "sha256": "3ef60021c5a876f8fdb5ceed0215b56b59e3de5b7fc1662cd6a9a25571d32106"
+        },
+        {
+          "path": "work_packages/WP26.md",
+          "sha256": "bb57976e0c709e944287f3880882db975dac794bbb235ce7a8ff43ef51a366d8"
+        },
+        {
+          "path": "work_packages/WP27.md",
+          "sha256": "53d53e3085fc5d85f1bbce6b8577fe7e67a6e6c16bdb2e315694add1280d37ca"
+        },
+        {
+          "path": "work_packages/WP28.md",
+          "sha256": "b3bc2d2b6e66b1a95d14c63cf59f4b4217ddac768aec45dc6d1dc06c65ccd6ba"
+        },
+        {
+          "path": "work_packages/WP29.md",
+          "sha256": "3c653d86db5571c0d7ef1db6cb8eee921a3ffb6926837fecba3c495c34fb0773"
+        },
+        {
+          "path": "work_packages/WP30.md",
+          "sha256": "adb02a1717ba9e69b653eb178aef16be2ac3c9fcfe0a8e7e45b559a5c6be04cc"
+        },
+        {
+          "path": "work_packages/WP31.md",
+          "sha256": "ff6470a7914cd00f37f19f7d6afe42fdca30684ad96bd953e54d636c3322f523"
+        }
+      ]
+    }
+  ]
+}

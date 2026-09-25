@@ -1,0 +1,96 @@
+{
+  "kind": "ADH_REQUIRED_ROLE_VIEW_NOT_AN_INDEPENDENT_RUNTIME_CONFIG",
+  "document_version": "4.0.0",
+  "profiles": [
+    {
+      "profile_id": "fable-lead",
+      "role": "A1",
+      "requested_model": "claude-fable-5-1",
+      "requested_effort": "high",
+      "prompt_files": [
+        "prompts/COMMON_CONTRACT.md",
+        "prompts/CLAUDE_LEAD.md"
+      ],
+      "default_skill_routes": [
+        "adh-requirements",
+        "adh-design-choice",
+        "adh-integration-review",
+        "adh-knowledge-context"
+      ],
+      "inherit_native_system_prompt": true,
+      "allow_model_fallback": false,
+      "allow_effort_override": false,
+      "allow_external_history_rewrite": false,
+      "common_and_role_loaded_once_per_context_epoch": true,
+      "task_context_contract": "contracts/model-execution.schema.json#/$defs/TaskPacket",
+      "qualification_status": "NOT_RUN",
+      "native_configuration": false,
+      "artifact_selection": "typed normative closure; related AC/SPEC/TEST and active guards; never all L1-L10 every turn",
+      "enforcement_authority": "authenticated Supervisor/Runner/OS/Verifier; not prompt or TaskPacket bool",
+      "runtime_edit_policy": "edit dotfiles canonical adh profile; this is desired/validation view, not a second native input",
+      "release_set_required": true
+    },
+    {
+      "profile_id": "astra-worker",
+      "role": "A2",
+      "requested_model": "gpt-6-astra",
+      "requested_effort": "xhigh",
+      "prompt_files": [
+        "prompts/COMMON_CONTRACT.md",
+        "prompts/CODEX_WORKER.md"
+      ],
+      "default_skill_routes": [
+        "adh-task-implementation",
+        "adh-schema-migration",
+        "adh-failure-diagnosis",
+        "adh-environment-repair",
+        "adh-knowledge-context",
+        "adh-quality-check"
+      ],
+      "inherit_native_system_prompt": true,
+      "allow_model_fallback": false,
+      "allow_effort_override": false,
+      "allow_external_history_rewrite": false,
+      "common_and_role_loaded_once_per_context_epoch": true,
+      "task_context_contract": "contracts/model-execution.schema.json#/$defs/TaskPacket",
+      "qualification_status": "NOT_RUN",
+      "native_configuration": false,
+      "artifact_selection": "typed normative closure; related AC/SPEC/TEST and active guards; never all L1-L10 every turn",
+      "enforcement_authority": "authenticated Supervisor/Runner/OS/Verifier; not prompt or TaskPacket bool",
+      "runtime_edit_policy": "edit dotfiles canonical adh profile; this is desired/validation view, not a second native input",
+      "release_set_required": true
+    },
+    {
+      "profile_id": "fable-reviewer",
+      "role": "A3",
+      "requested_model": "claude-fable-5-1",
+      "requested_effort": "high",
+      "prompt_files": [
+        "prompts/COMMON_CONTRACT.md",
+        "prompts/CLAUDE_REVIEWER.md"
+      ],
+      "default_skill_routes": [
+        "adh-independent-review",
+        "adh-knowledge-context"
+      ],
+      "inherit_native_system_prompt": true,
+      "allow_model_fallback": false,
+      "allow_effort_override": false,
+      "allow_external_history_rewrite": false,
+      "common_and_role_loaded_once_per_context_epoch": true,
+      "task_context_contract": "contracts/model-execution.schema.json#/$defs/TaskPacket",
+      "qualification_status": "NOT_RUN",
+      "native_configuration": false,
+      "artifact_selection": "typed normative closure; related AC/SPEC/TEST and active guards; never all L1-L10 every turn",
+      "enforcement_authority": "authenticated Supervisor/Runner/OS/Verifier; not prompt or TaskPacket bool",
+      "runtime_edit_policy": "edit dotfiles canonical adh profile; this is desired/validation view, not a second native input",
+      "release_set_required": true
+    }
+  ],
+  "machine_verifier": {
+    "role": "A4",
+    "llm_model": null,
+    "runbook": "prompts/VERIFIER_RUNBOOK.md"
+  },
+  "runtime_source_of_truth": "dotfiles:home/dot_agents/agent-config.yaml#model_profiles.adh"
+}

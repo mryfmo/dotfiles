@@ -1,0 +1,288 @@
+[
+  {
+    "historical_group_id": "DSH-A01-P",
+    "disposition": "retired_alias_only_not_an_extra_verification_result",
+    "contract_id": "IC01",
+    "parent_cases": [
+      "V04-01",
+      "V26-01"
+    ],
+    "integrated_subcase_ids": [
+      "V04-01-S01",
+      "V26-01-S01"
+    ]
+  },
+  {
+    "historical_group_id": "DSH-A01-N",
+    "disposition": "retired_alias_only_not_an_extra_verification_result",
+    "contract_id": "IC01",
+    "parent_cases": [
+      "V04-01",
+      "V26-03"
+    ],
+    "integrated_subcase_ids": [
+      "V04-01-S02",
+      "V26-03-S01"
+    ]
+  },
+  {
+    "historical_group_id": "DSH-A02-P",
+    "disposition": "retired_alias_only_not_an_extra_verification_result",
+    "contract_id": "IC02",
+    "parent_cases": [
+      "V14-05",
+      "V20-01"
+    ],
+    "integrated_subcase_ids": [
+      "V14-05-S01",
+      "V20-01-S01"
+    ]
+  },
+  {
+    "historical_group_id": "DSH-A02-N",
+    "disposition": "retired_alias_only_not_an_extra_verification_result",
+    "contract_id": "IC02",
+    "parent_cases": [
+      "V09-03",
+      "V29-01"
+    ],
+    "integrated_subcase_ids": [
+      "V09-03-S01",
+      "V29-01-S01"
+    ]
+  },
+  {
+    "historical_group_id": "DSH-A03-P",
+    "disposition": "retired_alias_only_not_an_extra_verification_result",
+    "contract_id": "IC03",
+    "parent_cases": [
+      "V06-02",
+      "V26-02"
+    ],
+    "integrated_subcase_ids": [
+      "V06-02-S01",
+      "V26-02-S01"
+    ]
+  },
+  {
+    "historical_group_id": "DSH-A03-N",
+    "disposition": "retired_alias_only_not_an_extra_verification_result",
+    "contract_id": "IC03",
+    "parent_cases": [
+      "V06-05",
+      "V30-04"
+    ],
+    "integrated_subcase_ids": [
+      "V06-05-S01",
+      "V30-04-S01"
+    ]
+  },
+  {
+    "historical_group_id": "DSH-A04-P",
+    "disposition": "retired_alias_only_not_an_extra_verification_result",
+    "contract_id": "IC04",
+    "parent_cases": [
+      "V07-03",
+      "V25-06"
+    ],
+    "integrated_subcase_ids": [
+      "V07-03-S01",
+      "V25-06-S01"
+    ]
+  },
+  {
+    "historical_group_id": "DSH-A04-N",
+    "disposition": "retired_alias_only_not_an_extra_verification_result",
+    "contract_id": "IC04",
+    "parent_cases": [
+      "V12-05",
+      "V25-06"
+    ],
+    "integrated_subcase_ids": [
+      "V12-05-S01",
+      "V25-06-S02"
+    ]
+  },
+  {
+    "historical_group_id": "DSH-A05-P",
+    "disposition": "retired_alias_only_not_an_extra_verification_result",
+    "contract_id": "IC05",
+    "parent_cases": [
+      "V07-03",
+      "V26-01"
+    ],
+    "integrated_subcase_ids": [
+      "V07-03-S02",
+      "V26-01-S02"
+    ]
+  },
+  {
+    "historical_group_id": "DSH-A05-N",
+    "disposition": "retired_alias_only_not_an_extra_verification_result",
+    "contract_id": "IC05",
+    "parent_cases": [
+      "V07-02",
+      "V23-02"
+    ],
+    "integrated_subcase_ids": [
+      "V07-02-S01",
+      "V23-02-S01"
+    ]
+  },
+  {
+    "historical_group_id": "DSH-A06-P",
+    "disposition": "retired_alias_only_not_an_extra_verification_result",
+    "contract_id": "IC06",
+    "parent_cases": [
+      "V22-01",
+      "V28-06"
+    ],
+    "integrated_subcase_ids": [
+      "V22-01-S01",
+      "V28-06-S01"
+    ]
+  },
+  {
+    "historical_group_id": "DSH-A06-N",
+    "disposition": "retired_alias_only_not_an_extra_verification_result",
+    "contract_id": "IC06",
+    "parent_cases": [
+      "V11-06",
+      "V22-05"
+    ],
+    "integrated_subcase_ids": [
+      "V11-06-S01",
+      "V22-05-S01"
+    ]
+  },
+  {
+    "historical_group_id": "DSH-A07-P",
+    "disposition": "retired_alias_only_not_an_extra_verification_result",
+    "contract_id": "IC07",
+    "parent_cases": [
+      "V17-02",
+      "V19-01"
+    ],
+    "integrated_subcase_ids": [
+      "V19-01-S01",
+      "V17-02-S01"
+    ]
+  },
+  {
+    "historical_group_id": "DSH-A07-N",
+    "disposition": "retired_alias_only_not_an_extra_verification_result",
+    "contract_id": "IC07",
+    "parent_cases": [
+      "V10-01",
+      "V17-05"
+    ],
+    "integrated_subcase_ids": [
+      "V17-05-S01",
+      "V10-01-S01"
+    ]
+  },
+  {
+    "historical_group_id": "DSH-A08-P",
+    "disposition": "retired_alias_only_not_an_extra_verification_result",
+    "contract_id": "IC08",
+    "parent_cases": [
+      "V14-01",
+      "V26-01"
+    ],
+    "integrated_subcase_ids": [
+      "V14-01-S01",
+      "V26-01-S03"
+    ]
+  },
+  {
+    "historical_group_id": "DSH-A08-N",
+    "disposition": "retired_alias_only_not_an_extra_verification_result",
+    "contract_id": "IC08",
+    "parent_cases": [
+      "V14-01",
+      "V14-06"
+    ],
+    "integrated_subcase_ids": [
+      "V14-01-S02",
+      "V14-06-S01"
+    ]
+  },
+  {
+    "historical_group_id": "DSH-A09-P",
+    "disposition": "retired_alias_only_not_an_extra_verification_result",
+    "contract_id": "IC09",
+    "parent_cases": [
+      "V25-01",
+      "V28-06"
+    ],
+    "integrated_subcase_ids": [
+      "V25-01-S01",
+      "V28-06-S02"
+    ]
+  },
+  {
+    "historical_group_id": "DSH-A09-N",
+    "disposition": "retired_alias_only_not_an_extra_verification_result",
+    "contract_id": "IC09",
+    "parent_cases": [
+      "V20-05",
+      "V25-04"
+    ],
+    "integrated_subcase_ids": [
+      "V20-05-S01",
+      "V25-04-S01"
+    ]
+  },
+  {
+    "historical_group_id": "DSH-A10-P",
+    "disposition": "retired_alias_only_not_an_extra_verification_result",
+    "contract_id": "IC10",
+    "parent_cases": [
+      "V02-02",
+      "V04-06"
+    ],
+    "integrated_subcase_ids": [
+      "V02-02-S01",
+      "V04-06-S01"
+    ]
+  },
+  {
+    "historical_group_id": "DSH-A10-N",
+    "disposition": "retired_alias_only_not_an_extra_verification_result",
+    "contract_id": "IC10",
+    "parent_cases": [
+      "V02-02",
+      "V04-06"
+    ],
+    "integrated_subcase_ids": [
+      "V02-02-S02",
+      "V04-06-S02"
+    ]
+  },
+  {
+    "historical_group_id": "DSH-A11-P",
+    "disposition": "retired_alias_only_not_an_extra_verification_result",
+    "contract_id": "IC11",
+    "parent_cases": [
+      "V28-01",
+      "V30-01"
+    ],
+    "integrated_subcase_ids": [
+      "V30-01-S01",
+      "V28-01-S01"
+    ]
+  },
+  {
+    "historical_group_id": "DSH-A11-N",
+    "disposition": "retired_alias_only_not_an_extra_verification_result",
+    "contract_id": "IC11",
+    "parent_cases": [
+      "V03-04",
+      "V29-05"
+    ],
+    "integrated_subcase_ids": [
+      "V03-04-S01",
+      "V29-05-S01"
+    ]
+  }
+]

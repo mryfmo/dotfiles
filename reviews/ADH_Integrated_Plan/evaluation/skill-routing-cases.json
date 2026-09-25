@@ -1,0 +1,776 @@
+{
+  "document_version": "3.0.0",
+  "case_count": 48,
+  "purpose": "公開回帰fixture。モデル評価結果ではない。未見評価は別に封印作成する。",
+  "cases": [
+    {
+      "id": "ROUTE-001",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A1",
+      "request": "新しい在庫通知機能について、目的・制約・未確定事項を整理するタスクが割り当てられた。",
+      "target_route": "adh-requirements",
+      "expected_routes": [
+        "adh-requirements"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-002",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A1",
+      "request": "未確定のAPI要求資料に矛盾がある。出典を確認して要求台帳を作成する。",
+      "target_route": "adh-requirements",
+      "expected_routes": [
+        "adh-requirements"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-003",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A1",
+      "request": "機能要望を、必須機能と非機能、判断待ちへ分類する。まだ設計は確定していない。",
+      "target_route": "adh-requirements",
+      "expected_routes": [
+        "adh-requirements"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-004",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A1",
+      "request": "「非機能要件」という用語の意味だけ説明して。資料の変更は不要。",
+      "target_route": "adh-requirements",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-requirements"
+      ],
+      "case_type": "near_negative",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-005",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A1",
+      "request": "承認済み要求台帳の1文を自然な日本語に言い換えるだけ。要件の再策定はしない。",
+      "target_route": "adh-requirements",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-requirements"
+      ],
+      "case_type": "near_negative",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-006",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A1",
+      "request": "既存の要件IDの命名規則を説明するだけ。新しい要求整理は求めていない。",
+      "target_route": "adh-requirements",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-requirements"
+      ],
+      "case_type": "near_negative",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-007",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A1",
+      "request": "永続化方式の2案を実験して比較しADRを作る委任がある。",
+      "target_route": "adh-design-choice",
+      "expected_routes": [
+        "adh-design-choice"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-008",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A1",
+      "request": "未決定の処理方式について候補と反例を調べ、設計を策定する。",
+      "target_route": "adh-design-choice",
+      "expected_routes": [
+        "adh-design-choice"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-009",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A1",
+      "request": "API整合性の仮説を事前基準付きspikeで確認し設計判断を残す。",
+      "target_route": "adh-design-choice",
+      "expected_routes": [
+        "adh-design-choice"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-010",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A1",
+      "request": "採用済みADRにある「WAL」の定義だけ説明して。",
+      "target_route": "adh-design-choice",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-design-choice"
+      ],
+      "case_type": "near_negative",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-011",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A1",
+      "request": "完成したアーキテクチャー図のタイトルを短くするだけ。再設計しない。",
+      "target_route": "adh-design-choice",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-design-choice"
+      ],
+      "case_type": "near_negative",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-012",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A1",
+      "request": "設計案は確定済み。今回の質問は用語の英訳だけ。",
+      "target_route": "adh-design-choice",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-design-choice"
+      ],
+      "case_type": "near_negative",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-013",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "承認済みTaskPacketに従ってGET /healthの機能を実装し担当検査を通す。",
+      "target_route": "adh-task-implementation",
+      "expected_routes": [
+        "adh-task-implementation"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-014",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "割当済みのCSV export機能を専用worktreeで実装し検証する。",
+      "target_route": "adh-task-implementation",
+      "expected_routes": [
+        "adh-task-implementation"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-015",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "契約が固定されたtask-status機能をコード化して候補を提出する。",
+      "target_route": "adh-task-implementation",
+      "expected_routes": [
+        "adh-task-implementation"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-016",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "この関数が何をしているか説明するだけ。コード変更はしない。",
+      "target_route": "adh-task-implementation",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-task-implementation"
+      ],
+      "case_type": "near_negative",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-017",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "実装済みファイルの名前の由来を教えて。作業割当はない。",
+      "target_route": "adh-task-implementation",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-task-implementation"
+      ],
+      "case_type": "near_negative",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-018",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "コードを触らず、HTTP 204の意味を答えるだけ。",
+      "target_route": "adh-task-implementation",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-task-implementation"
+      ],
+      "case_type": "near_negative",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-019",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "migrationを追加してnullable列を段階的に変更し、旧データで適用試験する。",
+      "target_route": "adh-schema-migration",
+      "expected_routes": [
+        "adh-schema-migration"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-020",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "割当済みschema変更のmigrationを実装して復旧手順を検証する。",
+      "target_route": "adh-schema-migration",
+      "expected_routes": [
+        "adh-schema-migration"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-021",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "既存migrationの不具合を変更し、適用とrollbackを確認するタスク。",
+      "target_route": "adh-schema-migration",
+      "expected_routes": [
+        "adh-schema-migration"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-022",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "このSELECTのGROUP BYの意味を説明して。schema変更はない。",
+      "target_route": "adh-schema-migration",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-schema-migration"
+      ],
+      "case_type": "near_negative",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-023",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "既存のDBテーブルを読むだけの調査。migrationを追加しない。",
+      "target_route": "adh-schema-migration",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-schema-migration"
+      ],
+      "case_type": "near_negative",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-024",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "SQLのWHERE句とHAVING句の違いを回答して。",
+      "target_route": "adh-schema-migration",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-schema-migration"
+      ],
+      "case_type": "near_negative",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-025",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "この実行ログでテストが失敗した。原因を再現して修正するタスク。",
+      "target_route": "adh-failure-diagnosis",
+      "expected_routes": [
+        "adh-failure-diagnosis"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-026",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "並行更新でデータが欠ける不具合を観測した。原因と修正を検証する。",
+      "target_route": "adh-failure-diagnosis",
+      "expected_routes": [
+        "adh-failure-diagnosis"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-027",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "起動時例外の再現ログがある。コードの問題を切り分けて修正する。",
+      "target_route": "adh-failure-diagnosis",
+      "expected_routes": [
+        "adh-failure-diagnosis"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-028",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "すべて正常な関数の動作を説明するだけ。デバッグ依頼ではない。",
+      "target_route": "adh-failure-diagnosis",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-failure-diagnosis"
+      ],
+      "case_type": "near_negative",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-029",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "デバッグという言葉の意味を回答して。実際の不具合はない。",
+      "target_route": "adh-failure-diagnosis",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-failure-diagnosis"
+      ],
+      "case_type": "near_negative",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-030",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "pytestの実行コマンドの書き方だけ教えて。失敗ログはない。",
+      "target_route": "adh-failure-diagnosis",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-failure-diagnosis"
+      ],
+      "case_type": "near_negative",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-031",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "許可済み検証用DBが未起動。使い捨てrecipeで起動しhealthと検査を通す。",
+      "target_route": "adh-environment-repair",
+      "expected_routes": [
+        "adh-environment-repair"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-032",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "ローカルの依存不足を承認済recipeで補い検証環境を復旧するタスク。",
+      "target_route": "adh-environment-repair",
+      "expected_routes": [
+        "adh-environment-repair"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-033",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "私設API test fixtureの環境がない。委任範囲で構築して試験する。",
+      "target_route": "adh-environment-repair",
+      "expected_routes": [
+        "adh-environment-repair"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-034",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "DockerとVMの用語の違いだけ説明して。環境変更はしない。",
+      "target_route": "adh-environment-repair",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-environment-repair"
+      ],
+      "case_type": "near_negative",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-035",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "環境変数とは何かを説明するだけ。設定しない。",
+      "target_route": "adh-environment-repair",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-environment-repair"
+      ],
+      "case_type": "near_negative",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-036",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "本番環境への権限を持っていない。構築するのではなく必要な申請事項だけ整理して。",
+      "target_route": "adh-environment-repair",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-environment-repair"
+      ],
+      "case_type": "near_negative",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-037",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A3",
+      "request": "作者とは別sessionで、凍結candidateの仕様適合と品質をレビューする割当。",
+      "target_route": "adh-independent-review",
+      "expected_routes": [
+        "adh-independent-review"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-038",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A3",
+      "request": "読み取り専用候補と固定仕様から独立ReviewObservationを作る。",
+      "target_route": "adh-independent-review",
+      "expected_routes": [
+        "adh-independent-review"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-039",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A3",
+      "request": "別担当が実装した認可境界変更を、独立した立場で確認する。",
+      "target_route": "adh-independent-review",
+      "expected_routes": [
+        "adh-independent-review"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-040",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A3",
+      "request": "独立レビューの定義を説明するだけ。対象candidateはない。",
+      "target_route": "adh-independent-review",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-independent-review"
+      ],
+      "case_type": "near_negative",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-041",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A3",
+      "request": "レビューコメントの敬語表現を直すだけ。合否の評価ではない。",
+      "target_route": "adh-independent-review",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-independent-review"
+      ],
+      "case_type": "near_negative",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-042",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A3",
+      "request": "自分の候補を自分で独立レビュー済とする依頼。権限条件を確認して実行しない。",
+      "target_route": "adh-independent-review",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-independent-review"
+      ],
+      "case_type": "near_negative",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-043",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A1",
+      "request": "受入済み2候補を既知baseからローカル直列統合し、統合検証を調整する。",
+      "target_route": "adh-integration-review",
+      "expected_routes": [
+        "adh-integration-review"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-044",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A1",
+      "request": "統合branchに候補を反映し、新snapshotで起動/E2Eを確認する担当タスク。",
+      "target_route": "adh-integration-review",
+      "expected_routes": [
+        "adh-integration-review"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-045",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A1",
+      "request": "merge後に旧receiptを失効させ、統合修正が必要か判断する。",
+      "target_route": "adh-integration-review",
+      "expected_routes": [
+        "adh-integration-review"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-046",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A1",
+      "request": "git mergeとrebaseの用語の違いだけ説明して。",
+      "target_route": "adh-integration-review",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-integration-review"
+      ],
+      "case_type": "near_negative",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-047",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A1",
+      "request": "ブランチ名の日本語訳を教えて。統合作業はしない。",
+      "target_route": "adh-integration-review",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-integration-review"
+      ],
+      "case_type": "near_negative",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    },
+    {
+      "id": "ROUTE-048",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A1",
+      "request": "remote公開の承認はない。ローカル統合せず公開権限の必要事項だけ答えて。",
+      "target_route": "adh-integration-review",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-integration-review"
+      ],
+      "case_type": "near_negative",
+      "expected_authority": "TaskPacket grant only; no actual external operations",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry"
+    }
+  ],
+  "observation_scope": "initial ADH entry selection; legitimate downstream routes are recorded separately against the selected workflow contract"
+}

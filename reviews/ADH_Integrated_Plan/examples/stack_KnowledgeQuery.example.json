@@ -1,0 +1,22 @@
+{
+  "request_id": "example-query",
+  "operation": "context",
+  "binding": {
+    "project_id": "example-project",
+    "trust_domain_id": "example-private",
+    "baseline_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+    "source_snapshot_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+    "acl_digest": "3333333333333333333333333333333333333333333333333333333333333333",
+    "graph_schema_version": "1",
+    "adapter_revision": "example-unimplemented",
+    "upstream_revision": "7057387775ecdf74c14e38d0067fd8e1267eaaf8",
+    "knowledge_snapshot_digest": null
+  },
+  "intent": "REQ-R17に必要な仕様と検査根拠を照会",
+  "required_artifact_ids": [
+    "R17"
+  ],
+  "max_results": 50,
+  "max_output_bytes": 65536,
+  "grant_ref": "example-not-an-actual-grant"
+}

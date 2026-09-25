@@ -1,0 +1,348 @@
+{
+  "document_version": "4.0.0",
+  "previous_version": "3.1.0",
+  "change_id": "CR-STACK-INTEGRATION-004",
+  "user_requested": true,
+  "production_changes_executed": false,
+  "old_requirements_preserved": 35,
+  "old_work_packages_preserved": 32,
+  "old_parent_conditions_preserved": 192,
+  "old_nested_cases_preserved": 196,
+  "new_nested_cases": 48,
+  "total_nested_cases": 244,
+  "new_integrated_contracts": [
+    "IC15",
+    "IC16",
+    "IC17",
+    "IC18"
+  ],
+  "legacy_addon_checks_mapped": 60,
+  "component_count": 27,
+  "operation_inventory_after": 40,
+  "work_packages": [
+    {
+      "id": "WP00",
+      "added_step_ids": [
+        "WP00-S09",
+        "WP00-S10"
+      ],
+      "v4_integration_checks": []
+    },
+    {
+      "id": "WP01",
+      "added_step_ids": [
+        "WP01-S09",
+        "WP01-S10"
+      ],
+      "v4_integration_checks": []
+    },
+    {
+      "id": "WP02",
+      "added_step_ids": [
+        "WP02-S09",
+        "WP02-S10"
+      ],
+      "v4_integration_checks": []
+    },
+    {
+      "id": "WP03",
+      "added_step_ids": [
+        "WP03-S09",
+        "WP03-S10"
+      ],
+      "v4_integration_checks": [
+        "U4-22",
+        "U4-29"
+      ]
+    },
+    {
+      "id": "WP04",
+      "added_step_ids": [
+        "WP04-S09",
+        "WP04-S10"
+      ],
+      "v4_integration_checks": []
+    },
+    {
+      "id": "WP05",
+      "added_step_ids": [
+        "WP05-S09",
+        "WP05-S10"
+      ],
+      "v4_integration_checks": []
+    },
+    {
+      "id": "WP06",
+      "added_step_ids": [
+        "WP06-S09",
+        "WP06-S10",
+        "WP06-S11"
+      ],
+      "v4_integration_checks": [
+        "U4-01",
+        "U4-04",
+        "U4-08",
+        "U4-23",
+        "U4-25"
+      ]
+    },
+    {
+      "id": "WP07",
+      "added_step_ids": [
+        "WP07-S08",
+        "WP07-S09"
+      ],
+      "v4_integration_checks": []
+    },
+    {
+      "id": "WP08",
+      "added_step_ids": [
+        "WP08-S08",
+        "WP08-S09"
+      ],
+      "v4_integration_checks": []
+    },
+    {
+      "id": "WP09",
+      "added_step_ids": [
+        "WP09-S09",
+        "WP09-S10"
+      ],
+      "v4_integration_checks": [
+        "U4-12"
+      ]
+    },
+    {
+      "id": "WP10",
+      "added_step_ids": [
+        "WP10-S09",
+        "WP10-S10"
+      ],
+      "v4_integration_checks": []
+    },
+    {
+      "id": "WP11",
+      "added_step_ids": [
+        "WP11-S08",
+        "WP11-S09"
+      ],
+      "v4_integration_checks": []
+    },
+    {
+      "id": "WP12",
+      "added_step_ids": [
+        "WP12-S08",
+        "WP12-S09"
+      ],
+      "v4_integration_checks": []
+    },
+    {
+      "id": "WP13",
+      "added_step_ids": [
+        "WP13-S08",
+        "WP13-S09"
+      ],
+      "v4_integration_checks": [
+        "U4-16"
+      ]
+    },
+    {
+      "id": "WP14",
+      "added_step_ids": [
+        "WP14-S09",
+        "WP14-S10"
+      ],
+      "v4_integration_checks": [
+        "U4-24",
+        "U4-26",
+        "U4-27",
+        "U4-28"
+      ]
+    },
+    {
+      "id": "WP15",
+      "added_step_ids": [
+        "WP15-S09",
+        "WP15-S10"
+      ],
+      "v4_integration_checks": [
+        "U4-03"
+      ]
+    },
+    {
+      "id": "WP16",
+      "added_step_ids": [
+        "WP16-S09",
+        "WP16-S10"
+      ],
+      "v4_integration_checks": []
+    },
+    {
+      "id": "WP17",
+      "added_step_ids": [
+        "WP17-S09",
+        "WP17-S10"
+      ],
+      "v4_integration_checks": [
+        "U4-06",
+        "U4-38"
+      ]
+    },
+    {
+      "id": "WP18",
+      "added_step_ids": [
+        "WP18-S09",
+        "WP18-S10",
+        "WP18-S11"
+      ],
+      "v4_integration_checks": [
+        "U4-09",
+        "U4-11",
+        "U4-15",
+        "U4-18",
+        "U4-20"
+      ]
+    },
+    {
+      "id": "WP19",
+      "added_step_ids": [
+        "WP19-S09",
+        "WP19-S10"
+      ],
+      "v4_integration_checks": []
+    },
+    {
+      "id": "WP20",
+      "added_step_ids": [
+        "WP20-S09",
+        "WP20-S10"
+      ],
+      "v4_integration_checks": [
+        "U4-30"
+      ]
+    },
+    {
+      "id": "WP21",
+      "added_step_ids": [
+        "WP21-S09",
+        "WP21-S10"
+      ],
+      "v4_integration_checks": []
+    },
+    {
+      "id": "WP22",
+      "added_step_ids": [
+        "WP22-S09",
+        "WP22-S10"
+      ],
+      "v4_integration_checks": [
+        "U4-13",
+        "U4-34",
+        "U4-41"
+      ]
+    },
+    {
+      "id": "WP23",
+      "added_step_ids": [
+        "WP23-S08",
+        "WP23-S09"
+      ],
+      "v4_integration_checks": [
+        "U4-47"
+      ]
+    },
+    {
+      "id": "WP24",
+      "added_step_ids": [
+        "WP24-S09",
+        "WP24-S10"
+      ],
+      "v4_integration_checks": [
+        "U4-19",
+        "U4-32",
+        "U4-40"
+      ]
+    },
+    {
+      "id": "WP25",
+      "added_step_ids": [
+        "WP25-S09",
+        "WP25-S10"
+      ],
+      "v4_integration_checks": [
+        "U4-14",
+        "U4-17",
+        "U4-36"
+      ]
+    },
+    {
+      "id": "WP26",
+      "added_step_ids": [
+        "WP26-S09",
+        "WP26-S10"
+      ],
+      "v4_integration_checks": [
+        "U4-02",
+        "U4-05",
+        "U4-10",
+        "U4-21",
+        "U4-33",
+        "U4-35",
+        "U4-42"
+      ]
+    },
+    {
+      "id": "WP27",
+      "added_step_ids": [
+        "WP27-S08",
+        "WP27-S09"
+      ],
+      "v4_integration_checks": []
+    },
+    {
+      "id": "WP28",
+      "added_step_ids": [
+        "WP28-S09",
+        "WP28-S10"
+      ],
+      "v4_integration_checks": [
+        "U4-39"
+      ]
+    },
+    {
+      "id": "WP29",
+      "added_step_ids": [
+        "WP29-S09",
+        "WP29-S10"
+      ],
+      "v4_integration_checks": [
+        "U4-43",
+        "U4-44"
+      ]
+    },
+    {
+      "id": "WP30",
+      "added_step_ids": [
+        "WP30-S09",
+        "WP30-S10"
+      ],
+      "v4_integration_checks": [
+        "U4-07",
+        "U4-31",
+        "U4-37",
+        "U4-45"
+      ]
+    },
+    {
+      "id": "WP31",
+      "added_step_ids": [
+        "WP31-S09",
+        "WP31-S10"
+      ],
+      "v4_integration_checks": [
+        "U4-46",
+        "U4-48"
+      ]
+    }
+  ]
+}

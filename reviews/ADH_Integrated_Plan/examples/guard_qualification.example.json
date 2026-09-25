@@ -1,0 +1,13 @@
+{
+  "guard_id": "GR05",
+  "native_product": "Claude Code",
+  "native_version": "UNBOUND_UNQUALIFIED",
+  "execution_mode": "QUALIFY_TARGET_MODE_FIRST",
+  "handler_kind": "command-or-other-real-handler-to-be-bound",
+  "enforcement_layer": "NATIVE",
+  "policy_digest": "b2355f19f7423fda45024a5dcd74b20164b6f4673c3511925071332552a9bdbe",
+  "fixture_matrix_ref": "registers/guardrails.json",
+  "observed_status": "NOT_RUN",
+  "scope": "example-only; not usable for real admission",
+  "checked_at": null
+}

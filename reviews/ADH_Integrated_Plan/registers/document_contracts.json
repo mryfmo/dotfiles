@@ -1,0 +1,357 @@
+{
+  "document_version": "4.0.0",
+  "classification_is_sequence": false,
+  "contracts": [
+    {
+      "id": "DG01",
+      "name": "10分類は直列工程でもC4階層でもない",
+      "requirements": [
+        "R01",
+        "R09",
+        "R10",
+        "R12"
+      ],
+      "owner": "DocumentRegistry",
+      "normal": "10分類をsource/view別に登録。C4はARCH図の粒度、EVAL/CHGは全工程参照として初期から登録",
+      "negative": "PRD=Container固定、10文書全文必読、L10完成後しか評価しない循環を検出",
+      "parents": [
+        "V02-01",
+        "V02-04"
+      ],
+      "tiers": [
+        "DOCUMENT",
+        "DOCUMENT"
+      ],
+      "files": [
+        "artifacts/README.md",
+        "registers/artifact_catalog.json"
+      ],
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "spec_location": "spec/08_DOCUMENT_GRAPH.md#dg01",
+      "verification_subcases": [
+        "V02-01-DG01-P",
+        "V02-04-DG01-N"
+      ],
+      "work_packages": [
+        "WP02"
+      ]
+    },
+    {
+      "id": "DG02",
+      "name": "要求IDとEARSの意味保存",
+      "requirements": [
+        "R01",
+        "R05",
+        "R09",
+        "R12"
+      ],
+      "owner": "Requirements/Reviewer",
+      "normal": "35原要求をbyte維持しEARS refinementのtrigger/state/response/観測条件を対応付ける",
+      "negative": "EARS整形の過程で例外/非機能/対象範囲を削る、単位未定義で確定することを拒否",
+      "parents": [
+        "V00-02",
+        "V19-05"
+      ],
+      "tiers": [
+        "DOCUMENT",
+        "CONTRACT"
+      ],
+      "files": [
+        "artifacts/L3_REQ.md",
+        "registers/structured_requirements.json"
+      ],
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "spec_location": "spec/08_DOCUMENT_GRAPH.md#dg02",
+      "verification_subcases": [
+        "V00-02-DG02-P",
+        "V19-05-DG02-N"
+      ],
+      "work_packages": [
+        "WP00",
+        "WP19"
+      ]
+    },
+    {
+      "id": "DG03",
+      "name": "期待仕様・oracle・試験定義・実証拠の分離",
+      "requirements": [
+        "R20",
+        "R22",
+        "R34",
+        "R35"
+      ],
+      "owner": "Verifier/Reviewer",
+      "normal": "ACから独立oracleと固定caseへの参照があり、未実施resultを含めず期待仕様を保存",
+      "negative": "BDD文だけ、固定出力文字列、学習対象の自己採点でPASSにすることを拒否",
+      "parents": [
+        "V04-04",
+        "V20-05"
+      ],
+      "tiers": [
+        "CONTRACT",
+        "VM"
+      ],
+      "files": [
+        "artifacts/L4_ACCEPTANCE.md",
+        "artifacts/L7_TEST.md",
+        "registers/acceptance_scenarios.json"
+      ],
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "spec_location": "spec/08_DOCUMENT_GRAPH.md#dg03",
+      "verification_subcases": [
+        "V04-04-DG03-P",
+        "V20-05-DG03-N"
+      ],
+      "work_packages": [
+        "WP04",
+        "WP20"
+      ]
+    },
+    {
+      "id": "DG04",
+      "name": "版・status・意味付き参照グラフ",
+      "requirements": [
+        "R01",
+        "R10",
+        "R11",
+        "R12",
+        "R34"
+      ],
+      "owner": "DocumentRegistry/Resolver",
+      "normal": "文書nodeのid/revision/status/hash/ACLとtyped edgeを検査し、R→SPEC→WP→TESTが辿れる",
+      "negative": "参照切れ、同ID別本文、supersededをcurrent、future revisionや未承認sourceをnormativeにすることを拒否",
+      "parents": [
+        "V04-01",
+        "V18-02"
+      ],
+      "tiers": [
+        "CONTRACT",
+        "AI_E2E"
+      ],
+      "files": [
+        "contracts/document-graph.schema.json",
+        "registers/artifact_graph.json"
+      ],
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "spec_location": "spec/08_DOCUMENT_GRAPH.md#dg04",
+      "verification_subcases": [
+        "V04-01-DG04-P",
+        "V18-02-DG04-N"
+      ],
+      "work_packages": [
+        "WP04",
+        "WP18"
+      ]
+    },
+    {
+      "id": "DG05",
+      "name": "タスク依存DAGと文書グラフを混同しない",
+      "requirements": [
+        "R12",
+        "R17",
+        "R18"
+      ],
+      "owner": "Scheduler/Graph",
+      "normal": "依存taskはDAG、文書のverifies等の相互参照は許可し、依存受入後だけnodeを実行",
+      "negative": "文書の相互参照を理由に全停止、または循環taskを実行してしまうことを検出",
+      "parents": [
+        "V10-01",
+        "V10-06"
+      ],
+      "tiers": [
+        "CONTRACT",
+        "LOCAL"
+      ],
+      "files": [
+        "artifacts/L8_IPLAN.md",
+        "contracts/document-graph.schema.json"
+      ],
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "spec_location": "spec/08_DOCUMENT_GRAPH.md#dg05",
+      "verification_subcases": [
+        "V10-01-DG05-P",
+        "V10-06-DG05-N"
+      ],
+      "work_packages": [
+        "WP10"
+      ]
+    },
+    {
+      "id": "DG06",
+      "name": "TaskPacketは関連閉包と必須制約を保持",
+      "requirements": [
+        "R01",
+        "R02",
+        "R12",
+        "R29",
+        "R30"
+      ],
+      "owner": "Context/Qualification",
+      "normal": "要求・scope・active guard・AC/SPECとrevisionを必須文脈にし、根拠は必要時参照にする",
+      "negative": "全10冊注入、重要禁止をoptionalリンクだけにする、別taskのgrantを取得することを拒否",
+      "parents": [
+        "V17-04",
+        "V18-06"
+      ],
+      "tiers": [
+        "CONTRACT",
+        "DOCUMENT"
+      ],
+      "files": [
+        "contracts/model-execution.schema.json",
+        "docs/14_MODEL_CONTEXT_AND_SKILLS.md"
+      ],
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "spec_location": "spec/08_DOCUMENT_GRAPH.md#dg06",
+      "verification_subcases": [
+        "V17-04-DG06-P",
+        "V18-06-DG06-N"
+      ],
+      "work_packages": [
+        "WP17",
+        "WP18"
+      ]
+    },
+    {
+      "id": "DG07",
+      "name": "変更・失効・再ゲートは全工程に横断",
+      "requirements": [
+        "R01",
+        "R11",
+        "R24",
+        "R33"
+      ],
+      "owner": "Change Authority",
+      "normal": "CRの対象hash・種類・impact閉包・承認主体・再ゲートを確定し、無影響taskは継続",
+      "negative": "semantic変更を誤字として旧合格を維持、変更の度に全task無期限停止を拒否",
+      "parents": [
+        "V08-05",
+        "V24-05"
+      ],
+      "tiers": [
+        "LOCAL",
+        "LOCAL"
+      ],
+      "files": [
+        "artifacts/L9_CHG.md",
+        "spec/10_CHANGE_AND_REGATE.md"
+      ],
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "spec_location": "spec/08_DOCUMENT_GRAPH.md#dg07",
+      "verification_subcases": [
+        "V08-05-DG07-P",
+        "V24-05-DG07-N"
+      ],
+      "work_packages": [
+        "WP08",
+        "WP24"
+      ]
+    },
+    {
+      "id": "DG08",
+      "name": "証拠・調査・実験の由来を失わない",
+      "requirements": [
+        "R03",
+        "R04",
+        "R05",
+        "R07",
+        "R08",
+        "R10"
+      ],
+      "owner": "Research/Architect",
+      "normal": "claim→source revision→experiment→ADRを記録し、実験NOT_RUNは判断の未検証項目として残す",
+      "negative": "リンク件数/長文だけで十分とし、失敗実験を成功ADRへ書換えることを拒否",
+      "parents": [
+        "V19-01",
+        "V19-02"
+      ],
+      "tiers": [
+        "AI_E2E",
+        "AI_E2E"
+      ],
+      "files": [
+        "artifacts/L5_ARCH_ADR.md",
+        "registers/artifact_graph.json"
+      ],
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "spec_location": "spec/08_DOCUMENT_GRAPH.md#dg08",
+      "verification_subcases": [
+        "V19-01-DG08-P",
+        "V19-02-DG08-N"
+      ],
+      "work_packages": [
+        "WP19"
+      ]
+    },
+    {
+      "id": "DG09",
+      "name": "役割・モデル別の必要時取得と評価",
+      "requirements": [
+        "R14",
+        "R15",
+        "R18",
+        "R29",
+        "R34"
+      ],
+      "owner": "Context/Evaluator",
+      "normal": "同モデル/effort/課題/guardでTaskPacket関連取得が要求を落とさず完遂することを測る",
+      "negative": "最適化を口実にguardや必須oracleを外す、旧ReadLedgerを全セッションへ流用することを検出",
+      "parents": [
+        "V28-01",
+        "V28-06"
+      ],
+      "tiers": [
+        "AI_E2E",
+        "AI_E2E"
+      ],
+      "files": [
+        "artifacts/L10_EVAL.md",
+        "evaluation/DOCUMENT_GUARDRAIL_PROTOCOL.md"
+      ],
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "spec_location": "spec/08_DOCUMENT_GRAPH.md#dg09",
+      "verification_subcases": [
+        "V28-01-DG09-P",
+        "V28-06-DG09-N"
+      ],
+      "work_packages": [
+        "WP28"
+      ]
+    },
+    {
+      "id": "DG10",
+      "name": "単一正本・生成表示・再現可能な配布",
+      "requirements": [
+        "R01",
+        "R27",
+        "R31",
+        "R34",
+        "R35"
+      ],
+      "owner": "Release/Document tooling",
+      "normal": "authority mapに従いJSON台帳から人向け表示を生成、graph指紋・manifestと版を照合",
+      "negative": "通読版だけを編集して正本と乖離、過去PASSや計画QAを製品PASSへ流用することを拒否",
+      "parents": [
+        "V31-01",
+        "V31-03"
+      ],
+      "tiers": [
+        "DOCUMENT",
+        "CONTRACT"
+      ],
+      "files": [
+        "registers/authority_map.json",
+        "traceability/DOCUMENT_GRAPH.md"
+      ],
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "spec_location": "spec/08_DOCUMENT_GRAPH.md#dg10",
+      "verification_subcases": [
+        "V31-01-DG10-P",
+        "V31-03-DG10-N"
+      ],
+      "work_packages": [
+        "WP31"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "schema_version": "4.0.0",
+  "packet_id": "example-local-fix",
+  "example_only": true,
+  "role": "A2",
+  "profile_ref": "profiles/model_profiles.json#astra-worker",
+  "project_id": "example-not-a-real-project",
+  "task_id": "example-local-fix",
+  "baseline_kind": "SOLUTION",
+  "baseline_ref": "example://solution",
+  "baseline_digest": "21d9446b726fa24977a68d07fa9f45cbb53afa588d044cb75045e9219da20751",
+  "task_contract_ref": "example://task-contract",
+  "worktree_binding_ref": "example://isolated-worktree",
+  "purpose": "割当済みの入力検証不具合を修正し、既存response契約を保持する。",
+  "requirements": [
+    {
+      "id": "EX-R01",
+      "text": "不正入力を定義済みのエラーとして返す。正常系と既存の返却形式は変更しない。"
+    }
+  ],
+  "allowed_actions": [
+    "担当scopeの編集",
+    "許可された使い捨てローカル検査と修正"
+  ],
+  "prohibited_actions": [
+    "公開・本番操作",
+    "仕様/固定suiteの緩和",
+    "他worktreeへの書込み"
+  ],
+  "completion_criteria": [
+    "候補差分と担当検査結果が揃う",
+    "未実施・失敗を隠さず原本参照を返す"
+  ],
+  "verification_stages": [
+    {
+      "stage": "development",
+      "inventory_ref": "example://affected-checks",
+      "owner": "A2"
+    },
+    {
+      "stage": "wp-candidate",
+      "inventory_ref": "example://required-checks",
+      "owner": "A2"
+    },
+    {
+      "stage": "independent",
+      "inventory_ref": "example://fixed-oracle",
+      "owner": "A4"
+    }
+  ],
+  "stop_conditions": [
+    "本人認証未成立",
+    "未許可の操作が必要",
+    "委任予算の上限",
+    "利用者による停止"
+  ],
+  "required_refs": [
+    {
+      "id": "EX-S01",
+      "path_or_locator": "example://interface-contract",
+      "digest": "21d9446b726fa24977a68d07fa9f45cbb53afa588d044cb75045e9219da20751",
+      "ranges": [
+        "errors section"
+      ],
+      "required": true,
+      "purpose": "既存エラー契約の確認"
+    }
+  ],
+  "optional_refs": [],
+  "skill_routes": [
+    "adh-failure-diagnosis"
+  ],
+  "read_ledger_ref": "example://read-ledger",
+  "context_epoch": 0,
+  "budget_ref": "example://no-budget-grant",
+  "current_state_ref": "example://current-task",
+  "checkpoint_ref": "example://checkpoint",
+  "execution_authorized": false,
+  "prompt_pack_digest": "21d9446b726fa24977a68d07fa9f45cbb53afa588d044cb75045e9219da20751",
+  "document_graph_ref": "registers/artifact_graph.json",
+  "document_graph_digest": "4262fc8b0a77e9e06113a973c1dbba16ec6b8282436fd5b810c238d6fb93faaa",
+  "normative_closure_digest": "931a31bbe201f8e21eb4a833f1ef49c5bfe2c5fe646161ae29cdbd2c0d79660b",
+  "artifact_refs": [
+    "REQ-R11",
+    "AC-R11",
+    "IC13",
+    "IC14"
+  ],
+  "active_guard_ids": [
+    "GR02",
+    "GR03",
+    "GR06",
+    "GR16",
+    "GR24"
+  ],
+  "guard_policy_digest": "b2355f19f7423fda45024a5dcd74b20164b6f4673c3511925071332552a9bdbe",
+  "authorization_ref": "example://NO_VALID_GRANT",
+  "stack_binding": {
+    "release_set_ref": "example-release-set-not-qualified",
+    "required_profile_ref": "astra-worker",
+    "quality_plan_ref": "example-quality-plan",
+    "knowledge_snapshot_ref": null,
+    "normative_closure_digest": "931a31bbe201f8e21eb4a833f1ef49c5bfe2c5fe646161ae29cdbd2c0d79660b"
+  }
+}

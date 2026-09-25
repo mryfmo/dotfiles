@@ -1,0 +1,282 @@
+{
+  "document_version": "4.0.0",
+  "meaning": "Minimum applicable guards by operation class, not native config. Per-product boundary coverage must be measured; missing operation classes default HOLD until mapped.",
+  "operations": [
+    {
+      "operation_class": "document.read",
+      "minimum_guards": [
+        "GR01",
+        "GR03",
+        "GR17",
+        "GR20",
+        "GR22"
+      ],
+      "qualification": "NOT_RUN",
+      "not_applicable_rule": "only supported reason with operation scope; never exemption of the corresponding required guard test"
+    },
+    {
+      "operation_class": "task.dispatch",
+      "minimum_guards": [
+        "GR02",
+        "GR03",
+        "GR04",
+        "GR05",
+        "GR06",
+        "GR10",
+        "GR11",
+        "GR13",
+        "GR17",
+        "GR24"
+      ],
+      "qualification": "NOT_RUN",
+      "not_applicable_rule": "only supported reason with operation scope; never exemption of the corresponding required guard test"
+    },
+    {
+      "operation_class": "tool.local_read",
+      "minimum_guards": [
+        "GR01",
+        "GR03",
+        "GR06",
+        "GR07",
+        "GR09",
+        "GR17",
+        "GR22"
+      ],
+      "qualification": "NOT_RUN",
+      "not_applicable_rule": "only supported reason with operation scope; never exemption of the corresponding required guard test"
+    },
+    {
+      "operation_class": "tool.local_write",
+      "minimum_guards": [
+        "GR02",
+        "GR03",
+        "GR06",
+        "GR07",
+        "GR09",
+        "GR10",
+        "GR13",
+        "GR16",
+        "GR17"
+      ],
+      "qualification": "NOT_RUN",
+      "not_applicable_rule": "only supported reason with operation scope; never exemption of the corresponding required guard test"
+    },
+    {
+      "operation_class": "network.request",
+      "minimum_guards": [
+        "GR01",
+        "GR03",
+        "GR07",
+        "GR08",
+        "GR09",
+        "GR13",
+        "GR17",
+        "GR22"
+      ],
+      "qualification": "NOT_RUN",
+      "not_applicable_rule": "only supported reason with operation scope; never exemption of the corresponding required guard test"
+    },
+    {
+      "operation_class": "runner.execute",
+      "minimum_guards": [
+        "GR03",
+        "GR04",
+        "GR05",
+        "GR06",
+        "GR07",
+        "GR08",
+        "GR09",
+        "GR10",
+        "GR11",
+        "GR12",
+        "GR13",
+        "GR17",
+        "GR23",
+        "GR24"
+      ],
+      "qualification": "NOT_RUN",
+      "not_applicable_rule": "only supported reason with operation scope; never exemption of the corresponding required guard test"
+    },
+    {
+      "operation_class": "candidate.verify",
+      "minimum_guards": [
+        "GR02",
+        "GR03",
+        "GR06",
+        "GR07",
+        "GR14",
+        "GR15",
+        "GR16",
+        "GR17",
+        "GR22",
+        "GR23"
+      ],
+      "qualification": "NOT_RUN",
+      "not_applicable_rule": "only supported reason with operation scope; never exemption of the corresponding required guard test"
+    },
+    {
+      "operation_class": "candidate.accept",
+      "minimum_guards": [
+        "GR02",
+        "GR03",
+        "GR10",
+        "GR14",
+        "GR15",
+        "GR16",
+        "GR17",
+        "GR18",
+        "GR19",
+        "GR20"
+      ],
+      "qualification": "NOT_RUN",
+      "not_applicable_rule": "only supported reason with operation scope; never exemption of the corresponding required guard test"
+    },
+    {
+      "operation_class": "change.publish",
+      "minimum_guards": [
+        "GR02",
+        "GR03",
+        "GR05",
+        "GR16",
+        "GR19",
+        "GR24"
+      ],
+      "qualification": "NOT_RUN",
+      "not_applicable_rule": "only supported reason with operation scope; never exemption of the corresponding required guard test"
+    },
+    {
+      "operation_class": "effect.external",
+      "minimum_guards": [
+        "GR01",
+        "GR03",
+        "GR07",
+        "GR08",
+        "GR09",
+        "GR11",
+        "GR13",
+        "GR17",
+        "GR21",
+        "GR22",
+        "GR24"
+      ],
+      "qualification": "NOT_RUN",
+      "not_applicable_rule": "only supported reason with operation scope; never exemption of the corresponding required guard test"
+    },
+    {
+      "operation_class": "run.recover",
+      "minimum_guards": [
+        "GR02",
+        "GR03",
+        "GR04",
+        "GR05",
+        "GR06",
+        "GR10",
+        "GR11",
+        "GR12",
+        "GR13",
+        "GR19",
+        "GR20",
+        "GR21",
+        "GR24"
+      ],
+      "qualification": "NOT_RUN",
+      "not_applicable_rule": "only supported reason with operation scope; never exemption of the corresponding required guard test"
+    },
+    {
+      "operation_class": "knowledge.query",
+      "minimum_guards": [
+        "GR01",
+        "GR03",
+        "GR07",
+        "GR08",
+        "GR17",
+        "GR20",
+        "GR22"
+      ],
+      "qualification": "NOT_RUN",
+      "not_applicable_rule": "Task relevance may vary, but mandatory product guard evidence cannot be waived by agent or graph result"
+    },
+    {
+      "operation_class": "knowledge.publish",
+      "minimum_guards": [
+        "GR02",
+        "GR03",
+        "GR06",
+        "GR10",
+        "GR11",
+        "GR17",
+        "GR19",
+        "GR20",
+        "GR22"
+      ],
+      "qualification": "NOT_RUN",
+      "not_applicable_rule": "Task relevance may vary, but mandatory product guard evidence cannot be waived by agent or graph result"
+    },
+    {
+      "operation_class": "quality.check",
+      "minimum_guards": [
+        "GR03",
+        "GR05",
+        "GR06",
+        "GR07",
+        "GR09",
+        "GR13",
+        "GR14",
+        "GR16",
+        "GR17",
+        "GR22",
+        "GR23",
+        "GR24"
+      ],
+      "qualification": "NOT_RUN",
+      "not_applicable_rule": "Task relevance may vary, but mandatory product guard evidence cannot be waived by agent or graph result"
+    },
+    {
+      "operation_class": "quality.fix",
+      "minimum_guards": [
+        "GR02",
+        "GR03",
+        "GR05",
+        "GR06",
+        "GR09",
+        "GR10",
+        "GR16",
+        "GR17",
+        "GR18",
+        "GR19"
+      ],
+      "qualification": "NOT_RUN",
+      "not_applicable_rule": "Task relevance may vary, but mandatory product guard evidence cannot be waived by agent or graph result"
+    },
+    {
+      "operation_class": "release.activate",
+      "minimum_guards": [
+        "GR02",
+        "GR03",
+        "GR04",
+        "GR05",
+        "GR11",
+        "GR19",
+        "GR21",
+        "GR24"
+      ],
+      "qualification": "NOT_RUN",
+      "not_applicable_rule": "Task relevance may vary, but mandatory product guard evidence cannot be waived by agent or graph result"
+    },
+    {
+      "operation_class": "learning.promote",
+      "minimum_guards": [
+        "GR02",
+        "GR03",
+        "GR04",
+        "GR05",
+        "GR15",
+        "GR16",
+        "GR19",
+        "GR20"
+      ],
+      "qualification": "NOT_RUN",
+      "not_applicable_rule": "Task relevance may vary, but mandatory product guard evidence cannot be waived by agent or graph result"
+    }
+  ]
+}

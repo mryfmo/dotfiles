@@ -1,0 +1,393 @@
+[
+  {
+    "id": "MO01",
+    "requirements": [
+      "R01",
+      "R11",
+      "R12",
+      "R15",
+      "R18",
+      "R20",
+      "R27",
+      "R35"
+    ],
+    "work_packages": [
+      "WP00",
+      "WP02",
+      "WP03",
+      "WP04",
+      "WP06",
+      "WP17",
+      "WP20",
+      "WP31"
+    ],
+    "test_subcases": [
+      "V04-06-M01",
+      "V17-04-M01",
+      "V31-03-M01"
+    ],
+    "source_ids": [
+      "OPT-S01",
+      "OPT-S04"
+    ],
+    "spec": "spec/07_MODEL_CONTRACTS.md",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "MO02",
+    "requirements": [
+      "R14",
+      "R15",
+      "R18",
+      "R29",
+      "R33",
+      "R35"
+    ],
+    "work_packages": [
+      "WP03",
+      "WP04",
+      "WP06",
+      "WP16",
+      "WP26",
+      "WP28"
+    ],
+    "test_subcases": [
+      "V06-05-M01",
+      "V06-06-M01",
+      "V26-02-M01"
+    ],
+    "source_ids": [
+      "OPT-S01",
+      "OPT-S04",
+      "OPT-S05"
+    ],
+    "spec": "spec/07_MODEL_CONTRACTS.md",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "MO03",
+    "requirements": [
+      "R01",
+      "R03",
+      "R04",
+      "R06",
+      "R12",
+      "R29",
+      "R34",
+      "R35"
+    ],
+    "work_packages": [
+      "WP00",
+      "WP04",
+      "WP05",
+      "WP09",
+      "WP17",
+      "WP18",
+      "WP25",
+      "WP28"
+    ],
+    "test_subcases": [
+      "V18-06-M01",
+      "V25-01-M01",
+      "V28-02-M01"
+    ],
+    "source_ids": [
+      "OPT-S01",
+      "OPT-S04"
+    ],
+    "spec": "spec/07_MODEL_CONTRACTS.md",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "MO04",
+    "requirements": [
+      "R02",
+      "R18",
+      "R19",
+      "R20",
+      "R21",
+      "R23",
+      "R25",
+      "R32"
+    ],
+    "work_packages": [
+      "WP05",
+      "WP06",
+      "WP16",
+      "WP20",
+      "WP22",
+      "WP28"
+    ],
+    "test_subcases": [
+      "V16-02-M01",
+      "V22-01-M01",
+      "V28-04-M01"
+    ],
+    "source_ids": [
+      "OPT-S01",
+      "OPT-S06"
+    ],
+    "spec": "spec/07_MODEL_CONTRACTS.md",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "MO05",
+    "requirements": [
+      "R04",
+      "R12",
+      "R16",
+      "R17",
+      "R18",
+      "R31",
+      "R32"
+    ],
+    "work_packages": [
+      "WP05",
+      "WP10",
+      "WP14",
+      "WP15",
+      "WP17",
+      "WP19",
+      "WP28"
+    ],
+    "test_subcases": [
+      "V05-01-M01",
+      "V15-01-M01",
+      "V28-01-M01"
+    ],
+    "source_ids": [
+      "OPT-S02",
+      "OPT-S06",
+      "OPT-S07"
+    ],
+    "spec": "spec/07_MODEL_CONTRACTS.md",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "MO06",
+    "requirements": [
+      "R18",
+      "R25",
+      "R30",
+      "R31",
+      "R35"
+    ],
+    "work_packages": [
+      "WP04",
+      "WP15",
+      "WP25",
+      "WP26"
+    ],
+    "test_subcases": [
+      "V15-03-M01",
+      "V25-06-M01",
+      "V26-01-M01"
+    ],
+    "source_ids": [
+      "OPT-S02",
+      "OPT-S07"
+    ],
+    "spec": "spec/07_MODEL_CONTRACTS.md",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "MO07",
+    "requirements": [
+      "R13",
+      "R15",
+      "R18",
+      "R24",
+      "R29",
+      "R31",
+      "R33",
+      "R35"
+    ],
+    "work_packages": [
+      "WP06",
+      "WP15",
+      "WP17",
+      "WP22",
+      "WP25",
+      "WP28",
+      "WP30"
+    ],
+    "test_subcases": [
+      "V15-02-M01",
+      "V15-06-M01",
+      "V28-06-M01"
+    ],
+    "source_ids": [
+      "OPT-S03",
+      "OPT-S07",
+      "OPT-S08"
+    ],
+    "spec": "spec/07_MODEL_CONTRACTS.md",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "MO08",
+    "requirements": [
+      "R03",
+      "R04",
+      "R05",
+      "R07",
+      "R08",
+      "R09",
+      "R10",
+      "R12",
+      "R21",
+      "R27"
+    ],
+    "work_packages": [
+      "WP02",
+      "WP18",
+      "WP19",
+      "WP21",
+      "WP28"
+    ],
+    "test_subcases": [
+      "V19-01-M01",
+      "V21-02-M01",
+      "V28-02-M02"
+    ],
+    "source_ids": [
+      "OPT-S02"
+    ],
+    "spec": "spec/07_MODEL_CONTRACTS.md",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "MO09",
+    "requirements": [
+      "R13",
+      "R14",
+      "R15",
+      "R25",
+      "R33",
+      "R35"
+    ],
+    "work_packages": [
+      "WP01",
+      "WP04",
+      "WP06",
+      "WP15",
+      "WP16",
+      "WP26",
+      "WP30"
+    ],
+    "test_subcases": [
+      "V01-01-M01",
+      "V06-03-M01",
+      "V26-03-M01"
+    ],
+    "source_ids": [
+      "OPT-S03",
+      "OPT-S05",
+      "OPT-S06",
+      "OPT-S07"
+    ],
+    "spec": "spec/07_MODEL_CONTRACTS.md",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "MO10",
+    "requirements": [
+      "R02",
+      "R14",
+      "R15",
+      "R16",
+      "R17",
+      "R18",
+      "R21",
+      "R25",
+      "R29"
+    ],
+    "work_packages": [
+      "WP05",
+      "WP06",
+      "WP10",
+      "WP21",
+      "WP24",
+      "WP26"
+    ],
+    "test_subcases": [
+      "V06-03-M02",
+      "V21-06-M01",
+      "V24-01-M01"
+    ],
+    "source_ids": [
+      "OPT-S01",
+      "OPT-S04",
+      "OPT-S05"
+    ],
+    "spec": "spec/07_MODEL_CONTRACTS.md",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "MO11",
+    "requirements": [
+      "R08",
+      "R15",
+      "R20",
+      "R21",
+      "R27",
+      "R32",
+      "R34",
+      "R35"
+    ],
+    "work_packages": [
+      "WP03",
+      "WP06",
+      "WP20",
+      "WP21",
+      "WP26",
+      "WP28",
+      "WP29",
+      "WP31"
+    ],
+    "test_subcases": [
+      "V03-06-M01",
+      "V28-06-M02",
+      "V31-02-M01"
+    ],
+    "source_ids": [
+      "OPT-S01",
+      "OPT-S02",
+      "OPT-S04"
+    ],
+    "spec": "spec/07_MODEL_CONTRACTS.md",
+    "status": "NOT_RUN"
+  },
+  {
+    "id": "MO12",
+    "requirements": [
+      "R11",
+      "R15",
+      "R22",
+      "R25",
+      "R27",
+      "R33",
+      "R34",
+      "R35"
+    ],
+    "work_packages": [
+      "WP06",
+      "WP26",
+      "WP30",
+      "WP31"
+    ],
+    "test_subcases": [
+      "V30-04-M01",
+      "V30-05-M01",
+      "V31-05-M01"
+    ],
+    "source_ids": [
+      "OPT-S04",
+      "OPT-S05",
+      "OPT-S06",
+      "OPT-S07"
+    ],
+    "spec": "spec/07_MODEL_CONTRACTS.md",
+    "status": "NOT_RUN"
+  }
+]

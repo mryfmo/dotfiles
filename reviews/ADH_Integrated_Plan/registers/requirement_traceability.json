@@ -1,0 +1,4805 @@
+[
+  {
+    "requirement_id": "R01",
+    "name": "要求・制約の正本",
+    "normative": "MUST",
+    "requirement": "入力資料、要求ID、必須/任意、禁止変更、受入項目を版付きで保持する",
+    "primary_implementation_work_packages": [
+      "WP00",
+      "WP04",
+      "WP08"
+    ],
+    "primary_verification_ids": [
+      "V00-02",
+      "V08-02",
+      "V08-03"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC12",
+      "IC13",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V08-01-GR02-P",
+      "V08-04-GR02-N",
+      "V08-02-GR02-F",
+      "V08-05-GR02-R",
+      "V08-05-GR19-P",
+      "V08-03-GR19-N",
+      "V24-05-GR19-F",
+      "V30-04-GR19-R",
+      "V02-01-DG01-P",
+      "V02-04-DG01-N",
+      "V00-02-DG02-P",
+      "V19-05-DG02-N",
+      "V04-01-DG04-P",
+      "V18-02-DG04-N",
+      "V17-04-DG06-P",
+      "V18-06-DG06-N",
+      "V08-05-DG07-P",
+      "V24-05-DG07-N",
+      "V31-01-DG10-P",
+      "V31-03-DG10-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO01",
+      "MO03"
+    ],
+    "model_verification_subcases": [
+      "V04-06-M01",
+      "V17-04-M01",
+      "V31-03-M01",
+      "V18-06-M01",
+      "V25-01-M01",
+      "V28-02-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R01",
+      "AC-R01"
+    ],
+    "document_contracts": [
+      "DG01",
+      "DG02",
+      "DG04",
+      "DG06",
+      "DG07",
+      "DG10"
+    ],
+    "guardrails": [
+      "GR02",
+      "GR19"
+    ],
+    "document_guard_subcases": [
+      "V08-01-GR02-P",
+      "V08-04-GR02-N",
+      "V08-02-GR02-F",
+      "V08-05-GR02-R",
+      "V08-05-GR19-P",
+      "V08-03-GR19-N",
+      "V24-05-GR19-F",
+      "V30-04-GR19-R",
+      "V02-01-DG01-P",
+      "V02-04-DG01-N",
+      "V00-02-DG02-P",
+      "V19-05-DG02-N",
+      "V04-01-DG04-P",
+      "V18-02-DG04-N",
+      "V17-04-DG06-P",
+      "V18-06-DG06-N",
+      "V08-05-DG07-P",
+      "V24-05-DG07-N",
+      "V31-01-DG10-P",
+      "V31-03-DG10-N"
+    ],
+    "v4_integration_subcases": [
+      "V18-01-U4-09",
+      "V18-03-U4-15",
+      "V18-06-U4-18",
+      "V31-05-U4-48"
+    ],
+    "integration_contracts": [
+      "IC16",
+      "IC18"
+    ],
+    "implementation_wp": [
+      "WP18",
+      "WP31"
+    ],
+    "verification_subcases": [
+      "V18-01-U4-09",
+      "V18-03-U4-15",
+      "V18-06-U4-18",
+      "V31-05-U4-48"
+    ],
+    "component_ids": [
+      "CMP05",
+      "CMP10",
+      "CMP12",
+      "CMP17",
+      "CMP25",
+      "CMP26"
+    ]
+  },
+  {
+    "requirement_id": "R02",
+    "name": "委任範囲",
+    "normative": "MUST",
+    "requirement": "調査・技術選択・実装等の自動決定範囲をAutonomyMandateで定義する",
+    "primary_implementation_work_packages": [
+      "WP01",
+      "WP08",
+      "WP11",
+      "WP23"
+    ],
+    "primary_verification_ids": [
+      "V01-06",
+      "V08-01",
+      "V19-06",
+      "V23-05"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC06",
+      "IC12",
+      "IC13",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V22-01-S01",
+      "V28-06-S01",
+      "V11-06-S01",
+      "V22-05-S01",
+      "V12-01-GR03-P",
+      "V17-03-GR03-N",
+      "V12-03-GR03-F",
+      "V08-03-GR03-R",
+      "V23-01-GR21-P",
+      "V23-05-GR21-N",
+      "V23-02-GR21-F",
+      "V23-04-GR21-R",
+      "V17-04-DG06-P",
+      "V18-06-DG06-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO04",
+      "MO10"
+    ],
+    "model_verification_subcases": [
+      "V16-02-M01",
+      "V22-01-M01",
+      "V28-04-M01",
+      "V06-03-M02",
+      "V21-06-M01",
+      "V24-01-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R02",
+      "AC-R02"
+    ],
+    "document_contracts": [
+      "DG06"
+    ],
+    "guardrails": [
+      "GR03",
+      "GR21"
+    ],
+    "document_guard_subcases": [
+      "V12-01-GR03-P",
+      "V17-03-GR03-N",
+      "V12-03-GR03-F",
+      "V08-03-GR03-R",
+      "V23-01-GR21-P",
+      "V23-05-GR21-N",
+      "V23-02-GR21-F",
+      "V23-04-GR21-R",
+      "V17-04-DG06-P",
+      "V18-06-DG06-N"
+    ],
+    "v4_integration_subcases": [
+      "V15-04-U4-03",
+      "V29-01-U4-44",
+      "V23-03-U4-47"
+    ],
+    "integration_contracts": [
+      "IC18"
+    ],
+    "implementation_wp": [
+      "WP15",
+      "WP23",
+      "WP29"
+    ],
+    "verification_subcases": [
+      "V15-04-U4-03",
+      "V29-01-U4-44",
+      "V23-03-U4-47"
+    ],
+    "component_ids": [
+      "CMP03",
+      "CMP09",
+      "CMP24"
+    ]
+  },
+  {
+    "requirement_id": "R03",
+    "name": "調査根拠",
+    "normative": "MUST",
+    "requirement": "一次資料の版・取得時点・locator・内容hashを記録する",
+    "primary_implementation_work_packages": [
+      "WP02",
+      "WP18"
+    ],
+    "primary_verification_ids": [
+      "V18-01",
+      "V18-02"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC07",
+      "IC09",
+      "IC10",
+      "IC12",
+      "IC13",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V19-01-S01",
+      "V17-02-S01",
+      "V17-05-S01",
+      "V10-01-S01",
+      "V25-01-S01",
+      "V28-06-S02",
+      "V20-05-S01",
+      "V25-04-S01",
+      "V02-02-S01",
+      "V04-06-S01",
+      "V02-02-S02",
+      "V04-06-S02",
+      "V18-05-GR01-P",
+      "V29-01-GR01-N",
+      "V29-01-GR01-F",
+      "V22-06-GR01-R",
+      "V13-04-GR08-P",
+      "V13-04-GR08-N",
+      "V26-04-GR08-F",
+      "V14-04-GR08-R",
+      "V25-01-GR20-P",
+      "V25-02-GR20-N",
+      "V25-04-GR20-F",
+      "V28-06-GR20-R",
+      "V19-01-DG08-P",
+      "V19-02-DG08-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO03",
+      "MO08"
+    ],
+    "model_verification_subcases": [
+      "V18-06-M01",
+      "V25-01-M01",
+      "V28-02-M01",
+      "V19-01-M01",
+      "V21-02-M01",
+      "V28-02-M02"
+    ],
+    "document_artifacts": [
+      "REQ-R03",
+      "AC-R03"
+    ],
+    "document_contracts": [
+      "DG08"
+    ],
+    "guardrails": [
+      "GR01",
+      "GR08",
+      "GR20"
+    ],
+    "document_guard_subcases": [
+      "V18-05-GR01-P",
+      "V29-01-GR01-N",
+      "V29-01-GR01-F",
+      "V22-06-GR01-R",
+      "V13-04-GR08-P",
+      "V13-04-GR08-N",
+      "V26-04-GR08-F",
+      "V14-04-GR08-R",
+      "V25-01-GR20-P",
+      "V25-02-GR20-N",
+      "V25-04-GR20-F",
+      "V28-06-GR20-R",
+      "V19-01-DG08-P",
+      "V19-02-DG08-N"
+    ],
+    "v4_integration_subcases": [
+      "V18-01-U4-09",
+      "V18-06-U4-18",
+      "V18-02-U4-20",
+      "V26-02-U4-21",
+      "V28-01-U4-39",
+      "V29-05-U4-43"
+    ],
+    "integration_contracts": [
+      "IC16"
+    ],
+    "implementation_wp": [
+      "WP18",
+      "WP26",
+      "WP28",
+      "WP29"
+    ],
+    "verification_subcases": [
+      "V18-01-U4-09",
+      "V18-06-U4-18",
+      "V18-02-U4-20",
+      "V26-02-U4-21",
+      "V28-01-U4-39",
+      "V29-05-U4-43"
+    ],
+    "component_ids": [
+      "CMP01",
+      "CMP03",
+      "CMP04",
+      "CMP05",
+      "CMP08",
+      "CMP09",
+      "CMP10",
+      "CMP12",
+      "CMP18",
+      "CMP20",
+      "CMP24",
+      "CMP25",
+      "CMP26"
+    ]
+  },
+  {
+    "requirement_id": "R04",
+    "name": "広さと深さ",
+    "normative": "MUST",
+    "requirement": "重要論点を分解し依存元/依存先/代替/反例/障害経路まで調べる",
+    "primary_implementation_work_packages": [
+      "WP02",
+      "WP18"
+    ],
+    "primary_verification_ids": [
+      "V02-04",
+      "V18-06"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC07",
+      "IC10",
+      "IC12",
+      "IC13"
+    ],
+    "integrated_subcases": [
+      "V19-01-S01",
+      "V17-02-S01",
+      "V17-05-S01",
+      "V10-01-S01",
+      "V02-02-S01",
+      "V04-06-S01",
+      "V02-02-S02",
+      "V04-06-S02",
+      "V19-01-DG08-P",
+      "V19-02-DG08-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO03",
+      "MO05",
+      "MO08"
+    ],
+    "model_verification_subcases": [
+      "V18-06-M01",
+      "V25-01-M01",
+      "V28-02-M01",
+      "V05-01-M01",
+      "V15-01-M01",
+      "V28-01-M01",
+      "V19-01-M01",
+      "V21-02-M01",
+      "V28-02-M02"
+    ],
+    "document_artifacts": [
+      "REQ-R04",
+      "AC-R04"
+    ],
+    "document_contracts": [
+      "DG08"
+    ],
+    "guardrails": [],
+    "document_guard_subcases": [
+      "V19-01-DG08-P",
+      "V19-02-DG08-N"
+    ],
+    "v4_integration_subcases": [
+      "V28-01-U4-39"
+    ],
+    "integration_contracts": [
+      "IC16"
+    ],
+    "implementation_wp": [
+      "WP28"
+    ],
+    "verification_subcases": [
+      "V28-01-U4-39"
+    ],
+    "component_ids": []
+  },
+  {
+    "requirement_id": "R05",
+    "name": "事実と不確実性",
+    "normative": "MUST",
+    "requirement": "事実/推論/仮定/未検証を区別し、重大矛盾を未解決のまま確定しない",
+    "primary_implementation_work_packages": [
+      "WP18",
+      "WP19"
+    ],
+    "primary_verification_ids": [
+      "V18-02",
+      "V18-03",
+      "V19-02"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC09",
+      "IC10",
+      "IC12",
+      "IC13",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V25-01-S01",
+      "V28-06-S02",
+      "V20-05-S01",
+      "V25-04-S01",
+      "V02-02-S01",
+      "V04-06-S01",
+      "V02-02-S02",
+      "V04-06-S02",
+      "V18-05-GR01-P",
+      "V29-01-GR01-N",
+      "V29-01-GR01-F",
+      "V22-06-GR01-R",
+      "V25-01-GR20-P",
+      "V25-02-GR20-N",
+      "V25-04-GR20-F",
+      "V28-06-GR20-R",
+      "V00-02-DG02-P",
+      "V19-05-DG02-N",
+      "V19-01-DG08-P",
+      "V19-02-DG08-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO08"
+    ],
+    "model_verification_subcases": [
+      "V19-01-M01",
+      "V21-02-M01",
+      "V28-02-M02"
+    ],
+    "document_artifacts": [
+      "REQ-R05",
+      "AC-R05"
+    ],
+    "document_contracts": [
+      "DG02",
+      "DG08"
+    ],
+    "guardrails": [
+      "GR01",
+      "GR20"
+    ],
+    "document_guard_subcases": [
+      "V18-05-GR01-P",
+      "V29-01-GR01-N",
+      "V29-01-GR01-F",
+      "V22-06-GR01-R",
+      "V25-01-GR20-P",
+      "V25-02-GR20-N",
+      "V25-04-GR20-F",
+      "V28-06-GR20-R",
+      "V00-02-DG02-P",
+      "V19-05-DG02-N",
+      "V19-01-DG08-P",
+      "V19-02-DG08-N"
+    ],
+    "v4_integration_subcases": [
+      "V18-01-U4-09",
+      "V25-01-U4-14",
+      "V18-03-U4-15",
+      "V18-02-U4-20"
+    ],
+    "integration_contracts": [
+      "IC16"
+    ],
+    "implementation_wp": [
+      "WP18",
+      "WP25"
+    ],
+    "verification_subcases": [
+      "V18-01-U4-09",
+      "V25-01-U4-14",
+      "V18-03-U4-15",
+      "V18-02-U4-20"
+    ],
+    "component_ids": [
+      "CMP05",
+      "CMP10",
+      "CMP11",
+      "CMP12",
+      "CMP19",
+      "CMP21",
+      "CMP22",
+      "CMP26"
+    ]
+  },
+  {
+    "requirement_id": "R06",
+    "name": "現状snapshot",
+    "normative": "MUST",
+    "requirement": "mainへ勝手に移動せず、対象worktree/HEAD/index/working/untrackedを識別する",
+    "primary_implementation_work_packages": [
+      "WP06",
+      "WP09",
+      "WP18"
+    ],
+    "primary_verification_ids": [
+      "V09-01",
+      "V09-02",
+      "V18-04"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC02",
+      "IC09",
+      "IC12",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V14-05-S01",
+      "V20-01-S01",
+      "V09-03-S01",
+      "V29-01-S01",
+      "V25-01-S01",
+      "V28-06-S02",
+      "V20-05-S01",
+      "V25-04-S01",
+      "V09-01-GR06-P",
+      "V09-03-GR06-N",
+      "V14-03-GR06-F",
+      "V24-06-GR06-R",
+      "V25-01-GR20-P",
+      "V25-02-GR20-N",
+      "V25-04-GR20-F",
+      "V28-06-GR20-R"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO03"
+    ],
+    "model_verification_subcases": [
+      "V18-06-M01",
+      "V25-01-M01",
+      "V28-02-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R06",
+      "AC-R06"
+    ],
+    "document_contracts": [],
+    "guardrails": [
+      "GR06",
+      "GR20"
+    ],
+    "document_guard_subcases": [
+      "V09-01-GR06-P",
+      "V09-03-GR06-N",
+      "V14-03-GR06-F",
+      "V24-06-GR06-R",
+      "V25-01-GR20-P",
+      "V25-02-GR20-N",
+      "V25-04-GR20-F",
+      "V28-06-GR20-R"
+    ],
+    "v4_integration_subcases": [
+      "V18-04-U4-11",
+      "V14-06-U4-26",
+      "V14-06-U4-27",
+      "V24-03-U4-32"
+    ],
+    "integration_contracts": [
+      "IC16",
+      "IC17"
+    ],
+    "implementation_wp": [
+      "WP14",
+      "WP18",
+      "WP24"
+    ],
+    "verification_subcases": [
+      "V18-04-U4-11",
+      "V14-06-U4-26",
+      "V14-06-U4-27",
+      "V24-03-U4-32"
+    ],
+    "component_ids": [
+      "CMP05",
+      "CMP10",
+      "CMP12",
+      "CMP13",
+      "CMP14",
+      "CMP15",
+      "CMP16",
+      "CMP22",
+      "CMP24",
+      "CMP26"
+    ]
+  },
+  {
+    "requirement_id": "R07",
+    "name": "候補比較",
+    "normative": "MUST",
+    "requirement": "成立する複数案と不採用理由、判断が変わる条件を残す",
+    "primary_implementation_work_packages": [
+      "WP02",
+      "WP19"
+    ],
+    "primary_verification_ids": [
+      "V19-01",
+      "V19-03"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC07",
+      "IC10",
+      "IC12",
+      "IC13"
+    ],
+    "integrated_subcases": [
+      "V19-01-S01",
+      "V17-02-S01",
+      "V17-05-S01",
+      "V10-01-S01",
+      "V02-02-S01",
+      "V04-06-S01",
+      "V02-02-S02",
+      "V04-06-S02",
+      "V19-01-DG08-P",
+      "V19-02-DG08-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO08"
+    ],
+    "model_verification_subcases": [
+      "V19-01-M01",
+      "V21-02-M01",
+      "V28-02-M02"
+    ],
+    "document_artifacts": [
+      "REQ-R07",
+      "AC-R07"
+    ],
+    "document_contracts": [
+      "DG08"
+    ],
+    "guardrails": [],
+    "document_guard_subcases": [
+      "V19-01-DG08-P",
+      "V19-02-DG08-N"
+    ],
+    "v4_integration_subcases": [
+      "V28-01-U4-39"
+    ],
+    "integration_contracts": [],
+    "implementation_wp": [
+      "WP28"
+    ],
+    "verification_subcases": [
+      "V28-01-U4-39"
+    ],
+    "component_ids": []
+  },
+  {
+    "requirement_id": "R08",
+    "name": "技術実験",
+    "normative": "MUST",
+    "requirement": "採用上重要な仮説に最小実験と事前の判定基準を設ける",
+    "primary_implementation_work_packages": [
+      "WP02",
+      "WP14",
+      "WP19"
+    ],
+    "primary_verification_ids": [
+      "V02-03",
+      "V19-02"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC07",
+      "IC10",
+      "IC12",
+      "IC13"
+    ],
+    "integrated_subcases": [
+      "V19-01-S01",
+      "V17-02-S01",
+      "V17-05-S01",
+      "V10-01-S01",
+      "V02-02-S01",
+      "V04-06-S01",
+      "V02-02-S02",
+      "V04-06-S02",
+      "V19-01-DG08-P",
+      "V19-02-DG08-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO08",
+      "MO11"
+    ],
+    "model_verification_subcases": [
+      "V19-01-M01",
+      "V21-02-M01",
+      "V28-02-M02",
+      "V03-06-M01",
+      "V28-06-M02",
+      "V31-02-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R08",
+      "AC-R08"
+    ],
+    "document_contracts": [
+      "DG08"
+    ],
+    "guardrails": [],
+    "document_guard_subcases": [
+      "V19-01-DG08-P",
+      "V19-02-DG08-N"
+    ],
+    "v4_integration_subcases": [
+      "V28-01-U4-39"
+    ],
+    "integration_contracts": [],
+    "implementation_wp": [
+      "WP28"
+    ],
+    "verification_subcases": [
+      "V28-01-U4-39"
+    ],
+    "component_ids": []
+  },
+  {
+    "requirement_id": "R09",
+    "name": "仕様策定",
+    "normative": "MUST",
+    "requirement": "機能一覧・外部/内部仕様・データ・異常時動作・NFRを確定する",
+    "primary_implementation_work_packages": [
+      "WP02",
+      "WP04",
+      "WP19",
+      "WP21"
+    ],
+    "primary_verification_ids": [
+      "V02-02",
+      "V19-04",
+      "V21-02"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC10",
+      "IC12",
+      "IC13",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V02-02-S01",
+      "V04-06-S01",
+      "V02-02-S02",
+      "V04-06-S02",
+      "V08-01-GR02-P",
+      "V08-04-GR02-N",
+      "V08-02-GR02-F",
+      "V08-05-GR02-R",
+      "V02-01-DG01-P",
+      "V02-04-DG01-N",
+      "V00-02-DG02-P",
+      "V19-05-DG02-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO08"
+    ],
+    "model_verification_subcases": [
+      "V19-01-M01",
+      "V21-02-M01",
+      "V28-02-M02"
+    ],
+    "document_artifacts": [
+      "REQ-R09",
+      "AC-R09"
+    ],
+    "document_contracts": [
+      "DG01",
+      "DG02"
+    ],
+    "guardrails": [
+      "GR02"
+    ],
+    "document_guard_subcases": [
+      "V08-01-GR02-P",
+      "V08-04-GR02-N",
+      "V08-02-GR02-F",
+      "V08-05-GR02-R",
+      "V02-01-DG01-P",
+      "V02-04-DG01-N",
+      "V00-02-DG02-P",
+      "V19-05-DG02-N"
+    ],
+    "v4_integration_subcases": [
+      "V28-01-U4-39"
+    ],
+    "integration_contracts": [],
+    "implementation_wp": [
+      "WP28"
+    ],
+    "verification_subcases": [
+      "V28-01-U4-39"
+    ],
+    "component_ids": []
+  },
+  {
+    "requirement_id": "R10",
+    "name": "設計判断",
+    "normative": "MUST",
+    "requirement": "ADRを要求・根拠・候補・実験に連結する",
+    "primary_implementation_work_packages": [
+      "WP02",
+      "WP18",
+      "WP19"
+    ],
+    "primary_verification_ids": [
+      "V02-04",
+      "V19-01",
+      "V19-04"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC07",
+      "IC10",
+      "IC12",
+      "IC13",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V19-01-S01",
+      "V17-02-S01",
+      "V17-05-S01",
+      "V10-01-S01",
+      "V02-02-S01",
+      "V04-06-S01",
+      "V02-02-S02",
+      "V04-06-S02",
+      "V21-01-GR15-P",
+      "V21-05-GR15-N",
+      "V21-06-GR15-F",
+      "V21-02-GR15-R",
+      "V08-05-GR19-P",
+      "V08-03-GR19-N",
+      "V24-05-GR19-F",
+      "V30-04-GR19-R",
+      "V02-01-DG01-P",
+      "V02-04-DG01-N",
+      "V04-01-DG04-P",
+      "V18-02-DG04-N",
+      "V19-01-DG08-P",
+      "V19-02-DG08-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO08"
+    ],
+    "model_verification_subcases": [
+      "V19-01-M01",
+      "V21-02-M01",
+      "V28-02-M02"
+    ],
+    "document_artifacts": [
+      "REQ-R10",
+      "AC-R10"
+    ],
+    "document_contracts": [
+      "DG01",
+      "DG04",
+      "DG08"
+    ],
+    "guardrails": [
+      "GR15",
+      "GR19"
+    ],
+    "document_guard_subcases": [
+      "V21-01-GR15-P",
+      "V21-05-GR15-N",
+      "V21-06-GR15-F",
+      "V21-02-GR15-R",
+      "V08-05-GR19-P",
+      "V08-03-GR19-N",
+      "V24-05-GR19-F",
+      "V30-04-GR19-R",
+      "V02-01-DG01-P",
+      "V02-04-DG01-N",
+      "V04-01-DG04-P",
+      "V18-02-DG04-N",
+      "V19-01-DG08-P",
+      "V19-02-DG08-N"
+    ],
+    "v4_integration_subcases": [
+      "V28-01-U4-39"
+    ],
+    "integration_contracts": [],
+    "implementation_wp": [
+      "WP28"
+    ],
+    "verification_subcases": [
+      "V28-01-U4-39"
+    ],
+    "component_ids": []
+  },
+  {
+    "requirement_id": "R11",
+    "name": "凍結baseline",
+    "normative": "MUST",
+    "requirement": "確定済み仕様とテスト契約をworkerが緩和できない",
+    "primary_implementation_work_packages": [
+      "WP00",
+      "WP04",
+      "WP08"
+    ],
+    "primary_verification_ids": [
+      "V00-05",
+      "V08-02",
+      "V08-03",
+      "V08-04"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC06",
+      "IC10",
+      "IC12",
+      "IC13",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V22-01-S01",
+      "V28-06-S01",
+      "V11-06-S01",
+      "V22-05-S01",
+      "V02-02-S01",
+      "V04-06-S01",
+      "V02-02-S02",
+      "V04-06-S02",
+      "V08-01-GR02-P",
+      "V08-04-GR02-N",
+      "V08-02-GR02-F",
+      "V08-05-GR02-R",
+      "V03-06-GR16-P",
+      "V20-05-GR16-N",
+      "V03-03-GR16-F",
+      "V08-04-GR16-R",
+      "V08-05-GR19-P",
+      "V08-03-GR19-N",
+      "V24-05-GR19-F",
+      "V30-04-GR19-R",
+      "V04-01-DG04-P",
+      "V18-02-DG04-N",
+      "V08-05-DG07-P",
+      "V24-05-DG07-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO01",
+      "MO12"
+    ],
+    "model_verification_subcases": [
+      "V04-06-M01",
+      "V17-04-M01",
+      "V31-03-M01",
+      "V30-04-M01",
+      "V30-05-M01",
+      "V31-05-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R11",
+      "AC-R11"
+    ],
+    "document_contracts": [
+      "DG04",
+      "DG07"
+    ],
+    "guardrails": [
+      "GR02",
+      "GR16",
+      "GR19"
+    ],
+    "document_guard_subcases": [
+      "V08-01-GR02-P",
+      "V08-04-GR02-N",
+      "V08-02-GR02-F",
+      "V08-05-GR02-R",
+      "V03-06-GR16-P",
+      "V20-05-GR16-N",
+      "V03-03-GR16-F",
+      "V08-04-GR16-R",
+      "V08-05-GR19-P",
+      "V08-03-GR19-N",
+      "V24-05-GR19-F",
+      "V30-04-GR19-R",
+      "V04-01-DG04-P",
+      "V18-02-DG04-N",
+      "V08-05-DG07-P",
+      "V24-05-DG07-N"
+    ],
+    "v4_integration_subcases": [
+      "V18-03-U4-15",
+      "V25-02-U4-17",
+      "V24-05-U4-19",
+      "V06-03-U4-25",
+      "V20-05-U4-30",
+      "V25-02-U4-36",
+      "V29-01-U4-44",
+      "V23-03-U4-47"
+    ],
+    "integration_contracts": [
+      "IC17",
+      "IC18"
+    ],
+    "implementation_wp": [
+      "WP06",
+      "WP18",
+      "WP20",
+      "WP23",
+      "WP24",
+      "WP25",
+      "WP29"
+    ],
+    "verification_subcases": [
+      "V18-03-U4-15",
+      "V25-02-U4-17",
+      "V24-05-U4-19",
+      "V06-03-U4-25",
+      "V20-05-U4-30",
+      "V25-02-U4-36",
+      "V29-01-U4-44",
+      "V23-03-U4-47"
+    ],
+    "component_ids": [
+      "CMP01",
+      "CMP02",
+      "CMP05",
+      "CMP06",
+      "CMP08",
+      "CMP09",
+      "CMP10",
+      "CMP11",
+      "CMP12",
+      "CMP13",
+      "CMP14",
+      "CMP15",
+      "CMP16",
+      "CMP17",
+      "CMP18",
+      "CMP19",
+      "CMP20",
+      "CMP21",
+      "CMP22",
+      "CMP24",
+      "CMP25",
+      "CMP26",
+      "CMP27"
+    ]
+  },
+  {
+    "requirement_id": "R12",
+    "name": "計画網羅",
+    "normative": "MUST",
+    "requirement": "MUST→ADR→task→checkの欠落/重複/矛盾を検出する",
+    "primary_implementation_work_packages": [
+      "WP02",
+      "WP04",
+      "WP10",
+      "WP19"
+    ],
+    "primary_verification_ids": [
+      "V02-04",
+      "V19-04",
+      "V19-05"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC07",
+      "IC10",
+      "IC12",
+      "IC13",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V19-01-S01",
+      "V17-02-S01",
+      "V17-05-S01",
+      "V10-01-S01",
+      "V02-02-S01",
+      "V04-06-S01",
+      "V02-02-S02",
+      "V04-06-S02",
+      "V08-01-GR02-P",
+      "V08-04-GR02-N",
+      "V08-02-GR02-F",
+      "V08-05-GR02-R",
+      "V24-01-GR10-P",
+      "V10-02-GR10-N",
+      "V10-04-GR10-F",
+      "V10-06-GR10-R",
+      "V03-06-GR16-P",
+      "V20-05-GR16-N",
+      "V03-03-GR16-F",
+      "V08-04-GR16-R",
+      "V08-05-GR19-P",
+      "V08-03-GR19-N",
+      "V24-05-GR19-F",
+      "V30-04-GR19-R",
+      "V02-01-DG01-P",
+      "V02-04-DG01-N",
+      "V00-02-DG02-P",
+      "V19-05-DG02-N",
+      "V04-01-DG04-P",
+      "V18-02-DG04-N",
+      "V10-01-DG05-P",
+      "V10-06-DG05-N",
+      "V17-04-DG06-P",
+      "V18-06-DG06-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO01",
+      "MO03",
+      "MO05",
+      "MO08"
+    ],
+    "model_verification_subcases": [
+      "V04-06-M01",
+      "V17-04-M01",
+      "V31-03-M01",
+      "V18-06-M01",
+      "V25-01-M01",
+      "V28-02-M01",
+      "V05-01-M01",
+      "V15-01-M01",
+      "V28-01-M01",
+      "V19-01-M01",
+      "V21-02-M01",
+      "V28-02-M02"
+    ],
+    "document_artifacts": [
+      "REQ-R12",
+      "AC-R12"
+    ],
+    "document_contracts": [
+      "DG01",
+      "DG02",
+      "DG04",
+      "DG05",
+      "DG06"
+    ],
+    "guardrails": [
+      "GR02",
+      "GR10",
+      "GR16",
+      "GR19"
+    ],
+    "document_guard_subcases": [
+      "V08-01-GR02-P",
+      "V08-04-GR02-N",
+      "V08-02-GR02-F",
+      "V08-05-GR02-R",
+      "V24-01-GR10-P",
+      "V10-02-GR10-N",
+      "V10-04-GR10-F",
+      "V10-06-GR10-R",
+      "V03-06-GR16-P",
+      "V20-05-GR16-N",
+      "V03-03-GR16-F",
+      "V08-04-GR16-R",
+      "V08-05-GR19-P",
+      "V08-03-GR19-N",
+      "V24-05-GR19-F",
+      "V30-04-GR19-R",
+      "V02-01-DG01-P",
+      "V02-04-DG01-N",
+      "V00-02-DG02-P",
+      "V19-05-DG02-N",
+      "V04-01-DG04-P",
+      "V18-02-DG04-N",
+      "V10-01-DG05-P",
+      "V10-06-DG05-N",
+      "V17-04-DG06-P",
+      "V18-06-DG06-N"
+    ],
+    "v4_integration_subcases": [
+      "V18-01-U4-09",
+      "V18-06-U4-18",
+      "V24-05-U4-19",
+      "V24-05-U4-40",
+      "V31-05-U4-48"
+    ],
+    "integration_contracts": [
+      "IC16",
+      "IC18"
+    ],
+    "implementation_wp": [
+      "WP18",
+      "WP24",
+      "WP31"
+    ],
+    "verification_subcases": [
+      "V18-01-U4-09",
+      "V18-06-U4-18",
+      "V24-05-U4-19",
+      "V24-05-U4-40",
+      "V31-05-U4-48"
+    ],
+    "component_ids": [
+      "CMP05",
+      "CMP10",
+      "CMP12",
+      "CMP15",
+      "CMP17",
+      "CMP24",
+      "CMP25",
+      "CMP26"
+    ]
+  },
+  {
+    "requirement_id": "R13",
+    "name": "native Auth",
+    "normative": "MUST",
+    "requirement": "未改変の公式Claude Code/Codexで本人認証を保持する",
+    "primary_implementation_work_packages": [
+      "WP01",
+      "WP15",
+      "WP16",
+      "WP26"
+    ],
+    "primary_verification_ids": [
+      "V01-01",
+      "V15-01",
+      "V15-06",
+      "V16-02",
+      "V26-01"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC01",
+      "IC03",
+      "IC12",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V04-01-S01",
+      "V26-01-S01",
+      "V04-01-S02",
+      "V26-03-S01",
+      "V06-02-S01",
+      "V26-02-S01",
+      "V06-05-S01",
+      "V30-04-S01",
+      "V12-01-GR03-P",
+      "V17-03-GR03-N",
+      "V12-03-GR03-F",
+      "V08-03-GR03-R",
+      "V26-01-GR04-P",
+      "V26-03-GR04-N",
+      "V01-02-GR04-F",
+      "V15-06-GR04-R",
+      "V13-03-GR07-P",
+      "V13-02-GR07-N",
+      "V20-02-GR07-F",
+      "V26-04-GR07-R"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO07",
+      "MO09"
+    ],
+    "model_verification_subcases": [
+      "V15-02-M01",
+      "V15-06-M01",
+      "V28-06-M01",
+      "V01-01-M01",
+      "V06-03-M01",
+      "V26-03-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R13",
+      "AC-R13"
+    ],
+    "document_contracts": [],
+    "guardrails": [
+      "GR03",
+      "GR04",
+      "GR07"
+    ],
+    "document_guard_subcases": [
+      "V12-01-GR03-P",
+      "V17-03-GR03-N",
+      "V12-03-GR03-F",
+      "V08-03-GR03-R",
+      "V26-01-GR04-P",
+      "V26-03-GR04-N",
+      "V01-02-GR04-F",
+      "V15-06-GR04-R",
+      "V13-03-GR07-P",
+      "V13-02-GR07-N",
+      "V20-02-GR07-F",
+      "V26-04-GR07-R"
+    ],
+    "v4_integration_subcases": [
+      "V06-02-U4-01",
+      "V26-01-U4-02",
+      "V26-04-U4-10",
+      "V13-03-U4-16",
+      "V26-04-U4-42",
+      "V30-06-U4-45"
+    ],
+    "integration_contracts": [
+      "IC15"
+    ],
+    "implementation_wp": [
+      "WP06",
+      "WP13",
+      "WP26",
+      "WP30"
+    ],
+    "verification_subcases": [
+      "V06-02-U4-01",
+      "V26-01-U4-02",
+      "V26-04-U4-10",
+      "V13-03-U4-16",
+      "V26-04-U4-42",
+      "V30-06-U4-45"
+    ],
+    "component_ids": [
+      "CMP01",
+      "CMP02",
+      "CMP03",
+      "CMP04",
+      "CMP05",
+      "CMP06",
+      "CMP08",
+      "CMP09",
+      "CMP10",
+      "CMP11",
+      "CMP12",
+      "CMP13",
+      "CMP14",
+      "CMP15",
+      "CMP16",
+      "CMP17",
+      "CMP18",
+      "CMP19",
+      "CMP20",
+      "CMP21",
+      "CMP24",
+      "CMP25",
+      "CMP27"
+    ]
+  },
+  {
+    "requirement_id": "R14",
+    "name": "native拡張",
+    "normative": "MUST",
+    "requirement": "Plugins/Skills/Rules/Hooksを公式runtimeで実行し有効状態を確認する",
+    "primary_implementation_work_packages": [
+      "WP01",
+      "WP06",
+      "WP15",
+      "WP16",
+      "WP26"
+    ],
+    "primary_verification_ids": [
+      "V06-02",
+      "V06-06",
+      "V15-04",
+      "V26-02"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC01",
+      "IC03",
+      "IC12",
+      "IC13",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V04-01-S01",
+      "V26-01-S01",
+      "V04-01-S02",
+      "V26-03-S01",
+      "V06-02-S01",
+      "V26-02-S01",
+      "V06-05-S01",
+      "V30-04-S01",
+      "V26-01-GR04-P",
+      "V26-03-GR04-N",
+      "V01-02-GR04-F",
+      "V15-06-GR04-R",
+      "V06-02-GR05-P",
+      "V06-05-GR05-N",
+      "V26-03-GR05-F",
+      "V30-04-GR05-R",
+      "V28-01-DG09-P",
+      "V28-06-DG09-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO02",
+      "MO09",
+      "MO10"
+    ],
+    "model_verification_subcases": [
+      "V06-05-M01",
+      "V06-06-M01",
+      "V26-02-M01",
+      "V01-01-M01",
+      "V06-03-M01",
+      "V26-03-M01",
+      "V06-03-M02",
+      "V21-06-M01",
+      "V24-01-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R14",
+      "AC-R14"
+    ],
+    "document_contracts": [
+      "DG09"
+    ],
+    "guardrails": [
+      "GR04",
+      "GR05"
+    ],
+    "document_guard_subcases": [
+      "V26-01-GR04-P",
+      "V26-03-GR04-N",
+      "V01-02-GR04-F",
+      "V15-06-GR04-R",
+      "V06-02-GR05-P",
+      "V06-05-GR05-N",
+      "V26-03-GR05-F",
+      "V30-04-GR05-R",
+      "V28-01-DG09-P",
+      "V28-06-DG09-N"
+    ],
+    "v4_integration_subcases": [
+      "V06-02-U4-01",
+      "V26-01-U4-02",
+      "V06-01-U4-04",
+      "V26-02-U4-05",
+      "V06-05-U4-08",
+      "V26-02-U4-21",
+      "V06-04-U4-23",
+      "V26-03-U4-33",
+      "V26-02-U4-35"
+    ],
+    "integration_contracts": [
+      "IC15",
+      "IC17"
+    ],
+    "implementation_wp": [
+      "WP06",
+      "WP26"
+    ],
+    "verification_subcases": [
+      "V06-02-U4-01",
+      "V26-01-U4-02",
+      "V06-01-U4-04",
+      "V26-02-U4-05",
+      "V06-05-U4-08",
+      "V26-02-U4-21",
+      "V06-04-U4-23",
+      "V26-03-U4-33",
+      "V26-02-U4-35"
+    ],
+    "component_ids": [
+      "CMP01",
+      "CMP02",
+      "CMP03",
+      "CMP04",
+      "CMP05",
+      "CMP06",
+      "CMP08",
+      "CMP09",
+      "CMP10",
+      "CMP11",
+      "CMP12",
+      "CMP13",
+      "CMP14",
+      "CMP15",
+      "CMP16",
+      "CMP18",
+      "CMP19",
+      "CMP20",
+      "CMP21",
+      "CMP25",
+      "CMP27"
+    ]
+  },
+  {
+    "requirement_id": "R15",
+    "name": "実効構成固定",
+    "normative": "MUST",
+    "requirement": "CLI/model/skill/plugin/policyの版とhashを実行ごとに束ねる",
+    "primary_implementation_work_packages": [
+      "WP01",
+      "WP06",
+      "WP26"
+    ],
+    "primary_verification_ids": [
+      "V01-04",
+      "V06-01",
+      "V26-03"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC01",
+      "IC03",
+      "IC12",
+      "IC13",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V04-01-S01",
+      "V26-01-S01",
+      "V04-01-S02",
+      "V26-03-S01",
+      "V06-02-S01",
+      "V26-02-S01",
+      "V06-05-S01",
+      "V30-04-S01",
+      "V26-01-GR04-P",
+      "V26-03-GR04-N",
+      "V01-02-GR04-F",
+      "V15-06-GR04-R",
+      "V06-02-GR05-P",
+      "V06-05-GR05-N",
+      "V26-03-GR05-F",
+      "V30-04-GR05-R",
+      "V16-01-GR17-P",
+      "V16-04-GR17-N",
+      "V15-03-GR17-F",
+      "V16-05-GR17-R",
+      "V28-01-DG09-P",
+      "V28-06-DG09-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO01",
+      "MO02",
+      "MO07",
+      "MO09",
+      "MO10",
+      "MO11",
+      "MO12"
+    ],
+    "model_verification_subcases": [
+      "V04-06-M01",
+      "V17-04-M01",
+      "V31-03-M01",
+      "V06-05-M01",
+      "V06-06-M01",
+      "V26-02-M01",
+      "V15-02-M01",
+      "V15-06-M01",
+      "V28-06-M01",
+      "V01-01-M01",
+      "V06-03-M01",
+      "V26-03-M01",
+      "V06-03-M02",
+      "V21-06-M01",
+      "V24-01-M01",
+      "V03-06-M01",
+      "V28-06-M02",
+      "V31-02-M01",
+      "V30-04-M01",
+      "V30-05-M01",
+      "V31-05-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R15",
+      "AC-R15"
+    ],
+    "document_contracts": [
+      "DG09"
+    ],
+    "guardrails": [
+      "GR04",
+      "GR05",
+      "GR17"
+    ],
+    "document_guard_subcases": [
+      "V26-01-GR04-P",
+      "V26-03-GR04-N",
+      "V01-02-GR04-F",
+      "V15-06-GR04-R",
+      "V06-02-GR05-P",
+      "V06-05-GR05-N",
+      "V26-03-GR05-F",
+      "V30-04-GR05-R",
+      "V16-01-GR17-P",
+      "V16-04-GR17-N",
+      "V15-03-GR17-F",
+      "V16-05-GR17-R",
+      "V28-01-DG09-P",
+      "V28-06-DG09-N"
+    ],
+    "v4_integration_subcases": [
+      "V06-02-U4-01",
+      "V26-01-U4-02",
+      "V06-01-U4-04",
+      "V26-02-U4-05",
+      "V30-04-U4-07",
+      "V06-05-U4-08",
+      "V03-01-U4-22",
+      "V14-04-U4-24",
+      "V30-02-U4-31",
+      "V26-02-U4-35",
+      "V24-05-U4-40",
+      "V30-06-U4-45"
+    ],
+    "integration_contracts": [
+      "IC15",
+      "IC17"
+    ],
+    "implementation_wp": [
+      "WP03",
+      "WP06",
+      "WP14",
+      "WP24",
+      "WP26",
+      "WP30"
+    ],
+    "verification_subcases": [
+      "V06-02-U4-01",
+      "V26-01-U4-02",
+      "V06-01-U4-04",
+      "V26-02-U4-05",
+      "V30-04-U4-07",
+      "V06-05-U4-08",
+      "V03-01-U4-22",
+      "V14-04-U4-24",
+      "V30-02-U4-31",
+      "V26-02-U4-35",
+      "V24-05-U4-40",
+      "V30-06-U4-45"
+    ],
+    "component_ids": [
+      "CMP01",
+      "CMP02",
+      "CMP03",
+      "CMP04",
+      "CMP05",
+      "CMP06",
+      "CMP08",
+      "CMP09",
+      "CMP10",
+      "CMP11",
+      "CMP12",
+      "CMP13",
+      "CMP14",
+      "CMP15",
+      "CMP16",
+      "CMP17",
+      "CMP18",
+      "CMP19",
+      "CMP20",
+      "CMP21",
+      "CMP22",
+      "CMP24",
+      "CMP25",
+      "CMP27"
+    ]
+  },
+  {
+    "requirement_id": "R16",
+    "name": "作業隔離",
+    "normative": "MUST",
+    "requirement": "一つの作業領域に同時writerは一つ。試行間も隔離する",
+    "primary_implementation_work_packages": [
+      "WP10",
+      "WP13",
+      "WP14",
+      "WP24"
+    ],
+    "primary_verification_ids": [
+      "V10-05",
+      "V13-02",
+      "V14-01",
+      "V14-05",
+      "V24-04"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC02",
+      "IC07",
+      "IC08",
+      "IC12",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V14-05-S01",
+      "V20-01-S01",
+      "V09-03-S01",
+      "V29-01-S01",
+      "V19-01-S01",
+      "V17-02-S01",
+      "V17-05-S01",
+      "V10-01-S01",
+      "V14-01-S01",
+      "V26-01-S03",
+      "V14-01-S02",
+      "V14-06-S01",
+      "V09-01-GR06-P",
+      "V09-03-GR06-N",
+      "V14-03-GR06-F",
+      "V24-06-GR06-R",
+      "V13-03-GR07-P",
+      "V13-02-GR07-N",
+      "V20-02-GR07-F",
+      "V26-04-GR07-R",
+      "V14-04-GR09-P",
+      "V29-01-GR09-N",
+      "V26-03-GR09-F",
+      "V14-06-GR09-R",
+      "V24-01-GR10-P",
+      "V10-02-GR10-N",
+      "V10-04-GR10-F",
+      "V10-06-GR10-R",
+      "V24-01-GR18-P",
+      "V24-02-GR18-N",
+      "V24-03-GR18-F",
+      "V24-06-GR18-R",
+      "V14-05-GR23-P",
+      "V29-05-GR23-N",
+      "V14-06-GR23-F",
+      "V13-05-GR23-R"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO05",
+      "MO10"
+    ],
+    "model_verification_subcases": [
+      "V05-01-M01",
+      "V15-01-M01",
+      "V28-01-M01",
+      "V06-03-M02",
+      "V21-06-M01",
+      "V24-01-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R16",
+      "AC-R16"
+    ],
+    "document_contracts": [],
+    "guardrails": [
+      "GR06",
+      "GR07",
+      "GR09",
+      "GR10",
+      "GR18",
+      "GR23"
+    ],
+    "document_guard_subcases": [
+      "V09-01-GR06-P",
+      "V09-03-GR06-N",
+      "V14-03-GR06-F",
+      "V24-06-GR06-R",
+      "V13-03-GR07-P",
+      "V13-02-GR07-N",
+      "V20-02-GR07-F",
+      "V26-04-GR07-R",
+      "V14-04-GR09-P",
+      "V29-01-GR09-N",
+      "V26-03-GR09-F",
+      "V14-06-GR09-R",
+      "V24-01-GR10-P",
+      "V10-02-GR10-N",
+      "V10-04-GR10-F",
+      "V10-06-GR10-R",
+      "V24-01-GR18-P",
+      "V24-02-GR18-N",
+      "V24-03-GR18-F",
+      "V24-06-GR18-R",
+      "V14-05-GR23-P",
+      "V29-05-GR23-N",
+      "V14-06-GR23-F",
+      "V13-05-GR23-R"
+    ],
+    "v4_integration_subcases": [
+      "V18-04-U4-11",
+      "V14-06-U4-26",
+      "V14-05-U4-28",
+      "V26-04-U4-42"
+    ],
+    "integration_contracts": [
+      "IC17"
+    ],
+    "implementation_wp": [
+      "WP14",
+      "WP18",
+      "WP26"
+    ],
+    "verification_subcases": [
+      "V18-04-U4-11",
+      "V14-06-U4-26",
+      "V14-05-U4-28",
+      "V26-04-U4-42"
+    ],
+    "component_ids": [
+      "CMP01",
+      "CMP03",
+      "CMP04",
+      "CMP05",
+      "CMP08",
+      "CMP09",
+      "CMP10",
+      "CMP12",
+      "CMP13",
+      "CMP14",
+      "CMP15",
+      "CMP16",
+      "CMP18",
+      "CMP20",
+      "CMP22",
+      "CMP24",
+      "CMP25",
+      "CMP26"
+    ]
+  },
+  {
+    "requirement_id": "R17",
+    "name": "並列整合",
+    "normative": "MUST",
+    "requirement": "依存DAG、所有権、fenceで二重着手と古い結果を防ぐ",
+    "primary_implementation_work_packages": [
+      "WP04",
+      "WP07",
+      "WP10",
+      "WP17"
+    ],
+    "primary_verification_ids": [
+      "V07-01",
+      "V10-01",
+      "V10-02",
+      "V10-03"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC04",
+      "IC05",
+      "IC07",
+      "IC08",
+      "IC12",
+      "IC13",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V07-03-S01",
+      "V25-06-S01",
+      "V12-05-S01",
+      "V25-06-S02",
+      "V07-03-S02",
+      "V26-01-S02",
+      "V07-02-S01",
+      "V23-02-S01",
+      "V19-01-S01",
+      "V17-02-S01",
+      "V17-05-S01",
+      "V10-01-S01",
+      "V14-01-S01",
+      "V26-01-S03",
+      "V14-01-S02",
+      "V14-06-S01",
+      "V24-01-GR10-P",
+      "V10-02-GR10-N",
+      "V10-04-GR10-F",
+      "V10-06-GR10-R",
+      "V17-02-GR11-P",
+      "V23-03-GR11-N",
+      "V07-02-GR11-F",
+      "V17-05-GR11-R",
+      "V24-01-GR18-P",
+      "V24-02-GR18-N",
+      "V24-03-GR18-F",
+      "V24-06-GR18-R",
+      "V14-05-GR23-P",
+      "V29-05-GR23-N",
+      "V14-06-GR23-F",
+      "V13-05-GR23-R",
+      "V10-01-DG05-P",
+      "V10-06-DG05-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO05",
+      "MO10"
+    ],
+    "model_verification_subcases": [
+      "V05-01-M01",
+      "V15-01-M01",
+      "V28-01-M01",
+      "V06-03-M02",
+      "V21-06-M01",
+      "V24-01-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R17",
+      "AC-R17"
+    ],
+    "document_contracts": [
+      "DG05"
+    ],
+    "guardrails": [
+      "GR10",
+      "GR11",
+      "GR18",
+      "GR23"
+    ],
+    "document_guard_subcases": [
+      "V24-01-GR10-P",
+      "V10-02-GR10-N",
+      "V10-04-GR10-F",
+      "V10-06-GR10-R",
+      "V17-02-GR11-P",
+      "V23-03-GR11-N",
+      "V07-02-GR11-F",
+      "V17-05-GR11-R",
+      "V24-01-GR18-P",
+      "V24-02-GR18-N",
+      "V24-03-GR18-F",
+      "V24-06-GR18-R",
+      "V14-05-GR23-P",
+      "V29-05-GR23-N",
+      "V14-06-GR23-F",
+      "V13-05-GR23-R",
+      "V10-01-DG05-P",
+      "V10-06-DG05-N"
+    ],
+    "v4_integration_subcases": [
+      "V17-05-U4-06",
+      "V18-04-U4-11",
+      "V09-05-U4-12",
+      "V14-05-U4-28",
+      "V17-01-U4-38",
+      "V24-05-U4-40",
+      "V22-04-U4-41"
+    ],
+    "integration_contracts": [
+      "IC17"
+    ],
+    "implementation_wp": [
+      "WP09",
+      "WP14",
+      "WP17",
+      "WP18",
+      "WP22",
+      "WP24"
+    ],
+    "verification_subcases": [
+      "V17-05-U4-06",
+      "V18-04-U4-11",
+      "V09-05-U4-12",
+      "V14-05-U4-28",
+      "V17-01-U4-38",
+      "V24-05-U4-40",
+      "V22-04-U4-41"
+    ],
+    "component_ids": [
+      "CMP05",
+      "CMP07",
+      "CMP10",
+      "CMP11",
+      "CMP12",
+      "CMP13",
+      "CMP14",
+      "CMP15",
+      "CMP16",
+      "CMP22",
+      "CMP24",
+      "CMP26"
+    ]
+  },
+  {
+    "requirement_id": "R18",
+    "name": "実装自律",
+    "normative": "MUST",
+    "requirement": "承認範囲で調査・編集・build・test・修正を逐次指示なしで進める",
+    "primary_implementation_work_packages": [
+      "WP15",
+      "WP16",
+      "WP18",
+      "WP19",
+      "WP22",
+      "WP28"
+    ],
+    "primary_verification_ids": [
+      "V22-01",
+      "V28-01",
+      "V28-02",
+      "V28-04"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC01",
+      "IC06",
+      "IC07",
+      "IC12",
+      "IC13",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V04-01-S01",
+      "V26-01-S01",
+      "V04-01-S02",
+      "V26-03-S01",
+      "V22-01-S01",
+      "V28-06-S01",
+      "V11-06-S01",
+      "V22-05-S01",
+      "V19-01-S01",
+      "V17-02-S01",
+      "V17-05-S01",
+      "V10-01-S01",
+      "V14-04-GR09-P",
+      "V29-01-GR09-N",
+      "V26-03-GR09-F",
+      "V14-06-GR09-R",
+      "V24-01-GR10-P",
+      "V10-02-GR10-N",
+      "V10-04-GR10-F",
+      "V10-06-GR10-R",
+      "V22-01-GR13-P",
+      "V22-03-GR13-N",
+      "V11-02-GR13-F",
+      "V22-06-GR13-R",
+      "V16-01-GR17-P",
+      "V16-04-GR17-N",
+      "V15-03-GR17-F",
+      "V16-05-GR17-R",
+      "V28-04-GR24-P",
+      "V26-03-GR24-N",
+      "V29-03-GR24-F",
+      "V22-06-GR24-R",
+      "V10-01-DG05-P",
+      "V10-06-DG05-N",
+      "V28-01-DG09-P",
+      "V28-06-DG09-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO01",
+      "MO02",
+      "MO04",
+      "MO05",
+      "MO06",
+      "MO07",
+      "MO10"
+    ],
+    "model_verification_subcases": [
+      "V04-06-M01",
+      "V17-04-M01",
+      "V31-03-M01",
+      "V06-05-M01",
+      "V06-06-M01",
+      "V26-02-M01",
+      "V16-02-M01",
+      "V22-01-M01",
+      "V28-04-M01",
+      "V05-01-M01",
+      "V15-01-M01",
+      "V28-01-M01",
+      "V15-03-M01",
+      "V25-06-M01",
+      "V26-01-M01",
+      "V15-02-M01",
+      "V15-06-M01",
+      "V28-06-M01",
+      "V06-03-M02",
+      "V21-06-M01",
+      "V24-01-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R18",
+      "AC-R18"
+    ],
+    "document_contracts": [
+      "DG05",
+      "DG09"
+    ],
+    "guardrails": [
+      "GR09",
+      "GR10",
+      "GR13",
+      "GR17",
+      "GR24"
+    ],
+    "document_guard_subcases": [
+      "V14-04-GR09-P",
+      "V29-01-GR09-N",
+      "V26-03-GR09-F",
+      "V14-06-GR09-R",
+      "V24-01-GR10-P",
+      "V10-02-GR10-N",
+      "V10-04-GR10-F",
+      "V10-06-GR10-R",
+      "V22-01-GR13-P",
+      "V22-03-GR13-N",
+      "V11-02-GR13-F",
+      "V22-06-GR13-R",
+      "V16-01-GR17-P",
+      "V16-04-GR17-N",
+      "V15-03-GR17-F",
+      "V16-05-GR17-R",
+      "V28-04-GR24-P",
+      "V26-03-GR24-N",
+      "V29-03-GR24-F",
+      "V22-06-GR24-R",
+      "V10-01-DG05-P",
+      "V10-06-DG05-N",
+      "V28-01-DG09-P",
+      "V28-06-DG09-N"
+    ],
+    "v4_integration_subcases": [
+      "V15-04-U4-03",
+      "V26-02-U4-05",
+      "V22-06-U4-13",
+      "V18-06-U4-18",
+      "V22-02-U4-34",
+      "V26-02-U4-35",
+      "V28-01-U4-39"
+    ],
+    "integration_contracts": [
+      "IC16",
+      "IC18"
+    ],
+    "implementation_wp": [
+      "WP15",
+      "WP18",
+      "WP22",
+      "WP26",
+      "WP28"
+    ],
+    "verification_subcases": [
+      "V15-04-U4-03",
+      "V26-02-U4-05",
+      "V22-06-U4-13",
+      "V18-06-U4-18",
+      "V22-02-U4-34",
+      "V26-02-U4-35",
+      "V28-01-U4-39"
+    ],
+    "component_ids": [
+      "CMP01",
+      "CMP03",
+      "CMP04",
+      "CMP05",
+      "CMP07",
+      "CMP08",
+      "CMP09",
+      "CMP10",
+      "CMP11",
+      "CMP12",
+      "CMP18",
+      "CMP20",
+      "CMP22",
+      "CMP25",
+      "CMP26"
+    ]
+  },
+  {
+    "requirement_id": "R19",
+    "name": "環境準備",
+    "normative": "MUST",
+    "requirement": "既存環境可/構築すれば可/外部実機必須を区分し前二者を自動実行する",
+    "primary_implementation_work_packages": [
+      "WP01",
+      "WP13",
+      "WP14",
+      "WP19",
+      "WP22",
+      "WP28"
+    ],
+    "primary_verification_ids": [
+      "V01-05",
+      "V14-04",
+      "V22-02",
+      "V28-03"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC02",
+      "IC12",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V14-05-S01",
+      "V20-01-S01",
+      "V09-03-S01",
+      "V29-01-S01",
+      "V13-04-GR08-P",
+      "V13-04-GR08-N",
+      "V26-04-GR08-F",
+      "V14-04-GR08-R",
+      "V14-05-GR23-P",
+      "V29-05-GR23-N",
+      "V14-06-GR23-F",
+      "V13-05-GR23-R",
+      "V28-04-GR24-P",
+      "V26-03-GR24-N",
+      "V29-03-GR24-F",
+      "V22-06-GR24-R"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO04"
+    ],
+    "model_verification_subcases": [
+      "V16-02-M01",
+      "V22-01-M01",
+      "V28-04-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R19",
+      "AC-R19"
+    ],
+    "document_contracts": [],
+    "guardrails": [
+      "GR08",
+      "GR23",
+      "GR24"
+    ],
+    "document_guard_subcases": [
+      "V13-04-GR08-P",
+      "V13-04-GR08-N",
+      "V26-04-GR08-F",
+      "V14-04-GR08-R",
+      "V14-05-GR23-P",
+      "V29-05-GR23-N",
+      "V14-06-GR23-F",
+      "V13-05-GR23-R",
+      "V28-04-GR24-P",
+      "V26-03-GR24-N",
+      "V29-03-GR24-F",
+      "V22-06-GR24-R"
+    ],
+    "v4_integration_subcases": [
+      "V13-03-U4-16",
+      "V03-01-U4-22",
+      "V14-04-U4-24",
+      "V22-02-U4-34"
+    ],
+    "integration_contracts": [
+      "IC17"
+    ],
+    "implementation_wp": [
+      "WP03",
+      "WP13",
+      "WP14",
+      "WP22"
+    ],
+    "verification_subcases": [
+      "V13-03-U4-16",
+      "V03-01-U4-22",
+      "V14-04-U4-24",
+      "V22-02-U4-34"
+    ],
+    "component_ids": [
+      "CMP02",
+      "CMP07",
+      "CMP11",
+      "CMP13",
+      "CMP14",
+      "CMP15",
+      "CMP16",
+      "CMP17",
+      "CMP22",
+      "CMP24"
+    ]
+  },
+  {
+    "requirement_id": "R20",
+    "name": "独立検証",
+    "normative": "MUST",
+    "requirement": "実装者の報告ではなく別検証環境で固定suiteを実行する",
+    "primary_implementation_work_packages": [
+      "WP03",
+      "WP20",
+      "WP26"
+    ],
+    "primary_verification_ids": [
+      "V20-01",
+      "V20-05",
+      "V26-04"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC01",
+      "IC02",
+      "IC09",
+      "IC11",
+      "IC12",
+      "IC13",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V04-01-S01",
+      "V26-01-S01",
+      "V04-01-S02",
+      "V26-03-S01",
+      "V14-05-S01",
+      "V20-01-S01",
+      "V09-03-S01",
+      "V29-01-S01",
+      "V25-01-S01",
+      "V28-06-S02",
+      "V20-05-S01",
+      "V25-04-S01",
+      "V30-01-S01",
+      "V28-01-S01",
+      "V03-04-S01",
+      "V29-05-S01",
+      "V13-03-GR07-P",
+      "V13-02-GR07-N",
+      "V20-02-GR07-F",
+      "V26-04-GR07-R",
+      "V20-04-GR14-P",
+      "V20-03-GR14-N",
+      "V20-06-GR14-F",
+      "V20-01-GR14-R",
+      "V03-06-GR16-P",
+      "V20-05-GR16-N",
+      "V03-03-GR16-F",
+      "V08-04-GR16-R",
+      "V04-04-DG03-P",
+      "V20-05-DG03-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO01",
+      "MO04",
+      "MO11"
+    ],
+    "model_verification_subcases": [
+      "V04-06-M01",
+      "V17-04-M01",
+      "V31-03-M01",
+      "V16-02-M01",
+      "V22-01-M01",
+      "V28-04-M01",
+      "V03-06-M01",
+      "V28-06-M02",
+      "V31-02-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R20",
+      "AC-R20"
+    ],
+    "document_contracts": [
+      "DG03"
+    ],
+    "guardrails": [
+      "GR07",
+      "GR14",
+      "GR16"
+    ],
+    "document_guard_subcases": [
+      "V13-03-GR07-P",
+      "V13-02-GR07-N",
+      "V20-02-GR07-F",
+      "V26-04-GR07-R",
+      "V20-04-GR14-P",
+      "V20-03-GR14-N",
+      "V20-06-GR14-F",
+      "V20-01-GR14-R",
+      "V03-06-GR16-P",
+      "V20-05-GR16-N",
+      "V03-03-GR16-F",
+      "V08-04-GR16-R",
+      "V04-04-DG03-P",
+      "V20-05-DG03-N"
+    ],
+    "v4_integration_subcases": [
+      "V15-04-U4-03",
+      "V13-03-U4-16",
+      "V18-06-U4-18",
+      "V26-02-U4-21",
+      "V06-04-U4-23",
+      "V14-04-U4-24",
+      "V06-03-U4-25",
+      "V14-06-U4-26",
+      "V14-06-U4-27",
+      "V14-05-U4-28",
+      "V03-02-U4-29",
+      "V20-05-U4-30",
+      "V30-02-U4-31",
+      "V26-03-U4-33",
+      "V22-02-U4-34",
+      "V28-01-U4-39",
+      "V26-04-U4-42",
+      "V29-05-U4-43",
+      "V31-02-U4-46",
+      "V31-05-U4-48"
+    ],
+    "integration_contracts": [
+      "IC16",
+      "IC17"
+    ],
+    "implementation_wp": [
+      "WP03",
+      "WP06",
+      "WP13",
+      "WP14",
+      "WP15",
+      "WP18",
+      "WP20",
+      "WP22",
+      "WP26",
+      "WP28",
+      "WP29",
+      "WP30",
+      "WP31"
+    ],
+    "verification_subcases": [
+      "V15-04-U4-03",
+      "V13-03-U4-16",
+      "V18-06-U4-18",
+      "V26-02-U4-21",
+      "V06-04-U4-23",
+      "V14-04-U4-24",
+      "V06-03-U4-25",
+      "V14-06-U4-26",
+      "V14-06-U4-27",
+      "V14-05-U4-28",
+      "V03-02-U4-29",
+      "V20-05-U4-30",
+      "V30-02-U4-31",
+      "V26-03-U4-33",
+      "V22-02-U4-34",
+      "V28-01-U4-39",
+      "V26-04-U4-42",
+      "V29-05-U4-43",
+      "V31-02-U4-46",
+      "V31-05-U4-48"
+    ],
+    "component_ids": [
+      "CMP01",
+      "CMP02",
+      "CMP03",
+      "CMP04",
+      "CMP05",
+      "CMP06",
+      "CMP07",
+      "CMP08",
+      "CMP09",
+      "CMP10",
+      "CMP11",
+      "CMP12",
+      "CMP13",
+      "CMP14",
+      "CMP15",
+      "CMP16",
+      "CMP17",
+      "CMP18",
+      "CMP19",
+      "CMP20",
+      "CMP21",
+      "CMP22",
+      "CMP24",
+      "CMP25",
+      "CMP26",
+      "CMP27"
+    ]
+  },
+  {
+    "requirement_id": "R21",
+    "name": "独立レビュー",
+    "normative": "MUST",
+    "requirement": "別session/権限で仕様適合性と品質を確認する",
+    "primary_implementation_work_packages": [
+      "WP05",
+      "WP21",
+      "WP26"
+    ],
+    "primary_verification_ids": [
+      "V21-01",
+      "V21-02",
+      "V21-03",
+      "V21-04"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC06",
+      "IC10",
+      "IC11",
+      "IC12",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V22-01-S01",
+      "V28-06-S01",
+      "V11-06-S01",
+      "V22-05-S01",
+      "V02-02-S01",
+      "V04-06-S01",
+      "V02-02-S02",
+      "V04-06-S02",
+      "V30-01-S01",
+      "V28-01-S01",
+      "V03-04-S01",
+      "V29-05-S01",
+      "V21-01-GR15-P",
+      "V21-05-GR15-N",
+      "V21-06-GR15-F",
+      "V21-02-GR15-R",
+      "V24-01-GR18-P",
+      "V24-02-GR18-N",
+      "V24-03-GR18-F",
+      "V24-06-GR18-R"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO04",
+      "MO08",
+      "MO10",
+      "MO11"
+    ],
+    "model_verification_subcases": [
+      "V16-02-M01",
+      "V22-01-M01",
+      "V28-04-M01",
+      "V19-01-M01",
+      "V21-02-M01",
+      "V28-02-M02",
+      "V06-03-M02",
+      "V21-06-M01",
+      "V24-01-M01",
+      "V03-06-M01",
+      "V28-06-M02",
+      "V31-02-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R21",
+      "AC-R21"
+    ],
+    "document_contracts": [],
+    "guardrails": [
+      "GR15",
+      "GR18"
+    ],
+    "document_guard_subcases": [
+      "V21-01-GR15-P",
+      "V21-05-GR15-N",
+      "V21-06-GR15-F",
+      "V21-02-GR15-R",
+      "V24-01-GR18-P",
+      "V24-02-GR18-N",
+      "V24-03-GR18-F",
+      "V24-06-GR18-R"
+    ],
+    "v4_integration_subcases": [
+      "V26-02-U4-05",
+      "V17-01-U4-38",
+      "V31-02-U4-46",
+      "V31-05-U4-48"
+    ],
+    "integration_contracts": [
+      "IC18"
+    ],
+    "implementation_wp": [
+      "WP17",
+      "WP26",
+      "WP31"
+    ],
+    "verification_subcases": [
+      "V26-02-U4-05",
+      "V17-01-U4-38",
+      "V31-02-U4-46",
+      "V31-05-U4-48"
+    ],
+    "component_ids": [
+      "CMP01",
+      "CMP03",
+      "CMP04",
+      "CMP07",
+      "CMP08",
+      "CMP09",
+      "CMP12",
+      "CMP17",
+      "CMP18",
+      "CMP20",
+      "CMP25"
+    ]
+  },
+  {
+    "requirement_id": "R22",
+    "name": "証拠署名",
+    "normative": "MUST",
+    "requirement": "snapshot・契約・環境・policy・suite・試行に署名結果を結び付ける",
+    "primary_implementation_work_packages": [
+      "WP04",
+      "WP09",
+      "WP20",
+      "WP21"
+    ],
+    "primary_verification_ids": [
+      "V04-02",
+      "V04-04",
+      "V20-03",
+      "V20-04"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC02",
+      "IC05",
+      "IC11",
+      "IC12",
+      "IC13",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V14-05-S01",
+      "V20-01-S01",
+      "V09-03-S01",
+      "V29-01-S01",
+      "V07-03-S02",
+      "V26-01-S02",
+      "V07-02-S01",
+      "V23-02-S01",
+      "V30-01-S01",
+      "V28-01-S01",
+      "V03-04-S01",
+      "V29-05-S01",
+      "V09-01-GR06-P",
+      "V09-03-GR06-N",
+      "V14-03-GR06-F",
+      "V24-06-GR06-R",
+      "V13-03-GR07-P",
+      "V13-02-GR07-N",
+      "V20-02-GR07-F",
+      "V26-04-GR07-R",
+      "V20-04-GR14-P",
+      "V20-03-GR14-N",
+      "V20-06-GR14-F",
+      "V20-01-GR14-R",
+      "V30-05-GR22-P",
+      "V09-06-GR22-N",
+      "V25-04-GR22-F",
+      "V31-05-GR22-R",
+      "V04-04-DG03-P",
+      "V20-05-DG03-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO12"
+    ],
+    "model_verification_subcases": [
+      "V30-04-M01",
+      "V30-05-M01",
+      "V31-05-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R22",
+      "AC-R22"
+    ],
+    "document_contracts": [
+      "DG03"
+    ],
+    "guardrails": [
+      "GR06",
+      "GR07",
+      "GR14",
+      "GR22"
+    ],
+    "document_guard_subcases": [
+      "V09-01-GR06-P",
+      "V09-03-GR06-N",
+      "V14-03-GR06-F",
+      "V24-06-GR06-R",
+      "V13-03-GR07-P",
+      "V13-02-GR07-N",
+      "V20-02-GR07-F",
+      "V26-04-GR07-R",
+      "V20-04-GR14-P",
+      "V20-03-GR14-N",
+      "V20-06-GR14-F",
+      "V20-01-GR14-R",
+      "V30-05-GR22-P",
+      "V09-06-GR22-N",
+      "V25-04-GR22-F",
+      "V31-05-GR22-R",
+      "V04-04-DG03-P",
+      "V20-05-DG03-N"
+    ],
+    "v4_integration_subcases": [
+      "V20-05-U4-30",
+      "V24-03-U4-32",
+      "V17-01-U4-38",
+      "V23-03-U4-47",
+      "V31-05-U4-48"
+    ],
+    "integration_contracts": [
+      "IC17",
+      "IC18"
+    ],
+    "implementation_wp": [
+      "WP17",
+      "WP20",
+      "WP23",
+      "WP24",
+      "WP31"
+    ],
+    "verification_subcases": [
+      "V20-05-U4-30",
+      "V24-03-U4-32",
+      "V17-01-U4-38",
+      "V23-03-U4-47",
+      "V31-05-U4-48"
+    ],
+    "component_ids": [
+      "CMP07",
+      "CMP13",
+      "CMP14",
+      "CMP15",
+      "CMP16",
+      "CMP17",
+      "CMP24",
+      "CMP25"
+    ]
+  },
+  {
+    "requirement_id": "R23",
+    "name": "修正閉ループ",
+    "normative": "MUST",
+    "requirement": "不合格をready for repairへ戻し原因を分類する",
+    "primary_implementation_work_packages": [
+      "WP21",
+      "WP22"
+    ],
+    "primary_verification_ids": [
+      "V21-05",
+      "V22-01",
+      "V22-03"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC06",
+      "IC12"
+    ],
+    "integrated_subcases": [
+      "V22-01-S01",
+      "V28-06-S01",
+      "V11-06-S01",
+      "V22-05-S01"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO04"
+    ],
+    "model_verification_subcases": [
+      "V16-02-M01",
+      "V22-01-M01",
+      "V28-04-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R23",
+      "AC-R23"
+    ],
+    "document_contracts": [],
+    "guardrails": [],
+    "document_guard_subcases": [],
+    "v4_integration_subcases": [],
+    "integration_contracts": [],
+    "implementation_wp": [],
+    "verification_subcases": [],
+    "component_ids": []
+  },
+  {
+    "requirement_id": "R24",
+    "name": "復旧",
+    "normative": "MUST",
+    "requirement": "lease失効だけで再実行せず旧process停止と副作用を照合する",
+    "primary_implementation_work_packages": [
+      "WP11",
+      "WP14",
+      "WP22",
+      "WP23",
+      "WP30"
+    ],
+    "primary_verification_ids": [
+      "V14-01",
+      "V22-04",
+      "V23-02",
+      "V23-06",
+      "V30-03"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC04",
+      "IC05",
+      "IC06",
+      "IC07",
+      "IC08",
+      "IC12",
+      "IC13",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V07-03-S01",
+      "V25-06-S01",
+      "V12-05-S01",
+      "V25-06-S02",
+      "V07-03-S02",
+      "V26-01-S02",
+      "V07-02-S01",
+      "V23-02-S01",
+      "V22-01-S01",
+      "V28-06-S01",
+      "V11-06-S01",
+      "V22-05-S01",
+      "V19-01-S01",
+      "V17-02-S01",
+      "V17-05-S01",
+      "V10-01-S01",
+      "V14-01-S01",
+      "V26-01-S03",
+      "V14-01-S02",
+      "V14-06-S01",
+      "V17-02-GR11-P",
+      "V23-03-GR11-N",
+      "V07-02-GR11-F",
+      "V17-05-GR11-R",
+      "V14-01-GR12-P",
+      "V29-04-GR12-N",
+      "V11-04-GR12-F",
+      "V22-04-GR12-R",
+      "V22-01-GR13-P",
+      "V22-03-GR13-N",
+      "V11-02-GR13-F",
+      "V22-06-GR13-R",
+      "V23-01-GR21-P",
+      "V23-05-GR21-N",
+      "V23-02-GR21-F",
+      "V23-04-GR21-R",
+      "V14-05-GR23-P",
+      "V29-05-GR23-N",
+      "V14-06-GR23-F",
+      "V13-05-GR23-R",
+      "V28-04-GR24-P",
+      "V26-03-GR24-N",
+      "V29-03-GR24-F",
+      "V22-06-GR24-R",
+      "V08-05-DG07-P",
+      "V24-05-DG07-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO07"
+    ],
+    "model_verification_subcases": [
+      "V15-02-M01",
+      "V15-06-M01",
+      "V28-06-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R24",
+      "AC-R24"
+    ],
+    "document_contracts": [
+      "DG07"
+    ],
+    "guardrails": [
+      "GR11",
+      "GR12",
+      "GR13",
+      "GR21",
+      "GR23",
+      "GR24"
+    ],
+    "document_guard_subcases": [
+      "V17-02-GR11-P",
+      "V23-03-GR11-N",
+      "V07-02-GR11-F",
+      "V17-05-GR11-R",
+      "V14-01-GR12-P",
+      "V29-04-GR12-N",
+      "V11-04-GR12-F",
+      "V22-04-GR12-R",
+      "V22-01-GR13-P",
+      "V22-03-GR13-N",
+      "V11-02-GR13-F",
+      "V22-06-GR13-R",
+      "V23-01-GR21-P",
+      "V23-05-GR21-N",
+      "V23-02-GR21-F",
+      "V23-04-GR21-R",
+      "V14-05-GR23-P",
+      "V29-05-GR23-N",
+      "V14-06-GR23-F",
+      "V13-05-GR23-R",
+      "V28-04-GR24-P",
+      "V26-03-GR24-N",
+      "V29-03-GR24-F",
+      "V22-06-GR24-R",
+      "V08-05-DG07-P",
+      "V24-05-DG07-N"
+    ],
+    "v4_integration_subcases": [
+      "V17-05-U4-06",
+      "V09-05-U4-12",
+      "V22-06-U4-13",
+      "V25-01-U4-14",
+      "V24-05-U4-19",
+      "V14-06-U4-26",
+      "V14-05-U4-28",
+      "V30-04-U4-37",
+      "V17-01-U4-38",
+      "V22-04-U4-41",
+      "V30-06-U4-45"
+    ],
+    "integration_contracts": [
+      "IC16",
+      "IC17",
+      "IC18"
+    ],
+    "implementation_wp": [
+      "WP09",
+      "WP14",
+      "WP17",
+      "WP22",
+      "WP24",
+      "WP25",
+      "WP30"
+    ],
+    "verification_subcases": [
+      "V17-05-U4-06",
+      "V09-05-U4-12",
+      "V22-06-U4-13",
+      "V25-01-U4-14",
+      "V24-05-U4-19",
+      "V14-06-U4-26",
+      "V14-05-U4-28",
+      "V30-04-U4-37",
+      "V17-01-U4-38",
+      "V22-04-U4-41",
+      "V30-06-U4-45"
+    ],
+    "component_ids": [
+      "CMP01",
+      "CMP02",
+      "CMP07",
+      "CMP08",
+      "CMP10",
+      "CMP11",
+      "CMP12",
+      "CMP13",
+      "CMP14",
+      "CMP15",
+      "CMP16",
+      "CMP17",
+      "CMP19",
+      "CMP20",
+      "CMP21",
+      "CMP22",
+      "CMP24",
+      "CMP26",
+      "CMP27"
+    ]
+  },
+  {
+    "requirement_id": "R25",
+    "name": "明示停止尊重",
+    "normative": "MUST",
+    "requirement": "人の停止・権限不足・予算上限を自動解除しない",
+    "primary_implementation_work_packages": [
+      "WP11",
+      "WP22",
+      "WP23"
+    ],
+    "primary_verification_ids": [
+      "V11-03",
+      "V11-04",
+      "V11-05",
+      "V22-05"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC01",
+      "IC05",
+      "IC06",
+      "IC08",
+      "IC12",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V04-01-S01",
+      "V26-01-S01",
+      "V04-01-S02",
+      "V26-03-S01",
+      "V07-03-S02",
+      "V26-01-S02",
+      "V07-02-S01",
+      "V23-02-S01",
+      "V22-01-S01",
+      "V28-06-S01",
+      "V11-06-S01",
+      "V22-05-S01",
+      "V14-01-S01",
+      "V26-01-S03",
+      "V14-01-S02",
+      "V14-06-S01",
+      "V14-01-GR12-P",
+      "V29-04-GR12-N",
+      "V11-04-GR12-F",
+      "V22-04-GR12-R",
+      "V22-01-GR13-P",
+      "V22-03-GR13-N",
+      "V11-02-GR13-F",
+      "V22-06-GR13-R",
+      "V23-01-GR21-P",
+      "V23-05-GR21-N",
+      "V23-02-GR21-F",
+      "V23-04-GR21-R",
+      "V28-04-GR24-P",
+      "V26-03-GR24-N",
+      "V29-03-GR24-F",
+      "V22-06-GR24-R"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO04",
+      "MO06",
+      "MO09",
+      "MO10",
+      "MO12"
+    ],
+    "model_verification_subcases": [
+      "V16-02-M01",
+      "V22-01-M01",
+      "V28-04-M01",
+      "V15-03-M01",
+      "V25-06-M01",
+      "V26-01-M01",
+      "V01-01-M01",
+      "V06-03-M01",
+      "V26-03-M01",
+      "V06-03-M02",
+      "V21-06-M01",
+      "V24-01-M01",
+      "V30-04-M01",
+      "V30-05-M01",
+      "V31-05-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R25",
+      "AC-R25"
+    ],
+    "document_contracts": [],
+    "guardrails": [
+      "GR12",
+      "GR13",
+      "GR21",
+      "GR24"
+    ],
+    "document_guard_subcases": [
+      "V14-01-GR12-P",
+      "V29-04-GR12-N",
+      "V11-04-GR12-F",
+      "V22-04-GR12-R",
+      "V22-01-GR13-P",
+      "V22-03-GR13-N",
+      "V11-02-GR13-F",
+      "V22-06-GR13-R",
+      "V23-01-GR21-P",
+      "V23-05-GR21-N",
+      "V23-02-GR21-F",
+      "V23-04-GR21-R",
+      "V28-04-GR24-P",
+      "V26-03-GR24-N",
+      "V29-03-GR24-F",
+      "V22-06-GR24-R"
+    ],
+    "v4_integration_subcases": [
+      "V15-04-U4-03",
+      "V22-06-U4-13",
+      "V25-02-U4-17",
+      "V26-03-U4-33",
+      "V22-04-U4-41",
+      "V29-01-U4-44",
+      "V23-03-U4-47"
+    ],
+    "integration_contracts": [
+      "IC18"
+    ],
+    "implementation_wp": [
+      "WP15",
+      "WP22",
+      "WP23",
+      "WP25",
+      "WP26",
+      "WP29"
+    ],
+    "verification_subcases": [
+      "V15-04-U4-03",
+      "V22-06-U4-13",
+      "V25-02-U4-17",
+      "V26-03-U4-33",
+      "V22-04-U4-41",
+      "V29-01-U4-44",
+      "V23-03-U4-47"
+    ],
+    "component_ids": [
+      "CMP01",
+      "CMP03",
+      "CMP04",
+      "CMP07",
+      "CMP08",
+      "CMP09",
+      "CMP11",
+      "CMP12",
+      "CMP18",
+      "CMP19",
+      "CMP20",
+      "CMP21",
+      "CMP22",
+      "CMP24",
+      "CMP25",
+      "CMP26"
+    ]
+  },
+  {
+    "requirement_id": "R26",
+    "name": "統合検証",
+    "normative": "MUST",
+    "requirement": "各task合格を足し合わせず統合snapshotで再試験する",
+    "primary_implementation_work_packages": [
+      "WP24",
+      "WP28"
+    ],
+    "primary_verification_ids": [
+      "V24-02",
+      "V24-03",
+      "V28-05"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC07",
+      "IC11",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V19-01-S01",
+      "V17-02-S01",
+      "V17-05-S01",
+      "V10-01-S01",
+      "V30-01-S01",
+      "V28-01-S01",
+      "V03-04-S01",
+      "V29-05-S01",
+      "V20-04-GR14-P",
+      "V20-03-GR14-N",
+      "V20-06-GR14-F",
+      "V20-01-GR14-R",
+      "V24-01-GR18-P",
+      "V24-02-GR18-N",
+      "V24-03-GR18-F",
+      "V24-06-GR18-R"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [],
+    "model_verification_subcases": [],
+    "document_artifacts": [
+      "REQ-R26",
+      "AC-R26"
+    ],
+    "document_contracts": [],
+    "guardrails": [
+      "GR14",
+      "GR18"
+    ],
+    "document_guard_subcases": [
+      "V20-04-GR14-P",
+      "V20-03-GR14-N",
+      "V20-06-GR14-F",
+      "V20-01-GR14-R",
+      "V24-01-GR18-P",
+      "V24-02-GR18-N",
+      "V24-03-GR18-F",
+      "V24-06-GR18-R"
+    ],
+    "v4_integration_subcases": [
+      "V24-05-U4-19",
+      "V06-04-U4-23",
+      "V06-03-U4-25",
+      "V03-02-U4-29",
+      "V24-03-U4-32",
+      "V28-01-U4-39",
+      "V24-05-U4-40",
+      "V31-02-U4-46"
+    ],
+    "integration_contracts": [
+      "IC17",
+      "IC18"
+    ],
+    "implementation_wp": [
+      "WP03",
+      "WP06",
+      "WP24",
+      "WP28",
+      "WP31"
+    ],
+    "verification_subcases": [
+      "V24-05-U4-19",
+      "V06-04-U4-23",
+      "V06-03-U4-25",
+      "V03-02-U4-29",
+      "V24-03-U4-32",
+      "V28-01-U4-39",
+      "V24-05-U4-40",
+      "V31-02-U4-46"
+    ],
+    "component_ids": [
+      "CMP01",
+      "CMP02",
+      "CMP05",
+      "CMP06",
+      "CMP08",
+      "CMP09",
+      "CMP10",
+      "CMP11",
+      "CMP13",
+      "CMP14",
+      "CMP15",
+      "CMP16",
+      "CMP17",
+      "CMP18",
+      "CMP19",
+      "CMP20",
+      "CMP21",
+      "CMP24",
+      "CMP25",
+      "CMP27"
+    ]
+  },
+  {
+    "requirement_id": "R27",
+    "name": "成果物完全性",
+    "normative": "MUST",
+    "requirement": "起動手順/仕様/コード/試験/依存/manifest/残課題を照合する",
+    "primary_implementation_work_packages": [
+      "WP03",
+      "WP20",
+      "WP24",
+      "WP30",
+      "WP31"
+    ],
+    "primary_verification_ids": [
+      "V30-01",
+      "V30-05",
+      "V31-01",
+      "V31-05"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC09",
+      "IC11",
+      "IC12",
+      "IC13",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V25-01-S01",
+      "V28-06-S02",
+      "V20-05-S01",
+      "V25-04-S01",
+      "V30-01-S01",
+      "V28-01-S01",
+      "V03-04-S01",
+      "V29-05-S01",
+      "V03-06-GR16-P",
+      "V20-05-GR16-N",
+      "V03-03-GR16-F",
+      "V08-04-GR16-R",
+      "V30-05-GR22-P",
+      "V09-06-GR22-N",
+      "V25-04-GR22-F",
+      "V31-05-GR22-R",
+      "V31-01-DG10-P",
+      "V31-03-DG10-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO01",
+      "MO08",
+      "MO11",
+      "MO12"
+    ],
+    "model_verification_subcases": [
+      "V04-06-M01",
+      "V17-04-M01",
+      "V31-03-M01",
+      "V19-01-M01",
+      "V21-02-M01",
+      "V28-02-M02",
+      "V03-06-M01",
+      "V28-06-M02",
+      "V31-02-M01",
+      "V30-04-M01",
+      "V30-05-M01",
+      "V31-05-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R27",
+      "AC-R27"
+    ],
+    "document_contracts": [
+      "DG10"
+    ],
+    "guardrails": [
+      "GR16",
+      "GR22"
+    ],
+    "document_guard_subcases": [
+      "V03-06-GR16-P",
+      "V20-05-GR16-N",
+      "V03-03-GR16-F",
+      "V08-04-GR16-R",
+      "V30-05-GR22-P",
+      "V09-06-GR22-N",
+      "V25-04-GR22-F",
+      "V31-05-GR22-R",
+      "V31-01-DG10-P",
+      "V31-03-DG10-N"
+    ],
+    "v4_integration_subcases": [
+      "V30-04-U4-07",
+      "V28-01-U4-39",
+      "V31-02-U4-46",
+      "V31-05-U4-48"
+    ],
+    "integration_contracts": [
+      "IC15",
+      "IC17",
+      "IC18"
+    ],
+    "implementation_wp": [
+      "WP28",
+      "WP30",
+      "WP31"
+    ],
+    "verification_subcases": [
+      "V30-04-U4-07",
+      "V28-01-U4-39",
+      "V31-02-U4-46",
+      "V31-05-U4-48"
+    ],
+    "component_ids": [
+      "CMP01",
+      "CMP02",
+      "CMP08",
+      "CMP11",
+      "CMP13",
+      "CMP17",
+      "CMP19",
+      "CMP20",
+      "CMP21",
+      "CMP25",
+      "CMP27"
+    ]
+  },
+  {
+    "requirement_id": "R28",
+    "name": "開発完了と公開分離",
+    "normative": "MUST",
+    "requirement": "外部push/merge/publish/deployは別の委任・承認に従う",
+    "primary_implementation_work_packages": [
+      "WP08",
+      "WP12",
+      "WP23",
+      "WP30"
+    ],
+    "primary_verification_ids": [
+      "V08-06",
+      "V23-05",
+      "V31-06"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC05",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V07-03-S02",
+      "V26-01-S02",
+      "V07-02-S01",
+      "V23-02-S01",
+      "V12-01-GR03-P",
+      "V17-03-GR03-N",
+      "V12-03-GR03-F",
+      "V08-03-GR03-R",
+      "V23-01-GR21-P",
+      "V23-05-GR21-N",
+      "V23-02-GR21-F",
+      "V23-04-GR21-R"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [],
+    "model_verification_subcases": [],
+    "document_artifacts": [
+      "REQ-R28",
+      "AC-R28"
+    ],
+    "document_contracts": [],
+    "guardrails": [
+      "GR03",
+      "GR21"
+    ],
+    "document_guard_subcases": [
+      "V12-01-GR03-P",
+      "V17-03-GR03-N",
+      "V12-03-GR03-F",
+      "V08-03-GR03-R",
+      "V23-01-GR21-P",
+      "V23-05-GR21-N",
+      "V23-02-GR21-F",
+      "V23-04-GR21-R"
+    ],
+    "v4_integration_subcases": [
+      "V15-04-U4-03",
+      "V23-03-U4-47",
+      "V31-05-U4-48"
+    ],
+    "integration_contracts": [
+      "IC18"
+    ],
+    "implementation_wp": [
+      "WP15",
+      "WP23",
+      "WP31"
+    ],
+    "verification_subcases": [
+      "V15-04-U4-03",
+      "V23-03-U4-47",
+      "V31-05-U4-48"
+    ],
+    "component_ids": [
+      "CMP03",
+      "CMP17",
+      "CMP25"
+    ]
+  },
+  {
+    "requirement_id": "R29",
+    "name": "記憶正本分離",
+    "normative": "MUST",
+    "requirement": "UA/CompactionDB/SDDは派生・参照、仕様/進捗を独立に確定しない",
+    "primary_implementation_work_packages": [
+      "WP06",
+      "WP18",
+      "WP25"
+    ],
+    "primary_verification_ids": [
+      "V25-01",
+      "V25-02"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC03",
+      "IC04",
+      "IC09",
+      "IC12",
+      "IC13",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V06-02-S01",
+      "V26-02-S01",
+      "V06-05-S01",
+      "V30-04-S01",
+      "V07-03-S01",
+      "V25-06-S01",
+      "V12-05-S01",
+      "V25-06-S02",
+      "V25-01-S01",
+      "V28-06-S02",
+      "V20-05-S01",
+      "V25-04-S01",
+      "V25-01-GR20-P",
+      "V25-02-GR20-N",
+      "V25-04-GR20-F",
+      "V28-06-GR20-R",
+      "V17-04-DG06-P",
+      "V18-06-DG06-N",
+      "V28-01-DG09-P",
+      "V28-06-DG09-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO02",
+      "MO03",
+      "MO07",
+      "MO10"
+    ],
+    "model_verification_subcases": [
+      "V06-05-M01",
+      "V06-06-M01",
+      "V26-02-M01",
+      "V18-06-M01",
+      "V25-01-M01",
+      "V28-02-M01",
+      "V15-02-M01",
+      "V15-06-M01",
+      "V28-06-M01",
+      "V06-03-M02",
+      "V21-06-M01",
+      "V24-01-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R29",
+      "AC-R29"
+    ],
+    "document_contracts": [
+      "DG06",
+      "DG09"
+    ],
+    "guardrails": [
+      "GR20"
+    ],
+    "document_guard_subcases": [
+      "V25-01-GR20-P",
+      "V25-02-GR20-N",
+      "V25-04-GR20-F",
+      "V28-06-GR20-R",
+      "V17-04-DG06-P",
+      "V18-06-DG06-N",
+      "V28-01-DG09-P",
+      "V28-06-DG09-N"
+    ],
+    "v4_integration_subcases": [
+      "V18-01-U4-09",
+      "V26-04-U4-10",
+      "V18-04-U4-11",
+      "V09-05-U4-12",
+      "V22-06-U4-13",
+      "V25-01-U4-14",
+      "V18-03-U4-15",
+      "V25-02-U4-17",
+      "V18-06-U4-18",
+      "V24-05-U4-19",
+      "V18-02-U4-20",
+      "V24-03-U4-32",
+      "V26-02-U4-35",
+      "V25-02-U4-36",
+      "V30-04-U4-37",
+      "V22-04-U4-41",
+      "V29-01-U4-44"
+    ],
+    "integration_contracts": [
+      "IC16",
+      "IC18"
+    ],
+    "implementation_wp": [
+      "WP09",
+      "WP18",
+      "WP22",
+      "WP24",
+      "WP25",
+      "WP26",
+      "WP29",
+      "WP30"
+    ],
+    "verification_subcases": [
+      "V18-01-U4-09",
+      "V26-04-U4-10",
+      "V18-04-U4-11",
+      "V09-05-U4-12",
+      "V22-06-U4-13",
+      "V25-01-U4-14",
+      "V18-03-U4-15",
+      "V25-02-U4-17",
+      "V18-06-U4-18",
+      "V24-05-U4-19",
+      "V18-02-U4-20",
+      "V24-03-U4-32",
+      "V26-02-U4-35",
+      "V25-02-U4-36",
+      "V30-04-U4-37",
+      "V22-04-U4-41",
+      "V29-01-U4-44"
+    ],
+    "component_ids": [
+      "CMP01",
+      "CMP02",
+      "CMP03",
+      "CMP04",
+      "CMP05",
+      "CMP07",
+      "CMP08",
+      "CMP09",
+      "CMP10",
+      "CMP11",
+      "CMP12",
+      "CMP13",
+      "CMP15",
+      "CMP17",
+      "CMP18",
+      "CMP19",
+      "CMP20",
+      "CMP21",
+      "CMP22",
+      "CMP24",
+      "CMP25",
+      "CMP26",
+      "CMP27"
+    ]
+  },
+  {
+    "requirement_id": "R30",
+    "name": "prompt injection境界",
+    "normative": "MUST",
+    "requirement": "Web/README/tool outputを命令権限に昇格させない",
+    "primary_implementation_work_packages": [
+      "WP08",
+      "WP13",
+      "WP18",
+      "WP20",
+      "WP29"
+    ],
+    "primary_verification_ids": [
+      "V18-05",
+      "V20-02",
+      "V29-01"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC02",
+      "IC03",
+      "IC09",
+      "IC11",
+      "IC12",
+      "IC13",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V14-05-S01",
+      "V20-01-S01",
+      "V09-03-S01",
+      "V29-01-S01",
+      "V06-02-S01",
+      "V26-02-S01",
+      "V06-05-S01",
+      "V30-04-S01",
+      "V25-01-S01",
+      "V28-06-S02",
+      "V20-05-S01",
+      "V25-04-S01",
+      "V30-01-S01",
+      "V28-01-S01",
+      "V03-04-S01",
+      "V29-05-S01",
+      "V18-05-GR01-P",
+      "V29-01-GR01-N",
+      "V29-01-GR01-F",
+      "V22-06-GR01-R",
+      "V12-01-GR03-P",
+      "V17-03-GR03-N",
+      "V12-03-GR03-F",
+      "V08-03-GR03-R",
+      "V06-02-GR05-P",
+      "V06-05-GR05-N",
+      "V26-03-GR05-F",
+      "V30-04-GR05-R",
+      "V13-03-GR07-P",
+      "V13-02-GR07-N",
+      "V20-02-GR07-F",
+      "V26-04-GR07-R",
+      "V13-04-GR08-P",
+      "V13-04-GR08-N",
+      "V26-04-GR08-F",
+      "V14-04-GR08-R",
+      "V14-04-GR09-P",
+      "V29-01-GR09-N",
+      "V26-03-GR09-F",
+      "V14-06-GR09-R",
+      "V16-01-GR17-P",
+      "V16-04-GR17-N",
+      "V15-03-GR17-F",
+      "V16-05-GR17-R",
+      "V25-01-GR20-P",
+      "V25-02-GR20-N",
+      "V25-04-GR20-F",
+      "V28-06-GR20-R",
+      "V30-05-GR22-P",
+      "V09-06-GR22-N",
+      "V25-04-GR22-F",
+      "V31-05-GR22-R",
+      "V28-04-GR24-P",
+      "V26-03-GR24-N",
+      "V29-03-GR24-F",
+      "V22-06-GR24-R",
+      "V17-04-DG06-P",
+      "V18-06-DG06-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO06"
+    ],
+    "model_verification_subcases": [
+      "V15-03-M01",
+      "V25-06-M01",
+      "V26-01-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R30",
+      "AC-R30"
+    ],
+    "document_contracts": [
+      "DG06"
+    ],
+    "guardrails": [
+      "GR01",
+      "GR03",
+      "GR05",
+      "GR07",
+      "GR08",
+      "GR09",
+      "GR17",
+      "GR20",
+      "GR22",
+      "GR24"
+    ],
+    "document_guard_subcases": [
+      "V18-05-GR01-P",
+      "V29-01-GR01-N",
+      "V29-01-GR01-F",
+      "V22-06-GR01-R",
+      "V12-01-GR03-P",
+      "V17-03-GR03-N",
+      "V12-03-GR03-F",
+      "V08-03-GR03-R",
+      "V06-02-GR05-P",
+      "V06-05-GR05-N",
+      "V26-03-GR05-F",
+      "V30-04-GR05-R",
+      "V13-03-GR07-P",
+      "V13-02-GR07-N",
+      "V20-02-GR07-F",
+      "V26-04-GR07-R",
+      "V13-04-GR08-P",
+      "V13-04-GR08-N",
+      "V26-04-GR08-F",
+      "V14-04-GR08-R",
+      "V14-04-GR09-P",
+      "V29-01-GR09-N",
+      "V26-03-GR09-F",
+      "V14-06-GR09-R",
+      "V16-01-GR17-P",
+      "V16-04-GR17-N",
+      "V15-03-GR17-F",
+      "V16-05-GR17-R",
+      "V25-01-GR20-P",
+      "V25-02-GR20-N",
+      "V25-04-GR20-F",
+      "V28-06-GR20-R",
+      "V30-05-GR22-P",
+      "V09-06-GR22-N",
+      "V25-04-GR22-F",
+      "V31-05-GR22-R",
+      "V28-04-GR24-P",
+      "V26-03-GR24-N",
+      "V29-03-GR24-F",
+      "V22-06-GR24-R",
+      "V17-04-DG06-P",
+      "V18-06-DG06-N"
+    ],
+    "v4_integration_subcases": [
+      "V06-05-U4-08",
+      "V26-04-U4-10",
+      "V13-03-U4-16",
+      "V25-02-U4-17",
+      "V18-02-U4-20",
+      "V03-01-U4-22",
+      "V14-06-U4-27",
+      "V26-03-U4-33",
+      "V25-02-U4-36",
+      "V26-04-U4-42",
+      "V29-01-U4-44",
+      "V23-03-U4-47"
+    ],
+    "integration_contracts": [
+      "IC16",
+      "IC17",
+      "IC18"
+    ],
+    "implementation_wp": [
+      "WP03",
+      "WP06",
+      "WP13",
+      "WP14",
+      "WP18",
+      "WP23",
+      "WP25",
+      "WP26",
+      "WP29"
+    ],
+    "verification_subcases": [
+      "V06-05-U4-08",
+      "V26-04-U4-10",
+      "V13-03-U4-16",
+      "V25-02-U4-17",
+      "V18-02-U4-20",
+      "V03-01-U4-22",
+      "V14-06-U4-27",
+      "V26-03-U4-33",
+      "V25-02-U4-36",
+      "V26-04-U4-42",
+      "V29-01-U4-44",
+      "V23-03-U4-47"
+    ],
+    "component_ids": [
+      "CMP01",
+      "CMP02",
+      "CMP03",
+      "CMP04",
+      "CMP05",
+      "CMP06",
+      "CMP08",
+      "CMP09",
+      "CMP10",
+      "CMP11",
+      "CMP12",
+      "CMP13",
+      "CMP14",
+      "CMP15",
+      "CMP16",
+      "CMP17",
+      "CMP18",
+      "CMP19",
+      "CMP20",
+      "CMP21",
+      "CMP22",
+      "CMP24",
+      "CMP25",
+      "CMP26",
+      "CMP27"
+    ]
+  },
+  {
+    "requirement_id": "R31",
+    "name": "可観測性",
+    "normative": "MUST",
+    "requirement": "project/task/run/session/attempt/traceを関連付け秘密を除去する",
+    "primary_implementation_work_packages": [
+      "WP03",
+      "WP07",
+      "WP17",
+      "WP25"
+    ],
+    "primary_verification_ids": [
+      "V03-06",
+      "V17-01",
+      "V25-03",
+      "V25-04",
+      "V25-06"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC04",
+      "IC05",
+      "IC08",
+      "IC09",
+      "IC12",
+      "IC13",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V07-03-S01",
+      "V25-06-S01",
+      "V12-05-S01",
+      "V25-06-S02",
+      "V07-03-S02",
+      "V26-01-S02",
+      "V07-02-S01",
+      "V23-02-S01",
+      "V14-01-S01",
+      "V26-01-S03",
+      "V14-01-S02",
+      "V14-06-S01",
+      "V25-01-S01",
+      "V28-06-S02",
+      "V20-05-S01",
+      "V25-04-S01",
+      "V17-02-GR11-P",
+      "V23-03-GR11-N",
+      "V07-02-GR11-F",
+      "V17-05-GR11-R",
+      "V14-01-GR12-P",
+      "V29-04-GR12-N",
+      "V11-04-GR12-F",
+      "V22-04-GR12-R",
+      "V30-05-GR22-P",
+      "V09-06-GR22-N",
+      "V25-04-GR22-F",
+      "V31-05-GR22-R",
+      "V28-04-GR24-P",
+      "V26-03-GR24-N",
+      "V29-03-GR24-F",
+      "V22-06-GR24-R",
+      "V31-01-DG10-P",
+      "V31-03-DG10-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO05",
+      "MO06",
+      "MO07"
+    ],
+    "model_verification_subcases": [
+      "V05-01-M01",
+      "V15-01-M01",
+      "V28-01-M01",
+      "V15-03-M01",
+      "V25-06-M01",
+      "V26-01-M01",
+      "V15-02-M01",
+      "V15-06-M01",
+      "V28-06-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R31",
+      "AC-R31"
+    ],
+    "document_contracts": [
+      "DG10"
+    ],
+    "guardrails": [
+      "GR11",
+      "GR12",
+      "GR22",
+      "GR24"
+    ],
+    "document_guard_subcases": [
+      "V17-02-GR11-P",
+      "V23-03-GR11-N",
+      "V07-02-GR11-F",
+      "V17-05-GR11-R",
+      "V14-01-GR12-P",
+      "V29-04-GR12-N",
+      "V11-04-GR12-F",
+      "V22-04-GR12-R",
+      "V30-05-GR22-P",
+      "V09-06-GR22-N",
+      "V25-04-GR22-F",
+      "V31-05-GR22-R",
+      "V28-04-GR24-P",
+      "V26-03-GR24-N",
+      "V29-03-GR24-F",
+      "V22-06-GR24-R",
+      "V31-01-DG10-P",
+      "V31-03-DG10-N"
+    ],
+    "v4_integration_subcases": [
+      "V17-05-U4-06",
+      "V26-04-U4-10",
+      "V17-01-U4-38",
+      "V29-05-U4-43"
+    ],
+    "integration_contracts": [
+      "IC16",
+      "IC18"
+    ],
+    "implementation_wp": [
+      "WP17",
+      "WP26",
+      "WP29"
+    ],
+    "verification_subcases": [
+      "V17-05-U4-06",
+      "V26-04-U4-10",
+      "V17-01-U4-38",
+      "V29-05-U4-43"
+    ],
+    "component_ids": [
+      "CMP01",
+      "CMP03",
+      "CMP04",
+      "CMP07",
+      "CMP08",
+      "CMP09",
+      "CMP12",
+      "CMP18",
+      "CMP20",
+      "CMP24",
+      "CMP25"
+    ]
+  },
+  {
+    "requirement_id": "R32",
+    "name": "有限予算",
+    "normative": "MUST",
+    "requirement": "回数・時間・並列・利用量の予算を外部に保持、上限で完了にしない",
+    "primary_implementation_work_packages": [
+      "WP01",
+      "WP10",
+      "WP11",
+      "WP22"
+    ],
+    "primary_verification_ids": [
+      "V01-06",
+      "V11-01",
+      "V22-03"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC06",
+      "IC09",
+      "IC12",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V22-01-S01",
+      "V28-06-S01",
+      "V11-06-S01",
+      "V22-05-S01",
+      "V25-01-S01",
+      "V28-06-S02",
+      "V20-05-S01",
+      "V25-04-S01",
+      "V22-01-GR13-P",
+      "V22-03-GR13-N",
+      "V11-02-GR13-F",
+      "V22-06-GR13-R",
+      "V14-05-GR23-P",
+      "V29-05-GR23-N",
+      "V14-06-GR23-F",
+      "V13-05-GR23-R"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO04",
+      "MO05",
+      "MO11"
+    ],
+    "model_verification_subcases": [
+      "V16-02-M01",
+      "V22-01-M01",
+      "V28-04-M01",
+      "V05-01-M01",
+      "V15-01-M01",
+      "V28-01-M01",
+      "V03-06-M01",
+      "V28-06-M02",
+      "V31-02-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R32",
+      "AC-R32"
+    ],
+    "document_contracts": [],
+    "guardrails": [
+      "GR13",
+      "GR23"
+    ],
+    "document_guard_subcases": [
+      "V22-01-GR13-P",
+      "V22-03-GR13-N",
+      "V11-02-GR13-F",
+      "V22-06-GR13-R",
+      "V14-05-GR23-P",
+      "V29-05-GR23-N",
+      "V14-06-GR23-F",
+      "V13-05-GR23-R"
+    ],
+    "v4_integration_subcases": [
+      "V18-02-U4-20",
+      "V14-06-U4-27",
+      "V22-02-U4-34",
+      "V26-02-U4-35",
+      "V29-05-U4-43"
+    ],
+    "integration_contracts": [
+      "IC17"
+    ],
+    "implementation_wp": [
+      "WP14",
+      "WP18",
+      "WP22",
+      "WP26",
+      "WP29"
+    ],
+    "verification_subcases": [
+      "V18-02-U4-20",
+      "V14-06-U4-27",
+      "V22-02-U4-34",
+      "V26-02-U4-35",
+      "V29-05-U4-43"
+    ],
+    "component_ids": [
+      "CMP01",
+      "CMP03",
+      "CMP04",
+      "CMP05",
+      "CMP07",
+      "CMP08",
+      "CMP09",
+      "CMP10",
+      "CMP11",
+      "CMP12",
+      "CMP13",
+      "CMP14",
+      "CMP15",
+      "CMP16",
+      "CMP18",
+      "CMP20",
+      "CMP22",
+      "CMP24",
+      "CMP25",
+      "CMP26"
+    ]
+  },
+  {
+    "requirement_id": "R33",
+    "name": "更新検証",
+    "normative": "MUST",
+    "requirement": "payloadまで固定し、候補更新に契約・回帰・E2Eを要求する",
+    "primary_implementation_work_packages": [
+      "WP01",
+      "WP06",
+      "WP26",
+      "WP30"
+    ],
+    "primary_verification_ids": [
+      "V01-04",
+      "V06-01",
+      "V26-03",
+      "V30-04"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC03",
+      "IC11",
+      "IC12",
+      "IC13",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V06-02-S01",
+      "V26-02-S01",
+      "V06-05-S01",
+      "V30-04-S01",
+      "V30-01-S01",
+      "V28-01-S01",
+      "V03-04-S01",
+      "V29-05-S01",
+      "V06-02-GR05-P",
+      "V06-05-GR05-N",
+      "V26-03-GR05-F",
+      "V30-04-GR05-R",
+      "V08-05-GR19-P",
+      "V08-03-GR19-N",
+      "V24-05-GR19-F",
+      "V30-04-GR19-R",
+      "V08-05-DG07-P",
+      "V24-05-DG07-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO02",
+      "MO07",
+      "MO09",
+      "MO12"
+    ],
+    "model_verification_subcases": [
+      "V06-05-M01",
+      "V06-06-M01",
+      "V26-02-M01",
+      "V15-02-M01",
+      "V15-06-M01",
+      "V28-06-M01",
+      "V01-01-M01",
+      "V06-03-M01",
+      "V26-03-M01",
+      "V30-04-M01",
+      "V30-05-M01",
+      "V31-05-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R33",
+      "AC-R33"
+    ],
+    "document_contracts": [
+      "DG07"
+    ],
+    "guardrails": [
+      "GR05",
+      "GR19"
+    ],
+    "document_guard_subcases": [
+      "V06-02-GR05-P",
+      "V06-05-GR05-N",
+      "V26-03-GR05-F",
+      "V30-04-GR05-R",
+      "V08-05-GR19-P",
+      "V08-03-GR19-N",
+      "V24-05-GR19-F",
+      "V30-04-GR19-R",
+      "V08-05-DG07-P",
+      "V24-05-DG07-N"
+    ],
+    "v4_integration_subcases": [
+      "V06-02-U4-01",
+      "V06-01-U4-04",
+      "V30-04-U4-07",
+      "V06-05-U4-08",
+      "V24-05-U4-19",
+      "V03-01-U4-22",
+      "V03-02-U4-29",
+      "V30-02-U4-31",
+      "V25-02-U4-36",
+      "V30-04-U4-37",
+      "V24-05-U4-40",
+      "V30-06-U4-45"
+    ],
+    "integration_contracts": [
+      "IC15",
+      "IC17",
+      "IC18"
+    ],
+    "implementation_wp": [
+      "WP03",
+      "WP06",
+      "WP24",
+      "WP25",
+      "WP30"
+    ],
+    "verification_subcases": [
+      "V06-02-U4-01",
+      "V06-01-U4-04",
+      "V30-04-U4-07",
+      "V06-05-U4-08",
+      "V24-05-U4-19",
+      "V03-01-U4-22",
+      "V03-02-U4-29",
+      "V30-02-U4-31",
+      "V25-02-U4-36",
+      "V30-04-U4-37",
+      "V24-05-U4-40",
+      "V30-06-U4-45"
+    ],
+    "component_ids": [
+      "CMP01",
+      "CMP02",
+      "CMP05",
+      "CMP06",
+      "CMP08",
+      "CMP09",
+      "CMP10",
+      "CMP11",
+      "CMP12",
+      "CMP13",
+      "CMP14",
+      "CMP15",
+      "CMP16",
+      "CMP17",
+      "CMP18",
+      "CMP19",
+      "CMP20",
+      "CMP21",
+      "CMP22",
+      "CMP24",
+      "CMP26",
+      "CMP27"
+    ]
+  },
+  {
+    "requirement_id": "R34",
+    "name": "再現可能性",
+    "normative": "MUST",
+    "requirement": "基準・snapshot・環境・suiteから検証を再実行できる",
+    "primary_implementation_work_packages": [
+      "WP03",
+      "WP09",
+      "WP20",
+      "WP24",
+      "WP30"
+    ],
+    "primary_verification_ids": [
+      "V03-01",
+      "V09-01",
+      "V20-01",
+      "V26-06",
+      "V30-03"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC02",
+      "IC04",
+      "IC05",
+      "IC08",
+      "IC09",
+      "IC11",
+      "IC12",
+      "IC13",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V14-05-S01",
+      "V20-01-S01",
+      "V09-03-S01",
+      "V29-01-S01",
+      "V07-03-S01",
+      "V25-06-S01",
+      "V12-05-S01",
+      "V25-06-S02",
+      "V07-03-S02",
+      "V26-01-S02",
+      "V07-02-S01",
+      "V23-02-S01",
+      "V14-01-S01",
+      "V26-01-S03",
+      "V14-01-S02",
+      "V14-06-S01",
+      "V25-01-S01",
+      "V28-06-S02",
+      "V20-05-S01",
+      "V25-04-S01",
+      "V30-01-S01",
+      "V28-01-S01",
+      "V03-04-S01",
+      "V29-05-S01",
+      "V09-01-GR06-P",
+      "V09-03-GR06-N",
+      "V14-03-GR06-F",
+      "V24-06-GR06-R",
+      "V17-02-GR11-P",
+      "V23-03-GR11-N",
+      "V07-02-GR11-F",
+      "V17-05-GR11-R",
+      "V20-04-GR14-P",
+      "V20-03-GR14-N",
+      "V20-06-GR14-F",
+      "V20-01-GR14-R",
+      "V24-01-GR18-P",
+      "V24-02-GR18-N",
+      "V24-03-GR18-F",
+      "V24-06-GR18-R",
+      "V04-04-DG03-P",
+      "V20-05-DG03-N",
+      "V04-01-DG04-P",
+      "V18-02-DG04-N",
+      "V28-01-DG09-P",
+      "V28-06-DG09-N",
+      "V31-01-DG10-P",
+      "V31-03-DG10-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO03",
+      "MO11",
+      "MO12"
+    ],
+    "model_verification_subcases": [
+      "V18-06-M01",
+      "V25-01-M01",
+      "V28-02-M01",
+      "V03-06-M01",
+      "V28-06-M02",
+      "V31-02-M01",
+      "V30-04-M01",
+      "V30-05-M01",
+      "V31-05-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R34",
+      "AC-R34"
+    ],
+    "document_contracts": [
+      "DG03",
+      "DG04",
+      "DG09",
+      "DG10"
+    ],
+    "guardrails": [
+      "GR06",
+      "GR11",
+      "GR14",
+      "GR18"
+    ],
+    "document_guard_subcases": [
+      "V09-01-GR06-P",
+      "V09-03-GR06-N",
+      "V14-03-GR06-F",
+      "V24-06-GR06-R",
+      "V17-02-GR11-P",
+      "V23-03-GR11-N",
+      "V07-02-GR11-F",
+      "V17-05-GR11-R",
+      "V20-04-GR14-P",
+      "V20-03-GR14-N",
+      "V20-06-GR14-F",
+      "V20-01-GR14-R",
+      "V24-01-GR18-P",
+      "V24-02-GR18-N",
+      "V24-03-GR18-F",
+      "V24-06-GR18-R",
+      "V04-04-DG03-P",
+      "V20-05-DG03-N",
+      "V04-01-DG04-P",
+      "V18-02-DG04-N",
+      "V28-01-DG09-P",
+      "V28-06-DG09-N",
+      "V31-01-DG10-P",
+      "V31-03-DG10-N"
+    ],
+    "v4_integration_subcases": [
+      "V06-02-U4-01",
+      "V06-01-U4-04",
+      "V30-04-U4-07",
+      "V18-01-U4-09",
+      "V09-05-U4-12",
+      "V25-01-U4-14",
+      "V03-01-U4-22",
+      "V06-04-U4-23",
+      "V06-03-U4-25",
+      "V03-02-U4-29",
+      "V30-02-U4-31",
+      "V24-03-U4-32",
+      "V30-04-U4-37",
+      "V24-05-U4-40",
+      "V22-04-U4-41",
+      "V29-05-U4-43",
+      "V30-06-U4-45",
+      "V31-02-U4-46",
+      "V31-05-U4-48"
+    ],
+    "integration_contracts": [
+      "IC15",
+      "IC16",
+      "IC17",
+      "IC18"
+    ],
+    "implementation_wp": [
+      "WP03",
+      "WP06",
+      "WP09",
+      "WP18",
+      "WP22",
+      "WP24",
+      "WP25",
+      "WP29",
+      "WP30",
+      "WP31"
+    ],
+    "verification_subcases": [
+      "V06-02-U4-01",
+      "V06-01-U4-04",
+      "V30-04-U4-07",
+      "V18-01-U4-09",
+      "V09-05-U4-12",
+      "V25-01-U4-14",
+      "V03-01-U4-22",
+      "V06-04-U4-23",
+      "V06-03-U4-25",
+      "V03-02-U4-29",
+      "V30-02-U4-31",
+      "V24-03-U4-32",
+      "V30-04-U4-37",
+      "V24-05-U4-40",
+      "V22-04-U4-41",
+      "V29-05-U4-43",
+      "V30-06-U4-45",
+      "V31-02-U4-46",
+      "V31-05-U4-48"
+    ],
+    "component_ids": [
+      "CMP01",
+      "CMP02",
+      "CMP05",
+      "CMP06",
+      "CMP07",
+      "CMP08",
+      "CMP09",
+      "CMP10",
+      "CMP11",
+      "CMP12",
+      "CMP13",
+      "CMP14",
+      "CMP15",
+      "CMP16",
+      "CMP17",
+      "CMP18",
+      "CMP19",
+      "CMP20",
+      "CMP21",
+      "CMP22",
+      "CMP24",
+      "CMP25",
+      "CMP26",
+      "CMP27"
+    ]
+  },
+  {
+    "requirement_id": "R35",
+    "name": "境界の誠実性",
+    "normative": "MUST",
+    "requirement": "モック/抽出関数/実CLI/実機の結果を混同せず未実施を明示する",
+    "primary_implementation_work_packages": [
+      "WP00",
+      "WP03",
+      "WP20",
+      "WP26",
+      "WP28",
+      "WP31"
+    ],
+    "primary_verification_ids": [
+      "V00-06",
+      "V03-03",
+      "V20-05",
+      "V31-02"
+    ],
+    "final_requalification": "WP31",
+    "mapping_status": "PLANNED_NOT_PRODUCT_EVIDENCE",
+    "integrated_contracts": [
+      "IC01",
+      "IC04",
+      "IC10",
+      "IC11",
+      "IC12",
+      "IC13",
+      "IC14"
+    ],
+    "integrated_subcases": [
+      "V04-01-S01",
+      "V26-01-S01",
+      "V04-01-S02",
+      "V26-03-S01",
+      "V07-03-S01",
+      "V25-06-S01",
+      "V12-05-S01",
+      "V25-06-S02",
+      "V02-02-S01",
+      "V04-06-S01",
+      "V02-02-S02",
+      "V04-06-S02",
+      "V30-01-S01",
+      "V28-01-S01",
+      "V03-04-S01",
+      "V29-05-S01",
+      "V26-01-GR04-P",
+      "V26-03-GR04-N",
+      "V01-02-GR04-F",
+      "V15-06-GR04-R",
+      "V20-04-GR14-P",
+      "V20-03-GR14-N",
+      "V20-06-GR14-F",
+      "V20-01-GR14-R",
+      "V21-01-GR15-P",
+      "V21-05-GR15-N",
+      "V21-06-GR15-F",
+      "V21-02-GR15-R",
+      "V03-06-GR16-P",
+      "V20-05-GR16-N",
+      "V03-03-GR16-F",
+      "V08-04-GR16-R",
+      "V16-01-GR17-P",
+      "V16-04-GR17-N",
+      "V15-03-GR17-F",
+      "V16-05-GR17-R",
+      "V30-05-GR22-P",
+      "V09-06-GR22-N",
+      "V25-04-GR22-F",
+      "V31-05-GR22-R",
+      "V28-04-GR24-P",
+      "V26-03-GR24-N",
+      "V29-03-GR24-F",
+      "V22-06-GR24-R",
+      "V04-04-DG03-P",
+      "V20-05-DG03-N",
+      "V31-01-DG10-P",
+      "V31-03-DG10-N"
+    ],
+    "normative_source": "contracts/requirements.json",
+    "model_contracts": [
+      "MO01",
+      "MO02",
+      "MO03",
+      "MO06",
+      "MO07",
+      "MO09",
+      "MO11",
+      "MO12"
+    ],
+    "model_verification_subcases": [
+      "V04-06-M01",
+      "V17-04-M01",
+      "V31-03-M01",
+      "V06-05-M01",
+      "V06-06-M01",
+      "V26-02-M01",
+      "V18-06-M01",
+      "V25-01-M01",
+      "V28-02-M01",
+      "V15-03-M01",
+      "V25-06-M01",
+      "V26-01-M01",
+      "V15-02-M01",
+      "V15-06-M01",
+      "V28-06-M01",
+      "V01-01-M01",
+      "V06-03-M01",
+      "V26-03-M01",
+      "V03-06-M01",
+      "V28-06-M02",
+      "V31-02-M01",
+      "V30-04-M01",
+      "V30-05-M01",
+      "V31-05-M01"
+    ],
+    "document_artifacts": [
+      "REQ-R35",
+      "AC-R35"
+    ],
+    "document_contracts": [
+      "DG03",
+      "DG10"
+    ],
+    "guardrails": [
+      "GR04",
+      "GR14",
+      "GR15",
+      "GR16",
+      "GR17",
+      "GR22",
+      "GR24"
+    ],
+    "document_guard_subcases": [
+      "V26-01-GR04-P",
+      "V26-03-GR04-N",
+      "V01-02-GR04-F",
+      "V15-06-GR04-R",
+      "V20-04-GR14-P",
+      "V20-03-GR14-N",
+      "V20-06-GR14-F",
+      "V20-01-GR14-R",
+      "V21-01-GR15-P",
+      "V21-05-GR15-N",
+      "V21-06-GR15-F",
+      "V21-02-GR15-R",
+      "V03-06-GR16-P",
+      "V20-05-GR16-N",
+      "V03-03-GR16-F",
+      "V08-04-GR16-R",
+      "V16-01-GR17-P",
+      "V16-04-GR17-N",
+      "V15-03-GR17-F",
+      "V16-05-GR17-R",
+      "V30-05-GR22-P",
+      "V09-06-GR22-N",
+      "V25-04-GR22-F",
+      "V31-05-GR22-R",
+      "V28-04-GR24-P",
+      "V26-03-GR24-N",
+      "V29-03-GR24-F",
+      "V22-06-GR24-R",
+      "V04-04-DG03-P",
+      "V20-05-DG03-N",
+      "V31-01-DG10-P",
+      "V31-03-DG10-N"
+    ],
+    "v4_integration_subcases": [
+      "V26-01-U4-02",
+      "V17-05-U4-06",
+      "V22-06-U4-13",
+      "V26-02-U4-21",
+      "V14-04-U4-24",
+      "V20-05-U4-30",
+      "V29-05-U4-43",
+      "V31-02-U4-46",
+      "V31-05-U4-48"
+    ],
+    "integration_contracts": [
+      "IC15",
+      "IC16",
+      "IC17",
+      "IC18"
+    ],
+    "implementation_wp": [
+      "WP14",
+      "WP17",
+      "WP20",
+      "WP22",
+      "WP26",
+      "WP29",
+      "WP31"
+    ],
+    "verification_subcases": [
+      "V26-01-U4-02",
+      "V17-05-U4-06",
+      "V22-06-U4-13",
+      "V26-02-U4-21",
+      "V14-04-U4-24",
+      "V20-05-U4-30",
+      "V29-05-U4-43",
+      "V31-02-U4-46",
+      "V31-05-U4-48"
+    ],
+    "component_ids": [
+      "CMP01",
+      "CMP03",
+      "CMP04",
+      "CMP07",
+      "CMP08",
+      "CMP09",
+      "CMP11",
+      "CMP12",
+      "CMP13",
+      "CMP14",
+      "CMP15",
+      "CMP16",
+      "CMP17",
+      "CMP18",
+      "CMP20",
+      "CMP22",
+      "CMP24",
+      "CMP25"
+    ]
+  }
+]

@@ -1,0 +1,165 @@
+{
+  "document_version": "4.0.0",
+  "purpose": "prior-registered fixture specifications, not fabricated runtime outputs",
+  "cases": [
+    {
+      "id": "KCASE-01",
+      "fixture_class": "exact_trace",
+      "request": "要求R17に対応する検査とSPEC",
+      "fixture_preparation": "A4 builds a minimal deterministic source/edge set before comparison; exact expected IDs and hashes frozen by independent A3 before any measured run",
+      "oracle": "固定ID集合と経路に対し欠落/誤追加を検出",
+      "conditions": [
+        "K0_CANONICAL_ONLY",
+        "K1_CANONICAL_PLUS_SEMANTICA"
+      ],
+      "repetitions": 3,
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "KCASE-02",
+      "fixture_class": "superseded",
+      "request": "旧APIと新APIの契約差",
+      "fixture_preparation": "A4 builds a minimal deterministic source/edge set before comparison; exact expected IDs and hashes frozen by independent A3 before any measured run",
+      "oracle": "現在版を既定、旧版は履歴と明示",
+      "conditions": [
+        "K0_CANONICAL_ONLY",
+        "K1_CANONICAL_PLUS_SEMANTICA"
+      ],
+      "repetitions": 3,
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "KCASE-03",
+      "fixture_class": "dirty_worktree",
+      "request": "同HEAD別内容の作業に関連する契約",
+      "fixture_preparation": "A4 builds a minimal deterministic source/edge set before comparison; exact expected IDs and hashes frozen by independent A3 before any measured run",
+      "oracle": "別worktree結果を混ぜない",
+      "conditions": [
+        "K0_CANONICAL_ONLY",
+        "K1_CANONICAL_PLUS_SEMANTICA"
+      ],
+      "repetitions": 3,
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "KCASE-04",
+      "fixture_class": "acl",
+      "request": "閲覧不可projectの近接名称",
+      "fixture_preparation": "A4 builds a minimal deterministic source/edge set before comparison; exact expected IDs and hashes frozen by independent A3 before any measured run",
+      "oracle": "ID/件数/pathを漏らさず権限範囲のみ",
+      "conditions": [
+        "K0_CANONICAL_ONLY",
+        "K1_CANONICAL_PLUS_SEMANTICA"
+      ],
+      "repetitions": 3,
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "KCASE-05",
+      "fixture_class": "candidate_relation",
+      "request": "推測したimplements関係",
+      "fixture_preparation": "A4 builds a minimal deterministic source/edge set before comparison; exact expected IDs and hashes frozen by independent A3 before any measured run",
+      "oracle": "未承認候補を確定としない",
+      "conditions": [
+        "K0_CANONICAL_ONLY",
+        "K1_CANONICAL_PLUS_SEMANTICA"
+      ],
+      "repetitions": 3,
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "KCASE-06",
+      "fixture_class": "stale_cache",
+      "request": "正本更新後の影響範囲",
+      "fixture_preparation": "A4 builds a minimal deterministic source/edge set before comparison; exact expected IDs and hashes frozen by independent A3 before any measured run",
+      "oracle": "staleを検出し正本と再構築へ",
+      "conditions": [
+        "K0_CANONICAL_ONLY",
+        "K1_CANONICAL_PLUS_SEMANTICA"
+      ],
+      "repetitions": 3,
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "KCASE-07",
+      "fixture_class": "source_mismatch",
+      "request": "source hash不一致の引用",
+      "fixture_preparation": "A4 builds a minimal deterministic source/edge set before comparison; exact expected IDs and hashes frozen by independent A3 before any measured run",
+      "oracle": "引用を使用せず診断",
+      "conditions": [
+        "K0_CANONICAL_ONLY",
+        "K1_CANONICAL_PLUS_SEMANTICA"
+      ],
+      "repetitions": 3,
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "KCASE-08",
+      "fixture_class": "mandatory_context",
+      "request": "top-kに出ない必須禁止条件",
+      "fixture_preparation": "A4 builds a minimal deterministic source/edge set before comparison; exact expected IDs and hashes frozen by independent A3 before any measured run",
+      "oracle": "正本closureから必ず保持",
+      "conditions": [
+        "K0_CANONICAL_ONLY",
+        "K1_CANONICAL_PLUS_SEMANTICA"
+      ],
+      "repetitions": 3,
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "KCASE-09",
+      "fixture_class": "memory",
+      "request": "過去の完了記憶と未完了task",
+      "fixture_preparation": "A4 builds a minimal deterministic source/edge set before comparison; exact expected IDs and hashes frozen by independent A3 before any measured run",
+      "oracle": "現在の合否を書き換えない",
+      "conditions": [
+        "K0_CANONICAL_ONLY",
+        "K1_CANONICAL_PLUS_SEMANTICA"
+      ],
+      "repetitions": 3,
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "KCASE-10",
+      "fixture_class": "unavailable",
+      "request": "SDK停止中の必要資料取得",
+      "fixture_preparation": "A4 builds a minimal deterministic source/edge set before comparison; exact expected IDs and hashes frozen by independent A3 before any measured run",
+      "oracle": "正本が揃う時だけ限定fallback",
+      "conditions": [
+        "K0_CANONICAL_ONLY",
+        "K1_CANONICAL_PLUS_SEMANTICA"
+      ],
+      "repetitions": 3,
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "KCASE-11",
+      "fixture_class": "namespace",
+      "request": "同名要求の別project",
+      "fixture_preparation": "A4 builds a minimal deterministic source/edge set before comparison; exact expected IDs and hashes frozen by independent A3 before any measured run",
+      "oracle": "ID/trust-domainで分離",
+      "conditions": [
+        "K0_CANONICAL_ONLY",
+        "K1_CANONICAL_PLUS_SEMANTICA"
+      ],
+      "repetitions": 3,
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "KCASE-12",
+      "fixture_class": "middle_clause",
+      "request": "長文中央の例外条件",
+      "fixture_preparation": "A4 builds a minimal deterministic source/edge set before comparison; exact expected IDs and hashes frozen by independent A3 before any measured run",
+      "oracle": "短縮表示から原本を取得し例外を保持",
+      "conditions": [
+        "K0_CANONICAL_ONLY",
+        "K1_CANONICAL_PLUS_SEMANTICA"
+      ],
+      "repetitions": 3,
+      "status": "NOT_RUN"
+    }
+  ],
+  "runs": 72,
+  "replicate_unit": "case x condition x repeat; fixed model/profile/grant/source",
+  "gold_visibility": "hidden evaluator expected IDs and forbidden IDs are not passed to the agent"
+}

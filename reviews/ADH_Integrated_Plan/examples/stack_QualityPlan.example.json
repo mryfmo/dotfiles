@@ -1,0 +1,22 @@
+{
+  "plan_id": "example-quality",
+  "project_id": "example-project",
+  "release_set_id": "example-release-not-qualified",
+  "stage": "pre_commit",
+  "mode": "check",
+  "source_basis": "index",
+  "source_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+  "profile_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+  "rule_inventory_digest": "3333333333333333333333333333333333333333333333333333333333333333",
+  "toolchain_digest": "4444444444444444444444444444444444444444444444444444444444444444",
+  "trusted_config_ref": "example-approved-profile",
+  "targets": [
+    "example.ts"
+  ],
+  "required_check_ids": [
+    "lint-js",
+    "format-check"
+  ],
+  "execution_binding_ref": "example-private-index-export",
+  "grant_ref": "example-not-an-actual-grant"
+}

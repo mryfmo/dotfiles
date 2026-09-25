@@ -432,6 +432,7 @@ class ReviewGuardTest(unittest.TestCase):
 
     def test_pr_feedback_accepts_complete_root_cause_dispositions(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
+        self.commit_on_branch("docs/fix.md")
         commit = self.head_commit()
         feedback = self.write_feedback(
             [
@@ -450,6 +451,25 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertIn(f"PR feedback evidence accepted: {feedback}", result.stdout)
         self.assertIn("Review not required", result.stdout)
+
+    def test_pr_feedback_fixed_commit_must_be_in_the_pr_range(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        base_commit = self.head_commit()
+        run(["git", "switch", "-c", "elsewhere"], self.temp_dir)
+        (self.temp_dir / "other.md").write_text("other\n")
+        run(["git", "add", "other.md"], self.temp_dir)
+        run(["git", "commit", "-m", "elsewhere"], self.temp_dir)
+        unrelated_commit = self.head_commit()
+        run(["git", "switch", "main"], self.temp_dir)
+        self.commit_on_branch("docs/fix.md")
+        for label, commit in (("predates the base", base_commit), ("not in HEAD", unrelated_commit)):
+            with self.subTest(case=label):
+                feedback = self.write_feedback(
+                    [{"source": "review_comment", "level": "comment", "disposition": f"fixed:{commit[:7]}"}]
+                )
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn(f"cites commit {commit[:7]} outside main..HEAD", result.stdout)
 
     def test_explicit_disable_skips_guard(self) -> None:
         self.touch_lifecycle_script()

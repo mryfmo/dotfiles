@@ -34,7 +34,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.old_root = self.module.ROOT
         self.temp_dir = Path(tempfile.mkdtemp(prefix="validate-agent-assets-test-"))
         self.module.ROOT = self.temp_dir
-        self.required_agmsg_writable_roots = sorted(self.module.REQUIRED_AGMSG_WRITABLE_ROOTS)
+        self.required_agmsg_writable_roots = sorted(
+            self.module.REQUIRED_AGMSG_WRITABLE_ROOTS
+        )
         (self.temp_dir / "home/dot_codex").mkdir(parents=True)
         (self.temp_dir / "home/.chezmoitemplates").mkdir(parents=True)
 
@@ -42,7 +44,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.module.ROOT = self.old_root
         shutil.rmtree(self.temp_dir)
 
-    def write_codex_config(self, sandbox_workspace_write: str) -> None:
+    def write_codex_config(
+        self, sandbox_workspace_write: str, projects_toml: str = ""
+    ) -> None:
         (self.temp_dir / "home/.chezmoitemplates/codex-config-managed.toml").write_text(
             "\n".join(
                 [
@@ -63,13 +67,50 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     'inherit = "core"',
                     'set = { PATH = "{{ .chezmoi.homeDir }}/.local/bin:/usr/bin:/bin" }',
                     "",
+                    projects_toml,
                 ]
             )
         )
 
+    def write_repo_claude_settings(self, command: str) -> None:
+        (self.temp_dir / ".claude").mkdir(parents=True, exist_ok=True)
+        (self.temp_dir / ".claude/settings.json").write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "SessionEnd": [
+                            {
+                                "matcher": "*",
+                                "hooks": [
+                                    {
+                                        "type": "command",
+                                        "command": command,
+                                        "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"],
+                                    }
+                                ],
+                            }
+                        ]
+                    }
+                }
+            )
+        )
+
+    def test_repo_claude_settings_reject_machine_specific_interpreter(self) -> None:
+        self.write_repo_claude_settings(
+            "/Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14"
+        )
+        with self.assertRaises(SystemExit):
+            self.module.validate_repo_claude_settings_portable()
+
+    def test_repo_claude_settings_accept_portable_interpreter(self) -> None:
+        self.write_repo_claude_settings("python3")
+        self.module.validate_repo_claude_settings_portable()
+
     def test_codex_modify_script_requires_executable_source(self) -> None:
         path = self.temp_dir / "home/dot_codex/modify_private_config.toml"
-        path.write_text("RUNTIME_PREFIXES = ('hooks.state', 'marketplaces', 'tui.model_availability_nux', 'projects')\n")
+        path.write_text(
+            "RUNTIME_PREFIXES = ('hooks.state', 'marketplaces', 'tui.model_availability_nux', 'projects')\n"
+        )
         path.chmod(0o644)
 
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
@@ -94,7 +135,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         for relative_path, _file_type in self.module.HOOK_COMPOSITION_SOURCES.values():
             self.write_text_file(str(relative_path), (ROOT / relative_path).read_text())
 
-    def update_json_hook_source(self, relative_path: str, event: str, groups: list[dict]) -> None:
+    def update_json_hook_source(
+        self, relative_path: str, event: str, groups: list[dict]
+    ) -> None:
         path = self.temp_dir / relative_path
         data = json.loads(path.read_text())
         data["hooks"][event] = groups
@@ -172,13 +215,19 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 {
                     "hooks": [
                         {"type": "command", "command": "audit-hook", "timeout": 5},
-                        {"type": "command", "command": "permgate claude", "timeout": 10},
+                        {
+                            "type": "command",
+                            "command": "permgate claude",
+                            "timeout": 10,
+                        },
                     ]
                 }
             ],
         )
 
-        self.assert_hook_composition_fails("permgate-first source=claude event=PermissionRequest")
+        self.assert_hook_composition_fails(
+            "permgate-first source=claude event=PermissionRequest"
+        )
 
     def test_hook_composition_rejects_sync_timeout_over_budget(self) -> None:
         self.copy_managed_hook_sources()
@@ -195,7 +244,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             ],
         )
 
-        self.assert_hook_composition_fails("sync-timeout-budget source=claude event=Stop total=31s limit=30s")
+        self.assert_hook_composition_fails(
+            "sync-timeout-budget source=claude event=Stop total=31s limit=30s"
+        )
 
     def test_hook_composition_pins_sessionstart_order(self) -> None:
         self.copy_managed_hook_sources()
@@ -210,7 +261,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.write_codex_config("network_access = false")
         manifest = {
             "model_profiles": {
-                "standard": {"codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}}
+                "standard": {
+                    "codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}
+                }
             },
             "interactive_profile": "standard",
             "codex": {
@@ -227,7 +280,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 "marketplaces": {},
                 "hooks": {},
                 "projects": {},
-            }
+            },
         }
 
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
@@ -240,7 +293,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         )
         manifest = {
             "model_profiles": {
-                "standard": {"codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}}
+                "standard": {
+                    "codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}
+                }
             },
             "interactive_profile": "standard",
             "codex": {
@@ -257,17 +312,21 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 "marketplaces": {},
                 "hooks": {},
                 "projects": {},
-            }
+            },
         }
 
         self.module.validate_codex_config(manifest)
 
     def test_codex_sandbox_workspace_write_requires_all_agmsg_roots(self) -> None:
         roots = ["{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db"]
-        self.write_codex_config("network_access = false\nwritable_roots = " + json.dumps(roots))
+        self.write_codex_config(
+            "network_access = false\nwritable_roots = " + json.dumps(roots)
+        )
         manifest = {
             "model_profiles": {
-                "standard": {"codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}}
+                "standard": {
+                    "codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}
+                }
             },
             "interactive_profile": "standard",
             "codex": {
@@ -284,13 +343,77 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 "marketplaces": {},
                 "hooks": {},
                 "projects": {},
-            }
+            },
         }
 
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_codex_config(manifest)
 
-    def test_agmsg_script_modes_accept_prefixed_entrypoints_and_lib_helpers(self) -> None:
+    def codex_config_manifest(self, projects: dict) -> dict:
+        return {
+            "model_profiles": {
+                "standard": {
+                    "codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}
+                }
+            },
+            "interactive_profile": "standard",
+            "codex": {
+                "sandbox_workspace_write": {
+                    "network_access": False,
+                    "writable_roots": self.required_agmsg_writable_roots,
+                },
+                "shell_environment_policy": {
+                    "inherit": "core",
+                    "set": {"PATH": "{{ .chezmoi.homeDir }}/.local/bin:/usr/bin:/bin"},
+                },
+                "tui": {},
+                "plugins": {},
+                "marketplaces": {},
+                "hooks": {},
+                "projects": projects,
+            },
+        }
+
+    def write_codex_config_with_projects(self, projects_toml: str) -> None:
+        self.write_codex_config(
+            "network_access = false\nwritable_roots = "
+            f"{json.dumps(self.required_agmsg_writable_roots)}",
+            projects_toml=projects_toml,
+        )
+
+    def test_codex_projects_reject_hard_coded_macos_home(self) -> None:
+        self.write_codex_config_with_projects(
+            '[projects."/Users/mryfmo/Workspace/dotfiles"]\ntrust_level = "trusted"\n'
+        )
+        manifest = self.codex_config_manifest(
+            {"/Users/mryfmo/Workspace/dotfiles": {"trust_level": "trusted"}}
+        )
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_codex_config(manifest)
+
+    def test_codex_projects_reject_missing_working_tree_placeholder(self) -> None:
+        self.write_codex_config_with_projects(
+            '[projects."/repo"]\ntrust_level = "trusted"\n'
+        )
+        manifest = self.codex_config_manifest({"/repo": {"trust_level": "trusted"}})
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_codex_config(manifest)
+
+    def test_codex_projects_accept_working_tree_placeholder(self) -> None:
+        self.write_codex_config_with_projects(
+            '[projects."{{ .chezmoi.workingTree }}"]\ntrust_level = "trusted"\n'
+        )
+        manifest = self.codex_config_manifest(
+            {"{{ .chezmoi.workingTree }}": {"trust_level": "trusted"}}
+        )
+
+        self.module.validate_codex_config(manifest)
+
+    def test_agmsg_script_modes_accept_prefixed_entrypoints_and_lib_helpers(
+        self,
+    ) -> None:
         self.write_agmsg_script("executable_send.sh")
         self.write_agmsg_script("release/executable_sync-version.sh")
         self.write_agmsg_script("lib/storage.sh", executable=False)
@@ -310,7 +433,10 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             self.module.validate_agmsg_script_modes()
 
     def test_secret_scan_checks_extensionless_executables(self) -> None:
-        path = self.write_text_file("home/dot_local/bin/common/executable_leaky", "api_" + 'key = "real-secret"\n')
+        path = self.write_text_file(
+            "home/dot_local/bin/common/executable_leaky",
+            "api_" + 'key = "real-secret"\n',
+        )
         path.chmod(0o755)
 
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
@@ -347,7 +473,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_no_obvious_secrets()
-
 
     def write_manifest(self, hook_command: str) -> None:
         path = self.temp_dir / "home/dot_agents/agent-config.yaml"

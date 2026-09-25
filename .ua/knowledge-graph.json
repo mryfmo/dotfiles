@@ -28,8 +28,8 @@
       "GitHub Actions"
     ],
     "description": "Personal dotfiles managed with chezmoi.",
-    "analyzedAt": "2026-08-29T02:31:34.646Z",
-    "gitCommitHash": "607e6dc61e20075eb2e560b922d6cdcfae831fb2"
+    "analyzedAt": "2026-08-29T06:05:31.413Z",
+    "gitCommitHash": "d91b835021981a2fb604c61e2ef324f972cc8795"
   },
   "nodes": [
     {
@@ -11134,7 +11134,7 @@
       "type": "file",
       "name": "executable_herdr-agents",
       "filePath": "home/dot_local/bin/common/executable_herdr-agents",
-      "summary": "Managed dotfile or support asset at home/dot_local/bin/common/executable_herdr-agents.",
+      "summary": "Herdr workspace helper that provisions shell-ready Claude and Codex agent panes, repairs managed layouts, validates agent registrations, and bootstraps agmsg delivery.",
       "tags": [
         "shell-script",
         "automation",
@@ -13047,7 +13047,7 @@
       "type": "file",
       "name": "test_herdr_agents.py",
       "filePath": "tests/unit/test_herdr_agents.py",
-      "summary": "Large integration-style unit suite for Herdr workspace attachment, pane layout repair, agent restart behavior, agmsg bootstrap delivery, terminal configuration, and CLI shadow cleanup.",
+      "summary": "Large integration-style unit suite for Herdr workspace attachment, pane readiness and layout repair, agent registration and restart behavior, model-profile routing, agmsg delivery, and terminal configuration.",
       "tags": [
         "test",
         "herdr",
@@ -13063,9 +13063,9 @@
       "filePath": "tests/unit/test_herdr_agents.py",
       "lineRange": [
         33,
-        1439
+        1694
       ],
-      "summary": "Creates fake Herdr, agmsg, shell, and workspace state to verify idempotent pane topology repair, safe agent reuse, delivery setup, and Ghostty command routing.",
+      "summary": "Creates fake Herdr, agmsg, shell, and workspace state to verify shell-ready pane provisioning, safe agent registration and reuse, layout repair, delivery setup, profile routing, and Ghostty command behavior.",
       "tags": [
         "test",
         "herdr",

@@ -147,7 +147,7 @@ installerは次を行います。
 - `.claude/hooks/`へwrapperを配置
 - `.claude/contextdb/contextdb/`へruntimeを配置
 - 既存 `.claude/settings.json` をbackupしてhook定義をmerge
-- 実行中のPythonの絶対pathをhook設定へ保存
+- hook設定のPythonは既定で `python3`(hook実行時にPATH解決、機体非依存)。`--python <path>` で明示pathを保存
 - `CLAUDE.md`へ利用手順を追記
 - `.gitignore`へDB、spool、health logの除外を追記
 - project directoryを移動しても変わらない永続`project-id`を初回hook時に原子的生成

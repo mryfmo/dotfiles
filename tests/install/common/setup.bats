@@ -39,6 +39,39 @@ create_chezmoi_release_fixture() {
     grep -qx '    system: "client"' <<< "${output}"
 }
 
+@test "[common] chezmoi config defaults name and usePrivate in CI without prompting" {
+    local context='"chezmoi" (dict "homeDir" "/tmp/home" "workingTree" "/tmp/source"'
+
+    # No --promptString/--promptBool override is passed: a regression back to
+    # promptString/promptBool for these two keys would render the literal
+    # prompt text instead of these CI defaults (chezmoi execute-template's
+    # non-interactive stub echoes the prompt back rather than failing, unlike
+    # a real chezmoi init with no tty).
+    run render_role_config "(dict \"email\" \"ci@example.invalid\" \"system\" \"client\" ${context} \"os\" \"linux\"))" --init
+    [ "${status}" -eq 0 ]
+    grep -qx '    name: "CI"' <<< "${output}"
+    grep -qx '    usePrivate: false' <<< "${output}"
+
+    # CI must win over the darwin usePrivate default too.
+    run render_role_config "(dict \"email\" \"ci@example.invalid\" \"system\" \"client\" ${context} \"os\" \"darwin\"))" --init
+    [ "${status}" -eq 0 ]
+    grep -qx '    name: "CI"' <<< "${output}"
+    grep -qx '    usePrivate: false' <<< "${output}"
+}
+
+@test "[common] chezmoi config honors explicit name and usePrivate even in CI" {
+    local context='"chezmoi" (dict "homeDir" "/tmp/home" "workingTree" "/tmp/source"'
+
+    run render_role_config "(dict \"email\" \"ci@example.invalid\" \"name\" \"Explicit\" \"system\" \"client\" \"usePrivate\" true ${context} \"os\" \"linux\"))" --init
+    [ "${status}" -eq 0 ]
+    grep -qx '    name: "Explicit"' <<< "${output}"
+    grep -qx '    usePrivate: true' <<< "${output}"
+}
+
+@test "[common] Sheldon language plugin preserves an existing LANG" {
+    grep -Fq 'export LANG="${LANG:-en_US.UTF-8}"' home/dot_config/sheldon/plugin_sources/common.toml
+}
+
 @test "[common] chezmoi config rejects invalid roles before rendering YAML" {
     local context='"chezmoi" (dict "homeDir" "/tmp/home" "workingTree" "/tmp/source" "os" "linux")'
     local role
@@ -87,6 +120,11 @@ create_chezmoi_release_fixture() {
     update_block="$(sed -n "${update_line},${apply_line}p" setup.sh)"
     grep -q -- '--apply=false' <<< "${update_block}"
     grep -q -- '--init' <<< "${update_block}"
+}
+
+@test "[common] setup.sh uses built-in Git only when external Git is unavailable" {
+    [ "$(grep -c -- '--use-builtin-git auto' setup.sh)" -eq 2 ]
+    ! grep -q -- '--use-builtin-git true' setup.sh
 }
 
 @test "[common] setup.sh installs Homebrew non-interactively and continues from its prefix" {

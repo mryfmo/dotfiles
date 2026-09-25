@@ -29,6 +29,10 @@ function teardown() {
     [ -x "$(command -v mise)" ]
 }
 
+@test "[common] mise pin includes the Linux arm64 aqua bin-path fix" {
+    [ "${MISE_VERSION}" = "v2026.9.12" ]
+}
+
 @test "[common] run_mise_install vets exact npm tools before the seven-day batch" {
     printf "min-release-age=99\n" > "${HOME}/.npmrc"
 
@@ -128,7 +132,7 @@ install --locked --before ${DEFAULT_NPM_MIN_RELEASE_AGE_DAYS}d" ]
 }
 
 @test "[common] herdr is installed by mise on Linux and macOS" {
-    run grep -F '"github:ogulcancelik/herdr" = "0.8.0"' home/dot_mise/config.toml
+    run grep -E '^"github:ogulcancelik/herdr" = "[^"]+"$' home/dot_mise/config.toml
     [ "${status}" -eq 0 ]
 }
 

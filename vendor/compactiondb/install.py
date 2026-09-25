@@ -28,10 +28,22 @@ GITIGNORE_LINES = [
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Install or upgrade CompactionDB in a Claude Code project")
     parser.add_argument("--project", default=".", help="target project root")
-    parser.add_argument("--python", default=sys.executable, help="Python executable stored in hook settings")
+    parser.add_argument(
+        "--python",
+        default="python3",
+        help="Python executable stored in hook settings; the default is a bare command "
+        "resolved via PATH at hook time so committed settings stay machine-independent",
+    )
     parser.add_argument("--skip-instructions", action="store_true", help="do not update CLAUDE.md")
     parser.add_argument("--migrate-legacy", action="store_true", help="import .claude/logs/context_log.db after installation")
     return parser.parse_args()
+
+
+def resolve_python(value: str) -> str:
+    """Resolve a filesystem path; keep a bare command name (PATH lookup) untouched."""
+    if os.sep in value or value.startswith("~"):
+        return str(Path(value).expanduser().resolve())
+    return value
 
 
 def canonical(value: Any) -> str:
@@ -177,7 +189,8 @@ def main() -> int:
         if not isinstance(current, dict):
             raise ValueError(f"settings must be a JSON object: {settings_path}")
     fragment = json.loads((source / ".claude" / "settings.fragment.json").read_text(encoding="utf-8"))
-    fragment = replace_python(fragment, str(Path(args.python).expanduser().resolve()))
+    python = resolve_python(args.python)
+    fragment = replace_python(fragment, python)
     merged, added, removed = merge_settings(current, fragment)
     settings_backup = backup(settings_path) if settings_path.exists() and canonical(current) != canonical(merged) else None
     settings_path.write_text(json.dumps(merged, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -189,7 +202,7 @@ def main() -> int:
     gitignore_added = update_gitignore(target / ".gitignore")
 
     print(f"project={target}")
-    print(f"python={Path(args.python).expanduser().resolve()}")
+    print(f"python={python}")
     print(f"hook_groups_added={added}")
     print(f"previous_contextdb_hook_groups_removed={removed}")
     print(f"claude_md_updated={str(instructions_changed).lower()}")
@@ -199,10 +212,10 @@ def main() -> int:
 
     if args.migrate_legacy:
         migration = source / "migrate_legacy.py"
-        code = os.spawnv(os.P_WAIT, str(Path(args.python).expanduser().resolve()), [str(args.python), str(migration), "--project", str(target)])
+        code = os.spawnvp(os.P_WAIT, python, [python, str(migration), "--project", str(target)])
         if code:
             return code
-    print(f"Run: {Path(args.python).expanduser().resolve()} .claude/hooks/contextdb_cli.py health")
+    print(f"Run: {python} .claude/hooks/contextdb_cli.py health")
     return 0
 
 

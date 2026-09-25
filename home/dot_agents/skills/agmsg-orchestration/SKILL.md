@@ -27,7 +27,7 @@ Use this skill for structured multi-agent work where a Claude Code orchestrator 
 
 - Delegate all repository-mutating work — file edits, builds, test runs, and git state changes — to resident Codex workers, with at most one resident worker per git worktree and sequential assignments within one worktree. Add worktrees for parallelism; never use parallel `codex exec` or per-task Codex spawning. agmsg/herdr control-plane commands (`delivery.sh`, `watch.sh`, `actas-claim.sh`, `send.sh`, `join.sh`, and herdr agent/pane commands) are orchestrator-side exemptions.
 - A parallel assignment is valid only when every concurrent worker has all four of: (1) its own git worktree registered as its agmsg `project`; (2) the shared default agmsg store for same-repository work, never a per-worker `AGMSG_STORAGE_PATH`, because identity-addressed delivery and worktree-specific `whoami` already isolate inboxes and one activation watcher observes every RESULT/PONG without extra watchers (which `watch.sh` actas locking cannot support for one claimed identity); (3) an `-aNNN` identity suffix on every concurrent worker, including the first; and (4) an AGMSG-TASK whose expanded `allowed_files` are pairwise disjoint from all other in-flight tasks. The orchestrator verifies disjointness and performs all cross-worktree merge, rebase, and conflict integration.
-- At parallel-worker teardown, run `delivery.sh set off <type> <worker worktree path>` to stop every watcher on that exact path, then `leave.sh <team> <worker identity>` for each finished worker. The last member of a task-scoped team leaves so the team is deleted while message history remains. Verify with `identities.sh <project> <type>`: one line is healthy, multiple lines are leftover registrations that trigger the herdr-agents ambiguity warning at attach and must be cleaned with `leave.sh`, and zero for a project that should remain active must be restored with `join.sh`, never leave-side edits.
+- At parallel-worker teardown, run `delivery.sh set off <type> <worker worktree path>` to stop every watcher on that exact path, then `leave.sh <team> <worker identity>` for each finished worker. The last member of a task-scoped team leaves so the team is deleted while message history remains. Verify with `identities.sh <project> <type>` by counting distinct identity names in the second TSV column: one distinct name is healthy, including multiple rows for that name across teams. More than one distinct name indicates leftover identities that trigger the herdr-agents ambiguity warning at attach and must be cleaned with `leave.sh`; preserve legitimate multi-team memberships of the retained name. Zero names for a project that should remain active must be restored with `join.sh`, never leave-side edits.
 
 ## Identity, delivery, and storage
 
@@ -78,6 +78,8 @@ Tasks that create persistent side effects outside the repository working tree, s
 
 RESULT reports must mark durable facts with the same CompactionDB marker contract. In CompactionDB-opted-in projects, the worker runs `python3 .claude/hooks/contextdb_cli.py memory add` before completion and includes the exact command or commands in the RESULT report.
 
+RESULT validation files must contain the verbatim output of every validation command actually executed — not summaries or PASS labels alone — and any identifier the report claims to have created (commit hash, PR number, CompactionDB memory/decision ID) must appear in that pasted output. A claim without its pasted output is treated as unexecuted and grounds for `status=revise`.
+
 `AGMSG-ACCEPTANCE v1` fields:
 
 ```text
@@ -113,7 +115,7 @@ AGMSG-PONG v1 task_id=<id> status=alive|blocked note=<short-note>
 3. Write a task file that includes objective, scope, allowed files, forbidden actions, expected artifacts, validation commands, and max turns.
 4. Start worker panes if needed. With herdr, wake or prompt a worker with `herdr pane run <pane_id> "<text>"` (text plus Enter in one call). Do not use `pane send-text` followed by `send-keys Enter`; the separate Enter races the TUI composer and fails nondeterministically. After every wake, verify delivery via the messages.db `read_at` column and only escalate to a pane restart if a verified `pane run` wake stays undelivered.
 5. Configure delivery deliberately. `delivery.sh set turn` is useful for turn-end inbox checks; changing delivery mode can kill project watcher processes, so do it before starting long-running project watchers.
-6. Send `AGMSG-TASK v1` with the exact artifact paths and `done_signal=AGMSG-RESULT`.
+6. Send `AGMSG-TASK v1` with the exact artifact paths and `done_signal=AGMSG-RESULT`. When the worker has a Herdr pane, use `agmsg-dispatch <team> <from> <to> <pane_id> "<message>"` for orchestrator messages, including acceptance and revisions: it validates the pane before sending, wakes an idle pane with a generic inbox prompt, and blocks until that message's `read_at` is set. It polls at most every five seconds within one `AGMSG_DISPATCH_TIMEOUT` budget (default 120 seconds), rechecks pane status halfway through for one possible retry, and reports the sent message ID on delivery failure; verify that receipt before resending. It honors `AGMSG_STORAGE_PATH`. A bare `send.sh` to an idle Herdr worker is a protocol violation; pane-less workers keep `send.sh <team> <from> <to> "<message>"` plus explicit `read_at` verification through their configured delivery path.
 7. Track `max_turns`. Use `AGMSG-PING` for liveness if a worker stalls.
 8. On `AGMSG-RESULT`, read the task file and every referenced artifact before deciding.
 9. For a RESULT carrying `effects`, verify that every declared effect has the report's stated reverse mapping before acceptance; record any irreversible effect in the acceptance note.
@@ -126,7 +128,7 @@ AGMSG-PONG v1 task_id=<id> status=alive|blocked note=<short-note>
 3. Treat `allowed_files` as the edit boundary. If it says to see the task file, read that section and follow it exactly.
 4. Do not perform any `forbidden_actions`.
 5. Write artifacts to the exact expected paths. Do not invent alternate paths.
-6. Put command outputs and validation evidence in `expected_validation_file`.
+6. Put the verbatim output of every validation command in `expected_validation_file`; every identifier your report claims to have created must appear in that output.
 7. Put sandbox/OpenSandbox status or fallback rationale in `expected_sandbox_file`.
 8. Put reusable learning triage in `expected_learning_file`; do not promote rules directly unless the task explicitly allows it.
 9. Put AutoSkill run status or a not-used record in `expected_autoskill_file`.

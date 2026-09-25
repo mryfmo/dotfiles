@@ -339,6 +339,23 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             warnings,
         )
 
+    def test_crit_codex_skills_are_not_orphans(self) -> None:
+        home = self.temp_dir / "home"
+        source = self.temp_dir / "repo-source"
+        skills = home / ".agents/skills"
+        (source / "dot_agents/skills/managed").mkdir(parents=True)
+        for name in ("crit", "crit-cli", "crit-story", "unlisted-skill"):
+            (skills / name).mkdir(parents=True)
+
+        warnings = self.module.orphaned_asset_warnings(home, source)
+
+        self.assertEqual(
+            [
+                f"WARN: orphaned agent asset: {skills / 'unlisted-skill'}; manual review required"
+            ],
+            warnings,
+        )
+
     def test_missing_terminal_browser_receipt_is_harmless(self) -> None:
         self.assertEqual(
             set(),
@@ -369,6 +386,22 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertEqual(
             ["skills has unexpected files: terminal-browser/SKILL.md"], without_ignore
         )
+
+    def test_compare_claude_skills_ignores_cowork_synced_subtree(self) -> None:
+        (self.source_root / "dot_claude/skills").mkdir(parents=True)
+        synced = self.target_root / ".claude/skills/synced/some-cowork-skill"
+        synced.mkdir(parents=True)
+        (synced / "SKILL.md").write_text("content\n")
+        original_source_root = self.module.SOURCE_ROOT
+        original_home = self.module.HOME
+        try:
+            self.module.SOURCE_ROOT = self.source_root
+            self.module.HOME = self.target_root
+
+            self.assertEqual([], self.module.compare_claude_skills())
+        finally:
+            self.module.SOURCE_ROOT = original_source_root
+            self.module.HOME = original_home
 
     def test_repair_actions_map_only_detected_file_drift(self) -> None:
         missing = self.target_root / "missing.json"
@@ -580,6 +613,19 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             ),
             action.command,
         )
+
+    def test_missing_crit_asset_is_repairable(self) -> None:
+        missing = self.target_root / ".local/bin/crit"
+
+        action = self.module.asset_repair_action(
+            self.module.AssetFinding(
+                "ensure_crit_cli",
+                (missing,),
+                {"commands": ["install pinned crit"]},
+            )
+        )
+
+        self.assertEqual("ensure_crit_cli", action.command[-1])
 
     def test_sourced_asset_repair_runs_no_main_or_sibling_step(self) -> None:
         updater = self.temp_dir / "strict-update-agent-assets.sh"

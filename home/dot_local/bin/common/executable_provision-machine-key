@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+
+# @file home/dot_local/bin/common/executable_provision-machine-key
+# @brief Provision a per-machine SSH key for commit signing and push authentication.
+# @description
+#   Generates ~/.ssh/id_ed25519 non-interactively when it does not already
+#   exist, then prints the exact `gh ssh-key add` commands needed to register
+#   it with the operator's GitHub account for both authentication and commit
+#   signing. Idempotent: an existing key is only displayed, never regenerated.
+# @example
+#   provision-machine-key
+
+set -Eeuo pipefail
+
+readonly MACHINE_SSH_KEY_PATH="${HOME%/}/.ssh/id_ed25519"
+readonly MACHINE_SSH_PUBLIC_KEY_PATH="${MACHINE_SSH_KEY_PATH}.pub"
+
+# @description Return the email address used as the SSH key comment.
+function ssh_key_email() {
+    local configured_email
+    configured_email="$(git config --global --get user.email || true)"
+
+    if [[ -n "${configured_email}" ]]; then
+        printf '%s\n' "${configured_email}"
+        return 0
+    fi
+
+    printf '%s@%s\n' "${USER:-user}" "$(hostname -s 2> /dev/null || hostname)"
+}
+
+# @description Generate the machine SSH key through ssh-keygen when it does not already exist.
+function ensure_machine_ssh_key() {
+    if [[ -r "${MACHINE_SSH_PUBLIC_KEY_PATH}" ]]; then
+        printf 'Machine SSH key already exists: %s\n' "${MACHINE_SSH_PUBLIC_KEY_PATH}"
+        return 0
+    fi
+
+    mkdir -p "${HOME%/}/.ssh"
+    chmod 0700 "${HOME%/}/.ssh"
+
+    printf 'Generating machine SSH key: %s\n' "${MACHINE_SSH_KEY_PATH}"
+    ssh-keygen -t ed25519 -C "$(ssh_key_email) ($(hostname -s 2> /dev/null || hostname))" \
+        -f "${MACHINE_SSH_KEY_PATH}" -N ""
+    chmod 0600 "${MACHINE_SSH_KEY_PATH}"
+    chmod 0644 "${MACHINE_SSH_PUBLIC_KEY_PATH}"
+}
+
+# @description Print the manual GitHub registration steps for the public key.
+function print_registration_instructions() {
+    printf '\nRegister the public key with the operator'\''s GitHub account for BOTH scopes:\n\n'
+    printf '  gh ssh-key add %q --type authentication\n' "${MACHINE_SSH_PUBLIC_KEY_PATH}"
+    printf '  gh ssh-key add %q --type signing\n\n' "${MACHINE_SSH_PUBLIC_KEY_PATH}"
+    printf 'Without the signing registration, commit.gpgsign=true environments cannot create commits.\n\n'
+    printf 'Public key:\n'
+    cat "${MACHINE_SSH_PUBLIC_KEY_PATH}"
+}
+
+# @description Run the machine key provisioning flow.
+function main() {
+    ensure_machine_ssh_key
+    print_registration_instructions
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main
+fi

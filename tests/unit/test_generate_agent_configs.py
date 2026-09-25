@@ -90,7 +90,7 @@ def sample_manifest() -> dict:
             "enabledPlugins": {},
         },
         "plugins": {
-            "marketplace_path": "home/dot_agents/plugins/marketplace.json",
+            "marketplace_path": "home/dot_agents/plugins/create_marketplace.json",
             "marketplace": {"displayName": "Local", "name": "local"},
         },
         "mcp_servers": {},
@@ -107,6 +107,24 @@ class GenerateAgentConfigsTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.module.ROOT = self.old_root
         shutil.rmtree(self.temp_dir)
+
+    def test_repository_marketplace_is_a_runtime_owned_seed(self) -> None:
+        manifest = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
+        seed = ROOT / "home/dot_agents/plugins/create_marketplace.json"
+        managed = ROOT / "home/dot_agents/plugins/marketplace.json"
+        ignore = (ROOT / "home/.chezmoiignore").read_text()
+
+        self.assertIn(
+            "marketplace_path: home/dot_agents/plugins/create_marketplace.json",
+            manifest,
+        )
+        self.assertTrue(seed.is_file())
+        self.assertFalse(managed.exists())
+        self.assertIn(
+            'stat (joinPath .chezmoi.homeDir ".agents/plugins/marketplace.json")',
+            ignore,
+        )
+        self.assertIn(".agents/plugins/marketplace.json", ignore)
 
     def test_claude_skill_symlink_outputs_strip_executable_target_prefix(self) -> None:
         source = (
@@ -175,9 +193,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertIn('model_reasoning_effort = "medium"', result.stdout)
         self.assertIn("[hooks.state]", result.stdout)
         self.assertIn("trusted = true", result.stdout)
-        self.assertNotIn(
-            self.temp_dir / "home/dot_codex/standard.config.toml", outputs
-        )
+        self.assertNotIn(self.temp_dir / "home/dot_codex/standard.config.toml", outputs)
 
     def test_security_profile_renders_launcher_and_expanded_notify(self) -> None:
         manifest = sample_manifest()
@@ -221,11 +237,11 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             'MODEL_PROFILE_SECURITY_CLAUDE_ARGS="--model claude-fable-5 --effort high"',
             env,
         )
-        self.assertIn(
-            'MODEL_PROFILE_SECURITY_CODEX_ARGS="--profile security"', env
-        )
+        self.assertIn('MODEL_PROFILE_SECURITY_CODEX_ARGS="--profile security"', env)
 
-    def test_profile_modify_scripts_are_byte_idempotent_with_runtime_state(self) -> None:
+    def test_profile_modify_scripts_are_byte_idempotent_with_runtime_state(
+        self,
+    ) -> None:
         outputs = self.module.expected_outputs(sample_manifest())
         standard_profile = (
             self.temp_dir / "home/dot_codex/modify_private_standard.config.toml"
@@ -355,12 +371,20 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         current = '[hooks.state."hook"]\ntrusted_hash = "sha256:profile"\n'
 
         result = subprocess.run(
-            [str(profile)], input=current, text=True, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, env={**os.environ, "HOME": str(home)}, check=False,
+            [str(profile)],
+            input=current,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env={**os.environ, "HOME": str(home)},
+            check=False,
         )
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn('warning: hook trust divergence for hooks.state."hook": profile=sha256:profile base=sha256:base', result.stderr)
+        self.assertIn(
+            'warning: hook trust divergence for hooks.state."hook": profile=sha256:profile base=sha256:base',
+            result.stderr,
+        )
         self.assertIn('trusted_hash = "sha256:profile"', result.stdout)
 
     def test_profile_modify_scripts_are_quiet_for_matching_hook_trust(self) -> None:
@@ -374,8 +398,13 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         current = '[hooks.state."hook"]\ntrusted_hash = "sha256:same"\n'
 
         result = subprocess.run(
-            [str(profile)], input=current, text=True, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, env={**os.environ, "HOME": str(home)}, check=False,
+            [str(profile)],
+            input=current,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env={**os.environ, "HOME": str(home)},
+            check=False,
         )
 
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -416,18 +445,45 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertIn('command = "permgate codex"', config)
         self.assertNotIn("ccgate", config)
 
+    def test_codex_config_renders_working_tree_project_key(self) -> None:
+        manifest = sample_manifest()
+        manifest["codex"]["projects"] = {
+            "{{ .chezmoi.workingTree }}": {"trust_level": "trusted"}
+        }
+
+        config = self.module.render_codex(manifest)
+
+        self.assertIn('[projects."{{ .chezmoi.workingTree }}"]', config)
+        self.assertNotIn("/Users/mryfmo/", config)
+
     def test_managed_hooks_use_installed_permgate_paths(self) -> None:
-        codex = (
-            ROOT / "home/.chezmoitemplates/codex-config-managed.toml"
-        ).read_text()
+        codex = (ROOT / "home/.chezmoitemplates/codex-config-managed.toml").read_text()
         claude = (
             ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
         ).read_text()
 
-        self.assertIn(
-            "{{ .chezmoi.homeDir }}/.local/bin/common/permgate codex", codex
-        )
+        self.assertIn("{{ .chezmoi.homeDir }}/.local/bin/common/permgate codex", codex)
         self.assertIn("~/.local/bin/common/permgate claude", claude)
+
+    def test_model_profiles_env_renders_worker_kind(self) -> None:
+        manifest = sample_manifest()
+        manifest["worker_kind"] = "claude"
+
+        env = self.module.render_model_profiles_env(manifest)
+
+        self.assertIn('HERDR_AGENTS_WORKER_KIND="claude"', env)
+
+    def test_worker_kind_defaults_to_codex(self) -> None:
+        env = self.module.render_model_profiles_env(sample_manifest())
+
+        self.assertIn('HERDR_AGENTS_WORKER_KIND="codex"', env)
+
+    def test_unknown_worker_kind_fails(self) -> None:
+        manifest = sample_manifest()
+        manifest["worker_kind"] = "banana"
+
+        with self.assertRaises(SystemExit):
+            self.module.render_model_profiles_env(manifest)
 
     def test_unknown_interactive_profile_fails(self) -> None:
         manifest = sample_manifest()

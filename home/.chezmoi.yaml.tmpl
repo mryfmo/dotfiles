@@ -5,6 +5,15 @@
 {{-   $email = promptString "Email address" -}}
 {{- end -}}
 
+{{- $name := "" -}}
+{{- if hasKey . "name" -}}
+{{-   $name = .name -}}
+{{- else if eq (env "CI") "true" -}}
+{{-   $name = "CI" -}}
+{{- else -}}
+{{-   $name = promptString "Full name" -}}
+{{- end -}}
+
 {{- $system := "" -}}
 {{- if hasKey . "system" -}}
 {{-   $system = .system -}}
@@ -18,6 +27,18 @@
 {{-   fail (printf "System must be client or server; got %q" $system) -}}
 {{- end -}}
 
+{{- $usePrivate := false -}}
+{{- if hasKey . "usePrivate" -}}
+{{-   $usePrivate = .usePrivate -}}
+{{- else if eq (env "CI") "true" -}}
+{{-   $usePrivate = false -}}
+{{- /* Default to the private layer on the MacOS default system, like $system */ -}}
+{{- else if eq .chezmoi.os "darwin" -}}
+{{-   $usePrivate = true -}}
+{{- else -}}
+{{-   $usePrivate = promptBool "Use the private dotfiles layer (age key + dotfiles-private)" -}}
+{{- end -}}
+
 {{- $homeDir := .chezmoi.homeDir -}}
 {{- $homeDirName := base $homeDir -}}
 
@@ -25,7 +46,9 @@ sourceDir: {{ .chezmoi.workingTree | quote }}
 
 data:
     email: {{ $email | quote }}
+    name: {{ $name | quote }}
     system: {{ $system | quote }}
+    usePrivate: {{ $usePrivate }}
     homeDir: {{ $homeDir | quote }}
     homeDirName: {{ $homeDirName | quote }}
     username: {{ $homeDirName | quote }}

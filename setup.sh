@@ -298,7 +298,7 @@ function run_chezmoi() {
     # to match the target state.
     "${chezmoi_cmd}" init "${DOTFILES_REPO_URL}" \
         --branch "${BRANCH_NAME}" \
-        --use-builtin-git true \
+        --use-builtin-git auto \
         ${no_tty_option}
 
     # Pull the latest source before applying so repeating the README snippet in
@@ -306,7 +306,7 @@ function run_chezmoi() {
     "${chezmoi_cmd}" update \
         --apply=false \
         --init \
-        --use-builtin-git true \
+        --use-builtin-git auto \
         ${no_tty_option}
 
     # the `age` command requires a tty, but there is no tty in the github actions.

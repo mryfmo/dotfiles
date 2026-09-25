@@ -20,6 +20,12 @@ function run_update_fixture() {
     local assets_exit="${5:-0}"
     local mise_exit="${6:-0}"
     local mise_fail_args="${7:-}"
+    local git_branch="${8:-feature/test}"
+    local git_upstream="${9:-origin/feature/test}"
+    local git_dirty="${10:-0}"
+    local git_pull_exit="${11:-0}"
+    local git_unmerged="${12:-0}"
+    local reload_output="${13:-}"
     local fixture="${BATS_TEST_TMPDIR}/update-${BATS_TEST_NUMBER}"
 
     mkdir -p "${fixture}/bin" "${fixture}/scripts" \
@@ -40,6 +46,16 @@ if [ -n '${mise_fail_args}' ] && [ "\$*" = '${mise_fail_args}' ]; then
 fi
 exit 0
 EOF
+    cat > "${fixture}/bin/git" << EOF
+#!/usr/bin/env bash
+case "\$*" in
+    "branch --show-current") printf '%s\n' '${git_branch}' ;;
+    "rev-parse --abbrev-ref --symbolic-full-name @{upstream}") printf '%s\n' '${git_upstream}' ;;
+    "diff --quiet"|"diff --cached --quiet") exit ${git_dirty} ;;
+    "ls-files -u") if [ ${git_unmerged} -eq 1 ]; then printf '100644 conflict 1\\tfile\\n'; fi ;;
+    "pull --ff-only") printf 'git pull --ff-only\n' >> "${fixture}/calls"; exit ${git_pull_exit} ;;
+esac
+EOF
     cat > "${fixture}/scripts/update-agent-assets.sh" << EOF
 #!/usr/bin/env bash
 printf 'assets\n' >> "${fixture}/calls"
@@ -58,13 +74,37 @@ if [[ \$1 == status ]]; then
     esac
     exit ${status_exit}
 fi
+printf '%s\n' '${reload_output}' >&2
 exit ${reload_exit}
 EOF
-    chmod +x "${fixture}/bin/chezmoi" "${fixture}/bin/mise" "${fixture}/bin/herdr" \
+    chmod +x "${fixture}/bin/chezmoi" "${fixture}/bin/git" "${fixture}/bin/mise" "${fixture}/bin/herdr" \
         "${fixture}/scripts/update-agent-assets.sh"
 
     run env HOME="${fixture}/home" PATH="${fixture}/bin:${PATH}" make -C "${fixture}" update
     UPDATE_FIXTURE="${fixture}"
+    UPDATE_FIXTURE_PHYSICAL="$(cd "${fixture}" && pwd -P)"
+}
+
+@test "[common] update pulls a clean main branch tracking origin/main first" {
+    run_update_fixture running 0 0 0 0 0 "" main origin/main 0
+    [ "$status" -eq 0 ]
+    [ "$(head -n 1 "${UPDATE_FIXTURE}/calls")" = "git pull --ff-only" ]
+    [ "$(grep -c '^git pull --ff-only$' "${UPDATE_FIXTURE}/calls")" -eq 1 ]
+}
+
+@test "[common] update skips pull for tracked changes and prints the manual command" {
+    run_update_fixture running 0 0 0 0 0 "" main origin/main 1
+    [ "$status" -eq 0 ]
+    [ "$(grep -c '^git pull --ff-only$' "${UPDATE_FIXTURE}/calls")" -eq 0 ]
+    [[ "$output" == *"Notice: local source not pulled (tracked files have staged or unstaged changes); run 'git -C ${UPDATE_FIXTURE_PHYSICAL} pull' to fetch remote updates."* ]]
+}
+
+@test "[common] update reports unmerged files before the dirty notice" {
+    run_update_fixture running 0 0 0 0 0 "" main origin/main 1 0 1
+    [ "$status" -eq 0 ]
+    ! grep -q '^git pull --ff-only$' "${UPDATE_FIXTURE}/calls"
+    [[ "$output" == *"index has unmerged files; resolve the conflict (git add/commit or git reset) before pulling"* ]]
+    [[ "$output" != *"tracked files have staged or unstaged changes"* ]]
 }
 
 @test "[common] update reloads a running Herdr server exactly once" {
@@ -77,8 +117,8 @@ EOF
     run_update_fixture running
     [ "$status" -eq 0 ]
     run cat "${UPDATE_FIXTURE}/calls"
-    [ "$output" = "chezmoi apply --verbose --exclude=scripts
-chezmoi --source ${UPDATE_FIXTURE}/home/.local/share/chezmoi-private --config ${UPDATE_FIXTURE}/home/.config/chezmoi-private/chezmoi.yaml apply --verbose --exclude=scripts
+    [ "$output" = "chezmoi apply --verbose
+chezmoi --source ${UPDATE_FIXTURE}/home/.local/share/chezmoi-private --config ${UPDATE_FIXTURE}/home/.config/chezmoi-private/chezmoi.yaml apply --verbose
 mise install --locked node
 mise install --locked npm:ccstatusline npm:ccusage
 assets
@@ -148,8 +188,16 @@ herdr server reload-config" ]
 }
 
 @test "[common] update propagates Herdr reload failure" {
-    run_update_fixture running 0 23
+    run_update_fixture running 0 23 0 0 0 "" feature/test origin/feature/test 0 0 0 "reload failed"
     [ "$status" -ne 0 ]
+    [ "$(grep -c '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls")" -eq 1 ]
+}
+
+@test "[common] update tolerates a Herdr protocol mismatch and explains recovery" {
+    run_update_fixture running 0 23 0 0 0 "" feature/test origin/feature/test 0 0 0 \
+        "protocol_mismatch: client protocol 20 is older than server protocol 22"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Herdr was updated; restart the server with 'herdr server stop' or recreate the Ghostty session, then run 'herdr server reload-config' manually."* ]]
     [ "$(grep -c '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls")" -eq 1 ]
 }
 
@@ -171,7 +219,8 @@ herdr server reload-config" ]
     [[ "$output" == *'$HOME/.local/share/chezmoi-private'* ]]
     [[ "$output" == *'$HOME/.config/chezmoi-private/chezmoi.yaml'* ]]
     [[ "$output" == *'--source "$HOME/.local/share/chezmoi-private"'* ]]
-    [[ "$output" == *'apply --verbose --exclude=scripts'* ]]
+    [[ "$output" == *'apply --verbose'* ]]
+    [[ "$output" != *'--exclude=scripts'* ]]
     [[ "$output" == *'Skipping private dotfiles'* ]]
     [[ "$output" != *'chezmoi-private apply'* ]]
 }
@@ -239,8 +288,8 @@ herdr server reload-config" ]
     grep -q 'GIT_CONFIG_NOSYSTEM=1' scripts/upgrade-tools.sh
     grep -q 'GIT_CONFIG_GLOBAL=/dev/null' scripts/upgrade-tools.sh
     grep -q 'XDG_CONFIG_HOME="${isolated_xdg_config_home}"' scripts/upgrade-tools.sh
-    grep -q 'mise_config_dir="${MISE_CONFIG_DIR:-${XDG_CONFIG_HOME:-${HOME%/}/.config}/mise}"' scripts/upgrade-tools.sh
-    grep -q 'MISE_CONFIG_DIR="${mise_config_dir}"' scripts/upgrade-tools.sh
+    grep -Fq 'export MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-${repo_root}/home/dot_mise}"' scripts/upgrade-tools.sh
+    grep -Fq 'export MISE_CEILING_PATHS="${repo_root}"' scripts/upgrade-tools.sh
     grep -q 'rm -rf "${isolated_xdg_config_home}"' scripts/upgrade-tools.sh
     grep -q 'run_mise_with_isolated_git_config ls --current --no-header' scripts/upgrade-tools.sh
     grep -q 'MISE_LOCKED=0 run_mise_with_isolated_git_config upgrade --bump --yes --before 7d "${mise_tool}"' scripts/upgrade-tools.sh

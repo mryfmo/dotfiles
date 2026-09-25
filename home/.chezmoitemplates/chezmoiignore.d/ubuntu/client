@@ -1,6 +1,3 @@
 .local/bin/server
 
-.zsh/server/zshrc
-.zsh/server/zshprofile
-
 .bash/server/bashrc

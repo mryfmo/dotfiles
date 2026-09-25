@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 ARG USERNAME=mryfmo
 ARG USER_UID=1000
@@ -11,15 +11,19 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     curl \
     git \
-    bats \
     sudo \
     tzdata \
     parallel \
     build-essential \
     ca-certificates
 
-RUN groupadd --gid $USER_GID $USERNAME \
-    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME -G sudo -s /bin/bash \
+RUN existing_group="$(getent group "$USER_GID" | cut -d: -f1)" \
+    && if [ -n "$existing_group" ]; then groupmod --new-name "$USERNAME" "$existing_group"; else groupadd --gid "$USER_GID" "$USERNAME"; fi \
+    && existing_user="$(getent passwd "$USER_UID" | cut -d: -f1)" \
+    && if [ -n "$existing_user" ]; then usermod --login "$USERNAME" --home "/home/$USERNAME" --move-home --gid "$USER_GID" "$existing_user"; else useradd --uid "$USER_UID" --gid "$USER_GID" -m "$USERNAME" -s /bin/bash; fi \
+    && usermod --append --groups sudo "$USERNAME" \
+    && mkdir -p "/home/$USERNAME/.local/share/chezmoi" \
+    && chown -R "$USER_UID:$USER_GID" "/home/$USERNAME" \
     && echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
 USER $USERNAME

@@ -19,6 +19,16 @@ except ImportError:  # pragma: no cover - CI installs PyYAML for this script.
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = ROOT / "home/dot_agents/agent-config.yaml"
 GENERATED_HEADER = "Generated from home/dot_agents/agent-config.yaml by scripts/generate-agent-configs.py."
+ADH_PROFILE = {
+    "claude": {"model": "claude-fable-5-1", "effort": "high"},
+    "codex": {
+        "model": "gpt-6-astra",
+        "model_reasoning_effort": "xhigh",
+        "notify": [
+            "{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify"
+        ],
+    },
+}
 
 
 def fail(message: str) -> NoReturn:
@@ -36,6 +46,7 @@ def load_manifest() -> dict[str, Any]:
         fail(f"{MANIFEST_PATH} must contain a YAML mapping")
     if data.get("schema_version") != 1:
         fail(f"{MANIFEST_PATH} schema_version must be 1")
+    validate_adh_profile(data)
     return data
 
 
@@ -115,6 +126,24 @@ def model_profiles(manifest: dict[str, Any]) -> dict[str, Any]:
                         f"model profile {name}.{agent}.{key} must be a launcher-safe string"
                     )
     return profiles
+
+
+def validate_adh_profile(manifest: dict[str, Any]) -> None:
+    if manifest.get("model_profiles", {}).get("adh") != ADH_PROFILE:
+        fail(
+            "model_profiles.adh must pin claude-fable-5-1/high and "
+            "gpt-6-astra/xhigh with contextdb notify and no fallback settings"
+        )
+
+
+WORKER_KINDS = ("codex", "claude")
+
+
+def worker_kind(manifest: dict[str, Any]) -> str:
+    kind = manifest.get("worker_kind", "codex")
+    if kind not in WORKER_KINDS:
+        fail(f"worker_kind must be one of {WORKER_KINDS}: {kind!r}")
+    return kind
 
 
 def interactive_profile(manifest: dict[str, Any]) -> dict[str, Any]:
@@ -638,6 +667,7 @@ def render_model_profiles_env(manifest: dict[str, Any]) -> str:
         "# Shell fragment sourced by agent launchers (herdr-agents, agent-fanout).",
         f"# {GENERATED_HEADER}",
         f'MODEL_PROFILE_INTERACTIVE="{manifest["interactive_profile"]}"',
+        f'HERDR_AGENTS_WORKER_KIND="{worker_kind(manifest)}"',
     ]
     for name, profile in sorted(profiles.items()):
         var = str(name).upper()

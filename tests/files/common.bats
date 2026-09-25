@@ -9,6 +9,7 @@
         "${HOME}/.local/bin/common/dev"
         "${HOME}/.local/bin/common/setup-gh"
         "${HOME}/.local/bin/common/setup-gpg"
+        "${HOME}/.local/bin/common/provision-machine-key"
         "${HOME}/.gnupg/gpg-agent.conf"
         "${HOME}/.ssh/config"
         "${HOME}/.vimrc"

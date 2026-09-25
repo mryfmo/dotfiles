@@ -26,10 +26,18 @@ def home_dir() -> Path:
     return Path.home()
 
 
+def working_tree_dir() -> Path:
+    if os.environ.get("CHEZMOI_WORKING_TREE"):
+        return Path(os.environ["CHEZMOI_WORKING_TREE"])
+    # .chezmoiroot=home, so the source dir's parent is the working tree.
+    return source_dir().parent
+
+
 def render_managed_template(text: str) -> str:
     return (
         text.replace("{{ .chezmoi.sourceDir }}", str(source_dir()))
         .replace("{{ .chezmoi.homeDir }}", str(home_dir()))
+        .replace("{{ .chezmoi.workingTree }}", str(working_tree_dir()))
     )
 
 

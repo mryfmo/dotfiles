@@ -147,7 +147,7 @@ class AssetManifestTest(unittest.TestCase):
             set(data["steps"]),
         )
         self.assertEqual(
-            "2.0.0+dotfiles.5", data["steps"]["update_compactiondb"]["source_version"]
+            "2.0.0+dotfiles.6", data["steps"]["update_compactiondb"]["source_version"]
         )
         self.assertEqual(
             "9.9.9", data["steps"]["ensure_herdr_integrations"]["source_version"]
@@ -220,6 +220,7 @@ class AssetManifestTest(unittest.TestCase):
     def test_updater_has_one_recording_call_for_each_install_step(self) -> None:
         updater = UPDATER.read_text()
         steps = (
+            "ensure_crit_cli",
             "ensure_herdr_integrations",
             "update_claude_superpowers",
             "update_claude_crit",
@@ -234,7 +235,7 @@ class AssetManifestTest(unittest.TestCase):
             "update_compactiondb",
         )
 
-        self.assertEqual(13, updater.count('manifest_record "'))
+        self.assertEqual(14, updater.count('manifest_record "'))
         self.assertEqual(
             1,
             updater.count('manifest_record "ensure_mise_npm_agent_cli:${cli}"'),
@@ -292,7 +293,7 @@ class AssetManifestTest(unittest.TestCase):
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         step = self.manifest()["steps"]["update_compactiondb"]
-        self.assertEqual("2.0.0+dotfiles.5", step["source_version"])
+        self.assertEqual("2.0.0+dotfiles.6", step["source_version"])
         self.assertIn(f"{ROOT}/vendor/compactiondb/", log.read_text())
 
     def test_updater_direct_source_resolves_repository_root(self) -> None:

@@ -184,7 +184,51 @@ install_starship
         self.assertIn("locked = true", config)
         self.assertIn("lockfile = true", config)
         self.assertTrue((ROOT / "home/dot_mise/mise.lock").is_file())
-        self.assertTrue((ROOT / "home/dot_config/mise/symlink_mise.lock.tmpl").is_file())
+        for name in ("config.toml", "mise.lock"):
+            self.assertFalse((ROOT / f"home/dot_config/mise/symlink_{name}.tmpl").exists())
+            template = ROOT / f"home/dot_config/mise/{name}.tmpl"
+            self.assertTrue(template.is_file())
+            with tempfile.TemporaryDirectory() as temporary:
+                config = Path(temporary) / "chezmoi.toml"
+                config.write_text("")
+                result = subprocess.run(
+                    ["chezmoi", "--config", str(config), "--source", str(ROOT / "home"),
+                     "execute-template", template.read_text()],
+                    check=True, capture_output=True,
+                )
+            self.assertEqual(result.stdout, (ROOT / f"home/dot_mise/{name}").read_bytes())
+
+    def test_mise_apply_replaces_live_symlinks_with_independent_copies(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Path(temporary)
+            source = fixture / "source"
+            destination = fixture / "home"
+            managed = source / "dot_config/mise"
+            applied = destination / ".config/mise"
+            pins = source / "dot_mise"
+            for directory in (managed, applied, pins):
+                directory.mkdir(parents=True)
+            for name in ("config.toml", "mise.lock"):
+                (pins / name).write_bytes((ROOT / f"home/dot_mise/{name}").read_bytes())
+                (managed / f"{name}.tmpl").write_text(
+                    (ROOT / f"home/dot_config/mise/{name}.tmpl").read_text()
+                )
+                (applied / name).symlink_to(pins / name)
+            config = fixture / "chezmoi.toml"
+            config.write_text("")
+            subprocess.run(
+                ["chezmoi", "--config", str(config), "--source", str(source),
+                 "--destination", str(destination), "--persistent-state", str(fixture / "state.boltdb"),
+                 "apply", "--force"],
+                check=True, capture_output=True,
+            )
+            for name in ("config.toml", "mise.lock"):
+                self.assertFalse((applied / name).is_symlink())
+                self.assertEqual((applied / name).read_bytes(), (pins / name).read_bytes())
+                (applied / name).write_text("runtime-only change\n")
+                self.assertEqual(
+                    (pins / name).read_bytes(), (ROOT / f"home/dot_mise/{name}").read_bytes()
+                )
 
     def test_mise_npm_backend_uses_npm_and_limits_lifecycle_scripts(self):
         with (ROOT / "home/dot_mise/config.toml").open("rb") as config_file:
@@ -226,7 +270,7 @@ install_starship
             "platforms.macos-arm64",
             "platforms.macos-x64",
         }
-        for name in ("fd", "github:mikefarah/yq"):
+        for name in ("fd", "aqua:mikefarah/yq"):
             platforms = {key for key in lock["tools"][name][0] if key.startswith("platforms.")}
             self.assertEqual(expected, platforms, name)
         self.assertEqual("cargo:eza", lock["tools"]["cargo:eza"][0]["backend"])
@@ -267,7 +311,7 @@ install_starship
         bootstrap = (ROOT / "install/common/mise.sh").read_text()
         pinned_mise = re.search(r'readonly MISE_VERSION="(v[^"]+)"', bootstrap)
         self.assertIsNotNone(pinned_mise)
-        self.assertEqual("v2026.7.5", pinned_mise.group(1))
+        self.assertEqual("v2026.9.12", pinned_mise.group(1))
         lock_text = (ROOT / "home/dot_mise/mise.lock").read_text()
         for name in ("http:bats", "http:gcloud"):
             entry = lock["tools"][name][0]
@@ -311,7 +355,7 @@ install_starship
         text = (ROOT / "home/.chezmoitemplates/chezmoiexternal.d/common.yaml.tmpl").read_text()
         self.assertNotIn("gitHubLatestReleaseAssetURL", text)
         self.assertNotIn('type: "git-repo"', text)
-        self.assertEqual(3, text.count("  checksum:\n    sha256:"))
+        self.assertEqual(5, text.count("  checksum:\n    sha256:"))
         self.assertIn("spacemacs/archive/530c17d62e4ccca09087a2f142752b21000658fb.tar.gz", text)
         self.assertIn("ba040a5d04a6d37c821274eea1f1e4c26d146e2f65057b4d15f4741159071260", text)
         self.assertIn("stripComponents: 1", text)

@@ -7,10 +7,10 @@ import os
 import subprocess
 import tempfile
 import textwrap
-import tomllib
 import unittest
 from pathlib import Path
 
+import tomllib
 
 ROOT = Path(__file__).resolve().parents[2]
 MERGE_SCRIPT = ROOT / "home/dot_codex/modify_private_config.toml"
@@ -21,7 +21,9 @@ class CodexConfigMergeTest(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory(prefix="codex-config-merge-test-")
         self.source_dir = Path(self.temp_dir.name)
         (self.source_dir / ".chezmoitemplates").mkdir()
-        self.baseline_path = self.source_dir / ".chezmoitemplates/codex-config-managed.toml"
+        self.baseline_path = (
+            self.source_dir / ".chezmoitemplates/codex-config-managed.toml"
+        )
 
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
@@ -64,6 +66,39 @@ class CodexConfigMergeTest(unittest.TestCase):
             data["mcp_servers"]["filesystem_dotfiles"]["args"],
             ["-y", "server", str(self.source_dir)],
         )
+
+    def test_working_tree_placeholder_falls_back_to_source_dir_parent(self) -> None:
+        output = self.merge(
+            """
+            [projects."{{ .chezmoi.workingTree }}"]
+            trust_level = "trusted"
+            """,
+            "",
+        )
+
+        data = tomllib.loads(output)
+        self.assertEqual(list(data["projects"].keys()), [str(self.source_dir.parent)])
+
+    def test_working_tree_placeholder_prefers_env_override(self) -> None:
+        self.baseline_path.write_text(
+            '[projects."{{ .chezmoi.workingTree }}"]\ntrust_level = "trusted"\n'
+        )
+        env_override = self.source_dir / "explicit-working-tree"
+        env = os.environ.copy()
+        env["CHEZMOI_SOURCE_DIR"] = str(self.source_dir)
+        env["CHEZMOI_WORKING_TREE"] = str(env_override)
+        result = subprocess.run(
+            [str(MERGE_SCRIPT)],
+            input="",
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=env,
+            check=True,
+        )
+
+        data = tomllib.loads(result.stdout)
+        self.assertEqual(list(data["projects"].keys()), [str(env_override)])
 
     def test_managed_wins_for_managed_keys(self) -> None:
         output = self.merge(
@@ -116,7 +151,9 @@ class CodexConfigMergeTest(unittest.TestCase):
 
         data = tomllib.loads(output)
         self.assertEqual(data["model"], "managed")
-        self.assertEqual(data["hooks"]["state"]["managed"]["trusted_hash"], "sha256:runtime")
+        self.assertEqual(
+            data["hooks"]["state"]["managed"]["trusted_hash"], "sha256:runtime"
+        )
         self.assertEqual(data["tui"]["model_availability_nux"]["gpt-5"], 9)
         self.assertEqual(data["tui"]["model_availability_nux"]["gpt-5.5"], 2)
 
@@ -134,7 +171,10 @@ class CodexConfigMergeTest(unittest.TestCase):
         )
 
         data = tomllib.loads(output)
-        self.assertEqual(data["marketplaces"]["ponytail"]["source"], "https://example.invalid/repo.git")
+        self.assertEqual(
+            data["marketplaces"]["ponytail"]["source"],
+            "https://example.invalid/repo.git",
+        )
 
     def test_current_only_runtime_tables_keep_current_group_order(self) -> None:
         output = self.merge(

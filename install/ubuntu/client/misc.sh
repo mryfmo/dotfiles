@@ -14,6 +14,10 @@ fi
 
 readonly PACKAGES=(
     gparted
+    language-pack-ja
+    fonts-noto-cjk
+    fonts-noto-color-emoji
+    ibus-mozc
     # Chromium/Electron runtime libraries used by terminal-code and
     # terminal-browser; their installers only warn when these are missing.
     # libgtk-3-0 and libasound2 use their t64 package names on Ubuntu 24.04.
@@ -38,10 +42,24 @@ function uninstall_misc() {
 }
 
 #
+# @description Install Chromium via snap.
+# @description
+#   Ubuntu 24.04 only ships Chromium as a snap (the apt package is a
+#   transitional snap wrapper). Google Chrome is not used instead because
+#   Google does not publish a linux-arm64 build. Skips gracefully when snap
+#   is unavailable (e.g. minimal or container images).
+#
+function install_chromium() {
+    command -v snap > /dev/null 2>&1 || return 0
+    sudo snap install chromium
+}
+
+#
 # @description Run the optional Ubuntu client package installation flow.
 #
 function main() {
     install_misc
+    install_chromium
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

@@ -14,7 +14,6 @@ readonly SCRIPT_PATH="./install/ubuntu/common/dependencies.sh"
 
     expected_packages=(
         build-essential
-        busybox
         cmake
         curl
         git
@@ -23,6 +22,7 @@ readonly SCRIPT_PATH="./install/ubuntu/common/dependencies.sh"
         iproute2
         iputils-ping
         perl
+        pinentry-curses
         sudo
         unzip
         vim

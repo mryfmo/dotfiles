@@ -8,9 +8,10 @@ import json
 import re
 import subprocess
 import sys
-import tomllib
 from pathlib import Path
 from typing import Any
+
+import tomllib
 
 try:
     import yaml
@@ -43,13 +44,24 @@ SYNC_TIMEOUT_BUDGET_S = 30  # PLAN H3 pins the per-source, per-event synchronous
 HOOK_COMPOSITION_SOURCES = {
     "claude": (Path("home/.chezmoitemplates/claude-settings-managed.json"), "json"),
     "codex": (Path("home/.chezmoitemplates/codex-config-managed.toml"), "toml"),
-    "compactiondb": (Path("vendor/compactiondb/.claude/settings.fragment.json"), "json"),
+    "compactiondb": (
+        Path("vendor/compactiondb/.claude/settings.fragment.json"),
+        "json",
+    ),
 }
 # PLAN H3 pins the current relative SessionStart order across managed sources.
 SESSIONSTART_EXPECTED_COMMAND_SUBSTRINGS = {
     "claude": ("herdr-agent-state.sh",),
     "codex": (),
     "compactiondb": ("contextdb_hook.py", "contextdb_recover.py"),
+}
+ADH_PROFILE = {
+    "claude": {"model": "claude-fable-5-1", "effort": "high"},
+    "codex": {
+        "model": "gpt-6-astra",
+        "model_reasoning_effort": "xhigh",
+        "notify": ["{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify"],
+    },
 }
 
 
@@ -108,15 +120,23 @@ def validate_hook_composition() -> None:
         for hook in hooks:
             command = hook_command_string(hook)
             if command in seen:
-                findings.append(f"duplicate-command source={source} event={event} command={command!r}")
+                findings.append(
+                    f"duplicate-command source={source} event={event} command={command!r}"
+                )
             seen.add(command)
 
         commands = [hook_command_string(hook) for hook in hooks]
-        if event == "PermissionRequest" and any("permgate" in command for command in commands):
+        if event == "PermissionRequest" and any(
+            "permgate" in command for command in commands
+        ):
             if not commands or "permgate" not in commands[0]:
-                findings.append(f"permgate-first source={source} event={event} first={commands[0]!r}")
+                findings.append(
+                    f"permgate-first source={source} event={event} first={commands[0]!r}"
+                )
 
-        sync_timeout = sum(hook.get("timeout", 0) for hook in hooks if not hook.get("async", False))
+        sync_timeout = sum(
+            hook.get("timeout", 0) for hook in hooks if not hook.get("async", False)
+        )
         if sync_timeout > SYNC_TIMEOUT_BUDGET_S:
             findings.append(
                 f"sync-timeout-budget source={source} event={event} "
@@ -124,10 +144,20 @@ def validate_hook_composition() -> None:
             )
 
     for source, expected in SESSIONSTART_EXPECTED_COMMAND_SUBSTRINGS.items():
-        commands = [hook_command_string(hook) for hook in inventory.get((source, "SessionStart"), [])]
+        commands = [
+            hook_command_string(hook)
+            for hook in inventory.get((source, "SessionStart"), [])
+        ]
         position = 0
         for substring in expected:
-            match = next((index for index in range(position, len(commands)) if substring in commands[index]), None)
+            match = next(
+                (
+                    index
+                    for index in range(position, len(commands))
+                    if substring in commands[index]
+                ),
+                None,
+            )
             if match is None:
                 findings.append(
                     f"sessionstart-order source={source} expected={list(expected)!r} actual={commands!r}"
@@ -183,12 +213,20 @@ def validate_skills() -> None:
 def validate_claude_skill_parity() -> None:
     expected = shared_skill_names()
     claude_root = ROOT / "home/dot_claude/skills"
-    actual = {path.name for path in claude_root.iterdir() if path.is_dir()} if claude_root.exists() else set()
+    actual = (
+        {path.name for path in claude_root.iterdir() if path.is_dir()}
+        if claude_root.exists()
+        else set()
+    )
     if actual != expected:
-        fail(f"Claude skill set differs from shared skills: missing={sorted(expected - actual)} extra={sorted(actual - expected)}")
+        fail(
+            f"Claude skill set differs from shared skills: missing={sorted(expected - actual)} extra={sorted(actual - expected)}"
+        )
     for name in sorted(expected):
         symlink = claude_root / name / "symlink_SKILL.md.tmpl"
-        expected_target = f"{{{{ .chezmoi.sourceDir }}}}/dot_agents/skills/{name}/SKILL.md\n"
+        expected_target = (
+            f"{{{{ .chezmoi.sourceDir }}}}/dot_agents/skills/{name}/SKILL.md\n"
+        )
         if not symlink.exists() or symlink.read_text() != expected_target:
             fail(f"{symlink} must point at the shared skill tree")
 
@@ -198,12 +236,18 @@ def validate_claude_command_parity() -> None:
     expected_target = "{{ .chezmoi.sourceDir }}/dot_agents/skills/agmsg/templates/cmd.claude-code.md\n"
     if not symlink.exists() or symlink.read_text() != expected_target:
         fail(f"{symlink} must point at the shared agmsg command template")
-    target = ROOT / "home" / expected_target.strip().removeprefix("{{ .chezmoi.sourceDir }}/")
+    target = (
+        ROOT
+        / "home"
+        / expected_target.strip().removeprefix("{{ .chezmoi.sourceDir }}/")
+    )
     if not target.is_file():
         fail(f"{symlink} points at a missing template: {target}")
     duplicate = ROOT / "home/dot_claude/commands/agmsg.md"
     if duplicate.exists():
-        fail(f"{duplicate} duplicates the shared agmsg command template; keep the symlink only")
+        fail(
+            f"{duplicate} duplicates the shared agmsg command template; keep the symlink only"
+        )
 
 
 HARD_CODED_HOME_RE = re.compile(r"/(?:Users|home)/[^/\s'\"]+/")
@@ -224,7 +268,11 @@ def validate_manifest_home_paths() -> None:
             top_level = stripped.split(":", 1)[0]
         if projects_indent is not None and indent <= projects_indent:
             projects_indent = None
-        if projects_indent is None and top_level == "codex" and stripped.startswith("projects:"):
+        if (
+            projects_indent is None
+            and top_level == "codex"
+            and stripped.startswith("projects:")
+        ):
             # Only codex.projects is runtime-owned state keyed by absolute project
             # path; it is preserved by home/dot_codex/modify_private_config.toml.
             projects_indent = indent
@@ -232,11 +280,13 @@ def validate_manifest_home_paths() -> None:
         if projects_indent is not None:
             continue
         if HARD_CODED_HOME_RE.search(line):
-            fail(f"{manifest_path}:{number} must not hard-code a home directory; use {{{{ .chezmoi.homeDir }}}} so the rendered value stays byte-identical to what the agent runtimes write")
+            fail(
+                f"{manifest_path}:{number} must not hard-code a home directory; use {{{{ .chezmoi.homeDir }}}} so the rendered value stays byte-identical to what the agent runtimes write"
+            )
 
 
 def validate_codex_plugins() -> None:
-    marketplace_path = ROOT / "home/dot_agents/plugins/marketplace.json"
+    marketplace_path = ROOT / "home/dot_agents/plugins/create_marketplace.json"
     marketplace = json.loads(marketplace_path.read_text())
     if not marketplace.get("name"):
         fail(f"{marketplace_path} is missing name")
@@ -252,7 +302,12 @@ def validate_codex_plugins() -> None:
             if plugin.get("name") == "crit" and path_value == "./.codex/plugins/crit":
                 # Crit is installed dynamically and does not ship a static plugin manifest.
                 continue
-            manifest_path = ROOT / "home/dot_agents" / path_value.removeprefix("./") / ".codex-plugin/plugin.json"
+            manifest_path = (
+                ROOT
+                / "home/dot_agents"
+                / path_value.removeprefix("./")
+                / ".codex-plugin/plugin.json"
+            )
             manifest = json.loads(manifest_path.read_text())
             for key in ("name", "version", "description"):
                 if not manifest.get(key):
@@ -264,7 +319,9 @@ def validate_codex_plugins() -> None:
                 fail(f"{manifest_path} must not use an absolute skills path")
 
 
-def validate_exact_keys(actual: dict[str, Any], expected: dict[str, Any], label: str) -> None:
+def validate_exact_keys(
+    actual: dict[str, Any], expected: dict[str, Any], label: str
+) -> None:
     actual_keys = set(actual)
     expected_keys = set(expected)
     if actual_keys != expected_keys:
@@ -282,10 +339,14 @@ def validate_agmsg_script_modes() -> None:
             if not path.name.startswith("executable_"):
                 fail(f"{path.relative_to(ROOT)} must use chezmoi executable_ prefix")
             if path.stat().st_mode & 0o111 == 0:
-                fail(f"{path.relative_to(ROOT)} must stay executable for direct invocation")
+                fail(
+                    f"{path.relative_to(ROOT)} must stay executable for direct invocation"
+                )
 
 
-def validate_codex_agmsg_writable_roots(sandbox_workspace_write: dict[str, Any], label: str) -> None:
+def validate_codex_agmsg_writable_roots(
+    sandbox_workspace_write: dict[str, Any], label: str
+) -> None:
     writable_roots = sandbox_workspace_write.get("writable_roots", [])
     missing = REQUIRED_AGMSG_WRITABLE_ROOTS - set(writable_roots)
     if missing:
@@ -295,9 +356,16 @@ def validate_codex_agmsg_writable_roots(sandbox_workspace_write: dict[str, Any],
 def validate_claude_settings(manifest: dict[str, Any]) -> None:
     settings_path = ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
     settings = json.loads(render_template_text(settings_path))
-    if settings.get("$schema") != "https://json.schemastore.org/claude-code-settings.json":
+    if (
+        settings.get("$schema")
+        != "https://json.schemastore.org/claude-code-settings.json"
+    ):
         fail(f"{settings_path} must declare the Claude Code settings schema")
-    interactive = manifest.get("model_profiles", {}).get(manifest.get("interactive_profile"), {}).get("claude", {})
+    interactive = (
+        manifest.get("model_profiles", {})
+        .get(manifest.get("interactive_profile"), {})
+        .get("claude", {})
+    )
     if settings.get("model") != interactive.get("model"):
         fail(f"{settings_path} must render the interactive profile model")
     if settings.get("effortLevel") != interactive.get("effort"):
@@ -312,20 +380,30 @@ def validate_claude_settings(manifest: dict[str, Any]) -> None:
         fail(f"{settings_path} must use the robust Python post-edit hook")
     enabled_plugins = settings.get("enabledPlugins", {})
     if enabled_plugins:
-        fail(f"{settings_path} must not enable Claude plugins that are not installed by this repository")
+        fail(
+            f"{settings_path} must not enable Claude plugins that are not installed by this repository"
+        )
     crit_rule = ROOT / "home/dot_config/claude/rules/crit-review.md"
     if not crit_rule.exists() or "/crit" not in crit_rule.read_text():
         fail("Claude Code Crit review rule must require /crit")
 
 
 def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
-    codex_path = ROOT / manifest.get("codex", {}).get("config_path", "home/.chezmoitemplates/codex-config-managed.toml")
+    codex_path = ROOT / manifest.get("codex", {}).get(
+        "config_path", "home/.chezmoitemplates/codex-config-managed.toml"
+    )
     text = render_template_text(codex_path)
-    if not text.startswith("#:schema https://developers.openai.com/codex/config-schema.json"):
+    if not text.startswith(
+        "#:schema https://developers.openai.com/codex/config-schema.json"
+    ):
         fail(f"{codex_path} must declare the Codex config schema")
     data = tomllib.loads(text)
     manifest_codex = manifest.get("codex", {})
-    interactive = manifest.get("model_profiles", {}).get(manifest.get("interactive_profile"), {}).get("codex", {})
+    interactive = (
+        manifest.get("model_profiles", {})
+        .get(manifest.get("interactive_profile"), {})
+        .get("codex", {})
+    )
     if data.get("model") != interactive.get("model"):
         fail(f"{codex_path} must render the interactive profile model")
     if data.get("model_reasoning_effort") != interactive.get("model_reasoning_effort"):
@@ -337,24 +415,52 @@ def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
         fail(f"{codex_path} should default to workspace-write sandbox")
     if data.get("sandbox_workspace_write", {}).get("network_access") is not False:
         fail(f"{codex_path} should keep sandbox command network access disabled")
-    validate_codex_agmsg_writable_roots(manifest_codex.get("sandbox_workspace_write", {}), "codex.sandbox_workspace_write")
-    if data.get("sandbox_workspace_write") != manifest_codex.get("sandbox_workspace_write"):
-        fail(f"{codex_path} must render codex.sandbox_workspace_write from the shared manifest")
+    validate_codex_agmsg_writable_roots(
+        manifest_codex.get("sandbox_workspace_write", {}),
+        "codex.sandbox_workspace_write",
+    )
+    if data.get("sandbox_workspace_write") != manifest_codex.get(
+        "sandbox_workspace_write"
+    ):
+        fail(
+            f"{codex_path} must render codex.sandbox_workspace_write from the shared manifest"
+        )
     features = data.get("features", {})
     for feature in ("plugins", "hooks", "plugin_hooks"):
         if features.get(feature) is not True:
-            fail(f"{codex_path} must enable Codex feature {feature} for Crit plugin hooks")
-    if data.get("shell_environment_policy") != manifest_codex.get("shell_environment_policy"):
-        fail(f"{codex_path} must render codex.shell_environment_policy from the shared manifest")
+            fail(
+                f"{codex_path} must enable Codex feature {feature} for Crit plugin hooks"
+            )
+    if data.get("shell_environment_policy") != manifest_codex.get(
+        "shell_environment_policy"
+    ):
+        fail(
+            f"{codex_path} must render codex.shell_environment_policy from the shared manifest"
+        )
     shell_path = data.get("shell_environment_policy", {}).get("set", {}).get("PATH", "")
     if "/Users/mryfmo/" in shell_path:
-        fail(f"{codex_path} must not hard-code a macOS home directory in shell_environment_policy.set.PATH")
+        fail(
+            f"{codex_path} must not hard-code a macOS home directory in shell_environment_policy.set.PATH"
+        )
     if "{{ .chezmoi.homeDir }}" not in shell_path:
-        fail(f"{codex_path} must derive shell_environment_policy.set.PATH from the target chezmoi homeDir")
+        fail(
+            f"{codex_path} must derive shell_environment_policy.set.PATH from the target chezmoi homeDir"
+        )
+    for project_path in data.get("projects", {}):
+        if "/Users/mryfmo/" in project_path:
+            fail(
+                f"{codex_path} must not hard-code a macOS home directory in [projects] keys"
+            )
+        if "{{ .chezmoi.workingTree }}" not in project_path:
+            fail(
+                f"{codex_path} must key managed Codex project trust with {{{{ .chezmoi.workingTree }}}}"
+            )
     for key, value in manifest_codex.get("tui", {}).items():
         if data.get("tui", {}).get(key) != value:
             fail(f"{codex_path} must render codex.tui.{key} from the shared manifest")
-    validate_exact_keys(data.get("tui", {}), manifest_codex.get("tui", {}), f"{codex_path} codex.tui")
+    validate_exact_keys(
+        data.get("tui", {}), manifest_codex.get("tui", {}), f"{codex_path} codex.tui"
+    )
     for plugin_id, plugin_config in manifest_codex.get("plugins", {}).items():
         if data.get("plugins", {}).get(plugin_id) != plugin_config:
             fail(f"{codex_path} must render Codex plugin {plugin_id}")
@@ -363,7 +469,9 @@ def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
         manifest_codex.get("plugins", {}),
         f"{codex_path} Codex plugins",
     )
-    for marketplace_name, marketplace_config in manifest_codex.get("marketplaces", {}).items():
+    for marketplace_name, marketplace_config in manifest_codex.get(
+        "marketplaces", {}
+    ).items():
         if data.get("marketplaces", {}).get(marketplace_name) != marketplace_config:
             fail(f"{codex_path} must render Codex marketplace {marketplace_name}")
     validate_exact_keys(
@@ -373,7 +481,9 @@ def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
     )
     manifest_hook_state = manifest_codex.get("hooks", {}).get("state", {})
     if data.get("hooks", {}).get("state", {}) != manifest_hook_state:
-        fail(f"{codex_path} must render Codex hook trust state from the shared manifest")
+        fail(
+            f"{codex_path} must render Codex hook trust state from the shared manifest"
+        )
     for project_path, project_config in manifest_codex.get("projects", {}).items():
         if data.get("projects", {}).get(project_path) != project_config:
             fail(f"{codex_path} must render Codex project trust for {project_path}")
@@ -414,35 +524,48 @@ def validate_agent_manifest() -> dict[str, Any]:
         fail(f"{manifest_path} must target exactly Codex and Claude Code")
     canonical_dir = manifest.get("skills", {}).get("canonical_dir")
     if canonical_dir != "~/.agents/skills":
-        fail(f"{manifest_path} must keep ~/.agents/skills as the canonical skill directory")
+        fail(
+            f"{manifest_path} must keep ~/.agents/skills as the canonical skill directory"
+        )
     codex_plugins = manifest.get("codex", {}).get("plugins", {})
     if codex_plugins.get("crit@mryfmo-personal-plugins", {}).get("enabled") is not True:
         fail(f"{manifest_path} must enable the Crit Codex plugin")
     claude = manifest.get("claude", {})
     profiles = manifest.get("model_profiles", {})
     required_profiles = {"express", "standard", "review", "deep", "security"}
-    if set(profiles) != required_profiles:
+    if not required_profiles <= set(profiles) or set(profiles) - required_profiles - {
+        "adh"
+    }:
         fail(
-            f"{manifest_path} must define exactly model profiles "
-            f"{sorted(required_profiles)}"
+            f"{manifest_path} must define the five base profiles and only the optional adh profile"
         )
     if profiles["security"].get("codex", {}).get("model") != "gpt-daybreak-blue-latest":
         fail(
-            f"{manifest_path} security Codex profile must use "
-            "gpt-daybreak-blue-latest"
+            f"{manifest_path} security Codex profile must use gpt-daybreak-blue-latest"
         )
     if manifest.get("interactive_profile") not in profiles:
         fail(f"{manifest_path} interactive_profile must name a defined model profile")
     for name, profile in profiles.items():
-        for agent, keys in (("claude", ("model", "effort")), ("codex", ("model", "model_reasoning_effort"))):
+        for agent, keys in (
+            ("claude", ("model", "effort")),
+            ("codex", ("model", "model_reasoning_effort")),
+        ):
             for key in keys:
                 if not profile.get(agent, {}).get(key):
-                    fail(f"{manifest_path} model profile {name}.{agent}.{key} is required")
-    if claude.get("model") or claude.get("effortLevel") or manifest.get("codex", {}).get("model"):
+                    fail(
+                        f"{manifest_path} model profile {name}.{agent}.{key} is required"
+                    )
+    if (
+        claude.get("model")
+        or claude.get("effortLevel")
+        or manifest.get("codex", {}).get("model")
+    ):
         fail(f"{manifest_path} must keep model settings in model_profiles only")
     for name, server in manifest.get("mcp_servers", {}).items():
         if server.get("enabled", False) is not False:
-            fail(f"MCP server {name} must be disabled by default in the shared manifest")
+            fail(
+                f"MCP server {name} must be disabled by default in the shared manifest"
+            )
         agents = server.get("agents", {})
         if set(agent for agent, enabled in agents.items() if enabled) != targets:
             fail(f"MCP server {name} must be exposed to every target agent")
@@ -464,7 +587,17 @@ def validate_agent_manifest() -> dict[str, Any]:
     return manifest
 
 
-def validate_mcp_parity(codex: dict[str, Any], claude: dict[str, Any], manifest: dict[str, Any]) -> None:
+def validate_adh_profile(manifest: dict[str, Any]) -> None:
+    if manifest.get("model_profiles", {}).get("adh") != ADH_PROFILE:
+        fail(
+            "model_profiles.adh must pin claude-fable-5-1/high and "
+            "gpt-6-astra/xhigh with contextdb notify and no fallback settings"
+        )
+
+
+def validate_mcp_parity(
+    codex: dict[str, Any], claude: dict[str, Any], manifest: dict[str, Any]
+) -> None:
     manifest_names = set(manifest.get("mcp_servers", {}))
     codex_names = set(codex.get("mcp_servers", {}))
     claude_names = set(claude.get("mcpServers", {}))
@@ -483,7 +616,13 @@ def validate_codex_modify_script() -> None:
     if path.stat().st_mode & 0o111 == 0:
         fail(f"{path} must be executable")
     text = path.read_text()
-    for token in ("RUNTIME_PREFIXES", "hooks.state", "marketplaces", "tui.model_availability_nux", "projects"):
+    for token in (
+        "RUNTIME_PREFIXES",
+        "hooks.state",
+        "marketplaces",
+        "tui.model_availability_nux",
+        "projects",
+    ):
         if token not in text:
             fail(f"{path} must preserve Codex runtime-owned table token {token!r}")
 
@@ -508,7 +647,9 @@ def validate_codex_profile_modify_scripts(manifest: dict[str, Any]) -> None:
         profile_data = tomllib.loads(result.stdout)
         if profile_data.get("model") != profile.get("codex", {}).get("model"):
             fail(f"{path} must render the {name} profile model")
-        if profile_data.get("model_reasoning_effort") != profile.get("codex", {}).get("model_reasoning_effort"):
+        if profile_data.get("model_reasoning_effort") != profile.get("codex", {}).get(
+            "model_reasoning_effort"
+        ):
             fail(f"{path} must render the {name} profile reasoning effort")
         if profile_data.get("features", {}).get("hooks") is not True:
             fail(f"{path} must enable hooks for the {name} profile")
@@ -528,11 +669,21 @@ def validate_crit_install_assets() -> None:
         "tomasz-tomczyk/crit",
     ):
         if token not in updater:
-            fail(f"scripts/update-agent-assets.sh must manage Crit asset token {token!r}")
+            fail(
+                f"scripts/update-agent-assets.sh must manage Crit asset token {token!r}"
+            )
     codex_agents = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
-    for token in ("$crit", "Crit plugin", "CRIT_PLAN_REVIEW=off", "TUI", "http://localhost"):
+    for token in (
+        "$crit",
+        "Crit plugin",
+        "CRIT_PLAN_REVIEW=off",
+        "TUI",
+        "http://localhost",
+    ):
         if token not in codex_agents:
-            fail(f"home/dot_config/codex/AGENTS.md must document Codex Crit rule token {token!r}")
+            fail(
+                f"home/dot_config/codex/AGENTS.md must document Codex Crit rule token {token!r}"
+            )
     guard_path = ROOT / "scripts/require-crit-review.py"
     if not guard_path.exists():
         fail("scripts/require-crit-review.py must enforce meaningful review triggers")
@@ -552,9 +703,18 @@ def validate_crit_install_assets() -> None:
         "review_source",
     ):
         if token not in guard_text:
-            fail(f"scripts/require-crit-review.py must contain Crit guard token {token!r}")
+            fail(
+                f"scripts/require-crit-review.py must contain Crit guard token {token!r}"
+            )
     readme = (ROOT / "README.md").read_text()
-    for token in ("scripts/require-crit-review.py", "AGENT_REVIEWED=1", "REVIEW_EVIDENCE", "review_source", "crit-data", "CRIT_REVIEW=off"):
+    for token in (
+        "scripts/require-crit-review.py",
+        "AGENT_REVIEWED=1",
+        "REVIEW_EVIDENCE",
+        "review_source",
+        "crit-data",
+        "CRIT_REVIEW=off",
+    ):
         if token not in readme:
             fail(f"README.md must document Crit guard token {token!r}")
 
@@ -566,21 +726,30 @@ def validate_ponytail_assets(manifest: dict[str, Any], codex: dict[str, Any]) ->
         "ponytail@ponytail",
         "CODEX_PONYTAIL_MARKETPLACE_SOURCE",
         "codex_marketplace_has_source",
-        "codex plugin marketplace upgrade \"${CODEX_PONYTAIL_MARKETPLACE_NAME}\"",
+        'codex plugin marketplace upgrade "${CODEX_PONYTAIL_MARKETPLACE_NAME}"',
         "update_claude_ponytail",
         "update_codex_ponytail",
         "PONYTAIL_DEFAULT_MODE",
     ):
         if token not in updater:
-            fail(f"scripts/update-agent-assets.sh must manage Ponytail asset token {token!r}")
+            fail(
+                f"scripts/update-agent-assets.sh must manage Ponytail asset token {token!r}"
+            )
 
     manifest_plugins = manifest.get("codex", {}).get("plugins", {})
     if manifest_plugins.get("ponytail@ponytail", {}).get("enabled") is not True:
         fail("home/dot_agents/agent-config.yaml must enable the Ponytail Codex plugin")
     if codex.get("plugins", {}).get("ponytail@ponytail", {}).get("enabled") is not True:
-        fail("home/.chezmoitemplates/codex-config-managed.toml must render the Ponytail Codex plugin")
-    if codex.get("marketplaces", {}).get("ponytail", {}).get("source") != "https://github.com/DietrichGebert/ponytail.git":
-        fail("home/.chezmoitemplates/codex-config-managed.toml must render the Ponytail Codex marketplace source")
+        fail(
+            "home/.chezmoitemplates/codex-config-managed.toml must render the Ponytail Codex plugin"
+        )
+    if (
+        codex.get("marketplaces", {}).get("ponytail", {}).get("source")
+        != "https://github.com/DietrichGebert/ponytail.git"
+    ):
+        fail(
+            "home/.chezmoitemplates/codex-config-managed.toml must render the Ponytail Codex marketplace source"
+        )
     hook_state = codex.get("hooks", {}).get("state", {})
     for key in (
         "ponytail@ponytail:hooks/claude-codex-hooks.json:session_start:0:0",
@@ -588,18 +757,28 @@ def validate_ponytail_assets(manifest: dict[str, Any], codex: dict[str, Any]) ->
         "ponytail@ponytail:hooks/claude-codex-hooks.json:subagent_start:0:0",
     ):
         if not hook_state.get(key, {}).get("trusted_hash", "").startswith("sha256:"):
-            fail(f"home/.chezmoitemplates/codex-config-managed.toml must render trusted Ponytail hook state for {key}")
+            fail(
+                f"home/.chezmoitemplates/codex-config-managed.toml must render trusted Ponytail hook state for {key}"
+            )
 
     codex_agents = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
     for token in ("Ponytail", "/hooks", "ponytail@ponytail", "YAGNI", "stdlib"):
         if token not in codex_agents:
-            fail(f"home/dot_config/codex/AGENTS.md must document Ponytail token {token!r}")
+            fail(
+                f"home/dot_config/codex/AGENTS.md must document Ponytail token {token!r}"
+            )
 
     claude_rule = ROOT / "home/dot_config/claude/rules/ponytail.md"
     if not claude_rule.exists():
         fail("Claude Code Ponytail rule is missing")
     claude_rule_text = claude_rule.read_text()
-    for token in ("Ponytail", "ponytail@ponytail", "YAGNI", "standard library", "native platform"):
+    for token in (
+        "Ponytail",
+        "ponytail@ponytail",
+        "YAGNI",
+        "standard library",
+        "native platform",
+    ):
         if token not in claude_rule_text:
             fail(f"{claude_rule} must document Ponytail token {token!r}")
 
@@ -609,7 +788,12 @@ def validate_ponytail_assets(manifest: dict[str, Any], codex: dict[str, Any]) ->
         fail(f"{claude_symlink} must point at the managed Ponytail Claude rule")
 
     readme = (ROOT / "README.md").read_text()
-    for token in ("Ponytail", "DietrichGebert/ponytail", "ponytail@ponytail", "review and trust"):
+    for token in (
+        "Ponytail",
+        "DietrichGebert/ponytail",
+        "ponytail@ponytail",
+        "review and trust",
+    ):
         if token not in readme:
             fail(f"README.md must document Ponytail lifecycle token {token!r}")
 
@@ -633,12 +817,22 @@ def validate_understand_anything_assets() -> None:
         "Understand-Anything Codex runtime not provisioned: no matching Claude plugin release artifact",
     ):
         if token not in updater:
-            fail(f"scripts/update-agent-assets.sh must manage Understand-Anything asset token {token!r}")
+            fail(
+                f"scripts/update-agent-assets.sh must manage Understand-Anything asset token {token!r}"
+            )
 
     codex_agents = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
-    for token in ("Understand-Anything", "$understand", "knowledge-graph.json", ".ua/intermediate/", ".ua/diff-overlay.json"):
+    for token in (
+        "Understand-Anything",
+        "$understand",
+        "knowledge-graph.json",
+        ".ua/intermediate/",
+        ".ua/diff-overlay.json",
+    ):
         if token not in codex_agents:
-            fail(f"home/dot_config/codex/AGENTS.md must document Understand-Anything token {token!r}")
+            fail(
+                f"home/dot_config/codex/AGENTS.md must document Understand-Anything token {token!r}"
+            )
 
     claude_rule = ROOT / "home/dot_config/claude/rules/understand-anything.md"
     if not claude_rule.exists():
@@ -656,9 +850,13 @@ def validate_understand_anything_assets() -> None:
             fail(f"{claude_rule} must document Understand-Anything token {token!r}")
 
     claude_symlink = ROOT / "home/dot_claude/rules/symlink_understand-anything.md.tmpl"
-    expected_target = "{{ .chezmoi.sourceDir }}/dot_config/claude/rules/understand-anything.md\n"
+    expected_target = (
+        "{{ .chezmoi.sourceDir }}/dot_config/claude/rules/understand-anything.md\n"
+    )
     if not claude_symlink.exists() or claude_symlink.read_text() != expected_target:
-        fail(f"{claude_symlink} must point at the managed Understand-Anything Claude rule")
+        fail(
+            f"{claude_symlink} must point at the managed Understand-Anything Claude rule"
+        )
 
     readme = (ROOT / "README.md").read_text()
     for token in (
@@ -668,13 +866,18 @@ def validate_understand_anything_assets() -> None:
         "version-matched Claude release artifact",
     ):
         if token not in readme:
-            fail(f"README.md must document Understand-Anything lifecycle token {token!r}")
+            fail(
+                f"README.md must document Understand-Anything lifecycle token {token!r}"
+            )
 
 
 def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
     codex_path = ROOT / "home/.chezmoitemplates/codex-config-managed.toml"
     codex_text = render_template_text(codex_path)
-    if "hooks.PermissionRequest" not in codex_text or "permgate codex" not in codex_text:
+    if (
+        "hooks.PermissionRequest" not in codex_text
+        or "permgate codex" not in codex_text
+    ):
         fail(f"{codex_path} must wire the permgate PermissionRequest hook")
     if "ccgate" in codex_text:
         fail(f"{codex_path} must not wire ccgate")
@@ -697,8 +900,10 @@ def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
         fail("permgate must define claude and codex providers")
     if any(provider.get("llm_enabled") is not False for provider in providers.values()):
         fail("permgate providers must ship in shadow mode")
-    if not providers.get("claude", {}).get("model", "").startswith(
-        "claude-haiku-4-5-20"
+    if (
+        not providers.get("claude", {})
+        .get("model", "")
+        .startswith("claude-haiku-4-5-20")
     ):
         fail("permgate Claude provider must pin a dated Haiku model")
     if providers.get("codex", {}).get("model") != "gpt-5.6-luna":
@@ -716,7 +921,7 @@ def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
         "PERMGATE_INNER",
         "PERMGATE_CODEX_COMMAND",
         "--safe-mode",
-        '--tools',
+        "--tools",
         "--disable-slash-commands",
         "--ignore-user-config",
         "--ignore-rules",
@@ -726,10 +931,17 @@ def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
         if token not in permgate_text:
             fail(f"{permgate_path} must contain {token!r}")
 
-    for stale in (ROOT / "home/dot_codex/ccgate.jsonnet", ROOT / "home/dot_claude/ccgate.jsonnet"):
+    for stale in (
+        ROOT / "home/dot_codex/ccgate.jsonnet",
+        ROOT / "home/dot_claude/ccgate.jsonnet",
+    ):
         if stale.exists():
             fail(f"{stale} must be removed while ccgate hooks are disabled")
-    removals = (ROOT / "home/.chezmoiremove").read_text() if (ROOT / "home/.chezmoiremove").exists() else ""
+    removals = (
+        (ROOT / "home/.chezmoiremove").read_text()
+        if (ROOT / "home/.chezmoiremove").exists()
+        else ""
+    )
     for target in (".codex/ccgate.jsonnet", ".claude/ccgate.jsonnet"):
         if target not in removals:
             fail(f"home/.chezmoiremove must clean up {target}")
@@ -740,7 +952,11 @@ def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
     if not env_path.exists():
         fail(f"{env_path} is missing")
     env_text = env_path.read_text()
-    for token in ("MODEL_PROFILE_INTERACTIVE", "MODEL_PROFILE_STANDARD_CODEX_ARGS", "MODEL_PROFILE_EXPRESS_CLAUDE_ARGS"):
+    for token in (
+        "MODEL_PROFILE_INTERACTIVE",
+        "MODEL_PROFILE_STANDARD_CODEX_ARGS",
+        "MODEL_PROFILE_EXPRESS_CLAUDE_ARGS",
+    ):
         if token not in env_text:
             fail(f"{env_path} must define {token}")
 
@@ -762,7 +978,9 @@ def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
     codex_agents = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
     for token in ("model_profiles", "--profile standard", "model-profiles.env"):
         if token not in codex_agents:
-            fail(f"home/dot_config/codex/AGENTS.md must document model profile token {token!r}")
+            fail(
+                f"home/dot_config/codex/AGENTS.md must document model profile token {token!r}"
+            )
 
     claude_rule = ROOT / "home/dot_config/claude/rules/model-selection.md"
     if not claude_rule.exists():
@@ -797,7 +1015,9 @@ def validate_git_config() -> None:
     setup_text = setup_path.read_text()
     for token in ("admin:ssh_signing_key", "--type signing"):
         if token not in setup_text:
-            fail(f"{setup_path.relative_to(ROOT)} must register the default SSH key for commit signing with {token!r}")
+            fail(
+                f"{setup_path.relative_to(ROOT)} must register the default SSH key for commit signing with {token!r}"
+            )
 
 
 def validate_generated_agent_configs() -> None:
@@ -824,7 +1044,10 @@ def validate_no_removed_claude_skill() -> None:
         if removed_skill in path.read_text(errors="ignore"):
             matches.append(path)
     if matches:
-        fail("removed Claude skill references remain: " + ", ".join(str(p.relative_to(ROOT)) for p in matches[:10]))
+        fail(
+            "removed Claude skill references remain: "
+            + ", ".join(str(p.relative_to(ROOT)) for p in matches[:10])
+        )
 
 
 def read_scannable_text(path: Path) -> str | None:
@@ -871,8 +1094,25 @@ def validate_no_obvious_secrets() -> None:
             fail(f"possible committed secret in {path.relative_to(ROOT)}")
 
 
+def validate_repo_claude_settings_portable() -> None:
+    """Hook commands committed in the repo's own .claude/settings.json must not pin one machine's home."""
+    settings_path = ROOT / ".claude/settings.json"
+    if not settings_path.exists():
+        return
+    data = json.loads(settings_path.read_text())
+    for event, groups in data.get("hooks", {}).items():
+        for group in groups:
+            for handler in group.get("hooks", []):
+                command = str(handler.get("command") or "")
+                if command.startswith(("/Users/", "/home/")):
+                    fail(
+                        f"{settings_path} hook {event} must not hard-code a machine-specific home path: {command}"
+                    )
+
+
 def main() -> None:
     manifest = validate_agent_manifest()
+    validate_adh_profile(manifest)
     validate_generated_agent_configs()
     validate_hook_composition()
     validate_skills()
@@ -881,6 +1121,7 @@ def main() -> None:
     validate_manifest_home_paths()
     validate_agmsg_script_modes()
     validate_claude_settings(manifest)
+    validate_repo_claude_settings_portable()
     validate_codex_plugins()
     validate_codex_modify_script()
     codex = validate_codex_config(manifest)

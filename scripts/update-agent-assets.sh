@@ -3,10 +3,10 @@
 # @file scripts/update-agent-assets.sh
 # @brief Install and refresh shared AI-agent plugins and skills.
 # @description
-#   Keeps Codex and Claude Code agent assets aligned with the dotfiles-managed
-#   skill tree. Skills are applied by chezmoi from `home/dot_agents/skills`;
-#   this script handles CLI-managed plugin marketplace refreshes and plugin
-#   installation that cannot be represented as plain files.
+#   Converges Codex and Claude Code marketplaces and plugins, GitHub CLI
+#   extensions, pinned Crit/tode/terminal-browser releases, the vendored
+#   CompactionDB tree, and Herdr integrations that cannot be represented as
+#   plain chezmoi-managed files.
 
 set -Eeuo pipefail
 
@@ -126,6 +126,13 @@ function ensure_mise_npm_agent_cli() {
 }
 
 #
+# @description Install configured GitHub CLI extensions when authentication is ready.
+#
+function ensure_gh_extensions() {
+    bash "${DOTFILES_REPO_SOURCE_DIR}/install/common/gh_extensions.sh"
+}
+
+#
 # @description Return success when the current OS is macOS.
 #
 function is_macos() {
@@ -142,30 +149,6 @@ function command_output_contains() {
     shift
 
     "$@" 2> /dev/null | grep -Fq "${needle}"
-}
-
-#
-# @description Return success when a Codex marketplace is a configured Git marketplace.
-# @arg $1 string Marketplace name.
-#
-function codex_marketplace_is_configured_git_marketplace() {
-    local marketplace="$1"
-    local root
-
-    root="$(codex_marketplace_root "${marketplace}")"
-    # Built-in/default marketplaces can resolve under Codex's .tmp plugin cache.
-    # They may contain Git metadata, but `codex plugin marketplace upgrade` only
-    # accepts configured Git marketplaces.
-    case "${root}" in
-    */.codex/.tmp/plugins | */.codex/.tmp/plugins/*)
-        return 1
-        ;;
-    esac
-    if [ -z "${root}" ] || [ ! -d "${root}/.git" ]; then
-        return 1
-    fi
-
-    return 0
 }
 
 #
@@ -228,22 +211,82 @@ function ensure_claude_superpowers_marketplace() {
 }
 
 #
+# @description Download, verify, and atomically install one pinned Linux Crit binary.
+# @arg $1 string Release artifact name.
+# @arg $2 string Expected binary SHA256.
+# @arg $3 path Destination executable path.
+# @arg $4 string Expected version without a leading v.
+#
+function install_pinned_linux_crit() (
+    local artifact="$1"
+    local checksum="$2"
+    local target="$3"
+    local version="$4"
+    local actual download staging=""
+
+    download="$(mktemp)" || return
+    trap 'rm -f "${download}" ${staging:+"${staging}"}' EXIT
+    curl -fsSL "https://github.com/tomasz-tomczyk/crit/releases/download/${CRIT_PIN_VERSION}/${artifact}" -o "${download}" || return
+    actual="$(shasum -a 256 "${download}" | awk '{ print $1 }')"
+    [ "${actual}" = "${checksum}" ] || {
+        printf 'Crit checksum mismatch for %s.\n' "${artifact}" >&2
+        return 1
+    }
+
+    mkdir -p "$(dirname "${target}")" || return
+    staging="$(mktemp "${target}.XXXXXX")" || return
+    install -m 0755 "${download}" "${staging}" || return
+    "${staging}" --version 2> /dev/null | awk -v expected="${version}" '$1 == "crit" { sub(/^v/, "", $2); if ($2 == expected) found = 1 } END { exit !found }' || return
+    mv -f "${staging}" "${target}"
+)
+
+#
 # @description Ensure the Crit CLI is available for agent integrations.
 #
 function ensure_crit_cli() {
-    if has_command crit; then
+    local artifact checksum target version
+
+    if is_macos; then
+        if ! has_command crit && has_command brew; then
+            section "Crit CLI"
+            brew install crit || true
+        fi
+        has_command crit || {
+            printf 'Skipping Crit integrations: crit command not found.\n'
+            return 1
+        }
         return 0
     fi
 
-    if is_macos && has_command brew; then
-        section "Crit CLI"
-        brew install crit || true
-    fi
-
-    if ! has_command crit; then
-        printf 'Skipping Crit integrations: crit command not found.\n'
+    if [ "$(uname -s)" != "Linux" ]; then
+        printf 'Skipping Crit integrations: unsupported platform %s %s.\n' "$(uname -s)" "$(uname -m)"
         return 1
     fi
+
+    case "$(uname -m)" in
+    x86_64 | amd64)
+        artifact="crit-linux-amd64"
+        checksum="${CRIT_LINUX_AMD64_SHA256}"
+        ;;
+    aarch64 | arm64)
+        artifact="crit-linux-arm64"
+        checksum="${CRIT_LINUX_ARM64_SHA256}"
+        ;;
+    *)
+        printf 'Skipping Crit integrations: unsupported Linux architecture %s.\n' "$(uname -m)"
+        return 1
+        ;;
+    esac
+
+    target="${HOME}/.local/bin/crit"
+    version="${CRIT_PIN_VERSION#v}"
+    if ! [ -x "${target}" ] || ! "${target}" --version 2> /dev/null | awk -v expected="${version}" '$1 == "crit" { sub(/^v/, "", $2); if ($2 == expected) found = 1 } END { exit !found }'; then
+        section "Crit CLI"
+        install_pinned_linux_crit "${artifact}" "${checksum}" "${target}" "${version}" || return 1
+    fi
+    export PATH="${HOME}/.local/bin:${PATH}"
+    hash -r
+    manifest_record "ensure_crit_cli" installer "${CRIT_PIN_VERSION}" "${target}" -- "curl -fsSL https://github.com/tomasz-tomczyk/crit/releases/download/${CRIT_PIN_VERSION}/${artifact}" "shasum -a 256 <binary>" "install -m 0755 <binary> ${target}"
 }
 
 #
@@ -429,7 +472,7 @@ function update_claude_crit() {
     else
         claude plugin enable "${CLAUDE_CRIT_PLUGIN}" || true
     fi
-    manifest_record "update_claude_crit" plugin "$(manifest_claude_plugin_version "${CLAUDE_CRIT_PLUGIN}")" "${HOME}/.claude/plugins/cache/crit/crit" "${HOME}/.claude/settings.json" -- "brew install crit" "claude plugin marketplace add ${CLAUDE_CRIT_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_CRIT_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_CRIT_PLUGIN}" "claude plugin update ${CLAUDE_CRIT_PLUGIN}" "claude plugin enable ${CLAUDE_CRIT_PLUGIN}"
+    manifest_record "update_claude_crit" plugin "$(manifest_claude_plugin_version "${CLAUDE_CRIT_PLUGIN}")" "${HOME}/.claude/plugins/cache/crit/crit" "${HOME}/.claude/settings.json" -- "ensure_crit_cli" "claude plugin marketplace add ${CLAUDE_CRIT_MARKETPLACE}" "claude plugin marketplace update ${CLAUDE_CRIT_MARKETPLACE_NAME}" "claude plugin install ${CLAUDE_CRIT_PLUGIN}" "claude plugin update ${CLAUDE_CRIT_PLUGIN}" "claude plugin enable ${CLAUDE_CRIT_PLUGIN}"
 }
 
 #
@@ -488,28 +531,34 @@ function update_claude_understand_anything() {
 }
 
 #
-# @description Install or update the Codex Superpowers plugin from configured marketplaces.
+# @description Install the Codex Superpowers plugin from the OpenAI-curated catalog.
 #
 function update_codex_superpowers() {
+    local codex_output
+
     if ! has_command codex; then
         printf 'Skipping Codex plugins: codex command not found.\n'
         return 0
     fi
 
     section "Codex plugins"
-    if codex_marketplace_is_configured_git_marketplace openai-curated; then
-        codex plugin marketplace upgrade openai-curated || true
-    else
-        printf 'Skipping Codex marketplace upgrade: openai-curated is not a configured Git marketplace.\n'
-    fi
-
     if command_output_contains "\"pluginId\":\"${CODEX_SUPERPOWERS_PLUGIN}\"" codex plugin list --json ||
         command_output_contains "\"pluginId\": \"${CODEX_SUPERPOWERS_PLUGIN}\"" codex plugin list --json; then
         printf 'Codex Superpowers plugin is already installed.\n'
+    elif codex_output="$(codex plugin add "${CODEX_SUPERPOWERS_PLUGIN}" 2>&1)"; then
+        if [ -n "${DOTFILES_DEBUG:-}" ] && [ -n "${codex_output}" ]; then
+            printf '%s\n' "${codex_output}" >&2
+        fi
+        printf 'Codex Superpowers plugin installed.\n'
     else
-        codex plugin add "${CODEX_SUPERPOWERS_PLUGIN}" || true
+        if [ -n "${DOTFILES_DEBUG:-}" ] && [ -n "${codex_output}" ]; then
+            printf '%s\n' "${codex_output}" >&2
+        fi
+        printf 'Codex Superpowers was not installed: the OpenAI-curated catalog is unavailable.\n'
+        # shellcheck disable=SC2016 # Backticks are literal operator guidance.
+        printf 'Run `codex login`, then `codex plugin add %s`.\n' "${CODEX_SUPERPOWERS_PLUGIN}"
     fi
-    manifest_record "update_codex_superpowers" plugin "$(manifest_codex_plugin_version "${CODEX_SUPERPOWERS_PLUGIN}")" "${CODEX_HOME:-${HOME}/.codex}/.tmp/plugins/plugins/superpowers" "${CODEX_HOME:-${HOME}/.codex}/config.toml" -- "codex plugin marketplace upgrade openai-curated" "codex plugin add ${CODEX_SUPERPOWERS_PLUGIN}"
+    manifest_record "update_codex_superpowers" plugin "$(manifest_codex_plugin_version "${CODEX_SUPERPOWERS_PLUGIN}")" "${CODEX_HOME:-${HOME}/.codex}/.tmp/plugins/plugins/superpowers" "${CODEX_HOME:-${HOME}/.codex}/config.toml" -- "codex plugin add ${CODEX_SUPERPOWERS_PLUGIN}"
 }
 
 #
@@ -579,7 +628,10 @@ function update_codex_crit() {
         cd "${HOME}"
         crit install codex-plugin --force
     ) || true
-    manifest_record "update_codex_crit" plugin "$(manifest_brew_formula_version crit)" "${CODEX_HOME:-${HOME}/.codex}/plugins/crit" "${CODEX_HOME:-${HOME}/.codex}/config.toml" -- "brew install crit" "crit install codex-plugin --force"
+    if [ -f "${HOME}/.agents/plugins/marketplace.json" ]; then
+        chmod 644 "${HOME}/.agents/plugins/marketplace.json"
+    fi
+    manifest_record "update_codex_crit" plugin "$(crit --version 2> /dev/null | awk 'NR == 1 { print $2 }')" "${CODEX_HOME:-${HOME}/.codex}/plugins/crit" "${CODEX_HOME:-${HOME}/.codex}/config.toml" "${HOME}/.agents/skills/crit" "${HOME}/.agents/skills/crit-cli" "${HOME}/.agents/skills/crit-story" -- "ensure_crit_cli" "crit install codex-plugin --force"
 }
 
 #
@@ -799,6 +851,7 @@ function main() {
     remove_node_global_agent_cli_shadows
     ensure_mise_npm_agent_cli claude "npm:@anthropic-ai/claude-code"
     ensure_mise_npm_agent_cli codex "npm:@openai/codex"
+    ensure_gh_extensions
     update_claude_superpowers
     update_claude_crit
     update_claude_ponytail

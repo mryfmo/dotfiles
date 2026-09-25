@@ -47,7 +47,11 @@ UNDERSTAND_SKILL_ALLOWLIST = {
     "understand-knowledge",
     "understand-onboard",
 }
+# Codex-side Crit skills are installed by update-agent-assets.sh's
+# update_codex_crit, not rendered from the chezmoi source tree.
+CRIT_PLUGIN_SKILLS = {"crit", "crit-cli", "crit-story"}
 ASSET_STEP_FUNCTIONS = {
+    "ensure_crit_cli",
     "ensure_herdr_integrations",
     "ensure_mise_npm_agent_cli",
     "update_claude_crit",
@@ -71,6 +75,13 @@ UPDATER_SOURCE_COMMAND = (
 )
 CHEZMOI_APPLY_COMMAND = ("chezmoi", "apply", "--force")
 MODE_ONLY_DIFF = re.compile(r"\Adiff --git .+\nold mode [0-7]+\nnew mode [0-7]+\n?\Z")
+ADH_PROFILE_BLOCK = """  adh:
+    claude: { model: claude-fable-5-1, effort: high }
+    codex:
+      model: gpt-6-astra
+      model_reasoning_effort: xhigh
+      notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
+"""
 
 
 class RepairAction(NamedTuple):
@@ -328,7 +339,9 @@ def compare_claude_skills() -> list[str]:
         "Claude shared-skill tree",
         expected_claude_skill_targets(),
         target_root,
-        ignored_paths=terminal_browser_receipt_paths(),
+        # Cowork syncs its own skills into this subtree; chezmoi does not own it.
+        ignored_paths=terminal_browser_receipt_paths()
+        | {HOME / ".claude/skills/synced"},
     )
 
 
@@ -341,6 +354,21 @@ def check_executable_hook(source: Path, target: Path, label: str) -> list[str]:
     if not mode & stat.S_IXUSR:
         failures.append(f"{label} is not executable: {target}")
     return failures
+
+
+def manifest_policy_failures() -> list[str]:
+    text = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
+    match = re.search(
+        r"(?ms)^  adh:\n.*?(?=^  [a-z][a-z0-9_]*:|^interactive_profile:)",
+        text,
+    )
+    if match is not None and match.group(0) == ADH_PROFILE_BLOCK:
+        return []
+    return [
+        "agent manifest policy invalid: model_profiles.adh must pin "
+        "claude-fable-5-1/high and gpt-6-astra/xhigh with contextdb notify "
+        "and no fallback settings"
+    ]
 
 
 def normalized_path(path: Path) -> Path:
@@ -505,7 +533,10 @@ def orphaned_asset_warnings(
         if path.parent == normalized_path(skills_root)
     }
     skill_allowlist = (
-        UNDERSTAND_SKILL_ALLOWLIST | receipt_skill_names | {"db", "run", "teams"}
+        UNDERSTAND_SKILL_ALLOWLIST
+        | CRIT_PLUGIN_SKILLS
+        | receipt_skill_names
+        | {"db", "run", "teams"}
     )
     candidates = [
         (path, source_root_names, AGENT_ROOT_ALLOWLIST)
@@ -634,7 +665,7 @@ def print_failures(failures: list[str]) -> None:
 
 
 def check() -> list[str]:
-    failures: list[str] = []
+    failures = manifest_policy_failures()
     checks = [
         (
             SOURCE_ROOT / "dot_claude/private_mcp.json.tmpl",

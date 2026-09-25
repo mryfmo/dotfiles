@@ -1,13 +1,3 @@
-.zlogin
-.zpreztorc
-.zlogout
-.p10k.zsh
-
 .config/powerlevel10k
-.config/sheldon/plugin_sources/client.toml
-
-.local/bin/client
-.zsh/zshrc_client
-.zsh/zprofile_client
 
 .bash/client/bashrc

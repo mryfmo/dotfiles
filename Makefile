@@ -41,12 +41,30 @@ init:
 	fi
 
 .PHONY: update
+# run_once hashes let update converge committed scripts without advancing tool pins.
 update:
-	chezmoi apply --verbose --exclude=scripts
+	@branch="$$(git branch --show-current 2>/dev/null || true)"; \
+	upstream="$$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true)"; \
+	reason=""; \
+	if [ -n "$$(git ls-files -u)" ]; then \
+		reason="index has unmerged files; resolve the conflict (git add/commit or git reset) before pulling"; \
+	elif [ "$$branch" != main ]; then \
+		reason="current branch is $${branch:-detached}, not main"; \
+	elif [ "$$upstream" != origin/main ]; then \
+		reason="upstream is $${upstream:-unset}, not origin/main"; \
+	elif ! git diff --quiet || ! git diff --cached --quiet; then \
+		reason="tracked files have staged or unstaged changes"; \
+	fi; \
+	if [ -n "$$reason" ]; then \
+		printf "Notice: local source not pulled (%s); run 'git -C %s pull' to fetch remote updates.\n" "$$reason" "$(CURDIR)"; \
+	elif ! git pull --ff-only; then \
+		printf 'Warning: git pull --ff-only failed; continuing with local source.\n' >&2; \
+	fi
+	chezmoi apply --verbose
 	@if [ -d "$$HOME/.local/share/chezmoi-private" ] && [ -f "$$HOME/.config/chezmoi-private/chezmoi.yaml" ]; then \
 		chezmoi --source "$$HOME/.local/share/chezmoi-private" \
 			--config "$$HOME/.config/chezmoi-private/chezmoi.yaml" \
-			apply --verbose --exclude=scripts; \
+			apply --verbose; \
 	else \
 		echo "Warning: private chezmoi source/config not found. Skipping private dotfiles."; \
 	fi
@@ -68,7 +86,16 @@ update:
 		exit 1; \
 	fi; \
 	case "$$server_status" in \
-		running) herdr server reload-config ;; \
+		running) \
+			if reload_output="$$(herdr server reload-config 2>&1)"; then \
+				[ -z "$$reload_output" ] || printf '%s\n' "$$reload_output"; \
+			else \
+				[ -z "$$reload_output" ] || printf '%s\n' "$$reload_output" >&2; \
+				case "$$reload_output" in \
+					*protocol_mismatch*) printf '%s\n' "Herdr was updated; restart the server with 'herdr server stop' or recreate the Ghostty session, then run 'herdr server reload-config' manually." >&2 ;; \
+					*) exit 1 ;; \
+				esac; \
+			fi ;; \
 		not_running) echo "Herdr server is not running; skipping config reload." ;; \
 		*) echo "Unknown or missing Herdr server status: $${server_status:-<missing>}" >&2; exit 1 ;; \
 	esac

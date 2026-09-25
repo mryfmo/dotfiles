@@ -52,7 +52,19 @@ model_profiles:
       model: gpt-daybreak-blue-latest
       model_reasoning_effort: high
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
+  # ADH V4 program profile; fallback and effort downgrade are forbidden.
+  # Edit here only; profiles/model_profiles.json is a validation view.
+  adh:
+    claude: { model: claude-fable-5-1, effort: high }
+    codex:
+      model: gpt-6-astra
+      model_reasoning_effort: xhigh
+      notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
 interactive_profile: deep
+# Worker pane agent for herdr-agents: codex or claude. Renders into
+# ~/.agents/model-profiles.env as HERDR_AGENTS_WORKER_KIND; an explicit
+# HERDR_AGENTS_WORKER_KIND in the environment still overrides it.
+worker_kind: claude
 
 codex:
   config_path: home/.chezmoitemplates/codex-config-managed.toml
@@ -120,7 +132,7 @@ codex:
       ponytail@ponytail:hooks/claude-codex-hooks.json:subagent_start:0:0:
         trusted_hash: sha256:28c43eada804ad00a4e651d6af6320c01e763b1df060af0ab74865a55bc1c9a9
   projects:
-    /Users/mryfmo/Workspace/dotfiles:
+    "{{ .chezmoi.workingTree }}":
       trust_level: trusted
 
 claude:
@@ -163,7 +175,7 @@ claude:
       timeout: 10
       status_message: Evaluating permission request
     session_start:
-      - matcher: "*"
+      - matcher: "^(startup|resume|clear|compact|fork)$"
         hooks:
           - type: command
             # Must stay byte-identical to herdr's own SessionStart entry after
@@ -192,7 +204,7 @@ claude:
   enabledPlugins: {}
 
 plugins:
-  marketplace_path: home/dot_agents/plugins/marketplace.json
+  marketplace_path: home/dot_agents/plugins/create_marketplace.json
   marketplace:
     name: mryfmo-personal-plugins
     displayName: mryfmo Personal Plugins

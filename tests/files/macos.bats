@@ -19,6 +19,8 @@ setup() {
     assert_file_matches "${HOME}/.local/bin/common/dev" "${REPO_ROOT}/home/dot_local/bin/common/executable_dev"
     assert_mode "${HOME}/.local/bin/common/dev" 755
     assert_absent "${HOME}/.local/bin/server/cache.sh"
+    assert_absent "${HOME}/.config/systemd/user/usage-snapshot.service"
+    assert_absent "${HOME}/.config/systemd/user/usage-snapshot.timer"
 }
 
 @test "[macos-client] second apply is idempotent and preserves an unmanaged sentinel" {

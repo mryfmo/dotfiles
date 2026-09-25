@@ -52,7 +52,7 @@ function setup_repository() {
 
     # Add Docker’s official GPG key:
     sudo mkdir -p /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg
 
     # Use the following command to set up the repository:
     echo \
@@ -80,12 +80,20 @@ function uninstall_docker_engine() {
 }
 
 #
+# @description Add the current user to the docker group so docker can run without sudo.
+#
+function configure_docker_group() {
+    sudo usermod -aG docker "$(id -un)"
+}
+
+#
 # @description Install Docker Engine from Docker's official Ubuntu repository.
 #
 function main() {
     uninstall_old_docker
     setup_repository
     install_docker_engine
+    configure_docker_group
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

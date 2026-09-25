@@ -3,8 +3,8 @@
 # @file install/common/gh_extensions.sh
 # @brief Install GitHub CLI extensions used by the dotfiles.
 # @description
-#   Activates `mise` when available, ensures GitHub authentication, and
-#   installs the configured `gh` extensions.
+#   Activates `mise` when available and installs the configured `gh`
+#   extensions only when GitHub CLI is already authenticated.
 
 set -Eeuo pipefail
 
@@ -28,19 +28,18 @@ function activate_mise() {
 }
 
 #
-# @description Prompt for GitHub CLI authentication when no session exists.
-#
-function ensure_gh_auth() {
-    if ! gh auth status &> /dev/null; then
-        gh auth login -h github.com -p https
-    fi
-}
-
-#
-# @description Install every extension listed in `GH_EXTENSIONS`.
+# @description Install every configured extension, or skip when unauthenticated.
 #
 function install_gh_extensions() {
+    if ! gh auth status &> /dev/null; then
+        printf '%s\n' 'Warning: GitHub CLI is not authenticated. Run setup-gh, then make update to install extensions.' >&2
+        return 0
+    fi
+
     for extension in "${GH_EXTENSIONS[@]}"; do
+        if gh extension list | awk -F '\t' -v expected="${extension}" '$2 == expected { found = 1 } END { exit !found }'; then
+            continue
+        fi
         gh extension install "${extension}"
     done
 }
@@ -50,7 +49,6 @@ function install_gh_extensions() {
 #
 function main() {
     activate_mise
-    ensure_gh_auth
     install_gh_extensions
 }
 

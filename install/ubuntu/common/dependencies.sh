@@ -14,7 +14,6 @@ fi
 
 readonly PACKAGES=(
     build-essential
-    busybox
     cmake
     curl
     git
@@ -23,6 +22,7 @@ readonly PACKAGES=(
     iproute2
     iputils-ping
     perl
+    pinentry-curses
     sudo
     unzip
     vim

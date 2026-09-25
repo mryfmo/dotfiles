@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.0+dotfiles.6
+
+- Defaulted the hook interpreter stored in `.claude/settings.json` to the bare `python3` command (PATH lookup at hook time) instead of the installing machine's `sys.executable`, so settings committed from one machine keep working on another. `--python` still accepts an explicit path. Verified on Ubuntu: Claude Code resolves the bare command via PATH, and the hooks run under both the system and mise interpreters.
+
 ## 2.0.0+dotfiles.5
 
 - Recorded each injected recovery packet as a best-effort `recovery_injected` spool event so model-visible recovery context is replayable from the ledger without adding a synchronous database write.

@@ -1082,6 +1082,17 @@ EOF
             """,
         )
         self.executable(bin_dir / "apt-get", "exit 0\n")
+        self.executable(
+            bin_dir / "chezmoi",
+            """
+            printf 'chezmoi %s\\n' "$*" >> "$TEST_LOG"
+            if [ "$1" = source-path ]; then
+                printf '%s\\n' "$TEST_CHEZMOI_SOURCE"
+            else
+                [ "${FAIL_PHASE}" != chezmoi_apply ]
+            fi
+            """,
+        )
         log = repo / "commands.log"
         env = {
             **os.environ,
@@ -1089,8 +1100,44 @@ EOF
             "HOME": str(home),
             "PATH": f"{bin_dir}:/usr/bin:/bin",
             "TEST_LOG": str(log),
+            "TEST_CHEZMOI_SOURCE": str(self.temp_dir / "other-source/home"),
         }
         return repo, env
+
+    def test_upgrade_applies_mise_only_from_successful_canonical_checkout(self) -> None:
+        cases = ((True, "none"), (False, "none"), (True, "uv"), (True, "chezmoi_apply"))
+        for canonical, fail_phase in cases:
+            with self.subTest(canonical=canonical, fail_phase=fail_phase):
+                repo, env = self.upgrade_fixture(f"apply-{canonical}-{fail_phase}")
+                env["FAIL_PHASE"] = fail_phase
+                source_repo = repo if canonical else repo / "other-source"
+                (source_repo / "home").mkdir(parents=True, exist_ok=True)
+                initialized = self.run_test_command(
+                    ["git", "init", str(source_repo)], cwd=repo, env=env
+                )
+                self.assertEqual(0, initialized.returncode, initialized.stderr)
+                env["TEST_CHEZMOI_SOURCE"] = str(source_repo / "home")
+                result = self.run_test_command(
+                    ["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env
+                )
+                self.assertEqual(
+                    0 if fail_phase == "none" else 1,
+                    result.returncode,
+                    result.stdout + result.stderr,
+                )
+                calls = Path(env["TEST_LOG"]).read_text()
+                if canonical and fail_phase != "uv":
+                    self.assertIn(
+                        f"chezmoi apply {env['HOME']}/.config/mise/config.toml {env['HOME']}/.config/mise/mise.lock",
+                        calls,
+                    )
+                else:
+                    self.assertNotIn("chezmoi apply", calls)
+                if not canonical:
+                    self.assertIn(
+                        f"pins updated in {repo.resolve()}; ~/.config/mise follows after merge and make update",
+                        result.stdout,
+                    )
 
     def test_upgrade_changes_checkout_not_live_mise_symlink_target(self) -> None:
         for override in (False, True):

@@ -192,6 +192,121 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             self.module.main()
         self.assertIn("up to date", stdout.getvalue())
 
+    MANIFEST_TEXT = (
+        "schema_version: 1\n"
+        "assets:\n"
+        "  # Pins live here.\n"
+        "  crit:\n"
+        "    pin: v0.0.1\n"
+        "    sha256:\n"
+        "      linux-amd64: old\n"
+        "    render:\n"
+        "      file: scripts/lib/installer-pins.sh\n"
+        "  zed:\n"
+        "    pin: v0.0.2\n"
+    )
+
+    def test_set_asset_field_rewrites_only_the_named_scalar(self) -> None:
+        text = self.module.set_asset_field(self.MANIFEST_TEXT, "crit", "pin", "v0.20.3")
+        text = self.module.set_asset_field(text, "crit", "sha256.linux-amd64", "d3a3")
+
+        self.assertEqual(
+            text,
+            self.MANIFEST_TEXT.replace("pin: v0.0.1", "pin: v0.20.3").replace(
+                "linux-amd64: old", "linux-amd64: d3a3"
+            ),
+        )
+        self.assertIn("  # Pins live here.\n", text)
+        self.assertIn("    pin: v0.0.2\n", text)
+
+    def test_set_asset_field_rejects_unknown_targets_and_unsafe_values(self) -> None:
+        cases = (
+            ("nosuch", "pin", "v1"),
+            ("crit", "nosuch", "v1"),
+            ("crit", "sha256.linux-arm64", "v1"),
+            ("zed", "sha256", "v1"),
+            ("crit", "pin", "v1$(id)"),
+        )
+        for name, path, value in cases:
+            with self.subTest(target=f"{name}.{path}", value=value):
+                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(
+                    SystemExit
+                ):
+                    self.module.set_asset_field(self.MANIFEST_TEXT, name, path, value)
+
+    @staticmethod
+    def parse_indented_mapping(text: str) -> dict:
+        """Parse the fixture's nested key: value lines without PyYAML."""
+        root: dict = {}
+        stack = [(-1, root)]
+        for line in text.splitlines():
+            if not line.strip() or line.lstrip().startswith("#"):
+                continue
+            indent = len(line) - len(line.lstrip(" "))
+            key, _, value = line.strip().partition(":")
+            while stack[-1][0] >= indent:
+                stack.pop()
+            if value.strip():
+                stack[-1][1][key] = value.strip()
+            else:
+                stack[-1][1][key] = {}
+                stack.append((indent, stack[-1][1][key]))
+        return root
+
+    def test_set_asset_updates_the_manifest_and_renders_its_pins(self) -> None:
+        manifest_path = self.temp_dir / "home/dot_agents/agent-config.yaml"
+        manifest_path.parent.mkdir(parents=True)
+        manifest_path.write_text(self.MANIFEST_TEXT)
+        pins = self.temp_dir / "scripts/lib/installer-pins.sh"
+        pins.parent.mkdir(parents=True)
+        pins.write_text('CRIT_PIN_VERSION="v0.0.1"\nCRIT_LINUX_AMD64_SHA256="old"\n')
+        self.module.parse_manifest = self.parse_indented_mapping
+        real_render = self.module.render_asset_constants
+
+        def render(manifest: dict) -> dict:
+            manifest["assets"]["crit"]["render"]["constants"] = {
+                "CRIT_PIN_VERSION": "pin",
+                "CRIT_LINUX_AMD64_SHA256": "sha256.linux-amd64",
+            }
+            return real_render(manifest)
+
+        self.module.render_asset_constants = render
+        old_argv = sys.argv
+        self.addCleanup(setattr, sys, "argv", old_argv)
+        sys.argv = [
+            "generate-agent-configs.py",
+            "--set-asset",
+            "crit.pin=v0.20.3",
+            "--set-asset",
+            "crit.sha256.linux-amd64=d3a3",
+        ]
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            self.module.main()
+
+        self.assertIn("asset pins updated: crit.pin, crit.sha256.linux-amd64", stdout.getvalue())
+        self.assertIn("    pin: v0.20.3\n", manifest_path.read_text())
+        self.assertEqual(
+            pins.read_text(), 'CRIT_PIN_VERSION="v0.20.3"\nCRIT_LINUX_AMD64_SHA256="d3a3"\n'
+        )
+
+    def test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid(self) -> None:
+        manifest_path = self.temp_dir / "home/dot_agents/agent-config.yaml"
+        manifest_path.parent.mkdir(parents=True)
+        manifest_path.write_text(self.MANIFEST_TEXT)
+        old_argv = sys.argv
+        self.addCleanup(setattr, sys, "argv", old_argv)
+        sys.argv = [
+            "generate-agent-configs.py",
+            "--set-asset",
+            "crit.pin=v0.20.3",
+            "--set-asset",
+            "crit.nosuch=1",
+        ]
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.main()
+        self.assertEqual(manifest_path.read_text(), self.MANIFEST_TEXT)
+
     def test_repository_marketplace_is_a_runtime_owned_seed(self) -> None:
         manifest = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
         seed = ROOT / "home/dot_agents/plugins/create_marketplace.json"

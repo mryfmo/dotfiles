@@ -3,8 +3,10 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -14,6 +16,9 @@ REVIEWED_ENV = "CRIT_REVIEWED"
 NATIVE_REVIEWED_ENV = "AGENT_REVIEWED"
 EVIDENCE_ENV = "REVIEW_EVIDENCE"
 DISABLE_ENV = "CRIT_REVIEW"
+PR_FEEDBACK_ENV = "PR_FEEDBACK_EVIDENCE"
+PR_FEEDBACK_DISPOSITION = re.compile(r"(?:fixed:(?P<commit>[0-9a-f]{7,40})|not-applicable:(?P<reason>.*\S.*))", re.S)
+FAILURE_REASON_MIN_CHARS = 20
 BROAD_DIFF_FILE_LIMIT = 5
 BROAD_DIFF_LINE_LIMIT = 200
 
@@ -104,13 +109,15 @@ def git_root() -> Path:
     return Path(result.stdout.strip())
 
 
-def changed_paths(root: Path) -> list[str]:
+def changed_paths(root: Path, base: str | None = None) -> list[str]:
     paths: set[str] = set()
-    commands = (
+    commands = [
         ["diff", "--name-only"],
         ["diff", "--cached", "--name-only"],
         ["ls-files", "--others", "--exclude-standard"],
-    )
+    ]
+    if base:
+        commands.append(["diff", "--name-only", f"{base}...HEAD"])
     for command in commands:
         result = run_git(command, root)
         if result.returncode == 0:
@@ -118,9 +125,12 @@ def changed_paths(root: Path) -> list[str]:
     return sorted(path for path in paths if not path.startswith(IGNORED_PREFIXES))
 
 
-def numstat_line_count(root: Path) -> int:
+def numstat_line_count(root: Path, base: str | None = None) -> int:
     total = 0
-    for command in (["diff", "--numstat"], ["diff", "--cached", "--numstat"]):
+    commands = [["diff", "--numstat"], ["diff", "--cached", "--numstat"]]
+    if base:
+        commands.append(["diff", "--numstat", f"{base}...HEAD"])
+    for command in commands:
         result = run_git(command, root)
         if result.returncode != 0:
             continue
@@ -164,7 +174,7 @@ def high_risk_reason(path: str) -> str | None:
     return None
 
 
-def review_reasons(root: Path, paths: list[str]) -> list[str]:
+def review_reasons(root: Path, paths: list[str], base: str | None = None) -> list[str]:
     reasons: list[str] = []
     for path in paths:
         reason = high_risk_reason(path)
@@ -178,7 +188,7 @@ def review_reasons(root: Path, paths: list[str]) -> list[str]:
     if len(paths) >= BROAD_DIFF_FILE_LIMIT:
         reasons.append(f"broad diff touches {len(paths)} files")
 
-    line_count = numstat_line_count(root)
+    line_count = numstat_line_count(root, base)
     if line_count >= BROAD_DIFF_LINE_LIMIT:
         reasons.append(f"broad diff changes {line_count} lines")
 
@@ -282,6 +292,53 @@ def crit_data_errors(root: Path, source: str) -> list[str]:
     return errors
 
 
+def pr_feedback_errors(root: Path, required: bool) -> list[str]:
+    """Check the filled pr-feedback.py JSON: every item needs a root-cause disposition."""
+    evidence = os.environ.get(PR_FEEDBACK_ENV, "").strip()
+    if not evidence:
+        if required:
+            return [f"{PR_FEEDBACK_ENV} must point to the filled scripts/pr-feedback.py JSON for PR integration"]
+        return []
+    path = Path(evidence)
+    if not path.is_absolute():
+        path = root / path
+    try:
+        path.resolve().relative_to(root.resolve())
+    except ValueError:
+        return [f"{PR_FEEDBACK_ENV} must point to a repo-local JSON file"]
+    if not path.is_file():
+        return [f"{PR_FEEDBACK_ENV} file does not exist: {path}"]
+    try:
+        data = json.loads(path.read_text())
+    except json.JSONDecodeError as error:
+        return [f"{PR_FEEDBACK_ENV} must be valid JSON: {error}"]
+    items = data.get("items") if isinstance(data, dict) else None
+    if not isinstance(items, list):
+        return [f"{PR_FEEDBACK_ENV} must be a pr-feedback.py document with an items list"]
+
+    errors: list[str] = []
+    for index, item in enumerate(items):
+        label = f"{PR_FEEDBACK_ENV} item {index}"
+        if not isinstance(item, dict):
+            errors.append(f"{label} must be an object")
+            continue
+        label += f" ({item.get('source')}:{item.get('level')} {item.get('url') or ''})".rstrip()
+        disposition = item.get("disposition")
+        match = PR_FEEDBACK_DISPOSITION.fullmatch(disposition) if isinstance(disposition, str) else None
+        if not match:
+            errors.append(f"{label} needs a disposition `fixed:<commit>` or `not-applicable:<reason>`")
+            continue
+        commit = match.group("commit")
+        if commit and run_git(["cat-file", "-e", f"{commit}^{{commit}}"], root).returncode != 0:
+            errors.append(f"{label} cites an unknown commit: {commit}")
+        reason = (match.group("reason") or "").strip()
+        if item.get("level") == "failure" and not commit and len(reason) < FAILURE_REASON_MIN_CHARS:
+            errors.append(
+                f"{label} is failure-level; not-applicable needs a reason of at least {FAILURE_REASON_MIN_CHARS} characters"
+            )
+    return errors
+
+
 def evidence_field(text: str, field: str) -> str | None:
     prefix = f"{field}:"
     for line in text.splitlines():
@@ -299,13 +356,28 @@ def review_marker() -> str | None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--base",
+        help="also review committed changes in <base>...HEAD and require PR_FEEDBACK_EVIDENCE (PR integration)",
+    )
+    args = parser.parse_args()
     if os.environ.get(DISABLE_ENV) == "off":
         print("Review guard disabled by CRIT_REVIEW=off.")
         return
 
     root = git_root()
-    paths = changed_paths(root)
-    reasons = review_reasons(root, paths)
+    feedback_errors = pr_feedback_errors(root, required=args.base is not None)
+    if feedback_errors:
+        print("PR feedback evidence is incomplete; run scripts/pr-feedback.py and disposition every item.")
+        for error in feedback_errors:
+            print(f"- {error}")
+        raise SystemExit(1)
+    if os.environ.get(PR_FEEDBACK_ENV, "").strip():
+        print(f"PR feedback evidence accepted: {os.environ[PR_FEEDBACK_ENV].strip()}")
+
+    paths = changed_paths(root, args.base)
+    reasons = review_reasons(root, paths, args.base)
     if not reasons:
         print("Review not required: no meaningful review trigger found.")
         return

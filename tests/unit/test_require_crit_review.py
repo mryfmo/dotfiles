@@ -332,6 +332,103 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn("bare agent self-attestation", result.stdout)
 
+    def commit_on_branch(self, relative_path: str) -> None:
+        run(["git", "switch", "-c", "feature"], self.temp_dir)
+        path = self.temp_dir / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("#!/usr/bin/env bash\n")
+        run(["git", "add", relative_path], self.temp_dir)
+        run(["git", "commit", "-m", "feature"], self.temp_dir)
+
+    def head_commit(self) -> str:
+        return run(["git", "rev-parse", "HEAD"], self.temp_dir).stdout.strip()
+
+    def write_feedback(self, items: list[dict], relative_path: str = ".orchestration/validation/pr-feedback.json") -> str:
+        self.write_review_file(relative_path, json.dumps({"pr": 1, "head_sha": "x", "items": items}))
+        return relative_path
+
+    def guard_base(self, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+        return run([sys.executable, str(GUARD), "--base", "main"], self.temp_dir, {"CRIT_REVIEW": "", **(env or {})})
+
+    def test_base_reviews_committed_branch_changes(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        self.commit_on_branch("scripts/update-agent-assets.sh")
+
+        plain = self.guard()
+        self.assertEqual(plain.returncode, 0, plain.stdout)
+        self.assertIn("Review not required", plain.stdout)
+
+        feedback = self.write_feedback([{"source": "status", "level": "success", "disposition": "not-applicable:ok"}])
+        based = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+        self.assertEqual(based.returncode, 1, based.stdout)
+        self.assertIn("agent lifecycle path changed: scripts/update-agent-assets.sh", based.stdout)
+
+    def test_base_requires_pr_feedback_evidence(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": ""})
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("PR_FEEDBACK_EVIDENCE must point to the filled scripts/pr-feedback.py JSON", result.stdout)
+
+    def test_pr_feedback_rejects_incomplete_or_invalid_dispositions(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        commit = self.head_commit()
+        cases = {
+            "missing disposition": ([{"source": "annotation", "level": "notice", "disposition": ""}],
+                                    "needs a disposition"),
+            "stopgap wording": ([{"source": "review_comment", "level": "comment", "disposition": "later"}],
+                                "needs a disposition"),
+            "unknown commit": ([{"source": "annotation", "level": "warning", "disposition": "fixed:deadbee"}],
+                               "cites an unknown commit: deadbee"),
+            "short failure reason": ([{"source": "annotation", "level": "failure", "disposition": "not-applicable:flaky"}],
+                                     "failure-level; not-applicable needs a reason of at least 20 characters"),
+            "not an items document": ([], None),
+        }
+        for name, (items, message) in cases.items():
+            with self.subTest(case=name):
+                if message is None:
+                    self.write_review_file(".orchestration/validation/pr-feedback.json", json.dumps([]))
+                    feedback = ".orchestration/validation/pr-feedback.json"
+                    message = "must be a pr-feedback.py document with an items list"
+                else:
+                    feedback = self.write_feedback(items)
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn(message, result.stdout)
+        self.assertTrue(commit)
+
+    def test_pr_feedback_rejects_evidence_outside_the_repository(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
+            json.dump({"items": []}, handle)
+        self.addCleanup(os.unlink, handle.name)
+
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": handle.name})
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("must point to a repo-local JSON file", result.stdout)
+
+    def test_pr_feedback_accepts_complete_root_cause_dispositions(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        commit = self.head_commit()
+        feedback = self.write_feedback(
+            [
+                {"source": "review_comment", "level": "comment", "disposition": f"fixed:{commit[:7]}"},
+                {
+                    "source": "annotation",
+                    "level": "failure",
+                    "disposition": "not-applicable:runner image notice owned by GitHub, tracked in T18",
+                },
+                {"source": "status", "level": "success", "disposition": "not-applicable:review completed"},
+            ]
+        )
+
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn(f"PR feedback evidence accepted: {feedback}", result.stdout)
+        self.assertIn("Review not required", result.stdout)
+
     def test_explicit_disable_skips_guard(self) -> None:
         self.touch_lifecycle_script()
         result = self.guard({"CRIT_REVIEW": "off"})

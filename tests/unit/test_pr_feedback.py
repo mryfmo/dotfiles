@@ -338,5 +338,37 @@ class PrFeedbackTest(unittest.TestCase):
         self.assertIn("10 items", stderr.getvalue())
 
 
+
+class PrIntegrationRuleParityTest(unittest.TestCase):
+    """Keep the PR integration rule, its mirrors, and the skills in step."""
+
+    TOKENS = (
+        "scripts/pr-feedback.py",
+        "@coderabbitai full review",
+        "fixed:<commit>",
+        "not-applicable:",
+        "BASE=origin/main PR_FEEDBACK_EVIDENCE=<json> make require-crit-review",
+    )
+
+    def test_rule_symlink_points_at_the_rule(self) -> None:
+        self.assertEqual(
+            (ROOT / "home/dot_claude/rules/symlink_pr-integration.md.tmpl").read_text(),
+            "{{ .chezmoi.sourceDir }}/dot_config/claude/rules/pr-integration.md\n",
+        )
+
+    def test_rule_mirrors_and_skills_carry_the_same_requirements(self) -> None:
+        codex = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
+        codex_section = codex.split("## PR 統合", 1)[1].split("\n## ", 1)[0]
+        sources = {
+            "claude rule": (ROOT / "home/dot_config/claude/rules/pr-integration.md").read_text(),
+            "codex mirror": codex_section,
+            "gh-first-workflow": (ROOT / "home/dot_agents/skills/gh-first-workflow/SKILL.md").read_text(),
+            "agmsg-orchestration": (ROOT / "home/dot_agents/skills/agmsg-orchestration/SKILL.md").read_text(),
+        }
+        for name, text in sources.items():
+            for token in self.TOKENS:
+                with self.subTest(source=name, token=token):
+                    self.assertIn(token, text)
+
 if __name__ == "__main__":
     unittest.main()

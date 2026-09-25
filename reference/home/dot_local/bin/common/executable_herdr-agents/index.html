@@ -3704,6 +3704,7 @@
 <li><code>agent_name_for_workspace</code></li>
 <li><code>attach_panes_are_unambiguous</code></li>
 <li><code>bootstrap_agmsg</code></li>
+<li><code>distinct_agmsg_identity_count</code></li>
 <li><code>empty_pane_id</code></li>
 <li><code>find_existing_workspace</code></li>
 <li><code>has_claude_pane</code></li>
@@ -3716,6 +3717,7 @@
 <li><code>repair_attach_pane_order</code></li>
 <li><code>repair_attach_pane_ratio</code></li>
 <li><code>require_command</code></li>
+<li><code>require_distinct_worker_identity</code></li>
 <li><code>resolve_worker_kind</code></li>
 <li><code>resolve_worker_profile</code></li>
 <li><code>split_agent_pane</code></li>
@@ -3725,6 +3727,7 @@
 <li><code>usage</code></li>
 <li><code>wait_for_agent_ready</code></li>
 <li><code>wait_for_shell_prompt</code></li>
+<li><code>worker_agmsg_type</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
@@ -4234,6 +4237,48 @@
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
+<span class="c1"># @description Map a worker kind to the agmsg agent type its CLI registers as.</span>
+<span class="c1"># @arg $1 string Worker kind, `codex` or `claude`.</span>
+<span class="k">function</span><span class="w"> </span>worker_agmsg_type<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span>claude<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'claude-code\n'</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span>*<span class="o">)</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">    </span><span class="k">esac</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Count the distinct agmsg identity names registered for a path and type.</span>
+<span class="c1"># @arg $1 workdir Repository path used for repo-scoped agmsg registration.</span>
+<span class="c1"># @arg $2 string agmsg agent type.</span>
+<span class="k">function</span><span class="w"> </span>distinct_agmsg_identity_count<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">identities</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/agmsg/scripts/identities.sh"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>count
+
+<span class="w">    </span><span class="nv">count</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="s2">"</span><span class="si">${</span><span class="nv">identities</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-f<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-c<span class="w"> </span>.<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">count</span><span class="k">:-</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Refuse a worker that would share the orchestrator's agmsg identity.</span>
+<span class="c1">#   agmsg resolves identity by (project path, agent type), so a claude worker on</span>
+<span class="c1">#   the orchestrator's workdir needs a second registered claude-code identity.</span>
+<span class="c1">#   A second identity only lifts this guard; it does not give distinct delivery.</span>
+<span class="c1">#   Temporary guard until the agmsg role/seat model replaces it.</span>
+<span class="c1"># @arg $1 string Worker kind.</span>
+<span class="c1"># @arg $2 workdir Resolved project directory.</span>
+<span class="c1"># @exitcode 2 If the worker would resolve to the orchestrator's identity.</span>
+<span class="k">function</span><span class="w"> </span>require_distinct_worker_identity<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">kind</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">workdir</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>count
+
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>worker_agmsg_type<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">kind</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>claude-code<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="nv">count</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>distinct_agmsg_identity_count<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>claude-code<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">((</span>count<span class="w"> </span>&lt;<span class="w"> </span><span class="m">2</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"herdr-agents: worker_kind=%s would share the orchestrator's claude-code agmsg identity on %q (%s claude-code identity registered); refusing so messages do not collide silently. Registering a second identity (%s/join.sh &lt;team&gt; &lt;role&gt; claude-code %q) lifts this guard but does not give the two sessions distinct delivery until agmsg roles land; use worker_kind=codex for separate delivery now. See the herdr-agents section of the dotfiles README.\n"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">            </span><span class="s2">"</span><span class="si">${</span><span class="nv">kind</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">count</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/agmsg/scripts"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="o">}</span>
+
 <span class="c1"># @description Skip $HOME or ensure Codex and Claude Code agmsg delivery hooks.</span>
 <span class="c1"># @arg $1 workdir Repository path used for repo-scoped agmsg registration.</span>
 <span class="k">function</span><span class="w"> </span>bootstrap_agmsg<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -4253,13 +4298,23 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>agent_type
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>agent_label
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>identity_list
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">codex_worker</span><span class="o">=</span><span class="nb">true</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">agent_types</span><span class="o">=(</span>codex<span class="w"> </span>claude-code<span class="o">)</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">max_identities</span><span class="o">=</span><span class="m">1</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>worker_agmsg_type<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>resolve_worker_kind<span class="k">)</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>claude-code<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="c1"># A claude worker is a second claude-code identity: no Codex hooks.</span>
+<span class="w">        </span><span class="nv">codex_worker</span><span class="o">=</span><span class="nb">false</span>
+<span class="w">        </span><span class="nv">agent_types</span><span class="o">=(</span>claude-code<span class="o">)</span>
+<span class="w">        </span><span class="nv">max_identities</span><span class="o">=</span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">delivery</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg delivery script not found; skipping bootstrap: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">delivery</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">log_file</span><span class="p">%/*</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="o">{</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">codex_hooks_file</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>jq<span class="w"> </span>-e<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">codex_worker</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>!<span class="w"> </span><span class="o">{</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">codex_hooks_file</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>jq<span class="w"> </span>-e<span class="w"> </span><span class="se">\</span>
 <span class="w">        </span><span class="s1">'any(.hooks.Stop[]?.hooks[]?; ((.bash // .command // "") | contains("agmsg/scripts/check-inbox.sh")))'</span><span class="w"> </span><span class="se">\</span>
 <span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">codex_hooks_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="o">}</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">delivery</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="nb">set</span><span class="w"> </span>turn<span class="w"> </span>codex<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">log_file</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
@@ -4278,7 +4333,7 @@
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg identities script not found; skipping identity checks: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">identities</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>agent_type<span class="w"> </span><span class="k">in</span><span class="w"> </span>codex<span class="w"> </span>claude-code<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>agent_type<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_types</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">agent_type</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>codex<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="nv">agent_label</span><span class="o">=</span>Codex
 <span class="w">        </span><span class="k">else</span>
@@ -4291,7 +4346,10 @@
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">identity_list</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'No agmsg %s identity for %s; run: %s/join.sh &lt;team&gt; &lt;agent-name&gt; %s "%s"\n'</span><span class="w"> </span><span class="se">\</span>
 <span class="w">                </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_type</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">identity_list</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>*<span class="s1">$'\n'</span>*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">((</span><span class="nv">max_identities</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">2</span><span class="o">))</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">identity_list</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>*<span class="s1">$'\n'</span>*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'No agmsg Claude Code worker identity for %s; herdr-agents full and --attach modes refuse a claude worker until a second claude-code identity is registered.\n'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">                </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">((</span><span class="k">$(</span>grep<span class="w"> </span>-c<span class="w"> </span>.<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">identity_list</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="w"> </span>&gt;<span class="w"> </span>max_identities<span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Multiple agmsg %s identities are registered for %s; worker identity is ambiguous.\n'</span><span class="w"> </span><span class="se">\</span>
 <span class="w">                </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">fi</span>
@@ -4397,6 +4455,7 @@ remove_shadowing_node_global<span class="w"> </span><span class="s2">"npm:@anthr
 <span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span>
 <span class="nv">workdir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span>
 <span class="nv">HERDR_AGENTS_WORKER_PROFILE</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>resolve_worker_profile<span class="k">)</span><span class="s2">"</span>
+require_distinct_worker_identity<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_kind</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">attach_mode</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nv">workspace_id</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HERDR_WORKSPACE_ID</span><span class="si">}</span><span class="s2">"</span>

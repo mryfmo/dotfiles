@@ -657,6 +657,14 @@ EOF
         )
         self.assertNotIn("tracked files have staged or unstaged changes", result.stdout)
 
+    def test_make_update_reports_unmerged_feature_branch_before_branch_notice(self) -> None:
+        result, log = self.update_fixture(branch="feature/x", unmerged=True)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertNotIn("git pull --ff-only", log.read_text())
+        self.assertIn("index has unmerged files", result.stdout)
+        self.assertNotIn("current branch is", result.stdout)
+
     def test_agent_launchers_do_not_hardcode_model_ids(self) -> None:
         herdr = (ROOT / "home/dot_local/bin/common/executable_herdr-agents").read_text()
         fanout = (

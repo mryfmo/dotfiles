@@ -18,6 +18,8 @@ site/
 .DS_Store
 .agents/worklog/
 .agents/runs/
+.orchestration/
+reviews/
 *.pyc
 # .codex/
 # .crit/

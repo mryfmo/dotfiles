@@ -61,8 +61,9 @@ readonly CODEX_PONYTAIL_MARKETPLACE_SOURCE="https://github.com/DietrichGebert/po
 readonly CLAUDE_UNDERSTAND_ANYTHING_PLUGIN="understand-anything@understand-anything"
 readonly CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE="Egonex-AI/Understand-Anything"
 readonly CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME="understand-anything"
-# Pinned like HOMEBREW_INSTALL_COMMIT in install/macos/common/brew.sh; bump both
-# values together after reviewing the upstream installer diff.
+# Rendered from assets.understand-anything-installer in
+# home/dot_agents/agent-config.yaml; change the commit and sha256 there together
+# after reviewing the upstream installer diff.
 readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT="797ce7969312411be2e125c39628854166f055d7"
 readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256="54f0350d09f43fcc8245f3f1fb2057bd322c36c6f158483dd47dcaf5f4a44eba"
 readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL="https://raw.githubusercontent.com/Egonex-AI/Understand-Anything/${CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT}/install.sh"

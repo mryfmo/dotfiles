@@ -162,6 +162,36 @@ def codex_marketplace_revision(manifest: dict[str, Any], name: str) -> dict[str,
     return {key: plugin[key] for key in ("last_updated", "last_revision") if key in plugin}
 
 
+def asset_field(asset: dict[str, Any], path: str) -> str:
+    value: Any = asset
+    for part in path.split("."):
+        value = value[part]
+    return str(value)
+
+
+def render_asset_constants(manifest: dict[str, Any]) -> dict[Path, str]:
+    """Rewrite each asset's NAME="..." assignment in its render target file."""
+    outputs: dict[Path, str] = {}
+    for name, asset in manifest.get("assets", {}).items():
+        render = asset.get("render")
+        if not render:
+            continue
+        path = ROOT / render["file"]
+        text = outputs.get(path)
+        if text is None:
+            text = path.read_text()
+        for constant, field in render["constants"].items():
+            pattern = re.compile(rf'^((?:readonly )?{re.escape(constant)}=)"[^"$`\\]*"$', re.M)
+            value = asset_field(asset, field)
+            if not re.fullmatch(r"[A-Za-z0-9._+-]+", value):
+                fail(f"assets.{name}.{field} is not a plain pin value: {value!r}")
+            text, count = pattern.subn(lambda match: f'{match.group(1)}"{value}"', text)
+            if count != 1:
+                fail(f"{render['file']} must assign {constant} exactly once for assets.{name}")
+        outputs[path] = text
+    return outputs
+
+
 def render_codex(manifest: dict[str, Any]) -> str:
     codex = manifest["codex"]
     lines = [
@@ -733,6 +763,7 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
             ROOT / "home/dot_agents" / source_path / ".codex-plugin/plugin.json"
         ] = render_codex_plugin(plugin)
     outputs.update(claude_skill_symlink_outputs())
+    outputs.update(render_asset_constants(manifest))
     return outputs
 
 

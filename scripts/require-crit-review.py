@@ -8,6 +8,8 @@ import json
 import os
 import re
 import subprocess
+import tempfile
+from collections import Counter
 import sys
 from pathlib import Path
 
@@ -379,7 +381,50 @@ def pr_feedback_errors(
             errors.append(
                 f"{label} is {item.get('level')}-level; not-applicable needs a reason of at least {FAILURE_REASON_MIN_CHARS} characters"
             )
+    if head is not None:
+        errors.extend(collected_feedback_errors(root, data, head))
     return errors
+
+
+def feedback_key(item: dict) -> tuple:
+    return tuple(item.get(field) for field in ("source", "url", "level", "path", "line", "body"))
+
+
+def collected_feedback_errors(root: Path, evidence: dict, head: str) -> list[str]:
+    """Re-collect the PR's feedback and require every current item in the evidence.
+
+    A hand-written or stale document cannot pass: the guard runs
+    scripts/pr-feedback.py for the evidence's PR, requires the PR head on GitHub
+    to be this HEAD, and requires each collected item (as a multiset) to be present.
+    """
+    pr = evidence.get("pr")
+    if not isinstance(pr, int) or isinstance(pr, bool) or pr <= 0:
+        return [f"{PR_FEEDBACK_ENV} must name its pull request number in `pr`"]
+    with tempfile.TemporaryDirectory() as temporary:
+        collected_path = Path(temporary) / "collected.json"
+        result = subprocess.run(
+            [sys.executable, str(root / "scripts/pr-feedback.py"), str(pr), "--json", str(collected_path)],
+            cwd=root,
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        if result.returncode != 0 or not collected_path.is_file():
+            detail = (result.stderr or result.stdout).strip().splitlines()[-1:] or ["no output"]
+            return [f"could not re-collect PR #{pr} feedback with scripts/pr-feedback.py: {detail[0]}"]
+        collected = json.loads(collected_path.read_text())
+    if collected.get("head_sha") != head:
+        return [f"PR #{pr} head on GitHub is {collected.get('head_sha')}, not the local HEAD {head}; push first"]
+    missing = Counter(map(feedback_key, collected.get("items", []))) - Counter(
+        feedback_key(item) for item in evidence.get("items", []) if isinstance(item, dict)
+    )
+    if missing:
+        sample = next(iter(missing))
+        return [
+            f"{PR_FEEDBACK_ENV} lacks {sum(missing.values())} current feedback item(s) for PR #{pr}, e.g. {sample[0]}:{sample[2]} {sample[1]}; rerun scripts/pr-feedback.py and disposition them"
+        ]
+    return []
 
 
 def evidence_field(text: str, field: str) -> str | None:
@@ -418,7 +463,13 @@ def main() -> None:
             print(f"- {error}")
         raise SystemExit(1)
     if os.environ.get(PR_FEEDBACK_ENV, "").strip():
-        print(f"PR feedback evidence accepted: {os.environ[PR_FEEDBACK_ENV].strip()}")
+        if args.base:
+            print(f"PR feedback evidence accepted: {os.environ[PR_FEEDBACK_ENV].strip()}")
+        else:
+            print(
+                f"PR feedback evidence format checked only: {os.environ[PR_FEEDBACK_ENV].strip()}"
+                " (set BASE=<ref> to bind it to HEAD, re-collect it, and check fixed: commits)"
+            )
 
     paths = changed_paths(root, args.base)
     reasons = review_reasons(root, paths, args.base)

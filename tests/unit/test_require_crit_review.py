@@ -39,11 +39,25 @@ class ReviewGuardTest(unittest.TestCase):
         run(["git", "config", "user.email", "codex@example.com"], self.temp_dir)
         run(["git", "config", "user.name", "Codex"], self.temp_dir)
         (self.temp_dir / "README.md").write_text("# Test\n")
-        run(["git", "add", "README.md"], self.temp_dir)
+        # Stand-in collector: the guard re-runs scripts/pr-feedback.py under
+        # --base; this one writes the document $FAKE_COLLECTED points to.
+        collector = self.temp_dir / "scripts/pr-feedback.py"
+        collector.parent.mkdir()
+        collector.write_text(
+            "import os, sys\n"
+            "if not os.environ.get('FAKE_COLLECTED'):\n"
+            "    sys.exit('gh is not authenticated')\n"
+            "out = sys.argv[sys.argv.index('--json') + 1]\n"
+            "open(out, 'w').write(open(os.environ['FAKE_COLLECTED']).read())\n"
+        )
+        run(["git", "add", "README.md", "scripts/pr-feedback.py"], self.temp_dir)
         run(["git", "commit", "-m", "init"], self.temp_dir)
+        self.collected_dir = Path(tempfile.mkdtemp(prefix="crit-guard-collected-"))
+        self.collected = self.collected_dir / "collected.json"
 
     def tearDown(self) -> None:
         shutil.rmtree(self.temp_dir)
+        shutil.rmtree(self.collected_dir)
 
     def guard(self, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
         return run([sys.executable, str(GUARD)], self.temp_dir, env)
@@ -351,10 +365,16 @@ class ReviewGuardTest(unittest.TestCase):
     ) -> str:
         document = {"pr": 1, "head_sha": head_sha or self.head_commit(), "items": items}
         self.write_review_file(relative_path, json.dumps(document))
+        self.write_collected([{key: value for key, value in item.items() if key != "disposition"} for item in items])
         return relative_path
 
+    def write_collected(self, items: list[dict], head_sha: str | None = None) -> None:
+        document = {"pr": 1, "head_sha": head_sha or self.head_commit(), "items": items}
+        self.collected.write_text(json.dumps(document))
+
     def guard_base(self, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
-        return run([sys.executable, str(GUARD), "--base", "main"], self.temp_dir, {"CRIT_REVIEW": "", **(env or {})})
+        defaults = {"CRIT_REVIEW": "", "FAKE_COLLECTED": str(self.collected)}
+        return run([sys.executable, str(GUARD), "--base", "main"], self.temp_dir, {**defaults, **(env or {})})
 
     def test_base_reviews_committed_branch_changes(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
@@ -467,6 +487,49 @@ class ReviewGuardTest(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertIn("Review not required", result.stdout)
+
+    def test_pr_feedback_must_cover_every_currently_collected_item(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        listed = {"source": "status", "level": "success", "url": "https://x/s", "body": "CodeRabbit: done"}
+        unlisted = {"source": "annotation", "level": "warning", "url": "https://x/j", "body": "untrusted taps"}
+        for name, evidence_items in (
+            ("one item missing", [{**listed, "disposition": "not-applicable:review completed"}]),
+            ("hand-written empty list", []),
+        ):
+            with self.subTest(case=name):
+                feedback = self.write_feedback(evidence_items)
+                self.write_collected([listed, unlisted])
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn("current feedback item(s) for PR #1", result.stdout)
+
+    def test_pr_feedback_requires_the_github_head_to_match(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+        self.write_collected([], head_sha="1" * 40)
+
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("head on GitHub is 1111", result.stdout)
+        self.assertIn("push first", result.stdout)
+
+    def test_pr_feedback_fails_when_the_collector_cannot_run(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "FAKE_COLLECTED": ""})
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("could not re-collect PR #1 feedback", result.stdout)
+
+    def test_pr_feedback_without_base_is_only_format_checked(self) -> None:
+        feedback = self.write_feedback([{"source": "status", "level": "success", "disposition": "not-applicable:ok"}])
+
+        result = self.guard({"PR_FEEDBACK_EVIDENCE": feedback, "CRIT_REVIEW": ""})
+
+        self.assertIn("PR feedback evidence format checked only", result.stdout)
+        self.assertNotIn("PR feedback evidence accepted", result.stdout)
 
     def test_pr_feedback_fixed_commit_must_be_in_the_pr_range(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)

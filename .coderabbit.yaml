@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# Review prose in Japanese; code, identifiers, and suggestions stay in English.
+language: ja-JP
+tone_instructions: >-
+  Write review prose in Japanese. Keep code, identifiers, commands, commit
+  messages, and suggestion blocks in English.
+reviews:
+  request_changes_workflow: true
+  path_filters:
+    - "!.orchestration/**"
+    - "!reviews/**"
+    - "!.ua/**"
+  auto_review:
+    # Each review event, including an incremental review on a push, spends one
+    # of the plan's hourly reviews (docs.coderabbit.ai/management/rate-limits).
+    # Request one full review on the final head instead.
+    auto_incremental_review: false

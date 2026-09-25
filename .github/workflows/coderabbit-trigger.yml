@@ -1,0 +1,44 @@
+name: CodeRabbit trigger
+
+# CodeRabbit reviews this repository only on an explicit command, and the plan
+# allows one review per hour. Request one full review per head SHA when a PR
+# opens, leaves draft, or gets the review-requested label; never on every push.
+# No checkout: pull_request_target runs with a write token, so PR code never runs.
+on:
+  pull_request_target:
+    types: [opened, ready_for_review, labeled]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number
+        required: true
+
+permissions:
+  pull-requests: write
+
+jobs:
+  request-review:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.draft == false &&
+       (github.event.action != 'labeled' || github.event.label.name == 'review-requested'))
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Request one CodeRabbit full review for the head commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number || inputs.pr }}
+        run: |
+          set -euo pipefail
+          [[ "${PR}" =~ ^[0-9]+$ ]] || { echo "invalid PR number: ${PR}" >&2; exit 1; }
+          sha="$(gh api "repos/${REPO}/pulls/${PR}" --jq .head.sha)"
+          marker="<!-- coderabbit-trigger:${sha} -->"
+          if gh api --paginate "repos/${REPO}/issues/${PR}/comments" --jq '.[].body' | grep -Fq -- "${marker}"; then
+            echo "A full review was already requested for ${sha}."
+            exit 0
+          fi
+          gh api "repos/${REPO}/issues/${PR}/comments" -f body="@coderabbitai full review
+          ${marker}" > /dev/null
+          echo "Requested a CodeRabbit full review for ${sha}."

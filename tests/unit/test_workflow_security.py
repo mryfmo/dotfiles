@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[2]
 WORKFLOWS = ROOT / ".github/workflows"
 EXPECTED_PERMISSIONS = {
     "agent-assets.yml": {"contents": "read"},
+    "coderabbit-trigger.yml": {"pull-requests": "write"},
     "docs.yml": {"contents": "write"},
     "macos.yaml": {"contents": "read"},
     "remote.yaml": {"contents": "read"},

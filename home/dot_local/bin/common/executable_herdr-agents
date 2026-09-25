@@ -558,6 +558,7 @@ function bootstrap_agmsg() {
         if ! identity_list="$("${identities}" "${workdir}" "${agent_type}" 2>> "${log_file}")"; then
             continue
         fi
+        identity_list="$(printf '%s\n' "${identity_list}" | cut -f 2 | sort -u)"
         if [[ -z ${identity_list} ]]; then
             printf 'No agmsg %s identity for %s; run: %s/join.sh <team> <agent-name> %s "%s"\n' \
                 "${agent_label}" "${workdir}" "${scripts}" "${agent_type}" "${workdir}" >&2

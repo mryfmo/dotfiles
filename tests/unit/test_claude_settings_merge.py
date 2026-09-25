@@ -406,6 +406,31 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         self.assertEqual(json.loads(output)["effortLevel"], "high")
         self.assertTrue(output.endswith("\n"))
 
+    def test_real_template_preserves_herdr_matcher_and_converges(self) -> None:
+        managed = json.loads(
+            (ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()
+        )
+        canonical_matcher = "^(startup|resume|clear|compact|fork)$"
+        current = json.dumps({
+            "hooks": {"SessionStart": [{
+                "matcher": canonical_matcher,
+                "hooks": [{
+                    "type": "command",
+                    "command": f"bash '{self.home_dir}/.claude/hooks/herdr-agent-state.sh' session",
+                    "timeout": 10,
+                }],
+            }]},
+        })
+
+        once = self.merge(managed, current)
+        state_entries = [
+            entry for entry in json.loads(once)["hooks"]["SessionStart"]
+            if any("herdr-agent-state.sh" in hook["command"] for hook in entry["hooks"])
+        ]
+        self.assertEqual(len(state_entries), 1)
+        self.assertEqual(state_entries[0]["matcher"], canonical_matcher)
+        self.assertEqual(self.merge(managed, once), once)
+
     def test_trailing_newline(self) -> None:
         output = self.merge({"model": "managed", "enabledPlugins": {}}, "")
 

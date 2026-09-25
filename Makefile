@@ -50,6 +50,8 @@ update:
 		reason="current branch is $${branch:-detached}, not main"; \
 	elif [ "$$upstream" != origin/main ]; then \
 		reason="upstream is $${upstream:-unset}, not origin/main"; \
+	elif [ -n "$$(git ls-files -u)" ]; then \
+		reason="index has unmerged files; resolve the conflict (git add/commit or git reset) before pulling"; \
 	elif ! git diff --quiet || ! git diff --cached --quiet; then \
 		reason="tracked files have staged or unstaged changes"; \
 	fi; \

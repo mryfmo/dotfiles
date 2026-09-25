@@ -413,6 +413,77 @@ web UI or Crit data is unavailable; then set `CRIT_REVIEWED=1` with the same
 `REVIEW_EVIDENCE` requirement after finishing the Crit round. Set
 `CRIT_REVIEW=off` only when Crit/review is explicitly disabled for the task.
 
+#### PR feedback and the merge gate
+
+Before a pull request is merged, every piece of GitHub feedback on its final
+head must be collected and dispositioned (rule:
+`home/dot_config/claude/rules/pr-integration.md`, mirrored in
+`home/dot_config/codex/AGENTS.md`):
+
+```bash
+# Request one CodeRabbit full review on the final head and wait for it; the
+# plan allows one review per hour and each review event spends one.
+gh pr comment <pr> --body '@coderabbitai full review'
+# Collect comments, reviews, inline threads, non-passing checks, every
+# check-run annotation (notice/warning/failure), and commit statuses.
+python3 scripts/pr-feedback.py <pr> --json .orchestration/validation/<task>-pr-feedback.json
+# Fill every item's disposition with fixed:<commit> or not-applicable:<reason>,
+# then run the integration guard against the base branch.
+PR_FEEDBACK_EVIDENCE=.orchestration/validation/<task>-pr-feedback.json \
+  python3 scripts/require-crit-review.py --base origin/main
+```
+
+With `--base`, the guard also reviews the committed `<base>...HEAD` changes and
+requires `PR_FEEDBACK_EVIDENCE`. It rejects a missing, external, or malformed
+file, any item without a `fixed:<commit>` or `not-applicable:<reason>`
+disposition, a `fixed:` commit that does not exist, and a `failure`-level item
+marked `not-applicable` with a reason shorter than 20 characters.
+`.github/workflows/coderabbit-trigger.yml` comments `@coderabbitai full review`
+once per head SHA when a pull request opens, leaves draft, or gets the
+`review-requested` label (never on every push). Whether CodeRabbit acts on a
+command posted by `github-actions[bot]` is not yet verified, so the manual
+comment above stays required. `.coderabbit.yaml` writes reviews in Japanese,
+excludes `.orchestration/`, `reviews/`, and `.ua/`, turns off per-push
+incremental reviews, and lets CodeRabbit request changes.
+
+`main` has no branch protection yet. A repository admin can require the
+integration checks and resolved review threads with this ruleset (not applied
+by any script here):
+
+```bash
+gh api -X POST repos/mryfmo/dotfiles/rulesets --input - <<'JSON'
+{
+  "name": "main integration gate",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}},
+  "rules": [
+    {"type": "pull_request", "parameters": {
+      "required_approving_review_count": 0,
+      "dismiss_stale_reviews_on_push": true,
+      "require_code_owner_review": false,
+      "require_last_push_approval": false,
+      "required_review_thread_resolution": true}},
+    {"type": "required_status_checks", "parameters": {
+      "strict_required_status_checks_policy": true,
+      "required_status_checks": [
+        {"context": "validate"},
+        {"context": "test (ubuntu-latest, server)"},
+        {"context": "test (ubuntu-latest, client)"},
+        {"context": "test (macos-14, client)"},
+        {"context": "public-bootstrap (ubuntu-latest, server)"},
+        {"context": "public-bootstrap (ubuntu-latest, client)"},
+        {"context": "public-bootstrap (macos-14, client)"},
+        {"context": "CodeRabbit"}]}}
+  ]
+}
+JSON
+```
+
+The `CodeRabbit` status reports success even when it skipped the review, so
+the required thread resolution and the dispositioned feedback JSON, not that
+status, are what prove the review happened.
+
 Ponytail keeps coding tasks biased toward YAGNI, existing code, standard
 library and native platform features, and the smallest correct diff. The
 managed default follows upstream (`full`); set

@@ -68,6 +68,14 @@ RESPONSES: dict[str, Any] = {
                 "path": "scripts/validate-agent-assets.py",
                 "line": 551,
             },
+            {
+                "id": 13,
+                "user": HUMAN,
+                "body": "Reply beyond the first hundred comments of the thread",
+                "html_url": "https://x/rc13",
+                "path": "scripts/pr-feedback.py",
+                "line": 155,
+            },
         ]
     ],
     f"repos/{REPO}/commits/{SHA}/check-runs": [
@@ -159,13 +167,15 @@ RESPONSES: dict[str, Any] = {
         ]
     ],
 }
+NO_MORE = {"hasNextPage": False, "endCursor": None}
 THREADS = {
     None: {
         "nodes": [
             {
+                "id": "T1",
                 "isResolved": True,
                 "isOutdated": True,
-                "comments": {"nodes": [{"databaseId": 11}]},
+                "comments": {"nodes": [{"databaseId": 11}], "pageInfo": NO_MORE},
             }
         ],
         "pageInfo": {"hasNextPage": True, "endCursor": "c1"},
@@ -173,13 +183,27 @@ THREADS = {
     "c1": {
         "nodes": [
             {
+                "id": "T2",
                 "isResolved": False,
                 "isOutdated": False,
-                "comments": {"nodes": [{"databaseId": 12}]},
-            }
+                "comments": {"nodes": [{"databaseId": 12}], "pageInfo": NO_MORE},
+            },
+            {
+                "id": "T3",
+                "isResolved": True,
+                "isOutdated": False,
+                "comments": {
+                    "nodes": [{"databaseId": 14}],
+                    "pageInfo": {"hasNextPage": True, "endCursor": "t3c1"},
+                },
+            },
         ],
-        "pageInfo": {"hasNextPage": False, "endCursor": None},
+        "pageInfo": NO_MORE,
     },
+}
+# Second page of T2's comments: the 101st comment onward keeps the thread state.
+THREAD_COMMENT_PAGES = {
+    ("T3", "t3c1"): {"nodes": [{"databaseId": 13}], "pageInfo": NO_MORE},
 }
 
 
@@ -196,13 +220,10 @@ def fetch(path: str, _paginate: bool) -> Any:
 
 
 def graphql(_query: str, variables: dict[str, Any]) -> Any:
-    return {
-        "data": {
-            "repository": {
-                "pullRequest": {"reviewThreads": THREADS[variables["cursor"]]}
-            }
-        }
-    }
+    if "id" in variables:
+        page = THREAD_COMMENT_PAGES[(variables["id"], variables["cursor"])]
+        return {"data": {"node": {"comments": page}}}
+    return {"data": {"repository": {"pullRequest": {"reviewThreads": THREADS[variables["cursor"]]}}}}
 
 
 class PrFeedbackTest(unittest.TestCase):
@@ -222,6 +243,7 @@ class PrFeedbackTest(unittest.TestCase):
                 "issue_comment",
                 "issue_comment",
                 "review",
+                "review_comment",
                 "review_comment",
                 "review_comment",
                 "annotation",
@@ -273,6 +295,15 @@ class PrFeedbackTest(unittest.TestCase):
                 comments["https://x/rc12"]["line"],
             ),
             (False, 551),
+        )
+
+    def test_thread_state_covers_comments_beyond_the_first_page(self) -> None:
+        comments = {entry["url"]: entry for entry in self.by_source("review_comment")}
+        # Comment 13 is on T3's second GraphQL comment page; without paging it
+        # would default to unresolved.
+        self.assertEqual(
+            (comments["https://x/rc13"]["resolved"], comments["https://x/rc13"]["outdated"]),
+            (True, False),
         )
 
     def test_annotations_keep_every_level_even_on_passing_checks(self) -> None:
@@ -335,7 +366,7 @@ class PrFeedbackTest(unittest.TestCase):
                     self.module.main(["180", "--repo", REPO, "--json", str(out)]), 0
                 )
             self.assertEqual(json.loads(out.read_text())["items"], self.items)
-        self.assertIn("10 items", stderr.getvalue())
+        self.assertIn("11 items", stderr.getvalue())
 
 
 

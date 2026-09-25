@@ -33,10 +33,26 @@ query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
       reviewThreads(first: 100, after: $cursor) {
         pageInfo { hasNextPage endCursor }
         nodes {
+          id
           isResolved
           isOutdated
-          comments(first: 100) { nodes { databaseId } }
+          comments(first: 100) {
+            pageInfo { hasNextPage endCursor }
+            nodes { databaseId }
+          }
         }
+      }
+    }
+  }
+}
+"""
+THREAD_COMMENTS_QUERY = """
+query($id: ID!, $cursor: String) {
+  node(id: $id) {
+    ... on PullRequestReviewThread {
+      comments(first: 100, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes { databaseId }
       }
     }
   }
@@ -151,8 +167,17 @@ def thread_states(
         threads = data["data"]["repository"]["pullRequest"]["reviewThreads"]
         for thread in threads["nodes"]:
             state = {"resolved": thread["isResolved"], "outdated": thread["isOutdated"]}
-            for comment in thread["comments"]["nodes"]:
-                states[comment["databaseId"]] = state
+            comments = thread["comments"]
+            while True:
+                for comment in comments["nodes"]:
+                    states[comment["databaseId"]] = state
+                if not comments["pageInfo"]["hasNextPage"]:
+                    break
+                page = graphql(
+                    THREAD_COMMENTS_QUERY,
+                    {"id": thread["id"], "cursor": comments["pageInfo"]["endCursor"]},
+                )
+                comments = page["data"]["node"]["comments"]
         if not threads["pageInfo"]["hasNextPage"]:
             return states
         cursor = threads["pageInfo"]["endCursor"]

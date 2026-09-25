@@ -367,8 +367,9 @@ mcp_servers:
 # verification, install path, and installer step. generate-agent-configs.py
 # renders each `render.constants` entry into the named file by rewriting the
 # matching NAME="..." assignment, so installers carry no hand-written versions.
-# Change pins here only. `enforced: false` records an installed version that
-# the lifecycle does not pin yet.
+# Change pins here only (make upgrade writes tode, terminal-browser, crit, and
+# zed through generate-agent-configs.py --set-asset). `pin: unknown` marks a
+# component with no recorded upstream version.
 assets:
   mise-tools:
     source: mise
@@ -407,8 +408,8 @@ assets:
       file: install/ubuntu/server/starship.sh
       constants: {STARSHIP_VERSION: pin}
   aws-cli:
-    source: github-release
-    upstream: aws/aws-cli
+    source: https-download
+    upstream: https://awscli.amazonaws.com
     pin: 2.35.21
     verify: gpg
     gpg_fingerprint: FB5DB77FD5C118B80511ADA8A6310ACC4672475C
@@ -423,6 +424,7 @@ assets:
     pin: c7952e40b7957268f61643152f4db725379b292e
     verify: sha256
     sha256: 99287f194a8b3c9e6b0203a11a5fa54518be57209343e6bb954dec4635796d9d
+    install_path: Homebrew default prefix (/opt/homebrew or /usr/local)
     installer: install/macos/common/brew.sh
     render:
       file: install/macos/common/brew.sh
@@ -503,20 +505,22 @@ assets:
     verify: manifest-sha256
     manifest: vendor/compactiondb/MANIFEST.sha256
     note: local-fork-of-archive/CompactionDB-2.0.0.zip
+    install_path: ~/.agents/compactiondb
     installer: scripts/update-agent-assets.sh#update_compactiondb
   agmsg:
     source: vendored
     upstream: https://github.com/fujibee/agmsg
-    pin: snapshot-2026-06-22
+    pin: unknown
     verify: none
     install_path: ~/.agents/skills/agmsg
-    note: replaced-by-npm-pin-in-L.7
+    installer: chezmoi (home/dot_agents/skills/agmsg)
+    note: imported in commit 83eb1e4 (2026-06-22) without an upstream version; replaced by an npm pin in L.7
   claude-plugins:
     source: claude-plugin
     upstream: marketplaces
     pin: per-plugin
     verify: none
-    enforced: false
+    note: plugin pins are the installed versions; make update does not enforce them until L.2
     plugins:
       superpowers: {marketplace: anthropics/claude-plugins-official, pin: 6.4.1}
       crit: {marketplace: tomasz-tomczyk/crit, pin: 1.8.10}
@@ -527,7 +531,7 @@ assets:
     upstream: marketplaces
     pin: per-plugin
     verify: none
-    enforced: false
+    note: plugin pins are the installed versions; make update does not enforce them until L.2
     plugins:
       superpowers: {marketplace: openai-curated, pin: unknown}
       ponytail:
@@ -538,7 +542,7 @@ assets:
   gh-extensions:
     source: gh-extension
     upstream: https://github.com/seachicken/gh-poi
-    pin: v0.18.4
+    pin: unknown
     verify: none
-    enforced: false
     installer: install/common/gh_extensions.sh
+    note: install/common/gh_extensions.sh installs seachicken/gh-poi unpinned

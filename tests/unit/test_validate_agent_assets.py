@@ -237,6 +237,8 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     "upstream": "jdx/mise",
                     "pin": "v1",
                     "verify": "release-shasums",
+                    "install_path": "~/.local/bin/mise",
+                    "installer": "install/common/mise.sh",
                     "render": {
                         "file": "install/common/mise.sh",
                         "constants": {"MISE_VERSION": "pin"},
@@ -248,13 +250,24 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     "pin": "abc",
                     "verify": "sha256",
                     "sha256": "def",
+                    "install_path": "/opt/homebrew",
+                    "installer": "install/macos/common/brew.sh",
                 },
                 "aws": {
-                    "source": "github-release",
-                    "upstream": "aws/aws-cli",
+                    "source": "https-download",
+                    "upstream": "https://awscli.amazonaws.com",
                     "pin": "2",
                     "verify": "gpg",
                     "gpg_fingerprint": "FB5D",
+                    "install_path": "~/.local/share/aws-cli",
+                    "installer": "install/ubuntu/common/aws_cli.sh",
+                },
+                "plugins": {
+                    "source": "claude-plugin",
+                    "upstream": "marketplaces",
+                    "pin": "per-plugin",
+                    "verify": "none",
+                    "plugins": {"crit": {"marketplace": "tomasz-tomczyk/crit", "pin": "1.8.10"}},
                 },
             }
         }
@@ -275,6 +288,12 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "missing gpg fingerprint": lambda assets: assets["aws"].pop(
                 "gpg_fingerprint"
             ),
+            "missing install_path": lambda assets: assets["brew"].pop("install_path"),
+            "missing installer": lambda assets: assets["aws"].pop("installer"),
+            "float pin": lambda assets: assets["aws"].update(pin=1.1),
+            "float plugin pin": lambda assets: assets["plugins"]["plugins"]["crit"].update(
+                pin=1.1
+            ),
         }
         for name, breaks in cases.items():
             with self.subTest(case=name):
@@ -285,14 +304,23 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 ):
                     self.module.validate_assets(manifest)
 
-    def test_assets_reject_a_literal_installer_version_not_in_the_manifest(self) -> None:
-        self.write_text_file(
-            "install/ubuntu/common/tool.sh", 'readonly TOOL_VERSION="1.2.3"\n'
+    def test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts(
+        self,
+    ) -> None:
+        cases = (
+            ("install/ubuntu/common/tool.sh", 'readonly TOOL_VERSION="1.2.3"\n', "TOOL_VERSION"),
+            ("install/ubuntu/common/copy.sh", 'readonly MISE_VERSION="v0"\n', "MISE_VERSION"),
+            ("scripts/lib/other.sh", 'OTHER_VERSION="2"\n', "OTHER_VERSION"),
+            ("scripts/tool.sh", '    local version="3.0"\n', "version"),
         )
-        stderr = io.StringIO()
-        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
-            self.module.validate_assets(self.asset_manifest())
-        self.assertIn("install/ubuntu/common/tool.sh hard-codes TOOL_VERSION", stderr.getvalue())
+        for relative, content, constant in cases:
+            with self.subTest(file=relative):
+                path = self.write_text_file(relative, content)
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_assets(self.asset_manifest())
+                self.assertIn(f"{relative} hard-codes {constant}", stderr.getvalue())
+                path.unlink()
 
         self.write_text_file(
             "install/ubuntu/common/tool.sh", 'readonly TOOL_VERSION="${MISE_VERSION}"\n'

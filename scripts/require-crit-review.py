@@ -306,7 +306,17 @@ def crit_data_errors(root: Path, source: str) -> list[str]:
     return errors
 
 
-def pr_feedback_errors(root: Path, required: bool, head: str | None = None) -> list[str]:
+def commit_in_range(root: Path, commit: str, base: str, head: str) -> bool:
+    """Return whether commit is in base..head: reachable from head, not from base."""
+    return (
+        run_git(["merge-base", "--is-ancestor", commit, head], root).returncode == 0
+        and run_git(["merge-base", "--is-ancestor", commit, base], root).returncode != 0
+    )
+
+
+def pr_feedback_errors(
+    root: Path, required: bool, head: str | None = None, base: str | None = None
+) -> list[str]:
     """Check the filled pr-feedback.py JSON: every item needs a root-cause disposition."""
     evidence = os.environ.get(PR_FEEDBACK_ENV, "").strip()
     if not evidence:
@@ -349,6 +359,8 @@ def pr_feedback_errors(root: Path, required: bool, head: str | None = None) -> l
         commit = match.group("commit")
         if commit and run_git(["cat-file", "-e", f"{commit}^{{commit}}"], root).returncode != 0:
             errors.append(f"{label} cites an unknown commit: {commit}")
+        elif commit and head is not None and base is not None and not commit_in_range(root, commit, base, head):
+            errors.append(f"{label} cites commit {commit} outside {base}..HEAD; cite the fix commit in this PR")
         reason = (match.group("reason") or "").strip()
         if item.get("level") in STRICT_REASON_LEVELS and not commit and len(reason) < FAILURE_REASON_MIN_CHARS:
             errors.append(
@@ -386,7 +398,7 @@ def main() -> None:
 
     root = git_root()
     head = run_git(["rev-parse", "HEAD"], root).stdout.strip() if args.base else None
-    feedback_errors = pr_feedback_errors(root, required=args.base is not None, head=head)
+    feedback_errors = pr_feedback_errors(root, required=args.base is not None, head=head, base=args.base)
     if feedback_errors:
         print("PR feedback evidence is incomplete; run scripts/pr-feedback.py and disposition every item.")
         for error in feedback_errors:

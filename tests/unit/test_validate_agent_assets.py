@@ -197,17 +197,37 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "skills": {"canonical_dir": "~/.agents/skills"},
             "model_profiles": profiles,
             "interactive_profile": "deep",
+            "worker_kind": "claude",
             "claude": {},
             "codex": {"plugins": {"crit@mryfmo-personal-plugins": {"enabled": True}}},
             "mcp_servers": {},
         }
         self.module.load_yaml = lambda _path: manifest
+        self.write_text_file("README.md", "worker kind (currently `claude`; codex)\n")
         return manifest
 
     def test_agent_manifest_accepts_exact_security_profile_set(self) -> None:
         self.write_valid_agent_manifest()
 
         self.module.validate_agent_manifest()
+
+    def test_agent_manifest_rejects_invalid_or_missing_worker_kind(self) -> None:
+        for value in ("banana", None):
+            with self.subTest(worker_kind=value):
+                manifest = self.write_valid_agent_manifest()
+                manifest["worker_kind"] = value
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_agent_manifest()
+                self.assertIn("worker_kind must be codex or claude", stderr.getvalue())
+
+    def test_agent_manifest_requires_readme_to_state_the_worker_kind(self) -> None:
+        manifest = self.write_valid_agent_manifest()
+        manifest["worker_kind"] = "codex"
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_agent_manifest()
+        self.assertIn("(currently `codex`;", stderr.getvalue())
 
     def test_agent_manifest_rejects_missing_security_profile(self) -> None:
         manifest = self.write_valid_agent_manifest()

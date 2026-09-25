@@ -1,0 +1,214 @@
+{
+  "document_version": "4.0.0",
+  "all_rows_status": "SPECIFIED_NOT_APPLIED",
+  "rows": [
+    {
+      "asset": "Superpowers",
+      "review_surface": "brainstorming/writing-plans/SDD/TDD/debugging/reviews",
+      "preserve": "要求整理・設計・TDD・独立reviewの工程を保持",
+      "adapt": "万能trigger、毎taskの再承認、常駐運用と衝突するfresh起動指示をphase/roleで限定",
+      "target": "adh-requirements, adh-design-choice, adh-task-implementation, adh-failure-diagnosis, adh-independent-review",
+      "required_records": [
+        "source_commit",
+        "source_hash",
+        "license",
+        "local_diff",
+        "behavior_test",
+        "resolved_entry",
+        "native_hook_qualification"
+      ]
+    },
+    {
+      "asset": "Understand-Anything",
+      "review_surface": "architecture graph/analysis",
+      "preserve": "構造・関係・変更影響の解析を保持",
+      "adapt": "解析対象の暗黙main移動を拒否し、dirty fingerprintと必要時graph取得へ",
+      "target": "source/context services and routed references",
+      "required_records": [
+        "source_commit",
+        "source_hash",
+        "license",
+        "local_diff",
+        "behavior_test",
+        "resolved_entry",
+        "native_hook_qualification"
+      ]
+    },
+    {
+      "asset": "Crit",
+      "review_surface": "review comments/plan review",
+      "preserve": "指摘と解消・原本証跡を保持",
+      "adapt": "agent reviewと操作者reserved decisionを別routeにし不要UI待ちを解消",
+      "target": "adh-independent-review, adh-integration-review",
+      "required_records": [
+        "source_commit",
+        "source_hash",
+        "license",
+        "local_diff",
+        "behavior_test",
+        "resolved_entry",
+        "native_hook_qualification"
+      ]
+    },
+    {
+      "asset": "Ponytail",
+      "review_surface": "minimal correct change guidance",
+      "preserve": "標準機能と既存実装の再利用を保持",
+      "adapt": "全taskへの同一助言の反復は共通contractへまとめ、MUST/NFR削減を禁止",
+      "target": "role guidance",
+      "required_records": [
+        "source_commit",
+        "source_hash",
+        "license",
+        "local_diff",
+        "behavior_test",
+        "resolved_entry",
+        "native_hook_qualification"
+      ]
+    },
+    {
+      "asset": "agmsg",
+      "review_surface": "TASK/RESULT/ACCEPTANCE/delivery",
+      "preserve": "常駐worker・同repo store・専用worktreeを保持",
+      "adapt": "詳細を版付きTaskPacketへ。busは認可/accepted正本でなく通知",
+      "target": "WP05/WP17",
+      "required_records": [
+        "source_commit",
+        "source_hash",
+        "license",
+        "local_diff",
+        "behavior_test",
+        "resolved_entry",
+        "native_hook_qualification"
+      ]
+    },
+    {
+      "asset": "CompactionDB",
+      "review_surface": "events/selected memories/recovery",
+      "preserve": "記憶の出典・validityと復旧参照を保持",
+      "adapt": "読了と文脈保持を区別し、old summaryをbaselineへ昇格しない",
+      "target": "MO03/MO07 and IC09",
+      "required_records": [
+        "source_commit",
+        "source_hash",
+        "license",
+        "local_diff",
+        "behavior_test",
+        "resolved_entry",
+        "native_hook_qualification"
+      ]
+    },
+    {
+      "asset": "Local Rules",
+      "review_surface": "uv/Git/language/model selection",
+      "preserve": "要求に必要な規約を保持",
+      "adapt": "完成品の例外処理免除・自動モデル低下・全読反復を置換",
+      "target": "COMMON_CONTRACT plus model_profiles",
+      "required_records": [
+        "source_commit",
+        "source_hash",
+        "license",
+        "local_diff",
+        "behavior_test",
+        "resolved_entry",
+        "native_hook_qualification"
+      ]
+    },
+    {
+      "asset": "Semantica",
+      "review_surface": "whole composed execution path",
+      "preserve": "明示ID、出典、graph/query能力",
+      "adapt": "共通HOME graph、pip/all extras、echo provenance、auto approvalを採らず限定SDK adapterへ",
+      "target": "adh-knowledge-context",
+      "required_records": [
+        "upstream_commit",
+        "payload_hash",
+        "adaptation_diff",
+        "license",
+        "selected_roles",
+        "evidence_refs",
+        "rollback_map"
+      ]
+    },
+    {
+      "asset": "prek/Oxc",
+      "review_surface": "whole composed execution path",
+      "preserve": "公式Hook runnerとlint/format能力",
+      "adapt": "明示config・preinstalled lock・check/fix分離・一file一formatter・独立inventory",
+      "target": "adh-quality-check",
+      "required_records": [
+        "upstream_commit",
+        "payload_hash",
+        "adaptation_diff",
+        "license",
+        "selected_roles",
+        "evidence_refs",
+        "rollback_map"
+      ]
+    },
+    {
+      "asset": "dotfiles model profiles",
+      "review_surface": "whole composed execution path",
+      "preserve": "既存用途profileと生成元を保持",
+      "adapt": "ADH専用profileを追加し実E2Eのexpress固定を適合。生成物は手編集しない",
+      "target": "canonical model_profiles.adh",
+      "required_records": [
+        "upstream_commit",
+        "payload_hash",
+        "adaptation_diff",
+        "license",
+        "selected_roles",
+        "evidence_refs",
+        "rollback_map"
+      ]
+    },
+    {
+      "asset": "permgate",
+      "review_surface": "whole composed execution path",
+      "preserve": "既存決定的判定と理由提示",
+      "adapt": "NaN/Infinity/範囲外拒否、shadow評価分離、保護file review、実行境界再認可",
+      "target": "same guard policy adapters",
+      "required_records": [
+        "upstream_commit",
+        "payload_hash",
+        "adaptation_diff",
+        "license",
+        "selected_roles",
+        "evidence_refs",
+        "rollback_map"
+      ]
+    },
+    {
+      "asset": "Herdr/terminal/status tools",
+      "review_surface": "whole composed execution path",
+      "preserve": "既存利用者UIと操作性",
+      "adapt": "selected only。UIを合否主体にせず、不要な必須化/自動導入をしない",
+      "target": "component catalogue and selection",
+      "required_records": [
+        "upstream_commit",
+        "payload_hash",
+        "adaptation_diff",
+        "license",
+        "selected_roles",
+        "evidence_refs",
+        "rollback_map"
+      ]
+    },
+    {
+      "asset": "AutoSkill/CompactionDB",
+      "review_surface": "whole composed execution path",
+      "preserve": "候補・採用・不採用・統合の分離と作業記憶",
+      "adapt": "自己昇格・全記録無審査commitを廃止。redactionと承認済み次releaseへ",
+      "target": "IC18 learning lifecycle",
+      "required_records": [
+        "upstream_commit",
+        "payload_hash",
+        "adaptation_diff",
+        "license",
+        "selected_roles",
+        "evidence_refs",
+        "rollback_map"
+      ]
+    }
+  ]
+}

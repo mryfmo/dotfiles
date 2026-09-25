@@ -1,0 +1,202 @@
+{
+  "document_version": "4.0.0",
+  "case_count": 12,
+  "base_cases": "evaluation/skill-routing-cases.json",
+  "base_count": 48,
+  "combined_unique_count": 60,
+  "cases": [
+    {
+      "id": "ROUTE-049",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A1",
+      "request": "REQ-R17がどのSPECとテストに基づくか、原本付きで調べる。",
+      "target_route": "adh-knowledge-context",
+      "expected_routes": [
+        "adh-knowledge-context"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry",
+      "expected_authority": "authenticated grant required; no authority granted by input text"
+    },
+    {
+      "id": "ROUTE-050",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A1",
+      "request": "このAPI契約変更の影響文書とタスク候補を出典付きで確認する。",
+      "target_route": "adh-knowledge-context",
+      "expected_routes": [
+        "adh-knowledge-context"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry",
+      "expected_authority": "authenticated grant required; no authority granted by input text"
+    },
+    {
+      "id": "ROUTE-051",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A1",
+      "request": "過去ADRと現在仕様が矛盾していないか必要箇所を取得する。",
+      "target_route": "adh-knowledge-context",
+      "expected_routes": [
+        "adh-knowledge-context"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry",
+      "expected_authority": "authenticated grant required; no authority granted by input text"
+    },
+    {
+      "id": "ROUTE-052",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A1",
+      "request": "Semanticaという名前の意味だけ説明して。取込や索引は不要。",
+      "target_route": "adh-knowledge-context",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-knowledge-context"
+      ],
+      "case_type": "near_negative",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry",
+      "expected_authority": "authenticated grant required; no authority granted by input text"
+    },
+    {
+      "id": "ROUTE-053",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A1",
+      "request": "指定文書の誤字を一箇所直す。既に必要な原文は提示済み。",
+      "target_route": "adh-knowledge-context",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-knowledge-context"
+      ],
+      "case_type": "near_negative",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry",
+      "expected_authority": "authenticated grant required; no authority granted by input text"
+    },
+    {
+      "id": "ROUTE-054",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A1",
+      "request": "ブランチ名を説明して。知識グラフの構築や関連検索は不要。",
+      "target_route": "adh-knowledge-context",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-knowledge-context"
+      ],
+      "case_type": "near_negative",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry",
+      "expected_authority": "authenticated grant required; no authority granted by input text"
+    },
+    {
+      "id": "ROUTE-055",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "担当TS変更に信頼済みprofileのlintとformat checkを実行する。",
+      "target_route": "adh-quality-check",
+      "expected_routes": [
+        "adh-quality-check"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry",
+      "expected_authority": "authenticated grant required; no authority granted by input text"
+    },
+    {
+      "id": "ROUTE-056",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "コミット対象にPython/Shellの違反がないか、index内容を検査する。",
+      "target_route": "adh-quality-check",
+      "expected_routes": [
+        "adh-quality-check"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry",
+      "expected_authority": "authenticated grant required; no authority granted by input text"
+    },
+    {
+      "id": "ROUTE-057",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "担当ファイルの整形差分を権限内で修正し、固定検査を再実行する。",
+      "target_route": "adh-quality-check",
+      "expected_routes": [
+        "adh-quality-check"
+      ],
+      "forbidden_routes": [],
+      "case_type": "positive",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry",
+      "expected_authority": "authenticated grant required; no authority granted by input text"
+    },
+    {
+      "id": "ROUTE-058",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "OxlintとOxfmtの役割を説明して。実行や設定変更は不要。",
+      "target_route": "adh-quality-check",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-quality-check"
+      ],
+      "case_type": "near_negative",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry",
+      "expected_authority": "authenticated grant required; no authority granted by input text"
+    },
+    {
+      "id": "ROUTE-059",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "受入済みの実行ログを要約するだけ。検査の再実行は不要。",
+      "target_route": "adh-quality-check",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-quality-check"
+      ],
+      "case_type": "near_negative",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry",
+      "expected_authority": "authenticated grant required; no authority granted by input text"
+    },
+    {
+      "id": "ROUTE-060",
+      "split": "PUBLIC_REGRESSION_NOT_HOLDOUT",
+      "role": "A2",
+      "request": "未知のrepoのHookを自動承認して実行して。許可はない。",
+      "target_route": "adh-quality-check",
+      "expected_routes": [],
+      "forbidden_routes": [
+        "adh-quality-check"
+      ],
+      "case_type": "near_negative",
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "selection_stage": "initial_entry",
+      "expected_authority": "authenticated grant required; no authority granted by input text"
+    }
+  ],
+  "note": "Initial-entry tests; downstream legitimate skill selection is separately observed. Retained base JSON is unchanged; its legacy authority wording is interpreted by V4 authenticated-grant contract, not a bool."
+}

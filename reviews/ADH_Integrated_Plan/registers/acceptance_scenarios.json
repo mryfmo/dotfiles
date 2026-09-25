@@ -1,0 +1,653 @@
+{
+  "document_version": "4.0.0",
+  "not_executable_test_results": true,
+  "scenarios": [
+    {
+      "id": "AC-R01",
+      "requirement_refs": [
+        "R01",
+        "REQ-R01"
+      ],
+      "given": "入力資料が登録または改訂された状態",
+      "when": "Baseline Authorityに該当操作を要求する",
+      "then": "登録後のsource digestと要求台帳が原本と一致する",
+      "oracle_refs": [
+        "V00-02",
+        "V08-02",
+        "V08-03"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R02",
+      "requirement_refs": [
+        "R02",
+        "REQ-R02"
+      ],
+      "given": "task実行が要求された状態",
+      "when": "Supervisorに該当操作を要求する",
+      "then": "委任内実行とreserved decision待ちが区別される",
+      "oracle_refs": [
+        "V01-06",
+        "V08-01",
+        "V19-06",
+        "V23-05"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R03",
+      "requirement_refs": [
+        "R03",
+        "REQ-R03"
+      ],
+      "given": "設計判断に外部資料の主張を採用する状態",
+      "when": "Researchに該当操作を要求する",
+      "then": "claimから取得可能な原本と版へ戻れる",
+      "oracle_refs": [
+        "V18-01",
+        "V18-02"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R04",
+      "requirement_refs": [
+        "R04",
+        "REQ-R04"
+      ],
+      "given": "重要な設計論点を調査する状態",
+      "when": "Researchに該当操作を要求する",
+      "then": "独立レビューが論点の欠落と根拠の適合を確認する",
+      "oracle_refs": [
+        "V02-04",
+        "V18-06"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R05",
+      "requirement_refs": [
+        "R05",
+        "REQ-R05"
+      ],
+      "given": "重要な主張に矛盾または未検証が残っている間",
+      "when": "Design Gateに該当操作を要求する",
+      "then": "未解決IDが保持される。文書の長さを完了根拠にしない",
+      "oracle_refs": [
+        "V18-02",
+        "V18-03",
+        "V19-02"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R06",
+      "requirement_refs": [
+        "R06",
+        "REQ-R06"
+      ],
+      "given": "作業リポジトリを解析する状態",
+      "when": "SnapshotServiceに該当操作を要求する",
+      "then": "dirty内容の変化でfingerprintが変わりmainへすり替わらない",
+      "oracle_refs": [
+        "V09-01",
+        "V09-02",
+        "V18-04"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R07",
+      "requirement_refs": [
+        "R07",
+        "REQ-R07"
+      ],
+      "given": "未確定の実現方式を選ぶ状態",
+      "when": "Architectに該当操作を要求する",
+      "then": "候補間比較と変更され得る判断条件を独立確認できる",
+      "oracle_refs": [
+        "V19-01",
+        "V19-03"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R08",
+      "requirement_refs": [
+        "R08",
+        "REQ-R08"
+      ],
+      "given": "採用に重要な仮説を検証する状態",
+      "when": "Experimentに該当操作を要求する",
+      "then": "失敗と未実行を成功と扱わない",
+      "oracle_refs": [
+        "V02-03",
+        "V19-02"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R09",
+      "requirement_refs": [
+        "R09",
+        "REQ-R09"
+      ],
+      "given": "解決策の仕様を確定する状態",
+      "when": "Design Gateに該当操作を要求する",
+      "then": "要求に対する仕様項目と検査参照が欠けない",
+      "oracle_refs": [
+        "V02-02",
+        "V19-04",
+        "V21-02"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R10",
+      "requirement_refs": [
+        "R10",
+        "REQ-R10"
+      ],
+      "given": "アーキテクチャ上の決定を記録する状態",
+      "when": "Architectに該当操作を要求する",
+      "then": "重要な決定に出典と結果を逆引きできる",
+      "oracle_refs": [
+        "V02-04",
+        "V19-01",
+        "V19-04"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R11",
+      "requirement_refs": [
+        "R11",
+        "REQ-R11"
+      ],
+      "given": "SolutionBaselineが確定している間",
+      "when": "Authorityに該当操作を要求する",
+      "then": "正規CR以外ではdigestが不変",
+      "oracle_refs": [
+        "V00-05",
+        "V08-02",
+        "V08-03",
+        "V08-04"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R12",
+      "requirement_refs": [
+        "R12",
+        "REQ-R12"
+      ],
+      "given": "実装計画を受け入れる状態",
+      "when": "Plannerに該当操作を要求する",
+      "then": "未対応・矛盾を解消するまでplan受入しない",
+      "oracle_refs": [
+        "V02-04",
+        "V19-04",
+        "V19-05"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R13",
+      "requirement_refs": [
+        "R13",
+        "REQ-R13"
+      ],
+      "given": "公式Agentを起動または再開する状態",
+      "when": "NativeAdapterに該当操作を要求する",
+      "then": "Auth bytesをSupervisor/別providerに複製しない",
+      "oracle_refs": [
+        "V01-01",
+        "V15-01",
+        "V15-06",
+        "V16-02",
+        "V26-01"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R14",
+      "requirement_refs": [
+        "R14",
+        "REQ-R14"
+      ],
+      "given": "必須拡張を利用するrunを開始する状態",
+      "when": "Qualificationに該当操作を要求する",
+      "then": "install指定だけではqualifiedにしない",
+      "oracle_refs": [
+        "V06-02",
+        "V06-06",
+        "V15-04",
+        "V26-02"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R15",
+      "requirement_refs": [
+        "R15",
+        "REQ-R15"
+      ],
+      "given": "runを開始する状態",
+      "when": "Qualificationに該当操作を要求する",
+      "then": "無断fallbackとlive driftで資格が無効になる",
+      "oracle_refs": [
+        "V01-04",
+        "V06-01",
+        "V26-03"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R16",
+      "requirement_refs": [
+        "R16",
+        "REQ-R16"
+      ],
+      "given": "writerが作業領域を所有している間",
+      "when": "Runnerに該当操作を要求する",
+      "then": "並列taskは別binding、停止未確認では再割当なし",
+      "oracle_refs": [
+        "V10-05",
+        "V13-02",
+        "V14-01",
+        "V14-05",
+        "V24-04"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R17",
+      "requirement_refs": [
+        "R17",
+        "REQ-R17"
+      ],
+      "given": "taskをclaimまたはresultを受け入れる状態",
+      "when": "Schedulerに該当操作を要求する",
+      "then": "二重claim/旧result/依存未達を拒否する",
+      "oracle_refs": [
+        "V07-01",
+        "V10-01",
+        "V10-02",
+        "V10-03"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R18",
+      "requirement_refs": [
+        "R18",
+        "REQ-R18"
+      ],
+      "given": "有効な委任と予算の範囲に未完了作業がある間",
+      "when": "AgentとSupervisorに該当操作を要求する",
+      "then": "通常失敗で完了や放棄にせず修正へ進む",
+      "oracle_refs": [
+        "V22-01",
+        "V28-01",
+        "V28-02",
+        "V28-04"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R19",
+      "requirement_refs": [
+        "R19",
+        "REQ-R19"
+      ],
+      "given": "検証の環境不足を検出した状態",
+      "when": "Runnerに該当操作を要求する",
+      "then": "構築可能を実施不能とせず実機不足をmockで代替認定しない",
+      "oracle_refs": [
+        "V01-05",
+        "V14-04",
+        "V22-02",
+        "V28-03"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R20",
+      "requirement_refs": [
+        "R20",
+        "REQ-R20"
+      ],
+      "given": "候補成果物を検証する状態",
+      "when": "Verifierに該当操作を要求する",
+      "then": "自己報告ではなくコマンド/件数/内容の証拠がある",
+      "oracle_refs": [
+        "V20-01",
+        "V20-05",
+        "V26-04"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R21",
+      "requirement_refs": [
+        "R21",
+        "REQ-R21"
+      ],
+      "given": "候補成果物を意味レビューする状態",
+      "when": "Review Serviceに該当操作を要求する",
+      "then": "自己reviewを独立reviewと表示しない",
+      "oracle_refs": [
+        "V21-01",
+        "V21-02",
+        "V21-03",
+        "V21-04"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R22",
+      "requirement_refs": [
+        "R22",
+        "REQ-R22"
+      ],
+      "given": "検証結果を発行し受け入れる状態",
+      "when": "SignerとSupervisorに該当操作を要求する",
+      "then": "偽署名・対象相違・古いchallengeを拒否する",
+      "oracle_refs": [
+        "V04-02",
+        "V04-04",
+        "V20-03",
+        "V20-04"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R23",
+      "requirement_refs": [
+        "R23",
+        "REQ-R23"
+      ],
+      "given": "候補の必須検証またはレビューが不合格の場合",
+      "when": "Supervisorに該当操作を要求する",
+      "then": "失敗をPASSに変えず新候補を再検証する",
+      "oracle_refs": [
+        "V21-05",
+        "V22-01",
+        "V22-03"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R24",
+      "requirement_refs": [
+        "R24",
+        "REQ-R24"
+      ],
+      "given": "runの異常終了またはlease失効が起きた場合",
+      "when": "Recoveryに該当操作を要求する",
+      "then": "ACKのみやleaseのみで二重実行しない",
+      "oracle_refs": [
+        "V14-01",
+        "V22-04",
+        "V23-02",
+        "V23-06",
+        "V30-03"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R25",
+      "requirement_refs": [
+        "R25",
+        "REQ-R25"
+      ],
+      "given": "利用者停止・必要権限不足・予算超過の状態状態",
+      "when": "Supervisorに該当操作を要求する",
+      "then": "目標activeを理由に自動解除しない",
+      "oracle_refs": [
+        "V11-03",
+        "V11-04",
+        "V11-05",
+        "V22-05"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R26",
+      "requirement_refs": [
+        "R26",
+        "REQ-R26"
+      ],
+      "given": "個別候補を統合する状態",
+      "when": "Integratorに該当操作を要求する",
+      "then": "個別PASSを足し合わせず統合不合格なら修正する",
+      "oracle_refs": [
+        "V24-02",
+        "V24-03",
+        "V28-05"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R27",
+      "requirement_refs": [
+        "R27",
+        "REQ-R27"
+      ],
+      "given": "成果物を受け入れる状態",
+      "when": "Release Gateに該当操作を要求する",
+      "then": "必須成果物欠落や提出版相違で受入しない",
+      "oracle_refs": [
+        "V30-01",
+        "V30-05",
+        "V31-01",
+        "V31-05"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R28",
+      "requirement_refs": [
+        "R28",
+        "REQ-R28"
+      ],
+      "given": "push/merge/publish/deploy等の外部反映を要求する状態",
+      "when": "Effect Serviceに該当操作を要求する",
+      "then": "公開未許可なら開発完了を保ち外部作用を行わない",
+      "oracle_refs": [
+        "V08-06",
+        "V23-05",
+        "V31-06"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R29",
+      "requirement_refs": [
+        "R29",
+        "REQ-R29"
+      ],
+      "given": "UA/CompactionDB/SDD等の記録を利用する状態",
+      "when": "Contextに該当操作を要求する",
+      "then": "記憶や要約から逆にbaseline/完了状態を書き換えない",
+      "oracle_refs": [
+        "V25-01",
+        "V25-02"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R30",
+      "requirement_refs": [
+        "R30",
+        "REQ-R30"
+      ],
+      "given": "外部Web/README/tool outputを読み込む状態",
+      "when": "Contextに該当操作を要求する",
+      "then": "保護作用の認可は独立。悪意文の検出完全性は主張しない",
+      "oracle_refs": [
+        "V18-05",
+        "V20-02",
+        "V29-01"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R31",
+      "requirement_refs": [
+        "R31",
+        "REQ-R31"
+      ],
+      "given": "runの状態や実行証拠を記録する状態",
+      "when": "Observerに該当操作を要求する",
+      "then": "相関が辿れ、未実行は未実行、秘密は配布されない",
+      "oracle_refs": [
+        "V03-06",
+        "V17-01",
+        "V25-03",
+        "V25-04",
+        "V25-06"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R32",
+      "requirement_refs": [
+        "R32",
+        "REQ-R32"
+      ],
+      "given": "runと反復処理を実施している間",
+      "when": "Budget Serviceに該当操作を要求する",
+      "then": "上限やunknown利用量を完了/ゼロ利用へ変換しない",
+      "oracle_refs": [
+        "V01-06",
+        "V11-01",
+        "V22-03"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R33",
+      "requirement_refs": [
+        "R33",
+        "REQ-R33"
+      ],
+      "given": "CLI/plugin/skill/policy/環境を更新する状態",
+      "when": "Qualificationに該当操作を要求する",
+      "then": "旧資格を流用せず新runへ適用する",
+      "oracle_refs": [
+        "V01-04",
+        "V06-01",
+        "V26-03",
+        "V30-04"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R34",
+      "requirement_refs": [
+        "R34",
+        "REQ-R34"
+      ],
+      "given": "検証を再実行する状態",
+      "when": "Verifierに該当操作を要求する",
+      "then": "同じ対象の独立再実行結果を比較できる",
+      "oracle_refs": [
+        "V03-01",
+        "V09-01",
+        "V20-01",
+        "V26-06",
+        "V30-03"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    },
+    {
+      "id": "AC-R35",
+      "requirement_refs": [
+        "R35",
+        "REQ-R35"
+      ],
+      "given": "試験や完成状態を報告する状態",
+      "when": "Reporterに該当操作を要求する",
+      "then": "文書QA・過去試験・署名形式だけを製品合格にしない",
+      "oracle_refs": [
+        "V00-06",
+        "V03-03",
+        "V20-05",
+        "V31-02"
+      ],
+      "scope": "Representative acceptance contract; all linked tests, guards and NFR remain mandatory",
+      "status": "NOT_RUN",
+      "step_definitions_implemented": false
+    }
+  ]
+}

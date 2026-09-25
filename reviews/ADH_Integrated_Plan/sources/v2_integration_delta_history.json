@@ -1,0 +1,1332 @@
+{
+  "from_version": "1.1 plus standalone addendum",
+  "to_version": "3.0.0",
+  "changes": [
+    {
+      "work_package": "WP00",
+      "changed_steps": [
+        {
+          "step_id": "WP00-S01",
+          "old_sha256": "0313c2420864ffe9d8e26f985c852157597476851f611312828ebead363834d5",
+          "new_sha256": "38f9234d3c494ebdee21febff336c5af2eaf2c0a904452d5b202c25b1d9c5fc6",
+          "new_action": "本v3の統合設計、R01–R35、IC01–IC11、全WPと検証台帳を通読し、要求・制約・除外範囲を抽出する。旧計画と追補は出典履歴であり、別の実行正本として要求しない。"
+        },
+        {
+          "step_id": "WP00-S02",
+          "old_sha256": "714f49b6fdd11355a6a7218a5d233cd25b4163883576c1e867b1db79cc6d43b6",
+          "new_sha256": "7b6dfab0aa34ffb9cdceaa9a707ac9e59741d45f2be704a0c180a5ea1dad3ea8",
+          "new_action": "公式native実行＋ネイティブ開発方法論＋IC01–IC11を内部契約として持つ単一Supervisor/Runner/Verifier構成を凍結する。SQLite local WAL、VM、Worktree、agmsg、独立検証の責任を一意に記録する。"
+        },
+        {
+          "step_id": "WP00-S04",
+          "old_sha256": "7305e20381894a4b7b7faaef26b30fc9692f5f44c0ab6ae504f92e1e9a2ae710",
+          "new_sha256": "54441118fc9f5e941ad37abfdd212d9ed82b5881dd1fa2960880a2c8aad09372",
+          "new_action": "本v3の単一baseline、実装契約、検証inventory、生成通読版のhashを登録する。旧版・追補・旧probeは本v3の判断を上書きできず、衝突はCRで処理する。"
+        }
+      ],
+      "dependencies_before": [],
+      "dependencies_after": [],
+      "integration_contracts": [
+        "IC01",
+        "IC11"
+      ],
+      "subcases": []
+    },
+    {
+      "work_package": "WP01",
+      "changed_steps": [
+        {
+          "step_id": "WP01-S01",
+          "old_sha256": "ee8474dafc471579351b07128a79a10ffe07aa518f8a07196939f72c3e20e9ff",
+          "new_sha256": "2d8c554d33268a0983099515c2c398e79f13396fae6124a1da037f5caf389518",
+          "new_action": "起動中のClaude/Codex、binaryの実path/hash/version、OS/CPU、Python、Git、uv、SQLite、VM接続先を採取する。 IC03の宣言値と実観測を分離し、設定source、実行path、使用modeも記録する。"
+        },
+        {
+          "step_id": "WP01-S06",
+          "old_sha256": "1b81e6f19951be88a22f1c0d6bec4fef1f5200947b33b5114ea0ce39c252d06e",
+          "new_sha256": "faa6f1f381da93b0b58f3c4641343a08237b54b11acaaebc72b3ae277f6f5058",
+          "new_action": "Mandateの外部操作・予算、対応platform、runtime版を確定する。未確認はUNKNOWNとして依存作業だけ止める。 IC01能力はrequested/advertised/observedを区分し、外部資格未確認をtrueにしない。"
+        }
+      ],
+      "dependencies_before": [
+        "WP00"
+      ],
+      "dependencies_after": [
+        "WP00"
+      ],
+      "integration_contracts": [
+        "IC01",
+        "IC03"
+      ],
+      "subcases": []
+    },
+    {
+      "work_package": "WP02",
+      "changed_steps": [
+        {
+          "step_id": "WP02-S01",
+          "old_sha256": "744b1209b177267788a56f6148a2c30e70d8d1e1d42524718fe1b4263bed7c8a",
+          "new_sha256": "ebccd3d85ea1afdd0a252e624b2137b6ecf27e9b7496bfd4dd92785b8f0a2b15",
+          "new_action": "本v3で統合済みの仕様具体化C01–C12とIC01–IC11を、要件・API・状態遷移・各WPの両端へ照合する。DSH要素の採否や配置を再びworkerへ丸投げしない。"
+        },
+        {
+          "step_id": "WP02-S02",
+          "old_sha256": "5aaa00ec6460c4baabe35c99d5171b3541f01b4448461e2a8a0930c400a89614",
+          "new_sha256": "a1a42aec48b739961980a4339f789b71c152955f74cdc55b8fb6c80307969023",
+          "new_action": "統合設計のservice owner、入出力、失敗、取消、所有権移譲、clock、永続化境界、公開state transitionを具体的な実装型へ対応させる。無根拠のdefaultや未使用抽象を追加しない。"
+        },
+        {
+          "step_id": "WP02-S04",
+          "old_sha256": "398f8d34b67924efd6f9fd0bf924fd77a0662579dd17ab0898c724a761ab35eb",
+          "new_sha256": "0c2873a0ab16abf63e20558360a69f0ddaa56c72ca678019471ebd771f632c07",
+          "new_action": "model資格、Hook発火、snapshot、署名正規化など採用上重要な仮説を事前oracle付きspikeとして登録する。 Checkpoint、execution binding、projection復元、lifecycle取消競合の反例も事前に固定する。"
+        },
+        {
+          "step_id": "WP02-S05",
+          "old_sha256": "c4c500579f9561fecc0c45d529917204e4362a15091e8e07b21d510d5876172a",
+          "new_sha256": "66aa562585d867a8b02fab318bb3f1a1258c38da66b691a472e54054e5b1ccb9",
+          "new_action": "35要求→11統合契約→設計→32WP→192論理検証内の必須subcase→実環境の対応を確認し、未対応と責任空白をゼロにする。実環境bindingだけを確認値として確定する。"
+        },
+        {
+          "step_id": "WP02-S06",
+          "old_sha256": "6e31c48ac19e556c02136bc46ab8b703490ec5e54d281867def2024d53f29176",
+          "new_sha256": "22a1f9d36749be5a387d1067c9562aa936b4a66d840b33aa9e7099885441492a",
+          "new_action": "A3が両端の契約・反例・正本整合を独立レビューし、仕様変更が必要ならCR、委任内の具体化ならdesign decisionを残す。 IC10でproducer/consumerと外向きschema・diagnosticの意味を確認し、統合済み仕様を承認待ちの追補へ戻さない。"
+        }
+      ],
+      "dependencies_before": [
+        "WP00",
+        "WP01"
+      ],
+      "dependencies_after": [
+        "WP00",
+        "WP01"
+      ],
+      "integration_contracts": [
+        "IC01",
+        "IC10",
+        "IC11"
+      ],
+      "subcases": [
+        "V02-02-S01",
+        "V02-02-S02"
+      ]
+    },
+    {
+      "work_package": "WP03",
+      "changed_steps": [
+        {
+          "step_id": "WP03-S04",
+          "old_sha256": "554d7598e66edb2ae004d41d1c49843ad814fda1f4cce86c7c6b70571495a644",
+          "new_sha256": "24cfa7f5f574dc880d0169b4703d3da51962e2009fb7e0d9af3358cbcae3a3bf",
+          "new_action": "runnerがcommand、cwd、exit、収集/実行/skip、env/target hash、stdout/stderr artifactを直接記録する。 IC08のtimed_out/cancelled/signal/exit_codeを独立列にし、IC09の原本参照と省略有無を保存する。"
+        },
+        {
+          "step_id": "WP03-S06",
+          "old_sha256": "f6cf430b8143cb085e0d9190d2a8174932f470c96bd64c7af14d00ae40229a89",
+          "new_sha256": "39bd80e2d1fb1d8ed9d52412bc8b045c2be34cfd4a32e325a7be170bc54efbc4",
+          "new_action": "ローカル実行とCIを同じinventoryで動かし、完全gateとcomponent gateの表示を分離する。 source/built_installed/recorded_boundary/live_nativeを別entry_kindとし、IC11の実entryと外部world検査をquality inventoryに入れる。"
+        }
+      ],
+      "dependencies_before": [
+        "WP02"
+      ],
+      "dependencies_after": [
+        "WP02"
+      ],
+      "integration_contracts": [
+        "IC08",
+        "IC09",
+        "IC10",
+        "IC11"
+      ],
+      "subcases": [
+        "V03-04-S01"
+      ]
+    },
+    {
+      "work_package": "WP04",
+      "changed_steps": [
+        {
+          "step_id": "WP04-S01",
+          "old_sha256": "8c6339017a2fb066a2749430a127d96f522d0e80b52c8862c436f11c702f91a2",
+          "new_sha256": "5c2f12776a1f05fc2c3f3517a8ef5ee60cac367567097205da14b21fefbc5fb8",
+          "new_action": "Mandate/Baseline/Source/Claim/Experiment/ADR/Task/Run/Snapshot/Effect/Eventに加え、OperationCapability、ExecutionBinding、EffectiveComposition、ProjectionCursor、DispatchIntent、GoalAuthorization、WorkflowNode、MessageReceipt、RunOutcome、ContextEnvelopeをIC01–IC11どおり本番型・schemaとして定義する。"
+        },
+        {
+          "step_id": "WP04-S03",
+          "old_sha256": "703845bd37aec52311a85a5668ad1cf8331e3d946f900ffa03844638d022942a",
+          "new_sha256": "f3f1112db92b0c741e612c951359d85402458825f98bd57ab63108ea99c1bc27",
+          "new_action": "task/run/attempt/fence/challengeと六種hashを共通envelopeへ通し、qualification_ref・composition_digest・execution_binding_ref・dispatch_id・projection cursor・source provenanceを役割別payloadへ結び付ける。異なる保証を一つのboolへ潰さない。"
+        },
+        {
+          "step_id": "WP04-S05",
+          "old_sha256": "78c3ef73e6a8d767a30b03341115215bca6b8b2c3e3c341890cec5e9be1743a3",
+          "new_sha256": "0d2488ad048f877109461aef6515723d57ff5348a6c37c5962fbcbc60558c29b",
+          "new_action": "完全な状態遷移表・role/action matrix・error codes・Idempotency-Key競合の仕様を機械契約へ落とす。 Goal状態と実行許可、dispatch UNKNOWN、runner所有者、projection cursor、durable inbox ackの状態を明示する。"
+        },
+        {
+          "step_id": "WP04-S06",
+          "old_sha256": "39a4a884b706f56005bc55b5a702abf3e9d2ebec143940ccb4d9463195f95748",
+          "new_sha256": "b49fad51f424a89c937ba6e4487653a922f57a569888def6e3b6d4f26b66654d",
+          "new_action": "schema生成物と実装型のdrift検査、正負例、未来schema拒否/明示migrationを試験する。 IC10のモデル可視prompt/schema/result/diagnosticも版管理し、対応する実consumerを持つことを確認する。"
+        }
+      ],
+      "dependencies_before": [
+        "WP02",
+        "WP03"
+      ],
+      "dependencies_after": [
+        "WP02",
+        "WP03"
+      ],
+      "integration_contracts": [
+        "IC01",
+        "IC10",
+        "IC11"
+      ],
+      "subcases": [
+        "V04-01-S01",
+        "V04-01-S02",
+        "V04-06-S01",
+        "V04-06-S02"
+      ]
+    },
+    {
+      "work_package": "WP05",
+      "changed_steps": [
+        {
+          "step_id": "WP05-S02",
+          "old_sha256": "3c97947e48cddaac15c03d9582f787e858829469eedd9671cc91425f94c4f8a8",
+          "new_sha256": "b7ec355584499bcd9eafc5507c7f2aea9ecce1c6b6ed38c3508084240de34d6a",
+          "new_action": "TASK/RESULT/ACCEPTANCE v1を輸送として保持し、task_fileとsidecarでWP/contract/target hashを渡す。 IC07のmessage_idとpayload hashをsidecarに保存し、bootstrapと製品のauthorityを混在させない。"
+        },
+        {
+          "step_id": "WP05-S05",
+          "old_sha256": "cc855c08b0c96c3266333f3f465c4aa93a095b837847775ebff94d0207249f69",
+          "new_sha256": "73bbed928749197d49f9c6e02bfaf65134498c36e4a3853f0e0082b4de834644",
+          "new_action": "watch/turn delivery停止、重複メッセージ、session交代、未完了task回収のresume packetを定義する。 配送・耐久受領・着手・完了の4段階を区分し、記録済メッセージの再送でも二重着手しない。"
+        },
+        {
+          "step_id": "WP05-S06",
+          "old_sha256": "dc4d0057f3d622c758fca1a9cde9e3721147b6922a111507007127f37ef78256",
+          "new_sha256": "55230b23897fdb78f80fc59c4f05c85c3b081719c9af924730003a2b40f48114",
+          "new_action": "bootstrapはoperator所有台帳・既存agmsg・外部A3/A4を使い、製品Supervisorには依存しない。開発段階での送信/受信/実行/完了も区別し、製品自己ホスト切替はWP27まで禁止する。"
+        }
+      ],
+      "dependencies_before": [
+        "WP01",
+        "WP04"
+      ],
+      "dependencies_after": [
+        "WP01",
+        "WP04"
+      ],
+      "integration_contracts": [
+        "IC07"
+      ],
+      "subcases": []
+    },
+    {
+      "work_package": "WP06",
+      "changed_steps": [
+        {
+          "step_id": "WP06-S02",
+          "old_sha256": "f6818c2c121f6ba591faf95dbea44bef628b31c09914e75efab2f8c85f564903",
+          "new_sha256": "0234ce36201035e423c6f9937d679cddf70444f9a7d140baa3ff58aad34c2d4a",
+          "new_action": "managed/user/project/local/pluginの公式解決規則で実効構成を合成し、source/priority/selected/rejected理由、enabled/trusted/probedを別々に保存する。実際のruntimeが選んだ定義と照合する。"
+        },
+        {
+          "step_id": "WP06-S03",
+          "old_sha256": "f6353f935d640bd95510fb7edcf05a7192183a43ce6fb6d5a44e138cd043a7ea",
+          "new_sha256": "8b44c04f9aa17e933a345f19e3e09c49d9ff54e4105c72e6cc06a410111359bf",
+          "new_action": "一律の例外処理・互換性免除、Critの人待ち矛盾、Superpowersと常駐workerの役割差を明示的に適合する。 Superpowersの実装/仕様レビュー/品質レビュー機能を常駐worker方式へ移しても落とさず、同じ工程内で役割を固定する。"
+        },
+        {
+          "step_id": "WP06-S05",
+          "old_sha256": "5ebc05ee8a658e9b60192f286a07439089f5260e181cea8cb876c822ee63e951",
+          "new_sha256": "1783091afb28477b55a2dc0f50225ccdbc6644d4289806641a92d7eb0c480f57",
+          "new_action": "必須Skillの欠落・不正frontmatter・同名shadow・runtime欠損は起動資格エラーにする。 資格確認後の設定差替えを検出する。不変の旧runは旧lockで完了させ、意図しないdriftは安全停止・再資格とする。"
+        }
+      ],
+      "dependencies_before": [
+        "WP01",
+        "WP04",
+        "WP05"
+      ],
+      "dependencies_after": [
+        "WP01",
+        "WP04",
+        "WP05"
+      ],
+      "integration_contracts": [
+        "IC01",
+        "IC03"
+      ],
+      "subcases": [
+        "V06-02-S01",
+        "V06-05-S01"
+      ]
+    },
+    {
+      "work_package": "WP07",
+      "changed_steps": [
+        {
+          "step_id": "WP07-S01",
+          "old_sha256": "e8f3fc2d824f3b9b754776ab56d72133867968e764875e05174213debb7ac9d2",
+          "new_sha256": "3fded33c130f694fe0439cb52dee149a59ec8a6861e18a13d3b416c1c1f26051",
+          "new_action": "project/baseline/task/run/lease/event/inbox/outbox/dispatch_intent/effect/evidence参照を単一管理DBへ定義する。domain確定、native観測、ephemeral通知を分け、projectionのstate_version/baseline_revision/as_of_seqを整合したread cutから作る。"
+        },
+        {
+          "step_id": "WP07-S03",
+          "old_sha256": "e26e2f6fcea3602b1e4df1f7ff815d3c7112230cbf71145843ea469904a5bb71",
+          "new_sha256": "747e1e59adca10d2532291297f0cdc590ea52f26d8311f2e1a42f2be2e4fcb5f",
+          "new_action": "domain mutation、audit event、outbox、dispatch intentを同transactionで確定する。外部送信はcommit成功後だけ許し、deliveryの不明結果は照合待ちにする。通知先counterで順序を実証する。"
+        },
+        {
+          "step_id": "WP07-S04",
+          "old_sha256": "f9c9f08f79ef46802ed01bcf7bbf04061d139ad819c9337927bc8fdf65d47634",
+          "new_sha256": "091b80fc1d64c65536c6feaf1ed3c602527658e9d555a2cf9c0879abb4a63774",
+          "new_action": "migrationはbackup→exclusive admission停止→version確認→変換→integrity検査の順で実装する。 projection cacheの版と反映済sequenceも検査し、未来cursorや旧projectionは再生成する。"
+        },
+        {
+          "step_id": "WP07-S06",
+          "old_sha256": "924e8c1ffc585b7906c3bfbbfe4f8e4ba0d1eb1446f69fae2ed9f631026edf00",
+          "new_sha256": "fe8c34f9c72b7e84da95f3aa1e14a261c76208613111cec924243dfe9320c7e4",
+          "new_action": "2connection競合、別process crash、outbox再送を実DBで検証する。 IC05のcommit前外部開始0と、応答不明時の再送禁止を実receiver counterで確認する。"
+        }
+      ],
+      "dependencies_before": [
+        "WP03",
+        "WP04"
+      ],
+      "dependencies_after": [
+        "WP03",
+        "WP04"
+      ],
+      "integration_contracts": [
+        "IC04",
+        "IC05",
+        "IC07"
+      ],
+      "subcases": [
+        "V07-03-S01",
+        "V07-03-S02",
+        "V07-02-S01"
+      ]
+    },
+    {
+      "work_package": "WP08",
+      "changed_steps": [
+        {
+          "step_id": "WP08-S02",
+          "old_sha256": "7b59a52eb4dacc2bc2a68e82d96168fbcd9ff03641f8b0ab12658a4a9e493a8b",
+          "new_sha256": "6a9ba071755a3d9222ae7acd54bc711262527f2022247909eb671fb075872acd",
+          "new_action": "Mandateの許可scope・budget・reserved decisions・公開操作を検査する。 IC06に従い永続goalと実行grantを別に管理し、activeだけではadmissionを許可しない。"
+        },
+        {
+          "step_id": "WP08-S05",
+          "old_sha256": "1f1f13621f416ba22a70265833df504ef84d352abbdd878648b98ae20274f873",
+          "new_sha256": "baf766c766c6a356cf688665147f29da80a055319604d0fd9700b1ffb1f9f114",
+          "new_action": "要件・test基準・policy更新時に旧acceptanceを単に再利用しないinvalidationを実装する。 IC04投影のbaseline revisionとIC06継続参照も失効対象にし、旧summaryに正本を戻さない。"
+        }
+      ],
+      "dependencies_before": [
+        "WP04",
+        "WP07"
+      ],
+      "dependencies_after": [
+        "WP04",
+        "WP07"
+      ],
+      "integration_contracts": [
+        "IC04",
+        "IC06"
+      ],
+      "subcases": []
+    },
+    {
+      "work_package": "WP09",
+      "changed_steps": [
+        {
+          "step_id": "WP09-S02",
+          "old_sha256": "dbdd4d93086e6d8328244259bfb3078e0af8393a74183546ce11810552aa54ab",
+          "new_sha256": "7a3fad04a7bd79681f847b60ae334fbf08a4ef4ee1d59cc5c4312bd5ff355d8a",
+          "new_action": "正式candidateは停止確認後のread-only content treeとしてpublishし、内容addressで保持する。 writerとVerifierの実行scopeは分け、IC02の凍結source digestで両者を連結する。"
+        },
+        {
+          "step_id": "WP09-S03",
+          "old_sha256": "822e979a2c403ad0e826b90e83b8c70c2873bae97dce4fde6880f52aa8b4cf8b",
+          "new_sha256": "759b86ddc54e662181a3ea6dcd37f1f4b114af86f7177a9e4ea4127890695109",
+          "new_action": "source_rootとartifact_rootを分離し、repository/worktree/workspace/execution_scopeを固定する。writerのread/write/shellは同binding、独立検証は別bindingへ同一凍結snapshotを渡す。mainやhostへ暗黙redirectしない。"
+        },
+        {
+          "step_id": "WP09-S05",
+          "old_sha256": "f560a7c890b613f510d27ef98fdcb67981f81bddd37a46e9a6e04c4d81c1decb",
+          "new_sha256": "a026d9ec74eacb70d28b520983d60cd038cd0f5dc2c98c3be7ab52c2ad154076",
+          "new_action": "認証・鍵・DB・spoolを除外し、必須sourceの欠落を黙って除外しないmanifest検査を実装する。 IC09の原本と配布用redacted projectionには別digest/ACLを付け、失敗情報は削除しない。"
+        }
+      ],
+      "dependencies_before": [
+        "WP04",
+        "WP07"
+      ],
+      "dependencies_after": [
+        "WP04",
+        "WP07"
+      ],
+      "integration_contracts": [
+        "IC02",
+        "IC09"
+      ],
+      "subcases": [
+        "V09-03-S01"
+      ]
+    },
+    {
+      "work_package": "WP10",
+      "changed_steps": [
+        {
+          "step_id": "WP10-S01",
+          "old_sha256": "96158fdcc32fcccf27bdf1b590bad00b130dc231407f8486e1a38f5dd700815c",
+          "new_sha256": "37ef0e1ba567c60537c0ba850334cf4640fca74f27dfafbd94230d917568db05",
+          "new_action": "research/analysis/experiment/decision/specification/plan/implementation/verification/review/integration/releaseを同じWorkflowNode契約と依存DAGで扱う。上流nodeはInputBaselineとMandateに束ね、未確定設計の承認を調査の前提にしない。"
+        },
+        {
+          "step_id": "WP10-S02",
+          "old_sha256": "a01044b3b7eacc16ffdc2124e4ed2546aefdd534224be13d1504fc6d0b39fcf8",
+          "new_sha256": "6f3be895d9f51a806bca134d24d37fc37ba769c6a6783e1961c4cfb55954a4f4",
+          "new_action": "ready条件、owner、expected version、deadline、budgetを同一transactionで確認してclaimする。 IC01資格、IC02実行binding、IC03構成、IC06許可の参照も確認し、開始intentの発行条件にする。"
+        },
+        {
+          "step_id": "WP10-S05",
+          "old_sha256": "4a2af04f28ffd4d28d74a71870c211ad1515112679440e13e7b04cc4409aae62",
+          "new_sha256": "ed02f776680bcdaac95526a729c6b739a99b3e5a984ff4786912a9de373aa0d0",
+          "new_action": "枯渇・飢餓を防ぐ公平なready queueと、blockされた依存以外を進める割当を実装する。 上流調査・比較実験にも同じ資源上限と公平性を適用し、共有schema/lockと統合は直列化する。"
+        }
+      ],
+      "dependencies_before": [
+        "WP04",
+        "WP07",
+        "WP08"
+      ],
+      "dependencies_after": [
+        "WP04",
+        "WP07",
+        "WP08"
+      ],
+      "integration_contracts": [
+        "IC01",
+        "IC02",
+        "IC03",
+        "IC06",
+        "IC07"
+      ],
+      "subcases": [
+        "V10-01-S01"
+      ]
+    },
+    {
+      "work_package": "WP11",
+      "changed_steps": [
+        {
+          "step_id": "WP11-S03",
+          "old_sha256": "8c4ed011861ff95883f18ac58c754f67273357f6bbf0a324c12ebc062065ef90",
+          "new_sha256": "ed2ad6b066bae5d26feb668a49fedad5f19643136e8b970870e620682400691b",
+          "new_action": "project/task pauseはadmission停止→PAUSING→native中断→Runner停止確認→PAUSEDとする。 IC08に従い停止理由と各観測を保持し、goal activeやlate successで解除しない。"
+        },
+        {
+          "step_id": "WP11-S04",
+          "old_sha256": "9a9e847f9cbd1197111bc2b82b6fb6b28f8be2938fffb78024d8c8e83af5e5f0",
+          "new_sha256": "3a83d32a335ab404b72a95a29b34a0d630225a2f44dbede176627641c6c7de2b",
+          "new_action": "goalのactive状態とは別に、actor/expected version/baseline/qualification/composition/予算/停止理由/epochを検査してresumeを認可する。task継続と独立reviewのfresh contextをContinuation契約で区別する。"
+        },
+        {
+          "step_id": "WP11-S06",
+          "old_sha256": "c2cca3e3b8a89e154c9543bf77e860ff740f3f2f957288826b1ae6c2b739764d",
+          "new_sha256": "0de964b3475837817b2a2d21b95eb4713a6b8dd8e8bd83d7b6ee8547fa48a6fb",
+          "new_action": "clock跳躍、同時pause/complete、予算途中超過、unknown usage、停止処理失敗を試験する。 IC06のactive goal＋USER_STOP/BUDGET/AUTHの全組合せを反例にする。"
+        }
+      ],
+      "dependencies_before": [
+        "WP08",
+        "WP10"
+      ],
+      "dependencies_after": [
+        "WP08",
+        "WP10"
+      ],
+      "integration_contracts": [
+        "IC06",
+        "IC08"
+      ],
+      "subcases": [
+        "V11-06-S01"
+      ]
+    },
+    {
+      "work_package": "WP12",
+      "changed_steps": [
+        {
+          "step_id": "WP12-S03",
+          "old_sha256": "3a56158cdaabdd23b7d0408e861251b72a97153794d3d18e7c2a79b7e35cd6f8",
+          "new_sha256": "3b30b8dbca994468b5783b6fd1fde0c8f4f1e5b93d6b299550eae430652c1ef6",
+          "new_action": "mutationsにexpectedVersion/Idempotency-Key/payload hashを適用し、同key異payloadを拒否する。 操作入口でもIC01資格/IC02領域/IC03構成を照合する。wrapperの事前検査だけに依存しない。"
+        },
+        {
+          "step_id": "WP12-S04",
+          "old_sha256": "b6f8a340dad4f6391721c2c5c020ba96b90cbbe0089c3053989a4630818b6b49",
+          "new_sha256": "3666e98818a6fb9ed2be6dbeffbf0175886b1163725c9c344d85380030bd0795",
+          "new_action": "artifact参照はpath文字列でなく許可されたcontent ID、event取得はproject scopeとcursorで制限する。 IC04のstate_version/as_of_seqを同じ整合cutで返し、IC09 retrievalはACLとsource hashを実読照合する。"
+        }
+      ],
+      "dependencies_before": [
+        "WP04",
+        "WP08",
+        "WP10",
+        "WP11"
+      ],
+      "dependencies_after": [
+        "WP04",
+        "WP08",
+        "WP10",
+        "WP11"
+      ],
+      "integration_contracts": [
+        "IC01",
+        "IC02",
+        "IC03",
+        "IC04",
+        "IC09"
+      ],
+      "subcases": [
+        "V12-05-S01"
+      ]
+    },
+    {
+      "work_package": "WP13",
+      "changed_steps": [
+        {
+          "step_id": "WP13-S01",
+          "old_sha256": "6a22497986390b70332312a4a26d6bd70ef58900885b7b9d7cc1f8e012e3da94",
+          "new_sha256": "8c8aae14dee86c535b3cc179f8a988172bb0a3efb916dc2b41f741cae7faf3b7",
+          "new_action": "管理、本人専用native実行、独立検証の3領域をLinux VMとしてprovisionまたは適合確認する。 管理/公式実行/独立検証のそれぞれをIC02で別identityとして登録し、検証snapshotの同一性とは分ける。"
+        },
+        {
+          "step_id": "WP13-S05",
+          "old_sha256": "23904ac84783a8c1c80d613f7b90c23d15151da00ded599815c276bcca1c7b28",
+          "new_sha256": "382230065126ae94ed4d9f18cc28aa160ca394a6d9bfe5b0c5a4b5d40f15e7b6",
+          "new_action": "vm/backend/CPU/メモリ/disk、実行可能なenv recipeとcleanup/reverse mappingを記録する。 files/network/process/credentials別の境界能力を記録し、partialをfullと報告しない。"
+        }
+      ],
+      "dependencies_before": [
+        "WP05",
+        "WP12"
+      ],
+      "dependencies_after": [
+        "WP05",
+        "WP12"
+      ],
+      "integration_contracts": [
+        "IC02"
+      ],
+      "subcases": []
+    },
+    {
+      "work_package": "WP14",
+      "changed_steps": [
+        {
+          "step_id": "WP14-S01",
+          "old_sha256": "f0f1a9ba87d48638af3a2175dbd8e8c3562d9d5abd0e57d7b5d42e4eadb97cf1",
+          "new_sha256": "e3de33034347c37fd3b120efca41c0f192419793359e83076733943faabaec40",
+          "new_action": "task/attemptごとに専用worktreeとOS実行scopeを作りExecutionBindingへ束ねる。資源は公開前に起動側が所有し、公開後は一つのRunner lifecycle ownerへ移す。失敗した起動は未公開資源を回収する。"
+        },
+        {
+          "step_id": "WP14-S02",
+          "old_sha256": "8949ccbb2cd6b24fd45d34fd490ddbc5dfae73411d2bbf63c3033fb5551357b8",
+          "new_sha256": "a3e5b029c084d69a1a17f0fa8ad9c6119e837ddd5fd1174e6a7147566b7b4bfa",
+          "new_action": "PIDだけでなく起動identity/cgroup等で所有processを識別し、再利用PIDを誤killしない。 公開前後のowner移譲を記録し、同じ資源を複数のownerが破棄しない。"
+        },
+        {
+          "step_id": "WP14-S03",
+          "old_sha256": "b47908054561ef275db8a1e01026d29ffc0c8d3fe27594284e67931ee45fb7dd",
+          "new_sha256": "e44c044d09dbc1fef0a0375d8b408820aac49d7a0ad37bfbdc5e61e689a04ac4",
+          "new_action": "admission閉鎖→取消→grace10秒→強制停止→子孫/quiescence確認を実装する。timed_out/cancelled/signal/exit_codeを独立に保持し、exit0でもtimeoutを成功へ変換しない。停止未確認なら再割当しない。"
+        },
+        {
+          "step_id": "WP14-S04",
+          "old_sha256": "2ba74977820b5c2df874353438df894b84126ea3f0dc4c41d0cb8c1e11bac50f",
+          "new_sha256": "37ebf32aef3f713d72b4e12bfa4b2f9a8509c3f9a7b02ed3cd5a65fe386fac99",
+          "new_action": "writer停止後にsnapshot publish、read-only検証materialize、temp所有権を実装する。 IC05のcommit済intent以外から外部実行・公開をしない。曖昧な起動は照合待ちにする。"
+        },
+        {
+          "step_id": "WP14-S06",
+          "old_sha256": "9dc85cada9d429f274926c173bb573edd0564f1aae8aec876e3a6b738bd125b6",
+          "new_sha256": "3e6ad2187b059fb9ddbc63351b009e16cdbd6746d38837b3ffebae863d0287e1",
+          "new_action": "子process残存、timeout、port競合、ディスク不足、構築失敗、setup副作用を検証する。 observer例外と認可/永続化失敗を区別し、前者の隔離が後者のfail-openにならないことを検査する。"
+        }
+      ],
+      "dependencies_before": [
+        "WP09",
+        "WP11",
+        "WP12",
+        "WP13"
+      ],
+      "dependencies_after": [
+        "WP09",
+        "WP11",
+        "WP12",
+        "WP13"
+      ],
+      "integration_contracts": [
+        "IC01",
+        "IC02",
+        "IC05",
+        "IC08"
+      ],
+      "subcases": [
+        "V14-05-S01",
+        "V14-01-S01",
+        "V14-01-S02",
+        "V14-06-S01"
+      ]
+    },
+    {
+      "work_package": "WP15",
+      "changed_steps": [
+        {
+          "step_id": "WP15-S02",
+          "old_sha256": "7779689bcddfeb7d07f71e58a478fb64635209d204428c7191acd0c1ca9021a6",
+          "new_sha256": "4c7ce02dd850debc4cdb8f6ab595acc97f1267f8ce66dc4524d0b9f49d4085f9",
+          "new_action": "実受付でIC01資格・IC02領域・IC03構成を確認し、IC05 dispatch intentのcommit後にclaude-fable-5-1/highで開始する。task/session/run/dispatch IDを対応付け、開始応答が不明なら再起動前に照合する。"
+        },
+        {
+          "step_id": "WP15-S03",
+          "old_sha256": "6a8d29b4550efa340cc5b348ed1dcc11f444cfd72806046ccc9810e7842b4d8e",
+          "new_sha256": "49c7516f682e4179dd4060128aac02b84b62325e9c96154dd6721753a8aaa624",
+          "new_action": "保存したexact session IDでresumeする。別task、別baseline、別policyなら再利用せず判断する。 attemptでcwdが変わる際はIC06のsession適合を検証し、資格未確認の再束縛をしない。"
+        },
+        {
+          "step_id": "WP15-S04",
+          "old_sha256": "25167150e55b33d51569a7cad5bcdf1a9626fa1d7c5390b0225f402ef708a53e",
+          "new_sha256": "20954c9404a5c8f54bad7a539b4826758541238d964312f60b81ffd19d82302d",
+          "new_action": "partial/error/result/hook/cancelを区別し、未知の権限要求は保留、未知の付加通知は診断とschema判定に分ける。 native通知はIC04の観測事実として記録し、project合否へ直接写像しない。"
+        },
+        {
+          "step_id": "WP15-S06",
+          "old_sha256": "53caa0d751106bb5803c5f05f2500e147daba85d88ea89c2ec18da5202888262",
+          "new_sha256": "f049e0158dada4d8c7fb2f1c09d5b26cd2361af38b9480c63f07d2cfb7e9433d",
+          "new_action": "timeout、partial UTF-8、EOF、final欠落、同時resume、Auth切れ、モデル代替、child残存を試験する。 IC08のtimeout後exit0/late success/公開前crashと、IC05 intent順序を本経路で検査する。"
+        }
+      ],
+      "dependencies_before": [
+        "WP06",
+        "WP12",
+        "WP14"
+      ],
+      "dependencies_after": [
+        "WP06",
+        "WP12",
+        "WP14"
+      ],
+      "integration_contracts": [
+        "IC01",
+        "IC02",
+        "IC03",
+        "IC04",
+        "IC05",
+        "IC06",
+        "IC08"
+      ],
+      "subcases": []
+    },
+    {
+      "work_package": "WP16",
+      "changed_steps": [
+        {
+          "step_id": "WP16-S02",
+          "old_sha256": "557c97a16981867a57b9e1c52956001d79d65ac97495f3c4741133eb6c4601c3",
+          "new_sha256": "3dbc1cefb5709200919bde4fa0fb64f43bcdc9803c1da97885dcebff857f58d8",
+          "new_action": "IC01能力、IC02領域、IC03構成、IC05 commit済intentを確認してstdio起動→initialize応答→initialized→公開catalog全page→thread/start→turn/startを行う。所定版で未対応の能力は黙って省略しない。"
+        },
+        {
+          "step_id": "WP16-S04",
+          "old_sha256": "ef9ac078d89963b12f2b97fa59af74fdad4207e84a6988087790f342c3c4f699",
+          "new_sha256": "e058a27f0ddeef00bfb2eba46c423b7c84c4990551b99a7d59b23ae422629cdc",
+          "new_action": "task/thread/turn mapping、thread/resume、turn/steer、turn/interruptを厳密なIDで扱う。 IC06の現在baseline・scope・grantを確認し、最新threadへの暗黙再開を禁止する。"
+        },
+        {
+          "step_id": "WP16-S05",
+          "old_sha256": "71294c47be989cc01022b32362b16f0581cfd351970acb31b9adf0cb0712ccec",
+          "new_sha256": "488a088cee41c58e60f26b84111c3dbed8e8bbd57e39c07540d9f23614f91ba4",
+          "new_action": "request ID相関、通知順序、backpressure、permission request、構造化結果、usage不明を扱う。 IC08の直交する終了情報とIC04観測eventを保存し、IC09原本参照付きbounded resultへ変換する。"
+        },
+        {
+          "step_id": "WP16-S06",
+          "old_sha256": "563ce6fe5852eb4eb25de3ed3e0360837600758342324ee21215d6a8c748f2e3",
+          "new_sha256": "8535ab352cb84f893cb93aa295a5efeb9316cb1042bb8697eb8ea274a50ac935",
+          "new_action": "未知API、再接続、重複request、wrong turn、approval不足、cancel競合を負例で検証する。 資格不足を別providerへfallbackしない。native内部を完全replay可能と誤表示しない。"
+        }
+      ],
+      "dependencies_before": [
+        "WP06",
+        "WP12",
+        "WP14"
+      ],
+      "dependencies_after": [
+        "WP06",
+        "WP12",
+        "WP14"
+      ],
+      "integration_contracts": [
+        "IC01",
+        "IC02",
+        "IC03",
+        "IC04",
+        "IC05",
+        "IC06",
+        "IC08",
+        "IC09"
+      ],
+      "subcases": []
+    },
+    {
+      "work_package": "WP17",
+      "changed_steps": [
+        {
+          "step_id": "WP17-S01",
+          "old_sha256": "1124a39242a6aa3baddb53c9efad6b8ee75fc7190ac9476422e7301bf9d3d47e",
+          "new_sha256": "c74cbcdece68e08d9eb789f56539a3351200de4378f291b0eb11d92a5857deb5",
+          "new_action": "Supervisor eventをagmsg TASK/RESULT互換通知へ写像し、event/task/run/contract hashをsidecarに結び付ける。 IC05のdispatch_id、intentのcommitted_seq、IC07のmessage_idを連結し、配送が実行権限を生成しないようにする。"
+        },
+        {
+          "step_id": "WP17-S03",
+          "old_sha256": "4a85c5888397b5fd6fb49536a8d4216c584765f3dd24dad2d4c2c70866a6ca1d",
+          "new_sha256": "499b5cd9b5afcfe3fd246e50d6765fab260f5c93bd6f8e4e6dfd5a1a261f50e2",
+          "new_action": "message_idとtask/run/attempt/fenceを管理DBの業務inboxへ耐久記録した後にackする。outbox再送、宛先不在、重複・遅延・ack前crashを処理する。agmsg read_atは業務受領や完了の証明には使わない。"
+        },
+        {
+          "step_id": "WP17-S05",
+          "old_sha256": "3b48fabeb61ea597d7e0693b39e209d863ffc395f7d9718bfcfac1fd81f3c479",
+          "new_sha256": "46367a9f456d4a12f3cc5d7000fd59d091f9dfbe74b5b9a05f0d2b30a04ecc60",
+          "new_action": "長文・秘密・prompt injectionをmessageに入れず、内容は許可されたartifact参照から読む。 IC09の短縮contextはartifact参照と失敗情報を保持し、本文の命令をauthorityへ昇格させない。"
+        }
+      ],
+      "dependencies_before": [
+        "WP05",
+        "WP07",
+        "WP12",
+        "WP15",
+        "WP16"
+      ],
+      "dependencies_after": [
+        "WP05",
+        "WP07",
+        "WP12",
+        "WP15",
+        "WP16"
+      ],
+      "integration_contracts": [
+        "IC05",
+        "IC07",
+        "IC09"
+      ],
+      "subcases": [
+        "V17-02-S01",
+        "V17-05-S01"
+      ]
+    },
+    {
+      "work_package": "WP18",
+      "changed_steps": [
+        {
+          "step_id": "WP18-S02",
+          "old_sha256": "6678bb35aa95f268d91b24eee7de5e19e241605df6532b59be424973a9a5ed5e",
+          "new_sha256": "31b0b3d11d04cc8e31a800bee304b51719fd385820859cba2ecf1d166176f811",
+          "new_action": "問いを機能/NFR/依存/互換/障害/反例/運用へ分解し、各研究nodeのscope、input/output、判定、予算をIC07 WorkflowNodeへ設定する。独立nodeを並列化し、証拠照合のjoin前に設計を確定しない。"
+        },
+        {
+          "step_id": "WP18-S03",
+          "old_sha256": "01e7192a5ff3734bc88fbc872dee53bd14370f704b7f3310266f2526383d07a8",
+          "new_sha256": "ff0e83960923e8c219ba17454b20eacc9186c572e78e6414fd0266b08eb27cd9",
+          "new_action": "claimをfact/inference/assumption/unverifiedに分類し、根拠とcontradictionを関連付ける。 IC10で根拠・代案・反証・失敗条件まで追跡し、主張の件数だけで探索完了にしない。"
+        },
+        {
+          "step_id": "WP18-S04",
+          "old_sha256": "d0546205c9ed6c151e3c7e2db972fa0ffecb703c8cf252a7e7eba20c111a20d6",
+          "new_sha256": "34cbc1b0200843d1fb2400a4633badeb5737aec051c4fdda325ff39b8a3197b4",
+          "new_action": "UA graphとmemoryをsnapshot/validityで照合し、IC09 ContextEnvelopeで原本hash・範囲・省略・再取得・構造化した未解決事項を渡す。長文中央の例外条件を無視せず、必要な範囲を読み直す。"
+        },
+        {
+          "step_id": "WP18-S06",
+          "old_sha256": "ad3bcf74cc0df9e64b1839fa1dfc33b91e67eebd5ca6dbf52b43ea3332fdea54",
+          "new_sha256": "5119be0d52a5e5d1f3f85c834d70dd848e058d34a09f5502a6b7a5b1a0b63c4a",
+          "new_action": "架空出典、古い資料、相反する仕様、dirty code、侵入指示を含むfixtureで上流工程を検証する。 IC09の中央例外/原本再取得/旧summaryと、IC07上流並列joinを含める。"
+        }
+      ],
+      "dependencies_before": [
+        "WP06",
+        "WP08",
+        "WP09",
+        "WP15",
+        "WP17"
+      ],
+      "dependencies_after": [
+        "WP06",
+        "WP08",
+        "WP09",
+        "WP10",
+        "WP15",
+        "WP17"
+      ],
+      "integration_contracts": [
+        "IC07",
+        "IC09",
+        "IC10"
+      ],
+      "subcases": []
+    },
+    {
+      "work_package": "WP19",
+      "changed_steps": [
+        {
+          "step_id": "WP19-S02",
+          "old_sha256": "ace9918d4df40bdcabdfe6c18f1e4117daae13000782daed91b0c6bb86a059f8",
+          "new_sha256": "c796c05deec66978c35f7e7d0b5c38e1ea95e11d06f4985d8763a1d82eb606bd",
+          "new_action": "重要仮説にinput/手順/oracle/予算を事前登録し、型付きDAGから候補別spikeをRunnerで並列実行する。実験ごとにintent、execution binding、観測証拠を持ち、未確定/失敗結果を設計確定へ流さない。"
+        },
+        {
+          "step_id": "WP19-S03",
+          "old_sha256": "f03d18397c485cd7d879be6c9445dd03a303f02394dbc208190d7e2347c569fd",
+          "new_sha256": "cd6d59bce04206ca89316f8f04733d2675e70ebbf8e05b951e08ec2e415a30dd",
+          "new_action": "機能一覧、外部/内部仕様、API/data/state/error/NFR/運用をADRへ結び付ける。 IC10のproducer/consumer、取消/所有権/制限、default根拠、外向きschemaと診断文まで仕様へ含める。"
+        },
+        {
+          "step_id": "WP19-S05",
+          "old_sha256": "5978412f832068e044277912b4d9746319c2eb87cf073dc1c84ff41e09279901",
+          "new_sha256": "e563ffd9d9911683a120bde832d9b221d71f7fe4d7f18baeb34e2e2ca7ef9e5a",
+          "new_action": "MUST→source/claim→ADR→task→checkの対応とproducer/consumer契約、依存DAG、環境recipe、継続許可を含む計画を生成する。各生成nodeはSupervisorの認可・固定検証を通し、自由生成コードへ管理権限を渡さない。"
+        }
+      ],
+      "dependencies_before": [
+        "WP10",
+        "WP14",
+        "WP18"
+      ],
+      "dependencies_after": [
+        "WP10",
+        "WP14",
+        "WP18"
+      ],
+      "integration_contracts": [
+        "IC06",
+        "IC07",
+        "IC10"
+      ],
+      "subcases": [
+        "V19-01-S01"
+      ]
+    },
+    {
+      "work_package": "WP20",
+      "changed_steps": [
+        {
+          "step_id": "WP20-S01",
+          "old_sha256": "d36295fa6ded7bae8b667b833ed7c3a4cee04830ec959c0baaf964c9e6c84a77",
+          "new_sha256": "d378fbd8e64c2c7b631b2407bf1abb6b843f72db156e9c95ca7af17da6b161e7",
+          "new_action": "writer停止済の凍結candidateを別execution_scope/uidのVerifierへmaterializeし、同じsource digestとbaseline所有の固定suiteで実行する。正式releaseはsource checkoutではなく実配布entryも検査する。"
+        },
+        {
+          "step_id": "WP20-S02",
+          "old_sha256": "da655be73ed3928d86b33a1616f61dba6a32ab07f0dd76a4cdccd946df822085",
+          "new_sha256": "fb11f56166c9e0d12d87583f72df81c37cf2fdd8a96ad10de91432014cbc84e9",
+          "new_action": "suite定義、実argv、exit、結果件数、raw/result artifactのhashをcollectorが観測する。 IC08のtimeout/cancelledをexit0で消さず、IC09で大容量log中央のFAILとSKIPを必ず構造化して残す。"
+        },
+        {
+          "step_id": "WP20-S05",
+          "old_sha256": "88d4e892549f0ed881e7766599520138c1addc7c4a8b9939407e284c9a6c7875",
+          "new_sha256": "02aeb339889664978df11c27f4d400d915f121fd4fb5388e7be53a0484842f15",
+          "new_action": "Supervisor側で署名だけでなくartifact実在/hash、suite inventory、検査status、trusted issuerを検査する。 IC11の完全treeと変更禁止領域も外部確認し、モデルのPASS文ではなくworld evidenceを照合する。"
+        }
+      ],
+      "dependencies_before": [
+        "WP08",
+        "WP09",
+        "WP12",
+        "WP14"
+      ],
+      "dependencies_after": [
+        "WP08",
+        "WP09",
+        "WP12",
+        "WP14"
+      ],
+      "integration_contracts": [
+        "IC01",
+        "IC02",
+        "IC08",
+        "IC09",
+        "IC11"
+      ],
+      "subcases": [
+        "V20-01-S01",
+        "V20-05-S01"
+      ]
+    },
+    {
+      "work_package": "WP21",
+      "changed_steps": [
+        {
+          "step_id": "WP21-S02",
+          "old_sha256": "18ef7472419631923e61b6c50ce9729fb35012224cc1529928843d611db119e5",
+          "new_sha256": "60f268d27f08b1922dfcebb5288de847e348ede8e9713f6dadeae9399dd0c7c5",
+          "new_action": "仕様適合とコード品質を別のrubricとして実施し、location/evidence/severityを指摘へ残す。 IC10の実consumer、責任、失敗/取消/上限制約、モデル可視契約、文書driftを同じrubricへ入れる。"
+        },
+        {
+          "step_id": "WP21-S03",
+          "old_sha256": "067c8709c03da173d0f10d11f503337e613c5513a5c93b09477d7f04d5db2ff1",
+          "new_sha256": "c2287161c241d991acbb46e2237e1ee6345ab2e1d61d7b541a69a234b3bb91a7",
+          "new_action": "入力は正本、差分、依存先、実証拠。実装者の要約だけでreviewしない。 IC09原本への再取得経路を確認し、短縮された中間結果だけで承認しない。"
+        }
+      ],
+      "dependencies_before": [
+        "WP15",
+        "WP16",
+        "WP19",
+        "WP20"
+      ],
+      "dependencies_after": [
+        "WP15",
+        "WP16",
+        "WP19",
+        "WP20"
+      ],
+      "integration_contracts": [
+        "IC09",
+        "IC10",
+        "IC11"
+      ],
+      "subcases": []
+    },
+    {
+      "work_package": "WP22",
+      "changed_steps": [
+        {
+          "step_id": "WP22-S01",
+          "old_sha256": "67965a59618584d2586a5c07ead9afd4ca3879f4706b68a3d0db8c38a03606cf",
+          "new_sha256": "1a4c88cb1f08dfaa66b8213be6ebff508c02e04daf2fc6f684a329dc0841d76f",
+          "new_action": "TEST_FAILED/ENV_MISSING/AUTH_REQUIRED/SPEC_CONFLICT/PROCESS_LOST等を明確な原因codeへ分類する。 IC08の複数終了事実を保持し、単一success/failureへの誤縮約をしない。"
+        },
+        {
+          "step_id": "WP22-S04",
+          "old_sha256": "5fad256caccbddb881137106c37c6927e94d9027255ed17ada3dcecc20c536d1",
+          "new_sha256": "3a82ea9867b0b5b5756e9f6dffcaaba7ec8f0a1869e28d679b8504dd74f3fa53",
+          "new_action": "process停止時はRECONCILINGへ移し、native session、Runner所有権/静止、dispatch/effect、current baselineを照合する。作業scopeが変わる場合は再束縛能力を確認し、非対応なら認可された新sessionへ現在証拠付きhandoffを渡す。"
+        },
+        {
+          "step_id": "WP22-S05",
+          "old_sha256": "a81e253fbe2a7b4269fdd7d2b38672241d28b4174b37c1ed6470d0d060f2e4b1",
+          "new_sha256": "88c596e75f47b706958fe8a9d181a8274f5f3451be61cff8a0671d229e906490",
+          "new_action": "停止・予算・認証待ちは永続pauseとし、別ready taskだけ進める。 IC06の目標と実行許可を分離し、上流/下流の独立ready nodeはIC07に沿って進める。"
+        }
+      ],
+      "dependencies_before": [
+        "WP11",
+        "WP17",
+        "WP19",
+        "WP20",
+        "WP21"
+      ],
+      "dependencies_after": [
+        "WP11",
+        "WP17",
+        "WP19",
+        "WP20",
+        "WP21"
+      ],
+      "integration_contracts": [
+        "IC06",
+        "IC07",
+        "IC08"
+      ],
+      "subcases": [
+        "V22-01-S01",
+        "V22-05-S01"
+      ]
+    },
+    {
+      "work_package": "WP23",
+      "changed_steps": [
+        {
+          "step_id": "WP23-S01",
+          "old_sha256": "22e6fad90856442da7663eb2b052a2641a7e00cb68f9d5a6ef09d822dd47039d",
+          "new_sha256": "558aaa28040bb512be6501a96771a8dd64bbfeaea16bee52b34f7b5812b30a06",
+          "new_action": "effect ID、operation、target、payload hash、idempotency key、query/compensateを事前登録する。 IC05 dispatch intentのcommitと外部receiverの受領記録を作用IDに連結する。"
+        },
+        {
+          "step_id": "WP23-S03",
+          "old_sha256": "f6a8d11c9cc62dc76a2f87289257f0c6daa4dbd55ae19e60f7973fa87468bcc5",
+          "new_sha256": "cb3d326ee81777bafa7f4d4d02b8248cc13d58caf21eb8754e52168df13be87e",
+          "new_action": "通信途絶で成功不明ならEFFECT_UNKNOWNとし、同じ作用を直ちに再実行しない。 UNKNOWNはIC04観測とdomain状態を分けて保存し、statusを成功へ先行更新しない。"
+        }
+      ],
+      "dependencies_before": [
+        "WP12",
+        "WP14",
+        "WP22"
+      ],
+      "dependencies_after": [
+        "WP12",
+        "WP14",
+        "WP22"
+      ],
+      "integration_contracts": [
+        "IC04",
+        "IC05"
+      ],
+      "subcases": [
+        "V23-02-S01"
+      ]
+    },
+    {
+      "work_package": "WP24",
+      "changed_steps": [
+        {
+          "step_id": "WP24-S01",
+          "old_sha256": "08152adde1cbba6a13db4600ef387fb268af5904a1711cbcd304f443151347a6",
+          "new_sha256": "3e2be24dcca84ffc8eacb64e595024cafb7186f07dafde2e1a1825969c56ae28",
+          "new_action": "許可済独立taskを専用worktreeで並列実行し、共有interface変更は契約改訂として直列化する。 IC07の調査/実験/設計DAGでも同じwriter・scope・予算条件を使い、IC02で実行領域を識別する。"
+        },
+        {
+          "step_id": "WP24-S04",
+          "old_sha256": "70630c990c05bf30833c582d47505f0cb42bb6368bb0c62820081828fdf4a00b",
+          "new_sha256": "b58505f34737c93776e5eea1cba3716f0ae0fcbdc86c4626208573e9966f0231",
+          "new_action": "全taskの個別成功後に統合suite/起動/API/browser E2Eを実行する。 IC11の実entryから統合機能と変更禁止領域を検査し、IC09の要約を合格根拠にしない。"
+        },
+        {
+          "step_id": "WP24-S05",
+          "old_sha256": "2090f4201d471f2b5b08fda2d721c5800212c8c5b6a34da74aab24778328c234",
+          "new_sha256": "e2bb2bdd1dc9017d9fb81621d069a514dd1db19cd11bbc4aa5165da32d3b9032",
+          "new_action": "上流contract変更時は影響DAGを再計算し、下流を再検証へ戻す。 IC04投影とIC06継続情報、IC03資格への影響も更新し、古い表示やhandoffから再開しない。"
+        }
+      ],
+      "dependencies_before": [
+        "WP09",
+        "WP10",
+        "WP19",
+        "WP21",
+        "WP22",
+        "WP23"
+      ],
+      "dependencies_after": [
+        "WP09",
+        "WP10",
+        "WP19",
+        "WP21",
+        "WP22",
+        "WP23"
+      ],
+      "integration_contracts": [
+        "IC02",
+        "IC03",
+        "IC04",
+        "IC06",
+        "IC07",
+        "IC09",
+        "IC11"
+      ],
+      "subcases": []
+    },
+    {
+      "work_package": "WP25",
+      "changed_steps": [
+        {
+          "step_id": "WP25-S02",
+          "old_sha256": "53c336fbf56377ec65f9969bd1c993e146c55b99eacea854d2d6c6af178215e1",
+          "new_sha256": "f066937fbabc060b776a1309a650701efa401feda4c99df2cfa3f32df834ab38",
+          "new_action": "project/task/run/attempt/native session/traceを相関させ、秘密を除去してlogを保存する。 domain/native_observation/ephemeralを分け、原本sequence・観測時刻と管理側確定時刻を混同しない。"
+        },
+        {
+          "step_id": "WP25-S03",
+          "old_sha256": "e4bdc0e0a5ae071237bd3fe91db9db481a5f38a0dff30842e723e65d1a5c5899",
+          "new_sha256": "1a74cda1121137dcb65545341bd61d7c404864c54629bcce4849ef9901a5bcb0",
+          "new_action": "状態、未充足MUST、予算、last-progress、停止理由、次の許可行動を、state_version/baseline_revision/as_of_seq付きstatusへ投影する。cache消失・版不一致は同じ確定DB cutから再生成し、再生からdispatchしない。"
+        },
+        {
+          "step_id": "WP25-S05",
+          "old_sha256": "20a82b499f2a0e6cafb03bfb92a61511f5caa55e772feef417656c18d4034113",
+          "new_sha256": "cc2c84c3887fc50186f2674def720b51397e8fdb4bb9682eed6f8caaede82c35",
+          "new_action": "外部telemetryは既定off。原本とContextEnvelopeのACL/保持/削除/秘密除去/出力上限を分け、source hash・範囲・省略・再取得手段を残す。失敗/skip/未解決MUSTは短縮文からではなく構造化観測から渡す。"
+        },
+        {
+          "step_id": "WP25-S06",
+          "old_sha256": "2e3893a6448e14d047a60459c821e5dc8fd81d680fb85f2f232a1b3e529293b4",
+          "new_sha256": "4323cfa4d49f4cb6e7ee6207e6fe6587c356d5b16354a11bfb47f4c1ddd5eba3",
+          "new_action": "compaction後、古いmemory、偽の完了記憶、秘密入りtool outputを検証する。 IC04 cache消失/未来cursor、IC09中央FAIL/例外条項/secret、IC06 goalと停止理由を横断検証する。"
+        }
+      ],
+      "dependencies_before": [
+        "WP17",
+        "WP18",
+        "WP22"
+      ],
+      "dependencies_after": [
+        "WP09",
+        "WP17",
+        "WP18",
+        "WP22"
+      ],
+      "integration_contracts": [
+        "IC04",
+        "IC06",
+        "IC09"
+      ],
+      "subcases": [
+        "V25-06-S01",
+        "V25-06-S02",
+        "V25-01-S01",
+        "V25-04-S01"
+      ]
+    },
+    {
+      "work_package": "WP26",
+      "changed_steps": [
+        {
+          "step_id": "WP26-S05",
+          "old_sha256": "2258c8770995aadb5462a21ccf7356620a74ba6337cad407d15c40b44ddec8ac",
+          "new_sha256": "7c32a11e0833806c60a3b218c859d793c251c1406bb12c93120351a0c23b625e",
+          "new_action": "各capabilityについてmock/実native/実VMの証拠を別々に集計する。 IC01能力、IC02writer/Verifier領域、IC03構成、IC05 intent、IC08終了状態が実native経路で一貫するか確認する。"
+        }
+      ],
+      "dependencies_before": [
+        "WP15",
+        "WP16",
+        "WP17",
+        "WP20",
+        "WP21",
+        "WP25"
+      ],
+      "dependencies_after": [
+        "WP15",
+        "WP16",
+        "WP17",
+        "WP20",
+        "WP21",
+        "WP25"
+      ],
+      "integration_contracts": [
+        "IC01",
+        "IC02",
+        "IC03",
+        "IC05",
+        "IC08",
+        "IC11"
+      ],
+      "subcases": [
+        "V26-01-S01",
+        "V26-03-S01",
+        "V26-02-S01",
+        "V26-01-S02",
+        "V26-01-S03"
+      ]
+    },
+    {
+      "work_package": "WP27",
+      "changed_steps": [
+        {
+          "step_id": "WP27-S02",
+          "old_sha256": "67ff8118239065454e8e3092b522e9388221829e33cac379fe3f4781fab0719c",
+          "new_sha256": "c87072a31a720ce969ff103ce51600c8c52aca5b7a3281adeb2db077657f7c4f",
+          "new_action": "資格済候補Supervisorをshadowで動かし、副作用を起こさず旧運用と状態投影を比較する。 IC04の同じstate_version/as_of_seqで比較し、監査replayが実dispatchを生成しないことを確認する。"
+        },
+        {
+          "step_id": "WP27-S03",
+          "old_sha256": "73bb42bc07e15d97a1da8e583849c60ad616371e9eebb80b263c4afd9be5565e",
+          "new_sha256": "b3c5f435b60000ffe38e69081d2b145700c65c296b7def377648166d84948f2b",
+          "new_action": "authorityを一度だけ切り替え、旧dispatchを止め、in-flightを照合して新admissionを開始する。 IC05 durable intentとIC07業務ackをwatermarkに含め、旧workerのIC08 quiescenceを確認する。"
+        }
+      ],
+      "dependencies_before": [
+        "WP22",
+        "WP23",
+        "WP24",
+        "WP26"
+      ],
+      "dependencies_after": [
+        "WP22",
+        "WP23",
+        "WP24",
+        "WP26"
+      ],
+      "integration_contracts": [
+        "IC04",
+        "IC05",
+        "IC07",
+        "IC08"
+      ],
+      "subcases": []
+    },
+    {
+      "work_package": "WP28",
+      "changed_steps": [
+        {
+          "step_id": "WP28-S02",
+          "old_sha256": "5cd496a53668c712e2b742160173de57ab9ef281f73fa3b952b77527c5858481",
+          "new_sha256": "8388d51440efa225ad4b388443d14cab7564a7ceed71cdf0bf379a6afac146a4",
+          "new_action": "曖昧要求から調査・候補比較・実験・仕様/ADR・計画・実装・独立検証・統合を実行する。 IC07で独立調査と候補実験を並列化し、IC10で結果と仕様の意味を審査する。IC11の実配布entryと外部oracleを使う。"
+        },
+        {
+          "step_id": "WP28-S05",
+          "old_sha256": "0ec42b6ffcb1655ff4df996e00e5d34493289728ab08fc4c82b3af9d0692a9eb",
+          "new_sha256": "b2002bbb3127ec622d17d0c6fb54921bf9a6982ace5bfe814203f9331a2740c2",
+          "new_action": "compaction/restart後に旧成果を重複実装せず、未完了から再開する。 IC06の継続許可・session/scope適合と、IC09のbounded handoff/原本参照を確認する。"
+        }
+      ],
+      "dependencies_before": [
+        "WP19",
+        "WP24",
+        "WP25",
+        "WP26",
+        "WP27"
+      ],
+      "dependencies_after": [
+        "WP19",
+        "WP24",
+        "WP25",
+        "WP26",
+        "WP27"
+      ],
+      "integration_contracts": [
+        "IC06",
+        "IC07",
+        "IC09",
+        "IC10",
+        "IC11"
+      ],
+      "subcases": [
+        "V28-06-S01",
+        "V28-06-S02",
+        "V28-01-S01"
+      ]
+    },
+    {
+      "work_package": "WP29",
+      "changed_steps": [
+        {
+          "step_id": "WP29-S03",
+          "old_sha256": "18a320370e43cf7d15c1525c17f47165c1ad5bf2cc27a0614fafe6943f982aa7",
+          "new_sha256": "4899edd5737f0ba2a8d8d49331fbc61a8156d3a65bbd5a27b4ef1abeaaecbfb0",
+          "new_action": "crash/disk full/clock/429/unknown effect/pause race/old writer/PID再利用を実制御で試す。 IC05 intent前後crash、IC08 timeout+exit0/late callback、IC04投影の誤復元を含める。"
+        },
+        {
+          "step_id": "WP29-S04",
+          "old_sha256": "83469491b526d683c4a9ac134bc56ca54aa9fc2402910ca127661f831d2c3c57",
+          "new_sha256": "43ea0e8bcf9befd92f0bba033733799d2a2f0a8671428794fcaeb511cc4126e4",
+          "new_action": "32concurrent request/1000task/遅いcollectorでqueue、backpressure、memory/disk、fairnessを計測する。 IC11に従い各試験のport/path/processを専有し、単独だけ通るflakyを許容しない。安全重要比較のmutation検知も確認する。"
+        }
+      ],
+      "dependencies_before": [
+        "WP23",
+        "WP24",
+        "WP26",
+        "WP27",
+        "WP28"
+      ],
+      "dependencies_after": [
+        "WP23",
+        "WP24",
+        "WP26",
+        "WP27",
+        "WP28"
+      ],
+      "integration_contracts": [
+        "IC02",
+        "IC04",
+        "IC05",
+        "IC08",
+        "IC11"
+      ],
+      "subcases": [
+        "V29-01-S01",
+        "V29-05-S01"
+      ]
+    },
+    {
+      "work_package": "WP30",
+      "changed_steps": [
+        {
+          "step_id": "WP30-S01",
+          "old_sha256": "cf45529c11767ec39488bc0e3c40e568f9199dab22dccea81245aaa05d35668b",
+          "new_sha256": "2333f3c19b649b196528991065f65484a42f0d20419de26260754c20f0159ce9",
+          "new_action": "完成したADH CLIのproject create/run/status/pause/resume/acceptanceを実装しAPIと整合する。 status/APIはIC04の整合cutとIC09の原本参照を返し、モデル可視値・診断はIC10の契約に一致させる。"
+        },
+        {
+          "step_id": "WP30-S03",
+          "old_sha256": "c5d05aa9961f2c9a398686e06aa4ac1bb6951b7aab0e8633f0079eee3228bf9c",
+          "new_sha256": "211f081bc58d4f2d646ed8cc4acf6d5fc738e40cbc4a5b2d9f6745297312b0c8",
+          "new_action": "clean VMへinstallし、起動・代表workflow・uninstallで既存資産を壊さないことを確認する。 IC03同lockの実効再現とIC11 built/installed entryを確認し、ソース経路の成功で代用しない。"
+        },
+        {
+          "step_id": "WP30-S04",
+          "old_sha256": "28f83d29db9188336559d66a9cc140dfd0fcc555a1d1173cc1d297dd66eae33a",
+          "new_sha256": "13f2438ee80dd666aed88bdbba40db36492a3be641aa85c2c535090a4f2cf1ce",
+          "new_action": "DB Online Backup等でartifactと同checkpointのbackupを作り、restore→integrity→quiescence→再開を行う。 IC04 projection cacheを再生成して同一cutを照合し、復旧監査から勝手にdispatchしない。"
+        }
+      ],
+      "dependencies_before": [
+        "WP25",
+        "WP27",
+        "WP28",
+        "WP29"
+      ],
+      "dependencies_after": [
+        "WP25",
+        "WP27",
+        "WP28",
+        "WP29"
+      ],
+      "integration_contracts": [
+        "IC03",
+        "IC04",
+        "IC09",
+        "IC10",
+        "IC11"
+      ],
+      "subcases": [
+        "V30-04-S01",
+        "V30-01-S01"
+      ]
+    },
+    {
+      "work_package": "WP31",
+      "changed_steps": [
+        {
+          "step_id": "WP31-S02",
+          "old_sha256": "9e6bec3fa9b25d19d2ec830ddceecbae5059be8e7792ec636e65e44d723ce726",
+          "new_sha256": "0df4ceb838023263e25567c18e6e1cae336db68867c6d783b0825e452207087c",
+          "new_action": "全35要求、32WP、192論理caseと全必須subcase、IC01–IC11、受入阻害finding、外部条件、文書を同一RCで照合する。旧追補22グループの統合先が失われていないことを追跡表で検査する。"
+        },
+        {
+          "step_id": "WP31-S03",
+          "old_sha256": "bbdf21d63fa6ae426491c9285c4f34534ad1b96923a1ac124a0da084b346e4f7",
+          "new_sha256": "6e016a9831443f3ba44f817920ad7e6f68a8c5589c11cfd33f1ec1357a011d1a",
+          "new_action": "同一RCで静的/契約/unit/integration/security/native/VM/AI-E2E/ops全必須suiteを再実行する。 IC01–IC11の実動作を対応subcaseで必須にし、旧追補グループを別の合格数へ重複加算しない。"
+        }
+      ],
+      "dependencies_before": [
+        "WP30"
+      ],
+      "dependencies_after": [
+        "WP30"
+      ],
+      "integration_contracts": [
+        "IC01",
+        "IC11"
+      ],
+      "subcases": []
+    }
+  ],
+  "requirements_changed": false,
+  "logical_ids_deleted": [],
+  "direct_dsh_packages_added": []
+}

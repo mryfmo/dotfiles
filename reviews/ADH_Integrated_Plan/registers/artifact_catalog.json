@@ -1,0 +1,98 @@
+{
+  "document_version": "4.0.0",
+  "classification_is_execution_sequence": false,
+  "c4_is_document_type": false,
+  "artifacts": [
+    {
+      "layer": "L1",
+      "type": "BRD",
+      "path": "artifacts/L1_BRD.md",
+      "id": "BUS-01",
+      "description": "事業目的・利用者・成果",
+      "normative_scope": "Use authority_map for canonical records and generated subviews",
+      "approval_status": "NOT_RUNTIME_APPROVED"
+    },
+    {
+      "layer": "L2",
+      "type": "PRD",
+      "path": "artifacts/L2_PRD.md",
+      "id": "PROD-01",
+      "description": "製品能力・対象範囲",
+      "normative_scope": "Use authority_map for canonical records and generated subviews",
+      "approval_status": "NOT_RUNTIME_APPROVED"
+    },
+    {
+      "layer": "L3",
+      "type": "REQ",
+      "path": "artifacts/L3_REQ.md",
+      "id": "REQSET-01",
+      "description": "構造化要求・EARS",
+      "normative_scope": "Use authority_map for canonical records and generated subviews",
+      "approval_status": "NOT_RUNTIME_APPROVED"
+    },
+    {
+      "layer": "L4",
+      "type": "AC_BDD",
+      "path": "artifacts/L4_ACCEPTANCE.md",
+      "id": "ACSET-01",
+      "description": "期待動作と判定器参照",
+      "normative_scope": "Use authority_map for canonical records and generated subviews",
+      "approval_status": "NOT_RUNTIME_APPROVED"
+    },
+    {
+      "layer": "L5",
+      "type": "ARCH_ADR",
+      "path": "artifacts/L5_ARCH_ADR.md",
+      "id": "ARCH-01",
+      "description": "現在の構造・理由・代案",
+      "normative_scope": "Use authority_map for canonical records and generated subviews",
+      "approval_status": "NOT_RUNTIME_APPROVED"
+    },
+    {
+      "layer": "L6",
+      "type": "SPEC",
+      "path": "artifacts/L6_SPEC.md",
+      "id": "SPECSET-01",
+      "description": "実装可能な境界・状態・API",
+      "normative_scope": "Use authority_map for canonical records and generated subviews",
+      "approval_status": "NOT_RUNTIME_APPROVED"
+    },
+    {
+      "layer": "L7",
+      "type": "TEST",
+      "path": "artifacts/L7_TEST.md",
+      "id": "TESTPLAN-01",
+      "description": "固定検査・TDD反復・証拠形式",
+      "normative_scope": "Use authority_map for canonical records and generated subviews",
+      "approval_status": "NOT_RUNTIME_APPROVED"
+    },
+    {
+      "layer": "L8",
+      "type": "IPLAN",
+      "path": "artifacts/L8_IPLAN.md",
+      "id": "PLAN-01",
+      "description": "32WP・再開・並列・完了",
+      "normative_scope": "Use authority_map for canonical records and generated subviews",
+      "approval_status": "NOT_RUNTIME_APPROVED"
+    },
+    {
+      "layer": "L9",
+      "type": "CHG",
+      "path": "artifacts/L9_CHG.md",
+      "id": "CHANGE-01",
+      "description": "変更分類・承認・影響・再ゲート",
+      "normative_scope": "Use authority_map for canonical records and generated subviews",
+      "approval_status": "NOT_RUNTIME_APPROVED"
+    },
+    {
+      "layer": "L10",
+      "type": "EVAL",
+      "path": "artifacts/L10_EVAL.md",
+      "id": "EVAL-01",
+      "description": "横断評価・品質・有効性",
+      "normative_scope": "Use authority_map for canonical records and generated subviews",
+      "approval_status": "NOT_RUNTIME_APPROVED"
+    }
+  ],
+  "graph": "registers/artifact_graph.json"
+}

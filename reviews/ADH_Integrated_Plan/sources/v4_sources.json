@@ -1,0 +1,172 @@
+{
+  "document_version": "4.0.0",
+  "sources": [
+    {
+      "id": "V4-S01",
+      "title": "dotfiles canonical agent configuration",
+      "url": "https://github.com/mryfmo/dotfiles/blob/fdfa5f042e2e00a27a8320e5f37f749c422e8d91/home/dot_agents/agent-config.yaml",
+      "checked_on": "2026-09-13",
+      "method": "GitHub.fetch_file",
+      "note": "生成正本、旧profile、permissionsと編集Hookを確認。実HOME適用状態は未確認。",
+      "product_verification": false
+    },
+    {
+      "id": "V4-S02",
+      "title": "agmsg orchestration contract",
+      "url": "https://github.com/mryfmo/dotfiles/blob/fdfa5f042e2e00a27a8320e5f37f749c422e8d91/home/dot_agents/skills/agmsg-orchestration/SKILL.md",
+      "checked_on": "2026-09-13",
+      "method": "GitHub.fetch_file",
+      "note": "常駐worker・worktree・配送・express E2E・自己受入規則を確認しV4で適合する。",
+      "product_verification": false
+    },
+    {
+      "id": "V4-S03",
+      "title": "dotfiles asset lifecycle",
+      "url": "https://github.com/mryfmo/dotfiles/blob/fdfa5f042e2e00a27a8320e5f37f749c422e8d91/scripts/update-agent-assets.sh",
+      "checked_on": "2026-09-13",
+      "method": "GitHub.fetch_file",
+      "note": "terminal-code/browser、CompactionDB、Herdrも配布対象。未成功の同期を資格済と扱わない。",
+      "product_verification": false
+    },
+    {
+      "id": "V4-S04",
+      "title": "Semantica plugin hooks",
+      "url": "https://github.com/semantica-agi/semantica/blob/7057387775ecdf74c14e38d0067fd8e1267eaaf8/plugins/hooks/hooks.json",
+      "checked_on": "2026-09-13",
+      "method": "GitHub.fetch_file",
+      "note": "provenance echoを実来歴検証と扱わない。",
+      "product_verification": false
+    },
+    {
+      "id": "V4-S05",
+      "title": "Semantica dependency and feature contract",
+      "url": "https://github.com/semantica-agi/semantica/blob/7057387775ecdf74c14e38d0067fd8e1267eaaf8/pyproject.toml",
+      "checked_on": "2026-09-13",
+      "method": "prior_connected_source_carried_forward",
+      "note": "本体/Plugin/依存版を別識別。選択機能の実install資格は後続。",
+      "product_verification": false
+    },
+    {
+      "id": "V4-S06",
+      "title": "Semantica query Skill",
+      "url": "https://github.com/semantica-agi/semantica/blob/7057387775ecdf74c14e38d0067fd8e1267eaaf8/plugins/skills/query/SKILL.md",
+      "checked_on": "2026-09-13",
+      "method": "prior_connected_source_carried_forward",
+      "note": "HOME共通graphとpipの例をproject-scoped/uvへ適合する。",
+      "product_verification": false
+    },
+    {
+      "id": "V4-S07",
+      "title": "prek security",
+      "url": "https://prek.j178.dev/security/",
+      "checked_on": "2026-09-13",
+      "method": "web_or_connector_read_this_turn",
+      "note": "Hookとproject設定は実行コードである。信頼・pin・CIを分離。",
+      "product_verification": false
+    },
+    {
+      "id": "V4-S08",
+      "title": "prek configuration",
+      "url": "https://prek.j178.dev/reference/configuration/",
+      "checked_on": "2026-09-13",
+      "method": "web_or_connector_read_this_turn",
+      "note": "Hook優先順位と単一Hook内require_serialの範囲を確認。",
+      "product_verification": false
+    },
+    {
+      "id": "V4-S09",
+      "title": "Oxfmt usage",
+      "url": "https://oxc.rs/docs/guide/usage/formatter.html",
+      "checked_on": "2026-09-13",
+      "method": "web_or_connector_read_this_turn",
+      "note": "採用版と形式対応を資格確認し、一file一formatter/check-onlyを設計。",
+      "product_verification": false
+    },
+    {
+      "id": "V4-S10",
+      "title": "Oxlint type-aware lint",
+      "url": "https://oxc.rs/docs/guide/usage/linter/type-aware.html",
+      "checked_on": "2026-09-13",
+      "method": "prior_official_source_carried_forward",
+      "note": "通常lintと型検査を区別。既存検査を互換性未確認で削除しない。",
+      "product_verification": false
+    },
+    {
+      "id": "V4-S11",
+      "title": "Astra prompting and skills",
+      "url": "https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra",
+      "checked_on": "2026-09-13",
+      "method": "web_or_connector_read_this_turn",
+      "note": "短い適用条件・必要時詳細・重複指示抑制を維持する。",
+      "product_verification": false
+    },
+    {
+      "id": "V4-S12",
+      "title": "Fable 5.1 prompting",
+      "url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-1",
+      "checked_on": "2026-09-13",
+      "method": "web_or_connector_read_this_turn",
+      "note": "独立取得・委任後作業・scope・完遂を役割へ適用。API専用設定をCLIへ発明しない。",
+      "product_verification": false
+    },
+    {
+      "id": "V4-S13",
+      "title": "Fable 5.1 migration",
+      "url": "https://platform.claude.com/docs/en/models/fable-5-1/migration-guide",
+      "checked_on": "2026-09-13",
+      "method": "web_or_connector_read_this_turn",
+      "note": "公式nativeが所有する履歴と外側TaskPacketを分ける。",
+      "product_verification": false
+    },
+    {
+      "id": "V4-S14",
+      "title": "Article supplied by user",
+      "url": "https://nansystem.com/prek-oxlint-oxfmt-pre-commit/",
+      "checked_on": "2026-09-13",
+      "method": "web_or_connector_read_this_turn",
+      "note": "導入動機として参照。技術契約は公式資料、速度倍率は本環境で保証しない。",
+      "product_verification": false
+    },
+    {
+      "id": "V4-S15",
+      "title": "DeepSeek architecture",
+      "url": "https://github.com/deepseek-ai/deepseek-harness/blob/c291e7961a515f6d7af9304e7fd1d257929aef26/docs/architecture.md",
+      "checked_on": "2026-09-13",
+      "method": "prior_source_pack_carried_forward",
+      "note": "IC01–11の先行実装根拠を継承。直接runtime依存は追加しない。",
+      "product_verification": false
+    },
+    {
+      "id": "V4-S16",
+      "title": "Git worktree",
+      "url": "https://git-scm.com/docs/git-worktree",
+      "checked_on": "2026-09-13",
+      "method": "prior_official_source_carried_forward",
+      "note": "git common-dirやHook配置とOS認可を区別。",
+      "product_verification": false
+    },
+    {
+      "id": "V4-S17",
+      "title": "dotfiles CI",
+      "url": "https://github.com/mryfmo/dotfiles/blob/fdfa5f042e2e00a27a8320e5f37f749c422e8d91/.github/workflows/test.yaml",
+      "checked_on": "2026-09-13",
+      "method": "prior_connected_source_carried_forward",
+      "note": "品質設定/lockのみの変更も必須job評価へ接続。",
+      "product_verification": false
+    },
+    {
+      "id": "V4-S18",
+      "title": "dotfiles Python workflow",
+      "url": "https://github.com/mryfmo/dotfiles/blob/fdfa5f042e2e00a27a8320e5f37f749c422e8d91/home/dot_agents/skills/python-uv-workflow/references/python-uv-rules.md",
+      "checked_on": "2026-09-13",
+      "method": "prior_connected_source_carried_forward",
+      "note": "pre-commit例のpin欠落・formatter fix・型検査の役割をV4で具体化。",
+      "product_verification": false
+    }
+  ],
+  "fetch_limits": [
+    "container network DNS unavailable; live repository checkout/build not performed",
+    "knowledge and quality toolchain dependencies not installed",
+    "native authentication and VM tests not performed"
+  ]
+}

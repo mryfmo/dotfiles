@@ -1,0 +1,256 @@
+[
+  {
+    "id": "FLOW01",
+    "name": "タスク開始",
+    "contracts": [
+      "IC01",
+      "IC02",
+      "IC03",
+      "IC05",
+      "IC06",
+      "IC07"
+    ],
+    "rule": "qualification+binding+composition+grant+budget+deps -> committed intent -> durable receive -> native start; fail before commit means no external start"
+  },
+  {
+    "id": "FLOW02",
+    "name": "結果から独立検証",
+    "contracts": [
+      "IC02",
+      "IC04",
+      "IC08",
+      "IC09",
+      "IC11"
+    ],
+    "rule": "orthogonal outcome -> quiescence -> frozen snapshot -> separate verifier scope -> raw evidence -> signed receipts; UI cannot accept"
+  },
+  {
+    "id": "FLOW03",
+    "name": "上流策定",
+    "contracts": [
+      "IC07",
+      "IC09",
+      "IC10",
+      "IC11"
+    ],
+    "rule": "parallel research/experiments -> join actual evidence -> ADR/spec -> independent semantic review; omitted middle facts cannot justify acceptance"
+  },
+  {
+    "id": "FLOW04",
+    "name": "停止と復旧",
+    "contracts": [
+      "IC04",
+      "IC05",
+      "IC06",
+      "IC07",
+      "IC08"
+    ],
+    "rule": "close admission -> durable pause -> quiescence -> reconcile message/intent/effect -> current grant/baseline -> resume; audit replay has no side effect"
+  },
+  {
+    "id": "FLOW05",
+    "name": "更新と再資格",
+    "contracts": [
+      "IC01",
+      "IC02",
+      "IC03",
+      "IC04",
+      "IC09",
+      "IC11"
+    ],
+    "rule": "new binary/config/schema/source invalidates its dependent qualifications/projections/receipts; immutable old runs do not live-reload"
+  },
+  {
+    "id": "MODEL-PACK",
+    "path": [
+      "IC01",
+      "IC03",
+      "IC12",
+      "IC09",
+      "IC05",
+      "IC07",
+      "IC06",
+      "IC11"
+    ],
+    "invariant": "qualified fixed model/effort and effective skills -> role/task context preserving complete hard requirements -> durable dispatch -> native-owned history -> independent proof and measured optimization",
+    "failure": "no dispatch on missing mandatory context/invalid pack; no product acceptance on unexecuted model qualification",
+    "status": "SPECIFIED_NOT_IMPLEMENTED"
+  },
+  {
+    "id": "FLOW07",
+    "name": "文書から実行まで",
+    "contracts": [
+      "IC13",
+      "IC12",
+      "IC01",
+      "IC03",
+      "IC14",
+      "IC05",
+      "IC07"
+    ],
+    "rule": "approved input/solution -> typed closure -> concise TaskPacket -> actual operation authorization -> durable intent -> scoped dispatch; graph text never grants authority"
+  },
+  {
+    "id": "FLOW08",
+    "name": "変更・拒否・再ゲートと継続",
+    "contracts": [
+      "IC14",
+      "IC13",
+      "IC06",
+      "IC04",
+      "IC11"
+    ],
+    "rule": "deny/hold/quarantine scoped -> preserve facts -> authorized correction -> impact invalidation -> same required requalification -> resume; independent work continues"
+  },
+  {
+    "id": "V4-FLOW01",
+    "name": "生成・資格・開始",
+    "contracts": [
+      "IC01",
+      "IC03",
+      "IC12",
+      "IC15"
+    ],
+    "rule": "dotfiles canonical adh profile -> generated native configs -> effective probes -> pinned ReleaseSet -> TaskPacket -> durable dispatch; legacy express cannot satisfy product qualification",
+    "verification_subcases": [
+      "V06-02-U4-01",
+      "V26-01-U4-02",
+      "V15-04-U4-03",
+      "V06-01-U4-04",
+      "V06-05-U4-08"
+    ],
+    "status": "SPECIFIED_NOT_EXECUTED"
+  },
+  {
+    "id": "V4-FLOW02",
+    "name": "根拠・設計・実装",
+    "contracts": [
+      "IC09",
+      "IC10",
+      "IC13",
+      "IC16"
+    ],
+    "rule": "canonical required closure + ACL-scoped supplemental graph -> cited experiments/ADR/SPEC -> task packet -> implementation -> independent evidence; semantic candidates never authorize",
+    "verification_subcases": [
+      "V18-01-U4-09",
+      "V26-04-U4-10",
+      "V25-02-U4-17",
+      "V18-06-U4-18",
+      "V28-01-U4-39"
+    ],
+    "status": "SPECIFIED_NOT_EXECUTED"
+  },
+  {
+    "id": "V4-FLOW03",
+    "name": "整形から証拠失効",
+    "contracts": [
+      "IC02",
+      "IC11",
+      "IC17",
+      "IC18"
+    ],
+    "rule": "writer authorized fix -> new snapshot -> stale knowledge and receipts identified -> frozen check-only validation -> integration new receipt",
+    "verification_subcases": [
+      "V06-03-U4-25",
+      "V14-06-U4-26",
+      "V24-03-U4-32",
+      "V26-03-U4-33",
+      "V22-04-U4-41"
+    ],
+    "status": "SPECIFIED_NOT_EXECUTED"
+  },
+  {
+    "id": "V4-FLOW04",
+    "name": "並列実装・統合",
+    "contracts": [
+      "IC02",
+      "IC07",
+      "IC17",
+      "IC18"
+    ],
+    "rule": "disjoint worktrees -> independent quality and graph candidates -> single index publisher -> serialized ReleaseSet integration -> E2E",
+    "verification_subcases": [
+      "V18-04-U4-11",
+      "V09-05-U4-12",
+      "V14-05-U4-28",
+      "V24-05-U4-40"
+    ],
+    "status": "SPECIFIED_NOT_EXECUTED"
+  },
+  {
+    "id": "V4-FLOW05",
+    "name": "知識停止から復旧",
+    "contracts": [
+      "IC06",
+      "IC09",
+      "IC16",
+      "IC18"
+    ],
+    "rule": "graph unavailable -> exact canonical fallback if complete -> continue unrelated permitted tasks -> rebuild -> qualify; missing required source holds only its task",
+    "verification_subcases": [
+      "V22-06-U4-13",
+      "V25-01-U4-14",
+      "V22-02-U4-34"
+    ],
+    "status": "SPECIFIED_NOT_EXECUTED"
+  },
+  {
+    "id": "V4-FLOW06",
+    "name": "Hook不稼働・迂回",
+    "contracts": [
+      "IC11",
+      "IC14",
+      "IC17"
+    ],
+    "rule": "absent/bypassed local hook -> protected independent inventory -> defect still found -> repair without disable-all",
+    "verification_subcases": [
+      "V26-02-U4-21",
+      "V20-05-U4-30",
+      "V30-02-U4-31",
+      "V29-01-U4-44"
+    ],
+    "status": "SPECIFIED_NOT_EXECUTED"
+  },
+  {
+    "id": "V4-FLOW07",
+    "name": "学習と配布",
+    "contracts": [
+      "IC03",
+      "IC12",
+      "IC15",
+      "IC18"
+    ],
+    "rule": "raw evidence -> candidate learning -> evaluation and authorized promotion -> new release -> no live policy swap",
+    "verification_subcases": [
+      "V25-02-U4-36",
+      "V30-04-U4-37",
+      "V17-01-U4-38",
+      "V23-03-U4-47"
+    ],
+    "status": "SPECIFIED_NOT_EXECUTED"
+  },
+  {
+    "id": "V4-FLOW08",
+    "name": "最終RC受け入れ",
+    "contracts": [
+      "IC11",
+      "IC13",
+      "IC14",
+      "IC15",
+      "IC16",
+      "IC17",
+      "IC18"
+    ],
+    "rule": "same two repository revisions + same scope + fixed checks + independent A3/A4 + operations restore -> single acceptance; NOT_RUN is never PASS",
+    "verification_subcases": [
+      "V30-04-U4-07",
+      "V28-01-U4-39",
+      "V22-04-U4-41",
+      "V29-05-U4-43",
+      "V30-06-U4-45",
+      "V31-02-U4-46",
+      "V31-05-U4-48"
+    ],
+    "status": "SPECIFIED_NOT_EXECUTED"
+  }
+]

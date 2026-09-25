@@ -1,0 +1,44 @@
+# 本番API操作一覧 — V4
+
+後続が実装するADH API。Semantica/prek/nativeの既存CLIコマンド一覧ではない。旧31操作を維持し9操作を追加。境界は全て既存認証済control経路。
+
+- `POST /v1/projects` — createProject
+- `POST /v1/projects/{project_id}/proposals` — proposeDesign
+- `POST /v1/projects/{project_id}/baselines` — publishBaseline
+- `POST /v1/tasks` — createTask
+- `GET /v1/tasks/{task_id}` — getTask
+- `POST /v1/tasks/{task_id}/claim` — claimTask
+- `POST /v1/tasks/{task_id}/candidate` — submitCandidate
+- `POST /v1/tasks/{task_id}/accept` — acceptCandidate
+- `POST /v1/tasks/{task_id}/reject` — rejectCandidate
+- `POST /v1/tasks/{task_id}/pause` — pauseTask
+- `POST /v1/tasks/{task_id}/resume` — resumeTask
+- `POST /v1/tasks/{task_id}/reconcile` — reconcileTask
+- `GET /v1/events` — getEvents
+- `GET /v1/projects/{project_id}` — getProject
+- `POST /v1/projects/{project_id}/run` — startProject
+- `POST /v1/projects/{project_id}/pause` — pauseProject
+- `POST /v1/projects/{project_id}/resume` — resumeProject
+- `GET /v1/projects/{project_id}/acceptance` — getProjectAcceptance
+- `POST /v1/tasks/{task_id}/heartbeat` — heartbeatTask
+- `GET /v1/runs/{run_id}` — getRun
+- `POST /v1/effects` — registerEffect
+- `POST /v1/effects/{effect_id}/reconcile` — reconcileEffect
+- `GET /v1/artifacts/{digest}` — getArtifact
+- `POST /v1/approvals` — registerApproval
+- `POST /v1/qualifications` — registerQualification
+- `GET /v1/qualifications/{qualification_id}` — getQualification
+- `POST /v1/releases` — requestRelease
+- `GET /v1/projects/{project_id}/document-graph` — getDocumentGraph
+- `POST /v1/projects/{project_id}/changes` — proposeChange
+- `POST /v1/changes/{change_id}/impact` — assessChangeImpact
+- `GET /v1/runs/{run_id}/guard-decisions` — getRunGuardDecisions
+- `POST /v1/projects/{project_id}/knowledge/query` — queryKnowledge
+- `POST /v1/projects/{project_id}/knowledge/ingest` — proposeKnowledgeIngestion
+- `POST /v1/projects/{project_id}/knowledge/rebuild` — rebuildKnowledge
+- `POST /v1/projects/{project_id}/quality/plan` — planQuality
+- `POST /v1/projects/{project_id}/quality/run` — runQuality
+- `GET /v1/quality/runs/{invocation_id}` — getQualityResult
+- `POST /v1/projects/{project_id}/learning/candidates` — proposeLearning
+- `POST /v1/release-sets` — registerReleaseSet
+- `POST /v1/release-sets/{release_set_id}/activate` — activateReleaseSet

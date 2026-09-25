@@ -1,0 +1,106 @@
+[
+  {
+    "id": "D01",
+    "title": "dotfiles agmsg協働契約",
+    "locator": "https://github.com/mryfmo/dotfiles/blob/fdfa5f042e2e00a27a8320e5f37f749c422e8d91/home/dot_agents/skills/agmsg-orchestration/SKILL.md",
+    "version_or_access_date": "fdfa5f042e2e00a27a8320e5f37f749c422e8d91",
+    "note": "旧計画での記録: 今回source再確認。resident worker・worktree・TASK/RESULT/ACCEPTANCE。",
+    "evidence_status": "HISTORICAL_SOURCE_INDEX_NOT_LIVE_QUALIFICATION"
+  },
+  {
+    "id": "D02",
+    "title": "agmsg send script",
+    "locator": "https://github.com/mryfmo/dotfiles/blob/fdfa5f042e2e00a27a8320e5f37f749c422e8d91/home/dot_agents/skills/agmsg/scripts/executable_send.sh",
+    "version_or_access_date": "fdfa5f042e2e00a27a8320e5f37f749c422e8d91",
+    "note": "旧計画での記録: 今回source再確認。FROM文字列は認証identityではない。",
+    "evidence_status": "HISTORICAL_SOURCE_INDEX_NOT_LIVE_QUALIFICATION"
+  },
+  {
+    "id": "D03",
+    "title": "agmsg join script",
+    "locator": "https://github.com/mryfmo/dotfiles/blob/fdfa5f042e2e00a27a8320e5f37f749c422e8d91/home/dot_agents/skills/agmsg/scripts/executable_join.sh",
+    "version_or_access_date": "fdfa5f042e2e00a27a8320e5f37f749c422e8d91",
+    "note": "旧計画での記録: 今回source再確認。引数とclaude-code/codex type。",
+    "evidence_status": "HISTORICAL_SOURCE_INDEX_NOT_LIVE_QUALIFICATION"
+  },
+  {
+    "id": "O01",
+    "title": "Claude Fable5.1仕様",
+    "locator": "https://platform.claude.com/docs/en/models/fable-5-1/overview",
+    "version_or_access_date": "checked 2026-09-12",
+    "note": "旧計画での記録: claude-fable-5-1/high。本人のnativeアカウント資格は未実行。",
+    "evidence_status": "HISTORICAL_SOURCE_INDEX_NOT_LIVE_QUALIFICATION"
+  },
+  {
+    "id": "O02",
+    "title": "GPT-6 Astra仕様",
+    "locator": "https://developers.openai.com/api/docs/models/gpt-6-astra",
+    "version_or_access_date": "checked 2026-09-12",
+    "note": "旧計画での記録: gpt-6-astra/xhigh。API記載とCodexアカウント資格を区別。",
+    "evidence_status": "HISTORICAL_SOURCE_INDEX_NOT_LIVE_QUALIFICATION"
+  },
+  {
+    "id": "O03",
+    "title": "公式Codex App Server",
+    "locator": "https://learn.chatgpt.com/docs/app-server",
+    "version_or_access_date": "checked 2026-09-12",
+    "note": "旧計画での記録: schema生成、model/list、stdio session lifecycle。実採用版で再資格。",
+    "evidence_status": "HISTORICAL_SOURCE_INDEX_NOT_LIVE_QUALIFICATION"
+  },
+  {
+    "id": "O04",
+    "title": "Claude Code CLI",
+    "locator": "https://code.claude.com/docs/en/cli-reference",
+    "version_or_access_date": "checked 2026-09-12",
+    "note": "旧計画での記録: model/effort、stream-json、exact resume、skillsを無効化するflagに注意。",
+    "evidence_status": "HISTORICAL_SOURCE_INDEX_NOT_LIVE_QUALIFICATION"
+  },
+  {
+    "id": "O05",
+    "title": "Codex公式認証",
+    "locator": "https://learn.chatgpt.com/docs/auth",
+    "version_or_access_date": "checked 2026-09-12",
+    "note": "旧計画での記録: ChatGPT本人認証とAPI認証は別。credentialsは転用しない。",
+    "evidence_status": "HISTORICAL_SOURCE_INDEX_NOT_LIVE_QUALIFICATION"
+  },
+  {
+    "id": "O06",
+    "title": "Claude Hooks",
+    "locator": "https://code.claude.com/docs/en/hooks",
+    "version_or_access_date": "checked 2026-09-12",
+    "note": "旧計画での記録: 実行モード・発火・戻り値は採用版の実smokeで確認。",
+    "evidence_status": "HISTORICAL_SOURCE_INDEX_NOT_LIVE_QUALIFICATION"
+  },
+  {
+    "id": "O07",
+    "title": "Claude Settings",
+    "locator": "https://code.claude.com/docs/en/settings",
+    "version_or_access_date": "checked 2026-09-12",
+    "note": "旧計画での記録: ネイティブの設定層を無視した独自優先順位を主張しない。",
+    "evidence_status": "HISTORICAL_SOURCE_INDEX_NOT_LIVE_QUALIFICATION"
+  },
+  {
+    "id": "O08",
+    "title": "uv locking/sync",
+    "locator": "https://docs.astral.sh/uv/concepts/projects/sync/",
+    "version_or_access_date": "checked 2026-09-12",
+    "note": "旧計画での記録: --lockedを用い暗黙lock更新を防ぐ。",
+    "evidence_status": "HISTORICAL_SOURCE_INDEX_NOT_LIVE_QUALIFICATION"
+  },
+  {
+    "id": "O09",
+    "title": "pytest exit codes",
+    "locator": "https://docs.pytest.org/en/stable/reference/exit-codes.html",
+    "version_or_access_date": "checked 2026-09-12",
+    "note": "旧計画での記録: 終了codeだけで全必須検査合格とせず収集・skipも照合。",
+    "evidence_status": "HISTORICAL_SOURCE_INDEX_NOT_LIVE_QUALIFICATION"
+  },
+  {
+    "id": "O10",
+    "title": "SQLite Online Backup API",
+    "locator": "https://www.sqlite.org/backup.html",
+    "version_or_access_date": "checked 2026-09-12",
+    "note": "旧計画での記録: 稼働中DB単体コピーで整合backupとみなさない。",
+    "evidence_status": "HISTORICAL_SOURCE_INDEX_NOT_LIVE_QUALIFICATION"
+  }
+]

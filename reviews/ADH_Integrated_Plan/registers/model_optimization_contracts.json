@@ -1,0 +1,865 @@
+{
+  "document_version": "4.0.0",
+  "purpose": "normative model-specific specification, not measured performance",
+  "contracts": [
+    {
+      "id": "MO01",
+      "title": "完全な正本とモデル向け指示の分離",
+      "owner": "ContextProjectionService / Baseline Authority",
+      "requirements": [
+        "R01",
+        "R11",
+        "R12",
+        "R15",
+        "R18",
+        "R20",
+        "R27",
+        "R35"
+      ],
+      "work_packages": [
+        "WP00",
+        "WP02",
+        "WP03",
+        "WP04",
+        "WP06",
+        "WP17",
+        "WP20",
+        "WP31"
+      ],
+      "source_ids": [
+        "OPT-S01",
+        "OPT-S04"
+      ],
+      "rules": [
+        "要求・アーキテクチャー・必須検査は全量保存し、正本hash・制約IDを維持する。instructionの短縮は要件の削除を意味しない。",
+        "指示項目をhard_requirement / enforced_policy / role_contract / model_guidance / task_dataへ分類する。最初の3種は意味を固定し、比較ではmodel_guidanceと重複表現・資料の提示方式だけを変える。task_dataの事実・要求は同一に保つ。model_guidanceは認可を与えない。",
+        "同じ安全規則を各Skillへ複写しない。短い共通制約を一度、該当roleを一度、task packetを末尾へ配置する。監査者向け全文を毎ターン注入しない。",
+        "prompt/profile/renderer/catalogのdigestを既存effective policy/assets hashへ束ねる。既存の6種hashの意味・独立検証の固定suiteを減らさない。"
+      ],
+      "tests": [
+        {
+          "parent_case": "V04-06",
+          "name": "指示分類と正本保持",
+          "tier": "CONTRACT",
+          "fixture": "35要求とhard/advisory混在の入力",
+          "procedure": "hard条件を消す縮約案と、重複助言だけを除く案を比較し契約validatorに通す",
+          "pass_condition": "前者を拒否し後者でも35要求・192基本検査・44既存subcaseの対応が保持",
+          "evidence": "instruction-classification.json",
+          "id": "V04-06-M01"
+        },
+        {
+          "parent_case": "V17-04",
+          "name": "古いタスク文脈の拒否",
+          "tier": "LOCAL",
+          "fixture": "同taskの旧profile/baselineと新sidecar",
+          "procedure": "queue受領後に入力版を変え、古いcontext packetをdispatchする",
+          "pass_condition": "hash差を検出して再構成し、変更済み契約を未読で実行しない",
+          "evidence": "context-admission-trace.json",
+          "id": "V17-04-M01"
+        },
+        {
+          "parent_case": "V31-03",
+          "name": "短いpromptによる合格基準の緩和拒否",
+          "tier": "CONTRACT",
+          "fixture": "小さいtask packetと必須check欠落receipt",
+          "procedure": "短いpromptに載らないcheckを落として最終集計を試す",
+          "pass_condition": "prompt長にかかわらず正本suite未充足を拒否",
+          "evidence": "no-weakened-gate.json",
+          "id": "V31-03-M01"
+        }
+      ],
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "verification_subcase_ids": [
+        "V04-06-M01",
+        "V17-04-M01",
+        "V31-03-M01"
+      ]
+    },
+    {
+      "id": "MO02",
+      "title": "Astra向けの狭い発火条件と段階的Skill読込",
+      "owner": "AssetCompiler / SkillRouter",
+      "requirements": [
+        "R14",
+        "R15",
+        "R18",
+        "R29",
+        "R33",
+        "R35"
+      ],
+      "work_packages": [
+        "WP03",
+        "WP04",
+        "WP06",
+        "WP16",
+        "WP26",
+        "WP28"
+      ],
+      "source_ids": [
+        "OPT-S01",
+        "OPT-S04",
+        "OPT-S05"
+      ],
+      "rules": [
+        "Skillの入口は一業務と適用条件を明示する短いdescription。領域名が一致するだけの広い発火や全タスクに適用する強調を除く。",
+        "rootは目的・入力・分岐・出力のrouterとし、詳細は同梱referencesへ置く。全referencesの一括読込を要求しない。",
+        "カタログ表示・適用判断・実本文ロード・実行効果を別に観測する。適用すべき事例と近接非適用事例を対にし、absence/duplicate/description truncationを検査する。",
+        "8個のADH入口はqualified role profile内で上流Skillの入口と一対一で対応付ける。既存のSuperpowers等を全部残して両方を自動発火させない。機能を捨てず、採用入口・参照先・有効Hookを一意にする。"
+      ],
+      "tests": [
+        {
+          "parent_case": "V06-05",
+          "name": "発火範囲とカタログの構造",
+          "tier": "LOCAL",
+          "fixture": "8入口と長すぎるdescription、同名Skill、広域triggerの対照",
+          "procedure": "description/frontmatter/role routingと実効catalogを検査する",
+          "pass_condition": "必須入口の欠落・同名競合・隠れた上書きを検出。全詳細の起動時展開なし",
+          "evidence": "skill-catalog-audit.json",
+          "id": "V06-05-M01"
+        },
+        {
+          "parent_case": "V06-06",
+          "name": "48事例の実native Skill選択",
+          "tier": "NATIVE_AUTH",
+          "fixture": "evaluation/skill-routing-cases.jsonの48件",
+          "procedure": "各行の指定role/modelで実runtimeを使用し3反復。選択と実読込を観測する",
+          "pass_condition": "expected routeまたはNONEと一致し不要入口をロードしない。危険操作なし",
+          "evidence": "skill-routing-native.json",
+          "id": "V06-06-M01"
+        },
+        {
+          "parent_case": "V26-02",
+          "name": "未見の近接事例と混合カタログ",
+          "tier": "NATIVE_AUTH",
+          "fixture": "profile凍結後に独立A3が封印する24以上の未見事例",
+          "procedure": "実際の全有効Pluginsを含むcatalogで評価。tunerへの事前開示を防ぐ",
+          "pass_condition": "危険な誤発火0、全要求意味の保持。基準は評価仕様のhidden splitによる",
+          "evidence": "heldout-routing.json",
+          "id": "V26-02-M01"
+        }
+      ],
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "verification_subcase_ids": [
+        "V06-05-M01",
+        "V06-06-M01",
+        "V26-02-M01"
+      ]
+    },
+    {
+      "id": "MO03",
+      "title": "版付き読了台帳と必要箇所の文脈供給",
+      "owner": "ContextProjectionService",
+      "requirements": [
+        "R01",
+        "R03",
+        "R04",
+        "R06",
+        "R12",
+        "R29",
+        "R34",
+        "R35"
+      ],
+      "work_packages": [
+        "WP00",
+        "WP04",
+        "WP05",
+        "WP09",
+        "WP17",
+        "WP18",
+        "WP25",
+        "WP28"
+      ],
+      "source_ids": [
+        "OPT-S01",
+        "OPT-S04"
+      ],
+      "rules": [
+        "A1は初回に全要求・全IC・依存と完了条件を把握する。A2/A3は担当taskに必要な契約を読む。毎編集の全文再読ではなく、既読版・対象scope・関連差分を確認する。",
+        "ReadLedgerはactor、native session、context epoch、source digest、ranges、purposeを保持する。取得完了を理解の証明とみなさない。",
+        "同じhashでも新session/compaction後の内容保持を仮定しない。必須制約とcurrent checkpointを再提示し、不明な関連本文は再取得する。過去eventを編集・削除しない。",
+        "task packetに必須要求・禁止条件・完了基準を直接含め、巨大な参考資料だけを参照化する。取得不能の必須根拠はUNKNOWNで当該判断を止め、独立作業を続ける。"
+      ],
+      "tests": [
+        {
+          "parent_case": "V18-06",
+          "name": "役割別情報の網羅と選択",
+          "tier": "LOCAL",
+          "fixture": "軽微変更と認可境界変更の2task・全仕様",
+          "procedure": "packetを生成してrequired_refsと要求追跡を比較する",
+          "pass_condition": "軽微変更で無関係全文を要求せず、認可変更には該当全契約と失敗条件を含む",
+          "evidence": "task-context-coverage.json",
+          "id": "V18-06-M01"
+        },
+        {
+          "parent_case": "V25-01",
+          "name": "既読の失効と再取得",
+          "tier": "LOCAL",
+          "fixture": "同hash別session、本文変更、compactionの3状態",
+          "procedure": "ReadLedgerを照合し再利用可否を判定する",
+          "pass_condition": "新session/epochでは必須文脈を再確認し、旧読了から未読を既読にしない",
+          "evidence": "read-ledger-invalidation.json",
+          "id": "V25-01-M01"
+        },
+        {
+          "parent_case": "V28-02",
+          "name": "小変更と重要変更の実AI読解",
+          "tier": "AI_E2E",
+          "fixture": "B scenarioに文書誤字と1行の認可変更を含める",
+          "procedure": "同じモデルで参照動作と結果を観測する",
+          "pass_condition": "誤字で全体再設計せず、認可変更は必要な全文・負例・独立検証を省略しない",
+          "evidence": "context-size-vs-scope.json",
+          "id": "V28-02-M01"
+        }
+      ],
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "verification_subcase_ids": [
+        "V18-06-M01",
+        "V25-01-M01",
+        "V28-02-M01"
+      ]
+    },
+    {
+      "id": "MO04",
+      "title": "Astraの許可範囲内の完遂と検証の段階化",
+      "owner": "CodexAdapter / RepairCoordinator",
+      "requirements": [
+        "R02",
+        "R18",
+        "R19",
+        "R20",
+        "R21",
+        "R23",
+        "R25",
+        "R32"
+      ],
+      "work_packages": [
+        "WP05",
+        "WP06",
+        "WP16",
+        "WP20",
+        "WP22",
+        "WP28"
+      ],
+      "source_ids": [
+        "OPT-S01",
+        "OPT-S06"
+      ],
+      "rules": [
+        "task packetは編集・許可recipe・使い捨てfixtureの検査・修正・再検証を委任済み範囲として明記する。初回実装で人へ返す条件にしない。",
+        "workerのdoneは候補と必要証拠が揃ったready_for_review。外部の独立review/acceptanceと区別する。通常の失敗は原因分析して継続し、停止するのは本当に必要な判断・権限・予算・USER_STOP。",
+        "開発中は影響検査、WP候補は指定inventory、独立Verifierは別環境、統合は新snapshot、最終RCは全件、と責任を固定する。毎編集の全suite実行は要求しない。",
+        "同stage内の同snapshot/suite/envによる不要な繰返しは理由を記録する。独立性のための再実行・変更後の再試験・最終RC再検証をキャッシュで省略しない。"
+      ],
+      "tests": [
+        {
+          "parent_case": "V16-02",
+          "name": "指定モデルと委任の実行",
+          "tier": "NATIVE_AUTH",
+          "fixture": "Astra/xhigh実runtimeと許可済disposable fixture",
+          "procedure": "task packetに完了条件と停止境界を与え編集と検査を実行",
+          "pass_condition": "model/effort一致、許可済み通常操作の再承認要求なし、権限拡大なし",
+          "evidence": "astra-permitted-task.json",
+          "id": "V16-02-M01"
+        },
+        {
+          "parent_case": "V22-01",
+          "name": "初回実装から実AI修正まで継続",
+          "tier": "AI_E2E",
+          "fixture": "失敗するtestと委任範囲が明示されたR fixture",
+          "procedure": "実Astraが編集・test・失敗解析・修正・再testを行う",
+          "pass_condition": "人の「続けて」や固定patchなしで候補に到達、独立判定前にacceptedにしない",
+          "evidence": "astra-completion-loop.json",
+          "id": "V22-01-M01"
+        },
+        {
+          "parent_case": "V28-04",
+          "name": "重複検査と必要再検証の区別",
+          "tier": "AI_E2E",
+          "fixture": "R scenarioとstage別check inventory",
+          "procedure": "コマンドのstage/source/env/suiteと再実行理由を追跡する",
+          "pass_condition": "根拠のない同stage反復なし、独立/統合/最終検査の欠落なし",
+          "evidence": "verification-stage-usage.json",
+          "id": "V28-04-M01"
+        }
+      ],
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "verification_subcase_ids": [
+        "V16-02-M01",
+        "V22-01-M01",
+        "V28-04-M01"
+      ]
+    },
+    {
+      "id": "MO05",
+      "title": "Fableの独立読取・委任・統括作業の並列進行",
+      "owner": "ClaudeAdapter / Scheduler",
+      "requirements": [
+        "R04",
+        "R12",
+        "R16",
+        "R17",
+        "R18",
+        "R31",
+        "R32"
+      ],
+      "work_packages": [
+        "WP05",
+        "WP10",
+        "WP14",
+        "WP15",
+        "WP17",
+        "WP19",
+        "WP28"
+      ],
+      "source_ids": [
+        "OPT-S02",
+        "OPT-S06",
+        "OPT-S07"
+      ],
+      "rules": [
+        "結果の依存がない取得・分析はまとめて要求してよい。結果依存や同writerの変更は順序を守る。単にtool call数を減らすために巨大shellへまとめない。",
+        "agmsg dispatchは耐久受領を確認して返す。A1をworker完了まで強制blockせず、別の調査、次task準備、到着結果の照合を進める。",
+        "依存がすべて待機中なら新しい作業を捏造せず、bus待機または状態照会で待つ。定期LLM呼出を進捗としない。",
+        "並列数は既存DAG・allowed_files・CPU/メモリ/port・契約予算で制限し、Skillやmodel特性から新規workerを無制限にspawnしない。"
+      ],
+      "tests": [
+        {
+          "parent_case": "V05-01",
+          "name": "委任の非同期受領",
+          "tier": "LOCAL",
+          "fixture": "2taskと遅延worker、独立したlead作業",
+          "procedure": "dispatch受領後にleadが別準備を進め結果の遅延配送を受ける",
+          "pass_condition": "durable receipt後はleadを強制blockしない。二重送信やfake RESULTなし",
+          "evidence": "async-delegation-trace.json",
+          "id": "V05-01-M01"
+        },
+        {
+          "parent_case": "V15-01",
+          "name": "独立読取と依存読取の適切な呼出",
+          "tier": "NATIVE_AUTH",
+          "fixture": "3独立資料と、その結果を必要とする1操作",
+          "procedure": "Fable/highで取得計画と公開tool traceを観測する",
+          "pass_condition": "独立処理は利用可能な範囲でまとめる。依存操作は前提結果後、競合writerなし",
+          "evidence": "fable-batch-boundary.json",
+          "id": "V15-01-M01"
+        },
+        {
+          "parent_case": "V28-01",
+          "name": "委任中の有用な統括作業",
+          "tier": "AI_E2E",
+          "fixture": "U scenarioの候補実験2件と次契約準備",
+          "procedure": "実Fable＋常駐Astraで時系列を収集する",
+          "pass_condition": "独立作業を進め、結果前の推測設計確定やscope重複がない",
+          "evidence": "lead-progress-under-delegation.json",
+          "id": "V28-01-M01"
+        }
+      ],
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "verification_subcase_ids": [
+        "V05-01-M01",
+        "V15-01-M01",
+        "V28-01-M01"
+      ]
+    },
+    {
+      "id": "MO06",
+      "title": "Fableの公開進捗表示と非公開履歴の分離",
+      "owner": "ClaudeAdapter / ProjectionService",
+      "requirements": [
+        "R18",
+        "R25",
+        "R30",
+        "R31",
+        "R35"
+      ],
+      "work_packages": [
+        "WP04",
+        "WP15",
+        "WP25",
+        "WP26"
+      ],
+      "source_ids": [
+        "OPT-S02",
+        "OPT-S07"
+      ],
+      "rules": [
+        "依頼の開始・実際の工程変化・重大な発見/待機を短く表示する。ツール出力が画面に見えるとは仮定しない。",
+        "公式nativeから取得できる公開text/statusのみを利用する。APIのthinking.display betaをCLIへ勝手に渡さない。非公開thinking・encrypted contentの取得/変換/開示は求めない。",
+        "nativeが進捗textを公開しない場合はSupervisorの事実イベントをラベル付きで表示する。これはモデル思考の再現ではなくengine status。可観測性の限界を記録する。",
+        "heartbeat、長文、待機pollを成果進捗へ数えない。更新にはphase、完了事実、未完了、必要な判断を対応させる。"
+      ],
+      "tests": [
+        {
+          "parent_case": "V15-03",
+          "name": "公開streamと未知frame",
+          "tier": "CONTRACT",
+          "fixture": "公開text/status、未知frame、非公開payloadを含むfixture",
+          "procedure": "adapterの表示/保管経路を観測する",
+          "pass_condition": "公開情報だけ表示、未知terminalで成功にしない、非公開payloadを露出しない",
+          "evidence": "public-progress-contract.json",
+          "id": "V15-03-M01"
+        },
+        {
+          "parent_case": "V25-06",
+          "name": "モデル進捗とengine状態の正確な表示",
+          "tier": "LOCAL",
+          "fixture": "native progressなし/あり、heartbeatのみの3状態",
+          "procedure": "status rendererを実行してoriginと進捗を比較する",
+          "pass_condition": "nativeとengineを区別し、架空思考・偽完了・heartbeat進捗加算なし",
+          "evidence": "progress-origin.json",
+          "id": "V25-06-M01"
+        },
+        {
+          "parent_case": "V26-01",
+          "name": "採用CLI表示経路の実確認",
+          "tier": "NATIVE_AUTH",
+          "fixture": "Fable/highの対話bootstrapと採用streamモード",
+          "procedure": "同じtaskの公開更新が利用者へ届く経路を確認する",
+          "pass_condition": "実装した各modeの表示と生観測が一致。未提供はengine statusで誠実表示",
+          "evidence": "native-progress-rendering.json",
+          "id": "V26-01-M01"
+        }
+      ],
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "verification_subcase_ids": [
+        "V15-03-M01",
+        "V25-06-M01",
+        "V26-01-M01"
+      ]
+    },
+    {
+      "id": "MO07",
+      "title": "Fable履歴の所有権・正確な再開・安定prefix",
+      "owner": "ClaudeAdapter / ContextProjectionService",
+      "requirements": [
+        "R13",
+        "R15",
+        "R18",
+        "R24",
+        "R29",
+        "R31",
+        "R33",
+        "R35"
+      ],
+      "work_packages": [
+        "WP06",
+        "WP15",
+        "WP17",
+        "WP22",
+        "WP25",
+        "WP28",
+        "WP30"
+      ],
+      "source_ids": [
+        "OPT-S03",
+        "OPT-S07",
+        "OPT-S08"
+      ],
+      "rules": [
+        "公式CLIのsession/historyをnativeが所有する。SupervisorはTaskPacketを新しい入力として渡し、過去のprefixやthinking blockを抽出して改変・再注入しない。公式が公開するtranscript/eventのread-only観測は別であり、秘密・非公開推論を収集しない。",
+        "model/profile/system/assetの意味変更は新runとして資格確認し、現在runを黙って書き換えない。exact resumeは同じbindingと有効構成でのみ行う。",
+        "静的role指示と変化するtask資料を分離する。不要な時刻・乱数・巨大manifestを静的指示へ差し込まない。cache hit/内部context節約は公式観測がある場合だけ報告する。",
+        "Messages APIのadaptive thinking、forced tool_choice、binding-controls、mid-conversation betaはAPI固有。CLI設定として実装せず、unsupported指定をqualificationで排除する。必要な構造化出力は採用native surfaceとschemaを実証する。"
+      ],
+      "tests": [
+        {
+          "parent_case": "V15-02",
+          "name": "公式履歴を変更しないexact resume",
+          "tier": "NATIVE_AUTH",
+          "fixture": "同一task sessionと版固定role/asset",
+          "procedure": "公式CLIで複数turnとresumeを行い外部入力・副作用・公開metadataを照合",
+          "pass_condition": "履歴ファイル改変なし、対象session一致。内部prefixが観測不能ならその範囲を保証しない",
+          "evidence": "native-history-ownership.json",
+          "id": "V15-02-M01"
+        },
+        {
+          "parent_case": "V15-06",
+          "name": "API専用parameterの誤用拒否",
+          "tier": "CONTRACT",
+          "fixture": "CLI設定へthinking/forced tool_choice/betaを混入するfixture",
+          "procedure": "qualificationとprofile rendererへ各入力を与える",
+          "pass_condition": "未対応CLI flagを出さず、token転用やfallbackで回避しない",
+          "evidence": "api-cli-boundary.json",
+          "id": "V15-06-M01"
+        },
+        {
+          "parent_case": "V28-06",
+          "name": "圧縮・構成変更と再開",
+          "tier": "AI_E2E",
+          "fixture": "C scenario、旧role hash、改訂済みbaseline",
+          "procedure": "nativeに任せたcompactionと、認可済新runの2経路を実行",
+          "pass_condition": "必要制約とcheckpointを再取得し、古いauthority/誤cwd/非公開履歴移植なし",
+          "evidence": "native-resume-profile-change.json",
+          "id": "V28-06-M01"
+        }
+      ],
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "verification_subcase_ids": [
+        "V15-02-M01",
+        "V15-06-M01",
+        "V28-06-M01"
+      ]
+    },
+    {
+      "id": "MO08",
+      "title": "Fable上流判断・変更範囲・出典表現の適合",
+      "owner": "ResearchLead / IndependentReviewer",
+      "requirements": [
+        "R03",
+        "R04",
+        "R05",
+        "R07",
+        "R08",
+        "R09",
+        "R10",
+        "R12",
+        "R21",
+        "R27"
+      ],
+      "work_packages": [
+        "WP02",
+        "WP18",
+        "WP19",
+        "WP21",
+        "WP28"
+      ],
+      "source_ids": [
+        "OPT-S02"
+      ],
+      "rules": [
+        "指定資料・重要なAPI/機能の事実は一次資料へ戻る。既知という感覚だけで現行動作を断言しない。引用と独自要約を区別する。",
+        "依頼の目的・必須機能・制約・完了条件を先に固定し、要求全体をカバーする。小さな変更を全面再設計や無関係な品質改善へ拡張しない。",
+        "最小差分はMUST/NFR/エラー経路/テスト削減の根拠にしない。Fableは計画・文書・レビューを担当し、ソース実装の変更はA2へ委任する。",
+        "設計/レビュー出力は結論、根拠、対象location、未解決、次の判断を短く明確にし、私的推論全文を納品条件にしない。規範仕様の詳細は正本へ保存する。"
+      ],
+      "tests": [
+        {
+          "parent_case": "V19-01",
+          "name": "出典と設計判断の分離",
+          "tier": "NATIVE_AUTH",
+          "fixture": "一次資料と反例・原文に似た表現を誘うfixture",
+          "procedure": "Fableに比較/ADRを作成させ、取得元と引用/要約を照合",
+          "pass_condition": "架空出典0、引用を明示、採用理由と不採用理由を追跡可能",
+          "evidence": "fable-research-provenance.json",
+          "id": "V19-01-M01"
+        },
+        {
+          "parent_case": "V21-02",
+          "name": "担当範囲の全確認と不要拡張拒否",
+          "tier": "NATIVE_AUTH",
+          "fixture": "必須要件欠落と無関係な改善候補を持つcandidate",
+          "procedure": "fresh A3が原本とcandidateを比較しfindingを返す",
+          "pass_condition": "必須欠落を指摘し、好みを必須変更へ格上げせず、未読を全監査と表示しない",
+          "evidence": "fable-review-scope.json",
+          "id": "V21-02-M01"
+        },
+        {
+          "parent_case": "V28-02",
+          "name": "限定変更の保持",
+          "tier": "AI_E2E",
+          "fixture": "B scenarioの承認済architectureと局所変更",
+          "procedure": "A1提案とA2差分・A3レビューを照合する",
+          "pass_condition": "未依頼architecture変更/全面rewrite/テスト削減なし。必須文書は完全",
+          "evidence": "bounded-deliverable.json",
+          "id": "V28-02-M02"
+        }
+      ],
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "verification_subcase_ids": [
+        "V19-01-M01",
+        "V21-02-M01",
+        "V28-02-M02"
+      ]
+    },
+    {
+      "id": "MO09",
+      "title": "role・Skill・subagentを通したmodel/effort固定",
+      "owner": "QualificationService / AssetCompiler",
+      "requirements": [
+        "R13",
+        "R14",
+        "R15",
+        "R25",
+        "R33",
+        "R35"
+      ],
+      "work_packages": [
+        "WP01",
+        "WP04",
+        "WP06",
+        "WP15",
+        "WP16",
+        "WP26",
+        "WP30"
+      ],
+      "source_ids": [
+        "OPT-S03",
+        "OPT-S05",
+        "OPT-S06",
+        "OPT-S07"
+      ],
+      "rules": [
+        "A1/A3=Fable-5.1 high、A2=GPT-6 Astra xhighを維持する。表示名、requested config、runtime受理、観測modelを別に記録する。非公開計算量をeffort値から推定しない。",
+        "Skill frontmatter、subagent profile、plugin内launch、fallback chain、managed/user/project設定の上書きを完全closureで調査する。より小さいモデル/effortへ暗黙変更しない。",
+        "model/effortは単一profile正本で宣言。Skill本文にnative未対応のfieldを増やさず、共通入口はmodel/effortを省略して資格済みsessionから継承する。forkがある場合は子の有効設定も確認する。",
+        "利用不可は対象をBLOCKED/UNKNOWNにし、代替モデルで受入を作らない。最適化比較の全armも同一モデル/effortを使用する。"
+      ],
+      "tests": [
+        {
+          "parent_case": "V01-01",
+          "name": "指定モデルと各観測値",
+          "tier": "NATIVE_AUTH",
+          "fixture": "本人資格、実binary、profileとmodel catalog",
+          "procedure": "全page catalogと実task metadata・設定優先順位を照合",
+          "pass_condition": "両モデル/effortの実効設定一致。内部計算量未公開は明記",
+          "evidence": "model-observation.json",
+          "id": "V01-01-M01"
+        },
+        {
+          "parent_case": "V06-03",
+          "name": "Skill/子Agentの隠れた上書き",
+          "tier": "LOCAL",
+          "fixture": "frontmatter effort=low/model違い、子profile、fallback設定",
+          "procedure": "asset closureと生成設定を検査する",
+          "pass_condition": "未承認上書きを起動前に拒否。inheritと実効資格を混同しない",
+          "evidence": "model-override-audit.json",
+          "id": "V06-03-M01"
+        },
+        {
+          "parent_case": "V26-03",
+          "name": "稼働後のprofile失効",
+          "tier": "NATIVE_AUTH",
+          "fixture": "資格済みsessionと変更されたplugin/profile",
+          "procedure": "新起動と旧run継続の両方を試す",
+          "pass_condition": "新起動は再資格、旧runへの無断live変更なし、変更したsourceに旧receipt流用なし",
+          "evidence": "profile-invalidation.json",
+          "id": "V26-03-M01"
+        }
+      ],
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "verification_subcase_ids": [
+        "V01-01-M01",
+        "V06-03-M01",
+        "V26-03-M01"
+      ]
+    },
+    {
+      "id": "MO10",
+      "title": "上流Skillsの重複・承認・役割の一体適合",
+      "owner": "AssetCompiler / IndependentReviewer",
+      "requirements": [
+        "R02",
+        "R14",
+        "R15",
+        "R16",
+        "R17",
+        "R18",
+        "R21",
+        "R25",
+        "R29"
+      ],
+      "work_packages": [
+        "WP05",
+        "WP06",
+        "WP10",
+        "WP21",
+        "WP24",
+        "WP26"
+      ],
+      "source_ids": [
+        "OPT-S01",
+        "OPT-S04",
+        "OPT-S05"
+      ],
+      "rules": [
+        "Superpowers/UA/Crit/Ponytail/agmsg/CompactionDBの機能をkeep/rewrite/route/reference-only/disabled-with-replacementで一つずつ対応させる。単純な全無効化と全有効重ね掛けを避ける。",
+        "強制Skill呼出・毎taskの人承認・同じ制約の繰返しは、正本/Mandateを確認し、許可済の開発は継続できるよう適合する。安全な承認をUIクリックや利用者偽装で通さない。",
+        "fresh implementer方式と常駐worker方式を統一する際は実装/仕様レビュー/品質レビュー・独立contextの機能を維持する。review担当は作者sessionを継承しない。",
+        "供給元commit、ローカル差分、理由、テスト、licenseを記録し、利用者HOMEではなく隔離した配布対象に適用する。MCP導入を前提にしない。"
+      ],
+      "tests": [
+        {
+          "parent_case": "V06-03",
+          "name": "重複命令の解消とhard条件保存",
+          "tier": "CONTRACT",
+          "fixture": "全task発火規則、毎回全読、必須権限の混在",
+          "procedure": "各instructionを分類し採用/置換/参照対応をreviewする",
+          "pass_condition": "助言は整理され、権限・固定suite・35要求は同じ。未承認無効化なし",
+          "evidence": "upstream-instruction-diff.json",
+          "id": "V06-03-M02"
+        },
+        {
+          "parent_case": "V21-06",
+          "name": "人承認と独立AIレビューの分離",
+          "tier": "NATIVE_AUTH",
+          "fixture": "Crit UI待ちと事前委任済み修正task",
+          "procedure": "適合済みSkillでreview/修正を進めreserved decisionも試す",
+          "pass_condition": "不要な人待ちなし。必要な人承認は残り、agentが偽装しない",
+          "evidence": "approval-route-e2e.json",
+          "id": "V21-06-M01"
+        },
+        {
+          "parent_case": "V24-01",
+          "name": "常駐workerと独立レビューの共存",
+          "tier": "AI_E2E",
+          "fixture": "2worktree常駐workerと別A3",
+          "procedure": "Task→Result→独立Review→修正→統合を実行",
+          "pass_condition": "単一writer、指定model維持、重複Skill反復なし、独立性保持",
+          "evidence": "role-skill-integration.json",
+          "id": "V24-01-M01"
+        }
+      ],
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "verification_subcase_ids": [
+        "V06-03-M02",
+        "V21-06-M01",
+        "V24-01-M01"
+      ]
+    },
+    {
+      "id": "MO11",
+      "title": "固定モデルの比較評価と効果・安全性の分離",
+      "owner": "IndependentEvaluator / ReleaseAuthority",
+      "requirements": [
+        "R08",
+        "R15",
+        "R20",
+        "R21",
+        "R27",
+        "R32",
+        "R34",
+        "R35"
+      ],
+      "work_packages": [
+        "WP03",
+        "WP06",
+        "WP20",
+        "WP21",
+        "WP26",
+        "WP28",
+        "WP29",
+        "WP31"
+      ],
+      "source_ids": [
+        "OPT-S01",
+        "OPT-S02",
+        "OPT-S04"
+      ],
+      "rules": [
+        "H00対照、H10 Fableのみ最適化、H01 Astraのみ最適化、H11両者最適化の2×2設計。全armのコード・要求・oracle・native版・モデル/effort・権限・資源を固定する。",
+        "各arm6scenario×3反復=18、合計72の実AI runを比較用に計画する。H11の18を既存製品18runと同一runとして利用する条件を明示し、別の成功件数として二重計上しない。予算は実行前にHが有限値を設定する。",
+        "プロンプト文字数だけでなく受入率、false complete、不要な停止、再読、重複tool/検査、時間、利用量を観測する。未観測値を0や推測値で埋めない。",
+        "安全・品質ゲートを先に満たし、効率は副次判定にする。失敗runを捨てず、同条件・同oracleの全結果を報告する。少数回で一般的最適性や統計的非劣性を主張しない。"
+      ],
+      "tests": [
+        {
+          "parent_case": "V03-06",
+          "name": "比較inventoryと未実行の集計",
+          "tier": "LOCAL",
+          "fixture": "72セルのrun計画と欠落/失敗/重複記録",
+          "procedure": "集計器が全arm・scenario・replicate・必須metricsを保持するか確認",
+          "pass_condition": "NOT_RUN/UNKNOWNをPASS/0にせず、重複runを成功増加にしない",
+          "evidence": "optimization-inventory-audit.json",
+          "id": "V03-06-M01"
+        },
+        {
+          "parent_case": "V28-06",
+          "name": "4arm実AI比較",
+          "tier": "AI_E2E",
+          "fixture": "evaluation/EXPERIMENT_PROTOCOL.mdと固定fixture",
+          "procedure": "事前freeze後に72runを交錯順で実行しブラインドoracleで判定",
+          "pass_condition": "H11全18合格、他armの失敗も保持。安全逸脱0、効率と未達を定義通り判定",
+          "evidence": "model-factorial-evaluation.json",
+          "id": "V28-06-M02"
+        },
+        {
+          "parent_case": "V31-02",
+          "name": "性能主張と製品合格の独立判定",
+          "tier": "CONTRACT",
+          "fixture": "品質は合格/効率不明、品質低下/効率改善などの記録",
+          "procedure": "受入判定器とレポートを動かす",
+          "pass_condition": "速くても品質低下版は拒否、未測定の最適化を実測済と表示しない",
+          "evidence": "optimization-claim-gate.json",
+          "id": "V31-02-M01"
+        }
+      ],
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "verification_subcase_ids": [
+        "V03-06-M01",
+        "V28-06-M02",
+        "V31-02-M01"
+      ]
+    },
+    {
+      "id": "MO12",
+      "title": "model packの版固定・差分更新・切戻し",
+      "owner": "AssetAuthority / Operations",
+      "requirements": [
+        "R11",
+        "R15",
+        "R22",
+        "R25",
+        "R27",
+        "R33",
+        "R34",
+        "R35"
+      ],
+      "work_packages": [
+        "WP06",
+        "WP26",
+        "WP30",
+        "WP31"
+      ],
+      "source_ids": [
+        "OPT-S04",
+        "OPT-S05",
+        "OPT-S06",
+        "OPT-S07"
+      ],
+      "rules": [
+        "元v2からの差分をCR-MODEL-001として記録し、35要求/192基本条件/44統合subcaseを維持したままモデル最適化を追加する。",
+        "Profile・prompt・Skill router・reference・描画規則・native binding・評価条件を一つのpack digestで固定する。動作中のpackを黙って更新しない。",
+        "更新は隔離候補→diff/静的検査→native/性能比較→安全品質→承認済切替。効率が悪化/不確実なら勝手に低effortへ下げず、packの修正または既資格packへの運用上の切戻しとする。",
+        "文書作成と構造検査のPASS、native適合、行動評価、効果測定、製品完成の状態を別々に報告する。本配布物は文書・prompt・Skill定義であり製品コードを含まない。"
+      ],
+      "tests": [
+        {
+          "parent_case": "V30-04",
+          "name": "model pack更新と切戻し",
+          "tier": "LOCAL",
+          "fixture": "旧qualified packと新candidate、進行中run",
+          "procedure": "新版導入失敗と切戻しを実行する",
+          "pass_condition": "旧runの文脈/設定を途中で書き換えず、履歴・証拠・old digest維持",
+          "evidence": "model-pack-rollback.json",
+          "id": "V30-04-M01"
+        },
+        {
+          "parent_case": "V30-05",
+          "name": "配布内容と状態の完全性",
+          "tier": "DOCUMENT",
+          "fixture": "本v4のspec/prompt/profile/Skill/評価台帳",
+          "procedure": "参照とhash・全NOT_RUN状態・新旧対応を照合する",
+          "pass_condition": "付録読み合わせ不要、必須内容欠落なし、製品実装済の偽表示なし",
+          "evidence": "model-pack-manifest.json",
+          "id": "V30-05-M01"
+        },
+        {
+          "parent_case": "V31-05",
+          "name": "最終RCと資格・評価の結び付け",
+          "tier": "LOCAL",
+          "fixture": "final sourceとprofile/Skill差替え対照",
+          "procedure": "旧評価receiptを新packに適用して受入を試す",
+          "pass_condition": "profile/catalog/renderer hash不一致で失効、同一RCのみ受理",
+          "evidence": "final-pack-evidence-binding.json",
+          "id": "V31-05-M01"
+        }
+      ],
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "verification_subcase_ids": [
+        "V30-04-M01",
+        "V30-05-M01",
+        "V31-05-M01"
+      ]
+    }
+  ]
+}

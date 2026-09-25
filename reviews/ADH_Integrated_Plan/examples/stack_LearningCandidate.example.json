@@ -1,0 +1,14 @@
+{
+  "candidate_id": "example-candidate",
+  "source_task_id": "example-task",
+  "source_snapshot_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+  "evidence_refs": [
+    "example-evidence"
+  ],
+  "scope": "role A2; affected file class only",
+  "proposed_asset_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+  "status": "CANDIDATE",
+  "evaluation_refs": [],
+  "approval_ref": null,
+  "target_release_set_id": null
+}

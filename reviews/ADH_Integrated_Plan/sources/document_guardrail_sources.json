@@ -1,0 +1,150 @@
+{
+  "checked_at": "2026-09-13",
+  "kind": "PRIMARY_SOURCES_REVIEW_NOT_RUNTIME_QUALIFICATION",
+  "sources": [
+    {
+      "id": "DG-S01",
+      "title": "C4 model: Diagrams",
+      "url": "https://c4model.com/diagrams",
+      "relevance": "C4は構造の拡大率。BRD/PRDとは同義でなく全4段必須でもない。",
+      "checked_at": "2026-09-13",
+      "verification": "WEB_CONTENT_REVIEWED",
+      "runtime_qualification": "NOT_RUN"
+    },
+    {
+      "id": "DG-S02",
+      "title": "Alistair Mavin: EARS",
+      "url": "https://alistairmavin.com/ears/",
+      "relevance": "EARSはテキスト要求の軽量構文。形式証明や完全性保証ではない。",
+      "checked_at": "2026-09-13",
+      "verification": "WEB_CONTENT_REVIEWED",
+      "runtime_qualification": "NOT_RUN"
+    },
+    {
+      "id": "DG-S03",
+      "title": "Cucumber: Gherkin Reference",
+      "url": "https://cucumber.io/docs/gherkin/reference/",
+      "relevance": "Given/When/Thenの期待と実際に比較するstep実装を区別する。",
+      "checked_at": "2026-09-13",
+      "verification": "WEB_CONTENT_REVIEWED",
+      "runtime_qualification": "NOT_RUN"
+    },
+    {
+      "id": "DG-S04",
+      "title": "Martin Fowler: Test Driven Development",
+      "url": "https://martinfowler.com/bliki/TestDrivenDevelopment.html",
+      "relevance": "TDDはRed/Green/Refactorの開発反復であり文書レベルではない。",
+      "checked_at": "2026-09-13",
+      "verification": "WEB_CONTENT_REVIEWED",
+      "runtime_qualification": "NOT_RUN"
+    },
+    {
+      "id": "DG-S05",
+      "title": "Cognitect: Documenting Architecture Decisions",
+      "url": "https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions",
+      "relevance": "ADRはcontext/decision/consequencesとstatusを保持する。",
+      "checked_at": "2026-09-13",
+      "verification": "WEB_CONTENT_REVIEWED",
+      "runtime_qualification": "NOT_RUN"
+    },
+    {
+      "id": "DG-S06",
+      "title": "NASA: Requirements Management",
+      "url": "https://www.nasa.gov/reference/6-2-requirements-management/",
+      "relevance": "要求と設計/試験の双方向追跡、変更影響、基準管理の根拠。",
+      "checked_at": "2026-09-13",
+      "verification": "WEB_CONTENT_REVIEWED",
+      "runtime_qualification": "NOT_RUN"
+    },
+    {
+      "id": "GR-S01",
+      "title": "OpenAI: Running Codex safely",
+      "url": "https://openai.com/index/running-codex-safely/",
+      "relevance": "管理設定・sandbox・network・approval・telemetryを組み合わせる。",
+      "checked_at": "2026-09-13",
+      "verification": "WEB_CONTENT_REVIEWED",
+      "runtime_qualification": "NOT_RUN"
+    },
+    {
+      "id": "GR-S02",
+      "title": "Codex: Agent approvals & security",
+      "url": "https://learn.chatgpt.com/docs/agent-approvals-security",
+      "relevance": "承認ポリシーとsandboxは別。worktree .git等保護、迂回リスクを採用版で再確認。",
+      "checked_at": "2026-09-13",
+      "verification": "WEB_CONTENT_REVIEWED",
+      "runtime_qualification": "NOT_RUN"
+    },
+    {
+      "id": "GR-S03",
+      "title": "Claude Code: Hooks reference",
+      "url": "https://code.claude.com/docs/en/hooks",
+      "relevance": "Hookのevent・type・exit code・timeoutで拒否能力が違う。存在や非0終了だけではfail-closedを保証しない。",
+      "checked_at": "2026-09-13",
+      "verification": "WEB_CONTENT_REVIEWED",
+      "runtime_qualification": "NOT_RUN"
+    },
+    {
+      "id": "GR-S04",
+      "title": "Claude Code: Sandboxing",
+      "url": "https://code.claude.com/docs/en/sandboxing",
+      "relevance": "Bashと子processのOS隔離とネットワーク境界。別ツールへの適用は個別確認。",
+      "checked_at": "2026-09-13",
+      "verification": "WEB_CONTENT_REVIEWED",
+      "runtime_qualification": "NOT_RUN"
+    },
+    {
+      "id": "GR-S05",
+      "title": "Claude Code: Permissions",
+      "url": "https://code.claude.com/docs/en/permissions",
+      "relevance": "権限の合成/範囲を実runtimeで検証。文章での禁止とは別。",
+      "checked_at": "2026-09-13",
+      "verification": "WEB_CONTENT_REVIEWED",
+      "runtime_qualification": "NOT_RUN"
+    },
+    {
+      "id": "GR-S06",
+      "title": "OpenAI: Guardrails and human review",
+      "url": "https://developers.openai.com/api/docs/guides/agents/guardrails-approvals",
+      "relevance": "入力/出力/tool検査と人の承認は別。高リスクでは実行前に検査完了を待つ。SDKの追加採用指示ではない。",
+      "checked_at": "2026-09-13",
+      "verification": "WEB_CONTENT_REVIEWED",
+      "runtime_qualification": "NOT_RUN"
+    },
+    {
+      "id": "GR-S07",
+      "title": "OpenAI: Evaluation best practices",
+      "url": "https://developers.openai.com/api/docs/guides/evaluation-best-practices",
+      "relevance": "評価を初期から継続し、正例/負例/未見群/全runを保存する。",
+      "checked_at": "2026-09-13",
+      "verification": "WEB_CONTENT_REVIEWED",
+      "runtime_qualification": "NOT_RUN"
+    },
+    {
+      "id": "GR-S08",
+      "title": "OpenAI: Rethinking skills and prompts for GPT-6 Astra",
+      "url": "https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra",
+      "relevance": "適用範囲を絞り、必要時参照。文書体系やガードの全文を毎回注入しない。",
+      "checked_at": "2026-09-13",
+      "verification": "WEB_CONTENT_REVIEWED",
+      "runtime_qualification": "NOT_RUN"
+    },
+    {
+      "id": "GR-S09",
+      "title": "Anthropic: Prompting Claude Fable 5.1",
+      "url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-1",
+      "relevance": "委任/並列取得/継続と公式履歴境界。今回の元モデル契約を維持。",
+      "checked_at": "2026-09-13",
+      "verification": "WEB_CONTENT_REVIEWED",
+      "runtime_qualification": "NOT_RUN"
+    },
+    {
+      "id": "GR-S10",
+      "title": "Claude Code: Skills",
+      "url": "https://code.claude.com/docs/en/skills",
+      "relevance": "Skillは命令資産。設定/Hook/model等を含み得るので文書取得とは分離する。",
+      "checked_at": "2026-09-13",
+      "verification": "WEB_CONTENT_REVIEWED",
+      "runtime_qualification": "NOT_RUN"
+    }
+  ]
+}

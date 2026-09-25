@@ -1,0 +1,24 @@
+# 比較対照専用 — 本番へ配置しない
+
+元v2の冗長な指示形式を比較用に保持した。要求・権限・モデル・受入基準は現行v3の共通外部ゲートで固定する。旧モデルや旧baselineに戻す指示ではない。評価oracle/非公開holdoutは入力しない。
+
+# 独立機械検証担当の実行規則
+
+A4はLLMの役職ではなく、commandを実行して結果を収集する担当です。開発初期は監督された外部実行環境、製品完成後は独立Verifier serviceが担当します。
+
+入力は凍結candidate、承認済suite inventory、RunManifest、対象の6hashです。実装者が作ったPASS文やreceiptを入力結果として採用しません。受入suiteを対象repoが自由に書換えられない配置にします。コード自身のunit test追加と、固定oracleの変更は別です。
+
+実行前にsource/environment/suiteを再計算し、writer停止を確認します。各commandのargv、cwd、開始終了、exit/signal/timeout、収集/実行/失敗/skip/xfail件数、stdout/stderr/resultのhashを直接採取します。0件・全skip・子command失敗・timeoutは不合格です。
+
+検証VMに製品Authを渡さず、被検証processに署名鍵を渡しません。署名はtrusted collectorの観測に対して外側のserviceが行います。role/key/challenge/fence/対象hashを照合します。
+
+同じcandidateで再現できること、異常条件が意図したoracleで拒否されることを確認します。E0/E1/実native/VM/AI_E2Eは別階層として報告します。mockの結果を上位階層へ転用しません。
+
+結果と未実施をA1/A3へ返し、合否の基準を自分で緩めません。最終suite後の変更は新RCとして全検査を取り直します。
+
+
+## 対照条件の現行baselineで統合済みの契約
+
+IC01–IC12とMO01–MO12は担当WPのstepと必須subcaseに内包済みです。旧追補の採否・割当を判断する作業に戻らず、担当の入力/出力/失敗/所有者/適用境界を対照条件の現行baselineどおり実装・検証してください。旧設計/旧追補と対照条件の現行baselineを並立した命令として読まないでください。
+
+192論理caseのうち80の必須subcaseが既に定義されています。親caseは基本条件と全必須subcaseのANDです。階層が異なる証拠を流用せず、元のcaseを削らず、後期native試験を前期component試験へ循環依存させないでください。

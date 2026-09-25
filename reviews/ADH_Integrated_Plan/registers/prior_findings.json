@@ -1,0 +1,331 @@
+[
+  {
+    "id": "F01",
+    "title": "Codex共通の品質免除規則",
+    "work_packages": [
+      "WP06",
+      "WP19",
+      "WP21"
+    ],
+    "verification_ids": [
+      "V06-03",
+      "V19-04",
+      "V21-02"
+    ],
+    "status": "NOT_VERIFIED"
+  },
+  {
+    "id": "F02",
+    "title": "UA source-root/dirty鮮度",
+    "work_packages": [
+      "WP06",
+      "WP09",
+      "WP18"
+    ],
+    "verification_ids": [
+      "V06-04",
+      "V09-01",
+      "V18-04"
+    ],
+    "status": "NOT_VERIFIED"
+  },
+  {
+    "id": "F03",
+    "title": "Crit自律reviewとUI承認の競合",
+    "work_packages": [
+      "WP06",
+      "WP21",
+      "WP26"
+    ],
+    "verification_ids": [
+      "V06-03",
+      "V06-06",
+      "V21-06",
+      "V26-02"
+    ],
+    "status": "NOT_VERIFIED"
+  },
+  {
+    "id": "F04",
+    "title": "SDD品質機能と常駐workerの適合",
+    "work_packages": [
+      "WP05",
+      "WP06",
+      "WP21"
+    ],
+    "verification_ids": [
+      "V06-03",
+      "V06-06",
+      "V21-01"
+    ],
+    "status": "NOT_VERIFIED"
+  },
+  {
+    "id": "F05",
+    "title": "installerとpayload固定の差",
+    "work_packages": [
+      "WP01",
+      "WP06",
+      "WP30"
+    ],
+    "verification_ids": [
+      "V01-04",
+      "V06-01",
+      "V30-04"
+    ],
+    "status": "NOT_VERIFIED"
+  },
+  {
+    "id": "F06",
+    "title": "file一致と実capabilityの差",
+    "work_packages": [
+      "WP01",
+      "WP06",
+      "WP26"
+    ],
+    "verification_ids": [
+      "V06-02",
+      "V26-02",
+      "V26-03"
+    ],
+    "status": "NOT_VERIFIED"
+  },
+  {
+    "id": "F07",
+    "title": "外部adapter能力の誤った組合せ",
+    "work_packages": [
+      "WP01",
+      "WP15",
+      "WP16",
+      "WP26"
+    ],
+    "verification_ids": [
+      "V01-02",
+      "V15-02",
+      "V16-02",
+      "V16-03"
+    ],
+    "status": "NOT_VERIFIED"
+  },
+  {
+    "id": "F08",
+    "title": "構造化evidenceと実行証拠の混同",
+    "work_packages": [
+      "WP04",
+      "WP20",
+      "WP31"
+    ],
+    "verification_ids": [
+      "V04-04",
+      "V20-04",
+      "V20-05"
+    ],
+    "status": "NOT_VERIFIED"
+  },
+  {
+    "id": "F09",
+    "title": "Skill本文互換とnative plugin互換の差",
+    "work_packages": [
+      "WP06",
+      "WP15",
+      "WP16",
+      "WP26"
+    ],
+    "verification_ids": [
+      "V06-02",
+      "V26-02"
+    ],
+    "status": "NOT_VERIFIED"
+  },
+  {
+    "id": "F10",
+    "title": "上流根拠から受入までの連結",
+    "work_packages": [
+      "WP18",
+      "WP19",
+      "WP28",
+      "WP31"
+    ],
+    "verification_ids": [
+      "V18-06",
+      "V19-05",
+      "V31-02"
+    ],
+    "status": "NOT_VERIFIED"
+  },
+  {
+    "id": "F11",
+    "title": "permgate自身/生成元の小変更を必須reviewから漏らさない",
+    "work_packages": [
+      "WP06",
+      "WP21",
+      "WP29"
+    ],
+    "verification_ids": [
+      "V15-04",
+      "V23-03",
+      "V29-01"
+    ],
+    "v4_subcases": [
+      "V15-04-U4-03",
+      "V29-01-U4-44",
+      "V23-03-U4-47"
+    ],
+    "status": "NOT_VERIFIED"
+  },
+  {
+    "id": "F12",
+    "title": "ローカルreview receiptと環境変数bypassを独立承認にしない",
+    "work_packages": [
+      "WP08",
+      "WP20",
+      "WP21",
+      "WP31"
+    ],
+    "verification_ids": [
+      "V20-05",
+      "V22-04",
+      "V31-05"
+    ],
+    "v4_subcases": [
+      "V20-05-U4-30",
+      "V22-04-U4-41",
+      "V31-05-U4-48"
+    ],
+    "status": "NOT_VERIFIED"
+  },
+  {
+    "id": "F13",
+    "title": "agent-fanoutの共有writer/full-autoをADH経路に混入させない",
+    "work_packages": [
+      "WP05",
+      "WP06",
+      "WP10",
+      "WP26"
+    ],
+    "verification_ids": [
+      "V06-05",
+      "V14-05",
+      "V15-04",
+      "V24-05"
+    ],
+    "v4_subcases": [
+      "V15-04-U4-03",
+      "V06-05-U4-08",
+      "V14-05-U4-28",
+      "V24-05-U4-40"
+    ],
+    "status": "NOT_VERIFIED"
+  },
+  {
+    "id": "F14",
+    "title": "権限分類の非有限confidenceと暗黙shadow LLM呼出",
+    "work_packages": [
+      "WP06",
+      "WP11",
+      "WP29"
+    ],
+    "verification_ids": [
+      "V06-01",
+      "V15-04",
+      "V29-01"
+    ],
+    "v4_subcases": [
+      "V15-04-U4-03",
+      "V06-01-U4-04",
+      "V29-01-U4-44"
+    ],
+    "status": "NOT_VERIFIED"
+  },
+  {
+    "id": "F15",
+    "title": "裸.envと別言語/外部helper経由の保護漏れ",
+    "work_packages": [
+      "WP06",
+      "WP13",
+      "WP14",
+      "WP29"
+    ],
+    "verification_ids": [
+      "V14-06",
+      "V15-04",
+      "V26-04",
+      "V29-01"
+    ],
+    "v4_subcases": [
+      "V15-04-U4-03",
+      "V26-04-U4-10",
+      "V14-06-U4-27",
+      "V26-04-U4-42",
+      "V29-01-U4-44"
+    ],
+    "status": "NOT_VERIFIED"
+  },
+  {
+    "id": "F16",
+    "title": "旧profile・express E2E・片側生成物のdrift",
+    "work_packages": [
+      "WP01",
+      "WP05",
+      "WP06",
+      "WP26"
+    ],
+    "verification_ids": [
+      "V06-02",
+      "V26-01",
+      "V26-02"
+    ],
+    "v4_subcases": [
+      "V06-02-U4-01",
+      "V26-01-U4-02",
+      "V26-02-U4-05"
+    ],
+    "status": "NOT_VERIFIED"
+  },
+  {
+    "id": "F17",
+    "title": "Semanticaのecho来歴・全HOME graph・保持境界",
+    "work_packages": [
+      "WP18",
+      "WP25",
+      "WP26",
+      "WP29"
+    ],
+    "verification_ids": [
+      "V18-04",
+      "V25-01",
+      "V25-02",
+      "V26-02"
+    ],
+    "v4_subcases": [
+      "V18-04-U4-11",
+      "V25-01-U4-14",
+      "V25-02-U4-17",
+      "V26-02-U4-21"
+    ],
+    "status": "NOT_VERIFIED"
+  },
+  {
+    "id": "F18",
+    "title": "品質Hookの二重formatter・特殊形式・config-only CI漏れ",
+    "work_packages": [
+      "WP03",
+      "WP14",
+      "WP24",
+      "WP30"
+    ],
+    "verification_ids": [
+      "V06-03",
+      "V06-04",
+      "V14-06",
+      "V30-02"
+    ],
+    "v4_subcases": [
+      "V06-04-U4-23",
+      "V06-03-U4-25",
+      "V14-06-U4-26",
+      "V30-02-U4-31"
+    ],
+    "status": "NOT_VERIFIED"
+  }
+]

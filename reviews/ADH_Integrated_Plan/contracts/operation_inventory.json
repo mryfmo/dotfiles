@@ -1,0 +1,298 @@
+{
+  "document_version": "4.0.0",
+  "purpose": "normative API operation inventory; full executable OpenAPI schemas are to be implemented in WP04",
+  "operations": [
+    {
+      "method": "POST",
+      "path": "/v1/projects",
+      "operation_id": "createProject",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/projects/{project_id}/proposals",
+      "operation_id": "proposeDesign",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/projects/{project_id}/baselines",
+      "operation_id": "publishBaseline",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/tasks",
+      "operation_id": "createTask",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/tasks/{task_id}",
+      "operation_id": "getTask",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/tasks/{task_id}/claim",
+      "operation_id": "claimTask",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/tasks/{task_id}/candidate",
+      "operation_id": "submitCandidate",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/tasks/{task_id}/accept",
+      "operation_id": "acceptCandidate",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/tasks/{task_id}/reject",
+      "operation_id": "rejectCandidate",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/tasks/{task_id}/pause",
+      "operation_id": "pauseTask",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/tasks/{task_id}/resume",
+      "operation_id": "resumeTask",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/tasks/{task_id}/reconcile",
+      "operation_id": "reconcileTask",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/events",
+      "operation_id": "getEvents",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/projects/{project_id}",
+      "operation_id": "getProject",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/projects/{project_id}/run",
+      "operation_id": "startProject",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/projects/{project_id}/pause",
+      "operation_id": "pauseProject",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/projects/{project_id}/resume",
+      "operation_id": "resumeProject",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/projects/{project_id}/acceptance",
+      "operation_id": "getProjectAcceptance",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/tasks/{task_id}/heartbeat",
+      "operation_id": "heartbeatTask",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/runs/{run_id}",
+      "operation_id": "getRun",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/effects",
+      "operation_id": "registerEffect",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/effects/{effect_id}/reconcile",
+      "operation_id": "reconcileEffect",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/artifacts/{digest}",
+      "operation_id": "getArtifact",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/approvals",
+      "operation_id": "registerApproval",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/qualifications",
+      "operation_id": "registerQualification",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/qualifications/{qualification_id}",
+      "operation_id": "getQualification",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/releases",
+      "operation_id": "requestRelease",
+      "status": "SPECIFIED_NOT_IMPLEMENTED"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/projects/{project_id}/document-graph",
+      "operation_id": "getDocumentGraph",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "introduced": "3.1.0"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/projects/{project_id}/changes",
+      "operation_id": "proposeChange",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "introduced": "3.1.0"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/changes/{change_id}/impact",
+      "operation_id": "assessChangeImpact",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "introduced": "3.1.0"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/runs/{run_id}/guard-decisions",
+      "operation_id": "getRunGuardDecisions",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "introduced": "3.1.0"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/projects/{project_id}/knowledge/query",
+      "operation_id": "queryKnowledge",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "authorization": "A1/A2/A3 read grant",
+      "input_contract": "KnowledgeQuery",
+      "output_contract": "KnowledgeResponse",
+      "contract": "IC16"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/projects/{project_id}/knowledge/ingest",
+      "operation_id": "proposeKnowledgeIngestion",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "authorization": "index owner only",
+      "input_contract": "approved manifest",
+      "output_contract": "snapshot/proposal ref",
+      "contract": "IC16"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/projects/{project_id}/knowledge/rebuild",
+      "operation_id": "rebuildKnowledge",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "authorization": "index owner only",
+      "input_contract": "approved manifest",
+      "output_contract": "snapshot ref",
+      "contract": "IC16"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/projects/{project_id}/quality/plan",
+      "operation_id": "planQuality",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "authorization": "task actor; scoped",
+      "input_contract": "QualityPlan request",
+      "output_contract": "QualityPlan",
+      "contract": "IC17"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/projects/{project_id}/quality/run",
+      "operation_id": "runQuality",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "authorization": "Runner/A4 or edit-fix writer grant",
+      "input_contract": "QualityPlan ref",
+      "output_contract": "invocation ref",
+      "contract": "IC17"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/quality/runs/{invocation_id}",
+      "operation_id": "getQualityResult",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "authorization": "same project read grant",
+      "input_contract": "invocation id",
+      "output_contract": "QualityResult",
+      "contract": "IC17"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/projects/{project_id}/learning/candidates",
+      "operation_id": "proposeLearning",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "authorization": "task actor proposal only",
+      "input_contract": "LearningCandidate",
+      "output_contract": "candidate ref",
+      "contract": "IC18"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/release-sets",
+      "operation_id": "registerReleaseSet",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "authorization": "release owner proposal",
+      "input_contract": "ReleaseSet",
+      "output_contract": "release ref",
+      "contract": "IC15"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/release-sets/{release_set_id}/activate",
+      "operation_id": "activateReleaseSet",
+      "status": "SPECIFIED_NOT_IMPLEMENTED",
+      "authorization": "approval + qualification",
+      "input_contract": "approved release ref",
+      "output_contract": "activation record",
+      "contract": "IC15"
+    }
+  ],
+  "note": "No Agent-accessible API can issue ALLOW. Approval still uses the authenticated existing registerApproval operation. Internal guard evaluation is not a generic model tool.",
+  "v4_added_operations": [
+    "queryKnowledge",
+    "proposeKnowledgeIngestion",
+    "rebuildKnowledge",
+    "planQuality",
+    "runQuality",
+    "getQualityResult",
+    "proposeLearning",
+    "registerReleaseSet",
+    "activateReleaseSet"
+  ]
+}

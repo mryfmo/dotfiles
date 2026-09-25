@@ -1,0 +1,3034 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ADH Control API — Proposed production contract",
+    "version": "1.0.0",
+    "description": "Not implemented as an HTTP server in this package. Trusted UDS/mTLS deployment only. Native vendor transports remain separate."
+  },
+  "paths": {
+    "/v1/projects": {
+      "post": {
+        "operationId": "createProject",
+        "summary": "createProject",
+        "x-required-role": "operator",
+        "responses": {
+          "200": {
+            "description": "Operation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid syntax",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version, fence or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid evidence/contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Paused or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Budget or rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Backend unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Mandate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/proposals": {
+      "post": {
+        "operationId": "proposeDesign",
+        "summary": "proposeDesign",
+        "x-required-role": "planner",
+        "responses": {
+          "200": {
+            "description": "Operation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid syntax",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version, fence or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid evidence/contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Paused or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Budget or rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Backend unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Proposal"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/{project_id}/baselines": {
+      "post": {
+        "operationId": "publishBaseline",
+        "summary": "publishBaseline",
+        "x-required-role": "supervisor",
+        "responses": {
+          "200": {
+            "description": "Operation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid syntax",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version, fence or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid evidence/contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Paused or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Budget or rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Backend unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BaselineRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tasks": {
+      "post": {
+        "operationId": "createTask",
+        "summary": "createTask",
+        "x-required-role": "supervisor",
+        "responses": {
+          "200": {
+            "description": "Operation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid syntax",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version, fence or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid evidence/contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Paused or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Budget or rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Backend unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskContract"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tasks/{task_id}": {
+      "get": {
+        "operationId": "getTask",
+        "summary": "getTask",
+        "x-required-role": "observer",
+        "responses": {
+          "200": {
+            "description": "Operation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid syntax",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version, fence or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid evidence/contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Paused or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Budget or rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Backend unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/tasks/{task_id}/claim": {
+      "post": {
+        "operationId": "claimTask",
+        "summary": "claimTask",
+        "x-required-role": "runner",
+        "responses": {
+          "200": {
+            "description": "Operation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid syntax",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version, fence or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid evidence/contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Paused or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Budget or rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Backend unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tasks/{task_id}/candidate": {
+      "post": {
+        "operationId": "submitCandidate",
+        "summary": "submitCandidate",
+        "x-required-role": "runner",
+        "responses": {
+          "200": {
+            "description": "Operation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid syntax",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version, fence or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid evidence/contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Paused or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Budget or rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Backend unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CandidateRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tasks/{task_id}/accept": {
+      "post": {
+        "operationId": "acceptCandidate",
+        "summary": "acceptCandidate",
+        "x-required-role": "supervisor",
+        "responses": {
+          "200": {
+            "description": "Operation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid syntax",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version, fence or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid evidence/contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Paused or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Budget or rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Backend unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptanceRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tasks/{task_id}/reject": {
+      "post": {
+        "operationId": "rejectCandidate",
+        "summary": "rejectCandidate",
+        "x-required-role": "verifier",
+        "responses": {
+          "200": {
+            "description": "Operation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid syntax",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version, fence or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid evidence/contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Paused or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Budget or rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Backend unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerificationReceipt"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tasks/{task_id}/pause": {
+      "post": {
+        "operationId": "pauseTask",
+        "summary": "pauseTask",
+        "x-required-role": "operator",
+        "responses": {
+          "200": {
+            "description": "Operation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid syntax",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version, fence or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid evidence/contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Paused or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Budget or rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Backend unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthorizedAction"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tasks/{task_id}/resume": {
+      "post": {
+        "operationId": "resumeTask",
+        "summary": "resumeTask",
+        "x-required-role": "operator",
+        "responses": {
+          "200": {
+            "description": "Operation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid syntax",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version, fence or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid evidence/contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Paused or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Budget or rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Backend unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthorizedAction"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tasks/{task_id}/reconcile": {
+      "post": {
+        "operationId": "reconcileTask",
+        "summary": "reconcileTask",
+        "x-required-role": "runner",
+        "responses": {
+          "200": {
+            "description": "Operation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid syntax",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version, fence or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid evidence/contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Paused or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Budget or rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Backend unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReconcileRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/events": {
+      "get": {
+        "operationId": "getEvents",
+        "summary": "getEvents",
+        "x-required-role": "observer",
+        "responses": {
+          "200": {
+            "description": "Operation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid syntax",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version, fence or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid evidence/contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Paused or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Budget or rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Backend unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "after",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 100
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "TaskContract": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+          },
+          "project_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+          },
+          "phase": {
+            "enum": [
+              "research",
+              "analysis",
+              "options",
+              "spike",
+              "spec",
+              "architecture",
+              "plan",
+              "implementation",
+              "integration"
+            ]
+          },
+          "spec_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "policy_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "environment_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "test_suite_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "required_requirements": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "required_checks": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+            },
+            "uniqueItems": true
+          },
+          "max_attempts": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "task_id",
+          "project_id",
+          "phase",
+          "spec_hash",
+          "policy_hash",
+          "environment_hash",
+          "test_suite_hash",
+          "required_requirements",
+          "required_checks",
+          "dependencies",
+          "max_attempts"
+        ],
+        "additionalProperties": false
+      },
+      "Fingerprint": {
+        "type": "object",
+        "properties": {
+          "source_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "spec_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "policy_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "environment_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "test_suite_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "contract_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "source_hash",
+          "spec_hash",
+          "policy_hash",
+          "environment_hash",
+          "test_suite_hash",
+          "contract_hash"
+        ],
+        "additionalProperties": false
+      },
+      "VerificationReceipt": {
+        "type": "object",
+        "properties": {
+          "issuer": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+          },
+          "payload": {
+            "type": "object",
+            "properties": {
+              "task_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+              },
+              "fence": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "challenge": {
+                "type": "string",
+                "minLength": 1
+              },
+              "issued_at": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "fingerprint": {
+                "type": "object",
+                "properties": {
+                  "source_hash": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "spec_hash": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "policy_hash": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "environment_hash": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "test_suite_hash": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "contract_hash": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "required": [
+                  "source_hash",
+                  "spec_hash",
+                  "policy_hash",
+                  "environment_hash",
+                  "test_suite_hash",
+                  "contract_hash"
+                ],
+                "additionalProperties": false
+              },
+              "outcome": {
+                "enum": [
+                  "PASS",
+                  "FAIL"
+                ]
+              },
+              "checks": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "status": {
+                      "enum": [
+                        "PASS",
+                        "FAIL",
+                        "SKIP",
+                        "NOT_RUN"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "status"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "coverage": {
+                "type": "object",
+                "minProperties": 1,
+                "additionalProperties": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "minItems": 1,
+                  "uniqueItems": true
+                }
+              },
+              "schema_version": {
+                "const": 1
+              },
+              "execution_identity": {
+                "type": "string",
+                "minLength": 1
+              },
+              "baseline_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "observations": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "check_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "definition_hash": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "argv": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "minItems": 1
+                    },
+                    "exit_code": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "status": {
+                      "enum": [
+                        "PASS",
+                        "FAIL",
+                        "SKIP",
+                        "NOT_RUN"
+                      ]
+                    },
+                    "collected": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "executed": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "failed": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "skipped": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "stdout_hash": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "stderr_hash": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "result_artifact_hash": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "started_at": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "finished_at": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "required": [
+                    "check_id",
+                    "definition_hash",
+                    "argv",
+                    "exit_code",
+                    "status",
+                    "collected",
+                    "executed",
+                    "failed",
+                    "skipped",
+                    "stdout_hash",
+                    "stderr_hash",
+                    "result_artifact_hash",
+                    "started_at",
+                    "finished_at"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "review_artifact_hash": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "task_id",
+              "fence",
+              "challenge",
+              "issued_at",
+              "fingerprint",
+              "outcome",
+              "checks",
+              "coverage",
+              "schema_version",
+              "execution_identity",
+              "baseline_id",
+              "observations",
+              "review_artifact_hash"
+            ],
+            "additionalProperties": false
+          },
+          "signature": {
+            "type": "string",
+            "minLength": 1,
+            "contentEncoding": "base64"
+          }
+        },
+        "required": [
+          "issuer",
+          "payload",
+          "signature"
+        ],
+        "additionalProperties": false
+      },
+      "Mandate": {
+        "type": "object",
+        "properties": {
+          "schema_version": {
+            "const": 1
+          },
+          "project_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+          },
+          "objective": {
+            "type": "string",
+            "minLength": 1
+          },
+          "requirements_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "reserved_decisions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "delegated_decisions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "forbidden_actions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "allowed_effects": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "max_wall_seconds": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "max_attempts_per_task": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "max_parallel_workers": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "max_model_turns": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "max_tokens": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "expires_at": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "operator_approval_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "schema_version",
+          "project_id",
+          "objective",
+          "requirements_hash",
+          "reserved_decisions",
+          "delegated_decisions",
+          "forbidden_actions",
+          "allowed_effects",
+          "max_wall_seconds",
+          "max_attempts_per_task",
+          "max_parallel_workers",
+          "max_model_turns",
+          "max_tokens",
+          "expires_at",
+          "operator_approval_hash"
+        ],
+        "additionalProperties": false
+      },
+      "Proposal": {
+        "type": "object",
+        "properties": {
+          "proposal_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+          },
+          "project_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+          },
+          "baseline_parent_hash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "kind": {
+            "enum": [
+              "requirements",
+              "research",
+              "analysis",
+              "options",
+              "experiment",
+              "architecture",
+              "specification",
+              "implementation-plan"
+            ]
+          },
+          "artifact_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "source_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "claim_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "requirement_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "experiment_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "unverified_claim_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "unresolved_decision_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "proposal_id",
+          "project_id",
+          "baseline_parent_hash",
+          "kind",
+          "artifact_hash",
+          "source_ids",
+          "claim_ids",
+          "requirement_ids",
+          "experiment_ids",
+          "unverified_claim_ids",
+          "unresolved_decision_ids"
+        ],
+        "additionalProperties": false
+      },
+      "Problem": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "trace_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "details_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "trace_id",
+          "details_ref"
+        ],
+        "additionalProperties": false
+      },
+      "TaskView": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+          },
+          "state": {
+            "enum": [
+              "READY",
+              "RUNNING",
+              "VERIFYING",
+              "ACCEPTED",
+              "RECONCILING",
+              "BLOCKED_EFFECT",
+              "PAUSING",
+              "PAUSED_USER",
+              "PAUSED_BUDGET",
+              "WAITING_AUTH"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "attempt": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "fence": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "contract_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "source_hash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "next_action": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "task_id",
+          "state",
+          "version",
+          "attempt",
+          "fence",
+          "contract_hash",
+          "source_hash",
+          "next_action"
+        ],
+        "additionalProperties": false
+      },
+      "ClaimRequest": {
+        "type": "object",
+        "properties": {
+          "owner_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+          },
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "owner_id",
+          "expected_version"
+        ],
+        "additionalProperties": false
+      },
+      "CandidateRequest": {
+        "type": "object",
+        "properties": {
+          "owner_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+          },
+          "fence": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "snapshot_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "runner_seal_receipt_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "owner_id",
+          "fence",
+          "snapshot_hash",
+          "runner_seal_receipt_hash"
+        ],
+        "additionalProperties": false
+      },
+      "AcceptanceRequest": {
+        "type": "object",
+        "properties": {
+          "verifier_receipt": {
+            "type": "object",
+            "properties": {
+              "issuer": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "task_id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+                  },
+                  "fence": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "challenge": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "issued_at": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "fingerprint": {
+                    "type": "object",
+                    "properties": {
+                      "source_hash": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "spec_hash": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "policy_hash": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "environment_hash": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "test_suite_hash": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "contract_hash": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      }
+                    },
+                    "required": [
+                      "source_hash",
+                      "spec_hash",
+                      "policy_hash",
+                      "environment_hash",
+                      "test_suite_hash",
+                      "contract_hash"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "outcome": {
+                    "enum": [
+                      "PASS",
+                      "FAIL"
+                    ]
+                  },
+                  "checks": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "status": {
+                          "enum": [
+                            "PASS",
+                            "FAIL",
+                            "SKIP",
+                            "NOT_RUN"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "status"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "coverage": {
+                    "type": "object",
+                    "minProperties": 1,
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "minItems": 1,
+                      "uniqueItems": true
+                    }
+                  },
+                  "schema_version": {
+                    "const": 1
+                  },
+                  "execution_identity": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "baseline_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "observations": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "check_id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "definition_hash": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "argv": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "minItems": 1
+                        },
+                        "exit_code": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "enum": [
+                            "PASS",
+                            "FAIL",
+                            "SKIP",
+                            "NOT_RUN"
+                          ]
+                        },
+                        "collected": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "executed": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "failed": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "skipped": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "stdout_hash": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "stderr_hash": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "result_artifact_hash": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "started_at": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "finished_at": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      },
+                      "required": [
+                        "check_id",
+                        "definition_hash",
+                        "argv",
+                        "exit_code",
+                        "status",
+                        "collected",
+                        "executed",
+                        "failed",
+                        "skipped",
+                        "stdout_hash",
+                        "stderr_hash",
+                        "result_artifact_hash",
+                        "started_at",
+                        "finished_at"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "review_artifact_hash": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "required": [
+                  "task_id",
+                  "fence",
+                  "challenge",
+                  "issued_at",
+                  "fingerprint",
+                  "outcome",
+                  "checks",
+                  "coverage",
+                  "schema_version",
+                  "execution_identity",
+                  "baseline_id",
+                  "observations",
+                  "review_artifact_hash"
+                ],
+                "additionalProperties": false
+              },
+              "signature": {
+                "type": "string",
+                "minLength": 1,
+                "contentEncoding": "base64"
+              }
+            },
+            "required": [
+              "issuer",
+              "payload",
+              "signature"
+            ],
+            "additionalProperties": false
+          },
+          "reviewer_receipt": {
+            "type": "object",
+            "properties": {
+              "issuer": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+              },
+              "payload": {
+                "type": "object",
+                "properties": {
+                  "task_id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+                  },
+                  "fence": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "challenge": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "issued_at": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "fingerprint": {
+                    "type": "object",
+                    "properties": {
+                      "source_hash": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "spec_hash": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "policy_hash": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "environment_hash": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "test_suite_hash": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "contract_hash": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      }
+                    },
+                    "required": [
+                      "source_hash",
+                      "spec_hash",
+                      "policy_hash",
+                      "environment_hash",
+                      "test_suite_hash",
+                      "contract_hash"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "outcome": {
+                    "enum": [
+                      "PASS",
+                      "FAIL"
+                    ]
+                  },
+                  "checks": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "status": {
+                          "enum": [
+                            "PASS",
+                            "FAIL",
+                            "SKIP",
+                            "NOT_RUN"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "status"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "coverage": {
+                    "type": "object",
+                    "minProperties": 1,
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "minItems": 1,
+                      "uniqueItems": true
+                    }
+                  },
+                  "schema_version": {
+                    "const": 1
+                  },
+                  "execution_identity": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "baseline_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "observations": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "check_id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "definition_hash": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "argv": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "minItems": 1
+                        },
+                        "exit_code": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "enum": [
+                            "PASS",
+                            "FAIL",
+                            "SKIP",
+                            "NOT_RUN"
+                          ]
+                        },
+                        "collected": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "executed": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "failed": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "skipped": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "stdout_hash": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "stderr_hash": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "result_artifact_hash": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "started_at": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "finished_at": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      },
+                      "required": [
+                        "check_id",
+                        "definition_hash",
+                        "argv",
+                        "exit_code",
+                        "status",
+                        "collected",
+                        "executed",
+                        "failed",
+                        "skipped",
+                        "stdout_hash",
+                        "stderr_hash",
+                        "result_artifact_hash",
+                        "started_at",
+                        "finished_at"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "review_artifact_hash": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "required": [
+                  "task_id",
+                  "fence",
+                  "challenge",
+                  "issued_at",
+                  "fingerprint",
+                  "outcome",
+                  "checks",
+                  "coverage",
+                  "schema_version",
+                  "execution_identity",
+                  "baseline_id",
+                  "observations",
+                  "review_artifact_hash"
+                ],
+                "additionalProperties": false
+              },
+              "signature": {
+                "type": "string",
+                "minLength": 1,
+                "contentEncoding": "base64"
+              }
+            },
+            "required": [
+              "issuer",
+              "payload",
+              "signature"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "verifier_receipt",
+          "reviewer_receipt"
+        ],
+        "additionalProperties": false
+      },
+      "BaselineRequest": {
+        "type": "object",
+        "properties": {
+          "proposal_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+          },
+          "expected_project_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "mandate_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "design_review_receipt_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "approval_kind": {
+            "enum": [
+              "human",
+              "delegated"
+            ]
+          },
+          "approval_receipt_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "proposal_id",
+          "expected_project_version",
+          "mandate_hash",
+          "design_review_receipt_hash",
+          "approval_kind",
+          "approval_receipt_hash"
+        ],
+        "additionalProperties": false
+      },
+      "AuthorizedAction": {
+        "type": "object",
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "approval_receipt_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "expected_version",
+          "approval_receipt_hash"
+        ],
+        "additionalProperties": false
+      },
+      "ReconcileRequest": {
+        "type": "object",
+        "properties": {
+          "fence": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "runner_receipt_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "effects_ledger_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "fence",
+          "runner_receipt_hash",
+          "effects_ledger_hash"
+        ],
+        "additionalProperties": false
+      },
+      "ObjectView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "minLength": 1
+          },
+          "artifact_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "status",
+          "artifact_hash"
+        ],
+        "additionalProperties": false
+      },
+      "Event": {
+        "type": "object",
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "project_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+          },
+          "task_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "minLength": 1
+          },
+          "payload_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "sequence",
+          "project_id",
+          "task_id",
+          "kind",
+          "payload_hash"
+        ],
+        "additionalProperties": false
+      },
+      "EventPage": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Event"
+            }
+          },
+          "last_sequence": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "events",
+          "last_sequence"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "ControlIdentity": {
+        "type": "mutualTLS",
+        "description": "VM authenticated channel; local UDS uses trusted peer identity in the service layer."
+      }
+    }
+  },
+  "security": [
+    {
+      "ControlIdentity": []
+    }
+  ]
+}

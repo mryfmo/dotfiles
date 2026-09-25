@@ -1,0 +1,171 @@
+{
+  "document_version": "4.0.0",
+  "route_count": 10,
+  "routes": [
+    {
+      "id": "adh-requirements",
+      "description": "未確定の要求・制約・矛盾を整理する。承認済みタスクの実装には使わない。",
+      "allowed_roles": [
+        "A1"
+      ],
+      "entry": "skill-pack/skills/adh-requirements/SKILL.md",
+      "reference": "skill-pack/skills/adh-requirements/references/workflow.md",
+      "topic": "specification",
+      "model_and_effort": "inherit_qualified_role_only",
+      "status": "AUTHORED_NOT_NATIVE_TESTED",
+      "authorization_source": "authenticated current grant and enforced policy; TaskPacket contains references only",
+      "native_name_resolution": "resolved in isolated profile; do not install next to duplicate entry",
+      "document_contract": "IC13",
+      "guard_contract": "IC14"
+    },
+    {
+      "id": "adh-design-choice",
+      "description": "設計案の比較・技術実験・ADRを策定する。決定済み方式の局所実装には使わない。",
+      "allowed_roles": [
+        "A1"
+      ],
+      "entry": "skill-pack/skills/adh-design-choice/SKILL.md",
+      "reference": "skill-pack/skills/adh-design-choice/references/workflow.md",
+      "topic": "architecture",
+      "model_and_effort": "inherit_qualified_role_only",
+      "status": "AUTHORED_NOT_NATIVE_TESTED",
+      "authorization_source": "authenticated current grant and enforced policy; TaskPacket contains references only",
+      "native_name_resolution": "resolved in isolated profile; do not install next to duplicate entry",
+      "document_contract": "IC13",
+      "guard_contract": "IC14"
+    },
+    {
+      "id": "adh-task-implementation",
+      "description": "割当済みタスクの機能を実装・検証する。要件策定や独立レビューには使わない。",
+      "allowed_roles": [
+        "A2"
+      ],
+      "entry": "skill-pack/skills/adh-task-implementation/SKILL.md",
+      "reference": "skill-pack/skills/adh-task-implementation/references/workflow.md",
+      "topic": "implementation",
+      "model_and_effort": "inherit_qualified_role_only",
+      "status": "AUTHORED_NOT_NATIVE_TESTED",
+      "authorization_source": "authenticated current grant and enforced policy; TaskPacket contains references only",
+      "native_name_resolution": "resolved in isolated profile; do not install next to duplicate entry",
+      "document_contract": "IC13",
+      "guard_contract": "IC14"
+    },
+    {
+      "id": "adh-schema-migration",
+      "description": "DB migrationの追加・変更・適用試験を行う。SQLの説明や通常の検索には使わない。",
+      "allowed_roles": [
+        "A2"
+      ],
+      "entry": "skill-pack/skills/adh-schema-migration/SKILL.md",
+      "reference": "skill-pack/skills/adh-schema-migration/references/workflow.md",
+      "topic": "migration",
+      "model_and_effort": "inherit_qualified_role_only",
+      "status": "AUTHORED_NOT_NATIVE_TESTED",
+      "authorization_source": "authenticated current grant and enforced policy; TaskPacket contains references only",
+      "native_name_resolution": "resolved in isolated profile; do not install next to duplicate entry",
+      "document_contract": "IC13",
+      "guard_contract": "IC14"
+    },
+    {
+      "id": "adh-failure-diagnosis",
+      "description": "観測済みの不具合・検査失敗の原因を調べ修正する。失敗のない一般レビューには使わない。",
+      "allowed_roles": [
+        "A2"
+      ],
+      "entry": "skill-pack/skills/adh-failure-diagnosis/SKILL.md",
+      "reference": "skill-pack/skills/adh-failure-diagnosis/references/workflow.md",
+      "topic": "failure",
+      "model_and_effort": "inherit_qualified_role_only",
+      "status": "AUTHORED_NOT_NATIVE_TESTED",
+      "authorization_source": "authenticated current grant and enforced policy; TaskPacket contains references only",
+      "native_name_resolution": "resolved in isolated profile; do not install next to duplicate entry",
+      "document_contract": "IC13",
+      "guard_contract": "IC14"
+    },
+    {
+      "id": "adh-environment-repair",
+      "description": "許可された開発・検証環境の不足を構築・復旧する。権限外の本番運用には使わない。",
+      "allowed_roles": [
+        "A2"
+      ],
+      "entry": "skill-pack/skills/adh-environment-repair/SKILL.md",
+      "reference": "skill-pack/skills/adh-environment-repair/references/workflow.md",
+      "topic": "environment",
+      "model_and_effort": "inherit_qualified_role_only",
+      "status": "AUTHORED_NOT_NATIVE_TESTED",
+      "authorization_source": "authenticated current grant and enforced policy; TaskPacket contains references only",
+      "native_name_resolution": "resolved in isolated profile; do not install next to duplicate entry",
+      "document_contract": "IC13",
+      "guard_contract": "IC14"
+    },
+    {
+      "id": "adh-independent-review",
+      "description": "別担当の凍結candidateを仕様・品質の両面でレビューする。実装者の自己承認には使わない。",
+      "allowed_roles": [
+        "A3"
+      ],
+      "entry": "skill-pack/skills/adh-independent-review/SKILL.md",
+      "reference": "skill-pack/skills/adh-independent-review/references/workflow.md",
+      "topic": "review",
+      "model_and_effort": "inherit_qualified_role_only",
+      "status": "AUTHORED_NOT_NATIVE_TESTED",
+      "authorization_source": "authenticated current grant and enforced policy; TaskPacket contains references only",
+      "native_name_resolution": "resolved in isolated profile; do not install next to duplicate entry",
+      "document_contract": "IC13",
+      "guard_contract": "IC14"
+    },
+    {
+      "id": "adh-integration-review",
+      "description": "受入候補をローカル統合し統合検証を調整する。remote公開は含めない。",
+      "allowed_roles": [
+        "A1"
+      ],
+      "entry": "skill-pack/skills/adh-integration-review/SKILL.md",
+      "reference": "skill-pack/skills/adh-integration-review/references/workflow.md",
+      "topic": "integration",
+      "model_and_effort": "inherit_qualified_role_only",
+      "status": "AUTHORED_NOT_NATIVE_TESTED",
+      "authorization_source": "authenticated current grant and enforced policy; TaskPacket contains references only",
+      "native_name_resolution": "resolved in isolated profile; do not install next to duplicate entry",
+      "document_contract": "IC13",
+      "guard_contract": "IC14"
+    },
+    {
+      "id": "adh-knowledge-context",
+      "description": "要求・設計・検証の出典や変更影響を調べる。単純な整形や用語説明だけでは使わない。",
+      "allowed_roles": [
+        "A1",
+        "A2",
+        "A3"
+      ],
+      "entry": "skill-pack/skills/adh-knowledge-context/SKILL.md",
+      "reference": "skill-pack/skills/adh-knowledge-context/references/workflow.md",
+      "topic": "context",
+      "model_and_effort": "inherit_qualified_role_only",
+      "status": "AUTHORED_NOT_NATIVE_TESTED",
+      "authorization_source": "current authenticated grant and enforced policy, never TaskPacket bool",
+      "native_name_resolution": "unique selected entry, no duplicate upstream alias",
+      "document_contract": "IC13",
+      "guard_contract": "IC14",
+      "stack_contract": "IC16"
+    },
+    {
+      "id": "adh-quality-check",
+      "description": "担当変更のlint・format・型検査を行う。製品の合格認定や未知repoのHook実行には使わない。",
+      "allowed_roles": [
+        "A2"
+      ],
+      "entry": "skill-pack/skills/adh-quality-check/SKILL.md",
+      "reference": "skill-pack/skills/adh-quality-check/references/workflow.md",
+      "topic": "quality",
+      "model_and_effort": "inherit_qualified_role_only",
+      "status": "AUTHORED_NOT_NATIVE_TESTED",
+      "authorization_source": "current authenticated grant and enforced policy, never TaskPacket bool",
+      "native_name_resolution": "unique selected entry, no duplicate upstream alias",
+      "document_contract": "IC13",
+      "guard_contract": "IC14",
+      "stack_contract": "IC17"
+    }
+  ],
+  "placement": "candidate instruction assets, not already installed plugins"
+}

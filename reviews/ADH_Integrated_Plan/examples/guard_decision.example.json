@@ -1,0 +1,31 @@
+{
+  "schema_version": "4.0.0",
+  "decision_id": "example-hold",
+  "intent_digest": "96a922f32e413bd57201d8a3aeb87ebbba93ce511237cc23b48645d90d993958",
+  "actor_ref": "example://unqualified-actor",
+  "task_id": "example-task",
+  "run_id": "example-run",
+  "attempt": 1,
+  "fence": 1,
+  "target_ref": "example://no-workspace",
+  "baseline_digest": "b2355f19f7423fda45024a5dcd74b20164b6f4673c3511925071332552a9bdbe",
+  "normative_closure_digest": "931a31bbe201f8e21eb4a833f1ef49c5bfe2c5fe646161ae29cdbd2c0d79660b",
+  "policy_digest": "b2355f19f7423fda45024a5dcd74b20164b6f4673c3511925071332552a9bdbe",
+  "qualification_ref": "example://NOT_RUN",
+  "decision": "HOLD",
+  "checks": [
+    {
+      "guard_id": "GR03",
+      "applicability": "APPLICABLE",
+      "result": "HOLD",
+      "reason_code": "NO_VALID_GRANT",
+      "enforcement_point": "Supervisor admission",
+      "evidence_ref": "example://NO_RUNTIME_EVIDENCE"
+    }
+  ],
+  "issued_at_epoch_ms": 0,
+  "expires_at_epoch_ms": 1,
+  "recovery_ref": "spec/10_CHANGE_AND_REGATE.md",
+  "example_only": true,
+  "authority_verified": false
+}

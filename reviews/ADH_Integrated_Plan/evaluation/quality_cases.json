@@ -1,0 +1,136 @@
+{
+  "document_version": "4.0.0",
+  "cases": [
+    {
+      "id": "QCASE-01",
+      "fixture_class": "JS/TS違反と型境界",
+      "oracle": "必須rule/型違反を維持、余剰診断を分類",
+      "conditions": [
+        "Q0_QUALIFIED_EXISTING",
+        "Q1_PREK_OXC_QUALIFIED_PROFILE"
+      ],
+      "cache_modes": [
+        "cold",
+        "warm"
+      ],
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "qualification": "different rule coverage is not an efficiency comparison; preserve residual tools until parity proven"
+    },
+    {
+      "id": "QCASE-02",
+      "fixture_class": "MD/Mermaid/Gherkin/EARS",
+      "oracle": "構造/式/fence/日本語意味と冪等性を保持",
+      "conditions": [
+        "Q0_QUALIFIED_EXISTING",
+        "Q1_PREK_OXC_QUALIFIED_PROFILE"
+      ],
+      "cache_modes": [
+        "cold",
+        "warm"
+      ],
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "qualification": "different rule coverage is not an efficiency comparison; preserve residual tools until parity proven"
+    },
+    {
+      "id": "QCASE-03",
+      "fixture_class": "chezmoi/modifier/shebang",
+      "oracle": "実言語を検査、templateはrender別検証",
+      "conditions": [
+        "Q0_QUALIFIED_EXISTING",
+        "Q1_PREK_OXC_QUALIFIED_PROFILE"
+      ],
+      "cache_modes": [
+        "cold",
+        "warm"
+      ],
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "qualification": "different rule coverage is not an efficiency comparison; preserve residual tools until parity proven"
+    },
+    {
+      "id": "QCASE-04",
+      "fixture_class": "部分stage",
+      "oracle": "indexだけ検査、元working/index不変",
+      "conditions": [
+        "Q0_QUALIFIED_EXISTING",
+        "Q1_PREK_OXC_QUALIFIED_PROFILE"
+      ],
+      "cache_modes": [
+        "cold",
+        "warm"
+      ],
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "qualification": "different rule coverage is not an efficiency comparison; preserve residual tools until parity proven"
+    },
+    {
+      "id": "QCASE-05",
+      "fixture_class": "特殊名と大量argv",
+      "oracle": "空白/日本語/改行/先頭ハイフン/大量対象に欠落なし",
+      "conditions": [
+        "Q0_QUALIFIED_EXISTING",
+        "Q1_PREK_OXC_QUALIFIED_PROFILE"
+      ],
+      "cache_modes": [
+        "cold",
+        "warm"
+      ],
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "qualification": "different rule coverage is not an efficiency comparison; preserve residual tools until parity proven"
+    },
+    {
+      "id": "QCASE-06",
+      "fixture_class": "設定のみ変更",
+      "oracle": "quality必須jobが実行され、自己緩和を拒否",
+      "conditions": [
+        "Q0_QUALIFIED_EXISTING",
+        "Q1_PREK_OXC_QUALIFIED_PROFILE"
+      ],
+      "cache_modes": [
+        "cold",
+        "warm"
+      ],
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "qualification": "different rule coverage is not an efficiency comparison; preserve residual tools until parity proven"
+    },
+    {
+      "id": "QCASE-07",
+      "fixture_class": "2worktree並列",
+      "oracle": "tmp/log/cache/port/indexの混入なし",
+      "conditions": [
+        "Q0_QUALIFIED_EXISTING",
+        "Q1_PREK_OXC_QUALIFIED_PROFILE"
+      ],
+      "cache_modes": [
+        "cold",
+        "warm"
+      ],
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "qualification": "different rule coverage is not an efficiency comparison; preserve residual tools until parity proven"
+    },
+    {
+      "id": "QCASE-08",
+      "fixture_class": "offline/timeout",
+      "oracle": "依存自動取得0、timeoutでexit0でも不合格",
+      "conditions": [
+        "Q0_QUALIFIED_EXISTING",
+        "Q1_PREK_OXC_QUALIFIED_PROFILE"
+      ],
+      "cache_modes": [
+        "cold",
+        "warm"
+      ],
+      "repetitions": 3,
+      "status": "NOT_RUN",
+      "qualification": "different rule coverage is not an efficiency comparison; preserve residual tools until parity proven"
+    }
+  ],
+  "runs": 96,
+  "comparison_unit": "case x condition x cold/warm x repeat",
+  "gold_is_independent": true
+}

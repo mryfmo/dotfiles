@@ -1,0 +1,23 @@
+{
+  "output_version": "4.0.0",
+  "inputs": [
+    {
+      "name": "ADH_Model_Optimized_Implementation_Plan_v3_1_20260913.zip",
+      "sha256": "458a25cd65ee3d30f55efbfc179bbdc868ee6623ccfc848b00f112c747c123ed"
+    },
+    {
+      "name": "Dotfiles_Semantica_Prek_Oxc_Integration_Plan_20260913.zip",
+      "sha256": "d13b94dc1ec941920af69ecb9c7b3588d91b5eabf6a2a006e0bf7802c9115e7a"
+    },
+    {
+      "name": "Dotfiles_Semantica_Prek_Oxc_Integration_20260913.zip",
+      "sha256": "61864ebd20739a4b1b92d4e4577814946a3370dedfb0c8e9378da03db2b8afd0"
+    }
+  ],
+  "repository_references": {
+    "dotfiles": "fdfa5f042e2e00a27a8320e5f37f749c422e8d91",
+    "semantica": "7057387775ecdf74c14e38d0067fd8e1267eaaf8",
+    "deepseek": "c291e7961a515f6d7af9304e7fd1d257929aef26"
+  },
+  "change_authorization": "user requested V4 integrated specification and workplan; no remote write or execution authorization implied"
+}

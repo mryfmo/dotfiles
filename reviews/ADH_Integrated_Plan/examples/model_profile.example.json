@@ -1,0 +1,24 @@
+{
+  "profile_id": "astra-worker",
+  "role": "A2",
+  "requested_model": "gpt-6-astra",
+  "requested_effort": "xhigh",
+  "prompt_files": [
+    "prompts/COMMON_CONTRACT.md",
+    "prompts/CODEX_WORKER.md"
+  ],
+  "default_skill_routes": [
+    "adh-task-implementation",
+    "adh-schema-migration",
+    "adh-failure-diagnosis",
+    "adh-environment-repair"
+  ],
+  "inherit_native_system_prompt": true,
+  "allow_model_fallback": false,
+  "allow_effort_override": false,
+  "allow_external_history_rewrite": false,
+  "common_and_role_loaded_once_per_context_epoch": true,
+  "task_context_contract": "contracts/model-execution.schema.json#/$defs/TaskPacket",
+  "qualification_status": "NOT_RUN",
+  "native_configuration": false
+}

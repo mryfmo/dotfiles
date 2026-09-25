@@ -1,0 +1,42 @@
+{
+  "integration_date": "2026-09-13",
+  "inputs": [
+    {
+      "name": "ADH_Implementation_Workplan_20260912.zip",
+      "sha256": "dbc295dd2ca275bc9433cff323217e9ba30bbd70e0e3478cb300573ca3102ea4",
+      "bytes": 326571,
+      "role": "superseded planning package",
+      "execution_authority": false
+    },
+    {
+      "name": "EXECUTION_PLAN_JA.md",
+      "sha256": "019177fd480a707d238d6ecde250f599c00c8dd92b106c204a11a02f7535560a",
+      "bytes": 281494,
+      "role": "superseded plan",
+      "execution_authority": false
+    },
+    {
+      "name": "DSH_Adoption_Addendum_20260913.md",
+      "sha256": "2828c99886c6c61f5ce4b09d7f3878f1369100272c726f4dfd615562b46d1d2d",
+      "bytes": 37929,
+      "role": "superseded addendum; semantics integrated",
+      "execution_authority": false
+    },
+    {
+      "name": "DESIGN_JA.md",
+      "sha256": "d2b3058b9f0abb4963a059f048b8d62e080dfdcaf296249e51e5f45ea296fd17",
+      "bytes": 46251,
+      "role": "superseded baseline design",
+      "execution_authority": false
+    },
+    {
+      "name": "ADH_Unified_Implementation_Plan_v2_20260913.zip",
+      "sha256": "c2501b6a4f4f6840ef751ac14de6cfdefd582bd0e4c7435b8a40e474762205b9",
+      "bytes": 443444,
+      "role": "superseded integrated v2 plan; unchanged requirements and baseline tests preserved",
+      "execution_authority": false
+    }
+  ],
+  "source_scope": "Current-conversation v2 archive and official web documentation listed in model_optimization_sources.json. No actual native authentication, product deployment, or model evaluation performed.",
+  "excluded_history": "62 reference tests are not product execution evidence"
+}

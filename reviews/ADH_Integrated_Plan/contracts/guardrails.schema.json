@@ -1,0 +1,371 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:adh:guardrails:4.0.0",
+  "title": "ADH guard contracts — JSON validity is not authorization",
+  "description": "Runtime enforcement, cross-field predicates, current grant validation and signature verification must be implemented and tested.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/OperationIntent"
+    },
+    {
+      "$ref": "#/$defs/GuardDecision"
+    },
+    {
+      "$ref": "#/$defs/GuardQualification"
+    }
+  ],
+  "$defs": {
+    "OperationIntent": {
+      "type": "object",
+      "properties": {
+        "intent_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "actor_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "project_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "task_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "fence": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "operation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "baseline_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "normative_closure_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "policy_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "qualification_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "grant_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expires_at_epoch_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "example_only": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "intent_id",
+        "actor_ref",
+        "project_id",
+        "task_id",
+        "run_id",
+        "attempt",
+        "fence",
+        "operation",
+        "target_ref",
+        "payload_digest",
+        "baseline_digest",
+        "normative_closure_digest",
+        "policy_digest",
+        "qualification_ref",
+        "grant_ref",
+        "expires_at_epoch_ms",
+        "example_only"
+      ],
+      "additionalProperties": false
+    },
+    "GuardCheck": {
+      "type": "object",
+      "properties": {
+        "guard_id": {
+          "type": "string",
+          "pattern": "^GR(0[1-9]|1[0-9]|2[0-4])$"
+        },
+        "applicability": {
+          "enum": [
+            "APPLICABLE",
+            "NOT_APPLICABLE",
+            "UNKNOWN"
+          ]
+        },
+        "result": {
+          "enum": [
+            "ALLOW",
+            "DENY",
+            "HOLD",
+            "QUARANTINE",
+            "NOT_APPLICABLE"
+          ]
+        },
+        "reason_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "enforcement_point": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_ref": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "guard_id",
+        "applicability",
+        "result",
+        "reason_code",
+        "enforcement_point",
+        "evidence_ref"
+      ],
+      "additionalProperties": false
+    },
+    "GuardDecision": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "4.0.0"
+        },
+        "decision_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "intent_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "actor_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "task_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "fence": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "target_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "baseline_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "normative_closure_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "policy_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "qualification_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "decision": {
+          "enum": [
+            "ALLOW",
+            "DENY",
+            "HOLD",
+            "QUARANTINE"
+          ]
+        },
+        "checks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/GuardCheck"
+          }
+        },
+        "issued_at_epoch_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expires_at_epoch_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "recovery_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "example_only": {
+          "type": "boolean"
+        },
+        "authority_verified": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "schema_version",
+        "decision_id",
+        "intent_digest",
+        "actor_ref",
+        "task_id",
+        "run_id",
+        "attempt",
+        "fence",
+        "target_ref",
+        "baseline_digest",
+        "normative_closure_digest",
+        "policy_digest",
+        "qualification_ref",
+        "decision",
+        "checks",
+        "issued_at_epoch_ms",
+        "expires_at_epoch_ms",
+        "recovery_ref",
+        "example_only",
+        "authority_verified"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "example_only": {
+                "const": true
+              }
+            },
+            "required": [
+              "example_only"
+            ]
+          },
+          "then": {
+            "properties": {
+              "authority_verified": {
+                "const": false
+              },
+              "decision": {
+                "enum": [
+                  "DENY",
+                  "HOLD",
+                  "QUARANTINE"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "GuardQualification": {
+      "type": "object",
+      "properties": {
+        "guard_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "native_product": {
+          "type": "string",
+          "minLength": 1
+        },
+        "native_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "execution_mode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "handler_kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "enforcement_layer": {
+          "enum": [
+            "NATIVE",
+            "RUNNER",
+            "OS",
+            "SERVICE",
+            "VERIFIER"
+          ]
+        },
+        "policy_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "fixture_matrix_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observed_status": {
+          "enum": [
+            "NOT_RUN",
+            "PASSED",
+            "FAILED",
+            "UNKNOWN"
+          ]
+        },
+        "scope": {
+          "type": "string",
+          "minLength": 1
+        },
+        "checked_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "guard_id",
+        "native_product",
+        "native_version",
+        "execution_mode",
+        "handler_kind",
+        "enforcement_layer",
+        "policy_digest",
+        "fixture_matrix_ref",
+        "observed_status",
+        "scope",
+        "checked_at"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

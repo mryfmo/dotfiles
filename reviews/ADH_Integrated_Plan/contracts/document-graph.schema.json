@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:adh:document-graph:4.0.0",
+  "title": "ADH document graph contract; not runtime completion evidence",
+  "type": "object",
+  "properties": {
+    "document_version": {
+      "const": "4.0.0"
+    },
+    "graph_kind": {
+      "const": "DESIGN_TRACEABILITY_NOT_RUNTIME_EVIDENCE"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Node"
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Edge"
+      }
+    }
+  },
+  "required": [
+    "document_version",
+    "graph_kind",
+    "nodes",
+    "edges"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "Node": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artifact_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lifecycle": {
+          "enum": [
+            "SPECIFIED_NOT_IMPLEMENTED",
+            "DRAFT",
+            "BASELINED",
+            "SUPERSEDED",
+            "REVOKED"
+          ]
+        },
+        "normative": {
+          "type": "boolean"
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "selector": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "approval_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtime_state": {
+          "enum": [
+            "NOT_IMPLEMENTED",
+            "NOT_RUN",
+            "PLANNED",
+            "NOT_APPLICABLE"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "artifact_type",
+        "revision",
+        "lifecycle",
+        "normative",
+        "owner",
+        "path",
+        "selector",
+        "content_digest",
+        "approval_ref",
+        "runtime_state"
+      ],
+      "additionalProperties": false
+    },
+    "Edge": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "minLength": 1
+        },
+        "relation": {
+          "enum": [
+            "refines",
+            "specifies",
+            "motivates",
+            "verifies",
+            "planned_implementation",
+            "planned_verification",
+            "depends_on",
+            "governed_by",
+            "derives_from",
+            "supersedes"
+          ]
+        },
+        "to": {
+          "type": "string",
+          "minLength": 1
+        },
+        "basis": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "from",
+        "relation",
+        "to",
+        "basis"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

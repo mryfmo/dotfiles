@@ -19,6 +19,20 @@ DISABLE_ENV = "CRIT_REVIEW"
 PR_FEEDBACK_ENV = "PR_FEEDBACK_EVIDENCE"
 PR_FEEDBACK_DISPOSITION = re.compile(r"(?:fixed:(?P<commit>[0-9a-f]{7,40})|not-applicable:(?P<reason>.*\S.*))", re.S)
 FAILURE_REASON_MIN_CHARS = 20
+# Levels whose not-applicable disposition needs a concrete reason: failures and
+# runs that did not finish, so a work-in-progress run cannot be waved through.
+STRICT_REASON_LEVELS = {
+    "failure",
+    "error",
+    "cancelled",
+    "timed_out",
+    "action_required",
+    "startup_failure",
+    "stale",
+    "in_progress",
+    "queued",
+    "pending",
+}
 BROAD_DIFF_FILE_LIMIT = 5
 BROAD_DIFF_LINE_LIMIT = 200
 
@@ -292,7 +306,7 @@ def crit_data_errors(root: Path, source: str) -> list[str]:
     return errors
 
 
-def pr_feedback_errors(root: Path, required: bool) -> list[str]:
+def pr_feedback_errors(root: Path, required: bool, head: str | None = None) -> list[str]:
     """Check the filled pr-feedback.py JSON: every item needs a root-cause disposition."""
     evidence = os.environ.get(PR_FEEDBACK_ENV, "").strip()
     if not evidence:
@@ -317,6 +331,10 @@ def pr_feedback_errors(root: Path, required: bool) -> list[str]:
         return [f"{PR_FEEDBACK_ENV} must be a pr-feedback.py document with an items list"]
 
     errors: list[str] = []
+    if head is not None and data.get("head_sha") != head:
+        errors.append(
+            f"{PR_FEEDBACK_ENV} was collected for head {data.get('head_sha')!r}, not the current HEAD {head}; rerun scripts/pr-feedback.py"
+        )
     for index, item in enumerate(items):
         label = f"{PR_FEEDBACK_ENV} item {index}"
         if not isinstance(item, dict):
@@ -332,9 +350,9 @@ def pr_feedback_errors(root: Path, required: bool) -> list[str]:
         if commit and run_git(["cat-file", "-e", f"{commit}^{{commit}}"], root).returncode != 0:
             errors.append(f"{label} cites an unknown commit: {commit}")
         reason = (match.group("reason") or "").strip()
-        if item.get("level") == "failure" and not commit and len(reason) < FAILURE_REASON_MIN_CHARS:
+        if item.get("level") in STRICT_REASON_LEVELS and not commit and len(reason) < FAILURE_REASON_MIN_CHARS:
             errors.append(
-                f"{label} is failure-level; not-applicable needs a reason of at least {FAILURE_REASON_MIN_CHARS} characters"
+                f"{label} is {item.get('level')}-level; not-applicable needs a reason of at least {FAILURE_REASON_MIN_CHARS} characters"
             )
     return errors
 
@@ -367,7 +385,8 @@ def main() -> None:
         return
 
     root = git_root()
-    feedback_errors = pr_feedback_errors(root, required=args.base is not None)
+    head = run_git(["rev-parse", "HEAD"], root).stdout.strip() if args.base else None
+    feedback_errors = pr_feedback_errors(root, required=args.base is not None, head=head)
     if feedback_errors:
         print("PR feedback evidence is incomplete; run scripts/pr-feedback.py and disposition every item.")
         for error in feedback_errors:

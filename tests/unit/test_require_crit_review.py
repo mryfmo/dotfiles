@@ -343,8 +343,14 @@ class ReviewGuardTest(unittest.TestCase):
     def head_commit(self) -> str:
         return run(["git", "rev-parse", "HEAD"], self.temp_dir).stdout.strip()
 
-    def write_feedback(self, items: list[dict], relative_path: str = ".orchestration/validation/pr-feedback.json") -> str:
-        self.write_review_file(relative_path, json.dumps({"pr": 1, "head_sha": "x", "items": items}))
+    def write_feedback(
+        self,
+        items: list[dict],
+        relative_path: str = ".orchestration/validation/pr-feedback.json",
+        head_sha: str | None = None,
+    ) -> str:
+        document = {"pr": 1, "head_sha": head_sha or self.head_commit(), "items": items}
+        self.write_review_file(relative_path, json.dumps(document))
         return relative_path
 
     def guard_base(self, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
@@ -382,6 +388,10 @@ class ReviewGuardTest(unittest.TestCase):
                                "cites an unknown commit: deadbee"),
             "short failure reason": ([{"source": "annotation", "level": "failure", "disposition": "not-applicable:flaky"}],
                                      "failure-level; not-applicable needs a reason of at least 20 characters"),
+            "short in-progress reason": ([{"source": "check_run", "level": "in_progress", "disposition": "not-applicable:wip"}],
+                                         "in_progress-level; not-applicable needs a reason of at least 20 characters"),
+            "short cancelled reason": ([{"source": "check_run", "level": "cancelled", "disposition": "not-applicable:rerun"}],
+                                       "cancelled-level; not-applicable needs a reason of at least 20 characters"),
             "not an items document": ([], None),
         }
         for name, (items, message) in cases.items():
@@ -396,6 +406,18 @@ class ReviewGuardTest(unittest.TestCase):
                 self.assertEqual(result.returncode, 1, result.stdout)
                 self.assertIn(message, result.stdout)
         self.assertTrue(commit)
+
+    def test_pr_feedback_must_be_collected_for_the_current_head(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback(
+            [{"source": "status", "level": "success", "disposition": "not-applicable:review completed"}],
+            head_sha="0" * 40,
+        )
+
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn(f"not the current HEAD {self.head_commit()}", result.stdout)
 
     def test_pr_feedback_rejects_evidence_outside_the_repository(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
@@ -417,7 +439,7 @@ class ReviewGuardTest(unittest.TestCase):
                 {
                     "source": "annotation",
                     "level": "failure",
-                    "disposition": "not-applicable:runner image notice owned by GitHub, tracked in T18",
+                    "disposition": "not-applicable:annotation belongs to a job on the base branch run, not this head",
                 },
                 {"source": "status", "level": "success", "disposition": "not-applicable:review completed"},
             ]

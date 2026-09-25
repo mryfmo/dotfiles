@@ -119,7 +119,7 @@ AGMSG-PONG v1 task_id=<id> status=alive|blocked note=<short-note>
 7. Track `max_turns`. Use `AGMSG-PING` for liveness if a worker stalls.
 8. On `AGMSG-RESULT`, read the task file and every referenced artifact before deciding.
 9. For a RESULT carrying `effects`, verify that every declared effect has the report's stated reverse mapping before acceptance; record any irreversible effect in the acceptance note.
-10. For a RESULT that carries a pull request, apply the PR integration rule before accepting or merging: request `@coderabbitai full review` on the final head and wait for it, run `scripts/pr-feedback.py <pr> --json <out>`, confirm every item has a `fixed:<commit>` or `not-applicable:<reason>` disposition (none left on `failure` or `warning` annotations), save the JSON as `.orchestration/validation/<task>-pr-feedback.json`, pass it to `PR_FEEDBACK_EVIDENCE=<json> python3 scripts/require-crit-review.py --base origin/main`, and summarise the dispositions in the acceptance record.
+10. For a RESULT that carries a pull request, apply the PR integration rule before accepting or merging: request `@coderabbitai full review` on the final head and wait for it, run `scripts/pr-feedback.py <pr> --json <out>`, confirm every item has a `fixed:<commit>` or `not-applicable:<reason>` disposition (none left on `failure` or `warning` annotations), save the JSON as `.orchestration/validation/<task>-pr-feedback.json`, pass it to `BASE=origin/main PR_FEEDBACK_EVIDENCE=<json> make require-crit-review`, and summarise the dispositions in the acceptance record.
 11. Send `AGMSG-ACCEPTANCE v1 status=accepted` when done, or `status=revise` with a narrow `reason` and `next_action` when more work is required.
 
 ## Worker Playbook

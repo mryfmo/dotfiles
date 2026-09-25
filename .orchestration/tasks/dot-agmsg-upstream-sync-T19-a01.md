@@ -32,3 +32,6 @@ Unit tests; validator; generator `--check`; scratch-HOME E2E outputs; `npm view 
 
 ## Artefacts / Done signal
 Standard five + pr-feedback JSON. `[memory:decision]`: "agmsg is installed from the upstream npm release pinned in the asset manifest with sha512 integrity; the vendored snapshot and agmsg-dispatch are retired; orchestrator wake uses upstream poke". RESULT via send.sh (orchestrator reads via monitor). max_turns=50.
+
+## Evidence for the body-file requirement (2026-09-25 22:5xZ)
+The first T17 dispatch to a004 failed (exit 1, no row in history) with a message body containing `||` and `#`; the same message without them was accepted. This is the quoting hazard upstream fixed with `--body-file` (poke #507, `send --body-file`). Orchestrator messages must move to file-based bodies after the upstream sync.

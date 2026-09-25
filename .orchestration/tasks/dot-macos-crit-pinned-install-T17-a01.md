@@ -2,7 +2,7 @@
 
 Evidence: every `public-bootstrap (macos-14, client)` run on PRs #178 and #180 carries a failure-level annotation `crit: no bottle available!` (brew, Tier 3) plus "taps are not trusted: aws/tap azure/bicep hashicorp/tap", while the job succeeds because `scripts/update-agent-assets.sh:252` runs `brew install crit || true` and `.github/workflows/test.yaml:125` runs `brew trust ... || true`. Release `tomasz-tomczyk/crit v0.20.3` ships `crit-darwin-amd64`, `crit-darwin-arm64` and `checksums.txt`.
 
-Repo: nested worktree, branch `fix/macos-crit-pinned-install` after T16. You are `claude-standard-dot-a003`.
+Repo: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-b` (your own worktree, detached at origin/main; `git switch -c fix/macos-crit-pinned-install origin/main`). You are `claude-standard-dot-a004` (herdr pane wE:p4). T15 (asset manifest) is merged: put the darwin sha256 pins in `assets.crit.sha256.{darwin-amd64,darwin-arm64}` and regenerate; do not edit installer-pins.sh by hand.
 
 ## Required changes
 1. `ensure_crit_cli` in `scripts/update-agent-assets.sh`: use the same pinned-release path on Darwin as on Linux: download `crit-darwin-<arch>` for `CRIT_PIN_VERSION`, verify against pinned sha256, install to `~/.local/bin/crit`. Remove the `brew install crit || true` branch. Keep `--version` verification.

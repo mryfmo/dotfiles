@@ -2,7 +2,7 @@
 
 Operator finding (2026-09-25): most orchestrator deviations violated rules that already existed in prose (`home/dot_config/claude/rules/agmsg-orchestration.md`, `model-selection.md`, agmsg-orchestration SKILL): inferring worker state from `herdr agent list`, idle-waiting, bare `send.sh` to a herdr-paned worker, self-exploration, working inside the worker worktree. Some rules were missing (revise consolidation, GitHub feedback sweep, `make upgrade` never inside a worker task, plan-mode procedure). Prose alone does not hold across long sessions and compaction. Rules the orchestrator cannot keep must be enforced deterministically at the tool boundary and re-injected after compaction.
 
-Repo: nested worktree, branch `feat/orchestrator-guardrails` from origin/main after T16 lands. You are `claude-standard-dot-a003`.
+Repo: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c` (your own worktree, detached at origin/main; `git switch -c feat/orchestrator-guardrails origin/main`). You are `claude-standard-dot-a005` (herdr pane wE:p5). T16 (PR #182, rules/skills edits) is still open: rebase onto main when it lands (orchestrator notifies) and resolve overlaps in agmsg-orchestration SKILL/rules by keeping both changes.
 
 ## Design constraints
 - Reuse the existing PreToolUse pattern (`home/dot_claude/hooks/executable_enforce-uv.sh` is wired as `PreToolUse` matcher `Bash` in `agent-config.yaml` → `claude-settings-managed.json`). permgate is wired on `PermissionRequest` only and fires just when a prompt would appear, so it cannot be the guardrail layer; do not extend it for this.
@@ -35,3 +35,8 @@ editing live `~/.claude/settings.json` or `~/.claude/hooks/`; `make update`/`che
 
 ## Artefacts / Done signal
 Standard five + pr-feedback JSON. `[memory:decision]`: "orchestrator rules that prose could not hold are enforced by a PreToolUse guardrail hook (G1-G5) with role detection from HERDR_AGENTS_ROLE and re-injected as a checklist on SessionStart/compact". RESULT via send.sh. max_turns=50.
+
+## Addendum (2026-09-25 23:0xZ, operator finding: "you keep improvising; regulate it")
+- Add **G7 no-improvised-topology** (role=orchestrator): deny raw `herdr workspace create|close`, `herdr tab create|close`, `herdr pane split|move|swap|close`, and `herdr agent start|stop` from the orchestrator session. Allowed: `herdr-agents` (the documented lifecycle entrypoint), `agmsg-dispatch`/upstream `poke`, and read-only `herdr … list|get|read` only where G1 permits. Remedy text: "topology changes go through herdr-agents; if it lacks the capability, file a task to extend it (see T22)".
+- Add **G8 documented-procedure-or-ask** to the rule text (not enforceable by regex): any control-plane or lifecycle operation must map to a command sequence written in README/SKILL/scripts; when none exists or the text is ambiguous, stop and ask the operator instead of interpreting. Record the ambiguity as a documentation task.
+- Evidence: the orchestrator created two extra herdr tabs (`herdr tab create`) in the managed workspace for parallel workers although README L351-356 specifies "in its own tab/workspace … `herdr pane split <pane> --direction right --cwd <worktree>`" and herdr-agents creates workspaces with `herdr workspace create --cwd`; no documented `--add-worker` mode exists.

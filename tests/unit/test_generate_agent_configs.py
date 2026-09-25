@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import os
 import shutil
 import subprocess
@@ -107,6 +109,88 @@ class GenerateAgentConfigsTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.module.ROOT = self.old_root
         shutil.rmtree(self.temp_dir)
+
+    def write_asset_fixture(self) -> dict:
+        pins = self.temp_dir / "scripts/lib/installer-pins.sh"
+        pins.parent.mkdir(parents=True)
+        pins.write_text('#!/usr/bin/env bash\nCRIT_PIN_VERSION="v0.0.1"\nCRIT_LINUX_AMD64_SHA256="old"\n')
+        installer = self.temp_dir / "install/common/mise.sh"
+        installer.parent.mkdir(parents=True)
+        installer.write_text('#!/usr/bin/env bash\nreadonly MISE_VERSION="v0.0.1"\necho "${MISE_VERSION}"\n')
+        return {
+            "assets": {
+                "mise": {
+                    "pin": "v2026.9.12",
+                    "render": {
+                        "file": "install/common/mise.sh",
+                        "constants": {"MISE_VERSION": "pin"},
+                    },
+                },
+                "crit": {
+                    "pin": "v0.20.3",
+                    "sha256": {"linux-amd64": "d3a3"},
+                    "render": {
+                        "file": "scripts/lib/installer-pins.sh",
+                        "constants": {
+                            "CRIT_PIN_VERSION": "pin",
+                            "CRIT_LINUX_AMD64_SHA256": "sha256.linux-amd64",
+                        },
+                    },
+                },
+                "agmsg": {"pin": "snapshot"},
+            }
+        }
+
+    def test_asset_constants_render_into_their_files(self) -> None:
+        outputs = self.module.render_asset_constants(self.write_asset_fixture())
+
+        self.assertEqual(
+            outputs[self.temp_dir / "install/common/mise.sh"],
+            '#!/usr/bin/env bash\nreadonly MISE_VERSION="v2026.9.12"\necho "${MISE_VERSION}"\n',
+        )
+        self.assertEqual(
+            outputs[self.temp_dir / "scripts/lib/installer-pins.sh"],
+            '#!/usr/bin/env bash\nCRIT_PIN_VERSION="v0.20.3"\nCRIT_LINUX_AMD64_SHA256="d3a3"\n',
+        )
+        self.assertEqual(len(outputs), 2)
+
+    def test_asset_constant_must_be_assigned_exactly_once(self) -> None:
+        manifest = self.write_asset_fixture()
+        manifest["assets"]["mise"]["render"]["constants"] = {"MISSING_VERSION": "pin"}
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.render_asset_constants(manifest)
+
+    def test_asset_pin_must_be_a_plain_value(self) -> None:
+        manifest = self.write_asset_fixture()
+        manifest["assets"]["mise"]["pin"] = "v1$(touch /tmp/x)"
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.render_asset_constants(manifest)
+
+    def test_check_reports_asset_render_drift(self) -> None:
+        manifest = self.write_asset_fixture()
+        self.module.load_manifest = lambda: manifest
+        self.module.expected_outputs = self.module.render_asset_constants
+        self.module.stale_profile_outputs = lambda _manifest: []
+        old_argv = sys.argv
+        self.addCleanup(setattr, sys, "argv", old_argv)
+
+        sys.argv = ["generate-agent-configs.py", "--check"]
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.main()
+        self.assertIn("install/common/mise.sh", stderr.getvalue())
+        self.assertIn("scripts/lib/installer-pins.sh", stderr.getvalue())
+
+        sys.argv = ["generate-agent-configs.py"]
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.module.main()
+        sys.argv = ["generate-agent-configs.py", "--check"]
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            self.module.main()
+        self.assertIn("up to date", stdout.getvalue())
 
     def test_repository_marketplace_is_a_runtime_owned_seed(self) -> None:
         manifest = (ROOT / "home/dot_agents/agent-config.yaml").read_text()

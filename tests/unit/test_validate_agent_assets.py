@@ -229,6 +229,76 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             self.module.validate_agent_manifest()
         self.assertIn("(currently `codex`;", stderr.getvalue())
 
+    def asset_manifest(self) -> dict:
+        return {
+            "assets": {
+                "mise": {
+                    "source": "github-release",
+                    "upstream": "jdx/mise",
+                    "pin": "v1",
+                    "verify": "release-shasums",
+                    "render": {
+                        "file": "install/common/mise.sh",
+                        "constants": {"MISE_VERSION": "pin"},
+                    },
+                },
+                "brew": {
+                    "source": "git-commit",
+                    "upstream": "Homebrew/install",
+                    "pin": "abc",
+                    "verify": "sha256",
+                    "sha256": "def",
+                },
+                "aws": {
+                    "source": "github-release",
+                    "upstream": "aws/aws-cli",
+                    "pin": "2",
+                    "verify": "gpg",
+                    "gpg_fingerprint": "FB5D",
+                },
+            }
+        }
+
+    def test_assets_accept_complete_declarations_and_rendered_versions(self) -> None:
+        self.write_text_file("install/common/mise.sh", 'readonly MISE_VERSION="v1"\n')
+
+        self.module.validate_assets(self.asset_manifest())
+
+    def test_assets_reject_each_incomplete_declaration(self) -> None:
+        cases = {
+            "missing pin": lambda assets: assets["mise"].pop("pin"),
+            "unknown source": lambda assets: assets["mise"].update(source="ftp"),
+            "verify not valid for source": lambda assets: assets["brew"].update(
+                verify="gpg"
+            ),
+            "missing sha256": lambda assets: assets["brew"].pop("sha256"),
+            "missing gpg fingerprint": lambda assets: assets["aws"].pop(
+                "gpg_fingerprint"
+            ),
+        }
+        for name, breaks in cases.items():
+            with self.subTest(case=name):
+                manifest = self.asset_manifest()
+                breaks(manifest["assets"])
+                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(
+                    SystemExit
+                ):
+                    self.module.validate_assets(manifest)
+
+    def test_assets_reject_a_literal_installer_version_not_in_the_manifest(self) -> None:
+        self.write_text_file(
+            "install/ubuntu/common/tool.sh", 'readonly TOOL_VERSION="1.2.3"\n'
+        )
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_assets(self.asset_manifest())
+        self.assertIn("install/ubuntu/common/tool.sh hard-codes TOOL_VERSION", stderr.getvalue())
+
+        self.write_text_file(
+            "install/ubuntu/common/tool.sh", 'readonly TOOL_VERSION="${MISE_VERSION}"\n'
+        )
+        self.module.validate_assets(self.asset_manifest())
+
     def test_agent_manifest_rejects_missing_security_profile(self) -> None:
         manifest = self.write_valid_agent_manifest()
         del manifest["model_profiles"]["security"]

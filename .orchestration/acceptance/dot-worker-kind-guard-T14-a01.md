@@ -32,3 +32,11 @@ cost: n/a
 - Not yet applied to $HOME: `make update` (Phase 1.4) waits for the operator's Codex login and worker_kind decision, because the guard makes the SessionStart attach hook exit 2 in the current single-identity state.
 
 cost: n/a
+
+## Retroactive GitHub feedback sweep (2026-09-25, orchestrator; gap found by the operator)
+
+All PR feedback was fetched after merge (`gh api issues/N/comments`, `pulls/N/reviews`, `pulls/N/comments`, `commits/<sha>/check-runs` + `check-runs/<id>/annotations`). Dispositions:
+- coderabbitai[bot]: "This repository does not receive automatic reviews because it has fewer than 10 stars" with a manual "Trigger review" checkbox. Nobody triggered `@coderabbitai full review`, so no bot review exists for this PR. Disposition: process gap → task dot-pr-feedback-gate-T16-a01 (mandatory sweep + explicit CodeRabbit trigger + merge gate).
+- check-run `public-bootstrap (macos-14, client)`: annotation level=failure `crit: no bottle available!` (brew, Tier 3) and warning "taps are not trusted: aws/tap azure/bicep hashicorp/tap", while the job concluded success because `brew install crit || true` (update-agent-assets.sh:252) swallows it. Pre-existing on main, not introduced by this PR. Disposition: defect → task dot-macos-crit-pinned-install-T17-a01 (pinned darwin binaries, no `|| true`, CI fails on install failure).
+- check-run notices on every ubuntu job: "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026". Disposition: task dot-runner-label-pin-T18-a01 (explicit `ubuntu-24.04` matrix labels, migration plan).
+- No human reviews, no inline comments.

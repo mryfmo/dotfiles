@@ -56,3 +56,7 @@ bumping any version; `make update`/`make upgrade`/`chezmoi apply`; touching `~/.
 
 ## Done signal
 `AGMSG-RESULT v1 task_id=dot-asset-manifest-T15-a01 status=ready_for_review|blocked pr=<n> ...` via `send.sh dotfiles claude-standard-dot-a003 claude-remediation-dot "<message>"`. max_turns=45.
+
+## Round 3 (orchestrator, 12:07Z) — CodeRabbit final review 5317380626, inline 4104294574
+
+`LITERAL_VERSION_ASSIGNMENT` matches only double-quoted values; unquoted (`readonly TOOL_VERSION=1.2.3`) and single-quoted (`TOOL_VERSION='1.2.3'`) handwritten versions pass validation. Fix at the root: accept `"..."`, `'...'`, and unquoted `[^\s"'$;`()]+` values (still excluding `$` references), respect the assignment boundary, and add both cases to `test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts`. Reply on the CodeRabbit thread with the commit. Push once; no further CodeRabbit trigger (hourly plan) — the thread acknowledgement on the new head is the completion signal for this item.

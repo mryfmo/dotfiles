@@ -159,6 +159,41 @@ function check_gh_extensions() {
 }
 
 #
+# @description Report the Linux prerequisites of the Claude Code Bash sandbox.
+#
+function check_claude_sandbox() {
+    local sysctl_path="${BWRAP_APPARMOR_SYSCTL:-/proc/sys/kernel/apparmor_restrict_unprivileged_userns}"
+    local profile_path="${BWRAP_APPARMOR_PROFILE:-/etc/apparmor.d/bwrap}"
+    local command_name
+    local restricted="absent"
+
+    if [ "$(uname)" != "Linux" ]; then
+        printf 'not applicable: Claude Code sandbox prerequisites (non-Linux; macOS uses Seatbelt)\n'
+        return 0
+    fi
+
+    for command_name in bwrap socat; do
+        if command -v "${command_name}" > /dev/null 2>&1; then
+            printf 'found:   %s -> %s\n' "${command_name}" "$(command -v "${command_name}")"
+        else
+            warn_optional "Claude Code sandbox prerequisite is missing: ${command_name} (run make update)"
+        fi
+    done
+
+    if [ -r "${sysctl_path}" ]; then
+        restricted="$(< "${sysctl_path}")"
+    fi
+    printf 'found:   kernel.apparmor_restrict_unprivileged_userns=%s\n' "${restricted}"
+    if [ "${restricted}" != "1" ]; then
+        printf 'not applicable: bwrap AppArmor profile (user namespaces are not restricted)\n'
+    elif [ -f "${profile_path}" ]; then
+        printf 'found:   bwrap AppArmor profile -> %s\n' "${profile_path}"
+    else
+        warn_optional "bwrap AppArmor profile is missing: ${profile_path} (run make update)"
+    fi
+}
+
+#
 # @description Run the read-only dotfiles health checks.
 #
 function main() {
@@ -182,6 +217,9 @@ function main() {
 
     section "SSH"
     check_machine_ssh_key
+
+    section "Claude Code sandbox"
+    check_claude_sandbox
 
     section "GitHub CLI extensions"
     check_gh_extensions

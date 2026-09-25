@@ -9,7 +9,8 @@
 # - Keep MCP servers disabled by default; enable only after checking scope and credentials.
 # - Store credentials as environment-variable references or inherited environment only.
 # - Use current maintained MCP servers; deprecated packages are rejected by validation.
-# - Keep Codex writable roots for shared agmsg state under codex.sandbox_workspace_write.
+# - Keep Codex writable roots for shared agmsg state under codex.sandbox_workspace_write;
+#   the Claude sandbox allowWrite list is rendered from the same entries.
 # - Name direct agmsg entrypoint sources with chezmoi executable_ prefixes.
 
 schema_version: 1
@@ -167,6 +168,27 @@ claude:
       - Bash(uv publish:*)
       - Bash(terraform apply:*)
       - Bash(kubectl apply:*)
+  # Claude Code Bash sandbox, the counterpart of codex.sandbox_workspace_write:
+  # commands may write only the working directory, the session TMPDIR, and
+  # filesystem.allowWrite. The generator renders allowWrite from
+  # codex.sandbox_workspace_write.writable_roots so both agents share one agmsg
+  # writable-roots list; ~/.claude is sandbox-protected, so it is not listed.
+  # bubblewrap, socat, and the Ubuntu bwrap AppArmor profile come from the
+  # installers that the operator runs with `make update` outside Claude sessions.
+  sandbox:
+    enabled: true
+    failIfUnavailable: true
+    autoAllowBashIfSandboxed: true
+    allowUnsandboxedCommands: true
+    # Add entries only with E2E evidence, one comment per entry.
+    excludedCommands: []
+    network:
+      allowedDomains:
+        - github.com
+        - api.github.com
+        - uploads.github.com
+        - objects.githubusercontent.com
+        - codeload.github.com
   hooks:
     enforce_uv_hook: ~/.claude/hooks/enforce-uv.sh
     format_edited_files_hook: ~/.claude/hooks/format-edited-files.py

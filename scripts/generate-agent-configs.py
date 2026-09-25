@@ -291,6 +291,22 @@ def render_codex(manifest: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def render_claude_sandbox(manifest: dict[str, Any]) -> dict[str, Any]:
+    """Render the Claude sandbox; allowWrite reuses the Codex agmsg writable roots."""
+    sandbox = manifest["claude"]["sandbox"]
+    return {
+        "enabled": sandbox["enabled"],
+        "failIfUnavailable": sandbox["failIfUnavailable"],
+        "autoAllowBashIfSandboxed": sandbox["autoAllowBashIfSandboxed"],
+        "allowUnsandboxedCommands": sandbox["allowUnsandboxedCommands"],
+        "excludedCommands": sandbox["excludedCommands"],
+        "filesystem": {
+            "allowWrite": manifest["codex"]["sandbox_workspace_write"]["writable_roots"]
+        },
+        "network": {"allowedDomains": sandbox["network"]["allowedDomains"]},
+    }
+
+
 def render_claude_settings(manifest: dict[str, Any]) -> str:
     claude = manifest["claude"]
     hooks = claude.get("hooks", {})
@@ -317,6 +333,7 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
             "defaultMode": claude["permissions"]["defaultMode"],
             "ask": claude["permissions"]["ask"],
         },
+        **({"sandbox": render_claude_sandbox(manifest)} if "sandbox" in claude else {}),
         "hooks": {
             "PreToolUse": [
                 {

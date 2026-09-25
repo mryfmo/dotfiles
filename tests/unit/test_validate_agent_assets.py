@@ -290,6 +290,61 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
         self.assert_hook_composition_fails("sessionstart-order source=compactiondb")
 
+    def valid_claude_sandbox(self) -> dict:
+        return {
+            "enabled": True,
+            "failIfUnavailable": True,
+            "autoAllowBashIfSandboxed": True,
+            "filesystem": {"allowWrite": list(self.required_agmsg_writable_roots)},
+            "network": {"allowedDomains": ["github.com", "api.github.com"]},
+        }
+
+    def test_claude_sandbox_accepts_manifest_symmetric_settings(self) -> None:
+        self.module.validate_claude_sandbox(
+            self.valid_claude_sandbox(), self.required_agmsg_writable_roots, "sandbox"
+        )
+
+    def test_claude_sandbox_rejects_each_broken_rule(self) -> None:
+        def disabled(sandbox: dict, key: str) -> None:
+            sandbox[key] = False
+
+        cases = {
+            "enabled": lambda sandbox: disabled(sandbox, "enabled"),
+            "failIfUnavailable": lambda sandbox: sandbox.pop("failIfUnavailable"),
+            "autoAllowBashIfSandboxed": lambda sandbox: disabled(
+                sandbox, "autoAllowBashIfSandboxed"
+            ),
+            "missing Codex writable root": lambda sandbox: sandbox["filesystem"][
+                "allowWrite"
+            ].pop(),
+            "empty allowedDomains": lambda sandbox: sandbox["network"].update(
+                allowedDomains=[]
+            ),
+            "scheme in allowedDomains": lambda sandbox: sandbox["network"][
+                "allowedDomains"
+            ].append("https://github.com"),
+            "path in allowedDomains": lambda sandbox: sandbox["network"][
+                "allowedDomains"
+            ].append("github.com/mryfmo"),
+        }
+        for name, breaks in cases.items():
+            with self.subTest(rule=name):
+                sandbox = self.valid_claude_sandbox()
+                breaks(sandbox)
+                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(
+                    SystemExit
+                ):
+                    self.module.validate_claude_sandbox(
+                        sandbox, self.required_agmsg_writable_roots, "sandbox"
+                    )
+
+    def test_claude_sandbox_requires_extra_codex_writable_roots(self) -> None:
+        roots = [*self.required_agmsg_writable_roots, "/extra/codex/root"]
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_claude_sandbox(
+                self.valid_claude_sandbox(), roots, "sandbox"
+            )
+
     def test_codex_sandbox_workspace_write_must_match_manifest(self) -> None:
         self.write_codex_config("network_access = false")
         manifest = {

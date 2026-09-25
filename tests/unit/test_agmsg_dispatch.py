@@ -5,6 +5,7 @@ import shutil
 import sqlite3
 import subprocess
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -44,10 +45,17 @@ fi
         bindir.mkdir()
         self.write_script(bindir / "herdr", """
 if [[ $1 == pane && $2 == list ]]; then
-    printf '{"result":{"panes":[{"pane_id":"w1:p1","agent_status":"%s"}]}}\n' "$FAKE_STATUS"
+    pane_status=$FAKE_STATUS
+    listed=$(cat "$FAKE_CALLS.list" 2>/dev/null || printf 0)
+    printf '%s' "$((listed + 1))" > "$FAKE_CALLS.list"
+    if [[ -n ${FAKE_AFTER_STATUS:-} && $listed -gt 0 ]]; then
+        pane_status=$FAKE_AFTER_STATUS
+    fi
+    printf '{"result":{"panes":[{"pane_id":"%s","agent_status":"%s"}]}}\n' "${FAKE_PANE:-w1:p1}" "$pane_status"
 else
     printf '%s\n' "$*" >> "$FAKE_CALLS"
-    if [[ $FAKE_READ == yes ]]; then
+    [[ ${FAKE_WAKE_FAIL:-no} != yes ]] || exit 9
+    if [[ $FAKE_READ == yes || ${FAKE_WAKE_READ:-no} == yes ]]; then
         sqlite3 "$AGMSG_STORAGE_PATH/messages.db" "UPDATE messages SET read_at='read';"
     fi
 fi
@@ -115,6 +123,42 @@ fi
         self.assertEqual(result.returncode, 1)
         with sqlite3.connect(self.db) as db:
             self.assertEqual(db.execute("SELECT count(*) FROM messages").fetchone()[0], 0)
+
+    def test_worker_becoming_idle_after_send_is_woken(self):
+        self.env.update(FAKE_STATUS="working", FAKE_AFTER_STATUS="idle",
+                        FAKE_READ="no", FAKE_WAKE_READ="yes")
+        result = self.dispatch()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(self.calls.read_text().splitlines()), 1)
+
+    def test_retry_does_not_wake_newly_working_pane(self):
+        self.env.update(FAKE_AFTER_STATUS="working", FAKE_READ="no")
+        result = self.dispatch()
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(len(self.calls.read_text().splitlines()), 1)
+
+    def test_timeout_is_one_shared_budget(self):
+        self.env.update(FAKE_READ="no", AGMSG_DISPATCH_TIMEOUT="2")
+        started = time.monotonic()
+        result = self.dispatch()
+        self.assertEqual(result.returncode, 1)
+        self.assertLess(time.monotonic() - started, 3.0)
+        self.assertIn("sent message 1;", result.stderr)
+
+    def test_missing_pane_inserts_nothing(self):
+        self.env["FAKE_PANE"] = "w1:p9"
+        result = self.dispatch()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("pane", result.stderr)
+        with sqlite3.connect(self.db) as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM messages").fetchone()[0], 0)
+
+    def test_wake_failure_identifies_sent_message(self):
+        self.env["FAKE_WAKE_FAIL"] = "yes"
+        result = self.dispatch()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("sent message 1;", result.stderr)
+        self.assertNotIn("private-message-body", result.stderr)
 
 
 if __name__ == "__main__":

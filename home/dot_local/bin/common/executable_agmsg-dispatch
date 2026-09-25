@@ -3,6 +3,7 @@
 # @brief Send an agmsg message, wake an idle worker, and verify receipt.
 # @description Uses the installed agmsg storage helpers. Polls every five seconds
 #   for AGMSG_DISPATCH_TIMEOUT seconds (default 120), retrying an idle wake once.
+#   The retry shares the original deadline and rechecks the pane's current state.
 #   Only routing metadata, never the message body, is sent to the terminal.
 # @arg $1 string Team identifier.
 # @arg $2 string Sender identifier.
@@ -31,17 +32,34 @@ fi
 # shellcheck source=/dev/null
 source "$scripts/lib/storage.sh"
 db=$(agmsg_db_path)
+
+# @description Resolve exactly one existing pane before sending or retrying.
+get_pane_status() {
+    herdr pane list | jq -er --arg pane "$pane" \
+        '[.result.panes[] | select(.pane_id == $pane)] | if length == 1 then .[0].agent_status | strings else empty end'
+}
+if ! pane_status=$(get_pane_status); then
+    printf 'agmsg-dispatch: pane not found or unavailable: %s\n' "$pane" >&2
+    exit 1
+fi
 if ! bash "$scripts/send.sh" "$team" "$from" "$to" "$*" > /dev/null 2>&1; then
     printf 'agmsg-dispatch: send failed\n' >&2
     exit 1
 fi
+# @description Identify an already-sent message on any subsequent failure.
+# shellcheck disable=SC2329 # Invoked indirectly by the EXIT trap.
+report_delivery_failure() {
+    if (($? != 0)); then
+        printf 'agmsg-dispatch: sent message %s; delivery failed or unread; verify receipt before resending\n' "${message_id:-unknown}" >&2
+    fi
+}
+trap 'report_delivery_failure' EXIT
 # ponytail: one sender per route; send.sh must return an id before concurrent same-route dispatch.
 message_id=$(sqlite3 -cmd '.timeout 5000' "$db" "SELECT max(id) FROM messages WHERE team='$team' AND from_agent='$from' AND to_agent='$to';")
 if [[ ! $message_id =~ ^[0-9]+$ ]]; then
     printf 'agmsg-dispatch: sent message id not found\n' >&2
     exit 1
 fi
-pane_status=$(herdr pane list | jq -er --arg pane "$pane" '.result.panes[] | select(.pane_id == $pane) | .agent_status')
 
 # @description Wake the worker with metadata and its actual inbox command.
 wake() {
@@ -49,30 +67,34 @@ wake() {
 }
 
 # @description Wait for this message's read receipt within the timeout.
+# @arg $1 integer Stop polling at this SECONDS value, capped by the shared deadline.
 wait_for_read() {
-    local deadline=$((SECONDS + timeout)) remaining
+    local until=$1 remaining receipt
     while true; do
-        if [[ $(sqlite3 -cmd '.timeout 5000' "$db" "SELECT read_at IS NOT NULL FROM messages WHERE id=$message_id;") == 1 ]]; then
+        receipt=$(sqlite3 "$db" "SELECT read_at IS NOT NULL FROM messages WHERE id=$message_id;") || exit 1
+        if [[ $receipt == 1 ]]; then
             return 0
         fi
-        remaining=$((deadline - SECONDS))
+        remaining=$((until - SECONDS))
         ((remaining > 0)) || return 1
         ((remaining <= 5)) || remaining=5
         sleep "$remaining"
     done
 }
 
+deadline=$((SECONDS + timeout))
+retry_at=$((SECONDS + timeout / 2))
 if [[ $pane_status != working ]]; then
     wake
 fi
-if wait_for_read; then
+if wait_for_read "$retry_at"; then
     exit 0
 fi
+pane_status=$(get_pane_status)
 if [[ $pane_status != working ]]; then
     wake
-    if wait_for_read; then
-        exit 0
-    fi
 fi
-printf 'agmsg-dispatch: message %s remains unread by %s after timeout\n' "$message_id" "$to" >&2
+if wait_for_read "$deadline"; then
+    exit 0
+fi
 exit 1

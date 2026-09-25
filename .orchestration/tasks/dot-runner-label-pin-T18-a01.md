@@ -17,3 +17,6 @@ Repo: nested worktree, branch `chore/runner-label-pin` after T17. You are `claud
 
 ## Artefacts / Done signal
 Standard five + pr-feedback JSON. `[memory:decision]`: "CI runner images are pinned explicitly (ubuntu-24.04, macos-14) and declared in the asset manifest". RESULT via send.sh. max_turns=15.
+
+## Added item (12:36Z): statusline smoke-test timeout is a recurring CI flake
+Evidence: PR #182 run 36135142111, step "Smoke-test statusline tools without network": `subprocess.TimeoutExpired: Command ['.../npm-ccstatusline/2.2.30/bin/ccstatusline', '--version'] timed out after 5 seconds` (scripts/check-statusline-tools.py:25-43), while main runs 36135228178 (12:29Z) and 36123944643 passed the same step. Root cause: a fixed 5 s budget for a cold Node CLI start on a shared runner. Fix at the root, not by rerunning: measure the cold-start distribution on ubuntu-24.04/macos-14 (paste), then either warm the binary once before timing, raise the budget to a justified value with a comment, or make the smoke check assert the version from the installed package metadata (`mise where` + package.json) instead of executing the CLI when only the version is needed. Add a unit test for the chosen behaviour. Every rerun of a flaky job must be dispositioned with this task id in the PR's pr-feedback JSON.

@@ -1489,7 +1489,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         self.assertEqual(claude.returncode, 0, claude.stdout + claude.stderr)
         self.assertIn(
-            f"No agmsg Claude Code worker identity for {self.workdir}; herdr-agents "
+            f"No agmsg Claude Code worker identity for {self.workdir.resolve()}; herdr-agents "
             "full and --attach modes refuse a claude worker until a second "
             "claude-code identity is registered.",
             claude.stderr,
@@ -1508,7 +1508,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertFalse((self.workdir / ".codex/hooks.json").exists())
         self.assertNotIn("No agmsg Codex identity", result.stderr)
         calls = self.calls_path.read_text().splitlines()
-        self.assertNotIn(f"delivery set turn codex {self.workdir}", calls)
+        self.assertNotIn(f"delivery set turn codex {self.workdir.resolve()}", calls)
         self.assertFalse(any(call.endswith(" codex") for call in calls), calls)
 
     def test_worker_kind_claude_accepts_a_workspace_trust_dialog(self) -> None:

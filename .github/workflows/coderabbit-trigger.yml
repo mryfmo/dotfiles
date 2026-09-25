@@ -16,6 +16,12 @@ on:
 permissions:
   pull-requests: write
 
+# Runs for one PR queue instead of racing, so a later run sees the marker an
+# earlier run posted and does not request a second review.
+concurrency:
+  group: coderabbit-trigger-${{ github.event.pull_request.number || inputs.pr }}
+  cancel-in-progress: false
+
 jobs:
   request-review:
     if: >-
@@ -35,9 +41,11 @@ jobs:
           [[ "${PR}" =~ ^[0-9]+$ ]] || { echo "invalid PR number: ${PR}" >&2; exit 1; }
           sha="$(gh api "repos/${REPO}/pulls/${PR}" --jq .head.sha)"
           marker="<!-- coderabbit-trigger:${sha} -->"
-          # Capture instead of piping into grep -q, which can SIGPIPE gh under pipefail.
+          # Count a marker only in this workflow's own request comment, so another
+          # commenter cannot pre-post it to suppress the review. Capture instead of
+          # piping into grep -q, which can SIGPIPE gh under pipefail.
           found="$(gh api --paginate "repos/${REPO}/issues/${PR}/comments" \
-            --jq "any(.[]; .body | contains(\"${marker}\"))")"
+            --jq "any(.[]; .user.login == \"github-actions[bot]\" and (.body | startswith(\"@coderabbitai full review\")) and (.body | contains(\"${marker}\")))")"
           if [[ "${found}" == *true* ]]; then
             echo "A full review was already requested for ${sha}."
             exit 0

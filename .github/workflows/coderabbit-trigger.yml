@@ -35,7 +35,10 @@ jobs:
           [[ "${PR}" =~ ^[0-9]+$ ]] || { echo "invalid PR number: ${PR}" >&2; exit 1; }
           sha="$(gh api "repos/${REPO}/pulls/${PR}" --jq .head.sha)"
           marker="<!-- coderabbit-trigger:${sha} -->"
-          if gh api --paginate "repos/${REPO}/issues/${PR}/comments" --jq '.[].body' | grep -Fq -- "${marker}"; then
+          # Capture instead of piping into grep -q, which can SIGPIPE gh under pipefail.
+          found="$(gh api --paginate "repos/${REPO}/issues/${PR}/comments" \
+            --jq "any(.[]; .body | contains(\"${marker}\"))")"
+          if [[ "${found}" == *true* ]]; then
             echo "A full review was already requested for ${sha}."
             exit 0
           fi

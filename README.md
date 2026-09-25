@@ -426,6 +426,7 @@ content hash, including when a newly committed script first reaches an existing
 machine through `make update`.
 Do not use `make reset` as the normal update path; it clears chezmoi's script state so one-time installers can run again intentionally.
 Tool versions in `home/dot_mise/config.toml` are exact and backed by `mise.lock`. Updates occur only through `make upgrade` with a reviewed config and lock diff.
+`make upgrade` edits the current checkout's `home/dot_mise`; `~/.config/mise` is an applied copy, not a live symlink into the source tree.
 For `npm:` tools, mise owns the version, lock entry, and isolated install
 prefix, while the npm CLI performs installation through
 `settings.npm.package_manager = "npm"`. Do not install Claude Code or Codex

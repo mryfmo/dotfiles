@@ -48,6 +48,7 @@ claude-update() {
 
     # Update claude-code to the true latest via mise, bypassing the npm
     # `min-release-age` cooldown for THIS install only.
+    # This updates the applied copy; commit tool pins only via make upgrade.
     npm_config_min_release_age=0 mise upgrade "npm:@anthropic-ai/claude-code"
     claude_prefix="$(mise where "npm:@anthropic-ai/claude-code")"
     claude_version="$(mise current "npm:@anthropic-ai/claude-code")"

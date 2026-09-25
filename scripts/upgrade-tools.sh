@@ -7,8 +7,13 @@
 #   intentional lifecycle command. The default mode upgrades user-level tooling
 #   and Homebrew-managed packages when those managers are available. Pass
 #   `--system` to include operating-system package upgrades such as apt.
+#   Upgrades edit this checkout's home/dot_mise; ~/.config/mise is an applied copy.
 
 set -Eeuo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-${repo_root}/home/dot_mise}"
+export MISE_CEILING_PATHS="${repo_root}"
 
 include_system=false
 DEFAULT_FORBIDDEN_HOMEBREW_FORMULAE="node node@* python python@* python3 pip npm pnpm yarn claude"
@@ -183,7 +188,7 @@ function run_mise_with_isolated_git_config() {
     local mise_config_dir
     local status
 
-    mise_config_dir="${MISE_CONFIG_DIR:-${XDG_CONFIG_HOME:-${HOME%/}/.config}/mise}"
+    mise_config_dir="${MISE_CONFIG_DIR}"
     isolated_xdg_config_home="$(mktemp -d "${TMPDIR:-/tmp}/mise-git-config.XXXXXX")"
     GIT_CONFIG_NOSYSTEM=1 \
         GIT_CONFIG_GLOBAL=/dev/null \
@@ -573,6 +578,19 @@ USAGE
 }
 
 #
+# @description Apply updated mise pins only from the configured chezmoi checkout.
+function apply_upgraded_mise_config() {
+    local source_path source_root
+    if source_path="$(chezmoi source-path 2> /dev/null)" &&
+        source_root="$(git -C "$source_path" rev-parse --show-toplevel 2> /dev/null)" &&
+        [ "$(cd "$source_root" && pwd -P)" = "$(cd "$repo_root" && pwd -P)" ]; then
+        chezmoi apply "${HOME}/.config/mise/config.toml" "${HOME}/.config/mise/mise.lock"
+    else
+        printf 'pins updated in %s; ~/.config/mise follows after merge and make update\n' "$repo_root"
+    fi
+}
+
+#
 # @description Run explicit upgrades for managed tooling.
 # @arg $@ string Command-line arguments.
 #
@@ -589,6 +607,9 @@ function main() {
     run_optional_phase "GitHub CLI extension upgrade" upgrade_gh_extensions
     run_optional_phase "CCR adoption gate notice" report_ccr_adoption_gates
     run_required_phase "apt system upgrade" upgrade_apt_packages
+    if [ "${required_failures}" -eq 0 ]; then
+        run_required_phase "apply upgraded mise config" apply_upgraded_mise_config
+    fi
 
     printf '\nUpgrade summary: required failures: %d; optional warnings: %d\n' \
         "${required_failures}" "${optional_warnings}"

@@ -154,6 +154,14 @@ def interactive_profile(manifest: dict[str, Any]) -> dict[str, Any]:
     return profiles[name]
 
 
+def codex_marketplace_revision(manifest: dict[str, Any], name: str) -> dict[str, Any]:
+    """Return the pinned marketplace revision recorded in assets.codex-plugins."""
+    plugin = (
+        manifest.get("assets", {}).get("codex-plugins", {}).get("plugins", {}).get(name, {})
+    )
+    return {key: plugin[key] for key in ("last_updated", "last_revision") if key in plugin}
+
+
 def render_codex(manifest: dict[str, Any]) -> str:
     codex = manifest["codex"]
     lines = [
@@ -259,6 +267,10 @@ def render_codex(manifest: dict[str, Any]) -> str:
             lines.append(f"{quote_toml_key(str(key))} = {quote_toml(value)}")
     for marketplace_name, marketplace_config in codex.get("marketplaces", {}).items():
         lines.extend(["", f"[marketplaces.{quote_toml_key(marketplace_name)}]"])
+        marketplace_config = {
+            **codex_marketplace_revision(manifest, marketplace_name),
+            **marketplace_config,
+        }
         for key, value in marketplace_config.items():
             lines.append(f"{quote_toml_key(str(key))} = {quote_toml(value)}")
     hooks = codex.get("hooks", {})

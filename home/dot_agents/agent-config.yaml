@@ -112,9 +112,8 @@ codex:
     ponytail@ponytail:
       enabled: true
   marketplaces:
+    # last_updated/last_revision render from assets.codex-plugins.
     ponytail:
-      last_updated: "2026-06-30T01:47:41Z"
-      last_revision: 16f6cbf4b87792938e47b0f8c650b6d80fcbc98c
       source_type: git
       source: https://github.com/DietrichGebert/ponytail.git
   hooks:
@@ -363,3 +362,183 @@ mcp_servers:
     agents:
       codex: true
       claude: true
+
+# Third-party assets: one declaration per component with its upstream, pin,
+# verification, install path, and installer step. generate-agent-configs.py
+# renders each `render.constants` entry into the named file by rewriting the
+# matching NAME="..." assignment, so installers carry no hand-written versions.
+# Change pins here only. `enforced: false` records an installed version that
+# the lifecycle does not pin yet.
+assets:
+  mise-tools:
+    source: mise
+    upstream: https://mise.jdx.dev
+    pin: home/dot_mise/mise.lock
+    verify: mise-lock
+    files: [home/dot_mise/config.toml, home/dot_mise/mise.lock]
+  mise:
+    source: github-release
+    upstream: jdx/mise
+    pin: v2026.9.12
+    verify: release-shasums
+    install_path: ~/.local/bin/mise
+    installer: install/common/mise.sh
+    render:
+      file: install/common/mise.sh
+      constants: {MISE_VERSION: pin}
+  sheldon:
+    source: crates
+    upstream: sheldon
+    pin: 0.8.5
+    verify: cargo-locked
+    install_path: ~/.local/bin/sheldon
+    installer: install/common/sheldon.sh
+    render:
+      file: install/common/sheldon.sh
+      constants: {SHELDON_VERSION: pin}
+  starship:
+    source: github-release
+    upstream: starship/starship
+    pin: v1.25.1
+    verify: release-sha256
+    install_path: ~/.local/bin/starship
+    installer: install/ubuntu/server/starship.sh
+    render:
+      file: install/ubuntu/server/starship.sh
+      constants: {STARSHIP_VERSION: pin}
+  aws-cli:
+    source: github-release
+    upstream: aws/aws-cli
+    pin: 2.35.21
+    verify: gpg
+    gpg_fingerprint: FB5DB77FD5C118B80511ADA8A6310ACC4672475C
+    install_path: ~/.local/share/aws-cli
+    installer: install/ubuntu/common/aws_cli.sh
+    render:
+      file: install/ubuntu/common/aws_cli.sh
+      constants: {AWS_CLI_VERSION: pin, AWS_CLI_FINGERPRINT: gpg_fingerprint}
+  homebrew-installer:
+    source: git-commit
+    upstream: Homebrew/install
+    pin: c7952e40b7957268f61643152f4db725379b292e
+    verify: sha256
+    sha256: 99287f194a8b3c9e6b0203a11a5fa54518be57209343e6bb954dec4635796d9d
+    installer: install/macos/common/brew.sh
+    render:
+      file: install/macos/common/brew.sh
+      constants: {HOMEBREW_INSTALL_COMMIT: pin, HOMEBREW_INSTALL_SHA256: sha256}
+  tode:
+    source: installer-script
+    upstream: https://tode.sh/install
+    pin: v0.3.4
+    verify: installer-sha256
+    sha256: 026192e9f377af44f48c1c1e9f008c081369013d96901e5bff898f210272813c
+    note: payload-not-pinned-yet
+    install_path: ~/.local/bin/tode
+    installer: scripts/update-agent-assets.sh#update_terminal_code
+    render:
+      file: scripts/lib/installer-pins.sh
+      constants: {TERMINAL_CODE_PIN_VERSION: pin, TERMINAL_CODE_INSTALLER_SHA256: sha256}
+  terminal-browser:
+    source: installer-script
+    upstream: https://terminal-browser.sh/install
+    pin: v0.11.1
+    verify: installer-sha256
+    sha256: accb57252d6e7dde513db2a473c008d71897cf72feaaecd58c5042821d1d63f9
+    note: payload-not-pinned-yet
+    install_path: ~/.local/bin/terminal-browser
+    installer: scripts/update-agent-assets.sh#update_terminal_browser
+    render:
+      file: scripts/lib/installer-pins.sh
+      constants: {TERMINAL_BROWSER_PIN_VERSION: pin, TERMINAL_BROWSER_INSTALLER_SHA256: sha256}
+  crit:
+    source: github-release
+    upstream: tomasz-tomczyk/crit
+    pin: v0.20.3
+    verify: sha256
+    sha256:
+      linux-amd64: d3a348770e828f9f1710501735504107d1eccb195f29cacdffed92f75b6abba1
+      linux-arm64: 5a779fa202a1c7e8a1a6c5b05b4afa3a098b77c0c25103b0daf1d899f6d766ff
+    install_path: ~/.local/bin/crit
+    installer: scripts/update-agent-assets.sh#ensure_crit_cli
+    render:
+      file: scripts/lib/installer-pins.sh
+      constants:
+        CRIT_PIN_VERSION: pin
+        CRIT_LINUX_AMD64_SHA256: sha256.linux-amd64
+        CRIT_LINUX_ARM64_SHA256: sha256.linux-arm64
+  zed:
+    source: github-release
+    upstream: zed-industries/zed
+    pin: v1.21.0
+    verify: sha256
+    sha256:
+      linux-amd64: b79a992e960ed4067cb2b50d66789ed8618eeb1780ed6a0f8f1e71dd80f74200
+      linux-arm64: 69eff51b22203be7a4d0fd9df0864a8abd4d5183e8fb9aafa2af57f3cd42b9a3
+    install_path: ~/.local/bin/zed
+    installer: install/ubuntu/client/zed.sh
+    render:
+      file: scripts/lib/installer-pins.sh
+      constants:
+        ZED_PIN_VERSION: pin
+        ZED_LINUX_AMD64_SHA256: sha256.linux-amd64
+        ZED_LINUX_ARM64_SHA256: sha256.linux-arm64
+  understand-anything-installer:
+    source: git-commit
+    upstream: Egonex-AI/Understand-Anything
+    pin: 797ce7969312411be2e125c39628854166f055d7
+    verify: sha256
+    sha256: 54f0350d09f43fcc8245f3f1fb2057bd322c36c6f158483dd47dcaf5f4a44eba
+    install_path: ~/.understand-anything/repo
+    installer: scripts/update-agent-assets.sh#update_codex_understand_anything
+    render:
+      file: scripts/update-agent-assets.sh
+      constants:
+        CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT: pin
+        CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256: sha256
+  compactiondb:
+    source: vendored
+    upstream: unknown
+    pin: 2.0.0+dotfiles.6
+    verify: manifest-sha256
+    manifest: vendor/compactiondb/MANIFEST.sha256
+    note: local-fork-of-archive/CompactionDB-2.0.0.zip
+    installer: scripts/update-agent-assets.sh#update_compactiondb
+  agmsg:
+    source: vendored
+    upstream: https://github.com/fujibee/agmsg
+    pin: snapshot-2026-06-22
+    verify: none
+    install_path: ~/.agents/skills/agmsg
+    note: replaced-by-npm-pin-in-L.7
+  claude-plugins:
+    source: claude-plugin
+    upstream: marketplaces
+    pin: per-plugin
+    verify: none
+    enforced: false
+    plugins:
+      superpowers: {marketplace: anthropics/claude-plugins-official, pin: 6.4.1}
+      crit: {marketplace: tomasz-tomczyk/crit, pin: 1.8.10}
+      ponytail: {marketplace: DietrichGebert/ponytail, pin: 4.10.0}
+      understand-anything: {marketplace: Egonex-AI/Understand-Anything, pin: 2.9.7}
+  codex-plugins:
+    source: codex-plugin
+    upstream: marketplaces
+    pin: per-plugin
+    verify: none
+    enforced: false
+    plugins:
+      superpowers: {marketplace: openai-curated, pin: unknown}
+      ponytail:
+        marketplace: https://github.com/DietrichGebert/ponytail.git
+        pin: 4.10.0
+        last_updated: "2026-06-30T01:47:41Z"
+        last_revision: 16f6cbf4b87792938e47b0f8c650b6d80fcbc98c
+  gh-extensions:
+    source: gh-extension
+    upstream: https://github.com/seachicken/gh-poi
+    pin: v0.18.4
+    verify: none
+    enforced: false
+    installer: install/common/gh_extensions.sh

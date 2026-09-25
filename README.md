@@ -467,6 +467,22 @@ does not receive that permission. If an older aube-backed agent CLI cannot run,
 `scripts/update-agent-assets.sh` force-reinstalls only that broken CLI through
 the npm backend before refreshing plugins.
 
+**Asset manifest.** Every third-party component the lifecycle installs outside
+mise — the mise binary itself, sheldon, starship, the AWS CLI, the Homebrew
+installer, Crit, Zed, tode, terminal-browser, the Understand-Anything
+installer, the vendored CompactionDB and agmsg trees, and the Claude/Codex
+plugins and GitHub CLI extensions — has one declaration under `assets:` in
+`home/dot_agents/agent-config.yaml`, with its upstream, pin, verification
+method, install path, and installer step. mise tools are listed there as a
+pointer to `home/dot_mise/config.toml` and `mise.lock`, which stay the mise
+manifest. `scripts/generate-agent-configs.py` renders each pinned value into
+the installer that uses it (`install/**/*.sh`, `scripts/lib/installer-pins.sh`,
+`scripts/update-agent-assets.sh`, and the Codex config template), and
+`scripts/validate-agent-assets.py` rejects incomplete declarations, rendered
+drift, and any hand-written `*_VERSION="..."` left in an installer. Change a
+pin only in the manifest, then regenerate; entries marked `enforced: false`
+record the installed version of a component the lifecycle does not pin yet.
+
 ### 💡 Develop the Setup Scripts
 
 The setup scripts are stored as shellscripts in an appropriate location under the [`./install`](https://github.com/mryfmo/dotfiles/tree/main/install) directory.

@@ -473,7 +473,17 @@ def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
     for marketplace_name, marketplace_config in manifest_codex.get(
         "marketplaces", {}
     ).items():
-        if data.get("marketplaces", {}).get(marketplace_name) != marketplace_config:
+        revision = (
+            manifest.get("assets", {})
+            .get("codex-plugins", {})
+            .get("plugins", {})
+            .get(marketplace_name, {})
+        )
+        expected = {
+            **{key: revision[key] for key in ("last_updated", "last_revision") if key in revision},
+            **marketplace_config,
+        }
+        if data.get("marketplaces", {}).get(marketplace_name) != expected:
             fail(f"{codex_path} must render Codex marketplace {marketplace_name}")
     validate_exact_keys(
         data.get("marketplaces", {}),
@@ -513,6 +523,50 @@ def validate_claude_mcp_config() -> dict[str, Any]:
         if server.get("type") == "stdio" and not server.get("command"):
             fail(f"Claude stdio MCP server {name} must define command")
     return data
+
+
+ASSET_VERIFY_BY_SOURCE = {
+    "mise": {"mise-lock"},
+    "github-release": {"sha256", "release-shasums", "release-sha256", "gpg"},
+    "crates": {"cargo-locked"},
+    "git-commit": {"sha256"},
+    "installer-script": {"installer-sha256"},
+    "vendored": {"manifest-sha256", "none"},
+    "claude-plugin": {"none"},
+    "codex-plugin": {"none"},
+    "gh-extension": {"none"},
+}
+LITERAL_VERSION_ASSIGNMENT = re.compile(
+    r'^\s*(?:readonly |export |local )?([A-Z0-9_]*_VERSION)="[^"$]*"', re.M
+)
+
+
+def validate_assets(manifest: dict[str, Any]) -> None:
+    """Require one complete declaration per asset and no hand-written installer versions."""
+    assets = manifest.get("assets")
+    if not isinstance(assets, dict) or not assets:
+        fail("agent-config.yaml must declare third-party assets under assets:")
+    rendered: set[str] = set()
+    for name, asset in assets.items():
+        missing = [key for key in ("source", "upstream", "pin", "verify") if not asset.get(key)]
+        if missing:
+            fail(f"assets.{name} is missing {missing}")
+        allowed = ASSET_VERIFY_BY_SOURCE.get(asset["source"])
+        if allowed is None:
+            fail(f"assets.{name} has an unknown source: {asset['source']!r}")
+        if asset["verify"] not in allowed:
+            fail(f"assets.{name} verify {asset['verify']!r} is not valid for source {asset['source']!r}")
+        if asset["verify"] in {"sha256", "installer-sha256"} and not asset.get("sha256"):
+            fail(f"assets.{name} must record sha256 for verify {asset['verify']!r}")
+        if asset["verify"] == "gpg" and not asset.get("gpg_fingerprint"):
+            fail(f"assets.{name} must record gpg_fingerprint for verify 'gpg'")
+        rendered.update(asset.get("render", {}).get("constants", {}))
+    for path in sorted((ROOT / "install").rglob("*.sh")):
+        for match in LITERAL_VERSION_ASSIGNMENT.finditer(path.read_text()):
+            if match.group(1) not in rendered:
+                fail(
+                    f"{path.relative_to(ROOT)} hard-codes {match.group(1)}; declare it in assets: and render it"
+                )
 
 
 def validate_agent_manifest() -> dict[str, Any]:
@@ -1131,6 +1185,7 @@ def validate_repo_claude_settings_portable() -> None:
 def main() -> None:
     manifest = validate_agent_manifest()
     validate_adh_profile(manifest)
+    validate_assets(manifest)
     validate_generated_agent_configs()
     validate_hook_composition()
     validate_skills()

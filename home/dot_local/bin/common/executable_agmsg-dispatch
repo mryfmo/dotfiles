@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# @file agmsg-dispatch
+# @brief Send an agmsg message, wake an idle worker, and verify receipt.
+# @description Uses the installed agmsg storage helpers. Polls every five seconds
+#   for AGMSG_DISPATCH_TIMEOUT seconds (default 120), retrying an idle wake once.
+#   Only routing metadata, never the message body, is sent to the terminal.
+# @arg $1 string Team identifier.
+# @arg $2 string Sender identifier.
+# @arg $3 string Recipient identifier.
+# @arg $4 string Herdr pane identifier.
+# @arg $@ string Message words, joined with spaces.
+# @example agmsg-dispatch project claude codex w1:p2 'AGMSG-TASK v1 ...'
+set -euo pipefail
+
+usage='agmsg-dispatch <team> <from> <to> <pane_id> <message...>'
+if (($# < 5)); then
+    printf 'Usage: %s\n' "$usage" >&2
+    exit 1
+fi
+team=$1 from=$2 to=$3 pane=$4
+shift 4
+scripts="${HOME}/.agents/skills/agmsg/scripts"
+# shellcheck source=/dev/null
+source "$scripts/lib/identifier.sh"
+agmsg_validate_identifiers "$usage" "$team" "$from" "$to"
+timeout=${AGMSG_DISPATCH_TIMEOUT:-120}
+if [[ ! $timeout =~ ^[1-9][0-9]{0,5}$ ]]; then
+    printf 'agmsg-dispatch: timeout must be a positive integer up to 999999 seconds\n' >&2
+    exit 1
+fi
+# shellcheck source=/dev/null
+source "$scripts/lib/storage.sh"
+db=$(agmsg_db_path)
+if ! bash "$scripts/send.sh" "$team" "$from" "$to" "$*" > /dev/null 2>&1; then
+    printf 'agmsg-dispatch: send failed\n' >&2
+    exit 1
+fi
+# ponytail: one sender per route; send.sh must return an id before concurrent same-route dispatch.
+message_id=$(sqlite3 -cmd '.timeout 5000' "$db" "SELECT max(id) FROM messages WHERE team='$team' AND from_agent='$from' AND to_agent='$to';")
+if [[ ! $message_id =~ ^[0-9]+$ ]]; then
+    printf 'agmsg-dispatch: sent message id not found\n' >&2
+    exit 1
+fi
+pane_status=$(herdr pane list | jq -er --arg pane "$pane" '.result.panes[] | select(.pane_id == $pane) | .agent_status')
+
+# @description Wake the worker with metadata and its actual inbox command.
+wake() {
+    herdr pane run "$pane" "agmsg: new message $message_id for $to — run ~/.agents/skills/agmsg/scripts/inbox.sh $team $to" > /dev/null
+}
+
+# @description Wait for this message's read receipt within the timeout.
+wait_for_read() {
+    local deadline=$((SECONDS + timeout)) remaining
+    while true; do
+        if [[ $(sqlite3 -cmd '.timeout 5000' "$db" "SELECT read_at IS NOT NULL FROM messages WHERE id=$message_id;") == 1 ]]; then
+            return 0
+        fi
+        remaining=$((deadline - SECONDS))
+        ((remaining > 0)) || return 1
+        ((remaining <= 5)) || remaining=5
+        sleep "$remaining"
+    done
+}
+
+if [[ $pane_status != working ]]; then
+    wake
+fi
+if wait_for_read; then
+    exit 0
+fi
+if [[ $pane_status != working ]]; then
+    wake
+    if wait_for_read; then
+        exit 0
+    fi
+fi
+printf 'agmsg-dispatch: message %s remains unread by %s after timeout\n' "$message_id" "$to" >&2
+exit 1

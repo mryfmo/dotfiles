@@ -1,4 +1,12 @@
-# AGMSG-TASK dot-herdr-agents-add-worker-T22-a01: implement the documented parallel-worker topology as a herdr-agents mode (no more ad-hoc herdr CLI)
+---
+task_id: dot-herdr-agents-add-worker-T22-a01
+revision: 2
+supersedes: 1
+created_at: 2026-09-26T01:55:00Z
+---
+# AGMSG-TASK dot-herdr-agents-add-worker-T22-a01 (revision 2): implement parallel workers as a herdr-agents mode on top of upstream agmsg `spawn`/`despawn` (no ad-hoc herdr CLI, no re-implemented seating)
+
+Revision 2 note: upstream agmsg (v1.5.0) already seats agents in herdr — `spawn.sh <type> <name> --project <worktree> --terminal-driver herdr [--boot-prompt …]` creates the pane (`herdr tab create --workspace`/`pane split`), starts the CLI with the actas boot prompt, names the pane, writes the placement record and waits for the readiness sentinel; `despawn.sh` tears it down; there is no leader-side pane registration by design (#1152). herdr-agents must therefore CALL spawn/despawn for extra workers rather than re-implementing pane creation, and keep only what upstream does not do: worktree creation/validation, worker-kind profile args (`--model` for claude via spawn options or `HERDR_AGENTS_*`), `AGMSG_CC_MONITOR_KEEP_ALIVE=1` env, delivery mode per worktree, and our labels. Verify locally the herdr caveats (#1307 placement template ignored; `ops.sh` argv "ASSERTED, NOT measured"). Depends on T19 (upstream 1.5.0 installed).
 
 Plan: `.agents/worklog/claude/remediation-plan-20260925.md` §Phase 3 (role/seat model) and the README design. Operator finding 2026-09-25: parallel workers were being created by improvised `herdr tab create`; the README states the design ("one git worktree equals one resident worker in its own tab/workspace; its pane receives the worktree through `herdr pane split <pane> --direction right --cwd <worktree>`; `herdr agent start <name> --kind <kind> --pane <id>`") but no script implements it, so every operator/orchestrator has to interpret it. Turn the design into code with tests and documentation, then forbid raw topology commands (T21 G7).
 

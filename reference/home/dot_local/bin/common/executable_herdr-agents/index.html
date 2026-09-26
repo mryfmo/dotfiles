@@ -3747,7 +3747,8 @@
 <span class="c1">#   model profile: `--profile &lt;name&gt;` for a codex worker, or the profile whose</span>
 <span class="c1">#   `MODEL_PROFILE_&lt;NAME&gt;_CLAUDE_ARGS` supplies arguments for a claude worker.</span>
 <span class="c1">#   `HERDR_AGENTS_CODEX_PROFILE` is kept as a deprecated alias. Defaults to</span>
-<span class="c1">#   MODEL_PROFILE_INTERACTIVE from ~/.agents/model-profiles.env, then standard.</span>
+<span class="c1">#   `worker_profile` from the manifest via ~/.agents/model-profiles.env, then</span>
+<span class="c1">#   MODEL_PROFILE_INTERACTIVE from the same file, then standard.</span>
 <span class="c1"># @arg HERDR_AGENTS_CODEX_PROFILE Deprecated alias for HERDR_AGENTS_WORKER_PROFILE.</span>
 <span class="c1"># @arg HERDR_AGENTS_CLAUDE_ARGS Optional space-delimited Claude arguments for</span>
 <span class="c1">#   manifest-sourced E2E profile overrides on the orchestrator pane. Defaults</span>
@@ -3800,11 +3801,10 @@
 
 <span class="c1"># @description Resolve the worker profile without duplicating the manifest default.</span>
 <span class="c1">#   Checks the kind-independent HERDR_AGENTS_WORKER_PROFILE first, then the</span>
-<span class="c1">#   deprecated HERDR_AGENTS_CODEX_PROFILE alias, before falling back to the</span>
-<span class="c1">#   manifest-generated interactive default.</span>
+<span class="c1">#   deprecated HERDR_AGENTS_CODEX_PROFILE alias, then the manifest-generated</span>
+<span class="c1">#   HERDR_AGENTS_WORKER_PROFILE and MODEL_PROFILE_INTERACTIVE values from</span>
+<span class="c1">#   ~/.agents/model-profiles.env, then standard.</span>
 <span class="k">function</span><span class="w"> </span>resolve_worker_profile<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">MODEL_PROFILE_INTERACTIVE</span><span class="o">=</span><span class="s2">""</span>
-
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">HERDR_AGENTS_WORKER_PROFILE</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HERDR_AGENTS_WORKER_PROFILE</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">return</span>
@@ -3813,11 +3813,12 @@
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HERDR_AGENTS_CODEX_PROFILE</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">return</span>
 <span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">HERDR_AGENTS_WORKER_PROFILE</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span><span class="nv">MODEL_PROFILE_INTERACTIVE</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span><span class="nv">HERDR_AGENTS_WORKER_KIND</span><span class="o">=</span><span class="s2">""</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span>/.agents/model-profiles.env<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="c1"># shellcheck source=/dev/null</span>
 <span class="w">        </span><span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/model-profiles.env"</span>
 <span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MODEL_PROFILE_INTERACTIVE</span><span class="k">:-</span><span class="nv">standard</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HERDR_AGENTS_WORKER_PROFILE</span><span class="k">:-</span><span class="si">${</span><span class="nv">MODEL_PROFILE_INTERACTIVE</span><span class="k">:-</span><span class="nv">standard</span><span class="si">}}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1"># @description Resolve the worker kind: explicit environment first, then the</span>

@@ -1,6 +1,6 @@
 # AGMSG-TASK dot-agmsg-upstream-sync-T19-a01: install agmsg from the upstream npm release through the asset manifest and retire the vendored snapshot and agmsg-dispatch (plan Phase L.7 + Phase 2)
 
-Plan: `.agents/worklog/claude/remediation-plan-20260925.md` §Phase L.7, §Phase 2, §0 item 4. Prerequisite: PR #181 (asset manifest) merged. Repo: your nested worktree, branch `feat/agmsg-upstream-sync` from origin/main. You are `claude-standard-dot-a003`.
+Plan: `.agents/worklog/claude/remediation-plan-20260925.md` §Phase L.7, §Phase 2, §0 item 4. Prerequisite PR #181 is merged (6026837). Repo: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-b` (your worktree; T17 is awaiting merge — do not touch its branch), `git switch -c feat/agmsg-upstream-sync origin/main`. You are `claude-standard-dot-a004` (pane wE:p4).
 
 ## Facts (verified 2026-09-25)
 - Upstream: https://github.com/fujibee/agmsg (MIT), npm package `agmsg` latest 1.4.2 (published 2026-09-24), install path `~/.agents/skills/agmsg/`. Upstream ships ~40 scripts incl. `spawn.sh`, `despawn.sh`, `poke.sh`, `peek.sh`, `doctor.sh`, `fix.sh`, `team.sh`, `where.sh`, `placement-collisions.sh`, `version.sh`, terminal drivers (`drivers/`, herdr included), `release/`.

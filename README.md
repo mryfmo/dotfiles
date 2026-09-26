@@ -441,10 +441,12 @@ not the current `HEAD`; any item without a `fixed:<commit>` or
 or lies outside `<ref>..HEAD`; and a `not-applicable` reason shorter than 20
 characters on an item that failed or did not finish (`failure`, `error`,
 `cancelled`, `timed_out`, `action_required`, `startup_failure`, `stale`,
-`in_progress`, `queued`, or `pending`). It also re-runs
-`scripts/pr-feedback.py` for the evidence's `pr` and fails unless GitHub's
-head for that PR is the local `HEAD` and every currently collected item is
-present in the evidence, so a hand-written or stale file cannot pass. Without
+`in_progress`, `queued`, or `pending`). It also re-runs the
+base branch's `scripts/pr-feedback.py` (so the PR under review cannot swap
+the collector) for the evidence's `pr` and fails unless GitHub's head for that
+PR is the local `HEAD`, a `coderabbitai[bot]` review of that head exists, and
+every currently collected item is present in the evidence, so a hand-written
+or stale file cannot pass. Without
 `BASE` the evidence is only format-checked. The evidence file itself is not
 counted toward the diff that decides whether review is required.
 `.github/workflows/coderabbit-trigger.yml` comments `@coderabbitai full review`
@@ -493,8 +495,10 @@ JSON
 ```
 
 The `CodeRabbit` status reports success even when it skipped the review, so
-the required thread resolution and the dispositioned feedback JSON, not that
-status, are what prove the review happened.
+the integration gate does not trust it: with `BASE`, it requires a completed
+`coderabbitai[bot]` review whose commit is the final `HEAD` among the
+re-collected feedback, alongside the resolved threads and the dispositioned
+JSON.
 
 Ponytail keeps coding tasks biased toward YAGNI, existing code, standard
 library and native platform features, and the smallest correct diff. The

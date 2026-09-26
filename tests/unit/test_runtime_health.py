@@ -392,7 +392,11 @@ EOF
         self.assertEqual(0o644, stat.S_IMODE(marketplace.stat().st_mode))
 
     def crit_fixture(
-        self, installed_version: str | None = None
+        self,
+        installed_version: str | None = None,
+        *,
+        os_name: str = "Linux",
+        arch: str = "x86_64",
     ) -> tuple[Path, Path, dict[str, str], str]:
         repo = self.temp_dir / "crit-repo"
         home = self.temp_dir / "crit-home"
@@ -412,7 +416,8 @@ EOF
             repo / "scripts/lib/installer-pins.sh",
         )
         (repo / "vendor/compactiondb").mkdir(parents=True)
-        payload = repo / "crit-linux-amd64"
+        artifact_arch = "amd64" if arch in ("x86_64", "amd64") else "arm64"
+        payload = repo / f"crit-{os_name.lower()}-{artifact_arch}"
         self.executable(payload, "printf 'crit v9.9.9 (fixture)\\n'\n")
         checksum = subprocess.run(
             ["shasum", "-a", "256", str(payload)],
@@ -422,11 +427,11 @@ EOF
         ).stdout.split()[0]
         self.executable(
             bin_dir / "uname",
-            """
+            f"""
             case "$1" in
-                -s) printf 'Linux\\n' ;;
-                -m) printf 'x86_64\\n' ;;
-                *) printf 'Linux\\n' ;;
+                -s) printf '{os_name}\\n' ;;
+                -m) printf '{arch}\\n' ;;
+                *) printf '{os_name}\\n' ;;
             esac
             """,
         )
@@ -569,6 +574,56 @@ EOF
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertNotIn("unbound variable", result.stderr)
+
+    def test_darwin_crit_install_is_pinned_atomic_and_recorded(self) -> None:
+        repo, home, env, checksum = self.crit_fixture(os_name="Darwin", arch="arm64")
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                "source scripts/update-agent-assets.sh; "
+                "CRIT_PIN_VERSION=v9.9.9; "
+                f"CRIT_DARWIN_ARM64_SHA256={checksum}; "
+                "ensure_crit_cli",
+            ],
+            cwd=repo,
+            env=env,
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        target = home / ".local/bin/crit"
+        self.assertTrue(target.stat().st_mode & stat.S_IXUSR)
+        self.assertIn("crit v9.9.9", self.run_test_command([str(target)]).stdout)
+        log = (repo / "commands.log").read_text()
+        self.assertIn("/v9.9.9/crit-darwin-arm64", log)
+        self.assertNotIn("crit-darwin-amd64", log)
+        self.assertNotIn("crit-linux", log)
+        self.assertNotIn("brew", log)
+        manifest = json.loads((home / ".agents/.installed-manifest.json").read_text())
+        self.assertEqual([str(target)], manifest["steps"]["ensure_crit_cli"]["paths"])
+
+    def test_darwin_crit_checksum_failure_preserves_existing_binary(self) -> None:
+        repo, home, env, _checksum = self.crit_fixture(
+            "1.0.0", os_name="Darwin", arch="arm64"
+        )
+        target = home / ".local/bin/crit"
+        previous = target.read_bytes()
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                "source scripts/update-agent-assets.sh; "
+                "CRIT_PIN_VERSION=v9.9.9; "
+                f"CRIT_DARWIN_ARM64_SHA256={'0' * 64}; "
+                "ensure_crit_cli",
+            ],
+            cwd=repo,
+            env=env,
+        )
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("checksum mismatch", result.stdout + result.stderr)
+        self.assertEqual(previous, target.read_bytes())
 
     def update_fixture(
         self,
@@ -1015,6 +1070,8 @@ EOF
                     ;;
                 *crit-linux-amd64*) printf 'fixture amd64\n' > "$out" ;;
                 *crit-linux-arm64*) printf 'fixture arm64\n' > "$out" ;;
+                *crit-darwin-amd64*) printf 'fixture darwin amd64\n' > "$out" ;;
+                *crit-darwin-arm64*) printf 'fixture darwin arm64\n' > "$out" ;;
                 *zed-linux-x86_64.tar.gz*) printf 'fixture zed amd64\n' > "$out" ;;
                 *zed-linux-aarch64.tar.gz*) printf 'fixture zed arm64\n' > "$out" ;;
             esac
@@ -1366,6 +1423,8 @@ EOF
             "terminal-browser.sha256",
             "crit.sha256.linux-amd64",
             "crit.sha256.linux-arm64",
+            "crit.sha256.darwin-amd64",
+            "crit.sha256.darwin-arm64",
             "zed.sha256.linux-amd64",
             "zed.sha256.linux-arm64",
         ):
@@ -1374,6 +1433,8 @@ EOF
         self.assertIn("curl -fsSL https://terminal-browser.sh/install", log)
         self.assertIn("crit-linux-amd64", log)
         self.assertIn("crit-linux-arm64", log)
+        self.assertIn("crit-darwin-amd64", log)
+        self.assertIn("crit-darwin-arm64", log)
         self.assertIn("zed-linux-x86_64.tar.gz", log)
         self.assertIn("zed-linux-aarch64.tar.gz", log)
 

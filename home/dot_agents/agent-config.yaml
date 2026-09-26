@@ -461,6 +461,8 @@ assets:
     sha256:
       linux-amd64: d3a348770e828f9f1710501735504107d1eccb195f29cacdffed92f75b6abba1
       linux-arm64: 5a779fa202a1c7e8a1a6c5b05b4afa3a098b77c0c25103b0daf1d899f6d766ff
+      darwin-amd64: 30c2cd37d7534c51b111babf78f8f0abd7d7750d6d37bf237c3764241099777b
+      darwin-arm64: 83df98726dbbc85f6d84326d35e335cdbec2756b53b9710eeab92cc1b02334e6
     install_path: ~/.local/bin/crit
     installer: scripts/update-agent-assets.sh#ensure_crit_cli
     render:
@@ -469,6 +471,8 @@ assets:
         CRIT_PIN_VERSION: pin
         CRIT_LINUX_AMD64_SHA256: sha256.linux-amd64
         CRIT_LINUX_ARM64_SHA256: sha256.linux-arm64
+        CRIT_DARWIN_AMD64_SHA256: sha256.darwin-amd64
+        CRIT_DARWIN_ARM64_SHA256: sha256.darwin-arm64
   zed:
     source: github-release
     upstream: zed-industries/zed

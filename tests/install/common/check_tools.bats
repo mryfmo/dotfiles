@@ -22,3 +22,33 @@ function setup() {
     [[ "${output}" == *"optional warning: machine SSH key is missing"* ]]
     [[ "${output}" == *"provision-machine-key"* ]]
 }
+
+@test "[common] check_crit_cli reports the pinned version and origin when installed" {
+    local crit_path="${BATS_TEST_TMPDIR}/.local/bin/crit"
+    mkdir -p "$(dirname "${crit_path}")"
+    printf '#!/usr/bin/env bash\nprintf "crit 0.20.3\\n"\n' > "${crit_path}"
+    chmod +x "${crit_path}"
+
+    run env HOME="${BATS_TEST_TMPDIR}" bash -c "source '${SCRIPT_PATH}'; check_crit_cli"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"found:   crit ->"*"(pinned release)"* ]]
+    [[ "${output}" == *"crit 0.20.3"* ]]
+}
+
+@test "[common] check_crit_cli is not applicable and not a failure when absent" {
+    run env HOME="${BATS_TEST_TMPDIR}/empty" bash -c "source '${SCRIPT_PATH}'; check_crit_cli"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"not applicable: Crit CLI (not installed)"* ]]
+}
+
+@test "[common] check_crit_cli warns instead of aborting when --version fails" {
+    local crit_path="${BATS_TEST_TMPDIR}/.local/bin/crit"
+    mkdir -p "$(dirname "${crit_path}")"
+    printf '#!/usr/bin/env bash\nexit 1\n' > "${crit_path}"
+    chmod +x "${crit_path}"
+
+    run env HOME="${BATS_TEST_TMPDIR}" bash -c "source '${SCRIPT_PATH}'; check_crit_cli"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"found:   crit ->"* ]]
+    [[ "${output}" == *"optional warning: crit --version failed"* ]]
+}

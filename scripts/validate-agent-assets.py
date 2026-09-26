@@ -757,7 +757,8 @@ def validate_codex_profile_modify_scripts(manifest: dict[str, Any]) -> None:
 def validate_crit_install_assets() -> None:
     updater = (ROOT / "scripts/update-agent-assets.sh").read_text()
     for token in (
-        "brew install crit",
+        "crit-darwin-amd64",
+        "crit-darwin-arm64",
         "crit@crit",
         "claude plugin enable",
         "claude_crit_plugin_is_enabled",

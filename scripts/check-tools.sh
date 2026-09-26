@@ -150,6 +150,23 @@ function check_machine_ssh_key() {
 }
 
 #
+# @description Report the managed Crit CLI's pinned version and origin, when installed.
+#   Installed by ensure_crit_cli in scripts/update-agent-assets.sh from the pinned
+#   GitHub release on every OS; not required, so a missing binary is not a failure.
+#
+function check_crit_cli() {
+    local target="${HOME%/}/.local/bin/crit"
+
+    if [ ! -x "${target}" ]; then
+        printf 'not applicable: Crit CLI (not installed)\n'
+        return 0
+    fi
+
+    printf 'found:   crit -> %s (pinned release)\n' "${target}"
+    "${target}" --version || warn_optional "crit --version failed; the managed binary may be corrupt (try REPAIR=1 make doctor)"
+}
+
+#
 # @description Print the current GitHub CLI extension state when gh is installed.
 #
 function check_gh_extensions() {
@@ -179,6 +196,9 @@ function main() {
 
     section "Homebrew"
     check_homebrew
+
+    section "Crit CLI"
+    check_crit_cli
 
     section "SSH"
     check_machine_ssh_key

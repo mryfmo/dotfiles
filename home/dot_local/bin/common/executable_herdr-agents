@@ -591,7 +591,7 @@ function bootstrap_agmsg() {
     if ! { [[ -f ${claude_hooks_file} ]] && jq -e \
         'any(.hooks.SessionStart[]?.hooks[]?; ((.command // "") | contains("agmsg/scripts/session-start.sh")))' \
         "${claude_hooks_file}" > /dev/null 2>&1; }; then
-        if "${delivery}" set monitor claude-code "${workdir}" >> "${log_file}" 2>&1; then
+        if "${delivery}" set both claude-code "${workdir}" >> "${log_file}" 2>&1; then
             printf 'First-time Claude Code agmsg setup may stop one same-repo watcher once; the hooks apply in the next Claude Code session.\n' >&2
         fi
     fi
@@ -766,7 +766,15 @@ if [[ ${attach_mode} == true ]]; then
     fi
 
     if [[ -z ${worker_pane_id} && -z ${workspace_worker_pane_id} ]]; then
-        worker_pane_id="$(split_agent_pane "${claude_pane_id}" "${workdir}")"
+        # A resident claude-kind worker's Monitor watch re-arms unconditionally
+        # on expiry (upstream default: re-arm only if the expired watch
+        # delivered something); an unattended worker pane has no one to notice
+        # a silently dropped watch, unlike the interactive orchestrator pane.
+        if [[ ${worker_kind} == claude ]]; then
+            worker_pane_id="$(split_agent_pane "${claude_pane_id}" "${workdir}" --env AGMSG_CC_MONITOR_KEEP_ALIVE=1)"
+        else
+            worker_pane_id="$(split_agent_pane "${claude_pane_id}" "${workdir}")"
+        fi
         start_worker_agent "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" true > /dev/null
     fi
     panes_json="$(herdr pane list --workspace "${workspace_id}")"
@@ -800,7 +808,11 @@ if [[ -n ${existing_workspace_id} ]]; then
                 printf 'Unable to find a pane for %s worker repair in Herdr workspace: %s\n' "${worker_kind}" "${workspace_id}" >&2
                 exit 1
             fi
-            worker_pane_id="$(split_agent_pane "${split_source_pane_id}" "${workdir}")"
+            if [[ ${worker_kind} == claude ]]; then
+                worker_pane_id="$(split_agent_pane "${split_source_pane_id}" "${workdir}" --env AGMSG_CC_MONITOR_KEEP_ALIVE=1)"
+            else
+                worker_pane_id="$(split_agent_pane "${split_source_pane_id}" "${workdir}")"
+            fi
             worker_pane_is_new=true
         fi
         start_worker_agent "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" "${worker_pane_is_new}" > /dev/null
@@ -854,7 +866,11 @@ fi
 
 worker_agent_name="$(agent_name_for_workspace "${worker_kind}-worker" "${workspace_id}")"
 start_claude_in_pane "${root_pane_id}" "${workspace_id}" true
-worker_pane_id="$(split_agent_pane "${root_pane_id}" "${workdir}")"
+if [[ ${worker_kind} == claude ]]; then
+    worker_pane_id="$(split_agent_pane "${root_pane_id}" "${workdir}" --env AGMSG_CC_MONITOR_KEEP_ALIVE=1)"
+else
+    worker_pane_id="$(split_agent_pane "${root_pane_id}" "${workdir}")"
+fi
 start_worker_agent "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" true > /dev/null
 bootstrap_agmsg "${workdir}"
 

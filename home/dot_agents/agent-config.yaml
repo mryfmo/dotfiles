@@ -514,19 +514,25 @@ assets:
   agmsg:
     source: git-commit
     upstream: https://github.com/fujibee/agmsg
-    pin: e94ca9e0f4c40ebf3115dee8eb639f303c7f7a3f
-    version: "1.4.2"
+    pin: c487be269c1973aeb01ca831806eb3f65ff3366d
+    ref: v1.5.0
+    version: "1.5.0"
     verify: sha256
-    sha256: a882ebc76dd140514c4996784ecdd90cff983d813421899682c0a533faa2a7f4
+    sha256: 9201cb5ff23ddd9ddaa19ff821dce0d0f2d58c6c292aade252a8d824b3dfc059
+    bootstrap_integrity: sha512-n6057L93AE+tnItTkBnClv3QvgsOlI6AO1SwodvKFJvqqTJqITHg/2O6jjHZZfh0nKbq49VKQv6F3t2d/62gyg==
     install_path: ~/.agents/skills/agmsg
     installer: scripts/update-agent-assets.sh#update_agmsg
     note: >-
-      pin is the commit behind tag v1.4.2 (matches the npm dist-tag published the
-      same day); upstream's own install.sh --update owns SKILL.md/VERSION/scripts/
+      pin is the commit behind tag v1.5.0 (matches the npm dist-tag published the
+      day before); upstream's own install.sh --update owns SKILL.md/VERSION/scripts/
       in place and never touches teams/db/run (live runtime state). The npm
-      package agmsg@1.4.2 is a bootstrapper only (bin/agmsg.js shells out to this
-      same tag's setup.sh) and ships no implementation, so this pins the upstream
-      git commit directly rather than an npm dist.integrity value.
+      package agmsg@1.5.0 is a bootstrapper only (bin/agmsg.js shells out to this
+      same tag's setup.sh) and ships no implementation and no documented checksum
+      for the cloned tree, so this pins the upstream git commit and verifies a
+      byte-for-byte sha256 of the tag's source archive (a strictly stronger check
+      than the bare `git rev-parse HEAD` comparison the upstream install flow
+      itself does not verify); bootstrap_integrity records the npm bootstrapper's
+      own dist.integrity for provenance only, it is not used by the installer.
     render:
       file: scripts/update-agent-assets.sh
       constants:

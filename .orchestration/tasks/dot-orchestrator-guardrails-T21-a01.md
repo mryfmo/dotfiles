@@ -1,7 +1,7 @@
 ---
 task_id: dot-orchestrator-guardrails-T21-a01
-revision: 2
-supersedes: 1
+revision: 3
+supersedes: 2
 created_at: 2026-09-26T01:25:00Z
 ---
 # AGMSG-TASK dot-orchestrator-guardrails-T21-a01 (revision 2): enforce the orchestrator rules that prose could not hold (G1–G8 PreToolUse guardrails + checklist re-injection + rule text)
@@ -17,7 +17,7 @@ Repo: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c` (your own wor
 
 ## Deliverables
 1. `home/dot_claude/hooks/executable_orchestrator-guardrails.py` (stdlib Python, shdoc-style module docstring) with deterministic rules, each with an id and a one-line remedy printed on deny:
-   - `G1 no-status-inference` (role=orchestrator): deny Bash containing `herdr agent list`, `herdr pane list`, `herdr pane peek`, `herdr agent explain` → "use AGMSG-PING/PONG; completion arrives as AGMSG-RESULT".
+   - `G1 no-screen-reading` (role=orchestrator): deny `herdr pane read|peek|send-text|send-keys` (reading worker screens or typing into them outside `herdr pane run`/dispatch). `herdr agent list` and `herdr agent explain` stay ALLOWED as health monitoring (liveness, `blocked` detection); the rule text states that completion is accepted only from AGMSG-RESULT and never from status.
    - `G2 no-bare-send` (role=orchestrator): deny direct `agmsg/scripts/send.sh` → "use agmsg-dispatch (or upstream poke after T19)". Allow when the command is the dispatcher itself.
    - `G3 worker-tree-isolation` (role=orchestrator): deny `cd`/writes (`>`, `tee`, `cp/mv/rm`, `git -C`, `sed -i`) targeting `.claude/worktrees/<name>` except `.claude/worktrees/orchestrator-review`; reads (`git show`, `cat`, `grep`, `diff`) stay allowed.
    - `G4 merge-gate` (role=orchestrator): deny `gh pr merge <n>` unless both `.orchestration/validation/*-pr-feedback*.json` mentioning `"number": <n>` (or `pr=<n>`) with zero empty dispositions AND a receipt `.agents/worklog/claude/crit/pr-<n>-receipt.md` exist; also deny `--delete-branch` while any `git worktree list` entry has that PR's head branch checked out (prints the worktree path).
@@ -47,3 +47,4 @@ Standard five + pr-feedback JSON. `[memory:decision]`: "orchestrator rules that 
 ## Revision history
 - r1: G1–G6 + role detection + checklist; addenda added G7 (2026-09-25 23:0xZ) and enforceable G8 (23:1xZ).
 - r2 (2026-09-26): addenda folded into the body; no scope change.
+- r3 (2026-09-26 01:3xZ): G1 narrowed to screen reading/typing; agent list/explain allowed for health monitoring (operator finding: health must be monitored; only completion inference is forbidden).

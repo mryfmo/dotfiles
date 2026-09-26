@@ -1,4 +1,10 @@
-# AGMSG-TASK dot-orchestrator-guardrails-T21-a01: enforce the orchestrator rules that prose could not hold (PreToolUse guardrails + checklist re-injection + rule text)
+---
+task_id: dot-orchestrator-guardrails-T21-a01
+revision: 2
+supersedes: 1
+created_at: 2026-09-26T01:25:00Z
+---
+# AGMSG-TASK dot-orchestrator-guardrails-T21-a01 (revision 2): enforce the orchestrator rules that prose could not hold (G1–G8 PreToolUse guardrails + checklist re-injection + rule text)
 
 Operator finding (2026-09-25): most orchestrator deviations violated rules that already existed in prose (`home/dot_config/claude/rules/agmsg-orchestration.md`, `model-selection.md`, agmsg-orchestration SKILL): inferring worker state from `herdr agent list`, idle-waiting, bare `send.sh` to a herdr-paned worker, self-exploration, working inside the worker worktree. Some rules were missing (revise consolidation, GitHub feedback sweep, `make upgrade` never inside a worker task, plan-mode procedure). Prose alone does not hold across long sessions and compaction. Rules the orchestrator cannot keep must be enforced deterministically at the tool boundary and re-injected after compaction.
 
@@ -17,7 +23,9 @@ Repo: `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-c` (your own wor
    - `G4 merge-gate` (role=orchestrator): deny `gh pr merge <n>` unless both `.orchestration/validation/*-pr-feedback*.json` mentioning `"number": <n>` (or `pr=<n>`) with zero empty dispositions AND a receipt `.agents/worklog/claude/crit/pr-<n>-receipt.md` exist; also deny `--delete-branch` while any `git worktree list` entry has that PR's head branch checked out (prints the worktree path).
    - `G5 no-make-upgrade-in-tasks` (role=worker): deny `make upgrade` / `scripts/upgrade-tools.sh` → "operator-run at a session boundary in the canonical clone".
    - `G6 no-self-exploration` (role=orchestrator, soft): when a Bash command is a broad search (`rg|grep -r|find . -name` over the repo root without a path under `.orchestration`/`.agents`), print a warning to stderr but allow (additionalContext), pointing to express-explorer. Keep it advisory to avoid blocking legitimate reads.
-   - Rules are configured in `agent-config.yaml` under `claude.guardrails` (enabled list + role env name) and rendered into the managed settings; `validate-agent-assets.py` requires G1–G5 enabled for the orchestrator profile.
+   - `G7 no-improvised-topology` (role=orchestrator): deny raw `herdr workspace create|close`, `herdr tab create|close`, `herdr pane split|move|swap|close`, `herdr agent start|stop`. Allowed: `herdr-agents` (documented lifecycle entrypoint), `agmsg-dispatch`/upstream `poke`, and read-only `herdr … list|get|read` only where G1 permits. Remedy: "topology changes go through herdr-agents; if it lacks the capability, file a task to extend it (T22)".
+   - `G8 documented-procedure-or-ask` (role=orchestrator, enforceable): any Bash whose first word or a pipeline stage is `herdr`, `agmsg-dispatch`, `~/.agents/skills/agmsg/scripts/*.sh`, `git worktree`, `gh pr merge`, `chezmoi apply`, or `make update|upgrade` must carry a trailer comment `# ref: <repo-relative file>#<heading or line>` naming the documented procedure; the hook verifies the file exists and the heading/line text is present, otherwise denies with "cite the documented procedure or stop and ask". Read-only `git`/`gh api` queries are exempt. Tests: allow with a valid ref, deny without ref, deny with a ref to a missing heading.
+   - Rules are configured in `agent-config.yaml` under `claude.guardrails` (enabled list + role env name) and rendered into the managed settings; `validate-agent-assets.py` requires G1–G5, G7, G8 enabled for the orchestrator profile.
 2. Checklist re-injection: extend the existing agmsg `session-start.sh` directive path or add a small `SessionStart` (matchers `startup|resume|compact`) + `UserPromptSubmit` hook that prints a ≤12-line orchestrator checklist (PING-only liveness; tasking → dispatch → RESULT → adversarial review in `orchestrator-review` → feedback sweep → Crit → receipt → guard → merge without `--delete-branch` → records → sync commit; one consolidated revise per round; never idle-wait). Only for role=orchestrator.
 3. Rule text: `agmsg-orchestration.md` (+ SKILL Orchestrator Playbook) gains: worker-worktree isolation; one consolidated revise per review round; `make upgrade` never in an AGMSG-TASK; plan-mode procedure (plan → one ExitPlanMode → run the regime end to end); the guardrail ids and how to override for an operator-sanctioned exception (`GUARDRAILS_ALLOW=G1,...` env for one command, logged).
 4. herdr-agents: pass `--env HERDR_AGENTS_ROLE=...` on pane creation; README paragraph.
@@ -34,12 +42,8 @@ Unit tests; validator; generator `--check`; E2E outputs; `gh pr checks`; pr-feed
 editing live `~/.claude/settings.json` or `~/.claude/hooks/`; `make update`/`chezmoi apply`; merging; local bats; force-push.
 
 ## Artefacts / Done signal
-Standard five + pr-feedback JSON. `[memory:decision]`: "orchestrator rules that prose could not hold are enforced by a PreToolUse guardrail hook (G1-G5) with role detection from HERDR_AGENTS_ROLE and re-injected as a checklist on SessionStart/compact". RESULT via send.sh. max_turns=50.
+Standard five + pr-feedback JSON. `[memory:decision]`: "orchestrator rules that prose could not hold are enforced by a PreToolUse guardrail hook (G1-G8) with role detection from HERDR_AGENTS_ROLE and re-injected as a checklist on SessionStart/compact". RESULT via send.sh. max_turns=50.
 
-## Addendum (2026-09-25 23:0xZ, operator finding: "you keep improvising; regulate it")
-- Add **G7 no-improvised-topology** (role=orchestrator): deny raw `herdr workspace create|close`, `herdr tab create|close`, `herdr pane split|move|swap|close`, and `herdr agent start|stop` from the orchestrator session. Allowed: `herdr-agents` (the documented lifecycle entrypoint), `agmsg-dispatch`/upstream `poke`, and read-only `herdr … list|get|read` only where G1 permits. Remedy text: "topology changes go through herdr-agents; if it lacks the capability, file a task to extend it (see T22)".
-- Add **G8 documented-procedure-or-ask** to the rule text (not enforceable by regex): any control-plane or lifecycle operation must map to a command sequence written in README/SKILL/scripts; when none exists or the text is ambiguous, stop and ask the operator instead of interpreting. Record the ambiguity as a documentation task.
-- Evidence: the orchestrator created two extra herdr tabs (`herdr tab create`) in the managed workspace for parallel workers although README L351-356 specifies "in its own tab/workspace … `herdr pane split <pane> --direction right --cwd <worktree>`" and herdr-agents creates workspaces with `herdr workspace create --cwd`; no documented `--add-worker` mode exists.
-
-## Addendum 2 (23:1xZ) — make G8 enforceable
-G8 is implemented as a deterministic PreToolUse check, not prose: for role=orchestrator, any Bash command whose first word (or any pipeline stage) is `herdr`, `agmsg-dispatch`, `~/.agents/skills/agmsg/scripts/*.sh`, `git worktree`, `gh pr merge`, `chezmoi apply`, or `make update|upgrade` must carry a trailer comment `# ref: <repo-relative file>#<heading or line>` naming the documented procedure being followed; the hook verifies the file exists and the heading/line text is present, otherwise denies with "cite the documented procedure or stop and ask". Read-only `git`/`gh api` queries are exempt. Tests: allow with a valid ref, deny without ref, deny with a ref to a missing heading.
+## Revision history
+- r1: G1–G6 + role detection + checklist; addenda added G7 (2026-09-25 23:0xZ) and enforceable G8 (23:1xZ).
+- r2 (2026-09-26): addenda folded into the body; no scope change.

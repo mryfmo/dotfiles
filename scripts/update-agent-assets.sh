@@ -73,9 +73,9 @@ readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL="https://raw.githubusercontent.
 # commit, sha256, and version there together after reviewing the upstream diff.
 # Assignments stay non-readonly, like scripts/lib/installer-pins.sh, so tests
 # can override them after sourcing this file.
-AGMSG_PIN_COMMIT="e94ca9e0f4c40ebf3115dee8eb639f303c7f7a3f"
-AGMSG_PIN_SHA256="a882ebc76dd140514c4996784ecdd90cff983d813421899682c0a533faa2a7f4"
-AGMSG_PIN_VERSION="1.4.2"
+AGMSG_PIN_COMMIT="c487be269c1973aeb01ca831806eb3f65ff3366d"
+AGMSG_PIN_SHA256="9201cb5ff23ddd9ddaa19ff821dce0d0f2d58c6c292aade252a8d824b3dfc059"
+AGMSG_PIN_VERSION="1.5.0"
 # Install paths below assume the default XDG layout; the upstream installers
 # honor XDG_*_HOME/TODE_INSTALL_ROOT overrides that this lifecycle does not.
 readonly TERMINAL_CODE_INSTALLER_URL="https://tode.sh/install"

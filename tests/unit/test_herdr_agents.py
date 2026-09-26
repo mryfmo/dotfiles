@@ -437,9 +437,7 @@ fi
         if not tarball.exists():
             cache_dir.mkdir(parents=True, exist_ok=True)
             url = f"https://github.com/fujibee/agmsg/archive/{commit}.tar.gz"
-            subprocess.run(
-                ["curl", "-fsSL", url, "-o", str(tarball)], check=True
-            )
+            subprocess.run(["curl", "-fsSL", url, "-o", str(tarball)], check=True)
         actual_sha256 = hashlib.sha256(tarball.read_bytes()).hexdigest()
         self.assertEqual(
             expected_sha256,
@@ -1138,7 +1136,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         calls = self.calls_path.read_text().splitlines()
         self.assertEqual(
             [call for call in calls if call.startswith("delivery ")],
-            [f"delivery set monitor claude-code {self.workdir.resolve()}"],
+            [f"delivery set both claude-code {self.workdir.resolve()}"],
         )
         self.assertIn("next Claude Code session", result.stderr)
 
@@ -1153,7 +1151,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             [call for call in calls if call.startswith("delivery ")],
             [
                 f"delivery set turn codex {self.workdir.resolve()}",
-                f"delivery set monitor claude-code {self.workdir.resolve()}",
+                f"delivery set both claude-code {self.workdir.resolve()}",
             ],
         )
 
@@ -1568,6 +1566,9 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         )
         self.assertIn("pane rename w-test:p3 claude-worker", calls)
         self.assertFalse(any("codex" in call for call in calls))
+        pane_split_calls = [call for call in calls if call.startswith("pane split")]
+        self.assertEqual(1, len(pane_split_calls))
+        self.assertIn("--env AGMSG_CC_MONITOR_KEEP_ALIVE=1", pane_split_calls[0])
 
     def test_worker_kind_claude_starts_with_no_resolved_args(self) -> None:
         self.register_claude_worker_identity()

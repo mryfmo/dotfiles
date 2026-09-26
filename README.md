@@ -383,6 +383,12 @@ unmanaged panes in place. Both agents start in
 the same project cwd and use the shared agmsg scripts/state for cross-agent
 messaging; the worker is a resident interactive session, kept warm so
 delegation avoids per-task cold starts and survives Herdr session restores.
+Claude Code seats use agmsg's `both` delivery mode (monitor's push plus
+turn's pull), one notch more redundant than upstream's own `monitor` default,
+since an unattended resident pane has no one to notice a Monitor watch that
+silently failed to re-arm; a resident Claude worker pane's environment also
+carries `AGMSG_CC_MONITOR_KEEP_ALIVE=1` so its watch re-arms unconditionally
+on expiry rather than only when the expired watch delivered something.
 
 An orchestrator/worker pair always lives in one Herdr workspace. A workspace
 counts as managed for DIR when it carries the full-mode `<dir> agents` label

@@ -856,54 +856,58 @@ function agmsg_state_snapshot() {
 
     for state_dir in teams db run; do
         [ -d "${skill_dir}/${state_dir}" ] || continue
-        find "${skill_dir}/${state_dir}" -type f -exec sha256sum {} +
+        find "${skill_dir}/${state_dir}" -type f -exec shasum -a 256 {} +
     done | sort
 }
 
 #
 # @description Download, verify, and apply one pinned agmsg release via
-#   upstream install.sh, which owns SKILL.md/VERSION/scripts/ in place.
+#   upstream install.sh, which owns SKILL.md/VERSION/scripts/ in place. A
+#   before/after sha256 snapshot of teams/db/run always brackets the call,
+#   since a marker-less legacy directory (no .agmsg/VERSION, e.g. migrating
+#   from the old vendored skill) can still hold live runtime state that
+#   "installed == none" would otherwise let through unguarded.
 # @arg $1 path Skill directory (e.g. ~/.agents/skills/agmsg).
-# @arg $2 string Already-installed VERSION content, or "none".
 #
 function install_pinned_agmsg() (
     local skill_dir="$1"
-    local installed="$2"
     local fetch_url="https://github.com/fujibee/agmsg/archive/${AGMSG_PIN_COMMIT}.tar.gz"
-    local tarball extract_dir actual before_state after_state
+    local tarball extract_dir actual before_state after_state update_log
 
-    tarball="$(mktemp)"
-    extract_dir="$(mktemp -d)"
+    tarball="$(mktemp)" || return 1
+    extract_dir="$(mktemp -d)" || return 1
     trap 'rm -f "${tarball}"; rm -rf "${extract_dir}"' EXIT
     curl -fsSL "${fetch_url}" -o "${tarball}" || {
         printf 'agmsg download failed: %s\n' "${fetch_url}" >&2
         return 1
     }
-    actual="$(shasum -a 256 "${tarball}" | awk '{ print $1 }')"
+    actual="$(shasum -a 256 "${tarball}" | awk '{ print $1 }')" || return 1
     [ "${actual}" = "${AGMSG_PIN_SHA256}" ] || {
         printf 'agmsg checksum mismatch for %s.\n' "${fetch_url}" >&2
         return 1
     }
-    tar xzf "${tarball}" -C "${extract_dir}" --strip-components=1
+    tar xzf "${tarball}" -C "${extract_dir}" --strip-components=1 || {
+        printf 'agmsg extraction failed for %s\n' "${fetch_url}" >&2
+        return 1
+    }
 
-    # A fresh install has no prior state to preserve; the snapshot check
-    # below only guards a genuine update of an already-installed skill.
-    if [ "${installed}" != "none" ]; then
-        before_state="$(agmsg_state_snapshot "${skill_dir}")"
-    fi
-    if ! bash "${extract_dir}/install.sh" --update --cmd agmsg --agent-type claude-code > /dev/null 2>&1; then
+    before_state="$(agmsg_state_snapshot "${skill_dir}")" || return 1
+    update_log="$(mktemp)" || return 1
+    if ! bash "${extract_dir}/install.sh" --update --cmd agmsg --agent-type claude-code > "${update_log}" 2>&1; then
+        cat "${update_log}" >&2
+        rm -f "${update_log}"
         bash "${extract_dir}/install.sh" --cmd agmsg --agent-type claude-code || {
             printf 'agmsg install.sh failed\n' >&2
             return 1
         }
+    else
+        rm -f "${update_log}"
     fi
-    if [ "${installed}" != "none" ]; then
-        after_state="$(agmsg_state_snapshot "${skill_dir}")"
-        [ "${before_state}" = "${after_state}" ] || {
-            printf 'agmsg update touched live runtime state under teams/db/run; aborting\n' >&2
-            return 1
-        }
-    fi
+    after_state="$(agmsg_state_snapshot "${skill_dir}")" || return 1
+    [ "${before_state}" = "${after_state}" ] || {
+        printf 'agmsg update touched live runtime state under teams/db/run; aborting\n' >&2
+        return 1
+    }
 )
 
 #
@@ -916,8 +920,8 @@ function update_agmsg() {
     section "agmsg"
     installed="$(cat "${skill_dir}/VERSION" 2> /dev/null || printf 'none\n')"
     if [ "${installed}" != "${AGMSG_PIN_VERSION}" ] || ! [ -x "${skill_dir}/scripts/send.sh" ]; then
-        install_pinned_agmsg "${skill_dir}" "${installed}" ||
-            printf 'agmsg installer failed; existing install unchanged.\n' >&2
+        install_pinned_agmsg "${skill_dir}" ||
+            printf 'agmsg installer failed; see stderr above for details.\n' >&2
     fi
 
     manifest_record "update_agmsg" installer \

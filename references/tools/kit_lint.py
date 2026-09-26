@@ -222,7 +222,7 @@ class Lint:
                 for hd, _ in self.tables(ts[h]):
                     if tuple(hd) not in have:
                         self.err('E023', d.rel, f'「{h}」にテンプレートの表がない: {" | ".join(hd)}')
-        tk, dk = set(tpl.meta) - {'is_template'}, set(d.meta) - {'sample'}
+        tk, dk = set(tpl.meta) - {'is_template', 'proposed-on'}, set(d.meta) - {'sample', 'proposed-on'}
         if tk != dk: self.err('E024', d.rel, f'front matter のキーがテンプレートと異なる: 不足{sorted(tk-dk)} 余分{sorted(dk-tk)}')
 
     # ---------- PRD ----------
@@ -276,7 +276,7 @@ class Lint:
 
     # ---------- BDD ----------
     def parse_bdd(self, d: Doc) -> dict:
-        out = {'scenarios': [], 'rules': {}, 'features': [], 'steps': []}
+        out = {'scenarios': [], 'rules': {}, 'features': [], 'steps': [], 'steps_loc': []}
         g = self.cfg.get('gherkin', {})
         for lang, line, code in d.fences:
             if lang != 'gherkin': continue
@@ -313,6 +313,7 @@ class Lint:
                     for st in sc['steps']:
                         if st.get('keywordType') in ('Context', 'Action', 'Outcome'): last = st['keywordType']
                         kinds.append(last); out['steps'].append(st['text'])
+                        out['steps_loc'].append((st['text'], line + st['location']['line']))
                         for term in g.get('forbidden_terms', []):
                             if term in st['text']: self.err('E060', where, f'{sid[0]}: 実装・試験用語「{term}」がステップに混入')
                     if 'Action' not in kinds or 'Outcome' not in kinds:
@@ -353,6 +354,21 @@ class Lint:
             if ratio > mx: self.err('E074', 'BDD', f'ステップ文言の一回限り率 {ratio:.2f} > {mx}（語彙を再利用していない）')
         return rules, scn_by_req
 
+    def check_step_vocab(self, bdds):
+        """E063: 4章の各ステップ（数値と引用符の中身を <…> に正規化）が、
+        同じ文書の3章ステップ語彙表（同じ正規化）に登録されているかを検査する。"""
+        norm = lambda s: re.sub(r'\d+', '<\u2026>', re.sub(r'"[^"]*"', '<\u2026>', s))
+        for d, b in bdds:
+            registry = None
+            for hd, rows in self.tables(d.prose):
+                if hd == ['種別', '再利用するステップ文型', '意味・前提']:
+                    registry = {norm(r[1]) for r in rows}
+                    break
+            if registry is None: continue
+            for text_, absline in b['steps_loc']:
+                if norm(text_) not in registry:
+                    self.err('E063', f'{d.rel}:{absline}', f'ステップ語彙表（3章）に無い文型: 「{text_}」')
+
     # ---------- ADR ----------
     def check_adr(self, d: Doc, pm: dict, all_adr: dict):
         vocab = self.cfg['adr']['statuses']
@@ -365,10 +381,21 @@ class Lint:
         if not d.meta.get('addresses'): self.err('E084', d.rel, 'addresses（関係する要件ID）が空')
         for other in d.meta.get('supersedes') or []:
             o = all_adr.get(other)
-            if not o: self.err('E085', d.rel, f'supersedes の {other} が存在しない')
+            if not o: self.err('E085', d.rel, f'supersedes の {other} が存在しない'); continue
+            if st == 'proposed':
+                if o.meta.get('superseded-by') not in (None, aid):
+                    self.err('E086', d.rel, f'{other} 側の superseded-by が {aid} でも空でもない（proposed の間の不整合）')
+                if o.meta.get('status') not in ('accepted', 'superseded'):
+                    self.err('E086', d.rel, f'{other} 側の status が accepted/superseded でない: {o.meta.get("status")}')
             elif o.meta.get('superseded-by') != aid or o.meta.get('status') != 'superseded':
-                self.err('E086', d.rel, f'{other} 側に superseded-by: {aid} と status: superseded が必要（双方向）')
+                self.err('E086', d.rel, f'{other} 側に superseded-by: {aid} と status: superseded が必要（{st} は双方向を要求する）')
+        sb = d.meta.get('superseded-by')
+        if sb:
+            z = all_adr.get(sb)
+            if not z: self.err('E086', d.rel, f'superseded-by の {sb} が存在しない')
+            elif aid not in (z.meta.get('supersedes') or []): self.err('E086', d.rel, f'{sb} 側の supersedes に {aid} が無い（逆方向が反映されていない）')
         if st == 'superseded' and not d.meta.get('superseded-by'): self.err('E087', d.rel, 'superseded なのに superseded-by がない')
+        if st == 'proposed' and not d.meta.get('proposed-on'): self.err('E095', d.rel, 'status が proposed の ADR には proposed-on が必要')
         if d.meta.get('confidence') not in ('高', '中', '低'): self.err('E088', d.rel, 'confidence は 高/中/低')
         sec = self.sections(d)
         pick = lambda kw: next((v for k, v in sec.items() if kw in k), '')
@@ -424,6 +451,9 @@ class Lint:
                 if x not in known: self.err('E144', d.rel, f'{tid}: ペルソナ {x} が存在しない')
             for x in re.findall(r'ACT-\d{3}', row.get('主体', '')):
                 if x not in known: self.err('E145', d.rel, f'{tid}: 主体 {x} が存在しない')
+        covered_by_nvt = {a for row in pm['nvt'].values() for a in re.findall(self.ID, row.get('対象', ''))}
+        uncovered = sorted(fid for fid, row in pm['fr'].items() if row.get('優先度') == 'Must' and fid not in used and fid not in covered_by_nvt)
+        if uncovered: self.warn('W160', 'PRD', f'Must要件でテスト条件もNVTも無い: {", ".join(uncovered)}')
         if docs['ct'] or docs['st']:
             for n in pm['nvt']:
                 where = t['nvt'].get(n, [])
@@ -585,6 +615,7 @@ class Lint:
             for f in b['features']:
                 if f['tag']: tagmode[f['tag']] = (gs, d.rel)
         rules, scn_by_req = self.check_cross(prds, pm, parsed)
+        self.check_step_vocab(parsed)
         amap = {a.meta.get('id'): a for a in adrs}
         for a in adrs: self.check_adr(a, pm, amap)
         tests = self.parse_tests(tdocs)

@@ -5,6 +5,7 @@ id: "ADR-0003"
 title: "AI処理主体には決裁インターフェースの資格を発行しない（ADR-0001を置換）"
 status: proposed
 date: "2026-09-23"
+proposed-on: "2026-09-23"
 decision-makers: ["（架空）技術責任者", "（架空）セキュリティ責任者"]
 consulted: ["（架空）AI責任者", "（架空）運用責任者"]
 informed: ["（架空）製品責任者", "（架空）品質責任者"]

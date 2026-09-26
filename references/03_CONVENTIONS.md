@@ -63,9 +63,7 @@ IDは削除しても再利用しない。複数の製品を同じ場所で管理
 | designs | UT／CT／E2E／UAT → FR／RULE／NVT／ADR／GOAL | テスト設計書の「由来」に書かれている | テスト設計書 |
 | allocates | NVT・FEAT → 水準 | NVT はちょうど1つ、FEAT は1つ以上のテスト設計書の表にある | テスト設計書 |
 | verifies | 実行証跡 → FR／SCN／NVT など | 確かめるIDの印が付いたテストが合格し、証跡のハッシュが現行の入力と一致する | `evidence/example_tests.json`（記入例では UT と CT の一部だけ） |
-| supersedes | 新ADR → 旧ADR | 双方の front matter に書かれている（E086） | ADR |
-
-新ADR が proposed のまま旧ADR だけ superseded になっている期間の整合は、E086 が状態（status）まで検査するようになるまで人が確認する（予定：refkit-P4b）。
+| supersedes | 新ADR → 旧ADR | 新ADR が proposed の間は旧ADR側の書き換えを要求せず、accepted・deprecated・superseded になった時点で双方向の一致（`superseded-by`・`status: superseded`）を要求する（E086） | ADR |
 
 タグが付いているだけの状態は specifies であって verifies ではない。
 

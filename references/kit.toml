@@ -30,7 +30,7 @@ statuses = ["proposed", "accepted", "rejected", "deprecated", "superseded"]
 language = "ja"
 max_steps = 7
 max_unique_step_ratio = 0.60
-forbidden_terms = ["テストダブル", "fixture", "スタブ", "モック", "SQL", "DOM", "クリック", "テーブル行"]
+forbidden_terms = ["テストダブル", "fixture", "スタブ", "モック", "SQL", "DOM", "クリック", "テーブル行", "障害が起きている"]
 
 [mermaid]
 allowed_types = ["flowchart", "sequenceDiagram", "stateDiagram-v2"]   # Mermaid公式の図種キーワード（E104）

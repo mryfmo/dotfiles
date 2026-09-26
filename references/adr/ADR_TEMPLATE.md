@@ -5,6 +5,7 @@ id: "{{ADR-0001}}"
 title: "{{解いた課題と選んだ解が分かる短い題名}}"
 status: proposed         # proposed | accepted | rejected | deprecated | superseded
 date: "{{YYYY-MM-DD（最後に決定が更新された日）}}"
+proposed-on: "{{YYYY-MM-DD（proposed として起票した日。status が proposed のときだけ必須）}}"
 decision-makers: ["{{決定権者}}"]
 consulted: ["{{意見を求めた専門家（双方向）}}"]
 informed: ["{{結果を知らせる相手（一方向）}}"]

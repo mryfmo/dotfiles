@@ -3695,6 +3695,7 @@
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>check_command</code></li>
+<li><code>check_crit_cli</code></li>
 <li><code>check_gh_extensions</code></li>
 <li><code>check_homebrew</code></li>
 <li><code>check_machine_ssh_key</code></li>
@@ -3858,6 +3859,23 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Report the managed Crit CLI's pinned version and origin, when installed.</span>
+<span class="c1">#   Installed by ensure_crit_cli in scripts/update-agent-assets.sh from the pinned</span>
+<span class="c1">#   GitHub release on every OS; not required, so a missing binary is not a failure.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>check_crit_cli<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">target</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.local/bin/crit"</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>!<span class="w"> </span>-x<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'not applicable: Crit CLI (not installed)\n'</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'found:   crit -&gt; %s (pinned release)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--version<span class="w"> </span><span class="o">||</span><span class="w"> </span>warn_optional<span class="w"> </span><span class="s2">"crit --version failed; the managed binary may be corrupt (try REPAIR=1 make doctor)"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Print the current GitHub CLI extension state when gh is installed.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>check_gh_extensions<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -3887,6 +3905,9 @@
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">"Homebrew"</span>
 <span class="w">    </span>check_homebrew
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">"Crit CLI"</span>
+<span class="w">    </span>check_crit_cli
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">"SSH"</span>
 <span class="w">    </span>check_machine_ssh_key

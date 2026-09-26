@@ -3711,7 +3711,6 @@
 <li><code>ensure_mise_npm_agent_cli</code></li>
 <li><code>git_remote_origin_matches</code></li>
 <li><code>has_command</code></li>
-<li><code>is_macos</code></li>
 <li><code>main</code></li>
 <li><code>provision_codex_understand_anything_runtime</code></li>
 <li><code>remove_node_global_agent_cli_shadows</code></li>
@@ -3868,13 +3867,6 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Return success when the current OS is macOS.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>is_macos<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Darwin"</span><span class="w"> </span><span class="o">]</span>
-<span class="o">}</span>
-
-<span class="c1">#</span>
 <span class="c1"># @description Return success when a command's output contains a fixed string.</span>
 <span class="c1"># @arg $1 string Fixed string to search for.</span>
 <span class="c1"># @arg $@ string Command and arguments to run.</span>
@@ -3946,13 +3938,13 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Download, verify, and atomically install one pinned Linux Crit binary.</span>
+<span class="c1"># @description Download, verify, and atomically install one pinned Crit release binary.</span>
 <span class="c1"># @arg $1 string Release artifact name.</span>
 <span class="c1"># @arg $2 string Expected binary SHA256.</span>
 <span class="c1"># @arg $3 path Destination executable path.</span>
 <span class="c1"># @arg $4 string Expected version without a leading v.</span>
 <span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>install_pinned_linux_crit<span class="o">()</span><span class="w"> </span><span class="o">(</span>
+<span class="k">function</span><span class="w"> </span>install_pinned_crit<span class="o">()</span><span class="w"> </span><span class="o">(</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">artifact</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">checksum</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">target</span><span class="o">=</span><span class="s2">"</span><span class="nv">$3</span><span class="s2">"</span>
@@ -3981,34 +3973,41 @@
 <span class="k">function</span><span class="w"> </span>ensure_crit_cli<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>artifact<span class="w"> </span>checksum<span class="w"> </span>target<span class="w"> </span>version
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>is_macos<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>crit<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>has_command<span class="w"> </span>brew<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span>section<span class="w"> </span><span class="s2">"Crit CLI"</span>
-<span class="w">            </span>brew<span class="w"> </span>install<span class="w"> </span>crit<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
-<span class="w">        </span><span class="k">fi</span>
-<span class="w">        </span>has_command<span class="w"> </span>crit<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
-<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Skipping Crit integrations: crit command not found.\n'</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-s<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span>Linux<span class="o">)</span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">        </span>x86_64<span class="w"> </span><span class="p">|</span><span class="w"> </span>amd64<span class="o">)</span>
+<span class="w">            </span><span class="nv">artifact</span><span class="o">=</span><span class="s2">"crit-linux-amd64"</span>
+<span class="w">            </span><span class="nv">checksum</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">CRIT_LINUX_AMD64_SHA256</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span>aarch64<span class="w"> </span><span class="p">|</span><span class="w"> </span>arm64<span class="o">)</span>
+<span class="w">            </span><span class="nv">artifact</span><span class="o">=</span><span class="s2">"crit-linux-arm64"</span>
+<span class="w">            </span><span class="nv">checksum</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">CRIT_LINUX_ARM64_SHA256</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span>*<span class="o">)</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Skipping Crit integrations: unsupported Linux architecture %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">"</span>
 <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">        </span><span class="o">}</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
-
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-s<span class="k">)</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"Linux"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Skipping Crit integrations: unsupported platform %s %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-s<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">"</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">    </span><span class="k">fi</span>
-
-<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
-<span class="w">    </span>x86_64<span class="w"> </span><span class="p">|</span><span class="w"> </span>amd64<span class="o">)</span>
-<span class="w">        </span><span class="nv">artifact</span><span class="o">=</span><span class="s2">"crit-linux-amd64"</span>
-<span class="w">        </span><span class="nv">checksum</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">CRIT_LINUX_AMD64_SHA256</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span><span class="k">esac</span>
 <span class="w">        </span><span class="p">;;</span>
-<span class="w">    </span>aarch64<span class="w"> </span><span class="p">|</span><span class="w"> </span>arm64<span class="o">)</span>
-<span class="w">        </span><span class="nv">artifact</span><span class="o">=</span><span class="s2">"crit-linux-arm64"</span>
-<span class="w">        </span><span class="nv">checksum</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">CRIT_LINUX_ARM64_SHA256</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span>Darwin<span class="o">)</span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">        </span>x86_64<span class="w"> </span><span class="p">|</span><span class="w"> </span>amd64<span class="o">)</span>
+<span class="w">            </span><span class="nv">artifact</span><span class="o">=</span><span class="s2">"crit-darwin-amd64"</span>
+<span class="w">            </span><span class="nv">checksum</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">CRIT_DARWIN_AMD64_SHA256</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span>arm64<span class="w"> </span><span class="p">|</span><span class="w"> </span>aarch64<span class="o">)</span>
+<span class="w">            </span><span class="nv">artifact</span><span class="o">=</span><span class="s2">"crit-darwin-arm64"</span>
+<span class="w">            </span><span class="nv">checksum</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">CRIT_DARWIN_ARM64_SHA256</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span>*<span class="o">)</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Skipping Crit integrations: unsupported macOS architecture %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">"</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">            </span><span class="p">;;</span>
+<span class="w">        </span><span class="k">esac</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>*<span class="o">)</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Skipping Crit integrations: unsupported Linux architecture %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">"</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Skipping Crit integrations: unsupported platform %s %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-s<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="w"> </span>-m<span class="k">)</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span><span class="k">esac</span>
@@ -4017,7 +4016,7 @@
 <span class="w">    </span><span class="nv">version</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">CRIT_PIN_VERSION</span><span class="p">#v</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="o">[</span><span class="w"> </span>-x<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>!<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--version<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span>-v<span class="w"> </span><span class="nv">expected</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'$1 == "crit" { sub(/^v/, "", $2); if ($2 == expected) found = 1 } END { exit !found }'</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span>section<span class="w"> </span><span class="s2">"Crit CLI"</span>
-<span class="w">        </span>install_pinned_linux_crit<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">checksum</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span>install_pinned_crit<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">artifact</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">checksum</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin:</span><span class="si">${</span><span class="nv">PATH</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">hash</span><span class="w"> </span>-r

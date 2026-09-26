@@ -1235,6 +1235,46 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             )
         )
 
+    def test_worker_profile_defaults_to_generated_worker_profile(self) -> None:
+        profiles = self.home_dir / ".agents/model-profiles.env"
+        profiles.parent.mkdir(parents=True)
+        profiles.write_text(
+            'MODEL_PROFILE_INTERACTIVE="review"\n'
+            'HERDR_AGENTS_WORKER_PROFILE="express"\n'
+        )
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue(
+            any(
+                call.endswith("--sandbox workspace-write --profile express")
+                for call in self.calls_path.read_text().splitlines()
+                if call.startswith("agent start codex-worker-")
+            )
+        )
+
+    def test_worker_profile_env_override_wins_over_generated_worker_profile(
+        self,
+    ) -> None:
+        profiles = self.home_dir / ".agents/model-profiles.env"
+        profiles.parent.mkdir(parents=True)
+        profiles.write_text(
+            'MODEL_PROFILE_INTERACTIVE="review"\n'
+            'HERDR_AGENTS_WORKER_PROFILE="express"\n'
+        )
+
+        result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_PROFILE": "deep"})
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue(
+            any(
+                call.endswith("--sandbox workspace-write --profile deep")
+                for call in self.calls_path.read_text().splitlines()
+                if call.startswith("agent start codex-worker-")
+            )
+        )
+
     def test_claude_agent_accepts_manifest_profile_arguments_for_e2e(self) -> None:
         result = self.run_helper(
             extra_env={"HERDR_AGENTS_CLAUDE_ARGS": "--model haiku --effort low"}

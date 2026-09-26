@@ -108,6 +108,7 @@ class RuntimeHealthTest(unittest.TestCase):
                     update_terminal_code() { :; }
                     update_terminal_browser() { :; }
                     update_compactiondb() { :; }
+                    update_agmsg() { :; }
                     ensure_herdr_integrations() { :; }
                     ensure_gh_extensions() { printf 'gh-extensions-ensured\\n'; }
                     main
@@ -625,6 +626,260 @@ EOF
         self.assertIn("checksum mismatch", result.stdout + result.stderr)
         self.assertEqual(previous, target.read_bytes())
 
+    def agmsg_fixture(
+        self,
+        *,
+        preinstalled_version: str | None = None,
+        corrupt_state_on_install: bool = False,
+    ) -> tuple[Path, Path, dict[str, str], str]:
+        repo = self.temp_dir / "agmsg-repo"
+        home = self.temp_dir / "agmsg-home"
+        bin_dir = repo / "bin"
+        (repo / "scripts/lib").mkdir(parents=True)
+        home.mkdir()
+        shutil.copy(
+            ROOT / "scripts/update-agent-assets.sh",
+            repo / "scripts/update-agent-assets.sh",
+        )
+        shutil.copy(
+            ROOT / "scripts/lib/asset-manifest.sh",
+            repo / "scripts/lib/asset-manifest.sh",
+        )
+        shutil.copy(
+            ROOT / "scripts/lib/installer-pins.sh",
+            repo / "scripts/lib/installer-pins.sh",
+        )
+        (repo / "vendor/compactiondb").mkdir(parents=True)
+
+        fixture_src = self.temp_dir / "agmsg-fixture-src"
+        top = fixture_src / "agmsg-fake"
+        (top / "scripts").mkdir(parents=True)
+        (top / "SKILL.md").write_text("# fake agmsg skill\n")
+        (top / "VERSION").write_text("9.9.9\n")
+        self.executable(top / "scripts/send.sh", "printf 'sent\n'\n")
+        self.executable(
+            top / "install.sh",
+            """
+            SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+            cmd=agmsg
+            update_only=false
+            while [ $# -gt 0 ]; do
+                case "$1" in
+                --update) update_only=true; shift ;;
+                --cmd) cmd="$2"; shift 2 ;;
+                --agent-type) shift 2 ;;
+                *) shift ;;
+                esac
+            done
+            skill_dir="$HOME/.agents/skills/$cmd"
+            if [ "$update_only" = true ] && [ ! -f "$skill_dir/.agmsg" ]; then
+                echo "not installed" >&2
+                exit 1
+            fi
+            mkdir -p "$skill_dir/scripts" "$skill_dir/agents"
+            cp "$SCRIPT_DIR/SKILL.md" "$skill_dir/SKILL.md"
+            cp "$SCRIPT_DIR/VERSION" "$skill_dir/VERSION"
+            cp "$SCRIPT_DIR/scripts/send.sh" "$skill_dir/scripts/send.sh"
+            chmod +x "$skill_dir/scripts/send.sh"
+            touch "$skill_dir/.agmsg"
+            printf 'openai: fake\n' > "$skill_dir/agents/openai.yaml"
+            if [ -n "${AGMSG_FIXTURE_CORRUPT_STATE:-}" ]; then
+                printf 'corrupted\n' >> "$skill_dir/teams/example/data.txt" 2>/dev/null || true
+            fi
+            printf 'install.sh ran: update=%s cmd=%s\n' "$update_only" "$cmd" >> "${TEST_LOG:-/dev/null}"
+            """,
+        )
+        tarball = self.temp_dir / "agmsg-fixture.tar.gz"
+        subprocess.run(
+            ["tar", "czf", str(tarball), "-C", str(fixture_src), "agmsg-fake"],
+            check=True,
+        )
+        checksum = subprocess.run(
+            ["shasum", "-a", "256", str(tarball)],
+            text=True,
+            capture_output=True,
+            check=True,
+        ).stdout.split()[0]
+
+        self.executable(
+            bin_dir / "curl",
+            f"""
+            printf '%s\n' "$*" >> "$TEST_LOG"
+            out=""
+            args=("$@")
+            for ((i = 0; i < ${{#args[@]}}; i++)); do
+                if [[ "${{args[$i]}}" == "-o" ]]; then
+                    out="${{args[$((i + 1))]}}"
+                fi
+            done
+            cp {tarball} "$out"
+            """,
+        )
+        jq = shutil.which("jq")
+        self.assertIsNotNone(jq, "jq is required for asset manifest tests")
+        (bin_dir / "jq").symlink_to(jq)
+
+        if preinstalled_version is not None:
+            skill_dir = home / ".agents/skills/agmsg"
+            (skill_dir / "scripts").mkdir(parents=True)
+            (skill_dir / "VERSION").write_text(f"{preinstalled_version}\n")
+            self.executable(skill_dir / "scripts/send.sh", "printf 'sent\n'\n")
+            (skill_dir / ".agmsg").touch()
+
+        log = repo / "commands.log"
+        env = {
+            **os.environ,
+            "DOTFILES_SOURCE_DIR": str(repo),
+            "HOME": str(home),
+            "PATH": f"{bin_dir}:/usr/bin:/bin",
+            "TEST_LOG": str(log),
+        }
+        if corrupt_state_on_install:
+            env["AGMSG_FIXTURE_CORRUPT_STATE"] = "1"
+        return repo, home, env, checksum
+
+    def test_agmsg_fresh_install_populates_skill_and_records_manifest(self) -> None:
+        repo, home, env, checksum = self.agmsg_fixture()
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                "source scripts/update-agent-assets.sh; "
+                f"AGMSG_PIN_SHA256={checksum}; "
+                "update_agmsg",
+            ],
+            cwd=repo,
+            env=env,
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        skill_dir = home / ".agents/skills/agmsg"
+        self.assertEqual("9.9.9\n", (skill_dir / "VERSION").read_text())
+        self.assertTrue((skill_dir / "scripts/send.sh").is_file())
+        log = (repo / "commands.log").read_text()
+        self.assertIn("update=false", log)
+        manifest = json.loads((home / ".agents/.installed-manifest.json").read_text())
+        self.assertIn("update_agmsg", manifest["steps"])
+
+    def test_agmsg_already_pinned_skips_download(self) -> None:
+        repo, home, env, checksum = self.agmsg_fixture(preinstalled_version="1.4.2")
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                "source scripts/update-agent-assets.sh; "
+                f"AGMSG_PIN_SHA256={checksum}; "
+                "AGMSG_PIN_VERSION=1.4.2; "
+                "update_agmsg",
+            ],
+            cwd=repo,
+            env=env,
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertFalse((repo / "commands.log").exists())
+
+    def test_agmsg_checksum_mismatch_fails_closed(self) -> None:
+        repo, home, env, _checksum = self.agmsg_fixture()
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                "source scripts/update-agent-assets.sh; "
+                f"AGMSG_PIN_SHA256={'0' * 64}; "
+                "update_agmsg",
+            ],
+            cwd=repo,
+            env=env,
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("checksum mismatch", result.stdout + result.stderr)
+        self.assertIn("installer failed", result.stdout + result.stderr)
+        self.assertFalse((home / ".agents/skills/agmsg").exists())
+
+    def test_agmsg_update_never_touches_teams_db_run(self) -> None:
+        repo, home, env, checksum = self.agmsg_fixture(preinstalled_version="1.0.0")
+        skill_dir = home / ".agents/skills/agmsg"
+        for state_dir in ("teams", "db", "run"):
+            (skill_dir / state_dir / "example").mkdir(parents=True)
+            (skill_dir / state_dir / "example/data.txt").write_text("live state\n")
+
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                "source scripts/update-agent-assets.sh; "
+                f"AGMSG_PIN_SHA256={checksum}; "
+                "AGMSG_PIN_VERSION=9.9.9; "
+                "update_agmsg",
+            ],
+            cwd=repo,
+            env=env,
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        for state_dir in ("teams", "db", "run"):
+            self.assertEqual(
+                "live state\n", (skill_dir / state_dir / "example/data.txt").read_text()
+            )
+
+    def test_agmsg_migrates_marker_less_legacy_dir_without_losing_live_state(
+        self,
+    ) -> None:
+        repo, home, env, checksum = self.agmsg_fixture()
+        skill_dir = home / ".agents/skills/agmsg"
+        (skill_dir / "scripts").mkdir(parents=True)
+        for state_dir in ("teams", "db", "run"):
+            (skill_dir / state_dir / "example").mkdir(parents=True)
+            (skill_dir / state_dir / "example/data.txt").write_text("live state\n")
+
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                "source scripts/update-agent-assets.sh; "
+                f"AGMSG_PIN_SHA256={checksum}; "
+                "update_agmsg",
+            ],
+            cwd=repo,
+            env=env,
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("not installed", result.stdout + result.stderr)
+        self.assertEqual("9.9.9\n", (skill_dir / "VERSION").read_text())
+        self.assertTrue((skill_dir / ".agmsg").exists())
+        for state_dir in ("teams", "db", "run"):
+            self.assertEqual(
+                "live state\n", (skill_dir / state_dir / "example/data.txt").read_text()
+            )
+
+    def test_agmsg_update_aborts_when_install_corrupts_live_state(self) -> None:
+        repo, home, env, checksum = self.agmsg_fixture(
+            preinstalled_version="1.0.0", corrupt_state_on_install=True
+        )
+        skill_dir = home / ".agents/skills/agmsg"
+        (skill_dir / "teams/example").mkdir(parents=True)
+        (skill_dir / "teams/example/data.txt").write_text("live state\n")
+
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                "source scripts/update-agent-assets.sh; "
+                f"AGMSG_PIN_SHA256={checksum}; "
+                "AGMSG_PIN_VERSION=9.9.9; "
+                "update_agmsg",
+            ],
+            cwd=repo,
+            env=env,
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("touched live runtime state", result.stdout + result.stderr)
+        self.assertIn("installer failed", result.stdout + result.stderr)
+
     def update_fixture(
         self,
         *,
@@ -713,7 +968,9 @@ EOF
         )
         self.assertNotIn("tracked files have staged or unstaged changes", result.stdout)
 
-    def test_make_update_reports_unmerged_feature_branch_before_branch_notice(self) -> None:
+    def test_make_update_reports_unmerged_feature_branch_before_branch_notice(
+        self,
+    ) -> None:
         result, log = self.update_fixture(branch="feature/x", unmerged=True)
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
@@ -1258,7 +1515,9 @@ EOF
                 )
                 self.assertEqual(0, result.returncode, result.stdout + result.stderr)
                 for name in ("config.toml", "mise.lock"):
-                    self.assertEqual((main_config / name).read_text(), "main-original\n")
+                    self.assertEqual(
+                        (main_config / name).read_text(), "main-original\n"
+                    )
                     self.assertNotEqual(
                         (selected_config / name).read_text(), "checkout-original\n"
                     )
@@ -1413,8 +1672,11 @@ EOF
         )
         log = (repo / "commands.log").read_text()
         generator = next(
-            line for line in log.splitlines()
-            if line.startswith("uv run --with pyyaml scripts/generate-agent-configs.py ")
+            line
+            for line in log.splitlines()
+            if line.startswith(
+                "uv run --with pyyaml scripts/generate-agent-configs.py "
+            )
         )
         for name in ("tode", "terminal-browser", "crit", "zed"):
             self.assertIn(f"--set-asset {name}.pin=v9.9.9", generator)
@@ -1428,7 +1690,9 @@ EOF
             "zed.sha256.linux-amd64",
             "zed.sha256.linux-arm64",
         ):
-            self.assertRegex(generator, rf"--set-asset {re.escape(field)}=[0-9a-f]{{64}}(?: |$)")
+            self.assertRegex(
+                generator, rf"--set-asset {re.escape(field)}=[0-9a-f]{{64}}(?: |$)"
+            )
         self.assertIn("curl -fsSL https://tode.sh/install", log)
         self.assertIn("curl -fsSL https://terminal-browser.sh/install", log)
         self.assertIn("crit-linux-amd64", log)

@@ -515,6 +515,21 @@ function worker_agmsg_type() {
 }
 
 # @description Count the distinct agmsg identity names registered for a path and type.
+#   Corrected from an earlier revision of this comment, which misattributed
+#   an ancestor-walk to identities.sh itself. Verified against upstream
+#   v1.5.0 sources (scripts/identities.sh, scripts/lib/resolve-project.sh,
+#   docs/design.md "Project resolution", #92): identities.sh is a pure,
+#   exact (spelling-normalized only) lookup on the given path -- it applies
+#   no ancestor/marker/git-common-dir resolution, so a query for a main
+#   checkout's path does NOT sweep in registrations under a nested
+#   `.claude/worktrees/<name>` subdirectory or a sibling worktree. That
+#   resolution instead lives in join.sh/whoami.sh/actas-claim.sh/reset.sh/
+#   watch.sh, which is exactly why every worker pane this file creates now
+#   exports AGMSG_RESOLVE_PROJECT=0 (see split_agent_pane call sites below):
+#   without it, a worker running join.sh from its own worktree would have
+#   the ancestor walk silently rewrite its registration up to the
+#   orchestrator's already-registered main-checkout path, colliding with it
+#   instead of registering its own identity.
 # @arg $1 workdir Repository path used for repo-scoped agmsg registration.
 # @arg $2 string agmsg agent type.
 function distinct_agmsg_identity_count() {
@@ -559,13 +574,12 @@ function bootstrap_agmsg() {
 
     local scripts="${HOME}/.agents/skills/agmsg/scripts"
     local delivery="${scripts}/delivery.sh"
-    local identities="${scripts}/identities.sh"
+    local doctor="${scripts}/doctor.sh"
     local codex_hooks_file="${workdir}/.codex/hooks.json"
     local claude_hooks_file="${workdir}/.claude/settings.local.json"
     local log_file="${HOME}/.config/herdr/herdr-agents.log"
     local agent_type
     local agent_label
-    local identity_list
     local codex_worker=true
     local agent_types=(codex claude-code)
     local max_identities=1
@@ -597,29 +611,47 @@ function bootstrap_agmsg() {
         fi
     fi
 
-    if [[ ! -f ${identities} ]]; then
-        printf 'agmsg identities script not found; skipping identity checks: %s\n' "${identities}" >&2
+    if [[ ! -x ${doctor} ]]; then
+        printf 'agmsg doctor script not found; skipping identity checks: %s\n' "${doctor}" >&2
         return 0
     fi
     for agent_type in "${agent_types[@]}"; do
+        local doctor_output doctor_status has_registration=true
+        local count
+
         if [[ ${agent_type} == codex ]]; then
             agent_label=Codex
         else
             agent_label="Claude Code"
         fi
-        if ! identity_list="$("${identities}" "${workdir}" "${agent_type}" 2>> "${log_file}")"; then
-            continue
+
+        # doctor.sh reports general per-project health (registered, warnings);
+        # it does not treat multiple registrations for one type as a problem,
+        # so the ambiguity/second-identity checks below stay on the existing
+        # counting helper the T14 guard (require_distinct_worker_identity)
+        # also uses.
+        if doctor_output="$("${doctor}" --project "${workdir}" --type "${agent_type}" 2>&1)"; then
+            :
+        else
+            doctor_status=$?
+            if ((doctor_status == 2)) && [[ ${doctor_output} == *"no registrations match this scope"* ]]; then
+                has_registration=false
+                printf 'No agmsg %s identity for %s; run: %s/join.sh <team> <agent-name> %s "%s"\n' \
+                    "${agent_label}" "${workdir}" "${scripts}" "${agent_type}" "${workdir}" >&2
+            else
+                printf '%s\n' "${doctor_output}" >> "${log_file}"
+            fi
         fi
-        identity_list="$(printf '%s\n' "${identity_list}" | cut -f 2 | sort -u)"
-        if [[ -z ${identity_list} ]]; then
-            printf 'No agmsg %s identity for %s; run: %s/join.sh <team> <agent-name> %s "%s"\n' \
-                "${agent_label}" "${workdir}" "${scripts}" "${agent_type}" "${workdir}" >&2
-        elif ((max_identities == 2)) && [[ ${identity_list} != *$'\n'* ]]; then
-            printf 'No agmsg Claude Code worker identity for %s; herdr-agents full and --attach modes refuse a claude worker until a second claude-code identity is registered.\n' \
-                "${workdir}" >&2
-        elif (($(grep -c . <<< "${identity_list}") > max_identities)); then
-            printf 'Multiple agmsg %s identities are registered for %s; worker identity is ambiguous.\n' \
-                "${agent_label}" "${workdir}" >&2
+
+        if [[ ${has_registration} == true ]]; then
+            count="$(distinct_agmsg_identity_count "${workdir}" "${agent_type}")"
+            if [[ ${agent_type} == claude-code ]] && ((max_identities == 2)) && ((count < 2)); then
+                printf 'No agmsg Claude Code worker identity for %s; herdr-agents full and --attach modes refuse a claude worker until a second claude-code identity is registered.\n' \
+                    "${workdir}" >&2
+            elif ((count > max_identities)); then
+                printf 'Multiple agmsg %s identities are registered for %s; worker identity is ambiguous.\n' \
+                    "${agent_label}" "${workdir}" >&2
+            fi
         fi
     done
 }
@@ -749,7 +781,15 @@ if [[ ${attach_mode} == true ]]; then
     fi
 
     if [[ -z ${worker_pane_id} && -z ${workspace_worker_pane_id} ]]; then
-        worker_pane_id="$(split_agent_pane "${claude_pane_id}" "${workdir}")"
+        # A resident claude-kind worker's Monitor watch re-arms unconditionally
+        # on expiry (upstream default: re-arm only if the expired watch
+        # delivered something); an unattended worker pane has no one to notice
+        # a silently dropped watch, unlike the interactive orchestrator pane.
+        if [[ ${worker_kind} == claude ]]; then
+            worker_pane_id="$(split_agent_pane "${claude_pane_id}" "${workdir}" --env AGMSG_CC_MONITOR_KEEP_ALIVE=1 --env AGMSG_RESOLVE_PROJECT=0)"
+        else
+            worker_pane_id="$(split_agent_pane "${claude_pane_id}" "${workdir}" --env AGMSG_RESOLVE_PROJECT=0)"
+        fi
         start_worker_agent "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" true > /dev/null
     fi
     panes_json="$(herdr pane list --workspace "${workspace_id}")"
@@ -783,7 +823,11 @@ if [[ -n ${existing_workspace_id} ]]; then
                 printf 'Unable to find a pane for %s worker repair in Herdr workspace: %s\n' "${worker_kind}" "${workspace_id}" >&2
                 exit 1
             fi
-            worker_pane_id="$(split_agent_pane "${split_source_pane_id}" "${workdir}")"
+            if [[ ${worker_kind} == claude ]]; then
+                worker_pane_id="$(split_agent_pane "${split_source_pane_id}" "${workdir}" --env AGMSG_CC_MONITOR_KEEP_ALIVE=1 --env AGMSG_RESOLVE_PROJECT=0)"
+            else
+                worker_pane_id="$(split_agent_pane "${split_source_pane_id}" "${workdir}" --env AGMSG_RESOLVE_PROJECT=0)"
+            fi
             worker_pane_is_new=true
         fi
         start_worker_agent "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" "${worker_pane_is_new}" > /dev/null
@@ -837,7 +881,11 @@ fi
 
 worker_agent_name="$(agent_name_for_workspace "${worker_kind}-worker" "${workspace_id}")"
 start_claude_in_pane "${root_pane_id}" "${workspace_id}" true
-worker_pane_id="$(split_agent_pane "${root_pane_id}" "${workdir}")"
+if [[ ${worker_kind} == claude ]]; then
+    worker_pane_id="$(split_agent_pane "${root_pane_id}" "${workdir}" --env AGMSG_CC_MONITOR_KEEP_ALIVE=1 --env AGMSG_RESOLVE_PROJECT=0)"
+else
+    worker_pane_id="$(split_agent_pane "${root_pane_id}" "${workdir}" --env AGMSG_RESOLVE_PROJECT=0)"
+fi
 start_worker_agent "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" true > /dev/null
 bootstrap_agmsg "${workdir}"
 

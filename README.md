@@ -157,8 +157,10 @@ reason and the exact manual `git -C <repo> pull` command, then continues with
 the local source; a failed fast-forward pull also warns and continues. It then
 ensures the locked Node/npm runtime is installed before the two locked
 statusline tools required by the applied config, without upgrading other tools.
-The asset refresh also converges configured GitHub CLI extensions and syncs the
-vendored CompactionDB tree. It then reloads a running Herdr server, skips reload
+The asset refresh also converges configured GitHub CLI extensions, syncs the
+vendored CompactionDB tree, and updates the pinned agmsg skill in place
+(never touching its `teams`/`db`/`run` runtime state). It then reloads a
+running Herdr server, skips reload
 when the server is reported as not running or the command is unavailable, and
 fails on ambiguous status or reload errors other than `protocol_mismatch`. A
 protocol mismatch after updating Herdr prints instructions to stop and restart
@@ -339,6 +341,29 @@ unmanaged panes in place. Both agents start in
 the same project cwd and use the shared agmsg scripts/state for cross-agent
 messaging; the worker is a resident interactive session, kept warm so
 delegation avoids per-task cold starts and survives Herdr session restores.
+Claude Code seats use agmsg's `both` delivery mode (monitor's push plus
+turn's pull), one notch more redundant than upstream's own `monitor` default,
+since an unattended resident pane has no one to notice a Monitor watch that
+silently failed to re-arm; a resident Claude worker pane's environment also
+carries `AGMSG_CC_MONITOR_KEEP_ALIVE=1` so its watch re-arms unconditionally
+on expiry rather than only when the expired watch delivered something.
+Every worker pane's environment also carries `AGMSG_RESOLVE_PROJECT=0`.
+agmsg's project resolution (upstream [#92](https://github.com/fujibee/agmsg/issues/92),
+`docs/design.md` "Project resolution") lets `join.sh`/`whoami.sh`/
+`actas-claim.sh`/`reset.sh`/`watch.sh` rewrite an explicit project path up to
+the nearest _registered_ ancestor — by design, so a session started in a
+subdirectory of its own registered project still resolves correctly. Since
+the orchestrator's own `claude-code` identity is already registered at this
+repository's main checkout, and every worker worktree lives _under_ that
+checkout at `.claude/worktrees/<name>`, that same ancestor walk would rewrite
+a worker's own `join.sh`/`watch.sh` calls up to the orchestrator's already-
+registered path, colliding with it instead of registering the worker's own
+worktree — verified directly against a real, pinned v1.5.0 install (a
+`join.sh` from inside a nested worktree, with resolution left on, silently
+registers at the parent instead; the identical call with
+`AGMSG_RESOLVE_PROJECT=0` registers at the worktree, exactly as intended).
+`AGMSG_RESOLVE_PROJECT=0` opts every such call in a worker pane out of that
+rewrite, matching how `spawn.sh --project` opts out for agmsg-spawned seats.
 
 Per-task agent switching happens at the profile layer, never in the layout:
 the worker profile comes from `HERDR_AGENTS_WORKER_PROFILE` (the deprecated
@@ -473,8 +498,8 @@ the npm backend before refreshing plugins.
 **Asset manifest.** Every third-party component the lifecycle installs outside
 mise — the mise binary itself, sheldon, starship, the AWS CLI, the Homebrew
 installer, Crit, Zed, tode, terminal-browser, the Understand-Anything
-installer, the vendored CompactionDB and agmsg trees, and the Claude/Codex
-plugins and GitHub CLI extensions — has one declaration under `assets:` in
+installer, the vendored CompactionDB tree, the pinned upstream agmsg skill,
+and the Claude/Codex plugins and GitHub CLI extensions — has one declaration under `assets:` in
 `home/dot_agents/agent-config.yaml`, with its upstream, pin, verification
 method, install path, and installer step. mise tools are listed there as a
 pointer to `home/dot_mise/config.toml` and `mise.lock`, which stay the mise

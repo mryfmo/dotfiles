@@ -40,6 +40,7 @@ REQUIRED_AGMSG_WRITABLE_ROOTS = {
     "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db",
     "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/teams",
     "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/run",
+    "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/ext-tools",
 }
 SYNC_TIMEOUT_BUDGET_S = 30  # PLAN H3 pins the per-source, per-event synchronous budget.
 HOOK_COMPOSITION_SOURCES = {
@@ -232,25 +233,6 @@ def validate_claude_skill_parity() -> None:
             fail(f"{symlink} must point at the shared skill tree")
 
 
-def validate_claude_command_parity() -> None:
-    symlink = ROOT / "home/dot_claude/commands/symlink_agmsg.md.tmpl"
-    expected_target = "{{ .chezmoi.sourceDir }}/dot_agents/skills/agmsg/templates/cmd.claude-code.md\n"
-    if not symlink.exists() or symlink.read_text() != expected_target:
-        fail(f"{symlink} must point at the shared agmsg command template")
-    target = (
-        ROOT
-        / "home"
-        / expected_target.strip().removeprefix("{{ .chezmoi.sourceDir }}/")
-    )
-    if not target.is_file():
-        fail(f"{symlink} points at a missing template: {target}")
-    duplicate = ROOT / "home/dot_claude/commands/agmsg.md"
-    if duplicate.exists():
-        fail(
-            f"{duplicate} duplicates the shared agmsg command template; keep the symlink only"
-        )
-
-
 HARD_CODED_HOME_RE = re.compile(r"/(?:Users|home)/[^/\s'\"]+/")
 
 
@@ -330,19 +312,6 @@ def validate_exact_keys(
             f"{label} keys must match the shared manifest: "
             f"missing={sorted(expected_keys - actual_keys)} extra={sorted(actual_keys - expected_keys)}"
         )
-
-
-def validate_agmsg_script_modes() -> None:
-    scripts_root = ROOT / "home/dot_agents/skills/agmsg/scripts"
-    entrypoint_dirs = [scripts_root, scripts_root / "release"]
-    for entrypoint_dir in entrypoint_dirs:
-        for path in sorted(entrypoint_dir.glob("*.sh")):
-            if not path.name.startswith("executable_"):
-                fail(f"{path.relative_to(ROOT)} must use chezmoi executable_ prefix")
-            if path.stat().st_mode & 0o111 == 0:
-                fail(
-                    f"{path.relative_to(ROOT)} must stay executable for direct invocation"
-                )
 
 
 def validate_codex_agmsg_writable_roots(
@@ -480,7 +449,11 @@ def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
             .get(marketplace_name, {})
         )
         expected = {
-            **{key: revision[key] for key in ("last_updated", "last_revision") if key in revision},
+            **{
+                key: revision[key]
+                for key in ("last_updated", "last_revision")
+                if key in revision
+            },
             **marketplace_config,
         }
         if data.get("marketplaces", {}).get(marketplace_name) != expected:
@@ -525,6 +498,8 @@ def validate_claude_mcp_config() -> dict[str, Any]:
     return data
 
 
+GIT_COMMIT_SHA = re.compile(r"^[0-9a-f]{40}$")
+NPM_SHA512_INTEGRITY = re.compile(r"^sha512-[A-Za-z0-9+/]+=*$")
 ASSET_VERIFY_BY_SOURCE = {
     "mise": {"mise-lock"},
     "github-release": {"sha256", "release-shasums", "release-sha256", "gpg"},
@@ -550,7 +525,7 @@ INSTALLING_ASSET_SOURCES = {
 LITERAL_VERSION_ASSIGNMENT = re.compile(
     r"""^\s*(?:readonly |export |local )?([A-Z0-9_]*_VERSION|[a-z0-9_]*version)="""
     r"""(?:"[^"$`]*"|'[^']*'|[^\s"'$`;()]+)(?=\s|;|$)""",
-    re.M,
+    re.MULTILINE,
 )
 
 
@@ -574,25 +549,56 @@ def validate_assets(manifest: dict[str, Any]) -> None:
         fail("agent-config.yaml must declare third-party assets under assets:")
     rendered: set[tuple[str, str]] = set()
     for name, asset in assets.items():
-        missing = [key for key in ("source", "upstream", "pin", "verify") if not asset.get(key)]
+        missing = [
+            key for key in ("source", "upstream", "pin", "verify") if not asset.get(key)
+        ]
         if missing:
             fail(f"assets.{name} is missing {missing}")
         allowed = ASSET_VERIFY_BY_SOURCE.get(asset["source"])
         if allowed is None:
             fail(f"assets.{name} has an unknown source: {asset['source']!r}")
         if asset["verify"] not in allowed:
-            fail(f"assets.{name} verify {asset['verify']!r} is not valid for source {asset['source']!r}")
-        if asset["verify"] in {"sha256", "installer-sha256"} and not asset.get("sha256"):
+            fail(
+                f"assets.{name} verify {asset['verify']!r} is not valid for source {asset['source']!r}"
+            )
+        if asset["verify"] in {"sha256", "installer-sha256"} and not asset.get(
+            "sha256"
+        ):
             fail(f"assets.{name} must record sha256 for verify {asset['verify']!r}")
         if asset["verify"] == "gpg" and not asset.get("gpg_fingerprint"):
             fail(f"assets.{name} must record gpg_fingerprint for verify 'gpg'")
+        if name == "agmsg":
+            ref = asset.get("ref")
+            if not ref or not isinstance(ref, str):
+                fail(
+                    f"assets.{name} must record a ref (the tag the pinned commit belongs to)"
+                )
+            pin = asset.get("pin")
+            if not isinstance(pin, str) or not GIT_COMMIT_SHA.match(pin):
+                fail(
+                    f"assets.{name}.pin must be a full 40-character git commit sha, not {pin!r}"
+                )
+            integrity = asset.get("bootstrap_integrity")
+            if not isinstance(integrity, str) or not NPM_SHA512_INTEGRITY.match(
+                integrity
+            ):
+                fail(
+                    f"assets.{name}.bootstrap_integrity must be an npm sha512-<base64> "
+                    f"integrity string, not {integrity!r}"
+                )
         if asset["source"] in INSTALLING_ASSET_SOURCES:
-            absent = [key for key in ("install_path", "installer") if not asset.get(key)]
+            absent = [
+                key for key in ("install_path", "installer") if not asset.get(key)
+            ]
             if absent:
-                fail(f"assets.{name} installs from {asset['source']} and is missing {absent}")
+                fail(
+                    f"assets.{name} installs from {asset['source']} and is missing {absent}"
+                )
         for field, value in asset_pin_values(asset):
             if not isinstance(value, str):
-                fail(f"assets.{name}.{field} must be a string, not {type(value).__name__}: {value!r}")
+                fail(
+                    f"assets.{name}.{field} must be a string, not {type(value).__name__}: {value!r}"
+                )
         render = asset.get("render") or {}
         for constant in render.get("constants", {}):
             rendered.add((render["file"], constant))
@@ -641,7 +647,9 @@ def validate_agent_manifest() -> dict[str, Any]:
     if worker_kind not in {"codex", "claude"}:
         fail(f"{manifest_path} worker_kind must be codex or claude: {worker_kind!r}")
     if f"(currently `{worker_kind}`;" not in (ROOT / "README.md").read_text():
-        fail(f"README.md must state the manifest worker_kind as (currently `{worker_kind}`;")
+        fail(
+            f"README.md must state the manifest worker_kind as (currently `{worker_kind}`;"
+        )
     for name, profile in profiles.items():
         for agent, keys in (
             ("claude", ("model", "effort")),
@@ -1228,9 +1236,7 @@ def main() -> None:
     validate_hook_composition()
     validate_skills()
     validate_claude_skill_parity()
-    validate_claude_command_parity()
     validate_manifest_home_paths()
-    validate_agmsg_script_modes()
     validate_claude_settings(manifest)
     validate_repo_claude_settings_portable()
     validate_codex_plugins()

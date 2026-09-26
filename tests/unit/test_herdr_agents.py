@@ -4,12 +4,15 @@
 from __future__ import annotations
 
 import errno
+import hashlib
 import json
 import os
 import pty
+import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import textwrap
 import unittest
@@ -227,6 +230,32 @@ fi
 """
         )
         identities.chmod(0o755)
+        doctor = scripts / "doctor.sh"
+        doctor.write_text(
+            f"""#!/usr/bin/env bash
+printf 'doctor %s\\n' "$*" >> {self.calls_path}
+type=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --type) type="$2"; shift 2 ;;
+    *) shift ;;
+    esac
+done
+if [[ $type == claude-code ]]; then
+    output_file={claude_identities_output_path}
+else
+    output_file={codex_identities_output_path}
+fi
+if [[ -s "$output_file" ]]; then
+    printf '1 team(s), 1 registration(s), 0 warning(s)\\n'
+    exit 0
+else
+    printf 'doctor: no registrations match this scope\\n' >&2
+    exit 2
+fi
+"""
+        )
+        doctor.chmod(0o755)
         return scripts
 
     def register_claude_worker_identity(self) -> Path:
@@ -288,14 +317,46 @@ fi
         )
 
     def materialize_agmsg_scripts(self) -> Path:
-        source = ROOT / "home/dot_agents/skills/agmsg/scripts"
-        target = self.temp_dir / "agmsg" / "scripts"
-        shutil.copytree(source, target)
-        for path in target.rglob("executable_*.sh"):
-            installed = path.with_name(path.name.removeprefix("executable_"))
-            shutil.copy2(path, installed)
-            installed.chmod(0o755)
-        return target
+        """Extract the real, pinned upstream agmsg scripts/ tree for an E2E test.
+
+        This deliberately fetches the same commit+sha256 pinned in
+        scripts/update-agent-assets.sh (assets.agmsg in the manifest), cached
+        under the system temp dir keyed by commit, rather than keeping a
+        local fork of upstream scripts (forbidden by the T19 task spec) or
+        faking send.sh/join.sh/inbox.sh (this test proves real message
+        delivery between two fake agent processes, which a fake can't do).
+        """
+        updater_text = (ROOT / "scripts/update-agent-assets.sh").read_text()
+        commit = re.search(
+            r'^AGMSG_PIN_COMMIT="([0-9a-f]+)"$', updater_text, re.MULTILINE
+        ).group(1)
+        expected_sha256 = re.search(
+            r'^AGMSG_PIN_SHA256="([0-9a-f]+)"$', updater_text, re.MULTILINE
+        ).group(1)
+
+        cache_dir = Path(tempfile.gettempdir()) / f"agmsg-fixture-cache-{commit}"
+        tarball = cache_dir / "agmsg.tar.gz"
+        if not tarball.exists():
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            url = f"https://github.com/fujibee/agmsg/archive/{commit}.tar.gz"
+            subprocess.run(["curl", "-fsSL", url, "-o", str(tarball)], check=True)
+        actual_sha256 = hashlib.sha256(tarball.read_bytes()).hexdigest()
+        self.assertEqual(
+            expected_sha256,
+            actual_sha256,
+            "cached agmsg fixture tarball does not match the pinned checksum",
+        )
+
+        extract_root = self.temp_dir / "agmsg"
+        extract_root.mkdir()
+        with tarfile.open(tarball) as archive:
+            for member in archive.getmembers():
+                relative = Path(member.name).relative_to(Path(member.name).parts[0])
+                if relative == Path("."):
+                    continue
+                member.name = str(relative)
+                archive.extract(member, extract_root, filter="data")
+        return extract_root / "scripts"
 
     def install_zshrc_fakes(self, *, herdr_session_exit_code: int = 0) -> None:
         self.write_executable(
@@ -518,7 +579,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
         self.assertIn(
-            f"pane split w-attach:p1 --direction right --cwd {self.workdir.resolve()} --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus",
+            f"pane split w-attach:p1 --direction right --cwd {self.workdir.resolve()} --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --env AGMSG_RESOLVE_PROJECT=0 --no-focus",
             calls,
         )
         codex_start = next(
@@ -1132,7 +1193,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             calls,
         )
         self.assertIn(
-            f"pane split w-test:p1 --direction right --cwd {self.workdir.resolve()} --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus",
+            f"pane split w-test:p1 --direction right --cwd {self.workdir.resolve()} --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --env AGMSG_RESOLVE_PROJECT=0 --no-focus",
             calls,
         )
         self.assertIn(
@@ -1271,16 +1332,19 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         profiles = self.home_dir / ".agents/model-profiles.env"
         profiles.parent.mkdir(parents=True)
         profiles.write_text(
-            'MODEL_PROFILE_INTERACTIVE="standard"\n'
-            'HERDR_AGENTS_WORKER_KIND="claude"\n'
+            'MODEL_PROFILE_INTERACTIVE="standard"\nHERDR_AGENTS_WORKER_KIND="claude"\n'
         )
 
         result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "codex"})
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
-        self.assertTrue(any(call.startswith("agent start codex-worker-") for call in calls))
-        self.assertFalse(any(call.startswith("agent start claude-worker-") for call in calls))
+        self.assertTrue(
+            any(call.startswith("agent start codex-worker-") for call in calls)
+        )
+        self.assertFalse(
+            any(call.startswith("agent start claude-worker-") for call in calls)
+        )
 
     def test_worker_kind_rejects_an_unknown_value(self) -> None:
         result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "banana"})
@@ -1314,6 +1378,10 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         )
         self.assertIn("pane rename w-test:p3 claude-worker", calls)
         self.assertFalse(any("codex" in call for call in calls))
+        pane_split_calls = [call for call in calls if call.startswith("pane split")]
+        self.assertEqual(1, len(pane_split_calls))
+        self.assertIn("--env AGMSG_CC_MONITOR_KEEP_ALIVE=1", pane_split_calls[0])
+        self.assertIn("--env AGMSG_RESOLVE_PROJECT=0", pane_split_calls[0])
 
     def test_worker_kind_claude_starts_with_no_resolved_args(self) -> None:
         self.register_claude_worker_identity()
@@ -1415,7 +1483,9 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
                 calls = self.calls_path.read_text().splitlines()
                 self.assertFalse(
                     any(
-                        call.startswith(("pane split", "agent start", "workspace create"))
+                        call.startswith(
+                            ("pane split", "agent start", "workspace create")
+                        )
                         for call in calls
                     ),
                     calls,

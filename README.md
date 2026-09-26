@@ -157,8 +157,10 @@ reason and the exact manual `git -C <repo> pull` command, then continues with
 the local source; a failed fast-forward pull also warns and continues. It then
 ensures the locked Node/npm runtime is installed before the two locked
 statusline tools required by the applied config, without upgrading other tools.
-The asset refresh also converges configured GitHub CLI extensions and syncs the
-vendored CompactionDB tree. It then reloads a running Herdr server, skips reload
+The asset refresh also converges configured GitHub CLI extensions, syncs the
+vendored CompactionDB tree, and updates the pinned agmsg skill in place
+(never touching its `teams`/`db`/`run` runtime state). It then reloads a
+running Herdr server, skips reload
 when the server is reported as not running or the command is unavailable, and
 fails on ambiguous status or reload errors other than `protocol_mismatch`. A
 protocol mismatch after updating Herdr prints instructions to stop and restart
@@ -473,8 +475,8 @@ the npm backend before refreshing plugins.
 **Asset manifest.** Every third-party component the lifecycle installs outside
 mise — the mise binary itself, sheldon, starship, the AWS CLI, the Homebrew
 installer, Crit, Zed, tode, terminal-browser, the Understand-Anything
-installer, the vendored CompactionDB and agmsg trees, and the Claude/Codex
-plugins and GitHub CLI extensions — has one declaration under `assets:` in
+installer, the vendored CompactionDB tree, the pinned upstream agmsg skill,
+and the Claude/Codex plugins and GitHub CLI extensions — has one declaration under `assets:` in
 `home/dot_agents/agent-config.yaml`, with its upstream, pin, verification
 method, install path, and installer step. mise tools are listed there as a
 pointer to `home/dot_mise/config.toml` and `mise.lock`, which stay the mise

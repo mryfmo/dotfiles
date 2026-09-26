@@ -35,6 +35,7 @@ Generated files include:
 6. Claude plugins are not enabled by `settings.json` unless this repository also installs the marketplace/plugin. Shared workflows should live in skills first.
 7. Do not hand-edit generated files unless you immediately move the change back into `agent-config.yaml` and regenerate.
 8. For implementation tasks shared between Codex and Claude Code, use separate worktrees or make one agent a reviewer; do not let both write to the same worktree. This is an operational guideline and is intentionally not enforced by `validate-agent-assets.py`.
+9. The Claude Code Bash sandbox (`claude.sandbox`) mirrors the Codex `workspace-write` sandbox: its `filesystem.allowWrite` is rendered from `codex.sandbox_workspace_write.writable_roots`, and `validate-agent-assets.py` requires it to be enabled, fail closed when unavailable, and allow only hostnames in `network.allowedDomains`.
 
 ## Codex runtime state
 

@@ -285,6 +285,42 @@ CRIT_REVIEW=off make require-crit-review
 make upgrade
 ```
 
+### Claude Code sandbox
+
+`claude.sandbox` in `home/dot_agents/agent-config.yaml` renders the `sandbox`
+block of the managed Claude settings, the counterpart of the Codex
+`workspace-write` sandbox. Bash commands, their child processes, and subagent
+Bash calls may write only the working directory, the session `$TMPDIR`, and
+`sandbox.filesystem.allowWrite`, which the generator renders from
+`codex.sandbox_workspace_write.writable_roots` so both agents share one list of
+agmsg store directories. Network access from sandboxed commands is limited to
+the GitHub hosts in `sandbox.network.allowedDomains`; other hosts prompt.
+`failIfUnavailable` is `true`, so Claude Code refuses to start rather than run
+unconfined. `autoAllowBashIfSandboxed` skips the bare Bash prompt for sandboxed
+commands, while deny rules and content-scoped ask rules such as
+`Bash(git push:*)` still apply. A command that fails under the sandbox can
+still be retried unsandboxed through the normal permission prompt.
+
+On Ubuntu, `make update` installs `bubblewrap` and `socat` and, when
+`kernel.apparmor_restrict_unprivileged_userns` is `1` (Ubuntu 24.04 and later),
+the `/etc/apparmor.d/bwrap` profile from the Claude Code sandboxing guide.
+`make doctor` reports each prerequisite as found or as an optional warning.
+macOS needs nothing because the sandbox uses Seatbelt. Until the prerequisites
+exist, start a session with
+`claude --settings '{"sandbox": {"failIfUnavailable": false}}'`; it then warns
+and runs commands unsandboxed.
+
+Nested worktrees under `.claude/worktrees/` stay writable. From the main
+checkout they are subdirectories of the working directory and are not among
+the sandbox-protected `.claude` settings, skills, agents, commands, or hooks
+paths. A session started inside a linked worktree may also write the main
+repository's shared `.git` directory, except its `hooks/` and `config`.
+
+Plan mode is the exception to auto-allow: sandboxed commands still prompt there.
+Sandbox denials appear in the blocked command's result, naming the path or
+host; run `/sandbox` and open the Config tab to see the effective write paths,
+domains, and protected paths.
+
 ### Herdr and Ghostty agent workspace
 
 Ghostty starts at a normal zsh prompt. In Ghostty zsh sessions, bare `herdr`

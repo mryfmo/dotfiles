@@ -903,7 +903,7 @@ EOF
         log = self.temp_dir / "doctor.log"
         bin_dir.mkdir()
         missing = fail.removeprefix("missing:") if fail.startswith("missing:") else ""
-        for command in ("git", "chezmoi", "mise", "uv", "gh", "brew"):
+        for command in ("git", "chezmoi", "mise", "uv", "gh", "brew", "bwrap", "socat"):
             if command == missing:
                 continue
             self.executable(
@@ -922,12 +922,19 @@ EOF
         private_config.touch()
         (home / ".ssh").mkdir(parents=True, exist_ok=True)
         (home / ".ssh/id_ed25519.pub").touch()
+        sysctl = self.temp_dir / "apparmor_restrict_unprivileged_userns"
+        sysctl.write_text("1\n")
+        profile = self.temp_dir / "apparmor.d/bwrap"
+        profile.parent.mkdir(parents=True, exist_ok=True)
+        profile.touch()
         return {
             **os.environ,
             "HOME": str(home),
             "PATH": f"{bin_dir}:/usr/bin:/bin",
             "FAIL_COMMAND": fail,
             "TEST_LOG": str(log),
+            "BWRAP_APPARMOR_SYSCTL": str(sysctl),
+            "BWRAP_APPARMOR_PROFILE": str(profile),
         }
 
     def test_doctor_required_optional_and_healthy_statuses(self) -> None:
@@ -954,6 +961,49 @@ EOF
         )
         self.assertNotEqual(0, result.returncode)
         self.assertIn("required missing: brew", result.stderr)
+
+    def test_doctor_reports_claude_sandbox_prerequisites(self) -> None:
+        bin_dir = self.temp_dir / "sandbox-bin"
+        self.executable(bin_dir / "uname", "printf 'Linux\\n'\n")
+        self.executable(bin_dir / "bwrap", "exit 0\n")
+        sysctl = self.temp_dir / "sandbox-userns"
+        profile = self.temp_dir / "sandbox-profile"
+        script = f"source {ROOT / 'scripts/check-tools.sh'}; check_claude_sandbox; echo warnings=$optional_warnings"
+        cases = (
+            ("1\n", False, "warnings=2", "bwrap AppArmor profile is missing"),
+            ("1\n", True, "warnings=1", "found:   bwrap AppArmor profile"),
+            ("0\n", False, "warnings=1", "not applicable: bwrap AppArmor profile"),
+            (None, False, "warnings=1", "userns=absent"),
+        )
+        for userns, has_profile, warnings, finding in cases:
+            with self.subTest(userns=userns, has_profile=has_profile):
+                sysctl.unlink(missing_ok=True)
+                profile.unlink(missing_ok=True)
+                if userns is not None:
+                    sysctl.write_text(userns)
+                if has_profile:
+                    profile.touch()
+                result = self.run_test_command(
+                    ["/bin/bash", "-c", script],
+                    env={
+                        "PATH": str(bin_dir),
+                        "BWRAP_APPARMOR_SYSCTL": str(sysctl),
+                        "BWRAP_APPARMOR_PROFILE": str(profile),
+                    },
+                )
+                output = result.stdout + result.stderr
+                self.assertEqual(0, result.returncode, output)
+                self.assertIn(f"found:   bwrap -> {bin_dir / 'bwrap'}", output)
+                self.assertIn("prerequisite is missing: socat", output)
+                self.assertIn(warnings, output)
+                self.assertIn(finding, output)
+
+        self.executable(bin_dir / "uname", "printf 'Darwin\\n'\n")
+        result = self.run_test_command(
+            ["/bin/bash", "-c", script], env={"PATH": str(bin_dir)}
+        )
+        self.assertIn("not applicable: Claude Code sandbox prerequisites", result.stdout)
+        self.assertIn("warnings=0", result.stdout)
 
     def test_make_doctor_propagates_runtime_drift_after_tool_checks(self) -> None:
         repo = self.temp_dir / "doctor-repo"

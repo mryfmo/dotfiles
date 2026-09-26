@@ -512,13 +512,27 @@ assets:
     install_path: ~/.agents/compactiondb
     installer: scripts/update-agent-assets.sh#update_compactiondb
   agmsg:
-    source: vendored
+    source: git-commit
     upstream: https://github.com/fujibee/agmsg
-    pin: unknown
-    verify: none
+    pin: e94ca9e0f4c40ebf3115dee8eb639f303c7f7a3f
+    version: "1.4.2"
+    verify: sha256
+    sha256: a882ebc76dd140514c4996784ecdd90cff983d813421899682c0a533faa2a7f4
     install_path: ~/.agents/skills/agmsg
-    installer: chezmoi (home/dot_agents/skills/agmsg)
-    note: imported in commit 83eb1e4 (2026-06-22) without an upstream version; replaced by an npm pin in L.7
+    installer: scripts/update-agent-assets.sh#update_agmsg
+    note: >-
+      pin is the commit behind tag v1.4.2 (matches the npm dist-tag published the
+      same day); upstream's own install.sh --update owns SKILL.md/VERSION/scripts/
+      in place and never touches teams/db/run (live runtime state). The npm
+      package agmsg@1.4.2 is a bootstrapper only (bin/agmsg.js shells out to this
+      same tag's setup.sh) and ships no implementation, so this pins the upstream
+      git commit directly rather than an npm dist.integrity value.
+    render:
+      file: scripts/update-agent-assets.sh
+      constants:
+        AGMSG_PIN_COMMIT: pin
+        AGMSG_PIN_SHA256: sha256
+        AGMSG_PIN_VERSION: version
   claude-plugins:
     source: claude-plugin
     upstream: marketplaces

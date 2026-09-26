@@ -69,6 +69,13 @@ readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256="54f0350d09f43fcc8245f3f1fb2
 readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL="https://raw.githubusercontent.com/Egonex-AI/Understand-Anything/${CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT}/install.sh"
 # Versions and installer checksums for both URLs are pinned in
 # scripts/lib/installer-pins.sh and bumped by scripts/upgrade-tools.sh.
+# Rendered from assets.agmsg in home/dot_agents/agent-config.yaml; change the
+# commit, sha256, and version there together after reviewing the upstream diff.
+# Assignments stay non-readonly, like scripts/lib/installer-pins.sh, so tests
+# can override them after sourcing this file.
+AGMSG_PIN_COMMIT="e94ca9e0f4c40ebf3115dee8eb639f303c7f7a3f"
+AGMSG_PIN_SHA256="a882ebc76dd140514c4996784ecdd90cff983d813421899682c0a533faa2a7f4"
+AGMSG_PIN_VERSION="1.4.2"
 # Install paths below assume the default XDG layout; the upstream installers
 # honor XDG_*_HOME/TODE_INSTALL_ROOT overrides that this lifecycle does not.
 readonly TERMINAL_CODE_INSTALLER_URL="https://tode.sh/install"
@@ -839,6 +846,89 @@ function update_compactiondb() {
 }
 
 #
+# @description Print a stable sha256 snapshot of every file under an agmsg
+#   skill's teams/db/run state directories, skipping any that don't exist yet.
+# @arg $1 path Skill directory (e.g. ~/.agents/skills/agmsg).
+#
+function agmsg_state_snapshot() {
+    local skill_dir="$1"
+    local state_dir
+
+    for state_dir in teams db run; do
+        [ -d "${skill_dir}/${state_dir}" ] || continue
+        find "${skill_dir}/${state_dir}" -type f -exec sha256sum {} +
+    done | sort
+}
+
+#
+# @description Download, verify, and apply one pinned agmsg release via
+#   upstream install.sh, which owns SKILL.md/VERSION/scripts/ in place.
+# @arg $1 path Skill directory (e.g. ~/.agents/skills/agmsg).
+# @arg $2 string Already-installed VERSION content, or "none".
+#
+function install_pinned_agmsg() (
+    local skill_dir="$1"
+    local installed="$2"
+    local fetch_url="https://github.com/fujibee/agmsg/archive/${AGMSG_PIN_COMMIT}.tar.gz"
+    local tarball extract_dir actual before_state after_state
+
+    tarball="$(mktemp)"
+    extract_dir="$(mktemp -d)"
+    trap 'rm -f "${tarball}"; rm -rf "${extract_dir}"' EXIT
+    curl -fsSL "${fetch_url}" -o "${tarball}" || {
+        printf 'agmsg download failed: %s\n' "${fetch_url}" >&2
+        return 1
+    }
+    actual="$(shasum -a 256 "${tarball}" | awk '{ print $1 }')"
+    [ "${actual}" = "${AGMSG_PIN_SHA256}" ] || {
+        printf 'agmsg checksum mismatch for %s.\n' "${fetch_url}" >&2
+        return 1
+    }
+    tar xzf "${tarball}" -C "${extract_dir}" --strip-components=1
+
+    # A fresh install has no prior state to preserve; the snapshot check
+    # below only guards a genuine update of an already-installed skill.
+    if [ "${installed}" != "none" ]; then
+        before_state="$(agmsg_state_snapshot "${skill_dir}")"
+    fi
+    if ! bash "${extract_dir}/install.sh" --update --cmd agmsg --agent-type claude-code > /dev/null 2>&1; then
+        bash "${extract_dir}/install.sh" --cmd agmsg --agent-type claude-code || {
+            printf 'agmsg install.sh failed\n' >&2
+            return 1
+        }
+    fi
+    if [ "${installed}" != "none" ]; then
+        after_state="$(agmsg_state_snapshot "${skill_dir}")"
+        [ "${before_state}" = "${after_state}" ] || {
+            printf 'agmsg update touched live runtime state under teams/db/run; aborting\n' >&2
+            return 1
+        }
+    fi
+)
+
+#
+# @description Install or refresh the pinned upstream agmsg skill in place.
+#
+function update_agmsg() {
+    local skill_dir="${HOME}/.agents/skills/agmsg"
+    local installed
+
+    section "agmsg"
+    installed="$(cat "${skill_dir}/VERSION" 2> /dev/null || printf 'none\n')"
+    if [ "${installed}" != "${AGMSG_PIN_VERSION}" ] || ! [ -x "${skill_dir}/scripts/send.sh" ]; then
+        install_pinned_agmsg "${skill_dir}" "${installed}" ||
+            printf 'agmsg installer failed; existing install unchanged.\n' >&2
+    fi
+
+    manifest_record "update_agmsg" installer \
+        "$(cat "${skill_dir}/VERSION" 2> /dev/null || printf 'none\n')" \
+        "${skill_dir}/SKILL.md" "${skill_dir}/scripts" "${skill_dir}/VERSION" -- \
+        "curl -fsSL https://github.com/fujibee/agmsg/archive/${AGMSG_PIN_COMMIT}.tar.gz" \
+        "shasum -a 256 <tarball>" \
+        "bash <extracted>/install.sh --update --cmd agmsg --agent-type claude-code"
+}
+
+#
 # @description Install and refresh managed agent plugin assets.
 # @arg $@ string Command-line arguments.
 #
@@ -864,6 +954,7 @@ function main() {
     update_terminal_code
     update_terminal_browser
     update_compactiondb
+    update_agmsg
     ensure_herdr_integrations
 }
 

@@ -40,3 +40,15 @@ function setup() {
     [ "${status}" -eq 0 ]
     [[ "${output}" == *"not applicable: Crit CLI (not installed)"* ]]
 }
+
+@test "[common] check_crit_cli warns instead of aborting when --version fails" {
+    local crit_path="${BATS_TEST_TMPDIR}/.local/bin/crit"
+    mkdir -p "$(dirname "${crit_path}")"
+    printf '#!/usr/bin/env bash\nexit 1\n' > "${crit_path}"
+    chmod +x "${crit_path}"
+
+    run env HOME="${BATS_TEST_TMPDIR}" bash -c "source '${SCRIPT_PATH}'; check_crit_cli"
+    [ "${status}" -eq 0 ]
+    [[ "${output}" == *"found:   crit ->"* ]]
+    [[ "${output}" == *"optional warning: crit --version failed"* ]]
+}

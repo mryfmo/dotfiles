@@ -163,7 +163,7 @@ function check_crit_cli() {
     fi
 
     printf 'found:   crit -> %s (pinned release)\n' "${target}"
-    "${target}" --version
+    "${target}" --version || warn_optional "crit --version failed; the managed binary may be corrupt (try REPAIR=1 make doctor)"
 }
 
 #

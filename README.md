@@ -357,6 +357,16 @@ starts with `herdr agent start <name> --kind <worker_kind> --pane <id>`.
 Completion is detected only through agmsg RESULT messages, and about three
 concurrent workers is the practical supervision ceiling.
 
+Every pane `herdr-agents` creates also carries `--env HERDR_AGENTS_ROLE=orchestrator`
+or `--env HERDR_AGENTS_ROLE=worker`, set once at pane creation (attach mode, full-mode
+repair, and fresh-workspace creation all set it on their `claude-orchestrator` and
+`<worker_kind>-worker` panes). The orchestrator-guardrails PreToolUse hook and the
+orchestrator-checklist SessionStart/UserPromptSubmit hook (`home/dot_claude/hooks/`)
+read this variable to decide which rules or checklist apply, treating a missing or
+`unknown` value as role-independent only — a pane started outside `herdr-agents`
+(for example a bare Herdr pane, or this repo's own worktrees for local development)
+is never guardrailed by role-specific rules.
+
 New workspaces no longer create a persistent files pane; `prefix+f` opens the
 on-demand `herdr-file-viewer` popup instead. A legacy `files` pane restored
 from an older persisted session is left untouched as an unmanaged pane, as

@@ -8,7 +8,6 @@ import json
 import re
 import sys
 from pathlib import Path
-import re
 from typing import Any, NoReturn
 
 try:
@@ -24,9 +23,7 @@ ADH_PROFILE = {
     "codex": {
         "model": "gpt-6-astra",
         "model_reasoning_effort": "xhigh",
-        "notify": [
-            "{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify"
-        ],
+        "notify": ["{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify"],
     },
 }
 
@@ -161,9 +158,14 @@ def interactive_profile(manifest: dict[str, Any]) -> dict[str, Any]:
 def codex_marketplace_revision(manifest: dict[str, Any], name: str) -> dict[str, Any]:
     """Return the pinned marketplace revision recorded in assets.codex-plugins."""
     plugin = (
-        manifest.get("assets", {}).get("codex-plugins", {}).get("plugins", {}).get(name, {})
+        manifest.get("assets", {})
+        .get("codex-plugins", {})
+        .get("plugins", {})
+        .get(name, {})
     )
-    return {key: plugin[key] for key in ("last_updated", "last_revision") if key in plugin}
+    return {
+        key: plugin[key] for key in ("last_updated", "last_revision") if key in plugin
+    }
 
 
 def asset_field(asset: dict[str, Any], path: str) -> str:
@@ -180,7 +182,9 @@ SETTABLE_ASSET_FIELD = re.compile(r"pin|sha256|sha256\.[A-Za-z0-9-]+")
 def set_asset_field(text: str, name: str, path: str, value: str) -> str:
     """Rewrite one scalar under assets.<name> in the manifest text, keeping comments."""
     if not SETTABLE_ASSET_FIELD.fullmatch(path):
-        fail(f"--set-asset may change only pin, sha256, or sha256.<arch>: {name}.{path}")
+        fail(
+            f"--set-asset may change only pin, sha256, or sha256.<arch>: {name}.{path}"
+        )
     if not PLAIN_PIN_VALUE.fullmatch(value):
         fail(f"assets.{name}.{path} is not a plain pin value: {value!r}")
     lines = text.splitlines(keepends=True)
@@ -217,13 +221,17 @@ def render_asset_constants(manifest: dict[str, Any]) -> dict[Path, str]:
         if text is None:
             text = path.read_text()
         for constant, field in render["constants"].items():
-            pattern = re.compile(rf'^((?:readonly )?{re.escape(constant)}=)"[^"$`\\]*"$', re.M)
+            pattern = re.compile(
+                rf'^((?:readonly )?{re.escape(constant)}=)"[^"$`\\]*"$', re.MULTILINE
+            )
             value = asset_field(asset, field)
             if not PLAIN_PIN_VALUE.fullmatch(value):
                 fail(f"assets.{name}.{field} is not a plain pin value: {value!r}")
             text, count = pattern.subn(lambda match: f'{match.group(1)}"{value}"', text)
             if count != 1:
-                fail(f"{render['file']} must assign {constant} exactly once for assets.{name}")
+                fail(
+                    f"{render['file']} must assign {constant} exactly once for assets.{name}"
+                )
         outputs[path] = text
     return outputs
 
@@ -352,8 +360,7 @@ def render_codex(manifest: dict[str, Any]) -> str:
                 'type = "command"',
                 f"command = {quote_toml(permission_request['command'])}",
                 f"timeout = {quote_toml(permission_request['timeout'])}",
-                "statusMessage = "
-                + quote_toml(permission_request["status_message"]),
+                "statusMessage = " + quote_toml(permission_request["status_message"]),
             ]
         )
     if hooks.get("state"):
@@ -382,6 +389,7 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
         )
     profile_claude = interactive_profile(manifest)["claude"]
     permission_request = hooks.get("permission_request")
+    checklist_hook = hooks.get("checklist_hook")
     settings: dict[str, Any] = {
         "$schema": claude["schema"],
         "model": profile_claude["model"],
@@ -405,7 +413,16 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
                             "command": hooks["enforce_uv_hook"],
                         }
                     ],
-                }
+                },
+                {
+                    "matcher": "Bash",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": hooks["guardrails_hook"],
+                        }
+                    ],
+                },
             ],
             "SessionStart": hooks.get("session_start", []),
             "PostToolUse": [
@@ -414,6 +431,23 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
                     "hooks": post_hooks,
                 }
             ],
+            **(
+                {
+                    "UserPromptSubmit": [
+                        {
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": checklist_hook,
+                                    "timeout": 5,
+                                }
+                            ]
+                        }
+                    ]
+                }
+                if checklist_hook
+                else {}
+            ),
             **(
                 {
                     "PermissionRequest": [
@@ -547,7 +581,6 @@ def claude_skill_symlink_outputs() -> dict[Path, str]:
     return outputs
 
 
-
 def render_codex_profile(name: str, profile: dict[str, Any]) -> str:
     codex = profile["codex"]
     lines = [
@@ -559,13 +592,15 @@ def render_codex_profile(name: str, profile: dict[str, Any]) -> str:
     ]
     if notify := codex.get("notify"):
         lines.append(f"notify = {quote_toml(notify)}")
-    lines.extend([
-        "",
-        "[features]",
-        "hooks = true",
-        "",
-        "[hooks.state]",
-    ])
+    lines.extend(
+        [
+            "",
+            "[features]",
+            "hooks = true",
+            "",
+            "[hooks.state]",
+        ]
+    )
     return "\n".join(lines) + "\n"
 
 
@@ -574,9 +609,9 @@ def render_codex_profile_modify(name: str, profile: dict[str, Any]) -> str:
     render_helper = ""
     managed_source = "MANAGED"
     if "{{ .chezmoi.homeDir }}" in managed:
-        render_helper = '''\n\ndef render_managed_paths(text: str) -> str:
+        render_helper = """\n\ndef render_managed_paths(text: str) -> str:
     return text.replace("{{ .chezmoi.homeDir }}", str(Path.home()))
-'''
+"""
         managed_source = "render_managed_paths(MANAGED)"
     return f'''#!/usr/bin/env python3
 """Merge the managed Codex {name} profile with Codex-owned runtime state."""
@@ -786,11 +821,15 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
         ROOT / manifest["plugins"]["marketplace_path"]: render_marketplace(manifest),
     }
     for name, profile in sorted(model_profiles(manifest).items()):
-        outputs[
-            ROOT / "home/dot_codex" / f"modify_private_{name}.config.toml"
-        ] = render_codex_profile_modify(name, profile)
-    outputs[ROOT / "home/dot_agents/model-profiles.env"] = render_model_profiles_env(manifest)
-    outputs[ROOT / "home/dot_claude/agents/express-explorer.md"] = render_claude_express_agent(manifest)
+        outputs[ROOT / "home/dot_codex" / f"modify_private_{name}.config.toml"] = (
+            render_codex_profile_modify(name, profile)
+        )
+    outputs[ROOT / "home/dot_agents/model-profiles.env"] = render_model_profiles_env(
+        manifest
+    )
+    outputs[ROOT / "home/dot_claude/agents/express-explorer.md"] = (
+        render_claude_express_agent(manifest)
+    )
     for plugin in manifest["plugins"].get("codex_plugins", []):
         if not plugin.get("managed_manifest", True):
             continue
@@ -874,11 +913,16 @@ def main() -> None:
             for part in path.split("."):
                 current = current[part]
             if not isinstance(current, str) or current != value:
-                fail(f"assets.{name}.{path} did not update to the string {value!r}: {current!r}")
+                fail(
+                    f"assets.{name}.{path} did not update to the string {value!r}: {current!r}"
+                )
         outputs = render_asset_constants(manifest)
         manifest_path.write_text(text)
         write_outputs(outputs)
-        print("asset pins updated: " + ", ".join(f"{name}.{path}" for name, path, _ in updates))
+        print(
+            "asset pins updated: "
+            + ", ".join(f"{name}.{path}" for name, path, _ in updates)
+        )
         return
 
     manifest = load_manifest()

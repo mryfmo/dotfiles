@@ -518,7 +518,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
         self.assertIn(
-            f"pane split w-attach:p1 --direction right --cwd {self.workdir.resolve()} --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus",
+            f"pane split w-attach:p1 --direction right --cwd {self.workdir.resolve()} --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --env HERDR_AGENTS_ROLE=worker --no-focus",
             calls,
         )
         codex_start = next(
@@ -1132,7 +1132,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             calls,
         )
         self.assertIn(
-            f"pane split w-test:p1 --direction right --cwd {self.workdir.resolve()} --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus",
+            f"pane split w-test:p1 --direction right --cwd {self.workdir.resolve()} --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --env HERDR_AGENTS_ROLE=worker --no-focus",
             calls,
         )
         self.assertIn(
@@ -1140,6 +1140,13 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             calls,
         )
         self.assertIn("pane rename w-test:p3 codex-worker", calls)
+        self.assertTrue(
+            any(
+                call.startswith("workspace create ")
+                and "--env HERDR_AGENTS_ROLE=orchestrator" in call
+                for call in calls
+            )
+        )
         self.assertFalse(
             any(
                 removed in call
@@ -1271,16 +1278,19 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         profiles = self.home_dir / ".agents/model-profiles.env"
         profiles.parent.mkdir(parents=True)
         profiles.write_text(
-            'MODEL_PROFILE_INTERACTIVE="standard"\n'
-            'HERDR_AGENTS_WORKER_KIND="claude"\n'
+            'MODEL_PROFILE_INTERACTIVE="standard"\nHERDR_AGENTS_WORKER_KIND="claude"\n'
         )
 
         result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "codex"})
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
-        self.assertTrue(any(call.startswith("agent start codex-worker-") for call in calls))
-        self.assertFalse(any(call.startswith("agent start claude-worker-") for call in calls))
+        self.assertTrue(
+            any(call.startswith("agent start codex-worker-") for call in calls)
+        )
+        self.assertFalse(
+            any(call.startswith("agent start claude-worker-") for call in calls)
+        )
 
     def test_worker_kind_rejects_an_unknown_value(self) -> None:
         result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "banana"})
@@ -1415,7 +1425,9 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
                 calls = self.calls_path.read_text().splitlines()
                 self.assertFalse(
                     any(
-                        call.startswith(("pane split", "agent start", "workspace create"))
+                        call.startswith(
+                            ("pane split", "agent start", "workspace create")
+                        )
                         for call in calls
                     ),
                     calls,
@@ -1547,6 +1559,13 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
                 if call.startswith(("workspace create ", "pane split "))
             )
         )
+        self.assertTrue(
+            any(
+                call.startswith("workspace create ")
+                and "--env HERDR_AGENTS_ROLE=orchestrator" in call
+                for call in calls
+            )
+        )
 
     def install_npm_fake(self, *, installed: bool, mise_has_tool: bool = True) -> None:
         list_exit = 0 if installed else 1
@@ -1673,7 +1692,7 @@ fi
 
         calls = self.calls_path.read_text().splitlines()
         self.assertIn(
-            f"pane split w-old:p2 --direction right --cwd {self.workdir.resolve()} --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --env HERDR_AGENTS_LAYOUT=managed --no-focus",
+            f"pane split w-old:p2 --direction right --cwd {self.workdir.resolve()} --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --env HERDR_AGENTS_LAYOUT=managed --env HERDR_AGENTS_ROLE=orchestrator --no-focus",
             calls,
         )
         self.assertIn(
@@ -1701,6 +1720,13 @@ fi
             calls,
         )
         self.assertIn("pane rename w-old:p3 codex-worker", calls)
+        self.assertTrue(
+            any(
+                call.startswith("pane split ")
+                and "--env HERDR_AGENTS_ROLE=worker" in call
+                for call in calls
+            )
+        )
         self.assertNotIn(
             f"workspace create --cwd {self.workdir} --label project agents --focus",
             calls,
@@ -1773,7 +1799,7 @@ fi
 
         calls = self.calls_path.read_text().splitlines()
         self.assertIn(
-            f"pane split w-old:p2 --direction right --cwd {self.workdir.resolve()} --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --env HERDR_AGENTS_LAYOUT=managed --no-focus",
+            f"pane split w-old:p2 --direction right --cwd {self.workdir.resolve()} --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --env HERDR_AGENTS_LAYOUT=managed --env HERDR_AGENTS_ROLE=orchestrator --no-focus",
             calls,
         )
         self.assertIn("pane swap --pane w-old:p3 --direction left", calls)

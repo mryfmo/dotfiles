@@ -6,6 +6,7 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import json
 import os
 import shutil
 import subprocess
@@ -81,6 +82,8 @@ def sample_manifest() -> dict:
             "hooks": {
                 "enforce_uv_hook": "~/.claude/hooks/enforce-uv.sh",
                 "format_edited_files_hook": "~/.claude/hooks/format-edited-files.py",
+                "guardrails_hook": "~/.claude/hooks/orchestrator-guardrails.py",
+                "checklist_hook": "~/.claude/hooks/orchestrator-checklist.py",
                 "permission_request": {
                     "command": "permgate claude",
                     "timeout": 10,
@@ -114,10 +117,14 @@ class GenerateAgentConfigsTest(unittest.TestCase):
     def write_asset_fixture(self) -> dict:
         pins = self.temp_dir / "scripts/lib/installer-pins.sh"
         pins.parent.mkdir(parents=True)
-        pins.write_text('#!/usr/bin/env bash\nCRIT_PIN_VERSION="v0.0.1"\nCRIT_LINUX_AMD64_SHA256="old"\n')
+        pins.write_text(
+            '#!/usr/bin/env bash\nCRIT_PIN_VERSION="v0.0.1"\nCRIT_LINUX_AMD64_SHA256="old"\n'
+        )
         installer = self.temp_dir / "install/common/mise.sh"
         installer.parent.mkdir(parents=True)
-        installer.write_text('#!/usr/bin/env bash\nreadonly MISE_VERSION="v0.0.1"\necho "${MISE_VERSION}"\n')
+        installer.write_text(
+            '#!/usr/bin/env bash\nreadonly MISE_VERSION="v0.0.1"\necho "${MISE_VERSION}"\n'
+        )
         return {
             "assets": {
                 "mise": {
@@ -230,8 +237,9 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         )
         for name, path, value in cases:
             with self.subTest(target=f"{name}.{path}", value=value):
-                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(
-                    SystemExit
+                with (
+                    contextlib.redirect_stderr(io.StringIO()),
+                    self.assertRaises(SystemExit),
                 ):
                     self.module.set_asset_field(self.MANIFEST_TEXT, name, path, value)
 
@@ -285,13 +293,18 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         with contextlib.redirect_stdout(stdout):
             self.module.main()
 
-        self.assertIn("asset pins updated: crit.pin, crit.sha256.linux-amd64", stdout.getvalue())
+        self.assertIn(
+            "asset pins updated: crit.pin, crit.sha256.linux-amd64", stdout.getvalue()
+        )
         self.assertIn("    pin: v0.20.3\n", manifest_path.read_text())
         self.assertEqual(
-            pins.read_text(), 'CRIT_PIN_VERSION="v0.20.3"\nCRIT_LINUX_AMD64_SHA256="d3a3"\n'
+            pins.read_text(),
+            'CRIT_PIN_VERSION="v0.20.3"\nCRIT_LINUX_AMD64_SHA256="d3a3"\n',
         )
 
-    def test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid(self) -> None:
+    def test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid(
+        self,
+    ) -> None:
         manifest_path = self.temp_dir / "home/dot_agents/agent-config.yaml"
         manifest_path.parent.mkdir(parents=True)
         manifest_path.write_text(self.MANIFEST_TEXT)
@@ -314,7 +327,9 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 stderr = io.StringIO()
                 with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
                     self.module.set_asset_field(self.MANIFEST_TEXT, "crit", path, "v1")
-                self.assertIn("may change only pin, sha256, or sha256.<arch>", stderr.getvalue())
+                self.assertIn(
+                    "may change only pin, sha256, or sha256.<arch>", stderr.getvalue()
+                )
 
     def run_set_asset_with_parser(self, parser) -> str:
         manifest_path = self.temp_dir / "home/dot_agents/agent-config.yaml"
@@ -323,14 +338,20 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.module.parse_manifest = parser
         old_argv = sys.argv
         self.addCleanup(setattr, sys, "argv", old_argv)
-        sys.argv = ["generate-agent-configs.py", "--set-asset", "crit.sha256.linux-amd64=1234"]
+        sys.argv = [
+            "generate-agent-configs.py",
+            "--set-asset",
+            "crit.sha256.linux-amd64=1234",
+        ]
         stderr = io.StringIO()
         with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
             self.module.main()
         self.assertEqual(manifest_path.read_text(), self.MANIFEST_TEXT)
         return stderr.getvalue()
 
-    def test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string(self) -> None:
+    def test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string(
+        self,
+    ) -> None:
         def parse_digits_as_int(text: str) -> dict:
             manifest = self.parse_indented_mapping(text)
             sha256 = manifest["assets"]["crit"]["sha256"]
@@ -352,7 +373,9 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
         stderr = self.run_set_asset_with_parser(broken)
 
-        self.assertIn("--set-asset produced an unparsable manifest: mapping values", stderr)
+        self.assertIn(
+            "--set-asset produced an unparsable manifest: mapping values", stderr
+        )
         self.assertNotIn("Traceback", stderr)
 
     def test_repository_marketplace_is_a_runtime_owned_seed(self) -> None:
@@ -409,6 +432,30 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertNotIn(
             self.temp_dir / "home/dot_codex/private_config.toml.tmpl", outputs
         )
+
+    def test_claude_settings_renders_guardrails_and_checklist_hooks(self) -> None:
+        rendered = json.loads(self.module.render_claude_settings(sample_manifest()))
+
+        pretooluse_commands = {
+            entry["hooks"][0]["command"] for entry in rendered["hooks"]["PreToolUse"]
+        }
+        self.assertIn("~/.claude/hooks/orchestrator-guardrails.py", pretooluse_commands)
+
+        prompt_hooks = rendered["hooks"]["UserPromptSubmit"]
+        self.assertEqual(
+            prompt_hooks[0]["hooks"][0]["command"],
+            "~/.claude/hooks/orchestrator-checklist.py",
+        )
+
+    def test_claude_settings_omits_user_prompt_submit_without_checklist_hook(
+        self,
+    ) -> None:
+        manifest = sample_manifest()
+        del manifest["claude"]["hooks"]["checklist_hook"]
+
+        rendered = json.loads(self.module.render_claude_settings(manifest))
+
+        self.assertNotIn("UserPromptSubmit", rendered["hooks"])
 
     def test_profile_modify_scripts_preserve_runtime_state(self) -> None:
         outputs = self.module.expected_outputs(sample_manifest())

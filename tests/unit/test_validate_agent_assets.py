@@ -70,7 +70,10 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     top_file.write_text(token)
                     try:
                         stderr = io.StringIO()
-                        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                        with (
+                            contextlib.redirect_stderr(stderr),
+                            self.assertRaises(SystemExit),
+                        ):
                             scan()
                         self.assertIn("top.txt", stderr.getvalue())
                         self.assertNotIn("nested.txt", stderr.getvalue())
@@ -118,7 +121,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                                     {
                                         "type": "command",
                                         "command": command,
-                                        "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"],
+                                        "args": [
+                                            "${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"
+                                        ],
                                     }
                                 ],
                             }
@@ -267,7 +272,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     "upstream": "marketplaces",
                     "pin": "per-plugin",
                     "verify": "none",
-                    "plugins": {"crit": {"marketplace": "tomasz-tomczyk/crit", "pin": "1.8.10"}},
+                    "plugins": {
+                        "crit": {"marketplace": "tomasz-tomczyk/crit", "pin": "1.8.10"}
+                    },
                 },
             }
         }
@@ -291,16 +298,17 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "missing install_path": lambda assets: assets["brew"].pop("install_path"),
             "missing installer": lambda assets: assets["aws"].pop("installer"),
             "float pin": lambda assets: assets["aws"].update(pin=1.1),
-            "float plugin pin": lambda assets: assets["plugins"]["plugins"]["crit"].update(
-                pin=1.1
-            ),
+            "float plugin pin": lambda assets: assets["plugins"]["plugins"][
+                "crit"
+            ].update(pin=1.1),
         }
         for name, breaks in cases.items():
             with self.subTest(case=name):
                 manifest = self.asset_manifest()
                 breaks(manifest["assets"])
-                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(
-                    SystemExit
+                with (
+                    contextlib.redirect_stderr(io.StringIO()),
+                    self.assertRaises(SystemExit),
                 ):
                     self.module.validate_assets(manifest)
 
@@ -308,12 +316,28 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self,
     ) -> None:
         cases = (
-            ("install/ubuntu/common/tool.sh", 'readonly TOOL_VERSION="1.2.3"\n', "TOOL_VERSION"),
-            ("install/ubuntu/common/copy.sh", 'readonly MISE_VERSION="v0"\n', "MISE_VERSION"),
+            (
+                "install/ubuntu/common/tool.sh",
+                'readonly TOOL_VERSION="1.2.3"\n',
+                "TOOL_VERSION",
+            ),
+            (
+                "install/ubuntu/common/copy.sh",
+                'readonly MISE_VERSION="v0"\n',
+                "MISE_VERSION",
+            ),
             ("scripts/lib/other.sh", 'OTHER_VERSION="2"\n', "OTHER_VERSION"),
             ("scripts/tool.sh", '    local version="3.0"\n', "version"),
-            ("install/ubuntu/common/bare.sh", "readonly TOOL_VERSION=1.2.3\n", "TOOL_VERSION"),
-            ("install/ubuntu/common/single.sh", "TOOL_VERSION='1.2.3'; export TOOL_VERSION\n", "TOOL_VERSION"),
+            (
+                "install/ubuntu/common/bare.sh",
+                "readonly TOOL_VERSION=1.2.3\n",
+                "TOOL_VERSION",
+            ),
+            (
+                "install/ubuntu/common/single.sh",
+                "TOOL_VERSION='1.2.3'; export TOOL_VERSION\n",
+                "TOOL_VERSION",
+            ),
         )
         for relative, content, constant in cases:
             with self.subTest(file=relative):
@@ -752,6 +776,44 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         )
 
         self.module.validate_claude_command_parity()
+
+    def test_validate_guardrails_accepts_full_enablement(self) -> None:
+        manifest = {
+            "claude": {
+                "guardrails": {
+                    "enabled": ["G1", "G2", "G3", "G4", "G5"],
+                    "role_env_var": "HERDR_AGENTS_ROLE",
+                }
+            }
+        }
+
+        self.module.validate_guardrails(manifest)
+
+    def test_validate_guardrails_rejects_missing_rule(self) -> None:
+        manifest = {
+            "claude": {
+                "guardrails": {
+                    "enabled": ["G1", "G2", "G3", "G4"],
+                    "role_env_var": "HERDR_AGENTS_ROLE",
+                }
+            }
+        }
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_guardrails(manifest)
+
+    def test_validate_guardrails_rejects_wrong_role_env_var(self) -> None:
+        manifest = {
+            "claude": {
+                "guardrails": {
+                    "enabled": ["G1", "G2", "G3", "G4", "G5"],
+                    "role_env_var": "SOMETHING_ELSE",
+                }
+            }
+        }
+
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.module.validate_guardrails(manifest)
 
 
 if __name__ == "__main__":

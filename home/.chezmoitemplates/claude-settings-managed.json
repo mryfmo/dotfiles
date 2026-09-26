@@ -39,6 +39,15 @@
             "command": "~/.claude/hooks/enforce-uv.sh"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/orchestrator-guardrails.py"
+          }
+        ]
       }
     ],
     "SessionStart": [
@@ -49,6 +58,16 @@
             "type": "command",
             "command": "bash '{{ .chezmoi.homeDir }}/.claude/hooks/herdr-agent-state.sh' session",
             "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "^(startup|resume|compact)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/orchestrator-checklist.py",
+            "timeout": 5
           }
         ]
       },
@@ -71,6 +90,17 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/format-edited-files.py"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/orchestrator-checklist.py",
+            "timeout": 5
           }
         ]
       }

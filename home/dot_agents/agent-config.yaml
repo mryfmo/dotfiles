@@ -169,6 +169,8 @@ claude:
   hooks:
     enforce_uv_hook: ~/.claude/hooks/enforce-uv.sh
     format_edited_files_hook: ~/.claude/hooks/format-edited-files.py
+    guardrails_hook: ~/.claude/hooks/orchestrator-guardrails.py
+    checklist_hook: ~/.claude/hooks/orchestrator-checklist.py
     permission_request:
       command: ~/.local/bin/common/permgate claude
       timeout: 10
@@ -182,6 +184,11 @@ claude:
             # and would otherwise append a duplicate on every `make update`.
             command: "bash '{{ .chezmoi.homeDir }}/.claude/hooks/herdr-agent-state.sh' session"
             timeout: 10
+      - matcher: "^(startup|resume|compact)$"
+        hooks:
+          - type: command
+            command: ~/.claude/hooks/orchestrator-checklist.py
+            timeout: 5
       - matcher: "*"
         hooks:
           - type: command
@@ -194,6 +201,9 @@ claude:
       - uvx ty check
     markdown_post_edit:
       - npx prettier@2 --write
+  guardrails:
+    enabled: [G1, G2, G3, G4, G5]
+    role_env_var: HERDR_AGENTS_ROLE
   statusLine:
     type: command
     command: ccstatusline

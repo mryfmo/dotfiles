@@ -232,25 +232,6 @@ def validate_claude_skill_parity() -> None:
             fail(f"{symlink} must point at the shared skill tree")
 
 
-def validate_claude_command_parity() -> None:
-    symlink = ROOT / "home/dot_claude/commands/symlink_agmsg.md.tmpl"
-    expected_target = "{{ .chezmoi.sourceDir }}/dot_agents/skills/agmsg/templates/cmd.claude-code.md\n"
-    if not symlink.exists() or symlink.read_text() != expected_target:
-        fail(f"{symlink} must point at the shared agmsg command template")
-    target = (
-        ROOT
-        / "home"
-        / expected_target.strip().removeprefix("{{ .chezmoi.sourceDir }}/")
-    )
-    if not target.is_file():
-        fail(f"{symlink} points at a missing template: {target}")
-    duplicate = ROOT / "home/dot_claude/commands/agmsg.md"
-    if duplicate.exists():
-        fail(
-            f"{duplicate} duplicates the shared agmsg command template; keep the symlink only"
-        )
-
-
 HARD_CODED_HOME_RE = re.compile(r"/(?:Users|home)/[^/\s'\"]+/")
 
 
@@ -330,19 +311,6 @@ def validate_exact_keys(
             f"{label} keys must match the shared manifest: "
             f"missing={sorted(expected_keys - actual_keys)} extra={sorted(actual_keys - expected_keys)}"
         )
-
-
-def validate_agmsg_script_modes() -> None:
-    scripts_root = ROOT / "home/dot_agents/skills/agmsg/scripts"
-    entrypoint_dirs = [scripts_root, scripts_root / "release"]
-    for entrypoint_dir in entrypoint_dirs:
-        for path in sorted(entrypoint_dir.glob("*.sh")):
-            if not path.name.startswith("executable_"):
-                fail(f"{path.relative_to(ROOT)} must use chezmoi executable_ prefix")
-            if path.stat().st_mode & 0o111 == 0:
-                fail(
-                    f"{path.relative_to(ROOT)} must stay executable for direct invocation"
-                )
 
 
 def validate_codex_agmsg_writable_roots(
@@ -1228,9 +1196,7 @@ def main() -> None:
     validate_hook_composition()
     validate_skills()
     validate_claude_skill_parity()
-    validate_claude_command_parity()
     validate_manifest_home_paths()
-    validate_agmsg_script_modes()
     validate_claude_settings(manifest)
     validate_repo_claude_settings_portable()
     validate_codex_plugins()

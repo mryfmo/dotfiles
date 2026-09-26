@@ -152,12 +152,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         path.chmod(0o755)
         self.module.validate_codex_modify_script()
 
-    def write_agmsg_script(self, relative_path: str, executable: bool = True) -> None:
-        path = self.temp_dir / "home/dot_agents/skills/agmsg/scripts" / relative_path
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text("#!/bin/sh\n")
-        path.chmod(0o755 if executable else 0o644)
-
     def write_text_file(self, relative_path: str, content: str) -> Path:
         path = self.temp_dir / relative_path
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -568,27 +562,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
         self.module.validate_codex_config(manifest)
 
-    def test_agmsg_script_modes_accept_prefixed_entrypoints_and_lib_helpers(
-        self,
-    ) -> None:
-        self.write_agmsg_script("executable_send.sh")
-        self.write_agmsg_script("release/executable_sync-version.sh")
-        self.write_agmsg_script("lib/storage.sh", executable=False)
-
-        self.module.validate_agmsg_script_modes()
-
-    def test_agmsg_script_modes_reject_unprefixed_direct_entrypoint(self) -> None:
-        self.write_agmsg_script("send.sh")
-
-        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-            self.module.validate_agmsg_script_modes()
-
-    def test_agmsg_script_modes_reject_non_executable_prefixed_entrypoint(self) -> None:
-        self.write_agmsg_script("executable_send.sh", executable=False)
-
-        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-            self.module.validate_agmsg_script_modes()
-
     def test_secret_scan_checks_extensionless_executables(self) -> None:
         path = self.write_text_file(
             "home/dot_local/bin/common/executable_leaky",
@@ -706,53 +679,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_manifest_home_paths()
-
-    AGMSG_COMMAND_TARGET = "dot_agents/skills/agmsg/templates/cmd.claude-code.md"
-
-    def write_agmsg_command_symlink(
-        self, target: str, create_target: bool = True
-    ) -> None:
-        path = self.temp_dir / "home/dot_claude/commands/symlink_agmsg.md.tmpl"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(target)
-        if create_target:
-            template = self.temp_dir / "home" / self.AGMSG_COMMAND_TARGET
-            template.parent.mkdir(parents=True, exist_ok=True)
-            template.write_text("shared command template\n")
-
-    def test_claude_command_parity_rejects_dangling_target(self) -> None:
-        self.write_agmsg_command_symlink(
-            "{{ .chezmoi.sourceDir }}/" + self.AGMSG_COMMAND_TARGET + "\n",
-            create_target=False,
-        )
-
-        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-            self.module.validate_claude_command_parity()
-
-    def test_claude_command_parity_rejects_wrong_target(self) -> None:
-        self.write_agmsg_command_symlink(
-            "{{ .chezmoi.sourceDir }}/dot_claude/elsewhere.md\n"
-        )
-
-        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-            self.module.validate_claude_command_parity()
-
-    def test_claude_command_parity_rejects_restored_duplicate(self) -> None:
-        self.write_agmsg_command_symlink(
-            "{{ .chezmoi.sourceDir }}/dot_agents/skills/agmsg/templates/cmd.claude-code.md\n"
-        )
-        (self.temp_dir / "home/dot_claude/commands/agmsg.md").write_text("duplicate\n")
-
-        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-            self.module.validate_claude_command_parity()
-
-    def test_claude_command_parity_accepts_symlink_only(self) -> None:
-        self.write_agmsg_command_symlink(
-            "{{ .chezmoi.sourceDir }}/dot_agents/skills/agmsg/templates/cmd.claude-code.md\n"
-        )
-
-        self.module.validate_claude_command_parity()
-
 
 if __name__ == "__main__":
     unittest.main()

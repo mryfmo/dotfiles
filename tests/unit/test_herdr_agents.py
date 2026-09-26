@@ -4,12 +4,15 @@
 from __future__ import annotations
 
 import errno
+import hashlib
 import json
 import os
 import pty
+import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import textwrap
 import unittest
@@ -288,14 +291,48 @@ fi
         )
 
     def materialize_agmsg_scripts(self) -> Path:
-        source = ROOT / "home/dot_agents/skills/agmsg/scripts"
-        target = self.temp_dir / "agmsg" / "scripts"
-        shutil.copytree(source, target)
-        for path in target.rglob("executable_*.sh"):
-            installed = path.with_name(path.name.removeprefix("executable_"))
-            shutil.copy2(path, installed)
-            installed.chmod(0o755)
-        return target
+        """Extract the real, pinned upstream agmsg scripts/ tree for an E2E test.
+
+        This deliberately fetches the same commit+sha256 pinned in
+        scripts/update-agent-assets.sh (assets.agmsg in the manifest), cached
+        under the system temp dir keyed by commit, rather than keeping a
+        local fork of upstream scripts (forbidden by the T19 task spec) or
+        faking send.sh/join.sh/inbox.sh (this test proves real message
+        delivery between two fake agent processes, which a fake can't do).
+        """
+        updater_text = (ROOT / "scripts/update-agent-assets.sh").read_text()
+        commit = re.search(
+            r'^AGMSG_PIN_COMMIT="([0-9a-f]+)"$', updater_text, re.MULTILINE
+        ).group(1)
+        expected_sha256 = re.search(
+            r'^AGMSG_PIN_SHA256="([0-9a-f]+)"$', updater_text, re.MULTILINE
+        ).group(1)
+
+        cache_dir = Path(tempfile.gettempdir()) / f"agmsg-fixture-cache-{commit}"
+        tarball = cache_dir / "agmsg.tar.gz"
+        if not tarball.exists():
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            url = f"https://github.com/fujibee/agmsg/archive/{commit}.tar.gz"
+            subprocess.run(
+                ["curl", "-fsSL", url, "-o", str(tarball)], check=True
+            )
+        actual_sha256 = hashlib.sha256(tarball.read_bytes()).hexdigest()
+        self.assertEqual(
+            expected_sha256,
+            actual_sha256,
+            "cached agmsg fixture tarball does not match the pinned checksum",
+        )
+
+        extract_root = self.temp_dir / "agmsg"
+        extract_root.mkdir()
+        with tarfile.open(tarball) as archive:
+            for member in archive.getmembers():
+                relative = Path(member.name).relative_to(Path(member.name).parts[0])
+                if relative == Path("."):
+                    continue
+                member.name = str(relative)
+                archive.extract(member, extract_root, filter="data")
+        return extract_root / "scripts"
 
     def install_zshrc_fakes(self, *, herdr_session_exit_code: int = 0) -> None:
         self.write_executable(

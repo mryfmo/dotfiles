@@ -40,6 +40,7 @@ REQUIRED_AGMSG_WRITABLE_ROOTS = {
     "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db",
     "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/teams",
     "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/run",
+    "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/ext-tools",
 }
 SYNC_TIMEOUT_BUDGET_S = 30  # PLAN H3 pins the per-source, per-event synchronous budget.
 HOOK_COMPOSITION_SOURCES = {

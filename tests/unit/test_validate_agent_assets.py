@@ -70,7 +70,10 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     top_file.write_text(token)
                     try:
                         stderr = io.StringIO()
-                        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                        with (
+                            contextlib.redirect_stderr(stderr),
+                            self.assertRaises(SystemExit),
+                        ):
                             scan()
                         self.assertIn("top.txt", stderr.getvalue())
                         self.assertNotIn("nested.txt", stderr.getvalue())
@@ -118,7 +121,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                                     {
                                         "type": "command",
                                         "command": command,
-                                        "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"],
+                                        "args": [
+                                            "${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"
+                                        ],
                                     }
                                 ],
                             }
@@ -261,7 +266,20 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     "upstream": "marketplaces",
                     "pin": "per-plugin",
                     "verify": "none",
-                    "plugins": {"crit": {"marketplace": "tomasz-tomczyk/crit", "pin": "1.8.10"}},
+                    "plugins": {
+                        "crit": {"marketplace": "tomasz-tomczyk/crit", "pin": "1.8.10"}
+                    },
+                },
+                "agmsg": {
+                    "source": "git-commit",
+                    "upstream": "https://github.com/fujibee/agmsg",
+                    "pin": "c487be269c1973aeb01ca831806eb3f65ff3366d",
+                    "ref": "v1.5.0",
+                    "verify": "sha256",
+                    "sha256": "9201cb5ff23ddd9ddaa19ff821dce0d0f2d58c6c292aade252a8d824b3dfc059",
+                    "bootstrap_integrity": "sha512-n6057L93AE+tnItTkBnClv3QvgsOlI6AO1SwodvKFJvqqTJqITHg/2O6jjHZZfh0nKbq49VKQv6F3t2d/62gyg==",
+                    "install_path": "~/.agents/skills/agmsg",
+                    "installer": "scripts/update-agent-assets.sh#update_agmsg",
                 },
             }
         }
@@ -285,16 +303,25 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "missing install_path": lambda assets: assets["brew"].pop("install_path"),
             "missing installer": lambda assets: assets["aws"].pop("installer"),
             "float pin": lambda assets: assets["aws"].update(pin=1.1),
-            "float plugin pin": lambda assets: assets["plugins"]["plugins"]["crit"].update(
-                pin=1.1
+            "float plugin pin": lambda assets: assets["plugins"]["plugins"][
+                "crit"
+            ].update(pin=1.1),
+            "agmsg missing ref": lambda assets: assets["agmsg"].pop("ref"),
+            "agmsg short pin": lambda assets: assets["agmsg"].update(pin="c487be2"),
+            "agmsg missing bootstrap_integrity": lambda assets: assets["agmsg"].pop(
+                "bootstrap_integrity"
             ),
+            "agmsg malformed bootstrap_integrity": lambda assets: assets[
+                "agmsg"
+            ].update(bootstrap_integrity="sha256-not-an-npm-integrity-string"),
         }
         for name, breaks in cases.items():
             with self.subTest(case=name):
                 manifest = self.asset_manifest()
                 breaks(manifest["assets"])
-                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(
-                    SystemExit
+                with (
+                    contextlib.redirect_stderr(io.StringIO()),
+                    self.assertRaises(SystemExit),
                 ):
                     self.module.validate_assets(manifest)
 
@@ -302,12 +329,28 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self,
     ) -> None:
         cases = (
-            ("install/ubuntu/common/tool.sh", 'readonly TOOL_VERSION="1.2.3"\n', "TOOL_VERSION"),
-            ("install/ubuntu/common/copy.sh", 'readonly MISE_VERSION="v0"\n', "MISE_VERSION"),
+            (
+                "install/ubuntu/common/tool.sh",
+                'readonly TOOL_VERSION="1.2.3"\n',
+                "TOOL_VERSION",
+            ),
+            (
+                "install/ubuntu/common/copy.sh",
+                'readonly MISE_VERSION="v0"\n',
+                "MISE_VERSION",
+            ),
             ("scripts/lib/other.sh", 'OTHER_VERSION="2"\n', "OTHER_VERSION"),
             ("scripts/tool.sh", '    local version="3.0"\n', "version"),
-            ("install/ubuntu/common/bare.sh", "readonly TOOL_VERSION=1.2.3\n", "TOOL_VERSION"),
-            ("install/ubuntu/common/single.sh", "TOOL_VERSION='1.2.3'; export TOOL_VERSION\n", "TOOL_VERSION"),
+            (
+                "install/ubuntu/common/bare.sh",
+                "readonly TOOL_VERSION=1.2.3\n",
+                "TOOL_VERSION",
+            ),
+            (
+                "install/ubuntu/common/single.sh",
+                "TOOL_VERSION='1.2.3'; export TOOL_VERSION\n",
+                "TOOL_VERSION",
+            ),
         )
         for relative, content, constant in cases:
             with self.subTest(file=relative):
@@ -679,6 +722,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_manifest_home_paths()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,17 @@
+[
+  {
+    "id": "r_t19r2_001",
+    "scope": "review",
+    "body": "Self-review of the full round-2 diff (git diff origin/main...HEAD, head 9581bb3, 6 commits on top of the rebase onto origin/main 3375fb0). Every one of the acceptance's 9 findings plus the round-1 supplement (finding 11) was independently re-verified against real upstream v1.5.0 sources (or a real scratch install / real chezmoi apply) before being fixed -- see .orchestration/validation/dot-agmsg-upstream-sync-T19-a01.md's Revision 2 section for the exact commands and output per fix. Full local gate re-run clean on the final head: shellcheck -x on every touched shell script (exit 0), uv run --with pyyaml scripts/generate-agent-configs.py --check (up to date), uv run --with pyyaml scripts/validate-agent-assets.py (ok), uv run python -m unittest discover -s tests/unit -v (413 tests, OK, skipped=1). Two items were independently re-verified and explicitly declined rather than implemented as originally worded (Fix 4's Codex monitor-shim switch, given three open upstream reliability defects; Fix 7's watch.sh #133 claim, which was stale against v1.5.0), both recorded with their verification evidence rather than silently applied or silently skipped. No unresolved concerns.",
+    "author": "Claude Code",
+    "resolved": true,
+    "resolved_round": 2,
+    "replies": [
+      {
+        "id": "rp_t19r2_001",
+        "author": "Claude Code",
+        "body": "Resolved: this round's finding-free approval record (crit-review.md requires at least one resolved record even when there is nothing further to flag)."
+      }
+    ]
+  }
+]

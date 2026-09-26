@@ -363,10 +363,14 @@ class ReviewGuardTest(unittest.TestCase):
         relative_path: str = ".orchestration/validation/pr-feedback.json",
         head_sha: str | None = None,
     ) -> str:
+        items = [*items, {**self.bot_review(), "disposition": "not-applicable:CodeRabbit review of HEAD"}]
         document = {"pr": 1, "head_sha": head_sha or self.head_commit(), "items": items}
         self.write_review_file(relative_path, json.dumps(document))
         self.write_collected([{key: value for key, value in item.items() if key != "disposition"} for item in items])
         return relative_path
+
+    def bot_review(self) -> dict:
+        return {"source": "review", "author": "coderabbitai[bot]", "level": "commented", "commit": self.head_commit()}
 
     def write_collected(self, items: list[dict], head_sha: str | None = None) -> None:
         document = {"pr": 1, "head_sha": head_sha or self.head_commit(), "items": items}
@@ -498,7 +502,7 @@ class ReviewGuardTest(unittest.TestCase):
         ):
             with self.subTest(case=name):
                 feedback = self.write_feedback(evidence_items)
-                self.write_collected([listed, unlisted])
+                self.write_collected([listed, unlisted, self.bot_review()])
                 result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
                 self.assertEqual(result.returncode, 1, result.stdout)
                 self.assertIn("current feedback item(s) for PR #1", result.stdout)
@@ -506,13 +510,42 @@ class ReviewGuardTest(unittest.TestCase):
     def test_pr_feedback_requires_the_github_head_to_match(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback([])
-        self.write_collected([], head_sha="1" * 40)
+        self.write_collected([self.bot_review()], head_sha="1" * 40)
 
         result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
 
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn("head on GitHub is 1111", result.stdout)
         self.assertIn("push first", result.stdout)
+
+    def test_pr_feedback_requires_a_completed_bot_review_of_head(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+        self.write_collected([{**self.bot_review(), "commit": "2" * 40}])
+
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("has no completed coderabbitai[bot] review of HEAD", result.stdout)
+
+    def test_pr_feedback_uses_the_base_collector_not_the_prs_own(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        run(["git", "switch", "-c", "feature"], self.temp_dir)
+        tampered = self.temp_dir / "scripts/pr-feedback.py"
+        tampered.write_text(
+            "import json, sys\n"
+            "out = sys.argv[sys.argv.index('--json') + 1]\n"
+            "open(out, 'w').write(json.dumps({'head_sha': 'x', 'items': []}))\n"
+        )
+        run(["git", "commit", "-am", "tamper with the collector"], self.temp_dir)
+        feedback = self.write_feedback([])
+        unlisted = {"source": "annotation", "level": "warning", "url": "https://x/j", "body": "untrusted taps"}
+        self.write_collected([unlisted, self.bot_review()])
+
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("lacks 1 current feedback item(s) for PR #1", result.stdout)
 
     def test_pr_feedback_fails_when_the_collector_cannot_run(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)

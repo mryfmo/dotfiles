@@ -21,6 +21,7 @@ DISABLE_ENV = "CRIT_REVIEW"
 PR_FEEDBACK_ENV = "PR_FEEDBACK_EVIDENCE"
 PR_FEEDBACK_DISPOSITION = re.compile(r"(?:fixed:(?P<commit>[0-9a-f]{7,40})|not-applicable:(?P<reason>.*\S.*))", re.S)
 FAILURE_REASON_MIN_CHARS = 20
+BOT_REVIEWER = "coderabbitai[bot]"
 # Levels whose not-applicable disposition needs a concrete reason: failures and
 # runs that did not finish, so a work-in-progress run cannot be waved through.
 STRICT_REASON_LEVELS = {
@@ -381,8 +382,8 @@ def pr_feedback_errors(
             errors.append(
                 f"{label} is {item.get('level')}-level; not-applicable needs a reason of at least {FAILURE_REASON_MIN_CHARS} characters"
             )
-    if head is not None:
-        errors.extend(collected_feedback_errors(root, data, head))
+    if head is not None and base is not None:
+        errors.extend(collected_feedback_errors(root, data, head, base))
     return errors
 
 
@@ -390,20 +391,28 @@ def feedback_key(item: dict) -> tuple:
     return tuple(item.get(field) for field in ("source", "url", "level", "path", "line", "body"))
 
 
-def collected_feedback_errors(root: Path, evidence: dict, head: str) -> list[str]:
+def collected_feedback_errors(root: Path, evidence: dict, head: str, base: str) -> list[str]:
     """Re-collect the PR's feedback and require every current item in the evidence.
 
-    A hand-written or stale document cannot pass: the guard runs
-    scripts/pr-feedback.py for the evidence's PR, requires the PR head on GitHub
-    to be this HEAD, and requires each collected item (as a multiset) to be present.
+    A hand-written or stale document cannot pass: the guard runs the base
+    branch's scripts/pr-feedback.py (the PR under review cannot swap it) for the
+    evidence's PR, requires the PR head on GitHub to be this HEAD and a completed
+    CodeRabbit review of that head, and requires each collected item (as a
+    multiset) to be present.
     """
     pr = evidence.get("pr")
     if not isinstance(pr, int) or isinstance(pr, bool) or pr <= 0:
         return [f"{PR_FEEDBACK_ENV} must name its pull request number in `pr`"]
     with tempfile.TemporaryDirectory() as temporary:
         collected_path = Path(temporary) / "collected.json"
+        # Prefer the base branch's collector; only a PR that introduces it has none.
+        collector = root / "scripts/pr-feedback.py"
+        base_collector = run_git(["show", f"{base}:scripts/pr-feedback.py"], root)
+        if base_collector.returncode == 0:
+            collector = Path(temporary) / "pr-feedback.py"
+            collector.write_text(base_collector.stdout)
         result = subprocess.run(
-            [sys.executable, str(root / "scripts/pr-feedback.py"), str(pr), "--json", str(collected_path)],
+            [sys.executable, str(collector), str(pr), "--json", str(collected_path)],
             cwd=root,
             check=False,
             text=True,
@@ -416,6 +425,11 @@ def collected_feedback_errors(root: Path, evidence: dict, head: str) -> list[str
         collected = json.loads(collected_path.read_text())
     if collected.get("head_sha") != head:
         return [f"PR #{pr} head on GitHub is {collected.get('head_sha')}, not the local HEAD {head}; push first"]
+    if not any(
+        item.get("source") == "review" and item.get("author") == BOT_REVIEWER and item.get("commit") == head
+        for item in collected.get("items", [])
+    ):
+        return [f"PR #{pr} has no completed {BOT_REVIEWER} review of HEAD {head}; request `@coderabbitai full review` and wait for it"]
     missing = Counter(map(feedback_key, collected.get("items", []))) - Counter(
         feedback_key(item) for item in evidence.get("items", []) if isinstance(item, dict)
     )

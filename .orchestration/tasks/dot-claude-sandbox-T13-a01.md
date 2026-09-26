@@ -1,3 +1,35 @@
+---
+task_id: dot-claude-sandbox-T13-a01
+revision: 2
+---
+# AGMSG-TASK dot-claude-sandbox-T13-a01 (revision 2): Claude worker autonomy = sandbox (PR #179) + a manifest-rendered worker permission profile, symmetric with the Codex `approval_policy`/`sandbox_mode`
+
+## Revision 2 — why (verified 2026-09-26 03:3xZ)
+Claude workers are launched by `herdr-agents` with profile args only (`--model … --effort …`); the applied `~/.claude/settings.json` has `permissions.defaultMode: plan` and no `sandbox`. Every worker therefore starts in plan mode and every edit/Bash waits for a human at the pane — the reason resident Claude workers stall (worker-c: edits made, never committed, no RESULT for 4 h). Codex workers have the symmetric controls rendered from the manifest (`approval_policy = "on-request"`, `sandbox_mode = "workspace-write"`, agmsg `writable_roots`); Claude has none. PR #179 (revision 1, head b729f54, 16 commits behind main) delivers the sandbox half only.
+
+Documented facts (https://code.claude.com/docs/en/permission-modes, /permissions, /settings, /sandboxing, /hooks-guide; Claude Code 2.1.282 installed, `--settings` needs ≥ 2.1.248):
+- `--permission-mode` values: `default`, `acceptEdits`, `plan`, `auto`, `dontAsk`, `bypassPermissions`. `dontAsk` never prompts: actions matched by `permissions.allow` run, everything else is denied without a prompt. `bypassPermissions` is refused as root and is out of policy here (model strength never justifies wider permissions).
+- Precedence: managed > CLI (`--settings <file>`, flags) > `.claude/settings.local.json` > `.claude/settings.json` > user. Project/local files cannot set `auto`/`bypassPermissions`; CLI can set any mode.
+- `sandbox.autoAllowBashIfSandboxed` (default true) auto-runs sandboxed Bash regardless of mode; `excludedCommands` bypass the sandbox but still go through permission rules; Go CLIs (`gh`) and ssh `git push` need `excludedCommands` or `enableWeakerNetworkIsolation`, plus `allowRead` for `~/.ssh` if ssh is used.
+- Rule syntax: `Bash(git commit *)`, `Bash(gh pr *)`, `Edit(//abs/path/**)`; deny rules always win; a PreToolUse hook `allow` exits plan mode (not used here — deterministic rules only).
+
+## Revision 2 deliverables (in addition to revision 1 items 1–8, which stay as implemented in #179)
+9. **Worker permission profile in the manifest**: `claude.worker` in `home/dot_agents/agent-config.yaml`: `permission_mode: dontAsk`; `allow` rules covering exactly the worker playbook actions (git add/commit/switch/rebase/push within its worktree, `git push --force-with-lease`, `gh pr create|view|diff|checks|comment|api` read/write on PRs, `uv run`, `python3`, `make <test/validate targets>`, `shellcheck`, `shfmt`, `~/.agents/skills/agmsg/scripts/*.sh`, `Edit(//<worktree>/**)` via `additionalDirectories`/cwd); `deny` rules for the forbidden actions in the agmsg-orchestration rules (`make upgrade`, `make update`, `chezmoi apply`, `gh pr merge`, `gh auth *`, `git push --force` without lease, `sudo`, `codex login`, `rm -rf` outside the worktree). Comment block states the symmetry with `codex.approval_policy`/`sandbox_workspace_write` and that the orchestrator session keeps `plan`.
+10. **Rendering**: `scripts/generate-agent-configs.py` renders `home/dot_claude/worker.settings.json` (chezmoi → `~/.claude/worker.settings.json`) containing `permissions.{defaultMode,allow,deny}` and the `sandbox` block from item 1; keep the managed orchestrator settings unchanged.
+11. **Launch**: `herdr-agents` passes `-- --settings ~/.claude/worker.settings.json --permission-mode dontAsk <profile args>` for every claude worker (full mode, `--attach` repair, and the future `--add-worker`); README herdr-agents section documents it; unit tests in `tests/unit/test_herdr_agents.py` assert the argv.
+12. **Validator**: `validate-agent-assets.py` requires `claude.worker.permission_mode ∈ {dontAsk, acceptEdits}`, forbids `bypassPermissions`/`auto`, requires every forbidden action in `home/dot_config/claude/rules/agmsg-orchestration.md` to have a deny rule (parse the rule file's forbidden list or keep one source list in the manifest that renders both), and requires `sandbox.enabled` (item 3). Tests.
+13. **E2E (scratch HOME, verbatim)**: with the rendered worker settings and a scratch worktree: (a) `claude -p --permission-mode dontAsk --settings <file> "run: git status"` completes without a prompt; (b) a denied action (`make upgrade`) is refused without a prompt and the refusal text is captured; (c) sandboxed Bash runs when bwrap+socat are present, or `failIfUnavailable` aborts with the documented message when not (record which happened on this host; `socat` is absent here and the AppArmor step is installer-owned).
+14. **Rebase** `feat/claude-sandbox-manifest` onto origin/main (≥ 5e40ff9) before starting; resolve conflicts with T17's `check-tools.sh` changes; run the full unit suite.
+
+Repo/identity/worktree: assigned at dispatch (lane freed after T19 or T16). Overlaps T19 on `agent-config.yaml`, `validate-agent-assets.py`, `check-tools.sh`, `executable_herdr-agents`: dispatch only after PR #184 is merged.
+
+## Revision history
+- r1 (09-25 07:47Z): sandbox manifest (PR #179).
+- r2 (09-26 03:3xZ): worker permission profile + launch flags + validator + E2E; rebase.
+
+---
+# Revision 1 text (kept for reference; items 1–8 remain binding)
+
 # AGMSG-TASK dot-claude-sandbox-T13-a01: manage the Claude Code Bash sandbox in the shared manifest, symmetric with the Codex workspace-write sandbox (plan part F)
 
 Plan: `/home/moriya/Workspace/dotfiles/.agents/worklog/claude/melodic-conjuring-sifakis.md` §F.

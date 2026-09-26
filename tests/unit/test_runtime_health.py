@@ -627,7 +627,10 @@ EOF
         self.assertEqual(previous, target.read_bytes())
 
     def agmsg_fixture(
-        self, *, preinstalled_version: str | None = None
+        self,
+        *,
+        preinstalled_version: str | None = None,
+        corrupt_state_on_install: bool = False,
     ) -> tuple[Path, Path, dict[str, str], str]:
         repo = self.temp_dir / "agmsg-repo"
         home = self.temp_dir / "agmsg-home"
@@ -680,6 +683,9 @@ EOF
             chmod +x "$skill_dir/scripts/send.sh"
             touch "$skill_dir/.agmsg"
             printf 'openai: fake\n' > "$skill_dir/agents/openai.yaml"
+            if [ -n "${AGMSG_FIXTURE_CORRUPT_STATE:-}" ]; then
+                printf 'corrupted\n' >> "$skill_dir/teams/example/data.txt" 2>/dev/null || true
+            fi
             printf 'install.sh ran: update=%s cmd=%s\n' "$update_only" "$cmd" >> "${TEST_LOG:-/dev/null}"
             """,
         )
@@ -728,6 +734,8 @@ EOF
             "PATH": f"{bin_dir}:/usr/bin:/bin",
             "TEST_LOG": str(log),
         }
+        if corrupt_state_on_install:
+            env["AGMSG_FIXTURE_CORRUPT_STATE"] = "1"
         return repo, home, env, checksum
 
     def test_agmsg_fresh_install_populates_skill_and_records_manifest(self) -> None:
@@ -815,6 +823,62 @@ EOF
             self.assertEqual(
                 "live state\n", (skill_dir / state_dir / "example/data.txt").read_text()
             )
+
+    def test_agmsg_migrates_marker_less_legacy_dir_without_losing_live_state(
+        self,
+    ) -> None:
+        repo, home, env, checksum = self.agmsg_fixture()
+        skill_dir = home / ".agents/skills/agmsg"
+        (skill_dir / "scripts").mkdir(parents=True)
+        for state_dir in ("teams", "db", "run"):
+            (skill_dir / state_dir / "example").mkdir(parents=True)
+            (skill_dir / state_dir / "example/data.txt").write_text("live state\n")
+
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                "source scripts/update-agent-assets.sh; "
+                f"AGMSG_PIN_SHA256={checksum}; "
+                "update_agmsg",
+            ],
+            cwd=repo,
+            env=env,
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("not installed", result.stdout + result.stderr)
+        self.assertEqual("9.9.9\n", (skill_dir / "VERSION").read_text())
+        self.assertTrue((skill_dir / ".agmsg").exists())
+        for state_dir in ("teams", "db", "run"):
+            self.assertEqual(
+                "live state\n", (skill_dir / state_dir / "example/data.txt").read_text()
+            )
+
+    def test_agmsg_update_aborts_when_install_corrupts_live_state(self) -> None:
+        repo, home, env, checksum = self.agmsg_fixture(
+            preinstalled_version="1.0.0", corrupt_state_on_install=True
+        )
+        skill_dir = home / ".agents/skills/agmsg"
+        (skill_dir / "teams/example").mkdir(parents=True)
+        (skill_dir / "teams/example/data.txt").write_text("live state\n")
+
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                "source scripts/update-agent-assets.sh; "
+                f"AGMSG_PIN_SHA256={checksum}; "
+                "AGMSG_PIN_VERSION=9.9.9; "
+                "update_agmsg",
+            ],
+            cwd=repo,
+            env=env,
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("touched live runtime state", result.stdout + result.stderr)
+        self.assertIn("installer failed", result.stdout + result.stderr)
 
     def update_fixture(
         self,

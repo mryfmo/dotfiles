@@ -230,6 +230,32 @@ fi
 """
         )
         identities.chmod(0o755)
+        doctor = scripts / "doctor.sh"
+        doctor.write_text(
+            f"""#!/usr/bin/env bash
+printf 'doctor %s\\n' "$*" >> {self.calls_path}
+type=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --type) type="$2"; shift 2 ;;
+    *) shift ;;
+    esac
+done
+if [[ $type == claude-code ]]; then
+    output_file={claude_identities_output_path}
+else
+    output_file={codex_identities_output_path}
+fi
+if [[ -s "$output_file" ]]; then
+    printf '1 team(s), 1 registration(s), 0 warning(s)\\n'
+    exit 0
+else
+    printf 'doctor: no registrations match this scope\\n' >&2
+    exit 2
+fi
+"""
+        )
+        doctor.chmod(0o755)
         return scripts
 
     def register_claude_worker_identity(self) -> Path:
@@ -1002,7 +1028,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         calls = self.calls_path.read_text().splitlines()
         self.assertEqual(
             [call for call in calls if call.startswith("delivery ")],
-            [f"delivery set both claude-code {self.workdir.resolve()}"],
+            [f"delivery set monitor claude-code {self.workdir.resolve()}"],
         )
         self.assertIn("next Claude Code session", result.stderr)
 
@@ -1017,7 +1043,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             [call for call in calls if call.startswith("delivery ")],
             [
                 f"delivery set turn codex {self.workdir.resolve()}",
-                f"delivery set both claude-code {self.workdir.resolve()}",
+                f"delivery set monitor claude-code {self.workdir.resolve()}",
             ],
         )
 

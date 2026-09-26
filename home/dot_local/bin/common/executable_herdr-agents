@@ -559,13 +559,12 @@ function bootstrap_agmsg() {
 
     local scripts="${HOME}/.agents/skills/agmsg/scripts"
     local delivery="${scripts}/delivery.sh"
-    local identities="${scripts}/identities.sh"
+    local doctor="${scripts}/doctor.sh"
     local codex_hooks_file="${workdir}/.codex/hooks.json"
     local claude_hooks_file="${workdir}/.claude/settings.local.json"
     local log_file="${HOME}/.config/herdr/herdr-agents.log"
     local agent_type
     local agent_label
-    local identity_list
     local codex_worker=true
     local agent_types=(codex claude-code)
     local max_identities=1
@@ -592,34 +591,52 @@ function bootstrap_agmsg() {
     if ! { [[ -f ${claude_hooks_file} ]] && jq -e \
         'any(.hooks.SessionStart[]?.hooks[]?; ((.command // "") | contains("agmsg/scripts/session-start.sh")))' \
         "${claude_hooks_file}" > /dev/null 2>&1; }; then
-        if "${delivery}" set both claude-code "${workdir}" >> "${log_file}" 2>&1; then
+        if "${delivery}" set monitor claude-code "${workdir}" >> "${log_file}" 2>&1; then
             printf 'First-time Claude Code agmsg setup may stop one same-repo watcher once; the hooks apply in the next Claude Code session.\n' >&2
         fi
     fi
 
-    if [[ ! -f ${identities} ]]; then
-        printf 'agmsg identities script not found; skipping identity checks: %s\n' "${identities}" >&2
+    if [[ ! -x ${doctor} ]]; then
+        printf 'agmsg doctor script not found; skipping identity checks: %s\n' "${doctor}" >&2
         return 0
     fi
     for agent_type in "${agent_types[@]}"; do
+        local doctor_output doctor_status has_registration=true
+        local count
+
         if [[ ${agent_type} == codex ]]; then
             agent_label=Codex
         else
             agent_label="Claude Code"
         fi
-        if ! identity_list="$("${identities}" "${workdir}" "${agent_type}" 2>> "${log_file}")"; then
-            continue
+
+        # doctor.sh reports general per-project health (registered, warnings);
+        # it does not treat multiple registrations for one type as a problem,
+        # so the ambiguity/second-identity checks below stay on the existing
+        # counting helper the T14 guard (require_distinct_worker_identity)
+        # also uses.
+        if doctor_output="$("${doctor}" --project "${workdir}" --type "${agent_type}" 2>&1)"; then
+            :
+        else
+            doctor_status=$?
+            if ((doctor_status == 2)) && [[ ${doctor_output} == *"no registrations match this scope"* ]]; then
+                has_registration=false
+                printf 'No agmsg %s identity for %s; run: %s/join.sh <team> <agent-name> %s "%s"\n' \
+                    "${agent_label}" "${workdir}" "${scripts}" "${agent_type}" "${workdir}" >&2
+            else
+                printf '%s\n' "${doctor_output}" >> "${log_file}"
+            fi
         fi
-        identity_list="$(printf '%s\n' "${identity_list}" | cut -f 2 | sort -u)"
-        if [[ -z ${identity_list} ]]; then
-            printf 'No agmsg %s identity for %s; run: %s/join.sh <team> <agent-name> %s "%s"\n' \
-                "${agent_label}" "${workdir}" "${scripts}" "${agent_type}" "${workdir}" >&2
-        elif ((max_identities == 2)) && [[ ${identity_list} != *$'\n'* ]]; then
-            printf 'No agmsg Claude Code worker identity for %s; herdr-agents full and --attach modes refuse a claude worker until a second claude-code identity is registered.\n' \
-                "${workdir}" >&2
-        elif (($(grep -c . <<< "${identity_list}") > max_identities)); then
-            printf 'Multiple agmsg %s identities are registered for %s; worker identity is ambiguous.\n' \
-                "${agent_label}" "${workdir}" >&2
+
+        if [[ ${has_registration} == true ]]; then
+            count="$(distinct_agmsg_identity_count "${workdir}" "${agent_type}")"
+            if [[ ${agent_type} == claude-code ]] && ((max_identities == 2)) && ((count < 2)); then
+                printf 'No agmsg Claude Code worker identity for %s; herdr-agents full and --attach modes refuse a claude worker until a second claude-code identity is registered.\n' \
+                    "${workdir}" >&2
+            elif ((count > max_identities)); then
+                printf 'Multiple agmsg %s identities are registered for %s; worker identity is ambiguous.\n' \
+                    "${agent_label}" "${workdir}" >&2
+            fi
         fi
     done
 }

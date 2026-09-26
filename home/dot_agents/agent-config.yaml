@@ -96,6 +96,7 @@ codex:
       - '{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db'
       - '{{ .chezmoi.homeDir }}/.agents/skills/agmsg/teams'
       - '{{ .chezmoi.homeDir }}/.agents/skills/agmsg/run'
+      - '{{ .chezmoi.homeDir }}/.agents/skills/agmsg/ext-tools'
   shell_environment_policy:
     inherit: core
     set:

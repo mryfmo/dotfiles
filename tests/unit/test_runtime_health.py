@@ -108,6 +108,7 @@ class RuntimeHealthTest(unittest.TestCase):
                     update_terminal_code() { :; }
                     update_terminal_browser() { :; }
                     update_compactiondb() { :; }
+                    update_agmsg() { :; }
                     ensure_herdr_integrations() { :; }
                     ensure_gh_extensions() { printf 'gh-extensions-ensured\\n'; }
                     main
@@ -903,7 +904,9 @@ EOF
         )
         self.assertNotIn("tracked files have staged or unstaged changes", result.stdout)
 
-    def test_make_update_reports_unmerged_feature_branch_before_branch_notice(self) -> None:
+    def test_make_update_reports_unmerged_feature_branch_before_branch_notice(
+        self,
+    ) -> None:
         result, log = self.update_fixture(branch="feature/x", unmerged=True)
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
@@ -1448,7 +1451,9 @@ EOF
                 )
                 self.assertEqual(0, result.returncode, result.stdout + result.stderr)
                 for name in ("config.toml", "mise.lock"):
-                    self.assertEqual((main_config / name).read_text(), "main-original\n")
+                    self.assertEqual(
+                        (main_config / name).read_text(), "main-original\n"
+                    )
                     self.assertNotEqual(
                         (selected_config / name).read_text(), "checkout-original\n"
                     )
@@ -1603,8 +1608,11 @@ EOF
         )
         log = (repo / "commands.log").read_text()
         generator = next(
-            line for line in log.splitlines()
-            if line.startswith("uv run --with pyyaml scripts/generate-agent-configs.py ")
+            line
+            for line in log.splitlines()
+            if line.startswith(
+                "uv run --with pyyaml scripts/generate-agent-configs.py "
+            )
         )
         for name in ("tode", "terminal-browser", "crit", "zed"):
             self.assertIn(f"--set-asset {name}.pin=v9.9.9", generator)
@@ -1618,7 +1626,9 @@ EOF
             "zed.sha256.linux-amd64",
             "zed.sha256.linux-arm64",
         ):
-            self.assertRegex(generator, rf"--set-asset {re.escape(field)}=[0-9a-f]{{64}}(?: |$)")
+            self.assertRegex(
+                generator, rf"--set-asset {re.escape(field)}=[0-9a-f]{{64}}(?: |$)"
+            )
         self.assertIn("curl -fsSL https://tode.sh/install", log)
         self.assertIn("curl -fsSL https://terminal-browser.sh/install", log)
         self.assertIn("crit-linux-amd64", log)

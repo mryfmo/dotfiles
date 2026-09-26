@@ -342,9 +342,11 @@ delegation avoids per-task cold starts and survives Herdr session restores.
 
 Per-task agent switching happens at the profile layer, never in the layout:
 the worker profile comes from `HERDR_AGENTS_WORKER_PROFILE` (the deprecated
-`HERDR_AGENTS_CODEX_PROFILE` alias still works), otherwise from
-`MODEL_PROFILE_INTERACTIVE` in `~/.agents/model-profiles.env`, and is
-`standard` only when that file does not set it,
+`HERDR_AGENTS_CODEX_PROFILE` alias still works), otherwise from the manifest
+`worker_profile` rendered into `~/.agents/model-profiles.env` as
+`HERDR_AGENTS_WORKER_PROFILE` (currently `standard`), then from
+`MODEL_PROFILE_INTERACTIVE` in the same file, and is `standard` only when
+that file sets neither,
 passed to `codex --profile` for a codex worker or resolved through
 `MODEL_PROFILE_<PROFILE>_CLAUDE_ARGS` (plus optional
 `HERDR_AGENTS_CLAUDE_WORKER_ARGS`) for a claude worker. The orchestrator side

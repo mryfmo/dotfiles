@@ -15,7 +15,8 @@
 #   model profile: `--profile <name>` for a codex worker, or the profile whose
 #   `MODEL_PROFILE_<NAME>_CLAUDE_ARGS` supplies arguments for a claude worker.
 #   `HERDR_AGENTS_CODEX_PROFILE` is kept as a deprecated alias. Defaults to
-#   MODEL_PROFILE_INTERACTIVE from ~/.agents/model-profiles.env, then standard.
+#   `worker_profile` from the manifest via ~/.agents/model-profiles.env, then
+#   MODEL_PROFILE_INTERACTIVE from the same file, then standard.
 # @arg HERDR_AGENTS_CODEX_PROFILE Deprecated alias for HERDR_AGENTS_WORKER_PROFILE.
 # @arg HERDR_AGENTS_CLAUDE_ARGS Optional space-delimited Claude arguments for
 #   manifest-sourced E2E profile overrides on the orchestrator pane. Defaults
@@ -68,11 +69,10 @@ function json_agent_pane_id() {
 
 # @description Resolve the worker profile without duplicating the manifest default.
 #   Checks the kind-independent HERDR_AGENTS_WORKER_PROFILE first, then the
-#   deprecated HERDR_AGENTS_CODEX_PROFILE alias, before falling back to the
-#   manifest-generated interactive default.
+#   deprecated HERDR_AGENTS_CODEX_PROFILE alias, then the manifest-generated
+#   HERDR_AGENTS_WORKER_PROFILE and MODEL_PROFILE_INTERACTIVE values from
+#   ~/.agents/model-profiles.env, then standard.
 function resolve_worker_profile() {
-    local MODEL_PROFILE_INTERACTIVE=""
-
     if [[ -n ${HERDR_AGENTS_WORKER_PROFILE:-} ]]; then
         printf '%s\n' "${HERDR_AGENTS_WORKER_PROFILE}"
         return
@@ -81,11 +81,12 @@ function resolve_worker_profile() {
         printf '%s\n' "${HERDR_AGENTS_CODEX_PROFILE}"
         return
     fi
+    local HERDR_AGENTS_WORKER_PROFILE="" MODEL_PROFILE_INTERACTIVE="" HERDR_AGENTS_WORKER_KIND=""
     if [[ -f ${HOME}/.agents/model-profiles.env ]]; then
         # shellcheck source=/dev/null
         source "${HOME}/.agents/model-profiles.env"
     fi
-    printf '%s\n' "${MODEL_PROFILE_INTERACTIVE:-standard}"
+    printf '%s\n' "${HERDR_AGENTS_WORKER_PROFILE:-${MODEL_PROFILE_INTERACTIVE:-standard}}"
 }
 
 # @description Resolve the worker kind: explicit environment first, then the

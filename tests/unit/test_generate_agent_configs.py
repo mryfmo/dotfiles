@@ -732,6 +732,26 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         with self.assertRaises(SystemExit):
             self.module.render_model_profiles_env(manifest)
 
+    def test_model_profiles_env_renders_worker_profile(self) -> None:
+        manifest = sample_manifest()
+        manifest["worker_profile"] = "express"
+
+        env = self.module.render_model_profiles_env(manifest)
+
+        self.assertIn('HERDR_AGENTS_WORKER_PROFILE="express"', env)
+
+    def test_absent_worker_profile_renders_no_env_line(self) -> None:
+        env = self.module.render_model_profiles_env(sample_manifest())
+
+        self.assertNotIn("HERDR_AGENTS_WORKER_PROFILE", env)
+
+    def test_unknown_worker_profile_fails(self) -> None:
+        manifest = sample_manifest()
+        manifest["worker_profile"] = "missing"
+
+        with self.assertRaises(SystemExit):
+            self.module.render_model_profiles_env(manifest)
+
     def test_unknown_interactive_profile_fails(self) -> None:
         manifest = sample_manifest()
         manifest["interactive_profile"] = "missing"

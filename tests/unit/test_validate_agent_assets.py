@@ -221,6 +221,17 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     self.module.validate_agent_manifest()
                 self.assertIn("worker_kind must be codex or claude", stderr.getvalue())
 
+    def test_agent_manifest_rejects_unknown_worker_profile(self) -> None:
+        manifest = self.write_valid_agent_manifest()
+        manifest["worker_profile"] = "banana"
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_agent_manifest()
+        self.assertIn(
+            "worker_profile must name a defined model profile: 'banana'",
+            stderr.getvalue(),
+        )
+
     def test_agent_manifest_requires_readme_to_state_the_worker_kind(self) -> None:
         manifest = self.write_valid_agent_manifest()
         manifest["worker_kind"] = "codex"

@@ -150,6 +150,13 @@ def worker_kind(manifest: dict[str, Any]) -> str:
     return kind
 
 
+def worker_profile(manifest: dict[str, Any]) -> str | None:
+    name = manifest.get("worker_profile")
+    if name is not None and name not in model_profiles(manifest):
+        fail(f"worker_profile must name a model profile: {name!r}")
+    return name
+
+
 def interactive_profile(manifest: dict[str, Any]) -> dict[str, Any]:
     profiles = model_profiles(manifest)
     name = manifest.get("interactive_profile")
@@ -747,6 +754,8 @@ def render_model_profiles_env(manifest: dict[str, Any]) -> str:
         f'MODEL_PROFILE_INTERACTIVE="{manifest["interactive_profile"]}"',
         f'HERDR_AGENTS_WORKER_KIND="{worker_kind(manifest)}"',
     ]
+    if (profile_name := worker_profile(manifest)) is not None:
+        lines.append(f'HERDR_AGENTS_WORKER_PROFILE="{profile_name}"')
     for name, profile in sorted(profiles.items()):
         var = str(name).upper()
         claude = profile["claude"]

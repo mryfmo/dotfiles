@@ -515,6 +515,15 @@ function worker_agmsg_type() {
 }
 
 # @description Count the distinct agmsg identity names registered for a path and type.
+#   Verified directly (scratch HOME, three nested/sibling paths in the same
+#   team): identities.sh <path> matches registrations at <path> AND any of
+#   its subdirectories (a nested `.claude/worktrees/<name>` checkout's
+#   identity is included when querying the main checkout's path), but NOT
+#   the reverse, and NOT a sibling path that merely shares a string prefix
+#   (directory-boundary-aware, not naive prefix matching). This guard is
+#   normally called with a worker's own specific workdir, which this does
+#   not affect; calling it with a main-checkout path that has unrelated
+#   worktrees registered under it would sweep those identities in too.
 # @arg $1 workdir Repository path used for repo-scoped agmsg registration.
 # @arg $2 string agmsg agent type.
 function distinct_agmsg_identity_count() {

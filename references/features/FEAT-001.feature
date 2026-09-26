@@ -1,4 +1,5 @@
 # language: ja
+# generated-by: kit_lint extract — do not edit; source: bdd/BDD_SAMPLE.md
 @FEAT-001
 機能: 申請の提出
   申請者は、審査に必要な情報が揃った申請だけを提出できる。

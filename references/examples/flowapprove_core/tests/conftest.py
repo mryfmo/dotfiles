@@ -3,14 +3,25 @@
 - Gherkin のタグ（@SCN-017 @FR-011 など）を pytest の `req` マーカーに写す。
 - `--req FR-028` で、そのIDを確かめるテストだけを選べる。
 - JUnit XML の各 testcase に `req` プロパティを書き出し、実行証跡からIDをたどれるようにする。
+- Hypothesis のプロファイル `kit`：`derandomize=True`（Python・Hypothesis・テスト関数を
+  変えない限り、@given のテストは毎回同じ入力集合で再実行される。hypothesis 6.168 の
+  実装は「derandomize=True は database=None を意味する」ため database を明示できない
+  （hypothesis.errors.InvalidArgument。本機で実際に確認した）。失敗例の保存は
+  derandomize なしの実行のときだけ既定の `DirectoryBasedExampleDatabase`（`.hypothesis/`）
+  が受け持つ。これにより UT_SAMPLE §4 が要求する再現性が本参考実装でも成立する
+  （hypothesis のドキュメントに従う。sources §6）。
 """
 from __future__ import annotations
 
 import re
 
 import pytest
+from hypothesis import settings
 
 ID = re.compile(r"[A-Z]+-\d{3,4}")
+
+settings.register_profile("kit", derandomize=True)
+settings.load_profile("kit")
 
 
 def pytest_bdd_apply_tag(tag, function):

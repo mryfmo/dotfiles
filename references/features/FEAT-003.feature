@@ -1,4 +1,5 @@
 # language: ja
+# generated-by: kit_lint extract — do not edit; source: bdd/BDD_SAMPLE.md
 @FEAT-003
 機能: AI参考意見
   審査者は、出典を確かめられる参考意見を判断材料にできる。決めるのは人である。

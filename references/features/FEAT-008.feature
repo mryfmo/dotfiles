@@ -1,4 +1,5 @@
 # language: ja
+# generated-by: kit_lint extract — do not edit; source: bdd/BDD_SAMPLE.md
 @FEAT-008
 機能: AI参考意見機能の停止
   運用者は、問題が起きたときにAI参考意見だけを止められる。
@@ -19,7 +20,7 @@
   @RULE-021
   ルール: 停止前に始まった結果は停止後に採用しない
 
-    @SCN-038 @FR-025
+    @SCN-038 @FR-025 @FR-014
     シナリオ: 停止後に届いた結果は表示も保存もされない
       前提 申請者Aが提出した申請 "APP-001" がある
       かつ 審査者Aが要求した申請 "APP-001" の参考意見が作成中である

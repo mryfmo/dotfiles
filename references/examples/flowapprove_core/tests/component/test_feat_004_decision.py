@@ -2,6 +2,10 @@
 
 .feature は BDD_SAMPLE.md から生成されたもの（手で編集しない）。依存はプロセス内のフェイクに
 差し替える（medium サイズ）。試験上の仕掛け（時計・同時到着・障害注入）はここに置き、Gherkin には書かない。
+
+pytestmark にモジュール一括の req は付けない（E-05／G-09：全シナリオが同じ FR 集合を
+「確かめた」と主張することになり、追跡表の verified_ids を水増しするため）。BDD シナリオの
+req は conftest.py の pytest_bdd_apply_tag が Gherkin のタグから個別に写す。
 """
 from __future__ import annotations
 
@@ -12,9 +16,9 @@ import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
 from flowapprove.domain import State
-from flowapprove.service import Application, Authz, DecisionService, Store
+from flowapprove.service import Authz, DecisionService, Store
 
-pytestmark = [pytest.mark.medium, pytest.mark.req("FR-011", "FR-012", "FR-013", "FR-014", "FR-015", "FR-028", "ADR-0002")]
+pytestmark = pytest.mark.medium
 scenarios("FEAT-004.feature")
 
 VALID = {"製品名": "Example Editor", "提供元URL": "https://vendor.example/product", "利用バージョン": "1.2.3",
@@ -28,7 +32,7 @@ class World:
         self.store, self.authz = Store(), Authz()
         self.svc = DecisionService(self.store, self.authz, clock=lambda: self.now)
         self.results: list = []          # 直近の「もし」で得た応答
-        self.opened_rev: dict[tuple[str, str], int] = {}
+        self.opened_rev: dict[tuple[str, str], int] = {}   # 審査者が開いた時点の版（後で古くなる想定）
         self.last_request: dict | None = None
         self.seq = 0
 
@@ -37,7 +41,7 @@ class World:
         return f"req-{self.seq}"
 
     def decide(self, actor, app_id, action, reason=DEFAULT_REASON, seen_rev=None, request_id=None):
-        seen = self.store.apps[app_id].rev if seen_rev is None else seen_rev
+        seen = seen_rev if seen_rev is not None else self.svc.get(actor, app_id).rev
         self.last_request = dict(actor=actor, app_id=app_id, action=action, reason=reason, seen_rev=seen,
                                  request_id=request_id or self.new_request_id())
         result = self.svc.decide(**self.last_request)
@@ -55,6 +59,7 @@ def w() -> World:
 def _org_a(w):
     for reviewer in ("審査者A", "審査者C"):
         w.authz.grant(reviewer, "組織A", "審査者")
+    w.authz.grant("監査者A", "組織A", "監査者")
 
 
 @given("組織Bに審査者Bがいる")
@@ -64,8 +69,10 @@ def _org_b(w):
 
 @given(parsers.re(r'(?P<owner>申請者A|審査者A)が提出した申請 "(?P<app_id>[^"]+)" がある'))
 def _submitted(w, owner, app_id):
-    assert w.svc.submit(owner, Application(app_id, "組織A", owner, dict(VALID))) == []
-    w.opened_rev[("審査者A", app_id)] = w.opened_rev[("審査者C", app_id)] = w.store.apps[app_id].rev
+    w.svc.create(owner, app_id, "組織A", dict(VALID))
+    result = w.svc.submit(owner, app_id)
+    assert result.ok
+    w.opened_rev[("審査者A", app_id)] = w.opened_rev[("審査者C", app_id)] = result.rev
 
 
 @given(parsers.re(r'審査者Aは申請 "(?P<app_id>[^"]+)" を承認済みである'))
@@ -78,12 +85,12 @@ def _approved(w, app_id):
 def _updated_after_open(w, app_id):
     assert w.decide("審査者C", app_id, "差戻し", "情報が足りない").ok          # 差戻し→修正→再提出で版が進む
     assert w.svc.edit("申請者A", app_id, {"利用目的": "設計書と議事録の作成"}).ok
-    assert w.svc.submit("申請者A", w.store.apps[app_id]) == []
+    assert w.svc.submit("申請者A", app_id).ok
 
 
-@given("監査記録を保存できない障害が起きている")
+@given("運用者Aは「監査保存停止」を宣言している")
 def _audit_fault(w):
-    w.store.audit_fault = True
+    w.store.audit_fault = True    # 障害注入（宣言的な縮退。SCN-048）。公開インターフェースにこの操作は無い
 
 
 @given("審査者Aはその承認の応答を受け取っていない")
@@ -117,9 +124,16 @@ def _decide_with_opened_rev(w, actor, app_id, action):
     w.decide(actor, app_id, action, seen_rev=w.opened_rev[(actor, app_id)])
 
 
+@when(parsers.re(r'(?P<actor>審査者[AC])が(?P<other>審査者[AC])と同じ要求識別子を使い、現行の版を指定して申請 "(?P<app_id>[^"]+)" を(?P<action>承認|却下)する'))
+def _decide_with_reused_request_id(w, actor, other, app_id, action):
+    """SCN-047：別の主体が同じ要求識別子を使っても再送とはみなされない（G-02）。"""
+    assert w.last_request is not None
+    w.decide(actor, app_id, action, request_id=w.last_request["request_id"])
+
+
 @when(parsers.re(r'審査者Aの承認と審査者Cの却下が同じ版の申請 "(?P<app_id>[^"]+)" に同時に届く'))
 def _concurrent(w, app_id):
-    rev, gate, out = w.store.apps[app_id].rev, threading.Barrier(2), []
+    rev, gate, out = w.svc.get("審査者A", app_id).rev, threading.Barrier(2), []
 
     def send(actor, action):
         gate.wait()                                                            # 2つの要求を同時に解放する
@@ -141,12 +155,12 @@ def _resend(w):
 # ---------- ならば ----------
 @then(parsers.re(r'申請 "(?P<app_id>[^"]+)" の状態は "(?P<state>[A-Z]+)" である'))
 def _state_is(w, app_id, state):
-    assert w.svc.state_of(app_id) is State(state)
+    assert w.svc.state_of("審査者A", app_id) is State(state)
 
 
 @then(parsers.re(r'監査者Aは申請 "(?P<app_id>[^"]+)" の履歴に "(?P<action>[^"]+)" を (?P<n>\d+) 件確認できる'))
 def _history(w, app_id, action, n):
-    assert w.svc.history(app_id, action) == int(n)
+    assert w.svc.history("監査者A", app_id, action) == int(n)
 
 
 @then(parsers.re(r'要求は "(?P<reason>[^"]+)" として拒否される'))
@@ -176,7 +190,7 @@ def _loser_refused(w, reason):
 @then(parsers.re(r'申請 "(?P<app_id>[^"]+)" の状態は成立した決裁と一致する'))
 def _state_matches_winner(w, app_id):
     (winner,) = [r for r in w.results if r.ok]
-    assert w.svc.state_of(app_id) is winner.state
+    assert w.svc.state_of("審査者A", app_id) is winner.state
 
 
 @then("審査者Aに最初の承認の結果が表示される")

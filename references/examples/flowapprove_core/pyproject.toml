@@ -10,6 +10,7 @@ markers = [
   "req(*ids): このテストが確かめる要件・ルール・設計判断のID（追跡用）",
   "small: 単一プロセス・入出力なし・実時間待ちなし",
   "medium: 単一マシン内。プロセス内フェイクまたはローカルの実物",
+  "large: 複数マシン・実物の外部依存・実時間待ちを伴う",
 ]
 bdd_features_base_dir = "../../features"
 junit_family = "xunit1"

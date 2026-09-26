@@ -1,4 +1,5 @@
 # language: ja
+# generated-by: kit_lint extract — do not edit; source: bdd/BDD_SAMPLE.md
 @FEAT-005
 機能: 決裁の通知
   申請者は、自分の申請がどう決裁されたかをアプリ内で知る。

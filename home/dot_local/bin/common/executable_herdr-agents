@@ -515,15 +515,21 @@ function worker_agmsg_type() {
 }
 
 # @description Count the distinct agmsg identity names registered for a path and type.
-#   Verified directly (scratch HOME, three nested/sibling paths in the same
-#   team): identities.sh <path> matches registrations at <path> AND any of
-#   its subdirectories (a nested `.claude/worktrees/<name>` checkout's
-#   identity is included when querying the main checkout's path), but NOT
-#   the reverse, and NOT a sibling path that merely shares a string prefix
-#   (directory-boundary-aware, not naive prefix matching). This guard is
-#   normally called with a worker's own specific workdir, which this does
-#   not affect; calling it with a main-checkout path that has unrelated
-#   worktrees registered under it would sweep those identities in too.
+#   Corrected from an earlier revision of this comment, which misattributed
+#   an ancestor-walk to identities.sh itself. Verified against upstream
+#   v1.5.0 sources (scripts/identities.sh, scripts/lib/resolve-project.sh,
+#   docs/design.md "Project resolution", #92): identities.sh is a pure,
+#   exact (spelling-normalized only) lookup on the given path -- it applies
+#   no ancestor/marker/git-common-dir resolution, so a query for a main
+#   checkout's path does NOT sweep in registrations under a nested
+#   `.claude/worktrees/<name>` subdirectory or a sibling worktree. That
+#   resolution instead lives in join.sh/whoami.sh/actas-claim.sh/reset.sh/
+#   watch.sh, which is exactly why every worker pane this file creates now
+#   exports AGMSG_RESOLVE_PROJECT=0 (see split_agent_pane call sites below):
+#   without it, a worker running join.sh from its own worktree would have
+#   the ancestor walk silently rewrite its registration up to the
+#   orchestrator's already-registered main-checkout path, colliding with it
+#   instead of registering its own identity.
 # @arg $1 workdir Repository path used for repo-scoped agmsg registration.
 # @arg $2 string agmsg agent type.
 function distinct_agmsg_identity_count() {
@@ -780,9 +786,9 @@ if [[ ${attach_mode} == true ]]; then
         # delivered something); an unattended worker pane has no one to notice
         # a silently dropped watch, unlike the interactive orchestrator pane.
         if [[ ${worker_kind} == claude ]]; then
-            worker_pane_id="$(split_agent_pane "${claude_pane_id}" "${workdir}" --env AGMSG_CC_MONITOR_KEEP_ALIVE=1)"
+            worker_pane_id="$(split_agent_pane "${claude_pane_id}" "${workdir}" --env AGMSG_CC_MONITOR_KEEP_ALIVE=1 --env AGMSG_RESOLVE_PROJECT=0)"
         else
-            worker_pane_id="$(split_agent_pane "${claude_pane_id}" "${workdir}")"
+            worker_pane_id="$(split_agent_pane "${claude_pane_id}" "${workdir}" --env AGMSG_RESOLVE_PROJECT=0)"
         fi
         start_worker_agent "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" true > /dev/null
     fi
@@ -818,9 +824,9 @@ if [[ -n ${existing_workspace_id} ]]; then
                 exit 1
             fi
             if [[ ${worker_kind} == claude ]]; then
-                worker_pane_id="$(split_agent_pane "${split_source_pane_id}" "${workdir}" --env AGMSG_CC_MONITOR_KEEP_ALIVE=1)"
+                worker_pane_id="$(split_agent_pane "${split_source_pane_id}" "${workdir}" --env AGMSG_CC_MONITOR_KEEP_ALIVE=1 --env AGMSG_RESOLVE_PROJECT=0)"
             else
-                worker_pane_id="$(split_agent_pane "${split_source_pane_id}" "${workdir}")"
+                worker_pane_id="$(split_agent_pane "${split_source_pane_id}" "${workdir}" --env AGMSG_RESOLVE_PROJECT=0)"
             fi
             worker_pane_is_new=true
         fi
@@ -876,9 +882,9 @@ fi
 worker_agent_name="$(agent_name_for_workspace "${worker_kind}-worker" "${workspace_id}")"
 start_claude_in_pane "${root_pane_id}" "${workspace_id}" true
 if [[ ${worker_kind} == claude ]]; then
-    worker_pane_id="$(split_agent_pane "${root_pane_id}" "${workdir}" --env AGMSG_CC_MONITOR_KEEP_ALIVE=1)"
+    worker_pane_id="$(split_agent_pane "${root_pane_id}" "${workdir}" --env AGMSG_CC_MONITOR_KEEP_ALIVE=1 --env AGMSG_RESOLVE_PROJECT=0)"
 else
-    worker_pane_id="$(split_agent_pane "${root_pane_id}" "${workdir}")"
+    worker_pane_id="$(split_agent_pane "${root_pane_id}" "${workdir}" --env AGMSG_RESOLVE_PROJECT=0)"
 fi
 start_worker_agent "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" true > /dev/null
 bootstrap_agmsg "${workdir}"

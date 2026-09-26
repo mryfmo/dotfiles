@@ -579,7 +579,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
         self.assertIn(
-            f"pane split w-attach:p1 --direction right --cwd {self.workdir.resolve()} --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus",
+            f"pane split w-attach:p1 --direction right --cwd {self.workdir.resolve()} --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --env AGMSG_RESOLVE_PROJECT=0 --no-focus",
             calls,
         )
         codex_start = next(
@@ -1193,7 +1193,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             calls,
         )
         self.assertIn(
-            f"pane split w-test:p1 --direction right --cwd {self.workdir.resolve()} --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --no-focus",
+            f"pane split w-test:p1 --direction right --cwd {self.workdir.resolve()} --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --env AGMSG_RESOLVE_PROJECT=0 --no-focus",
             calls,
         )
         self.assertIn(
@@ -1381,6 +1381,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         pane_split_calls = [call for call in calls if call.startswith("pane split")]
         self.assertEqual(1, len(pane_split_calls))
         self.assertIn("--env AGMSG_CC_MONITOR_KEEP_ALIVE=1", pane_split_calls[0])
+        self.assertIn("--env AGMSG_RESOLVE_PROJECT=0", pane_split_calls[0])
 
     def test_worker_kind_claude_starts_with_no_resolved_args(self) -> None:
         self.register_claude_worker_identity()

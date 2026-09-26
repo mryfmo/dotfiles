@@ -347,6 +347,23 @@ since an unattended resident pane has no one to notice a Monitor watch that
 silently failed to re-arm; a resident Claude worker pane's environment also
 carries `AGMSG_CC_MONITOR_KEEP_ALIVE=1` so its watch re-arms unconditionally
 on expiry rather than only when the expired watch delivered something.
+Every worker pane's environment also carries `AGMSG_RESOLVE_PROJECT=0`.
+agmsg's project resolution (upstream [#92](https://github.com/fujibee/agmsg/issues/92),
+`docs/design.md` "Project resolution") lets `join.sh`/`whoami.sh`/
+`actas-claim.sh`/`reset.sh`/`watch.sh` rewrite an explicit project path up to
+the nearest _registered_ ancestor — by design, so a session started in a
+subdirectory of its own registered project still resolves correctly. Since
+the orchestrator's own `claude-code` identity is already registered at this
+repository's main checkout, and every worker worktree lives _under_ that
+checkout at `.claude/worktrees/<name>`, that same ancestor walk would rewrite
+a worker's own `join.sh`/`watch.sh` calls up to the orchestrator's already-
+registered path, colliding with it instead of registering the worker's own
+worktree — verified directly against a real, pinned v1.5.0 install (a
+`join.sh` from inside a nested worktree, with resolution left on, silently
+registers at the parent instead; the identical call with
+`AGMSG_RESOLVE_PROJECT=0` registers at the worktree, exactly as intended).
+`AGMSG_RESOLVE_PROJECT=0` opts every such call in a worker pane out of that
+rewrite, matching how `spawn.sh --project` opts out for agmsg-spawned seats.
 
 Per-task agent switching happens at the profile layer, never in the layout:
 the worker profile comes from `HERDR_AGENTS_WORKER_PROFILE` (the deprecated

@@ -7,6 +7,7 @@ import errno
 import json
 import os
 import pty
+import re
 import shutil
 import subprocess
 import sys
@@ -30,6 +31,7 @@ YAZI_CONFIG = ROOT / "home/dot_config/yazi/yazi.toml"
 GHOSTTY_CONFIG = ROOT / "home/dot_config/ghostty/config"
 ZPROFILE = ROOT / "home/dot_zprofile"
 ZSHRC = ROOT / "home/dot_zshrc"
+AUDIT_SHA = "926d9f1"
 
 
 class HerdrAgentsTest(unittest.TestCase):
@@ -57,6 +59,9 @@ class HerdrAgentsTest(unittest.TestCase):
         # shell, exit-dialog (claude foreground until an Enter), or stuck.
         self.process_info_state_path = self.temp_dir / "process-info-state.txt"
         self.pane_counter_path = self.temp_dir / "pane-counter.txt"
+        self.tab_list_path = self.temp_dir / "tab-list.json"
+        # Exit code the fake audit pane reports in its AUDIT-EXIT marker.
+        self.audit_exit_path = self.temp_dir / "audit-exit.txt"
         self.home_dir = self.temp_dir / "home"
         (self.home_dir / ".config/herdr").mkdir(parents=True)
         self.workdir = self.temp_dir / "project"
@@ -78,6 +83,8 @@ class HerdrAgentsTest(unittest.TestCase):
         self.trust_dialog_match_path.write_text("0\n")
         self.process_info_state_path.write_text("shell\n")
         self.pane_counter_path.write_text("2\n")
+        self.tab_list_path.write_text('{"id":"cli:tab:list","result":{"tabs":[]}}\n')
+        self.audit_exit_path.write_text("0\n")
 
         self.write_executable(
             "herdr",
@@ -125,8 +132,29 @@ fi
 if [[ $1 == pane && $2 == run ]]; then
     exit 0
 fi
+if [[ $1 == tab && $2 == list ]]; then
+    cat {self.tab_list_path}
+    exit 0
+fi
+if [[ $1 == tab && $2 == create ]]; then
+    workspace="$4"
+    cwd="$6"
+    jq -c --arg ws "$workspace" '.result.tabs += [{{"label":"audit","tab_id":($ws + ":t2"),"workspace_id":$ws}}]' {self.tab_list_path} > {self.tab_list_path}.new
+    mv {self.tab_list_path}.new {self.tab_list_path}
+    jq -c --arg ws "$workspace" --arg cwd "$cwd" '.result.panes += [{{"agent":null,"cwd":$cwd,"pane_id":($ws + ":p9"),"tab_id":($ws + ":t2"),"workspace_id":$ws}}]' {self.pane_list_path} > {self.pane_list_path}.new
+    mv {self.pane_list_path}.new {self.pane_list_path}
+    printf '%s\\n' '{{"id":"cli:tab:create","result":{{}}}}'
+    exit 0
+fi
+if [[ $1 == pane && $2 == read ]]; then
+    exit 0
+fi
 if [[ $1 == pane && $2 == wait-output ]]; then
     for arg in "$@"; do
+        if [[ $arg == AUDIT-EXIT-*':[0-9]+' ]]; then
+            printf '{{"id":"cli:pane:wait-output","result":{{"matched_line":"%s:%s"}}}}\\n' "${{arg%':[0-9]+'}}" "$(cat {self.audit_exit_path})"
+            exit 0
+        fi
         if [[ $arg == "trust this folder" ]]; then
             [[ $(cat {self.trust_dialog_match_path}) == 1 ]] && exit 0
             exit 1
@@ -1974,6 +2002,249 @@ fi
                     ),
                     calls,
                 )
+
+    def write_audit_pair_state(self, *extra_panes: str) -> None:
+        """Write a managed codex pair on tab t1, plus optional extra panes."""
+        self.write_workspace_state(
+            "w-old",
+            ",".join(
+                (
+                    f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}}',
+                    f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-old:p2","workspace_id":"w-old"}}',
+                    *extra_panes,
+                )
+            ),
+            agent_pane_id="w-old:p2",
+        )
+
+    def audit_tab_pane(self, workspace_id: str = "w-old") -> str:
+        """Return an agentless pane labeled audit on the audit tab t2."""
+        self.tab_list_path.write_text(
+            json.dumps(
+                {
+                    "id": "cli:tab:list",
+                    "result": {
+                        "tabs": [
+                            {"label": "1", "tab_id": f"{workspace_id}:t1"},
+                            {"label": "audit", "tab_id": f"{workspace_id}:t2"},
+                        ]
+                    },
+                }
+            )
+            + "\n"
+        )
+        return (
+            f'{{"agent":null,"cwd":"{self.workdir}","label":"audit",'
+            f'"pane_id":"{workspace_id}:p9","tab_id":"{workspace_id}:t2","workspace_id":"{workspace_id}"}}'
+        )
+
+    def test_audit_creates_the_audit_tab_once_and_reuses_it(self) -> None:
+        self.write_audit_pair_state()
+
+        for _ in range(2):
+            result = self.run_helper("--audit", AUDIT_SHA)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+        calls = self.calls_path.read_text().splitlines()
+        tab_creates = [call for call in calls if call.startswith("tab create ")]
+        self.assertEqual(
+            tab_creates,
+            [
+                f"tab create --workspace w-old --cwd {self.workdir.resolve()} "
+                "--label audit --no-focus"
+            ],
+        )
+        pane_runs = [call for call in calls if call.startswith("pane run ")]
+        self.assertEqual(len(pane_runs), 2, calls)
+        self.assertTrue(all(call.startswith("pane run w-old:p9 ") for call in pane_runs))
+        self.assertIn("pane rename w-old:p9 audit", calls)
+        self.assertFalse(
+            any(
+                call.startswith(("pane split", "workspace create", "agent ", "tab close"))
+                or "w-old:p1" in call
+                or "w-old:p2" in call
+                for call in calls
+            ),
+            calls,
+        )
+        evidence = (
+            self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"
+        )
+        self.assertTrue(evidence.parent.is_dir())
+        self.assertIn(f"Audit exit: 0\nAudit evidence: {evidence}\n", result.stdout)
+
+    def test_audit_pane_command_tees_evidence_and_waits_for_a_fresh_marker(
+        self,
+    ) -> None:
+        self.write_audit_pair_state(self.audit_tab_pane())
+
+        result = self.run_helper("--audit", AUDIT_SHA, "--out", "evidence/T32 audit.md")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertFalse(any(call.startswith("tab create ") for call in calls), calls)
+        pane_run = next(call for call in calls if call.startswith("pane run w-old:p9 "))
+        evidence = self.workdir.resolve() / "evidence/T32 audit.md"
+        escaped_evidence = str(evidence).replace(" ", "\\ ")
+        self.assertIn(
+            f"bash -c 'set -o pipefail; codex --profile audit review --commit {AUDIT_SHA} "
+            f"2>&1 | tee -- {escaped_evidence}; ",
+            pane_run,
+        )
+        marker = re.search(r'printf "(AUDIT-EXIT-[0-9]+-[0-9]+):%s\\n" "\$\?"\'$', pane_run)
+        self.assertIsNotNone(marker, pane_run)
+        wait_call = next(
+            call for call in calls if call.startswith("pane wait-output w-old:p9 --regex AUDIT-")
+        )
+        # Digits after the colon: the echoed command line (":%s") cannot self-match.
+        self.assertIn(f"--regex {marker.group(1)}:[0-9]+ ", wait_call)
+        self.assertIn("--timeout 1800000", wait_call)
+        self.assertIn(f"Audit evidence: {evidence}", result.stdout)
+
+    def test_audit_uses_manifest_audit_codex_args(self) -> None:
+        self.write_audit_pair_state(self.audit_tab_pane())
+        profiles = self.home_dir / ".agents/model-profiles.env"
+        profiles.parent.mkdir(parents=True, exist_ok=True)
+        profiles.write_text('MODEL_PROFILE_AUDIT_CODEX_ARGS="--profile audit-e2e"\n')
+
+        result = self.run_helper("--audit", AUDIT_SHA, "--timeout", "60")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertTrue(
+            any(
+                f"codex --profile audit-e2e review --commit {AUDIT_SHA} " in call
+                for call in calls
+                if call.startswith("pane run ")
+            ),
+            calls,
+        )
+        self.assertTrue(any("--timeout 60000" in call for call in calls), calls)
+
+    def test_audit_nonzero_exit_marker_fails_the_helper(self) -> None:
+        self.write_audit_pair_state(self.audit_tab_pane())
+        self.audit_exit_path.write_text("1\n")
+
+        result = self.run_helper("--audit", AUDIT_SHA)
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("Audit exit: 1", result.stdout)
+
+    def test_audit_refuses_a_busy_audit_pane(self) -> None:
+        self.write_audit_pair_state(self.audit_tab_pane())
+        self.process_info_state_path.write_text("stuck\n")
+
+        result = self.run_helper("--audit", AUDIT_SHA)
+
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("audit pane w-old:p9 is busy", result.stderr)
+        self.assertFalse(
+            any(
+                call.startswith("pane run ")
+                for call in self.calls_path.read_text().splitlines()
+            )
+        )
+
+    def test_audit_rejects_unsafe_arguments_before_calling_herdr(self) -> None:
+        self.write_audit_pair_state(self.audit_tab_pane())
+        for args in (
+            ("--audit",),
+            ("--audit", "926d9f1;touch pwned"),
+            ("--audit", AUDIT_SHA, "--timeout", "0"),
+            ("--audit", AUDIT_SHA, "--out", "it's.md"),
+        ):
+            with self.subTest(args=args):
+                result = self.run_helper(*args)
+
+                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                self.assertFalse(self.calls_path.exists())
+
+    def test_audit_exits_2_without_a_managed_workspace(self) -> None:
+        result = self.run_helper("--audit", AUDIT_SHA)
+
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn(
+            f"no managed Herdr workspace for {self.workdir.resolve()}", result.stderr
+        )
+        self.assertIn("codex --profile audit review headless", result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertFalse(
+            any(call.startswith(("tab ", "pane run", "pane split")) for call in calls),
+            calls,
+        )
+
+    def test_audit_tab_does_not_break_attach_order_and_ratio_repair(self) -> None:
+        self.write_workspace_state(
+            "w-attach",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"codex-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}},'
+            + self.audit_tab_pane("w-attach"),
+            agent_pane_id="w-attach:p2",
+        )
+        for layout, expected in (
+            ((("w-attach:p2", 0), ("w-attach:p1", 60)), "pane swap --source-pane w-attach:p2 --target-pane w-attach:p1"),
+            (None, "pane resize --pane w-attach:p1 --direction left --amount 0.25"),
+        ):
+            with self.subTest(expected=expected):
+                self.calls_path.write_text("")
+                if layout:
+                    self.write_pane_layout(list(layout))
+                else:
+                    self.write_ratio_layout((90, 30))
+                    self.write_ratio_layout((60, 60), after_resize=True)
+
+                result = self.run_attach_helper(in_herdr=True)
+
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertNotIn("ambiguous", result.stderr)
+                calls = self.calls_path.read_text().splitlines()
+                self.assertTrue(any(call.startswith(expected) for call in calls), calls)
+                self.assertFalse(any("w-attach:p9" in call for call in calls), calls)
+
+    def test_audit_tab_keeps_the_full_mode_duplicate_workspace_guard(self) -> None:
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
+            + self.audit_tab_pane(),
+            extra_workspace_ids=("w-dup",),
+        )
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("multiple managed Herdr workspaces", result.stderr)
+
+    def test_full_mode_heal_never_starts_the_worker_in_the_audit_pane(self) -> None:
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
+            + self.audit_tab_pane(),
+        )
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn(
+            "agent start codex-worker-w-old --kind codex --pane w-old:p3 --timeout 30000 -- --sandbox workspace-write --profile standard",
+            calls,
+        )
+        self.assertFalse(any("w-old:p9" in call for call in calls), calls)
+
+    def test_restart_worker_never_treats_the_audit_pane_as_the_worker(self) -> None:
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
+            + self.audit_tab_pane(),
+        )
+
+        result = self.run_helper("--restart-worker")
+
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("no codex worker pane in Herdr workspace w-old", result.stderr)
+        self.assertFalse(
+            any("w-old:p9" in call for call in self.calls_path.read_text().splitlines())
+        )
 
     def test_attach_from_the_worker_pane_does_not_relabel_it(self) -> None:
         self.register_claude_worker_identity()

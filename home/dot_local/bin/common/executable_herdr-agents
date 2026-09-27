@@ -8,10 +8,17 @@
 #   mode adds the worker beside Claude in the current Herdr pane without
 #   restarting Claude. Restart-worker mode relaunches the worker agent in its
 #   existing pane so new worker launch arguments take effect, confirming a
-#   claude exit dialog once and relabeling a legacy worker pane label.
+#   claude exit dialog once and relabeling a legacy worker pane label. Audit
+#   mode runs the read-only Codex audit of one commit visibly in the pair
+#   workspace's dedicated `audit` tab, tees it to an evidence file, and waits
+#   (bounded) for its exit marker; the auditor keeps no agmsg identity.
 # @option --attach Attach the current Claude pane to its Herdr workspace layout.
 # @option --restart-worker Relaunch the worker agent in the existing pair's worker pane.
 # @option --bootstrap-agmsg Configure repo-scoped agmsg hooks without changing Herdr panes.
+# @option --audit <sha> Run `codex <audit profile args> review --commit <sha>` in the pair's audit tab.
+# @option --out <path> Audit evidence path, relative to DIR. Defaults to
+#   `.orchestration/validation/audit-<sha>.md`.
+# @option --timeout <seconds> Audit exit-marker wait bound. Defaults to 1800.
 # @arg DIR Optional directory for the Herdr workspace. Defaults to the current directory.
 # @arg HERDR_AGENTS_WORKER_KIND Worker agent kind, `codex` or `claude`. Defaults
 #   to `worker_kind` from the manifest via ~/.agents/model-profiles.env, then
@@ -37,6 +44,8 @@
 #   herdr-agents --restart-worker ~/Workspace/dotfiles
 # @example
 #   herdr-agents --bootstrap-agmsg ~/Workspace/dotfiles
+# @example
+#   herdr-agents --audit 926d9f1 --out .orchestration/validation/T31-audit.md ~/Workspace/dotfiles
 
 set -euo pipefail
 
@@ -47,6 +56,7 @@ Usage: herdr-agents [DIR]
        herdr-agents --attach
        herdr-agents --restart-worker [DIR]
        herdr-agents --bootstrap-agmsg [DIR]
+       herdr-agents --audit <sha> [--out PATH] [--timeout SECONDS] [DIR]
 
 Create a Herdr workspace for DIR with equal-width Claude Code and worker
 panes from left to right, and open DIR in Zed when available. Herdr, jq,
@@ -62,6 +72,10 @@ Restart-worker mode exits the worker agent in the existing pair's worker pane
 and starts it again in the same pane with the current worker_kind and
 worker_profile launch arguments; it never creates panes or workspaces.
 Bootstrap mode only configures missing repo-scoped agmsg hooks.
+Audit mode runs the read-only Codex audit of <sha> in the existing pair
+workspace's audit tab (created once, then reused and left open), tees it to
+PATH (default .orchestration/validation/audit-<sha>.md under DIR), and exits
+nonzero when the audit does; it exits 2 without a managed workspace.
 USAGE
 }
 
@@ -744,8 +758,8 @@ function empty_pane_id() {
     local panes_json="$1"
     local exclude_pane_id="${2:-}"
 
-    # Preserve legacy files panes as unmanaged operator-owned panes.
-    printf '%s\n' "${panes_json}" | jq -r --arg exclude "${exclude_pane_id}" '.result.panes[]? | select((.agent? // "") == "" and .label? != "files" and .pane_id != $exclude) | .pane_id // empty' | head -n 1
+    # Preserve legacy files panes and the audit pane as non-agent panes.
+    printf '%s\n' "${panes_json}" | jq -r --arg exclude "${exclude_pane_id}" '.result.panes[]? | select((.agent? // "") == "" and .label? != "files" and .label? != "audit" and .pane_id != $exclude) | .pane_id // empty' | head -n 1
 }
 
 # @description Remove a node-global npm copy that shadows the dedicated mise tool install.
@@ -762,6 +776,49 @@ function remove_shadowing_node_global() {
     if npm list -g "${npm_package}" --depth=0 > /dev/null 2>&1; then
         npm uninstall -g "${npm_package}" > /dev/null || true
     fi
+}
+
+# @description Print the audit Codex arguments from the manifest-generated
+#   ~/.agents/model-profiles.env, defaulting to the audit profile.
+function resolve_audit_codex_args() {
+    local MODEL_PROFILE_AUDIT_CODEX_ARGS=""
+    if [[ -f ${HOME}/.agents/model-profiles.env ]]; then
+        # shellcheck source=/dev/null
+        source "${HOME}/.agents/model-profiles.env"
+    fi
+    printf '%s\n' "${MODEL_PROFILE_AUDIT_CODEX_ARGS:---profile audit}"
+}
+
+# @description Print the tab id of the workspace tab labeled audit.
+# @arg $1 string Herdr workspace id.
+function audit_tab_ids() {
+    herdr tab list --workspace "$1" | jq -r '.result.tabs[]? | select(.label == "audit") | .tab_id'
+}
+
+# @description Print the single audit pane id, creating the audit tab once.
+#   The pane is labeled audit so the pair modes never reuse it.
+# @arg $1 string Herdr workspace id.
+# @arg $2 workdir Absolute workdir path.
+# @exitcode 2 If the audit tab or its pane is ambiguous.
+function audit_pane_id() {
+    local workspace_id="$1"
+    local workdir="$2"
+    local tab_ids
+    local pane_id
+
+    tab_ids="$(audit_tab_ids "${workspace_id}")"
+    if [[ -z ${tab_ids} ]]; then
+        herdr tab create --workspace "${workspace_id}" --cwd "${workdir}" --label audit --no-focus > /dev/null
+        tab_ids="$(audit_tab_ids "${workspace_id}")"
+    fi
+    if [[ -z ${tab_ids} || ${tab_ids} == *$'\n'* ]] ||
+        ! pane_id="$(herdr pane list --workspace "${workspace_id}" | jq -er --arg tab "${tab_ids}" \
+            '[.result.panes[]? | select(.tab_id == $tab) | .pane_id] | if length == 1 then .[0] else empty end')"; then
+        printf 'herdr-agents: Herdr workspace %s needs exactly one audit tab with one pane; refusing audit.\n' "${workspace_id}" >&2
+        exit 2
+    fi
+    herdr pane rename "${pane_id}" audit > /dev/null
+    printf '%s\n' "${pane_id}"
 }
 
 # @description Require a command before starting a partial layout.
@@ -783,6 +840,9 @@ fi
 attach_mode=false
 bootstrap_mode=false
 restart_mode=false
+audit_mode=false
+audit_out=""
+audit_timeout=1800
 if [[ ${1:-} == "--attach" ]]; then
     attach_mode=true
     shift
@@ -796,6 +856,22 @@ elif [[ ${1:-} == "--bootstrap-agmsg" ]]; then
 elif [[ ${1:-} == "--restart-worker" ]]; then
     restart_mode=true
     shift
+elif [[ ${1:-} == "--audit" ]]; then
+    audit_mode=true
+    shift
+    audit_commit="${1:-}"
+    [[ $# -gt 0 ]] && shift
+    while [[ ${1:-} == "--out" || ${1:-} == "--timeout" ]]; do
+        if [[ $# -lt 2 ]]; then
+            usage >&2
+            exit 2
+        fi
+        case "$1" in
+        --out) audit_out="$2" ;;
+        --timeout) audit_timeout="$2" ;;
+        esac
+        shift 2
+    done
 fi
 
 if { [[ ${attach_mode} == true ]] && [[ $# -gt 0 ]]; } || [[ $# -gt 1 ]]; then
@@ -809,6 +885,49 @@ if [[ ${bootstrap_mode} == true ]]; then
     cd -- "${workdir}"
     workdir="$(pwd -P)"
     bootstrap_agmsg "${workdir}"
+    exit 0
+fi
+
+if [[ ${audit_mode} == true ]]; then
+    # The commit and path are interpolated into a pane command line.
+    if [[ ! ${audit_commit} =~ ^[0-9a-fA-F]{7,40}$ || ! ${audit_timeout} =~ ^[1-9][0-9]*$ || ${audit_out} == *[\'[:cntrl:]]* ]]; then
+        usage >&2
+        exit 2
+    fi
+    require_command herdr
+    require_command jq
+    require_command codex
+    workdir="${1:-$PWD}"
+    cd -- "${workdir}"
+    workdir="$(pwd -P)"
+    workspace_id="$(single_managed_workspace "$(basename "${workdir}") agents" "${workdir}")"
+    if [[ -z ${workspace_id} ]]; then
+        printf 'herdr-agents: no managed Herdr workspace for %q; run herdr-agents %q (full mode) to create one, or run codex --profile audit review headless.\n' "${workdir}" "${workdir}" >&2
+        exit 2
+    fi
+    audit_out="${audit_out:-.orchestration/validation/audit-${audit_commit}.md}"
+    [[ ${audit_out} == /* ]] || audit_out="${workdir}/${audit_out}"
+    mkdir -p -- "$(dirname -- "${audit_out}")"
+    audit_pane="$(audit_pane_id "${workspace_id}" "${workdir}")"
+    if ! wait_for_shell_prompt "${audit_pane}"; then
+        printf 'herdr-agents: audit pane %s is busy (not at a shell prompt); refusing a second audit.\n' "${audit_pane}" >&2
+        exit 2
+    fi
+    # A per-run nonce keeps a reused pane's previous exit marker from matching.
+    audit_marker="AUDIT-EXIT-$(date +%s)-$$"
+    read -ra audit_args <<< "$(resolve_audit_codex_args)"
+    audit_codex="codex$(printf ' %q' "${audit_args[@]}") review --commit ${audit_commit}"
+    herdr pane run "${audit_pane}" "bash -c 'set -o pipefail; ${audit_codex} 2>&1 | tee -- $(printf '%q' "${audit_out}"); printf \"${audit_marker}:%s\\n\" \"\$?\"'" > /dev/null
+    if ! wait_output="$(herdr pane wait-output "${audit_pane}" --regex "${audit_marker}:[0-9]+" --source recent --timeout "$((audit_timeout * 1000))")"; then
+        printf 'herdr-agents: audit still running in pane %s after %ss; evidence: %s\n' "${audit_pane}" "${audit_timeout}" "${audit_out}" >&2
+        exit 1
+    fi
+    audit_status="$({
+        printf '%s\n' "${wait_output}"
+        herdr pane read "${audit_pane}" --source recent --lines 200 2> /dev/null || true
+    } | grep -oE "${audit_marker}:[0-9]+" | tail -n 1 | cut -d: -f2 || true)"
+    printf 'Audit exit: %s\nAudit evidence: %s\n' "${audit_status:-unknown}" "${audit_out}"
+    [[ ${audit_status} == 0 ]] || exit 1
     exit 0
 fi
 
@@ -938,7 +1057,7 @@ if [[ -n ${existing_workspace_id} ]]; then
         worker_pane_id="$(empty_pane_id "${panes_json}")"
         worker_pane_is_new=false
         if [[ -z ${worker_pane_id} ]]; then
-            split_source_pane_id="$(printf '%s\n' "${panes_json}" | jq -r '.result.panes[0].pane_id // empty')"
+            split_source_pane_id="$(printf '%s\n' "${panes_json}" | jq -r '[.result.panes[]? | select(.label? != "audit")][0].pane_id // empty')"
             if [[ -z ${split_source_pane_id} ]]; then
                 printf 'Unable to find a pane for %s worker repair in Herdr workspace: %s\n' "${worker_kind}" "${workspace_id}" >&2
                 exit 1

@@ -64,8 +64,8 @@ readonly CLAUDE_UNDERSTAND_ANYTHING_MARKETPLACE_NAME="understand-anything"
 # Rendered from assets.understand-anything-installer in
 # home/dot_agents/agent-config.yaml; change the commit and sha256 there together
 # after reviewing the upstream installer diff.
-readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT="797ce7969312411be2e125c39628854166f055d7"
-readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256="54f0350d09f43fcc8245f3f1fb2057bd322c36c6f158483dd47dcaf5f4a44eba"
+readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT="6df3065f1d8ddc2ce3615314d1d493f36d6b1c80"
+readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_SHA256="cb84ca53ced03f41662c5c86edf11fa598a0403c347f1e815f987ccaae5bc464"
 readonly CODEX_UNDERSTAND_ANYTHING_INSTALLER_URL="https://raw.githubusercontent.com/Egonex-AI/Understand-Anything/${CODEX_UNDERSTAND_ANYTHING_INSTALLER_COMMIT}/install.sh"
 # Versions and installer checksums for both URLs are pinned in
 # scripts/lib/installer-pins.sh and bumped by scripts/upgrade-tools.sh.

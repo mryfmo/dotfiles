@@ -463,12 +463,27 @@ install_starship
         self.assertNotIn("Upload generated lock", workflow)
         self.assertNotIn("Require committed Nix lock", workflow)
 
-    def test_dependabot_owns_github_action_updates(self):
-        self.assertFalse((ROOT / ".github/dependabot.yaml").exists())
-        config = (ROOT / ".github/dependabot.yml").read_text()
-        self.assertIn('package-ecosystem: "github-actions"', config)
-        self.assertIn('interval: "weekly"', config)
-        self.assertIn('directory: "/"', config)
+    def test_renovate_owns_dependency_update_notifications(self):
+        for name in ("dependabot.yml", "dependabot.yaml"):
+            self.assertFalse((ROOT / ".github" / name).exists())
+        config = json.loads((ROOT / "renovate.json").read_text())
+        self.assertEqual(
+            {"github-actions", "mise", "custom.regex"}, set(config["enabledManagers"])
+        )
+        self.assertTrue(
+            any(
+                re.search(pattern.strip("/"), "home/dot_mise/config.toml")
+                for pattern in config["mise"]["managerFilePatterns"]
+            )
+        )
+        manifest_rules = [
+            rule
+            for rule in config["packageRules"]
+            if "custom.regex" in rule.get("matchManagers", [])
+        ]
+        self.assertEqual(1, len(manifest_rules))
+        self.assertIs(True, manifest_rules[0]["dependencyDashboardApproval"])
+        self.assertNotIn("automerge", json.dumps(config))
 
     def test_setup_ci_rejects_and_preserves_local_drift(self):
         for workflow_name in ("macos.yaml", "ubuntu.yaml"):

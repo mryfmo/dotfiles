@@ -504,9 +504,9 @@ assets:
   understand-anything-installer:
     source: git-commit
     upstream: Egonex-AI/Understand-Anything
-    pin: 797ce7969312411be2e125c39628854166f055d7
+    pin: 6df3065f1d8ddc2ce3615314d1d493f36d6b1c80
     verify: sha256
-    sha256: 54f0350d09f43fcc8245f3f1fb2057bd322c36c6f158483dd47dcaf5f4a44eba
+    sha256: cb84ca53ced03f41662c5c86edf11fa598a0403c347f1e815f987ccaae5bc464
     install_path: ~/.understand-anything/repo
     installer: scripts/update-agent-assets.sh#update_codex_understand_anything
     render:

@@ -31,3 +31,10 @@ Proposed rule:
 spawns a duplicate workspace; relaunch workers in place with `herdr agent
 start … --pane <ws>:p2 -- ${MODEL_PROFILE_<PROFILE>_CLAUDE_ARGS}` (2026-09-27,
 T24 deployment).
+
+## Addendum (2026-09-27, T26 live E2E)
+5. `--restart-worker` gap: after the old worker exits, its herdr agent
+   registration can linger briefly and `herdr agent start` fails with
+   `agent_name_taken`. Add a bounded wait for the registration to clear (or
+   reuse/rename it) before starting; until then, a single retry after ~10s
+   recovers. (Part B exit-dialog handling itself verified working live.)

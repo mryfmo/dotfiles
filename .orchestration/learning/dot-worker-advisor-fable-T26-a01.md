@@ -1,0 +1,7 @@
+# Learning
+
+- Candidate (not promoted): when a restart path waits for the shell prompt after `/exit`, the wait itself is the cheapest "agent gone" signal. `wait_for_shell_prompt` checks `herdr pane process-info` for a foreground shell. A claude exit-confirmation dialog keeps `claude` in the foreground, so one failed bounded wait is enough to decide to send the submit key once.
+- Candidate (not promoted): write the regression tests first and run them against the unmodified script before claiming a fix. Here the baseline showed that the legacy `claude-orchestrator` worker label was already *tolerated*: `start_worker_agent` renamed the pane on success, and the restart-mode orchestrator lookup excluded the worker pane. The real gap was only that the repair happened *after* `/exit`, so a refused restart left the label broken. The exit-dialog baseline failure reproduced the T25 live message verbatim ("did not reach an interactive shell prompt; refusing agent start").
+- Candidate (not promoted): a validator pin on `worker_profile`'s advisor effectively makes `worker_profile` mandatory whenever the pin exists (`None` fails the pin). That is intentional here, and it is stated for the orchestrator.
+
+[memory:failure] --restart-worker v1 could not exit a claude worker with running background tasks (the exit-confirmation dialog). T26 fixed this: when the shell prompt does not return after /exit, it sends `herdr agent send-keys <pane> Enter` once (2026-09-27).

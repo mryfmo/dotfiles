@@ -88,7 +88,22 @@ worktree + agmsg regime. It was never installed; only vocabulary remains.
 - Do not rewrite historical `.orchestration/` records that mention
   OpenSandbox; history stays as written.
 
-### 5. Tests
+### 5. AGENTS.md — Code Review Rules section (operator-provided, verbatim)
+
+Append the following section to `AGENTS.md` (after the `## Audit` section),
+EXACTLY as written — operator-provided text, do not edit or reflow it:
+
+```markdown
+## Code Review Rules
+
+### Dotfiles safety
+
+- Do not silently change shell startup behavior, PATH order, authentication helpers, agent hooks, or permission policy defaults without calling out the user-visible impact.
+- For security-sensitive files, check whether secrets, tokens, auth caches, local-only paths, or overly broad permissions could be exposed.
+- Leave formatting-only feedback to CI unless it affects behavior.
+```
+
+### 6. Tests
 
 - Unit tests for the new check and install-step logic per the existing
   fake/fixture patterns, with a mutation baseline (paste the FAILED run
@@ -107,6 +122,7 @@ worktree + agmsg regime. It was never installed; only vocabulary remains.
   file owns the check)
 - `README.md` (one short paragraph: why the profile exists, how to remove)
 - `home/dot_agents/skills/agmsg-orchestration/SKILL.md` (deliverable 4 only)
+- `AGENTS.md` (deliverable 5 only, operator-provided verbatim text)
 - matching unit test files under `tests/unit/`
 - `.orchestration/{reports,validation,sandboxes,learning,autoskill/runs}/dot-codex-apparmor-userns-T30-a01.md` (main checkout)
 

@@ -640,8 +640,11 @@ def validate_agent_manifest() -> dict[str, Any]:
     worker_kind = manifest.get("worker_kind")
     if worker_kind not in {"codex", "claude"}:
         fail(f"{manifest_path} worker_kind must be codex or claude: {worker_kind!r}")
-    if f"(currently `{worker_kind}`;" not in (ROOT / "README.md").read_text():
+    readme = (ROOT / "README.md").read_text()
+    if f"(currently `{worker_kind}`;" not in readme:
         fail(f"README.md must state the manifest worker_kind as (currently `{worker_kind}`;")
+    if "herdr-agents --restart-worker" not in readme:
+        fail("README.md must document herdr-agents --restart-worker for worker relaunches")
     worker_profile = manifest.get("worker_profile")
     if worker_profile is not None and worker_profile not in profiles:
         fail(

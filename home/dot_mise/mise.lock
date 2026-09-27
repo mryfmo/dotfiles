@@ -229,28 +229,28 @@ url = "https://github.com/Kitware/CMake/releases/download/v4.4.3/cmake-4.4.3-mac
 url_api = "https://api.github.com/repos/Kitware/CMake/releases/assets/529577557"
 
 [[tools.dotenvx]]
-version = "2.28.0"
+version = "2.28.2"
 backend = "aqua:dotenvx/dotenvx"
 
 [tools.dotenvx."platforms.linux-arm64"]
-checksum = "sha256:d31270b20a5895c8fdd2c5209ef10506bfb9bc620791cdd67d822f89ef3faa1c"
-url = "https://github.com/dotenvx/dotenvx/releases/download/v2.28.0/dotenvx-2.28.0-linux-aarch64.tar.gz"
-url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/568780480"
+checksum = "sha256:d7617a9540c614c60fa97ef8c6b3313526ac7cbe789d37638197416b01eca542"
+url = "https://github.com/dotenvx/dotenvx/releases/download/v2.28.2/dotenvx-2.28.2-linux-aarch64.tar.gz"
+url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/575747948"
 
 [tools.dotenvx."platforms.linux-x64"]
-checksum = "sha256:d5e4401c9880ecaf83b101afc918f4aebb7c2c2ec16b67a41addd1fce12fbe6a"
-url = "https://github.com/dotenvx/dotenvx/releases/download/v2.28.0/dotenvx-2.28.0-linux-amd64.tar.gz"
-url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/568780474"
+checksum = "sha256:16c0ed2885863f61fe1123345cf3e153f9fef966be91c1e1afd5a8bac6bfb5fc"
+url = "https://github.com/dotenvx/dotenvx/releases/download/v2.28.2/dotenvx-2.28.2-linux-amd64.tar.gz"
+url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/575747945"
 
 [tools.dotenvx."platforms.macos-arm64"]
-checksum = "sha256:eb7156249da3044e907b1c85111d7fc6e08b62665c3cc96bd23f54c64c9e39c0"
-url = "https://github.com/dotenvx/dotenvx/releases/download/v2.28.0/dotenvx-2.28.0-darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/568780475"
+checksum = "sha256:92043dab1ade27226ad7ea6fb8d1c7041bc7d0555d212cf10895e4a94092ecc3"
+url = "https://github.com/dotenvx/dotenvx/releases/download/v2.28.2/dotenvx-2.28.2-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/575747924"
 
 [tools.dotenvx."platforms.macos-x64"]
-checksum = "sha256:537131fbdf0b5a495167bb7b2b0760751664831bae7dd9c68fac2e35bc4f8ef7"
-url = "https://github.com/dotenvx/dotenvx/releases/download/v2.28.0/dotenvx-2.28.0-darwin-amd64.tar.gz"
-url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/568780496"
+checksum = "sha256:98072ee54d0f32f19866688fb6c9a7fb12185256b96643798df0e011db9866c5"
+url = "https://github.com/dotenvx/dotenvx/releases/download/v2.28.2/dotenvx-2.28.2-darwin-amd64.tar.gz"
+url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/575747944"
 
 [[tools.fd]]
 version = "10.3.0"

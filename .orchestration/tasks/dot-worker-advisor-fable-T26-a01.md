@@ -69,6 +69,29 @@ advisor to fable; interactive settings render advisorModel from the manifest
   (`claude.advisor`); never set it with ad-hoc `/advisor` or `--advisor`
   flags outside the rendered args.
 
+### 4b. Part B — `home/dot_local/bin/common/executable_herdr-agents` restart robustness
+
+Two gaps found in the T25 live E2E (see the T25 acceptance addendum):
+
+- **Exit-confirmation dialog**: a claude worker with running background tasks
+  (e.g. its inbox monitor) responds to the `/exit` prompt with an
+  exit-confirmation dialog ("Exit and stop tasks / Move to background / Stay",
+  Enter confirms the default). `restart_worker_in_pane` must handle it:
+  after sending `/exit`, wait bounded for the agent to disappear; if it is
+  still present, send the submit key once
+  (`herdr agent send-keys <pane> Enter`, mirroring the existing trust-dialog
+  handling) and wait again before starting the new worker. Keep the fail-safe
+  refusal when the pane still never reaches a shell prompt.
+- **Legacy label tolerance/repair**: restart mode must work when the worker
+  pane still carries the legacy `claude-orchestrator` label left by the
+  pre-T25 attach bug. When the registered `<kind>-worker-<ws>` agent resolves
+  the pane, relabel it to the designed `<kind>-worker` via
+  `herdr pane rename <pane> <kind>-worker` as part of the restart. The
+  ambiguity refusal stays for genuinely ambiguous tabs (do not weaken
+  `attach_panes_are_unambiguous` beyond excluding the resolved worker pane).
+- Update the shdoc/README sentence for `--restart-worker` accordingly (one
+  clause each; keep it short).
+
 ### 5. Tests
 
 - `tests/unit/test_generate_agent_configs.py`: (a) profile with advisor
@@ -77,9 +100,14 @@ advisor to fable; interactive settings render advisorModel from the manifest
   profile advisor renders `advisorModel` in claude settings, absent otherwise.
 - `tests/unit/test_validate_agent_assets.py`: worker profile without
   `claude.advisor: fable` fails validation (fixture updated to include it).
-- `tests/unit/test_herdr_agents.py`: claude worker start args include
+- `tests/unit/test_herdr_agents.py`: (a) claude worker start args include
   `--advisor fable` when the env file's `MODEL_PROFILE_<P>_CLAUDE_ARGS`
-  carries it (env-file fixture pattern).
+  carries it (env-file fixture pattern); (b) Part B: restart path sends the
+  submit key when the agent survives `/exit` (fake herdr keeps the agent for
+  one poll), and still refuses when the pane never reaches a shell; (c)
+  Part B: a worker pane resolved via the registered agent but labeled
+  `claude-orchestrator` is renamed to `claude-worker` and the restart
+  proceeds.
 - No local bats (repo policy).
 
 ### 6. Regenerate
@@ -98,6 +126,7 @@ unchanged; if anything else changes, stop and report.
 
 ## Allowed files
 
+- `home/dot_local/bin/common/executable_herdr-agents` (Part B only)
 - `home/dot_agents/agent-config.yaml`
 - `home/dot_agents/model-profiles.env` (generated)
 - `home/.chezmoitemplates/claude-settings-managed.json` (generated)
@@ -113,7 +142,8 @@ unchanged; if anything else changes, stop and report.
 ## Forbidden actions
 
 - Changing worker_kind/worker_profile/interactive_profile, any codex settings,
-  express/review/security/adh model or effort values, herdr-agents, permgate,
+  express/review/security/adh model or effort values, herdr-agents beyond the
+  Part B scope above, permgate,
   hooks configs, dependencies, or `reviews/ADH_Integrated_Plan/`.
 - Merging; force push; local bats; `make apply`/`chezmoi apply`; writes outside
   the worktree except the listed `.orchestration` paths.

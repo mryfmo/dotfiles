@@ -23,3 +23,7 @@ make require-crit-review satisfied via AGENT_REVIEWED=1 with REVIEW_EVIDENCE=.or
 [memory:decision] T25 accepted 2026-09-27: herdr-agents enforces one-workspace-per-pair (pane-evidence managed-workspace lookup, full-mode duplicate guard, agentless-pane heal) and gains --restart-worker; codified in README + agmsg-orchestration rule + validator check + unit tests. PR #186 squash-merged.
 
 cost: n/a (worker report gives no token figures)
+
+### Live E2E addendum (2026-09-27 ~10:1x+09:00, orchestrator)
+`--restart-worker` live run on the wF pair: first run refused fail-safe ("did not reach an interactive shell prompt") because the claude worker had a running background monitor, so `/exit` opened the exit-confirmation dialog ("Exit and stop tasks", Enter to confirm), which the restart path does not handle; the worker pane also still carried the legacy `claude-orchestrator` label from the pre-T25 attach bug. Manual recovery: dialog resolved, `herdr pane rename wF:p2 claude-worker`, second `--restart-worker` run succeeded ("Herdr agents worker restarted in pane wF:p2", argv `claude --model claude-opus-5-5 --effort high`). No destructive behavior at any point; the refusal path worked as designed. Both gaps (exit-dialog handling, legacy-label tolerance/repair) are folded into task dot-worker-advisor-fable-T26-a01 part B.
+[memory:failure] --restart-worker v1 cannot exit a claude worker that has running background tasks (exit-confirmation dialog) and does not repair a legacy claude-orchestrator label on the worker pane; fixed via T26 part B (2026-09-27).

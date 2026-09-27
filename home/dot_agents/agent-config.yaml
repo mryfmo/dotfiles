@@ -40,7 +40,7 @@ model_profiles:
     claude: { model: claude-fable-5, effort: medium }
     codex: { model: gpt-5.6-sol, model_reasoning_effort: low }
   deep:
-    claude: { model: claude-fable-5, effort: high, advisor: fable }
+    claude: { model: claude-fable-5-1, effort: high, advisor: fable }
     codex:
       model: gpt-5.6-sol
       model_reasoning_effort: high
@@ -51,6 +51,14 @@ model_profiles:
     codex:
       model: gpt-daybreak-blue-latest
       model_reasoning_effort: high
+      notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
+  audit:
+    # Auditor tier (監査役): cross-vendor read-only audit of worker changesets.
+    claude: { model: claude-fable-5-1, effort: high }
+    codex:
+      model: gpt-6-astra
+      model_reasoning_effort: high
+      sandbox_mode: read-only
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
   # ADH V4 program profile; fallback and effort downgrade are forbidden.
   # Edit here only; profiles/model_profiles.json is a validation view.

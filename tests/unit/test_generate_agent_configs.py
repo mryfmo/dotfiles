@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 import types
 import unittest
 from pathlib import Path
@@ -486,6 +487,50 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             env,
         )
         self.assertIn('MODEL_PROFILE_SECURITY_CODEX_ARGS="--profile security"', env)
+
+    def test_audit_profile_renders_read_only_sandbox_override(self) -> None:
+        manifest = sample_manifest()
+        manifest["model_profiles"]["audit"] = {
+            "claude": {"model": "claude-fable-5-1", "effort": "high"},
+            "codex": {
+                "model": "gpt-6-astra",
+                "model_reasoning_effort": "high",
+                "sandbox_mode": "read-only",
+            },
+        }
+        outputs = self.module.expected_outputs(manifest)
+        self.module.write_outputs(outputs)
+
+        def render(name: str) -> dict:
+            path = self.temp_dir / f"home/dot_codex/modify_private_{name}.config.toml"
+            result = subprocess.run(
+                [str(path)],
+                input="",
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            return tomllib.loads(result.stdout)
+
+        self.assertEqual(render("audit")["sandbox_mode"], "read-only")
+        self.assertNotIn("sandbox_mode", render("standard"))
+        self.assertIn(
+            'sandbox_mode = "workspace-write"',
+            outputs[self.temp_dir / manifest["codex"]["config_path"]],
+        )
+        env = outputs[self.temp_dir / "home/dot_agents/model-profiles.env"]
+        self.assertIn('MODEL_PROFILE_AUDIT_CODEX_ARGS="--profile audit"', env)
+
+    def test_model_profiles_reject_invalid_sandbox_mode(self) -> None:
+        manifest = sample_manifest()
+        manifest["model_profiles"]["standard"]["codex"]["sandbox_mode"] = "readonly"
+
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.model_profiles(manifest)
+        self.assertIn("standard.codex.sandbox_mode must be one of", stderr.getvalue())
 
     def test_profile_modify_scripts_are_byte_idempotent_with_runtime_state(
         self,

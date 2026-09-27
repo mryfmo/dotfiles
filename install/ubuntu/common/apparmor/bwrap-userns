@@ -1,0 +1,17 @@
+# Allow /usr/bin/bwrap to create unprivileged user namespaces when
+# kernel.apparmor_restrict_unprivileged_userns=1, so sandboxed Codex runs
+# (which exec /usr/bin/bwrap) work. Same shape as Ubuntu's stock per-app
+# userns profiles. Managed by dotfiles: install/ubuntu/common/apparmor_userns.sh.
+# Ceiling: any caller of /usr/bin/bwrap gets a user namespace; switch to a
+# stacked child-restricting profile (upstream bwrap-userns-restrict) if that
+# becomes too wide.
+
+abi <abi/4.0>,
+include <tunables/global>
+
+profile bwrap-userns /usr/bin/bwrap flags=(unconfined) {
+  userns,
+
+  # Site-specific additions and overrides. See local/README for details.
+  include if exists <local/bwrap-userns>
+}

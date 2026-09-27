@@ -1,0 +1,6 @@
+{{ if eq .chezmoi.os "linux" -}}
+{{   if eq .chezmoi.osRelease.idLike "debian" -}}
+{{     include "../install/ubuntu/common/apparmor_userns.sh" }}
+# Re-run when the profile changes. bwrap-userns sha256sum: {{ include "../install/ubuntu/common/apparmor/bwrap-userns" | sha256sum }}
+{{   end -}}
+{{ end -}}

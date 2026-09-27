@@ -101,7 +101,7 @@ AGMSG-PONG v1 task_id=<id> status=alive|blocked note=<short-note>
 - `reports/`: worker reports and blocked-task reports.
 - `validation/`: command output and validation evidence.
 - `acceptance/`: orchestrator acceptance, revision, or rejection records.
-- `sandboxes/`: OpenSandbox records or documented fallback records.
+- `sandboxes/`: per-task isolation records (sandbox/worktree evidence).
 - `autoskill/config/`, `autoskill/inputs/`, `autoskill/runs/`, `autoskill/outputs/`: redacted AutoSkill artifacts.
 - `learning/`: task learning triage records.
 - `learning/rule_candidates/`: candidate reusable rules only.
@@ -129,7 +129,7 @@ AGMSG-PONG v1 task_id=<id> status=alive|blocked note=<short-note>
 4. Do not perform any `forbidden_actions`.
 5. Write artifacts to the exact expected paths. Do not invent alternate paths.
 6. Put the verbatim output of every validation command in `expected_validation_file`; every identifier your report claims to have created must appear in that output.
-7. Put sandbox/OpenSandbox status or fallback rationale in `expected_sandbox_file`.
+7. Put the isolation status or fallback rationale in `expected_sandbox_file`.
 8. Put reusable learning triage in `expected_learning_file`; do not promote rules directly unless the task explicitly allows it.
 9. Put AutoSkill run status or a not-used record in `expected_autoskill_file`.
 10. If blocked, still write the report and evidence paths that explain the blocker.

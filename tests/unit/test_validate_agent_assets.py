@@ -191,6 +191,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             for name in ("express", "standard", "review", "deep", "security")
         }
         profiles["security"]["codex"]["model"] = "gpt-daybreak-blue-latest"
+        profiles["standard"]["claude"]["advisor"] = "fable"
         manifest = {
             "schema_version": 1,
             "target_agents": ["codex", "claude"],
@@ -198,6 +199,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "model_profiles": profiles,
             "interactive_profile": "deep",
             "worker_kind": "claude",
+            "worker_profile": "standard",
             "claude": {},
             "codex": {"plugins": {"crit@mryfmo-personal-plugins": {"enabled": True}}},
             "mcp_servers": {},
@@ -234,6 +236,23 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "worker_profile must name a defined model profile: 'banana'",
             stderr.getvalue(),
         )
+
+    def test_agent_manifest_requires_fable_advisor_on_the_worker_profile(self) -> None:
+        for advisor in (None, "opus"):
+            with self.subTest(advisor=advisor):
+                manifest = self.write_valid_agent_manifest()
+                claude = manifest["model_profiles"]["standard"]["claude"]
+                if advisor is None:
+                    del claude["advisor"]
+                else:
+                    claude["advisor"] = advisor
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_agent_manifest()
+                self.assertIn(
+                    "worker profile 'standard' must set claude.advisor: fable",
+                    stderr.getvalue(),
+                )
 
     def test_agent_manifest_requires_readme_to_state_the_worker_kind(self) -> None:
         manifest = self.write_valid_agent_manifest()

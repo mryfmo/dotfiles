@@ -6,6 +6,7 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import json
 import os
 import shutil
 import subprocess
@@ -758,6 +759,37 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
         with self.assertRaises(SystemExit):
             self.module.interactive_profile(manifest)
+
+    def test_model_profiles_env_renders_claude_advisor_only_when_set(self) -> None:
+        manifest = sample_manifest()
+        manifest["model_profiles"]["standard"]["claude"]["advisor"] = "fable"
+
+        env = self.module.render_model_profiles_env(manifest)
+
+        self.assertIn(
+            'MODEL_PROFILE_STANDARD_CLAUDE_ARGS="--model sonnet --effort high --advisor fable"',
+            env,
+        )
+        self.assertIn('MODEL_PROFILE_EXPRESS_CLAUDE_ARGS="--model haiku --effort low"', env)
+        self.assertEqual(env.count("--advisor"), 1)
+
+    def test_model_profiles_reject_unsafe_advisor(self) -> None:
+        manifest = sample_manifest()
+        manifest["model_profiles"]["standard"]["claude"]["advisor"] = "fable; rm -rf"
+
+        with self.assertRaises(SystemExit):
+            self.module.model_profiles(manifest)
+
+    def test_claude_settings_render_interactive_advisor_only_when_set(self) -> None:
+        manifest = sample_manifest()
+        self.assertNotIn(
+            "advisorModel", json.loads(self.module.render_claude_settings(manifest))
+        )
+
+        manifest["model_profiles"]["standard"]["claude"]["advisor"] = "fable"
+        settings = json.loads(self.module.render_claude_settings(manifest))
+
+        self.assertEqual(settings["advisorModel"], "fable")
 
     def test_model_profiles_reject_incomplete_or_unsafe_entries(self) -> None:
         missing_agent = sample_manifest()

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "enabledManagers": ["github-actions", "mise", "custom.regex"],
+  "schedule": ["* 0-3 * * 1"],
+  "labels": ["dependencies"],
+  "dependencyDashboard": true,
+  "mise": {
+    "managerFilePatterns": ["/(^|/)home/dot_mise/config\\.toml$/"]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "GitHub-release asset pins in the agent manifest.",
+      "managerFilePatterns": ["/^home/dot_agents/agent-config\\.yaml$/"],
+      "matchStrings": [
+        "source: github-release\\n\\s+upstream: (?<depName>[^\\s]+)\\n\\s+pin: (?<currentValue>[^\\s]+)"
+      ],
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "description": "crates.io asset pins in the agent manifest.",
+      "managerFilePatterns": ["/^home/dot_agents/agent-config\\.yaml$/"],
+      "matchStrings": [
+        "source: crates\\n\\s+upstream: (?<depName>[^\\s]+)\\n\\s+pin: (?<currentValue>[^\\s]+)"
+      ],
+      "datasourceTemplate": "crate"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Group minor and patch updates for actions and mise tools.",
+      "matchManagers": ["github-actions", "mise"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "minor and patch updates"
+    },
+    {
+      "description": "Notification-only: agent-config.yaml pins pair with sha256/trusted_hash fields that only scripts/upgrade-tools.sh (generate-agent-configs.py --set-asset) recomputes. A bare pin bump would break the asset's verify: check, so these updates wait for dashboard approval and are applied via make upgrade instead.",
+      "matchManagers": ["custom.regex"],
+      "matchFileNames": ["home/dot_agents/agent-config.yaml"],
+      "dependencyDashboardApproval": true
+    }
+  ]
+}

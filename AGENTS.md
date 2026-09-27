@@ -1,5 +1,11 @@
 # AGENTS.md
 
+## Canonical Instructions
+
+- This `AGENTS.md` is the canonical agent instruction file for every runtime (Codex, Claude Code, and others).
+- `CLAUDE.md` is a Claude-only shim: it must contain nothing but the `@AGENTS.md` import and the CompactionDB-managed block.
+- Add new repository rules here, never to `CLAUDE.md`.
+
 ## Repository Context
 
 - This repository is managed with [`chezmoi`](https://www.chezmoi.io/) ([GitHub](https://github.com/twpayne/chezmoi)).

@@ -203,7 +203,10 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "mcp_servers": {},
         }
         self.module.load_yaml = lambda _path: manifest
-        self.write_text_file("README.md", "worker kind (currently `claude`; codex)\n")
+        self.write_text_file(
+            "README.md",
+            "worker kind (currently `claude`; codex)\nherdr-agents --restart-worker\n",
+        )
         return manifest
 
     def test_agent_manifest_accepts_exact_security_profile_set(self) -> None:
@@ -239,6 +242,16 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
             self.module.validate_agent_manifest()
         self.assertIn("(currently `codex`;", stderr.getvalue())
+
+    def test_agent_manifest_requires_readme_to_document_restart_worker(self) -> None:
+        self.write_valid_agent_manifest()
+        self.write_text_file("README.md", "worker kind (currently `claude`; codex)\n")
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_agent_manifest()
+        self.assertIn(
+            "README.md must document herdr-agents --restart-worker", stderr.getvalue()
+        )
 
     def asset_manifest(self) -> dict:
         return {

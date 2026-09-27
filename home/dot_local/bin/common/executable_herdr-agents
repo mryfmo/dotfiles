@@ -3,9 +3,13 @@
 # @file herdr-agents
 # @brief Build or attach Claude Code and Codex panes in Herdr.
 # @description
-#   Full mode creates or repairs an agents workspace. Attach mode adds Codex
-#   beside Claude in the current Herdr pane without restarting Claude.
+#   Full mode creates or repairs an agents workspace and never creates a
+#   second workspace for a directory that already has a managed pair. Attach
+#   mode adds the worker beside Claude in the current Herdr pane without
+#   restarting Claude. Restart-worker mode relaunches the worker agent in its
+#   existing pane so new worker launch arguments take effect.
 # @option --attach Attach the current Claude pane to its Herdr workspace layout.
+# @option --restart-worker Relaunch the worker agent in the existing pair's worker pane.
 # @option --bootstrap-agmsg Configure repo-scoped agmsg hooks without changing Herdr panes.
 # @arg DIR Optional directory for the Herdr workspace. Defaults to the current directory.
 # @arg HERDR_AGENTS_WORKER_KIND Worker agent kind, `codex` or `claude`. Defaults
@@ -29,6 +33,8 @@
 # @example
 #   herdr-agents --attach
 # @example
+#   herdr-agents --restart-worker ~/Workspace/dotfiles
+# @example
 #   herdr-agents --bootstrap-agmsg ~/Workspace/dotfiles
 
 set -euo pipefail
@@ -38,6 +44,7 @@ function usage() {
     cat << 'USAGE'
 Usage: herdr-agents [DIR]
        herdr-agents --attach
+       herdr-agents --restart-worker [DIR]
        herdr-agents --bootstrap-agmsg [DIR]
 
 Create a Herdr workspace for DIR with equal-width Claude Code and worker
@@ -47,7 +54,12 @@ HERDR_AGENTS_WORKER_KIND=claude) are required. DIR defaults to the current
 directory. HERDR_AGENTS_WORKER_KIND selects the worker pane's agent kind
 (codex or claude); it defaults to worker_kind from ~/.agents/model-profiles.env,
 then codex.
+Full mode heals an existing managed workspace for DIR instead of creating a
+second one, and exits 2 when more than one managed workspace exists.
 Attach mode uses the current Herdr pane for Claude.
+Restart-worker mode exits the worker agent in the existing pair's worker pane
+and starts it again in the same pane with the current worker_kind and
+worker_profile launch arguments; it never creates panes or workspaces.
 Bootstrap mode only configures missing repo-scoped agmsg hooks.
 USAGE
 }
@@ -302,35 +314,57 @@ function start_worker_agent() {
     printf '%s\n' "${pane_id}"
 }
 
-# @description Find an existing agents workspace for a workdir.
-# @arg $1 label Expected Herdr workspace label.
+# @description Print every herdr-agents-managed workspace id for a workdir.
+#   A workspace is managed when it carries the full-mode label and has a pane
+#   in workdir, or when any pane in workdir is labeled claude-orchestrator
+#   (attach mode keeps the workspace's own label).
+# @arg $1 label Full-mode Herdr workspace label.
 # @arg $2 workdir Absolute workdir path.
-function find_existing_workspace() {
+function find_managed_workspaces() {
     local label="$1"
     local workdir="$2"
     local workspace_list_json
     local workspace_id
+    local workspace_label
     local panes_json
 
     workspace_list_json="$(herdr workspace list)"
-    while IFS= read -r workspace_id; do
+    while IFS=$'\t' read -r workspace_id workspace_label; do
         [[ -n ${workspace_id} ]] || continue
         if ! panes_json="$(herdr pane list --workspace "${workspace_id}")"; then
             continue
         fi
-        if printf '%s\n' "${panes_json}" | jq -e --arg cwd "${workdir}" '.result.panes[]? | select(.cwd == $cwd)' > /dev/null; then
+        if printf '%s\n' "${panes_json}" | jq -e --arg cwd "${workdir}" --arg label "${label}" --arg workspace_label "${workspace_label}" \
+            '.result.panes[]? | select(.cwd == $cwd and ($workspace_label == $label or .label == "claude-orchestrator"))' > /dev/null; then
             printf '%s\n' "${workspace_id}"
-            return 0
         fi
-    done < <(printf '%s\n' "${workspace_list_json}" | jq -r --arg label "${label}" '.result.workspaces[]? | select(.label == $label) | .workspace_id // empty')
+    done < <(printf '%s\n' "${workspace_list_json}" | jq -r '.result.workspaces[]? | select(.workspace_id) | [.workspace_id, (.label // "")] | @tsv')
 }
 
-# @description Return success when a Claude pane is present.
+# @description Print the single managed workspace id for a workdir.
+# @arg $1 label Full-mode Herdr workspace label.
+# @arg $2 workdir Absolute workdir path.
+# @exitcode 2 If more than one managed workspace exists for workdir.
+function single_managed_workspace() {
+    local workspace_ids
+
+    workspace_ids="$(find_managed_workspaces "$1" "$2")"
+    if [[ ${workspace_ids} == *$'\n'* ]]; then
+        printf 'herdr-agents: multiple managed Herdr workspaces for %q (%s); an orchestrator/worker pair lives in one workspace. Close the stray one: herdr agent prompt <pane> "/exit" for each of its agents, then herdr workspace close <id>.\n' \
+            "$2" "$(tr '\n' ' ' <<< "${workspace_ids}" | sed 's/ $//')" >&2
+        exit 2
+    fi
+    printf '%s\n' "${workspace_ids}"
+}
+
+# @description Return success when a Claude orchestrator pane is present.
 # @arg $1 json Herdr pane list JSON.
+# @arg $2 pane_id Worker pane id to exclude, so a claude worker does not count.
 function has_claude_pane() {
     local panes_json="$1"
+    local worker_pane_id="${2:-}"
 
-    printf '%s\n' "${panes_json}" | jq -e '.result.panes[]? | select(.agent == "claude")' > /dev/null
+    printf '%s\n' "${panes_json}" | jq -e --arg worker "${worker_pane_id}" '.result.panes[]? | select(.agent == "claude" and .pane_id != $worker)' > /dev/null
 }
 
 # @description Return the worker pane id when the registered agent points to a live pane.
@@ -349,6 +383,40 @@ function live_worker_pane_id() {
     [[ -n ${pane_id} ]] || return 1
     printf '%s\n' "${panes_json}" | jq -e --arg pane_id "${pane_id}" '.result.panes[]? | select(.pane_id == $pane_id)' > /dev/null || return 1
     printf '%s\n' "${pane_id}"
+}
+
+# @description Return the single pane labeled as the worker for a kind.
+# @arg $1 string Worker kind.
+# @arg $2 json Herdr pane list JSON.
+function labeled_worker_pane_id() {
+    printf '%s\n' "$2" | jq -er --arg label "$1-worker" \
+        '[.result.panes[]? | select(.label == $label) | .pane_id] | if length == 1 then .[0] else empty end' 2> /dev/null
+}
+
+# @description Return success when a pane has an attached agent.
+# @arg $1 json Herdr pane list JSON.
+# @arg $2 pane_id Pane to inspect.
+function pane_has_agent() {
+    printf '%s\n' "$1" | jq -e --arg pane_id "$2" '.result.panes[]? | select(.pane_id == $pane_id and (.agent? // "") != "")' > /dev/null
+}
+
+# @description Exit any agent in the worker pane, then start the worker there.
+#   start_worker_agent waits (bounded) for the shell prompt, so the new worker
+#   starts only after the old agent has exited.
+# @arg $1 string Worker kind.
+# @arg $2 string Herdr worker agent registration name.
+# @arg $3 pane_id Worker pane id.
+# @arg $4 json Herdr pane list JSON.
+function restart_worker_in_pane() {
+    local kind="$1"
+    local agent_name="$2"
+    local pane_id="$3"
+    local panes_json="$4"
+
+    if pane_has_agent "${panes_json}" "${pane_id}"; then
+        herdr agent prompt "${pane_id}" "/exit" > /dev/null
+    fi
+    start_worker_agent "${kind}" "${agent_name}" "${pane_id}" true > /dev/null
 }
 
 # @description Return pane-list JSON filtered to the tab containing a pane.
@@ -670,6 +738,7 @@ fi
 
 attach_mode=false
 bootstrap_mode=false
+restart_mode=false
 if [[ ${1:-} == "--attach" ]]; then
     attach_mode=true
     shift
@@ -679,6 +748,9 @@ if [[ ${1:-} == "--attach" ]]; then
     [[ ${HERDR_AGENTS_LAYOUT:-} == managed ]] && exit 0
 elif [[ ${1:-} == "--bootstrap-agmsg" ]]; then
     bootstrap_mode=true
+    shift
+elif [[ ${1:-} == "--restart-worker" ]]; then
+    restart_mode=true
     shift
 fi
 
@@ -708,7 +780,7 @@ esac
 require_command herdr
 require_command jq
 require_command "${worker_kind}"
-if [[ ${attach_mode} == false ]]; then
+if [[ ${attach_mode} == false && ${restart_mode} == false ]]; then
     require_command claude
 fi
 # Heal PATH shadowing left behind by the agent CLIs' own `npm install -g`
@@ -732,6 +804,8 @@ if [[ ${attach_mode} == true ]]; then
     worker_agent_name="$(agent_name_for_workspace "${worker_kind}-worker" "${workspace_id}")"
     panes_json="$(herdr pane list --workspace "${workspace_id}")"
     workspace_worker_pane_id="$(live_worker_pane_id "${worker_agent_name}" "${panes_json}")" || workspace_worker_pane_id=""
+    # A claude worker's own SessionStart hook must not relabel its pane as the orchestrator.
+    [[ ${workspace_worker_pane_id} == "${claude_pane_id}" ]] && exit 0
     if ! panes_json="$(panes_on_pane_tab "${panes_json}" "${claude_pane_id}")"; then
         printf 'Unable to identify the current Herdr tab; refusing attach repair.\n' >&2
         exit 0
@@ -767,7 +841,37 @@ if [[ ${attach_mode} == true ]]; then
 fi
 
 workspace_label="$(basename "${workdir}") agents"
-existing_workspace_id="$(find_existing_workspace "${workspace_label}" "${workdir}")"
+existing_workspace_id="$(single_managed_workspace "${workspace_label}" "${workdir}")"
+
+if [[ ${restart_mode} == true ]]; then
+    if [[ -z ${existing_workspace_id} ]]; then
+        printf 'herdr-agents: no managed Herdr workspace for %q; run herdr-agents %q (full mode) to create one.\n' "${workdir}" "${workdir}" >&2
+        exit 2
+    fi
+    workspace_id="${existing_workspace_id}"
+    worker_agent_name="$(agent_name_for_workspace "${worker_kind}-worker" "${workspace_id}")"
+    panes_json="$(herdr pane list --workspace "${workspace_id}")"
+    worker_pane_id="$(live_worker_pane_id "${worker_agent_name}" "${panes_json}")" ||
+        worker_pane_id="$(labeled_worker_pane_id "${worker_kind}" "${panes_json}")" ||
+        worker_pane_id="$(empty_pane_id "${panes_json}")"
+    if [[ -z ${worker_pane_id} ]]; then
+        printf 'herdr-agents: no %s worker pane in Herdr workspace %s; run herdr-agents %q (full mode) to heal it.\n' "${worker_kind}" "${workspace_id}" "${workdir}" >&2
+        exit 2
+    fi
+    if ! panes_json="$(panes_on_pane_tab "${panes_json}" "${worker_pane_id}")"; then
+        printf 'herdr-agents: unable to identify the worker pane tab in Herdr workspace %s; refusing restart.\n' "${workspace_id}" >&2
+        exit 2
+    fi
+    claude_pane_id="$(printf '%s\n' "${panes_json}" | jq -r --arg worker "${worker_pane_id}" \
+        '.result.panes[]? | select(.label == "claude-orchestrator" and .pane_id != $worker) | .pane_id // empty')"
+    if [[ -z ${claude_pane_id} ]] || ! attach_panes_are_unambiguous "${panes_json}" "${claude_pane_id}" "${worker_pane_id}"; then
+        printf 'herdr-agents: Herdr workspace %s panes are ambiguous or include unmanaged panes; refusing restart.\n' "${workspace_id}" >&2
+        exit 2
+    fi
+    restart_worker_in_pane "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" "${panes_json}"
+    printf 'Herdr agents worker restarted in pane %s\n' "${worker_pane_id}"
+    exit 0
+fi
 
 if [[ -n ${existing_workspace_id} ]]; then
     workspace_id="${existing_workspace_id}"
@@ -775,6 +879,13 @@ if [[ -n ${existing_workspace_id} ]]; then
     panes_json="$(herdr pane list --workspace "${workspace_id}")"
     worker_pane_id="$(live_worker_pane_id "${worker_agent_name}" "${panes_json}")" || worker_pane_id=""
 
+    if [[ -z ${worker_pane_id} ]] && worker_pane_id="$(labeled_worker_pane_id "${worker_kind}" "${panes_json}")"; then
+        # Reuse the labeled worker pane; an exited worker leaves it agentless.
+        if ! pane_has_agent "${panes_json}" "${worker_pane_id}"; then
+            restart_worker_in_pane "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" "${panes_json}"
+            panes_json="$(herdr pane list --workspace "${workspace_id}")"
+        fi
+    fi
     if [[ -z ${worker_pane_id} ]]; then
         worker_pane_id="$(empty_pane_id "${panes_json}")"
         worker_pane_is_new=false
@@ -791,7 +902,7 @@ if [[ -n ${existing_workspace_id} ]]; then
         panes_json="$(herdr pane list --workspace "${workspace_id}")"
     fi
 
-    if ! has_claude_pane "${panes_json}"; then
+    if ! has_claude_pane "${panes_json}" "${worker_pane_id}"; then
         claude_pane_id="$(empty_pane_id "${panes_json}" "${worker_pane_id}")"
         claude_pane_is_new=false
         if [[ -z ${claude_pane_id} ]]; then
@@ -804,8 +915,8 @@ if [[ -n ${existing_workspace_id} ]]; then
 
     panes_json="$(herdr pane list --workspace "${workspace_id}")"
     if panes_json="$(panes_on_pane_tab "${panes_json}" "${worker_pane_id}")"; then
-        claude_pane_id="$(printf '%s\n' "${panes_json}" | jq -r \
-            '.result.panes[]? | select(.agent == "claude" or .label == "claude-orchestrator") | .pane_id // empty')"
+        claude_pane_id="$(printf '%s\n' "${panes_json}" | jq -r --arg worker "${worker_pane_id}" \
+            '.result.panes[]? | select((.agent == "claude" or .label == "claude-orchestrator") and .pane_id != $worker) | .pane_id // empty')"
         repair_attach_pane_order "${panes_json}" "${claude_pane_id}" "${worker_pane_id}"
         repair_attach_pane_ratio "${panes_json}" "${claude_pane_id}" "${worker_pane_id}"
     else

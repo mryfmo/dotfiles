@@ -340,6 +340,25 @@ the same project cwd and use the shared agmsg scripts/state for cross-agent
 messaging; the worker is a resident interactive session, kept warm so
 delegation avoids per-task cold starts and survives Herdr session restores.
 
+An orchestrator/worker pair always lives in one Herdr workspace. A workspace
+counts as managed for DIR when it carries the full-mode `<dir> agents` label
+or has a `claude-orchestrator` pane in DIR (attach mode keeps the workspace's
+own label). Full mode never creates a second workspace for such a DIR: it
+heals the existing one, restarting an exited worker inside its agentless
+labeled `<worker_kind>-worker` pane, and exits 2 when more than one managed
+workspace already exists. Do not run full mode from inside the pair to
+relaunch the worker. Use `herdr-agents --restart-worker [DIR]` instead, for
+example after a `worker_profile` or `worker_kind` change, so the new launch
+arguments from `~/.agents/model-profiles.env` take effect. It sends `/exit`
+to the running worker agent with `herdr agent prompt <pane> "/exit"`, waits
+for the shell prompt, and starts the worker again in the same pane. It never
+creates panes or workspaces, and exits 2 when DIR has no managed workspace or
+when the pair's tab is ambiguous or contains unmanaged panes. Attach mode run
+by a claude worker's own `SessionStart` hook leaves its pane alone, so the
+worker pane is never relabeled as the orchestrator. To tear down a stray
+duplicate workspace, `/exit` each of its agents with
+`herdr agent prompt <pane> "/exit"`, then run `herdr workspace close <id>`.
+
 Per-task agent switching happens at the profile layer, never in the layout:
 the worker profile comes from `HERDR_AGENTS_WORKER_PROFILE` (the deprecated
 `HERDR_AGENTS_CODEX_PROFILE` alias still works), otherwise from the manifest

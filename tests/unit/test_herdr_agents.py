@@ -317,16 +317,26 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         )
 
     def write_workspace_state(
-        self, workspace_id: str, panes: str, *, agent_pane_id: str = ""
+        self,
+        workspace_id: str,
+        panes: str,
+        *,
+        agent_pane_id: str = "",
+        label: str = "project agents",
+        extra_workspace_ids: tuple[str, ...] = (),
     ) -> None:
+        workspaces = [
+            {"label": label, "workspace_id": ws_id}
+            for ws_id in (workspace_id, *extra_workspace_ids)
+        ]
         self.workspace_list_path.write_text(
-            textwrap.dedent(
-                f"""\
-                {{"id":"cli:workspace:list","result":{{"type":"workspace_list","workspaces":[
-                    {{"active_tab_id":"{workspace_id}:t1","agent_status":"working","focused":false,"label":"project agents","number":1,"pane_count":2,"tab_count":1,"workspace_id":"{workspace_id}"}}
-                ]}}}}
-                """
+            json.dumps(
+                {
+                    "id": "cli:workspace:list",
+                    "result": {"type": "workspace_list", "workspaces": workspaces},
+                }
             )
+            + "\n"
         )
         pane_list = json.loads(
             f'{{"id":"cli:pane:list","result":{{"panes":[{panes}]}}}}'
@@ -396,7 +406,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         path.write_text(json.dumps(layout) + "\n")
 
     def run_helper(
-        self, *, extra_env: dict[str, str] | None = None
+        self, *mode: str, extra_env: dict[str, str] | None = None
     ) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env["HOME"] = str(self.home_dir)
@@ -410,7 +420,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         if extra_env:
             env.update(extra_env)
         return subprocess.run(
-            ["bash", str(SCRIPT), str(self.workdir)],
+            ["bash", str(SCRIPT), *mode, str(self.workdir)],
             cwd=ROOT,
             env=env,
             check=False,
@@ -1636,6 +1646,167 @@ fi
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
         self.assertFalse(any(call.startswith("npm uninstall") for call in calls))
+
+    def write_claude_pair_state(
+        self, worker_pane: str, *, label: str = "project"
+    ) -> None:
+        """Write an attach-labeled claude pair: orchestrator p1, worker p2."""
+        self.register_claude_worker_identity()
+        profiles = self.home_dir / ".agents/model-profiles.env"
+        profiles.parent.mkdir(parents=True, exist_ok=True)
+        profiles.write_text(
+            'HERDR_AGENTS_WORKER_KIND="claude"\n'
+            'HERDR_AGENTS_WORKER_PROFILE="standard"\n'
+            'MODEL_PROFILE_STANDARD_CLAUDE_ARGS="--model opus --effort high"\n'
+        )
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
+            + worker_pane,
+            agent_pane_id="w-old:p2" if '"agent":"claude"' in worker_pane else "",
+            label=label,
+        )
+
+    def test_restart_worker_relaunches_the_worker_in_its_existing_pane(self) -> None:
+        self.write_claude_pair_state(
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-worker","pane_id":"w-old:p2","workspace_id":"w-old"}}'
+        )
+
+        result = self.run_helper("--restart-worker")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        exit_call = calls.index("agent prompt w-old:p2 /exit")
+        start_call = calls.index(
+            "agent start claude-worker-w-old --kind claude --pane w-old:p2 "
+            "--timeout 30000 -- --model opus --effort high"
+        )
+        self.assertLess(exit_call, start_call)
+        self.assertFalse(
+            any(
+                call.startswith(("pane split", "workspace create", "agent prompt w-old:p1"))
+                for call in calls
+            ),
+            calls,
+        )
+        self.assertIn("Herdr agents worker restarted in pane w-old:p2", result.stdout)
+
+    def test_restart_worker_exits_2_without_a_managed_workspace(self) -> None:
+        self.register_claude_worker_identity()
+
+        result = self.run_helper(
+            "--restart-worker", extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"}
+        )
+
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn(
+            f"no managed Herdr workspace for {self.workdir.resolve()}; run "
+            f"herdr-agents {self.workdir.resolve()} (full mode) to create one.",
+            result.stderr,
+        )
+        calls = self.calls_path.read_text().splitlines()
+        self.assertFalse(
+            any(
+                call.startswith(("pane split", "workspace create", "agent "))
+                for call in calls
+            ),
+            calls,
+        )
+
+    def test_restart_worker_refuses_unmanaged_extra_panes(self) -> None:
+        self.write_claude_pair_state(
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-worker","pane_id":"w-old:p2","workspace_id":"w-old"}},'
+            f'{{"agent":null,"cwd":"{self.workdir}","label":"files","pane_id":"w-old:p9","workspace_id":"w-old"}}'
+        )
+
+        result = self.run_helper("--restart-worker")
+
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("ambiguous or include unmanaged panes; refusing restart", result.stderr)
+        self.assertFalse(
+            any(
+                call.startswith(("agent start", "agent prompt"))
+                for call in self.calls_path.read_text().splitlines()
+            )
+        )
+
+    def test_full_mode_reuses_agentless_worker_pane_in_attach_labeled_workspace(
+        self,
+    ) -> None:
+        self.write_claude_pair_state(
+            f'{{"agent":null,"cwd":"{self.workdir}","label":"claude-worker","pane_id":"w-old:p2","workspace_id":"w-old"}}'
+        )
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn(
+            "agent start claude-worker-w-old --kind claude --pane w-old:p2 "
+            "--timeout 30000 -- --model opus --effort high",
+            calls,
+        )
+        self.assertFalse(
+            any(
+                call.startswith(("workspace create", "pane split", "agent prompt"))
+                or call.startswith("agent start claude-orchestrator-")
+                for call in calls
+            ),
+            calls,
+        )
+        self.assertIn("workspace focus w-old", calls)
+
+    def test_full_and_restart_modes_refuse_duplicate_managed_workspaces(self) -> None:
+        self.write_claude_pair_state(
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-worker","pane_id":"w-old:p2","workspace_id":"w-old"}}'
+        )
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}}',
+            label="project",
+            extra_workspace_ids=("w-dup",),
+        )
+        for mode in ((), ("--restart-worker",)):
+            with self.subTest(mode=mode):
+                self.calls_path.write_text("")
+                result = self.run_helper(*mode)
+
+                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                self.assertIn(
+                    "multiple managed Herdr workspaces for "
+                    f"{self.workdir.resolve()} (w-old w-dup)",
+                    result.stderr,
+                )
+                calls = self.calls_path.read_text().splitlines()
+                self.assertFalse(
+                    any(
+                        call.startswith(("pane split", "workspace create", "agent "))
+                        for call in calls
+                    ),
+                    calls,
+                )
+
+    def test_attach_from_the_worker_pane_does_not_relabel_it(self) -> None:
+        self.register_claude_worker_identity()
+        self.write_workspace_state(
+            "w-attach",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-attach:p1","workspace_id":"w-attach"}},'
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-worker","pane_id":"w-attach:p2","workspace_id":"w-attach"}}',
+            agent_pane_id="w-attach:p2",
+        )
+
+        result = self.run_attach_helper(
+            in_herdr=True,
+            pane_id="w-attach:p2",
+            extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"},
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertFalse(
+            any(call.startswith(("pane rename", "pane split", "agent start")) for call in calls),
+            calls,
+        )
 
     def test_existing_two_pane_workspace_repairs_skewed_widths(self) -> None:
         self.write_workspace_state(

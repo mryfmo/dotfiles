@@ -3729,6 +3729,7 @@
 <li><code>start_claude_in_pane</code></li>
 <li><code>start_worker_agent</code></li>
 <li><code>usage</code></li>
+<li><code>wait_for_agent_name_release</code></li>
 <li><code>wait_for_agent_ready</code></li>
 <li><code>wait_for_shell_prompt</code></li>
 <li><code>worker_agmsg_type</code></li>
@@ -3928,7 +3929,38 @@
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="o">}</span>
 
+<span class="c1"># @description Wait for a stale herdr agent registration name to clear.</span>
+<span class="c1">#   A just-exited agent's registration can linger until herdr notices the</span>
+<span class="c1">#   process exit, making `herdr agent start` with the same name fail with</span>
+<span class="c1">#   agent_name_taken. herdr has no unregister command and reports the stale</span>
+<span class="c1">#   entry as idle, so poll `herdr agent list` until the name disappears.</span>
+<span class="c1">#   HERDR_AGENTS_NAME_RELEASE_POLLS (default 30) and</span>
+<span class="c1">#   HERDR_AGENTS_NAME_RELEASE_INTERVAL (default 1 second) bound the wait.</span>
+<span class="c1"># @arg $1 string Herdr agent registration name.</span>
+<span class="c1"># @stderr One line when the name cleared only after at least one poll.</span>
+<span class="c1"># @exitcode 1 If the name is still registered after the last poll.</span>
+<span class="k">function</span><span class="w"> </span>wait_for_agent_name_release<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">agent_name</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">polls</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HERDR_AGENTS_NAME_RELEASE_POLLS</span><span class="k">:-</span><span class="nv">30</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">interval</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HERDR_AGENTS_NAME_RELEASE_INTERVAL</span><span class="k">:-</span><span class="nv">1</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>poll
+
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="o">((</span><span class="nv">poll</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="p">;</span><span class="w"> </span>poll<span class="w"> </span>&lt;<span class="w"> </span>polls<span class="p">;</span><span class="w"> </span>poll++<span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>herdr<span class="w"> </span>agent<span class="w"> </span>list<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-e<span class="w"> </span>--arg<span class="w"> </span>name<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">            </span><span class="s1">'.result.agents | type == "array" and all(.[]; .name != $name)'</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="o">((</span>poll<span class="w"> </span>&gt;<span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">                </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Waited for herdr agent registration %s to clear.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">fi</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span>sleep<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">interval</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="o">}</span>
+
 <span class="c1"># @description Start a supported agent in a shell-ready pane.</span>
+<span class="c1">#   An agent_name_taken failure waits, with a bound, for the stale same-name</span>
+<span class="c1">#   registration to clear and then retries the start once.</span>
 <span class="c1"># @arg $1 string Agent kind.</span>
 <span class="c1"># @arg $2 string Herdr agent registration name.</span>
 <span class="c1"># @arg $3 pane_id Target pane id.</span>
@@ -3955,6 +3987,13 @@
 <span class="w">        </span><span class="k">return</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_output</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">    </span>*agent_name_taken*<span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>wait_for_agent_name_release<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">            </span><span class="nv">agent_output</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>herdr<span class="w"> </span>agent<span class="w"> </span>start<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--kind<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">kind</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--pane<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--timeout<span class="w"> </span><span class="m">30000</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="k">return</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="p">;;</span>
 <span class="w">    </span>*timeout*<span class="w"> </span><span class="p">|</span><span class="w"> </span>*Timeout*<span class="w"> </span><span class="p">|</span><span class="w"> </span>*timed<span class="se">\ </span>out*<span class="w"> </span><span class="p">|</span><span class="w"> </span>*TIMED_OUT*<span class="o">)</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">newly_created</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>wait_for_shell_prompt<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="nv">agent_output</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>herdr<span class="w"> </span>agent<span class="w"> </span>start<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--kind<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">kind</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--pane<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--timeout<span class="w"> </span><span class="m">30000</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>

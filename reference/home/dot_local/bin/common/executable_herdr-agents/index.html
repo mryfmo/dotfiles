@@ -3691,7 +3691,7 @@
 
 
 <h1 id="homedot_localbincommonexecutable_herdr-agents">home/dot_local/bin/common/executable_herdr-agents<a class="headerlink" href="#homedot_localbincommonexecutable_herdr-agents" title="Permanent link">&para;</a></h1>
-<p>Full mode creates or repairs an agents workspace. Attach mode adds Codex beside Claude in the current Herdr pane without restarting Claude.</p>
+<p>Full mode creates or repairs an agents workspace and never creates a second workspace for a directory that already has a managed pair. Attach mode adds the worker beside Claude in the current Herdr pane without restarting Claude. Restart-worker mode relaunches the worker agent in its existing pane so new worker launch arguments take effect.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_herdr-agents</code></li>
@@ -3706,12 +3706,14 @@
 <li><code>bootstrap_agmsg</code></li>
 <li><code>distinct_agmsg_identity_count</code></li>
 <li><code>empty_pane_id</code></li>
-<li><code>find_existing_workspace</code></li>
+<li><code>find_managed_workspaces</code></li>
 <li><code>has_claude_pane</code></li>
 <li><code>json_agent_pane_id</code></li>
 <li><code>json_root_pane_id</code></li>
 <li><code>json_workspace_id</code></li>
+<li><code>labeled_worker_pane_id</code></li>
 <li><code>live_worker_pane_id</code></li>
+<li><code>pane_has_agent</code></li>
 <li><code>panes_on_pane_tab</code></li>
 <li><code>remove_shadowing_node_global</code></li>
 <li><code>repair_attach_pane_order</code></li>
@@ -3720,6 +3722,8 @@
 <li><code>require_distinct_worker_identity</code></li>
 <li><code>resolve_worker_kind</code></li>
 <li><code>resolve_worker_profile</code></li>
+<li><code>restart_worker_in_pane</code></li>
+<li><code>single_managed_workspace</code></li>
 <li><code>split_agent_pane</code></li>
 <li><code>start_agent_in_pane</code></li>
 <li><code>start_claude_in_pane</code></li>
@@ -3735,9 +3739,13 @@
 <span class="c1"># @file herdr-agents</span>
 <span class="c1"># @brief Build or attach Claude Code and Codex panes in Herdr.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Full mode creates or repairs an agents workspace. Attach mode adds Codex</span>
-<span class="c1">#   beside Claude in the current Herdr pane without restarting Claude.</span>
+<span class="c1">#   Full mode creates or repairs an agents workspace and never creates a</span>
+<span class="c1">#   second workspace for a directory that already has a managed pair. Attach</span>
+<span class="c1">#   mode adds the worker beside Claude in the current Herdr pane without</span>
+<span class="c1">#   restarting Claude. Restart-worker mode relaunches the worker agent in its</span>
+<span class="c1">#   existing pane so new worker launch arguments take effect.</span>
 <span class="c1"># @option --attach Attach the current Claude pane to its Herdr workspace layout.</span>
+<span class="c1"># @option --restart-worker Relaunch the worker agent in the existing pair's worker pane.</span>
 <span class="c1"># @option --bootstrap-agmsg Configure repo-scoped agmsg hooks without changing Herdr panes.</span>
 <span class="c1"># @arg DIR Optional directory for the Herdr workspace. Defaults to the current directory.</span>
 <span class="c1"># @arg HERDR_AGENTS_WORKER_KIND Worker agent kind, `codex` or `claude`. Defaults</span>
@@ -3761,6 +3769,8 @@
 <span class="c1"># @example</span>
 <span class="c1">#   herdr-agents --attach</span>
 <span class="c1"># @example</span>
+<span class="c1">#   herdr-agents --restart-worker ~/Workspace/dotfiles</span>
+<span class="c1"># @example</span>
 <span class="c1">#   herdr-agents --bootstrap-agmsg ~/Workspace/dotfiles</span>
 
 <span class="nb">set</span><span class="w"> </span>-euo<span class="w"> </span>pipefail
@@ -3770,6 +3780,7 @@
 <span class="w">    </span>cat<span class="w"> </span><span class="s">&lt;&lt; 'USAGE'</span>
 <span class="s">Usage: herdr-agents [DIR]</span>
 <span class="s">       herdr-agents --attach</span>
+<span class="s">       herdr-agents --restart-worker [DIR]</span>
 <span class="s">       herdr-agents --bootstrap-agmsg [DIR]</span>
 
 <span class="s">Create a Herdr workspace for DIR with equal-width Claude Code and worker</span>
@@ -3779,7 +3790,12 @@
 <span class="s">directory. HERDR_AGENTS_WORKER_KIND selects the worker pane's agent kind</span>
 <span class="s">(codex or claude); it defaults to worker_kind from ~/.agents/model-profiles.env,</span>
 <span class="s">then codex.</span>
+<span class="s">Full mode heals an existing managed workspace for DIR instead of creating a</span>
+<span class="s">second one, and exits 2 when more than one managed workspace exists.</span>
 <span class="s">Attach mode uses the current Herdr pane for Claude.</span>
+<span class="s">Restart-worker mode exits the worker agent in the existing pair's worker pane</span>
+<span class="s">and starts it again in the same pane with the current worker_kind and</span>
+<span class="s">worker_profile launch arguments; it never creates panes or workspaces.</span>
 <span class="s">Bootstrap mode only configures missing repo-scoped agmsg hooks.</span>
 <span class="s">USAGE</span>
 <span class="o">}</span>
@@ -4034,35 +4050,57 @@
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
-<span class="c1"># @description Find an existing agents workspace for a workdir.</span>
-<span class="c1"># @arg $1 label Expected Herdr workspace label.</span>
+<span class="c1"># @description Print every herdr-agents-managed workspace id for a workdir.</span>
+<span class="c1">#   A workspace is managed when it carries the full-mode label and has a pane</span>
+<span class="c1">#   in workdir, or when any pane in workdir is labeled claude-orchestrator</span>
+<span class="c1">#   (attach mode keeps the workspace's own label).</span>
+<span class="c1"># @arg $1 label Full-mode Herdr workspace label.</span>
 <span class="c1"># @arg $2 workdir Absolute workdir path.</span>
-<span class="k">function</span><span class="w"> </span>find_existing_workspace<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="k">function</span><span class="w"> </span>find_managed_workspaces<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">label</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">workdir</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>workspace_list_json
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>workspace_id
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>workspace_label
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>panes_json
 
 <span class="w">    </span><span class="nv">workspace_list_json</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>herdr<span class="w"> </span>workspace<span class="w"> </span>list<span class="k">)</span><span class="s2">"</span>
-<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>workspace_id<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="s1">$'\t'</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>workspace_id<span class="w"> </span>workspace_label<span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">panes_json</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>herdr<span class="w"> </span>pane<span class="w"> </span>list<span class="w"> </span>--workspace<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="k">continue</span>
 <span class="w">        </span><span class="k">fi</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-e<span class="w"> </span>--arg<span class="w"> </span>cwd<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'.result.panes[]? | select(.cwd == $cwd)'</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-e<span class="w"> </span>--arg<span class="w"> </span>cwd<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--arg<span class="w"> </span>label<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--arg<span class="w"> </span>workspace_label<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">            </span><span class="s1">'.result.panes[]? | select(.cwd == $cwd and ($workspace_label == $label or .label == "claude-orchestrator"))'</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">        </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_list_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span>--arg<span class="w"> </span>label<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'.result.workspaces[]? | select(.label == $label) | .workspace_id // empty'</span><span class="o">)</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_list_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.result.workspaces[]? | select(.workspace_id) | [.workspace_id, (.label // "")] | @tsv'</span><span class="o">)</span>
 <span class="o">}</span>
 
-<span class="c1"># @description Return success when a Claude pane is present.</span>
+<span class="c1"># @description Print the single managed workspace id for a workdir.</span>
+<span class="c1"># @arg $1 label Full-mode Herdr workspace label.</span>
+<span class="c1"># @arg $2 workdir Absolute workdir path.</span>
+<span class="c1"># @exitcode 2 If more than one managed workspace exists for workdir.</span>
+<span class="k">function</span><span class="w"> </span>single_managed_workspace<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>workspace_ids
+
+<span class="w">    </span><span class="nv">workspace_ids</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>find_managed_workspaces<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">workspace_ids</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>*<span class="s1">$'\n'</span>*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: multiple managed Herdr workspaces for %q (%s); an orchestrator/worker pair lives in one workspace. Close the stray one: herdr agent prompt &lt;pane&gt; "/exit" for each of its agents, then herdr workspace close &lt;id&gt;.\n'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">            </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>tr<span class="w"> </span><span class="s1">'\n'</span><span class="w"> </span><span class="s1">' '</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_ids</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span><span class="s1">'s/ $//'</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_ids</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Return success when a Claude orchestrator pane is present.</span>
 <span class="c1"># @arg $1 json Herdr pane list JSON.</span>
+<span class="c1"># @arg $2 pane_id Worker pane id to exclude, so a claude worker does not count.</span>
 <span class="k">function</span><span class="w"> </span>has_claude_pane<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">panes_json</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">worker_pane_id</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">2</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span>
 
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-e<span class="w"> </span><span class="s1">'.result.panes[]? | select(.agent == "claude")'</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-e<span class="w"> </span>--arg<span class="w"> </span>worker<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'.result.panes[]? | select(.agent == "claude" and .pane_id != $worker)'</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null
 <span class="o">}</span>
 
 <span class="c1"># @description Return the worker pane id when the registered agent points to a live pane.</span>
@@ -4081,6 +4119,40 @@
 <span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-e<span class="w"> </span>--arg<span class="w"> </span>pane_id<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'.result.panes[]? | select(.pane_id == $pane_id)'</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Return the single pane labeled as the worker for a kind.</span>
+<span class="c1"># @arg $1 string Worker kind.</span>
+<span class="c1"># @arg $2 json Herdr pane list JSON.</span>
+<span class="k">function</span><span class="w"> </span>labeled_worker_pane_id<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-er<span class="w"> </span>--arg<span class="w"> </span>label<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">-worker"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s1">'[.result.panes[]? | select(.label == $label) | .pane_id] | if length == 1 then .[0] else empty end'</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null
+<span class="o">}</span>
+
+<span class="c1"># @description Return success when a pane has an attached agent.</span>
+<span class="c1"># @arg $1 json Herdr pane list JSON.</span>
+<span class="c1"># @arg $2 pane_id Pane to inspect.</span>
+<span class="k">function</span><span class="w"> </span>pane_has_agent<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-e<span class="w"> </span>--arg<span class="w"> </span>pane_id<span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="w"> </span><span class="s1">'.result.panes[]? | select(.pane_id == $pane_id and (.agent? // "") != "")'</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null
+<span class="o">}</span>
+
+<span class="c1"># @description Exit any agent in the worker pane, then start the worker there.</span>
+<span class="c1">#   start_worker_agent waits (bounded) for the shell prompt, so the new worker</span>
+<span class="c1">#   starts only after the old agent has exited.</span>
+<span class="c1"># @arg $1 string Worker kind.</span>
+<span class="c1"># @arg $2 string Herdr worker agent registration name.</span>
+<span class="c1"># @arg $3 pane_id Worker pane id.</span>
+<span class="c1"># @arg $4 json Herdr pane list JSON.</span>
+<span class="k">function</span><span class="w"> </span>restart_worker_in_pane<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">kind</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">agent_name</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">pane_id</span><span class="o">=</span><span class="s2">"</span><span class="nv">$3</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">panes_json</span><span class="o">=</span><span class="s2">"</span><span class="nv">$4</span><span class="s2">"</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>pane_has_agent<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>herdr<span class="w"> </span>agent<span class="w"> </span>prompt<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"/exit"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>start_worker_agent<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">kind</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null
 <span class="o">}</span>
 
 <span class="c1"># @description Return pane-list JSON filtered to the tab containing a pane.</span>
@@ -4402,6 +4474,7 @@
 
 <span class="nv">attach_mode</span><span class="o">=</span><span class="nb">false</span>
 <span class="nv">bootstrap_mode</span><span class="o">=</span><span class="nb">false</span>
+<span class="nv">restart_mode</span><span class="o">=</span><span class="nb">false</span>
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"--attach"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nv">attach_mode</span><span class="o">=</span><span class="nb">true</span>
 <span class="w">    </span><span class="nb">shift</span>
@@ -4411,6 +4484,9 @@
 <span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">HERDR_AGENTS_LAYOUT</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>managed<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"--bootstrap-agmsg"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nv">bootstrap_mode</span><span class="o">=</span><span class="nb">true</span>
+<span class="w">    </span><span class="nb">shift</span>
+<span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"--restart-worker"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nv">restart_mode</span><span class="o">=</span><span class="nb">true</span>
 <span class="w">    </span><span class="nb">shift</span>
 <span class="k">fi</span>
 
@@ -4440,7 +4516,7 @@ codex<span class="w"> </span><span class="p">|</span><span class="w"> </span>cla
 require_command<span class="w"> </span>herdr
 require_command<span class="w"> </span>jq
 require_command<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_kind</span><span class="si">}</span><span class="s2">"</span>
-<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">attach_mode</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">attach_mode</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">restart_mode</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>require_command<span class="w"> </span>claude
 <span class="k">fi</span>
 <span class="c1"># Heal PATH shadowing left behind by the agent CLIs' own `npm install -g`</span>
@@ -4464,6 +4540,8 @@ require_distinct_worker_identity<span class="w"> </span><span class="s2">"</span
 <span class="w">    </span><span class="nv">worker_agent_name</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>agent_name_for_workspace<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_kind</span><span class="si">}</span><span class="s2">-worker"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 <span class="w">    </span><span class="nv">panes_json</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>herdr<span class="w"> </span>pane<span class="w"> </span>list<span class="w"> </span>--workspace<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 <span class="w">    </span><span class="nv">workspace_worker_pane_id</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>live_worker_pane_id<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_agent_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">workspace_worker_pane_id</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">    </span><span class="c1"># A claude worker's own SessionStart hook must not relabel its pane as the orchestrator.</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">workspace_worker_pane_id</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">panes_json</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>panes_on_pane_tab<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Unable to identify the current Herdr tab; refusing attach repair.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
@@ -4499,7 +4577,37 @@ require_distinct_worker_identity<span class="w"> </span><span class="s2">"</span
 <span class="k">fi</span>
 
 <span class="nv">workspace_label</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>basename<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2"> agents"</span>
-<span class="nv">existing_workspace_id</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>find_existing_workspace<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="nv">existing_workspace_id</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>single_managed_workspace<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">restart_mode</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">existing_workspace_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: no managed Herdr workspace for %q; run herdr-agents %q (full mode) to create one.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">workspace_id</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">existing_workspace_id</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">worker_agent_name</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>agent_name_for_workspace<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_kind</span><span class="si">}</span><span class="s2">-worker"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">panes_json</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>herdr<span class="w"> </span>pane<span class="w"> </span>list<span class="w"> </span>--workspace<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">worker_pane_id</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>live_worker_pane_id<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_agent_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span>
+<span class="w">        </span><span class="nv">worker_pane_id</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>labeled_worker_pane_id<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_kind</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span>
+<span class="w">        </span><span class="nv">worker_pane_id</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>empty_pane_id<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: no %s worker pane in Herdr workspace %s; run herdr-agents %q (full mode) to heal it.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_kind</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">panes_json</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>panes_on_pane_tab<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: unable to identify the worker pane tab in Herdr workspace %s; refusing restart.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">claude_pane_id</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span>--arg<span class="w"> </span>worker<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s1">'.result.panes[]? | select(.label == "claude-orchestrator" and .pane_id != $worker) | .pane_id // empty'</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>!<span class="w"> </span>attach_panes_are_unambiguous<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: Herdr workspace %s panes are ambiguous or include unmanaged panes; refusing restart.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>restart_worker_in_pane<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_kind</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_agent_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Herdr agents worker restarted in pane %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="k">fi</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">existing_workspace_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nv">workspace_id</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">existing_workspace_id</span><span class="si">}</span><span class="s2">"</span>
@@ -4507,6 +4615,13 @@ require_distinct_worker_identity<span class="w"> </span><span class="s2">"</span
 <span class="w">    </span><span class="nv">panes_json</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>herdr<span class="w"> </span>pane<span class="w"> </span>list<span class="w"> </span>--workspace<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 <span class="w">    </span><span class="nv">worker_pane_id</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>live_worker_pane_id<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_agent_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">worker_pane_id</span><span class="o">=</span><span class="s2">""</span>
 
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">worker_pane_id</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>labeled_worker_pane_id<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_kind</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="c1"># Reuse the labeled worker pane; an exited worker leaves it agentless.</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>pane_has_agent<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span>restart_worker_in_pane<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_kind</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_agent_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="nv">panes_json</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>herdr<span class="w"> </span>pane<span class="w"> </span>list<span class="w"> </span>--workspace<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nv">worker_pane_id</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>empty_pane_id<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 <span class="w">        </span><span class="nv">worker_pane_is_new</span><span class="o">=</span><span class="nb">false</span>
@@ -4523,7 +4638,7 @@ require_distinct_worker_identity<span class="w"> </span><span class="s2">"</span
 <span class="w">        </span><span class="nv">panes_json</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>herdr<span class="w"> </span>pane<span class="w"> </span>list<span class="w"> </span>--workspace<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">fi</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_claude_pane<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_claude_pane<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nv">claude_pane_id</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>empty_pane_id<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 <span class="w">        </span><span class="nv">claude_pane_is_new</span><span class="o">=</span><span class="nb">false</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
@@ -4536,8 +4651,8 @@ require_distinct_worker_identity<span class="w"> </span><span class="s2">"</span
 
 <span class="w">    </span><span class="nv">panes_json</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>herdr<span class="w"> </span>pane<span class="w"> </span>list<span class="w"> </span>--workspace<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">panes_json</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>panes_on_pane_tab<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nv">claude_pane_id</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="se">\</span>
-<span class="w">            </span><span class="s1">'.result.panes[]? | select(.agent == "claude" or .label == "claude-orchestrator") | .pane_id // empty'</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">claude_pane_id</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span>--arg<span class="w"> </span>worker<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">            </span><span class="s1">'.result.panes[]? | select((.agent == "claude" or .label == "claude-orchestrator") and .pane_id != $worker) | .pane_id // empty'</span><span class="k">)</span><span class="s2">"</span>
 <span class="w">        </span>repair_attach_pane_order<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span>repair_attach_pane_ratio<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">else</span>

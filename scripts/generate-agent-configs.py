@@ -100,6 +100,7 @@ PROFILE_AGENT_KEYS = {
     "codex": ("model", "model_reasoning_effort"),
 }
 PROFILE_OPTIONAL_KEYS = {"claude": ("advisor",)}
+CODEX_SANDBOX_MODES = ("read-only", "workspace-write", "danger-full-access")
 RUNTIME_PREFIXES = (
     "hooks.state",
     "marketplaces",
@@ -131,6 +132,12 @@ def model_profiles(manifest: dict[str, Any]) -> dict[str, Any]:
                     fail(
                         f"model profile {name}.{agent}.{key} must be a launcher-safe string"
                     )
+        sandbox_mode = profile["codex"].get("sandbox_mode")
+        if sandbox_mode is not None and sandbox_mode not in CODEX_SANDBOX_MODES:
+            fail(
+                f"model profile {name}.codex.sandbox_mode must be one of "
+                f"{', '.join(CODEX_SANDBOX_MODES)}: {sandbox_mode!r}"
+            )
     return profiles
 
 
@@ -571,6 +578,9 @@ def render_codex_profile(name: str, profile: dict[str, Any]) -> str:
         f"model = {quote_toml(codex['model'])}",
         f"model_reasoning_effort = {quote_toml(codex['model_reasoning_effort'])}",
     ]
+    # Overrides the global sandbox_mode; profiles without it inherit the base config.
+    if sandbox_mode := codex.get("sandbox_mode"):
+        lines.append(f"sandbox_mode = {quote_toml(sandbox_mode)}")
     if notify := codex.get("notify"):
         lines.append(f"notify = {quote_toml(notify)}")
     lines.extend([

@@ -188,9 +188,12 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 "claude": {"model": "claude-model", "effort": "high"},
                 "codex": {"model": "codex-model", "model_reasoning_effort": "high"},
             }
-            for name in ("express", "standard", "review", "deep", "security")
+            for name in ("express", "standard", "review", "deep", "security", "audit")
         }
         profiles["security"]["codex"]["model"] = "gpt-daybreak-blue-latest"
+        profiles["audit"]["codex"].update(
+            model="gpt-6-astra", sandbox_mode="read-only"
+        )
         profiles["standard"]["claude"]["advisor"] = "fable"
         manifest = {
             "schema_version": 1,
@@ -389,6 +392,36 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_agent_manifest()
+
+    def test_agent_manifest_rejects_missing_audit_profile(self) -> None:
+        manifest = self.write_valid_agent_manifest()
+        del manifest["model_profiles"]["audit"]
+
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_agent_manifest()
+        self.assertIn("must define the six base profiles", stderr.getvalue())
+
+    def test_agent_manifest_pins_the_audit_codex_profile(self) -> None:
+        for key, wrong in (
+            ("model", "gpt-5.6-sol"),
+            ("model_reasoning_effort", "medium"),
+            ("sandbox_mode", "workspace-write"),
+            ("sandbox_mode", None),
+        ):
+            with self.subTest(key=key, value=wrong):
+                manifest = self.write_valid_agent_manifest()
+                codex = manifest["model_profiles"]["audit"]["codex"]
+                if wrong is None:
+                    del codex[key]
+                else:
+                    codex[key] = wrong
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_agent_manifest()
+                self.assertIn(
+                    f"audit profile must set codex.{key}:", stderr.getvalue()
+                )
 
     def test_hook_composition_accepts_managed_source_fixture(self) -> None:
         self.copy_managed_hook_sources()

@@ -624,17 +624,29 @@ def validate_agent_manifest() -> dict[str, Any]:
         fail(f"{manifest_path} must enable the Crit Codex plugin")
     claude = manifest.get("claude", {})
     profiles = manifest.get("model_profiles", {})
-    required_profiles = {"express", "standard", "review", "deep", "security"}
+    required_profiles = {"express", "standard", "review", "deep", "security", "audit"}
     if not required_profiles <= set(profiles) or set(profiles) - required_profiles - {
         "adh"
     }:
         fail(
-            f"{manifest_path} must define the five base profiles and only the optional adh profile"
+            f"{manifest_path} must define the six base profiles and only the optional adh profile"
         )
     if profiles["security"].get("codex", {}).get("model") != "gpt-daybreak-blue-latest":
         fail(
             f"{manifest_path} security Codex profile must use gpt-daybreak-blue-latest"
         )
+    # Operator pin (2026-09-27): the auditor is codex gpt-6-astra high, read-only.
+    audit_codex = profiles["audit"].get("codex", {})
+    for key, expected in (
+        ("model", "gpt-6-astra"),
+        ("model_reasoning_effort", "high"),
+        ("sandbox_mode", "read-only"),
+    ):
+        if audit_codex.get(key) != expected:
+            fail(
+                f"{manifest_path} audit profile must set codex.{key}: {expected} "
+                f"(operator pin): {audit_codex.get(key)!r}"
+            )
     if manifest.get("interactive_profile") not in profiles:
         fail(f"{manifest_path} interactive_profile must name a defined model profile")
     worker_kind = manifest.get("worker_kind")
@@ -763,6 +775,10 @@ def validate_codex_profile_modify_scripts(manifest: dict[str, Any]) -> None:
             "model_reasoning_effort"
         ):
             fail(f"{path} must render the {name} profile reasoning effort")
+        if profile_data.get("sandbox_mode") != profile.get("codex", {}).get(
+            "sandbox_mode"
+        ):
+            fail(f"{path} must render the {name} profile sandbox_mode override")
         if profile_data.get("features", {}).get("hooks") is not True:
             fail(f"{path} must enable hooks for the {name} profile")
         if "state" not in profile_data.get("hooks", {}):

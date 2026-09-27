@@ -13,7 +13,7 @@ fi
 
 readonly BIN_DIR="${HOME}/.local/bin"
 # Rendered from assets.starship in home/dot_agents/agent-config.yaml; change it there.
-readonly STARSHIP_VERSION="v1.25.1"
+readonly STARSHIP_VERSION="v1.26.0"
 
 # @description Print the Starship Linux artifact name for the current architecture.
 function starship_artifact() {

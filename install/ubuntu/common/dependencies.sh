@@ -21,6 +21,7 @@ readonly PACKAGES=(
     htop
     iproute2
     iputils-ping
+    mosh
     perl
     pinentry-curses
     sudo

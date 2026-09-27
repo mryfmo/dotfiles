@@ -19,6 +19,7 @@ readonly BREW_PACKAGES=(
     git
     gawk
     gpg
+    mosh
     pinentry-mac
     vim
     zsh

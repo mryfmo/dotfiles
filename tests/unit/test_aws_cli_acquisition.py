@@ -1,4 +1,5 @@
 import os
+import re
 import subprocess
 import tempfile
 import time
@@ -10,6 +11,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 INSTALLER = ROOT / "install/ubuntu/common/aws_cli.sh"
 FINGERPRINT = "FB5DB77FD5C118B80511ADA8A6310ACC4672475C"
+# The pin moves with make upgrade; read it from the rendered installer.
+AWS_CLI_VERSION = re.search(
+    r'^readonly AWS_CLI_VERSION="([^"]+)"$', INSTALLER.read_text(), re.MULTILINE
+).group(1)
 
 
 class AwsCliAcquisitionTest(unittest.TestCase):
@@ -44,7 +49,7 @@ class AwsCliAcquisitionTest(unittest.TestCase):
                 )
                 self.assertEqual(0, result.returncode, result.stderr)
                 self.assertEqual(
-                    f"https://awscli.amazonaws.com/awscli-exe-linux-{architecture}-2.35.21.zip\n",
+                    f"https://awscli.amazonaws.com/awscli-exe-linux-{architecture}-{AWS_CLI_VERSION}.zip\n",
                     result.stdout,
                 )
 
@@ -205,18 +210,18 @@ EOF
     mkdir -p "${destination}/aws/dist"
     cat > "${destination}/aws/dist/aws" <<'EOF'
 #!/usr/bin/env bash
-printf 'aws-cli/2.35.21 Python/3.13 Linux/6\n'
+printf 'aws-cli/@AWS_CLI_VERSION@ Python/3.13 Linux/6\n'
 EOF
     chmod +x "${destination}/aws/dist/aws"
     mkdir -p "${HOME}/.local/bin"
     cat > "${HOME}/.local/bin/aws" <<'EOF'
 #!/usr/bin/env bash
-printf 'aws-cli/2.35.21 Python/3.13 Linux/6\n'
+printf 'aws-cli/@AWS_CLI_VERSION@ Python/3.13 Linux/6\n'
 EOF
     chmod +x "${HOME}/.local/bin/aws"
 }
 install_aws_cli
-''',
+'''.replace("@AWS_CLI_VERSION@", AWS_CLI_VERSION),
                 {
                     "ARGS_PATH": str(args),
                     "AWS_CLI_KEY_PATH": str(key),
@@ -237,7 +242,7 @@ install_aws_cli
                 ],
                 args.read_text().splitlines(),
             )
-            base = "https://awscli.amazonaws.com/awscli-exe-linux-aarch64-2.35.21.zip"
+            base = f"https://awscli.amazonaws.com/awscli-exe-linux-aarch64-{AWS_CLI_VERSION}.zip"
             self.assertEqual([base, f"{base}.sig"], urls.read_text().splitlines())
             verified = gpgv_args.read_text().splitlines()
             self.assertEqual("--keyring", verified[0])
@@ -323,7 +328,9 @@ install_aws_cli
         self.assertNotEqual(0, result.returncode)
 
     def test_exit_zero_install_with_expected_fake_binary_passes_postcondition(self):
-        result = self.run_postcondition("#!/bin/sh\nprintf 'aws-cli/2.35.21 Python/3.13 Linux/6\\n'\n")
+        result = self.run_postcondition(
+            f"#!/bin/sh\nprintf 'aws-cli/{AWS_CLI_VERSION} Python/3.13 Linux/6\\n'\n"
+        )
         self.assertEqual(0, result.returncode, result.stderr)
 
     def test_repository_key_has_expected_current_fingerprint(self):

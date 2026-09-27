@@ -70,6 +70,17 @@ bash install/macos/common/docker.sh
 
 Each installation script can be found under the [`./install`](https://github.com/mryfmo/dotfiles/tree/main/install) directory.
 
+### Remote shells with mosh
+
+`mosh` is installed on both Ubuntu (apt) and macOS (Homebrew) by the common
+dependency scripts. Over Tailscale, mosh's UDP ports 60000-61000 stay inside
+the tailnet, so this repository adds no firewall rule. `mosh user@host` starts
+`mosh-server` through a non-interactive SSH command, and `~/.zshenv` puts the
+Homebrew and local bin directories on `PATH` for exactly that case. The UTF-8
+locale that `mosh-server` needs comes from `install/ubuntu/common/setup_locale.sh`.
+A host that runs its own firewall (for example ufw) must allow that UDP range on
+its Tailscale interface.
+
 ### Private credentials and keys
 
 This public repository intentionally does not store machine-specific secrets such as SSH private keys, GnuPG secret keyrings, or VPN credentials. Private state belongs in the separate `mryfmo/dotfiles-private` chezmoi source or should be generated on the target machine.

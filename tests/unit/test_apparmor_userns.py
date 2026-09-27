@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import tempfile
@@ -13,6 +14,15 @@ ROOT = Path(__file__).resolve().parents[2]
 INSTALLER = ROOT / "install/ubuntu/common/apparmor_userns.sh"
 PROFILE = ROOT / "install/ubuntu/common/apparmor/bwrap-userns"
 CHECK_TOOLS = ROOT / "scripts/check-tools.sh"
+WRAPPER = ROOT / "home/.chezmoiscripts/ubuntu/run_onchange_after_07-apparmor-bwrap-userns.sh.tmpl"
+
+
+def debian_like() -> bool:
+    try:
+        release = Path("/etc/os-release").read_text()
+    except OSError:
+        return False
+    return "debian" in release.lower()
 
 
 class AppArmorUsernsTest(unittest.TestCase):
@@ -169,6 +179,48 @@ class AppArmorUsernsTest(unittest.TestCase):
                 self.assertIn(message, result.stderr)
                 self.assertIn("req=1 opt=0", result.stdout)
 
+
+    def test_doctor_fails_when_bwrap_is_missing_with_codex(self) -> None:
+        self.fake("codex")
+        result = self.run_doctor(self.env("1"))
+
+        self.assertIn("missing-bwrap is missing; sandboxed codex runs need it", result.stderr)
+        self.assertIn("req=1 opt=0", result.stdout)
+
+    @unittest.skipUnless(
+        shutil.which("chezmoi") and debian_like(), "needs chezmoi on a Debian-like host"
+    )
+    def test_wrapper_re_renders_when_prerequisites_change(self) -> None:
+        home = self.temp_dir / "chezmoi-home"
+        home.mkdir()
+        present = self.fake("bwrap")
+
+        def render(bwrap: Path, restricted: str) -> str:
+            self.sysctl.write_text(f"{restricted}\n")
+            result = subprocess.run(
+                ["chezmoi", "execute-template", "--source", str(ROOT / "home")],
+                input=WRAPPER.read_text(),
+                env={
+                    **os.environ,
+                    "HOME": str(home),
+                    "APPARMOR_USERNS_BWRAP": str(bwrap),
+                    "APPARMOR_USERNS_SYSCTL": str(self.sysctl),
+                },
+                text=True,
+                capture_output=True,
+                check=True,
+            )
+            return result.stdout
+
+        skipped = render(self.temp_dir / "missing-bwrap", "1")
+        ready = render(present, "1")
+        unrestricted = render(present, "0")
+
+        self.assertIn("bwrap=absent", skipped)
+        self.assertIn("bwrap=present", ready)
+        self.assertIn("restriction=1", ready)
+        self.assertIn("restriction=0", unrestricted)
+        self.assertEqual(3, len({skipped, ready, unrestricted}))
 
 if __name__ == "__main__":
     unittest.main()

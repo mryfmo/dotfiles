@@ -10,7 +10,7 @@ readonly SCRIPT_PATH="./install/ubuntu/common/dependencies.sh"
     '
 
     [ "${status}" -eq 0 ]
-    [ "${lines[0]}" -eq 15 ]
+    [ "${lines[0]}" -eq 16 ]
 
     expected_packages=(
         build-essential
@@ -21,6 +21,7 @@ readonly SCRIPT_PATH="./install/ubuntu/common/dependencies.sh"
         htop
         iproute2
         iputils-ping
+        mosh
         perl
         pinentry-curses
         sudo

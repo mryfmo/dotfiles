@@ -352,7 +352,10 @@ example after a `worker_profile` or `worker_kind` change, so the new launch
 arguments from `~/.agents/model-profiles.env` take effect. It sends `/exit`
 to the running worker agent with `herdr agent prompt <pane> "/exit"`, waits
 for the shell prompt, sending Enter once to confirm a claude exit-confirmation
-dialog, and starts the worker again in the same pane. It relabels a worker pane
+dialog, and starts the worker again in the same pane. When that start hits the
+`agent_name_taken` race, it waits (bounded, about 30 seconds) for the old
+worker's stale herdr agent registration of the same name to clear from
+`herdr agent list`, then retries the start once. It relabels a worker pane
 still carrying a legacy `claude-orchestrator` label to `<worker_kind>-worker`.
 It never
 creates panes or workspaces, and exits 2 when DIR has no managed workspace or

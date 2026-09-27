@@ -192,7 +192,38 @@ function wait_for_agent_ready() {
     return 1
 }
 
+# @description Wait for a stale herdr agent registration name to clear.
+#   A just-exited agent's registration can linger until herdr notices the
+#   process exit, making `herdr agent start` with the same name fail with
+#   agent_name_taken. herdr has no unregister command and reports the stale
+#   entry as idle, so poll `herdr agent list` until the name disappears.
+#   HERDR_AGENTS_NAME_RELEASE_POLLS (default 30) and
+#   HERDR_AGENTS_NAME_RELEASE_INTERVAL (default 1 second) bound the wait.
+# @arg $1 string Herdr agent registration name.
+# @stderr One line when the name cleared only after at least one poll.
+# @exitcode 1 If the name is still registered after the last poll.
+function wait_for_agent_name_release() {
+    local agent_name="$1"
+    local polls="${HERDR_AGENTS_NAME_RELEASE_POLLS:-30}"
+    local interval="${HERDR_AGENTS_NAME_RELEASE_INTERVAL:-1}"
+    local poll
+
+    for ((poll = 0; poll < polls; poll++)); do
+        if herdr agent list 2> /dev/null | jq -e --arg name "${agent_name}" \
+            '.result.agents | type == "array" and all(.[]; .name != $name)' > /dev/null 2>&1; then
+            if ((poll > 0)); then
+                printf 'Waited for herdr agent registration %s to clear.\n' "${agent_name}" >&2
+            fi
+            return 0
+        fi
+        sleep "${interval}"
+    done
+    return 1
+}
+
 # @description Start a supported agent in a shell-ready pane.
+#   An agent_name_taken failure waits, with a bound, for the stale same-name
+#   registration to clear and then retries the start once.
 # @arg $1 string Agent kind.
 # @arg $2 string Herdr agent registration name.
 # @arg $3 pane_id Target pane id.
@@ -219,6 +250,13 @@ function start_agent_in_pane() {
         return
     fi
     case "${agent_output}" in
+    *agent_name_taken*)
+        if wait_for_agent_name_release "${agent_name}" &&
+            agent_output="$(herdr agent start "${agent_name}" --kind "${kind}" --pane "${pane_id}" --timeout 30000 -- "$@" 2>&1)"; then
+            printf '%s\n' "${pane_id}"
+            return
+        fi
+        ;;
     *timeout* | *Timeout* | *timed\ out* | *TIMED_OUT*)
         if [[ ${newly_created} == true ]] && wait_for_shell_prompt "${pane_id}"; then
             if agent_output="$(herdr agent start "${agent_name}" --kind "${kind}" --pane "${pane_id}" --timeout 30000 -- "$@" 2>&1)"; then

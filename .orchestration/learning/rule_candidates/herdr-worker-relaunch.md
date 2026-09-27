@@ -38,3 +38,6 @@ T24 deployment).
    `agent_name_taken`. Add a bounded wait for the registration to clear (or
    reuse/rename it) before starting; until then, a single retry after ~10s
    recovers. (Part B exit-dialog handling itself verified working live.)
+   Resolved (2026-09-27, T27): `start_agent_in_pane` handles `agent_name_taken`
+   with a bounded wait for the registration to clear from `herdr agent list`
+   plus a single retry; no open tooling gap remains.

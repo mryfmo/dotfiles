@@ -3723,11 +3723,16 @@
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>apply_upgraded_mise_config</code></li>
+<li><code>asset_manifest_pin</code></li>
+<li><code>aws_cli_versions</code></li>
+<li><code>bump_release_asset_pins</code></li>
 <li><code>bump_terminal_tool_pins</code></li>
+<li><code>crate_versions</code></li>
 <li><code>current_mise_tools</code></li>
 <li><code>fetch_crit_pin</code></li>
 <li><code>fetch_installer_pin</code></li>
 <li><code>fetch_zed_pin</code></li>
+<li><code>github_release_versions</code></li>
 <li><code>has_command</code></li>
 <li><code>is_forbidden_homebrew_formula</code></li>
 <li><code>is_linux</code></li>
@@ -3735,6 +3740,7 @@
 <li><code>latest_npm_package_version</code></li>
 <li><code>main</code></li>
 <li><code>parse_args</code></li>
+<li><code>pick_windowed_pin</code></li>
 <li><code>repair_mise_npm_package</code></li>
 <li><code>report_ccr_adoption_gates</code></li>
 <li><code>run_mise_tool_command</code></li>
@@ -4234,6 +4240,141 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Print the current manifest pin of one asset.</span>
+<span class="c1"># @arg $1 string Asset name under assets: in home/dot_agents/agent-config.yaml.</span>
+<span class="c1"># @arg $2 path Repository root.</span>
+<span class="c1"># @stdout The pin value.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>asset_manifest_pin<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>awk<span class="w"> </span>-v<span class="w"> </span><span class="nv">header</span><span class="o">=</span><span class="s2">"  </span><span class="nv">$1</span><span class="s2">:"</span><span class="w"> </span><span class="s1">'</span>
+<span class="s1">        $0 == header { in_asset = 1; next }</span>
+<span class="s1">        in_asset &amp;&amp; /^  [^ ]/ { exit }</span>
+<span class="s1">        in_asset &amp;&amp; $1 == "pin:" { print $2; exit }</span>
+<span class="s1">    '</span><span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">/home/dot_agents/agent-config.yaml"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>.
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Print the newest version outside the supply-chain window that is newer than the current pin.</span>
+<span class="c1">#   Mirrors the mise tools path (`mise ... --before 7d`): a release published</span>
+<span class="c1">#   within the last 7 days is skipped, and the pin never moves backwards.</span>
+<span class="c1"># @arg $1 string Asset name, for log lines.</span>
+<span class="c1"># @arg $2 string Current pin.</span>
+<span class="c1"># @arg $3 number Window cutoff as Unix epoch seconds.</span>
+<span class="c1"># @stdin Tab-separated `version&lt;TAB&gt;published-epoch` lines in any order.</span>
+<span class="c1"># @stdout The chosen version, or the current pin when nothing qualifies.</span>
+<span class="c1"># @stderr One line per release skipped by the window.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>pick_windowed_pin<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">asset</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="nv">current</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="w"> </span><span class="nv">cutoff</span><span class="o">=</span><span class="s2">"</span><span class="nv">$3</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>version<span class="w"> </span>published<span class="w"> </span><span class="nv">eligible</span><span class="o">=()</span>
+
+<span class="w">    </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">current</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="s1">$'\t'</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>version<span class="w"> </span>published<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">current</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="k">continue</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">current</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-V<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">published</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-le<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">cutoff</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">eligible</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">else</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'release window: skipping %s %s (published %d day(s) ago, under 7)\n'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">                </span><span class="s2">"</span><span class="si">${</span><span class="nv">asset</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$((</span><span class="o">(</span><span class="nv">cutoff</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">604800</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nv">published</span><span class="o">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="m">86400</span><span class="k">))</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${#</span><span class="nv">eligible</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">eligible</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-V<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">current</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Print published GitHub releases of one repository.</span>
+<span class="c1"># @arg $1 string GitHub `owner/name`.</span>
+<span class="c1"># @stdout Tab-separated `tag&lt;TAB&gt;published-epoch` lines.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>github_release_versions<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>gh<span class="w"> </span>api<span class="w"> </span><span class="s2">"repos/</span><span class="nv">$1</span><span class="s2">/releases?per_page=30"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>--jq<span class="w"> </span><span class="s1">'.[] | select((.draft or .prerelease) | not) | [.tag_name, (.published_at | fromdateiso8601)] | @tsv'</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Print non-yanked crates.io versions of one crate.</span>
+<span class="c1"># @arg $1 string Crate name.</span>
+<span class="c1"># @stdout Tab-separated `version&lt;TAB&gt;published-epoch` lines.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>crate_versions<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>curl<span class="w"> </span>-fsSL<span class="w"> </span>-A<span class="w"> </span><span class="s1">'mryfmo-dotfiles upgrade-tools (https://github.com/mryfmo/dotfiles)'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s2">"https://crates.io/api/v1/crates/</span><span class="nv">$1</span><span class="s2">/versions"</span><span class="w"> </span><span class="p">|</span>
+<span class="w">        </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s1">'</span>
+<span class="s1">import datetime, json, sys</span>
+<span class="s1">for v in json.load(sys.stdin)["versions"]:</span>
+<span class="s1">    if not v["yanked"]:</span>
+<span class="s1">        created = datetime.datetime.fromisoformat(v["created_at"].replace("Z", "+00:00"))</span>
+<span class="s1">        print(v["num"], int(created.timestamp()), sep="\t")</span>
+<span class="s1">'</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Print AWS CLI v2 versions newer than the current pin, newest first, with download dates.</span>
+<span class="c1">#   AWS publishes v2 builds only as downloads, so the date is the Linux x86_64</span>
+<span class="c1">#   archive's Last-Modified header. Stops after the first version outside the</span>
+<span class="c1">#   window to keep HEAD requests few.</span>
+<span class="c1"># @arg $1 string Current pin.</span>
+<span class="c1"># @arg $2 number Window cutoff as Unix epoch seconds.</span>
+<span class="c1"># @stdout Tab-separated `version&lt;TAB&gt;published-epoch` lines.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>aws_cli_versions<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">current</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="nv">cutoff</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="w"> </span>version<span class="w"> </span>modified<span class="w"> </span>published
+
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>version<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="nv">modified</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>curl<span class="w"> </span>-fsSI<span class="w"> </span><span class="s2">"https://awscli.amazonaws.com/awscli-exe-linux-x86_64-</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">.zip"</span><span class="w"> </span><span class="p">|</span>
+<span class="w">            </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">'\r'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'s/^[Ll]ast-[Mm]odified: //p'</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="nv">published</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s1">'import email.utils, sys; print(int(email.utils.parsedate_to_datetime(sys.argv[1]).timestamp()))'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">modified</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\t%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">version</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">published</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">published</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-gt<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">cutoff</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>gh<span class="w"> </span>api<span class="w"> </span><span class="s2">"repos/aws/aws-cli/tags?per_page=100"</span><span class="w"> </span>--jq<span class="w"> </span><span class="s1">'.[].name'</span><span class="w"> </span><span class="p">|</span>
+<span class="w">        </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">'^2\.[0-9]+\.[0-9]+$'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-V<span class="w"> </span>-r<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span>-v<span class="w"> </span><span class="nv">current</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">current</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'$0 == current { exit } { print }'</span><span class="o">)</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
+<span class="c1"># @description Bump the mise, sheldon, starship, and aws-cli asset pins outside the 7-day window.</span>
+<span class="c1">#   Their verify contracts (release-shasums, cargo-locked, release-sha256, gpg</span>
+<span class="c1">#   fingerprint) keep no per-version hash in the manifest, so only pins change.</span>
+<span class="c1">#   Writes through scripts/generate-agent-configs.py --set-asset, which renders</span>
+<span class="c1">#   each installer's version constant; review and commit that diff.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>bump_release_asset_pins<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>repo_root<span class="w"> </span>cutoff<span class="w"> </span>mise_pin<span class="w"> </span>sheldon_pin<span class="w"> </span>starship_pin<span class="w"> </span>aws_pin
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">"release asset pins"</span>
+<span class="w">    </span><span class="nv">repo_root</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">/.."</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">cutoff</span><span class="o">=</span><span class="k">$((</span><span class="si">${</span><span class="nv">UPGRADE_RELEASE_NOW</span><span class="k">:-$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="si">}</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="m">604800</span><span class="k">))</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">mise_pin</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>github_release_versions<span class="w"> </span>jdx/mise<span class="w"> </span><span class="p">|</span>
+<span class="w">        </span>pick_windowed_pin<span class="w"> </span>mise<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>asset_manifest_pin<span class="w"> </span>mise<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">cutoff</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span>
+<span class="w">        </span>!<span class="w"> </span><span class="nv">sheldon_pin</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>crate_versions<span class="w"> </span>sheldon<span class="w"> </span><span class="p">|</span>
+<span class="w">            </span>pick_windowed_pin<span class="w"> </span>sheldon<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>asset_manifest_pin<span class="w"> </span>sheldon<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">cutoff</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span>
+<span class="w">        </span>!<span class="w"> </span><span class="nv">starship_pin</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>github_release_versions<span class="w"> </span>starship/starship<span class="w"> </span><span class="p">|</span>
+<span class="w">            </span>pick_windowed_pin<span class="w"> </span>starship<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>asset_manifest_pin<span class="w"> </span>starship<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">cutoff</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span>
+<span class="w">        </span>!<span class="w"> </span><span class="nv">aws_pin</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>aws_cli_versions<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>asset_manifest_pin<span class="w"> </span>aws-cli<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">cutoff</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span>
+<span class="w">            </span>pick_windowed_pin<span class="w"> </span>aws-cli<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>asset_manifest_pin<span class="w"> </span>aws-cli<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">cutoff</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: unable to resolve release asset pins; keeping current pins\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="o">(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>--with<span class="w"> </span>pyyaml<span class="w"> </span>scripts/generate-agent-configs.py<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>--set-asset<span class="w"> </span><span class="s2">"mise.pin=</span><span class="si">${</span><span class="nv">mise_pin</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>--set-asset<span class="w"> </span><span class="s2">"sheldon.pin=</span><span class="si">${</span><span class="nv">sheldon_pin</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>--set-asset<span class="w"> </span><span class="s2">"starship.pin=</span><span class="si">${</span><span class="nv">starship_pin</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>--set-asset<span class="w"> </span><span class="s2">"aws-cli.pin=</span><span class="si">${</span><span class="nv">aws_pin</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'warning: unable to write the asset manifest pins; keeping current pins\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Pinned mise %s, sheldon %s, starship %s, and aws-cli %s; review and commit the assets and installer diff.\n'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">mise_pin</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">sheldon_pin</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">starship_pin</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">aws_pin</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Upgrade uv tool installations when uv is available.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>upgrade_uv_tools<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -4351,6 +4492,7 @@
 <span class="w">    </span>run_required_phase<span class="w"> </span><span class="s2">"mise inventory/install/upgrade"</span><span class="w"> </span>upgrade_mise_tools
 <span class="w">    </span>run_required_phase<span class="w"> </span><span class="s2">"Codex/Claude CLI upgrade"</span><span class="w"> </span>upgrade_agent_cli_tools
 <span class="w">    </span>run_optional_phase<span class="w"> </span><span class="s2">"terminal tool pin bump"</span><span class="w"> </span>bump_terminal_tool_pins
+<span class="w">    </span>run_optional_phase<span class="w"> </span><span class="s2">"release asset pin bump"</span><span class="w"> </span>bump_release_asset_pins
 <span class="w">    </span>run_required_phase<span class="w"> </span><span class="s2">"agent asset regeneration"</span><span class="w"> </span>upgrade_agent_assets
 <span class="w">    </span>run_required_phase<span class="w"> </span><span class="s2">"uv tool upgrade"</span><span class="w"> </span>upgrade_uv_tools
 <span class="w">    </span>run_optional_phase<span class="w"> </span><span class="s2">"GitHub CLI extension upgrade"</span><span class="w"> </span>upgrade_gh_extensions

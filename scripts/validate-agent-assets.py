@@ -651,6 +651,12 @@ def validate_agent_manifest() -> dict[str, Any]:
             f"{manifest_path} worker_profile must name a defined model profile: "
             f"{worker_profile!r}"
         )
+    # Operator pin (2026-09-27): worker claude launches carry --advisor fable.
+    if profiles.get(worker_profile, {}).get("claude", {}).get("advisor") != "fable":
+        fail(
+            f"{manifest_path} worker profile {worker_profile!r} must set "
+            "claude.advisor: fable (operator pin)"
+        )
     for name, profile in profiles.items():
         for agent, keys in (
             ("claude", ("model", "effort")),

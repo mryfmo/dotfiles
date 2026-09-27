@@ -351,7 +351,10 @@ relaunch the worker. Use `herdr-agents --restart-worker [DIR]` instead, for
 example after a `worker_profile` or `worker_kind` change, so the new launch
 arguments from `~/.agents/model-profiles.env` take effect. It sends `/exit`
 to the running worker agent with `herdr agent prompt <pane> "/exit"`, waits
-for the shell prompt, and starts the worker again in the same pane. It never
+for the shell prompt, sending Enter once to confirm a claude exit-confirmation
+dialog, and starts the worker again in the same pane. It relabels a worker pane
+still carrying a legacy `claude-orchestrator` label to `<worker_kind>-worker`.
+It never
 creates panes or workspaces, and exits 2 when DIR has no managed workspace or
 when the pair's tab is ambiguous or contains unmanaged panes. Attach mode run
 by a claude worker's own `SessionStart` hook leaves its pane alone, so the
@@ -368,7 +371,10 @@ the worker profile comes from `HERDR_AGENTS_WORKER_PROFILE` (the deprecated
 that file sets neither,
 passed to `codex --profile` for a codex worker or resolved through
 `MODEL_PROFILE_<PROFILE>_CLAUDE_ARGS` (plus optional
-`HERDR_AGENTS_CLAUDE_WORKER_ARGS`) for a claude worker. The orchestrator side
+`HERDR_AGENTS_CLAUDE_WORKER_ARGS`) for a claude worker. The worker profile
+carries `advisor: fable` on its claude side, rendered into those launch args as
+`--advisor fable`; a running worker picks it up with
+`herdr-agents --restart-worker`. The orchestrator side
 follows `interactive_profile` in `home/dot_agents/agent-config.yaml`,
 escalating with `/model` and `/effort` only at task boundaries. Parallelism
 never adds panes

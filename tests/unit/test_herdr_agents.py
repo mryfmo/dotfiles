@@ -49,6 +49,8 @@ class HerdrAgentsTest(unittest.TestCase):
         self.agent_start_failures_path = self.temp_dir / "agent-start-failures.txt"
         self.agent_start_not_ready_path = self.temp_dir / "agent-start-not-ready.txt"
         self.trust_dialog_match_path = self.temp_dir / "trust-dialog-match.txt"
+        # shell, exit-dialog (claude foreground until an Enter), or stuck.
+        self.process_info_state_path = self.temp_dir / "process-info-state.txt"
         self.pane_counter_path = self.temp_dir / "pane-counter.txt"
         self.home_dir = self.temp_dir / "home"
         (self.home_dir / ".config/herdr").mkdir(parents=True)
@@ -67,6 +69,7 @@ class HerdrAgentsTest(unittest.TestCase):
         self.agent_start_failures_path.write_text("0\n")
         self.agent_start_not_ready_path.write_text("0\n")
         self.trust_dialog_match_path.write_text("0\n")
+        self.process_info_state_path.write_text("shell\n")
         self.pane_counter_path.write_text("2\n")
 
         self.write_executable(
@@ -125,7 +128,17 @@ if [[ $1 == pane && $2 == wait-output ]]; then
     exit 0
 fi
 if [[ $1 == pane && $2 == process-info ]]; then
+    if [[ $(cat {self.process_info_state_path}) != shell ]]; then
+        printf '%s\\n' '{{"id":"cli:pane:process_info","result":{{"process_info":{{"foreground_processes":[{{"argv":["claude"],"cmdline":"claude","name":"claude","pid":4343}}]}}}}}}'
+        exit 0
+    fi
     printf '%s\\n' '{{"id":"cli:pane:process_info","result":{{"process_info":{{"foreground_processes":[{{"argv":["/bin/zsh"],"cmdline":"/bin/zsh","name":"zsh","pid":4242}}]}}}}}}'
+    exit 0
+fi
+if [[ $1 == agent && $2 == send-keys && ${{@: -1}} == Enter ]]; then
+    if [[ $(cat {self.process_info_state_path}) == exit-dialog ]]; then
+        printf 'shell\\n' > {self.process_info_state_path}
+    fi
     exit 0
 fi
 if [[ $1 == agent && $2 == start ]]; then
@@ -1684,10 +1697,92 @@ fi
         self.assertLess(exit_call, start_call)
         self.assertFalse(
             any(
-                call.startswith(("pane split", "workspace create", "agent prompt w-old:p1"))
+                call.startswith(
+                    ("pane split", "workspace create", "agent prompt w-old:p1", "agent send-keys")
+                )
                 for call in calls
             ),
             calls,
+        )
+        self.assertIn("Herdr agents worker restarted in pane w-old:p2", result.stdout)
+
+    def test_restart_worker_passes_manifest_advisor_args_to_claude_worker(self) -> None:
+        self.write_claude_pair_state(
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-worker","pane_id":"w-old:p2","workspace_id":"w-old"}}'
+        )
+        (self.home_dir / ".agents/model-profiles.env").write_text(
+            'HERDR_AGENTS_WORKER_KIND="claude"\n'
+            'HERDR_AGENTS_WORKER_PROFILE="standard"\n'
+            'MODEL_PROFILE_STANDARD_CLAUDE_ARGS="--model claude-opus-5-5 --effort high --advisor fable"\n'
+        )
+
+        result = self.run_helper("--restart-worker")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            "agent start claude-worker-w-old --kind claude --pane w-old:p2 --timeout 30000 "
+            "-- --model claude-opus-5-5 --effort high --advisor fable",
+            self.calls_path.read_text().splitlines(),
+        )
+
+    def install_noop_sleep(self) -> None:
+        # Bounded shell-prompt waits poll with sleep; skip the real delay.
+        self.write_executable("sleep", "#!/usr/bin/env bash\n")
+
+    def test_restart_worker_confirms_the_exit_dialog_once(self) -> None:
+        self.write_claude_pair_state(
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-worker","pane_id":"w-old:p2","workspace_id":"w-old"}}'
+        )
+        self.process_info_state_path.write_text("exit-dialog\n")
+        self.install_noop_sleep()
+
+        result = self.run_helper("--restart-worker")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        exit_call = calls.index("agent prompt w-old:p2 /exit")
+        enter_call = calls.index("agent send-keys w-old:p2 Enter")
+        start_call = next(
+            i for i, call in enumerate(calls) if call.startswith("agent start claude-worker-w-old")
+        )
+        self.assertLess(exit_call, enter_call)
+        self.assertLess(enter_call, start_call)
+        self.assertEqual(calls.count("agent send-keys w-old:p2 Enter"), 1)
+
+    def test_restart_worker_refuses_when_the_pane_never_reaches_a_shell(self) -> None:
+        self.write_claude_pair_state(
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-worker","pane_id":"w-old:p2","workspace_id":"w-old"}}'
+        )
+        self.process_info_state_path.write_text("stuck\n")
+        self.install_noop_sleep()
+
+        result = self.run_helper("--restart-worker")
+
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            "did not reach an interactive shell prompt; refusing agent start",
+            result.stderr,
+        )
+        calls = self.calls_path.read_text().splitlines()
+        self.assertEqual(calls.count("agent send-keys w-old:p2 Enter"), 1)
+        # Both bounded waits ran: after /exit and again before the start.
+        self.assertEqual(calls.count("pane process-info --pane w-old:p2"), 100)
+        self.assertFalse(any(call.startswith("agent start") for call in calls), calls)
+
+    def test_restart_worker_repairs_a_legacy_orchestrator_label_on_the_worker_pane(
+        self,
+    ) -> None:
+        self.write_claude_pair_state(
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p2","workspace_id":"w-old"}}'
+        )
+
+        result = self.run_helper("--restart-worker")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertLess(
+            calls.index("pane rename w-old:p2 claude-worker"),
+            calls.index("agent prompt w-old:p2 /exit"),
         )
         self.assertIn("Herdr agents worker restarted in pane w-old:p2", result.stdout)
 

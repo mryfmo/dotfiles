@@ -7,7 +7,8 @@
 #   second workspace for a directory that already has a managed pair. Attach
 #   mode adds the worker beside Claude in the current Herdr pane without
 #   restarting Claude. Restart-worker mode relaunches the worker agent in its
-#   existing pane so new worker launch arguments take effect.
+#   existing pane so new worker launch arguments take effect, confirming a
+#   claude exit dialog once and relabeling a legacy worker pane label.
 # @option --attach Attach the current Claude pane to its Herdr workspace layout.
 # @option --restart-worker Relaunch the worker agent in the existing pair's worker pane.
 # @option --bootstrap-agmsg Configure repo-scoped agmsg hooks without changing Herdr panes.
@@ -401,8 +402,10 @@ function pane_has_agent() {
 }
 
 # @description Exit any agent in the worker pane, then start the worker there.
-#   start_worker_agent waits (bounded) for the shell prompt, so the new worker
-#   starts only after the old agent has exited.
+#   A claude worker with running background tasks answers /exit with an
+#   exit-confirmation dialog, so the submit key is sent once when the shell
+#   prompt does not return. start_worker_agent waits (bounded) for the shell
+#   prompt, so the new worker starts only after the old agent has exited.
 # @arg $1 string Worker kind.
 # @arg $2 string Herdr worker agent registration name.
 # @arg $3 pane_id Worker pane id.
@@ -415,6 +418,9 @@ function restart_worker_in_pane() {
 
     if pane_has_agent "${panes_json}" "${pane_id}"; then
         herdr agent prompt "${pane_id}" "/exit" > /dev/null
+        if ! wait_for_shell_prompt "${pane_id}"; then
+            herdr agent send-keys "${pane_id}" Enter > /dev/null
+        fi
     fi
     start_worker_agent "${kind}" "${agent_name}" "${pane_id}" true > /dev/null
 }
@@ -867,6 +873,10 @@ if [[ ${restart_mode} == true ]]; then
     if [[ -z ${claude_pane_id} ]] || ! attach_panes_are_unambiguous "${panes_json}" "${claude_pane_id}" "${worker_pane_id}"; then
         printf 'herdr-agents: Herdr workspace %s panes are ambiguous or include unmanaged panes; refusing restart.\n' "${workspace_id}" >&2
         exit 2
+    fi
+    # Repair a legacy label (e.g. claude-orchestrator from the pre-T25 attach bug) before the restart can refuse.
+    if ! printf '%s\n' "${panes_json}" | jq -e --arg pane_id "${worker_pane_id}" --arg label "${worker_kind}-worker" '.result.panes[]? | select(.pane_id == $pane_id and .label == $label)' > /dev/null; then
+        herdr pane rename "${worker_pane_id}" "${worker_kind}-worker" > /dev/null
     fi
     restart_worker_in_pane "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" "${panes_json}"
     printf 'Herdr agents worker restarted in pane %s\n' "${worker_pane_id}"

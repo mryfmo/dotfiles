@@ -99,6 +99,7 @@ PROFILE_AGENT_KEYS = {
     "claude": ("model", "effort"),
     "codex": ("model", "model_reasoning_effort"),
 }
+PROFILE_OPTIONAL_KEYS = {"claude": ("advisor",)}
 RUNTIME_PREFIXES = (
     "hooks.state",
     "marketplaces",
@@ -123,7 +124,8 @@ def model_profiles(manifest: dict[str, Any]) -> dict[str, Any]:
             mapping = profile.get(agent)
             if not isinstance(mapping, dict):
                 fail(f"model profile {name} is missing {agent}")
-            for key in keys:
+            optional = PROFILE_OPTIONAL_KEYS.get(agent, ())
+            for key in keys + tuple(key for key in optional if key in mapping):
                 value = mapping.get(key)
                 if not isinstance(value, str) or not PROFILE_VALUE_RE.match(value):
                     fail(
@@ -393,6 +395,11 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
         "$schema": claude["schema"],
         "model": profile_claude["model"],
         "effortLevel": profile_claude["effort"],
+        **(
+            {"advisorModel": profile_claude["advisor"]}
+            if "advisor" in profile_claude
+            else {}
+        ),
         "alwaysThinkingEnabled": claude["alwaysThinkingEnabled"],
         "autoUpdates": claude["autoUpdates"],
         "autoUpdatesChannel": claude["autoUpdatesChannel"],
@@ -759,9 +766,10 @@ def render_model_profiles_env(manifest: dict[str, Any]) -> str:
     for name, profile in sorted(profiles.items()):
         var = str(name).upper()
         claude = profile["claude"]
-        lines.append(
-            f'MODEL_PROFILE_{var}_CLAUDE_ARGS="--model {claude["model"]} --effort {claude["effort"]}"'
-        )
+        claude_args = f"--model {claude['model']} --effort {claude['effort']}"
+        if "advisor" in claude:
+            claude_args += f" --advisor {claude['advisor']}"
+        lines.append(f'MODEL_PROFILE_{var}_CLAUDE_ARGS="{claude_args}"')
         lines.append(f'MODEL_PROFILE_{var}_CODEX_ARGS="--profile {name}"')
     return "\n".join(lines) + "\n"
 

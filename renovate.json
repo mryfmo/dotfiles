@@ -40,6 +40,17 @@
       "matchManagers": ["custom.regex"],
       "matchFileNames": ["home/dot_agents/agent-config.yaml"],
       "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Notification-only until lock fidelity is proven: Renovate's mise artifact update runs mise lock without loading home/dot_mise/config.toml, so its PRs cannot reliably regenerate home/dot_mise/mise.lock. make upgrade remains the executing lane.",
+      "matchManagers": ["mise"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Hold fd, as scripts/upgrade-tools.sh does: newer releases lack a macOS x64 asset.",
+      "matchManagers": ["mise"],
+      "matchPackageNames": ["fd"],
+      "enabled": false
     }
   ]
 }

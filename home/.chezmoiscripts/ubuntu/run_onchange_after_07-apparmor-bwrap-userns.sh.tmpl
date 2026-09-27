@@ -2,5 +2,8 @@
 {{   if eq .chezmoi.osRelease.idLike "debian" -}}
 {{     include "../install/ubuntu/common/apparmor_userns.sh" }}
 # Re-run when the profile changes. bwrap-userns sha256sum: {{ include "../install/ubuntu/common/apparmor/bwrap-userns" | sha256sum }}
+{{     $bwrap := env "APPARMOR_USERNS_BWRAP" | default "/usr/bin/bwrap" -}}
+{{     $sysctl := env "APPARMOR_USERNS_SYSCTL" | default "/proc/sys/kernel/apparmor_restrict_unprivileged_userns" -}}
+# Re-run when a prerequisite changes, so a skipped install is retried: bwrap={{ if stat $bwrap }}present{{ else }}absent{{ end }} apparmor_parser={{ if lookPath "apparmor_parser" }}present{{ else }}absent{{ end }} restriction={{ if stat $sysctl }}{{ include $sysctl | trim }}{{ else }}absent{{ end }}
 {{   end -}}
 {{ end -}}

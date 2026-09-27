@@ -186,7 +186,8 @@ function check_apparmor_userns() {
         return 0
     fi
     if [ ! -x "${bwrap}" ]; then
-        warn_optional "${bwrap} is missing; sandboxed codex runs need it under the AppArmor userns restriction"
+        printf 'required failed: %s is missing; sandboxed codex runs need it under the AppArmor userns restriction (install the bubblewrap package)\n' "${bwrap}" >&2
+        ((required_failures += 1))
         return 0
     fi
     if "${bwrap}" --ro-bind / / true > /dev/null 2>&1; then

@@ -484,6 +484,23 @@ install_starship
         self.assertEqual(1, len(manifest_rules))
         self.assertIs(True, manifest_rules[0]["dependencyDashboardApproval"])
         self.assertNotIn("automerge", json.dumps(config))
+        # mise PRs cannot regenerate mise.lock, and fd stays held like upgrade-tools.sh.
+        mise_rules = [
+            rule for rule in config["packageRules"] if rule.get("matchManagers") == ["mise"]
+        ]
+        self.assertTrue(
+            any(
+                rule.get("dependencyDashboardApproval") is True
+                and "matchPackageNames" not in rule
+                for rule in mise_rules
+            )
+        )
+        self.assertTrue(
+            any(
+                rule.get("matchPackageNames") == ["fd"] and rule.get("enabled") is False
+                for rule in mise_rules
+            )
+        )
 
     def test_setup_ci_rejects_and_preserves_local_drift(self):
         for workflow_name in ("macos.yaml", "ubuntu.yaml"):

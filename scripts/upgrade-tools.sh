@@ -509,7 +509,9 @@ function pick_windowed_pin() {
 
     [ -n "${current}" ] || return 1
     while IFS=$'\t' read -r version published; do
-        [ -n "${version}" ] && [ "${version}" != "${current}" ] || continue
+        if [ -z "${version}" ] || [ "${version}" = "${current}" ]; then
+            continue
+        fi
         [ "$(printf '%s\n%s\n' "${current}" "${version}" | sort -V | tail -n 1)" = "${version}" ] || continue
         if [ "${published}" -le "${cutoff}" ]; then
             eligible+=("${version}")

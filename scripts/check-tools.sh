@@ -167,6 +167,41 @@ function check_crit_cli() {
 }
 
 #
+# @description Verify bwrap can create user namespaces when AppArmor restricts them.
+#   Sandboxed Codex runs exec /usr/bin/bwrap, which needs the bwrap-userns profile
+#   installed by install/ubuntu/common/apparmor_userns.sh. Loaded profiles are
+#   root-only to list, so an unprivileged bwrap probe is the effective check.
+#
+function check_apparmor_userns() {
+    local restrict="${APPARMOR_USERNS_SYSCTL:-/proc/sys/kernel/apparmor_restrict_unprivileged_userns}"
+    local bwrap="${APPARMOR_USERNS_BWRAP:-/usr/bin/bwrap}"
+    local profile="${APPARMOR_USERNS_PROFILE_TARGET:-/etc/apparmor.d/bwrap-userns}"
+
+    if [ "$(cat "${restrict}" 2> /dev/null)" != "1" ]; then
+        printf 'not applicable: AppArmor userns restriction (not enabled)\n'
+        return 0
+    fi
+    if ! command -v codex > /dev/null 2>&1; then
+        warn_optional "codex is not installed; skipped the bwrap user-namespace probe"
+        return 0
+    fi
+    if [ ! -x "${bwrap}" ]; then
+        warn_optional "${bwrap} is missing; sandboxed codex runs need it under the AppArmor userns restriction"
+        return 0
+    fi
+    if "${bwrap}" --ro-bind / / true > /dev/null 2>&1; then
+        printf 'found:   bwrap user namespaces allowed -> %s\n' "${bwrap}"
+        return 0
+    fi
+    if [ -f "${profile}" ]; then
+        printf 'required failed: bwrap user-namespace probe; %s exists but is not effective (sudo apparmor_parser -r %s)\n' "${profile}" "${profile}" >&2
+    else
+        printf 'required failed: bwrap user-namespace probe; AppArmor profile %s is missing, so sandboxed codex runs fail (chezmoi apply installs it)\n' "${profile}" >&2
+    fi
+    ((required_failures += 1))
+}
+
+#
 # @description Print the current GitHub CLI extension state when gh is installed.
 #
 function check_gh_extensions() {
@@ -202,6 +237,9 @@ function main() {
 
     section "SSH"
     check_machine_ssh_key
+
+    section "AppArmor"
+    check_apparmor_userns
 
     section "GitHub CLI extensions"
     check_gh_extensions

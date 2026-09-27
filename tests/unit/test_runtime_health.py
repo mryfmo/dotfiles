@@ -928,6 +928,8 @@ EOF
             "PATH": f"{bin_dir}:/usr/bin:/bin",
             "FAIL_COMMAND": fail,
             "TEST_LOG": str(log),
+            # Keep the host's AppArmor userns restriction out of these fixtures.
+            "APPARMOR_USERNS_SYSCTL": str(self.temp_dir / "no-userns-restriction"),
         }
 
     def test_doctor_required_optional_and_healthy_statuses(self) -> None:

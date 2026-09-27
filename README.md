@@ -245,6 +245,16 @@ boundaries live in `home/dot_config/claude/rules/model-selection.md`,
 `home/dot_config/claude/rules/agmsg-orchestration.md`, and the `## Audit`
 section of `AGENTS.md`.
 
+On Ubuntu 24.04 and later, `kernel.apparmor_restrict_unprivileged_userns=1`
+stops `/usr/bin/bwrap` from creating the user namespaces that sandboxed Codex
+runs need. Rather than relaxing that sysctl globally, `chezmoi apply` installs
+the `bwrap-userns` AppArmor profile
+(`install/ubuntu/common/apparmor/bwrap-userns`, loaded by
+`install/ubuntu/common/apparmor_userns.sh` with sudo), and `make doctor` probes
+`bwrap` to confirm it works. To remove it, run
+`sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns` and then
+`sudo rm /etc/apparmor.d/bwrap-userns`.
+
 `permgate` handles Claude Code and Codex PermissionRequest hooks from the
 repo-owned policy at `~/.agents/permgate-policy.yaml`. Deterministic allow/deny
 patterns run first. Unknown, intrinsically read-only CLI actions use the

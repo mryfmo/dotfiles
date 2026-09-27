@@ -412,7 +412,7 @@ assets:
   starship:
     source: github-release
     upstream: starship/starship
-    pin: v1.25.1
+    pin: v1.26.0
     verify: release-sha256
     install_path: ~/.local/bin/starship
     installer: install/ubuntu/server/starship.sh
@@ -422,7 +422,7 @@ assets:
   aws-cli:
     source: https-download
     upstream: https://awscli.amazonaws.com
-    pin: 2.35.21
+    pin: 2.36.49
     verify: gpg
     gpg_fingerprint: FB5DB77FD5C118B80511ADA8A6310ACC4672475C
     install_path: ~/.local/share/aws-cli

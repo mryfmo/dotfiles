@@ -1054,12 +1054,20 @@ EOF
             ROOT / "scripts/lib/installer-pins.sh",
             repo / "scripts/lib/installer-pins.sh",
         )
-        # Hermetic downloads keep the pin-bump phase off the network in tests.
+        (repo / "home/dot_agents").mkdir(parents=True)
+        shutil.copy(
+            ROOT / "home/dot_agents/agent-config.yaml",
+            repo / "home/dot_agents/agent-config.yaml",
+        )
+        # Hermetic downloads keep the pin-bump phases off the network in tests.
         self.executable(
             bin_dir / "curl",
             """
             printf 'curl %s\n' "$*" >> "$TEST_LOG"
             request="$*"
+            case "$request" in
+                *crates.io/api/*) printf '{"versions": []}\n'; exit 0 ;;
+            esac
             out=""
             while [ "$#" -gt 0 ]; do
                 if [ "$1" = "-o" ]; then out="$2"; shift; fi

@@ -479,6 +479,139 @@ function bump_terminal_tool_pins() {
 }
 
 #
+# @description Print the current manifest pin of one asset.
+# @arg $1 string Asset name under assets: in home/dot_agents/agent-config.yaml.
+# @arg $2 path Repository root.
+# @stdout The pin value.
+#
+function asset_manifest_pin() {
+    awk -v header="  $1:" '
+        $0 == header { in_asset = 1; next }
+        in_asset && /^  [^ ]/ { exit }
+        in_asset && $1 == "pin:" { print $2; exit }
+    ' "$2/home/dot_agents/agent-config.yaml" | grep .
+}
+
+#
+# @description Print the newest version outside the supply-chain window that is newer than the current pin.
+#   Mirrors the mise tools path (`mise ... --before 7d`): a release published
+#   within the last 7 days is skipped, and the pin never moves backwards.
+# @arg $1 string Asset name, for log lines.
+# @arg $2 string Current pin.
+# @arg $3 number Window cutoff as Unix epoch seconds.
+# @stdin Tab-separated `version<TAB>published-epoch` lines in any order.
+# @stdout The chosen version, or the current pin when nothing qualifies.
+# @stderr One line per release skipped by the window.
+#
+function pick_windowed_pin() {
+    local asset="$1" current="$2" cutoff="$3"
+    local version published eligible=()
+
+    [ -n "${current}" ] || return 1
+    while IFS=$'\t' read -r version published; do
+        [ -n "${version}" ] && [ "${version}" != "${current}" ] || continue
+        [ "$(printf '%s\n%s\n' "${current}" "${version}" | sort -V | tail -n 1)" = "${version}" ] || continue
+        if [ "${published}" -le "${cutoff}" ]; then
+            eligible+=("${version}")
+        else
+            printf 'release window: skipping %s %s (published %d day(s) ago, under 7)\n' \
+                "${asset}" "${version}" "$(((cutoff + 604800 - published) / 86400))" >&2
+        fi
+    done
+    if [ "${#eligible[@]}" -gt 0 ]; then
+        printf '%s\n' "${eligible[@]}" | sort -V | tail -n 1
+    else
+        printf '%s\n' "${current}"
+    fi
+}
+
+#
+# @description Print published GitHub releases of one repository.
+# @arg $1 string GitHub `owner/name`.
+# @stdout Tab-separated `tag<TAB>published-epoch` lines.
+#
+function github_release_versions() {
+    gh api "repos/$1/releases?per_page=30" \
+        --jq '.[] | select((.draft or .prerelease) | not) | [.tag_name, (.published_at | fromdateiso8601)] | @tsv'
+}
+
+#
+# @description Print non-yanked crates.io versions of one crate.
+# @arg $1 string Crate name.
+# @stdout Tab-separated `version<TAB>published-epoch` lines.
+#
+function crate_versions() {
+    curl -fsSL -A 'mryfmo-dotfiles upgrade-tools (https://github.com/mryfmo/dotfiles)' \
+        "https://crates.io/api/v1/crates/$1/versions" |
+        python3 -c '
+import datetime, json, sys
+for v in json.load(sys.stdin)["versions"]:
+    if not v["yanked"]:
+        created = datetime.datetime.fromisoformat(v["created_at"].replace("Z", "+00:00"))
+        print(v["num"], int(created.timestamp()), sep="\t")
+'
+}
+
+#
+# @description Print AWS CLI v2 versions newer than the current pin, newest first, with download dates.
+#   AWS publishes v2 builds only as downloads, so the date is the Linux x86_64
+#   archive's Last-Modified header. Stops after the first version outside the
+#   window to keep HEAD requests few.
+# @arg $1 string Current pin.
+# @arg $2 number Window cutoff as Unix epoch seconds.
+# @stdout Tab-separated `version<TAB>published-epoch` lines.
+#
+function aws_cli_versions() {
+    local current="$1" cutoff="$2" version modified published
+
+    while IFS= read -r version; do
+        modified="$(curl -fsSI "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-${version}.zip" |
+            tr -d '\r' | sed -n 's/^[Ll]ast-[Mm]odified: //p')" || return 1
+        published="$(python3 -c 'import email.utils, sys; print(int(email.utils.parsedate_to_datetime(sys.argv[1]).timestamp()))' "${modified}")" || return 1
+        printf '%s\t%s\n' "${version}" "${published}"
+        [ "${published}" -gt "${cutoff}" ] || return 0
+    done < <(gh api "repos/aws/aws-cli/tags?per_page=100" --jq '.[].name' |
+        grep -E '^2\.[0-9]+\.[0-9]+$' | sort -V -r | awk -v current="${current}" '$0 == current { exit } { print }')
+}
+
+#
+# @description Bump the mise, sheldon, starship, and aws-cli asset pins outside the 7-day window.
+#   Their verify contracts (release-shasums, cargo-locked, release-sha256, gpg
+#   fingerprint) keep no per-version hash in the manifest, so only pins change.
+#   Writes through scripts/generate-agent-configs.py --set-asset, which renders
+#   each installer's version constant; review and commit that diff.
+#
+function bump_release_asset_pins() {
+    local repo_root cutoff mise_pin sheldon_pin starship_pin aws_pin
+
+    section "release asset pins"
+    repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    cutoff=$((${UPGRADE_RELEASE_NOW:-$(date +%s)} - 604800))
+    if ! mise_pin="$(github_release_versions jdx/mise |
+        pick_windowed_pin mise "$(asset_manifest_pin mise "${repo_root}")" "${cutoff}")" ||
+        ! sheldon_pin="$(crate_versions sheldon |
+            pick_windowed_pin sheldon "$(asset_manifest_pin sheldon "${repo_root}")" "${cutoff}")" ||
+        ! starship_pin="$(github_release_versions starship/starship |
+            pick_windowed_pin starship "$(asset_manifest_pin starship "${repo_root}")" "${cutoff}")" ||
+        ! aws_pin="$(aws_cli_versions "$(asset_manifest_pin aws-cli "${repo_root}")" "${cutoff}" |
+            pick_windowed_pin aws-cli "$(asset_manifest_pin aws-cli "${repo_root}")" "${cutoff}")"; then
+        printf 'warning: unable to resolve release asset pins; keeping current pins\n' >&2
+        return 1
+    fi
+
+    if ! (cd "${repo_root}" && uv run --with pyyaml scripts/generate-agent-configs.py \
+        --set-asset "mise.pin=${mise_pin}" \
+        --set-asset "sheldon.pin=${sheldon_pin}" \
+        --set-asset "starship.pin=${starship_pin}" \
+        --set-asset "aws-cli.pin=${aws_pin}"); then
+        printf 'warning: unable to write the asset manifest pins; keeping current pins\n' >&2
+        return 1
+    fi
+    printf 'Pinned mise %s, sheldon %s, starship %s, and aws-cli %s; review and commit the assets and installer diff.\n' \
+        "${mise_pin}" "${sheldon_pin}" "${starship_pin}" "${aws_pin}"
+}
+
+#
 # @description Upgrade uv tool installations when uv is available.
 #
 function upgrade_uv_tools() {
@@ -596,6 +729,7 @@ function main() {
     run_required_phase "mise inventory/install/upgrade" upgrade_mise_tools
     run_required_phase "Codex/Claude CLI upgrade" upgrade_agent_cli_tools
     run_optional_phase "terminal tool pin bump" bump_terminal_tool_pins
+    run_optional_phase "release asset pin bump" bump_release_asset_pins
     run_required_phase "agent asset regeneration" upgrade_agent_assets
     run_required_phase "uv tool upgrade" upgrade_uv_tools
     run_optional_phase "GitHub CLI extension upgrade" upgrade_gh_extensions

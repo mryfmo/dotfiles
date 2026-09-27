@@ -48,6 +48,11 @@ class HerdrAgentsTest(unittest.TestCase):
         self.agent_get_path = self.temp_dir / "agent-get.json"
         self.agent_start_failures_path = self.temp_dir / "agent-start-failures.txt"
         self.agent_start_not_ready_path = self.temp_dir / "agent-start-not-ready.txt"
+        # 1 makes the next agent start fail with agent_name_taken.
+        self.agent_start_name_taken_path = self.temp_dir / "agent-start-name-taken.txt"
+        # agent list polls that still show the taken name; -1 means forever.
+        self.agent_list_taken_polls_path = self.temp_dir / "agent-list-taken-polls.txt"
+        self.agent_taken_name_path = self.temp_dir / "agent-taken-name.txt"
         self.trust_dialog_match_path = self.temp_dir / "trust-dialog-match.txt"
         # shell, exit-dialog (claude foreground until an Enter), or stuck.
         self.process_info_state_path = self.temp_dir / "process-info-state.txt"
@@ -68,6 +73,8 @@ class HerdrAgentsTest(unittest.TestCase):
         self.agent_get_path.write_text("")
         self.agent_start_failures_path.write_text("0\n")
         self.agent_start_not_ready_path.write_text("0\n")
+        self.agent_start_name_taken_path.write_text("0\n")
+        self.agent_list_taken_polls_path.write_text("0\n")
         self.trust_dialog_match_path.write_text("0\n")
         self.process_info_state_path.write_text("shell\n")
         self.pane_counter_path.write_text("2\n")
@@ -172,12 +179,28 @@ if [[ $1 == agent && $2 == start ]]; then
         printf 'agent start timeout\\n' >&2
         exit 1
     fi
+    if [[ $(cat {self.agent_start_name_taken_path}) == 1 ]]; then
+        printf '0\\n' > {self.agent_start_name_taken_path}
+        printf '%s\\n' "$name" > {self.agent_taken_name_path}
+        printf 'agent_name_taken: %s\\n' "$name" >&2
+        exit 1
+    fi
     if [[ $(cat {self.agent_start_not_ready_path}) == 1 ]]; then
         printf '0\\n' > {self.agent_start_not_ready_path}
         printf 'agent_not_ready\\n' >&2
         exit 1
     fi
     printf '{{"id":"cli:agent:start","result":{{"pane":{{"pane_id":"%s"}}}}}}\\n' "$pane"
+    exit 0
+fi
+if [[ $1 == agent && $2 == list ]]; then
+    polls="$(cat {self.agent_list_taken_polls_path})"
+    if (( polls != 0 )); then
+        (( polls > 0 )) && printf '%s\\n' "$(( polls - 1 ))" > {self.agent_list_taken_polls_path}
+        printf '{{"id":"cli:agent:list","result":{{"agents":[{{"name":"%s","agent_status":"idle"}},{{"agent_status":"idle"}}]}}}}\\n' "$(cat {self.agent_taken_name_path})"
+        exit 0
+    fi
+    printf '%s\\n' '{{"id":"cli:agent:list","result":{{"agents":[{{"agent_status":"idle"}}]}}}}'
     exit 0
 fi
 if [[ $1 == agent && $2 == wait ]]; then
@@ -429,6 +452,8 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         env.pop("HERDR_AGENTS_WORKER_KIND", None)
         env.pop("HERDR_AGENTS_CLAUDE_ARGS", None)
         env.pop("HERDR_AGENTS_CLAUDE_WORKER_ARGS", None)
+        env.pop("HERDR_AGENTS_NAME_RELEASE_POLLS", None)
+        env.pop("HERDR_AGENTS_NAME_RELEASE_INTERVAL", None)
         env.pop("FPATH", None)
         if extra_env:
             env.update(extra_env)
@@ -1226,6 +1251,44 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             calls,
         )
 
+    def test_agent_name_taken_gives_up_after_bounded_wait(self) -> None:
+        self.agent_start_name_taken_path.write_text("1\n")
+        self.agent_list_taken_polls_path.write_text("-1\n")
+
+        result = self.run_helper(
+            extra_env={
+                "HERDR_AGENTS_NAME_RELEASE_POLLS": "3",
+                "HERDR_AGENTS_NAME_RELEASE_INTERVAL": "0",
+            }
+        )
+
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertEqual(calls.count("agent list"), 3, calls)
+        self.assertEqual(
+            len(
+                [
+                    call
+                    for call in calls
+                    if call.startswith("agent start claude-orchestrator-w-test ")
+                ]
+            ),
+            1,
+        )
+        self.assertIn(
+            "Failed to start claude agent claude-orchestrator-w-test: agent_name_taken",
+            result.stderr,
+        )
+        self.assertNotIn("Waited for herdr agent registration", result.stderr)
+
+    def test_successful_agent_start_does_not_poll_agent_list(self) -> None:
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertNotIn("agent list", calls)
+        self.assertNotIn("Waited for herdr agent registration", result.stderr)
+
     def test_codex_profile_defaults_to_generated_interactive_profile(self) -> None:
         profiles = self.home_dir / ".agents/model-profiles.env"
         profiles.parent.mkdir(parents=True)
@@ -1703,6 +1766,37 @@ fi
                 for call in calls
             ),
             calls,
+        )
+        self.assertIn("Herdr agents worker restarted in pane w-old:p2", result.stdout)
+
+    def test_restart_worker_waits_for_stale_registration_then_retries_once(
+        self,
+    ) -> None:
+        self.write_claude_pair_state(
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-worker","pane_id":"w-old:p2","workspace_id":"w-old"}}'
+        )
+        self.agent_start_name_taken_path.write_text("1\n")
+        self.agent_list_taken_polls_path.write_text("2\n")
+
+        result = self.run_helper(
+            "--restart-worker",
+            extra_env={"HERDR_AGENTS_NAME_RELEASE_INTERVAL": "0"},
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertGreaterEqual(calls.count("agent list"), 3, calls)
+        self.assertEqual(
+            calls.count(
+                "agent start claude-worker-w-old --kind claude --pane w-old:p2 "
+                "--timeout 30000 -- --model opus --effort high"
+            ),
+            2,
+            calls,
+        )
+        self.assertIn(
+            "Waited for herdr agent registration claude-worker-w-old to clear.",
+            result.stderr,
         )
         self.assertIn("Herdr agents worker restarted in pane w-old:p2", result.stdout)
 

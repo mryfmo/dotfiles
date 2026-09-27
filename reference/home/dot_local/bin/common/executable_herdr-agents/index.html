@@ -3691,7 +3691,7 @@
 
 
 <h1 id="homedot_localbincommonexecutable_herdr-agents">home/dot_local/bin/common/executable_herdr-agents<a class="headerlink" href="#homedot_localbincommonexecutable_herdr-agents" title="Permanent link">&para;</a></h1>
-<p>Full mode creates or repairs an agents workspace and never creates a second workspace for a directory that already has a managed pair. Attach mode adds the worker beside Claude in the current Herdr pane without restarting Claude. Restart-worker mode relaunches the worker agent in its existing pane so new worker launch arguments take effect.</p>
+<p>Full mode creates or repairs an agents workspace and never creates a second workspace for a directory that already has a managed pair. Attach mode adds the worker beside Claude in the current Herdr pane without restarting Claude. Restart-worker mode relaunches the worker agent in its existing pane so new worker launch arguments take effect, confirming a claude exit dialog once and relabeling a legacy worker pane label.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_herdr-agents</code></li>
@@ -3743,7 +3743,8 @@
 <span class="c1">#   second workspace for a directory that already has a managed pair. Attach</span>
 <span class="c1">#   mode adds the worker beside Claude in the current Herdr pane without</span>
 <span class="c1">#   restarting Claude. Restart-worker mode relaunches the worker agent in its</span>
-<span class="c1">#   existing pane so new worker launch arguments take effect.</span>
+<span class="c1">#   existing pane so new worker launch arguments take effect, confirming a</span>
+<span class="c1">#   claude exit dialog once and relabeling a legacy worker pane label.</span>
 <span class="c1"># @option --attach Attach the current Claude pane to its Herdr workspace layout.</span>
 <span class="c1"># @option --restart-worker Relaunch the worker agent in the existing pair's worker pane.</span>
 <span class="c1"># @option --bootstrap-agmsg Configure repo-scoped agmsg hooks without changing Herdr panes.</span>
@@ -4137,8 +4138,10 @@
 <span class="o">}</span>
 
 <span class="c1"># @description Exit any agent in the worker pane, then start the worker there.</span>
-<span class="c1">#   start_worker_agent waits (bounded) for the shell prompt, so the new worker</span>
-<span class="c1">#   starts only after the old agent has exited.</span>
+<span class="c1">#   A claude worker with running background tasks answers /exit with an</span>
+<span class="c1">#   exit-confirmation dialog, so the submit key is sent once when the shell</span>
+<span class="c1">#   prompt does not return. start_worker_agent waits (bounded) for the shell</span>
+<span class="c1">#   prompt, so the new worker starts only after the old agent has exited.</span>
 <span class="c1"># @arg $1 string Worker kind.</span>
 <span class="c1"># @arg $2 string Herdr worker agent registration name.</span>
 <span class="c1"># @arg $3 pane_id Worker pane id.</span>
@@ -4151,6 +4154,9 @@
 
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>pane_has_agent<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span>herdr<span class="w"> </span>agent<span class="w"> </span>prompt<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"/exit"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>wait_for_shell_prompt<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span>herdr<span class="w"> </span>agent<span class="w"> </span>send-keys<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>Enter<span class="w"> </span>&gt;<span class="w"> </span>/dev/null
+<span class="w">        </span><span class="k">fi</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span>start_worker_agent<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">kind</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null
 <span class="o">}</span>
@@ -4603,6 +4609,10 @@ require_distinct_worker_identity<span class="w"> </span><span class="s2">"</span
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>!<span class="w"> </span>attach_panes_are_unambiguous<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: Herdr workspace %s panes are ambiguous or include unmanaged panes; refusing restart.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="c1"># Repair a legacy label (e.g. claude-orchestrator from the pre-T25 attach bug) before the restart can refuse.</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-e<span class="w"> </span>--arg<span class="w"> </span>pane_id<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--arg<span class="w"> </span>label<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_kind</span><span class="si">}</span><span class="s2">-worker"</span><span class="w"> </span><span class="s1">'.result.panes[]? | select(.pane_id == $pane_id and .label == $label)'</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>herdr<span class="w"> </span>pane<span class="w"> </span>rename<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_kind</span><span class="si">}</span><span class="s2">-worker"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span>restart_worker_in_pane<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_kind</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_agent_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Herdr agents worker restarted in pane %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="s2">"</span>

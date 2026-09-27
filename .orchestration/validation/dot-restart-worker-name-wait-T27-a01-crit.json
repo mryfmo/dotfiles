@@ -1,0 +1,23 @@
+[
+  {
+    "scope": "review",
+    "id": "r_23886b",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: T27 dot-restart-worker-name-wait-T27-a01 adversarial review found no correctness, regression, security, or omission issues. PR #189 head fcc188c: agent_name_taken absorbed in start_agent_in_pane via bounded wait_for_agent_name_release (herdr agent list polling, 30x1s, test seams) + single retry; stderr line only when the wait fired; mutation baseline pasted (2 FAIL on unmodified script); 458 unit tests OK; CI 12/12 pass; diff scope exactly the 4 allowed files.",
+    "author": "Claude Code",
+    "created_at": "2026-09-27T02:45:48Z",
+    "updated_at": "2026-09-27T02:46:15Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_69a936",
+        "body": "Approval record resolved: adversarial review complete, no findings.",
+        "author": "Claude Code",
+        "created_at": "2026-09-27T02:46:15Z",
+        "review_round": 1
+      }
+    ]
+  }
+]

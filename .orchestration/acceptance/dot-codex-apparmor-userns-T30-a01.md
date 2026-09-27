@@ -30,3 +30,9 @@ Codex audit of this changeset is DEFERRED (the audit lane is exactly what this t
 [memory:decision] T30 accepted 2026-09-27: bwrap-userns AppArmor profile shipped (run_onchange + doctor effective-probe; sysctl untouched; documented removal), OpenSandbox vocabulary removed, operator Code Review Rules landed in AGENTS.md. PR #192 squash-merged; activation is a one-sudo operator deploy.
 
 cost: n/a (worker report gives no token figures)
+
+### Audit addendum (2026-09-27, orchestrator disposition of the deferred audit)
+`codex --profile audit review --commit ad5f95d` (evidence: .orchestration/validation/dot-codex-apparmor-userns-T30-a01-audit.md) returned 2 findings; orchestrator dispositions:
+1. P2 permanent skip (run_onchange hash covers only repo files, so a bwrap-absent first apply never retries) — ACCEPTED; T31 rev2 embeds prerequisite state in the rendered trigger.
+2. P2 doctor severity (missing bwrap with codex present is only warn_optional) — ACCEPTED; T31 rev2 makes it a required failure.
+Neither finding affects the deployed host (bwrap present, profile loaded, probe green); acceptance stands, fixes flow through T31 revision 2.

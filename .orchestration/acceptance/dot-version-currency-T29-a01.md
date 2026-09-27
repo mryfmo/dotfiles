@@ -31,3 +31,10 @@ The T28 audit rule requires a Codex audit of every code-changing RESULT; the aud
 [memory:decision] T29 accepted 2026-09-27: Renovate live (dependabot removed; mise manager at home/dot_mise/config.toml; manifest pins notification-only; first mise PR is a lock-fidelity trial), UA installer at 6df3065+sha256 pair, AGENTS.md canonical section landed. PR #191 squash-merged.
 
 cost: n/a (worker report gives no token figures)
+
+### Audit addendum (2026-09-27, orchestrator disposition of the deferred audit)
+`codex --profile audit review --commit 076f9e9` (evidence: .orchestration/validation/dot-version-currency-T29-a01-audit.md) returned 3 findings; orchestrator dispositions:
+1. P1 secret isolation (remote.yaml excludes only dependabot[bot]; a same-repo Renovate PR would reach the private deploy key) — CONFIRMED by direct read of remote.yaml:105-115. Fix: generalize the guards to all `[bot]` actors — folded into T31 revision 2 deliverable 4 (which previously would have merely deleted the dead guards; the audit materially improved the fix).
+2. P2 mise lock fidelity (Renovate mise artifact updater cannot regenerate mise.lock at the custom path) — ACCEPTED; sharpens the plan's trial-gate: T31 rev2 extends notification-only (dependencyDashboardApproval) to the mise manager until a trial proves fidelity.
+3. P2 fd exclusion bypass — ACCEPTED; T31 rev2 adds an fd hold packageRule mirroring upgrade-tools.sh's deliberate skip.
+No finding invalidates the T29 acceptance itself (the migration is merged and correct in its own scope); the P1 is a pre-existing guard made insufficient by the ecosystem swap, now fixed forward.

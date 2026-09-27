@@ -15,15 +15,23 @@ Operator directives (2026-09-27), two related supply/parity deliverables:
    starship, and aws-cli asset pins have NO automated bump path (found
    2026-09-27: starship sat at v1.25.1 with v1.26.0 published 2026-06-28).
 
-Also fold in one accepted T29 follow-up: `.github/workflows/remote.yaml`
-carries three dead `github.actor == 'dependabot[bot]'` guards (Dependabot
-was removed by T29); delete them.
+REVISION 2 (2026-09-27, supersedes the deliverable-4 wording and adds
+deliverables 6-7): the first live Codex audits (gpt-6-astra, read-only)
+of the T29 and T30 merge commits produced five confirmed findings; this task
+now carries their fixes. The orchestrator independently re-verified the P1
+(remote.yaml:105-115: the private-deploy-key steps run for every actor except
+`dependabot[bot]`, so a same-repo Renovate PR would run setup.sh with the
+private deploy key in the ssh-agent).
 
 [memory:decision] T31: mosh is dotfiles-managed on both OSes (PACKAGES
 entries + the minimal server-side config the investigation proves necessary);
 upgrade-tools.sh gains a pins-only bump path for the mise/sheldon/starship/
-aws-cli assets under the same 7-day supply-chain window as mise tools; dead
-dependabot actor guards removed (operator 2026-09-27).
+aws-cli assets under the same 7-day supply-chain window as mise tools;
+remote.yaml bot guards generalized to all [bot] actors (audit P1); renovate
+mise lane notification-only until lock fidelity is proven, fd excluded (audit
+P2); apparmor onchange step retries after prerequisite installs and doctor
+fails required when bwrap is missing with codex present (audit P2)
+(operator 2026-09-27).
 
 ## Repo / branch
 
@@ -89,12 +97,51 @@ v1.26.0` (published 2026-06-28, outside the window) and `sheldon`
 - `home/dot_agents/agent-config.yaml` and its rendered pin files will change
   only via that run; hand edits are forbidden (validator enforces).
 
-### 4. Dead Dependabot guards
+### 4. remote.yaml bot guards (REVISED — audit P1, orchestrator-confirmed)
 
-- `.github/workflows/remote.yaml`: remove the three
-  `github.actor == 'dependabot[bot]'` conditions (T29 removed Dependabot;
-  the guards are dead). Keep surrounding behavior identical for all other
-  actors; state the before/after condition text in the report.
+- Do NOT simply delete the dependabot guards. `.github/workflows/remote.yaml`
+  (~lines 105-115): the three `github.actor == 'dependabot[bot]'` /
+  `!= 'dependabot[bot]'` conditions gate the PRIVATE-DEPLOY-KEY steps; a
+  same-repo Renovate PR (actor `renovate[bot]`) currently passes them and
+  would run `setup.sh` with `PRIVATE_DOTFILES_PRIVATE_DEPLOY_KEY` in the
+  ssh-agent. Replace the dependabot-specific checks with generic bot-actor
+  checks: `contains(github.actor, '[bot]')` (and its negation), so every bot
+  — dependabot, renovate, and future ones — is excluded from the private
+  bootstrap path while human PRs keep testing it. State the before/after
+  condition text in the report.
+
+### 4b. renovate.json hardening (audit P2 ×2)
+
+- Mise lock fidelity: Renovate's mise artifact updater does not load
+  `home/dot_mise/config.toml` as a discovered config (`mise lock` runs in the
+  containing directory without MISE_CONFIG_DIR), so its version PRs cannot
+  reliably regenerate `mise.lock`. Until a trial proves otherwise, extend the
+  notification-only packageRule (`dependencyDashboardApproval: true`) to the
+  `mise` manager as well, with a description stating the lock-fidelity reason
+  and that `make upgrade` remains the executing lane.
+- fd exclusion: `scripts/upgrade-tools.sh` deliberately skips `fd` (newer
+  releases lack macOS x64 assets); the mise manager would bypass that. Add a
+  packageRule disabling/holding `fd` updates with the same reason string as
+  the script comment.
+- Update `tests/unit/test_supply_chain_policy.py` to assert both (mise
+  manager requires dashboard approval; fd is excluded).
+
+### 4c. AppArmor step robustness (audit P2 ×2 on the T30 changeset)
+
+- `home/.chezmoiscripts/ubuntu/run_onchange_after_07-apparmor-bwrap-userns.sh.tmpl`:
+  a skipped install (e.g. bwrap absent at first apply) is permanent because
+  the onchange hash only covers repository files. Include the prerequisite
+  state in the rendered trigger (e.g. embed `lookPath "bwrap"`-derived state
+  and the restriction sysctl value into the template comment/hash inputs) so
+  installing bwrap or flipping the restriction re-triggers the step on the
+  next apply. Keep the script itself unchanged in behavior.
+- `scripts/check-tools.sh` `check_apparmor_userns`: when the restriction is 1
+  AND codex is installed but `/usr/bin/bwrap` is missing, report a REQUIRED
+  failure (currently warn_optional), with a hint to install bwrap; keep
+  warn_optional only for the codex-absent case.
+- Extend `tests/unit/test_apparmor_userns.py` for both (trigger re-render on
+  prerequisite change can be asserted via the rendered wrapper content seam;
+  doctor required-failure branch).
 
 ### 5. Tests
 
@@ -118,8 +165,11 @@ v1.26.0` (published 2026-06-28, outside the window) and `sheldon`
 - `home/dot_agents/agent-config.yaml` + rendered pin files (via the new
   pins-only run and `--set-asset` only)
 - `.github/workflows/remote.yaml` (deliverable 4 only)
+- `renovate.json` (deliverable 4b only)
+- `home/.chezmoiscripts/ubuntu/run_onchange_after_07-apparmor-bwrap-userns.sh.tmpl` (deliverable 4c only)
+- `scripts/check-tools.sh` (deliverable 4c only)
 - `README.md`
-- matching unit test files under `tests/unit/`
+- matching unit test files under `tests/unit/` (incl. test_supply_chain_policy.py, test_apparmor_userns.py)
 - `.orchestration/{reports,validation,sandboxes,learning,autoskill/runs}/dot-mosh-and-asset-bumps-T31-a01.md` (main checkout)
 
 ## Forbidden actions

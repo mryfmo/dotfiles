@@ -71,7 +71,24 @@ a managed step and verified by doctor (operator 2026-09-27).
   loaded and a probe `bwrap --ro-bind / / true` succeeds; report a clear
   warn/error otherwise (warn_optional if codex is not installed).
 
-### 4. Tests
+### 4. Remove the OpenSandbox vocabulary (operator decision 2026-09-27)
+
+OpenSandbox (the Alibaba container control plane) was evaluated and rejected
+for this fleet: the agent CLIs cannot delegate their built-in sandboxes, and
+containerizing agents is structurally incompatible with the herdr-pane +
+worktree + agmsg regime. It was never installed; only vocabulary remains.
+
+- `home/dot_agents/skills/agmsg-orchestration/SKILL.md`: exactly two lines
+  reference it (the `sandboxes/` layout line and Worker Playbook step 7).
+  Replace the OpenSandbox mentions with neutral wording — e.g.
+  `sandboxes/`: "per-task isolation records (sandbox/worktree evidence)";
+  step 7: "Put the isolation status or fallback rationale in
+  `expected_sandbox_file`." Keep the record contract itself unchanged (every
+  task still writes a sandbox record).
+- Do not rewrite historical `.orchestration/` records that mention
+  OpenSandbox; history stays as written.
+
+### 5. Tests
 
 - Unit tests for the new check and install-step logic per the existing
   fake/fixture patterns, with a mutation baseline (paste the FAILED run
@@ -89,6 +106,7 @@ a managed step and verified by doctor (operator 2026-09-27).
 - `scripts/check-agent-runtime.py` or the doctor-owning script (report which
   file owns the check)
 - `README.md` (one short paragraph: why the profile exists, how to remove)
+- `home/dot_agents/skills/agmsg-orchestration/SKILL.md` (deliverable 4 only)
 - matching unit test files under `tests/unit/`
 - `.orchestration/{reports,validation,sandboxes,learning,autoskill/runs}/dot-codex-apparmor-userns-T30-a01.md` (main checkout)
 
@@ -118,6 +136,6 @@ gh pr checks <pr-number>
    (including the mutation baseline) and the PR number/head SHA; `effects=`
    declared with its reverse mapping.
 3. CompactionDB from the main checkout:
-   `python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T30: dotfiles ships an AppArmor userns profile restoring sandboxed codex under apparmor_restrict_unprivileged_userns=1 (narrowest executable-scoped grant, managed install step + doctor probe); global sysctl relaxation rejected (operator 2026-09-27)"`
+   `python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project --content "T30: dotfiles ships an AppArmor userns profile restoring sandboxed codex under apparmor_restrict_unprivileged_userns=1 (narrowest executable-scoped grant, managed install step + doctor probe); global sysctl relaxation rejected; OpenSandbox rejected for this fleet (CLIs cannot delegate built-in sandboxes; containerization incompatible with the herdr/worktree/agmsg regime) and its vocabulary removed from the orchestration skill (operator 2026-09-27)"`
    — paste command and output.
 4. `AGMSG-RESULT v1` with all artifact paths; `cost:` line in the report.

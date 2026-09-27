@@ -1,0 +1,31 @@
+# AGMSG-ACCEPTANCE dot-three-role-constellation-T28-a01
+
+RESULT 2026-09-27T03:53:04Z from claude-standard-dot-a005 (worker-c, claude-opus-5-5 high, --advisor fable): status=ready_for_review, PR #190 head 290e9bc2a7265108fc30518be78907aa63fc083c, branch feat/three-role-constellation from origin/main eb3cd4b.
+
+## Adversarial review (orchestrator, from origin refs)
+
+- task_rev sha256 match confirmed (df1c6d1a…, verified against eb3cd4b).
+- Diff scope: 13 files (+317/−9), all within allowed files (modify_private_audit.config.toml is the generator-owned render target following the 7 existing per-profile siblings, disclosed per the task's generated-paths clause).
+- Manifest: deep.claude → claude-fable-5-1 high advisor fable; new audit profile (claude fable-5-1 high; codex gpt-6-astra high, sandbox_mode read-only, notify hook); express/standard/review/security/adh, worker_kind, worker_profile, interactive_profile untouched.
+- Generator: CODEX_SANDBOX_MODES validated against `codex --help -s` values; per-profile sandbox_mode emitted only when set — profile files are a `--profile` layer over the base config, so absent means inherit workspace-write; base template unchanged (spec's "only if required" satisfied honestly).
+- Validator: audit joins the six required base profiles; operator-pin loop (model/effort/sandbox_mode) with truthful messages naming key, expected, actual; modify-script check enforces rendered sandbox_mode equality including absence.
+- Rules/docs verbatim to spec: model-selection constellation sentence + review-vs-audit lane reconciliation (one mandate per artifact type); agmsg-orchestration audit bullet (orchestrator-invoked, read-only, pane-less, identity-less, acceptance exemption); SKILL.md carve-out clause; AGENTS.md `## Audit` standing rules (21 lines); README three-role paragraph.
+- Auditor invocation verified by the worker on this host: `--profile` is a global flag preceding `review`; profile layering proven via the existing security profile (session header switched model/effort) and `-c sandbox_mode` proven separately. Pitfall found and recorded: codex-cli 0.157.1 SILENTLY IGNORES an unknown profile name — the first live audit must confirm the session header shows model gpt-6-astra, reasoning effort high, sandbox read-only.
+- Tests: generator ×2 (read-only override renders; standard stays clean; base keeps workspace-write; env line exists / invalid mode fails) and validator ×2 (+4 subtests: wrong model, wrong effort, wrong sandbox, sandbox missing; missing audit profile). Mutation baselines pasted verbatim (generator FAILED failures=1 errors=1; validator FAILED failures=5 errors=1), then 5 OK.
+- Evidence: --check up to date, validator ok, 462 unit tests OK (skipped=1), CI 12 checks pass on 290e9bc, CompactionDB decision id e6bb0903-a81e-41db-84a7-f566aa3064ac pasted.
+- Refutation attempts found no correctness, regression, security, or omission issue.
+
+## Review guard
+
+make require-crit-review satisfied via AGENT_REVIEWED=1 with REVIEW_EVIDENCE=.orchestration/validation/dot-three-role-constellation-T28-a01-receipt.md (resolved review-scope approval record r_d358f4, crit session 871550a2379c, exported JSON at .orchestration/validation/dot-three-role-constellation-T28-a01-crit.json).
+
+**Decision: ACCEPTED.** Merge #190 --squash (no --delete-branch while worker-c holds the branch); deploy (canonical clone ff pull + chezmoi apply); orchestrator live E2E of the audit lane: `codex --profile audit review --commit ed49550` (T27's merge commit) with session-header verification (model gpt-6-astra / effort high / sandbox read-only), structured output saved to `.orchestration/validation/dot-restart-worker-name-wait-T27-a01-audit.md` — if the invocation or header fails, this acceptance is reopened. The interactive fable-5-1 change activates at the orchestrator's next session relaunch (no mid-session switch).
+
+[memory:decision] T28 accepted 2026-09-27: three-role constellation live — deep=claude-fable-5-1 high (orchestrator, next relaunch), standard=claude-opus-5-5 high (worker), audit=codex gpt-6-astra high read-only (auditor via codex --profile audit review --commit, header-verified). PR #190 squash-merged.
+
+cost: n/a (worker report gives no token figures)
+
+### Live E2E addendum (2026-09-27 ~12:5x+09:00, orchestrator)
+
+Deployed (canonical clone ff pull to e6ebd32, chezmoi apply; `~/.codex/audit.config.toml` renders model gpt-6-astra / effort high / sandbox_mode read-only). First live audit run `codex --profile audit review --commit ed49550`: the session header verified ALL THREE pins (`model: gpt-6-astra`, `sandbox: read-only`, `reasoning effort: high`) — the profile selection, silent-ignore hazard, and read-only sandbox criteria PASS. The review itself failed with `401 Unauthorized (Missing bearer or basic authentication)` against api.openai.com: `codex login status` = "Not logged in" on this host (no ~/.codex/auth.json), contradicting the operator's earlier report. This is host machine-state outside the T28 changeset, so the acceptance HOLDS on the header criterion; the findings-producing half of the E2E is deferred to the first post-login audit, which must target e6ebd32 (T28's own merge, per the now-active audit rule) and completes this addendum. Operator action required: `codex login` on this host.
+[memory:failure] codex CLI on this host is logged out (no auth.json, login status "Not logged in", API 401) as of 2026-09-27T03:56Z; the audit lane is blocked on an interactive `codex login` until the operator signs in (2026-09-27).

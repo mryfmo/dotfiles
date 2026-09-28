@@ -245,6 +245,54 @@ class UnderstandAnythingCoreBuildTest(unittest.TestCase):
         )
         self.assertTrue((self.clone / "packages/core/dist/index.js").is_file())
 
+    def write_fake_mise_exec_pnpm(self) -> None:
+        """A mise whose `exec npm:pnpm -- pnpm ...` behaves like a working pnpm."""
+        self.write_fake(
+            "mise",
+            textwrap.dedent(
+                """
+                case "$*" in
+                  "exec npm:pnpm -- pnpm --filter @understand-anything/core build")
+                    mkdir -p packages/core/dist && printf 'built\\n' > packages/core/dist/index.js ;;
+                esac
+                exit 0
+                """
+            ),
+        )
+
+    def test_prefers_mise_exec_over_an_unbacked_pnpm_shim(self) -> None:
+        # The mise shim exists before the pinned version is installed.
+        self.make_plugin_tree(self.release)
+        self.write_fake(
+            "pnpm",
+            "printf 'mise ERROR No version is set for shim: pnpm\\n' >&2\nexit 1",
+        )
+        self.write_fake_mise_exec_pnpm()
+
+        result = self.provision()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn("WARN", result.stderr)
+        self.assertEqual(
+            [call.split("|", 1)[1] for call in self.calls()],
+            [
+                "mise exec npm:pnpm -- pnpm install --frozen-lockfile",
+                "mise exec npm:pnpm -- pnpm --filter @understand-anything/core build",
+            ],
+        )
+        self.assertEqual((self.clone / "packages/core/dist/index.js").read_text(), "built\n")
+
+    def test_uses_path_pnpm_only_when_mise_is_absent(self) -> None:
+        self.make_plugin_tree(self.release)
+        self.write_fake_pnpm()
+
+        result = self.provision()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse((self.bin / "mise").exists())
+        self.assertTrue(all("|pnpm " in call for call in self.calls()), self.calls())
+        self.assertTrue((self.clone / "packages/core/dist/index.js").is_file())
+
     def test_warns_and_continues_when_no_pnpm_is_resolvable(self) -> None:
         self.make_plugin_tree(self.release)
 

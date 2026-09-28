@@ -4403,8 +4403,11 @@
 <span class="c1">#   Mirrors upstream skills/understand/SKILL.md, which builds in place wherever</span>
 <span class="c1">#   the plugin root resolves. It rebuilds when dist/index.js is missing or older</span>
 <span class="c1">#   than any file under packages/core/src or the root pnpm-lock.yaml, the same</span>
-<span class="c1">#   freshness rule `make doctor` reports, and otherwise skips (idempotent). pnpm</span>
-<span class="c1">#   comes from PATH (the mise shim for the pinned npm:pnpm) or `mise exec`.</span>
+<span class="c1">#   freshness rule `make doctor` reports, and otherwise skips (idempotent). With</span>
+<span class="c1">#   mise, pnpm always runs as `mise exec npm:pnpm`, which installs the pinned</span>
+<span class="c1">#   version on demand: a mise shim can exist before that version is installed</span>
+<span class="c1">#   ("No version is set for shim"). A bare pnpm from PATH is used only without</span>
+<span class="c1">#   mise.</span>
 <span class="c1">#   A missing pnpm or a failed build only warns, so make update never fails</span>
 <span class="c1">#   for it.</span>
 <span class="c1"># @arg $1 path Plugin tree that contains packages/core.</span>
@@ -4419,10 +4422,10 @@
 <span class="w">        </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>find<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">/packages/core/src"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">/pnpm-lock.yaml"</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-newer<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">/packages/core/dist/index.js"</span><span class="w"> </span>-print<span class="w"> </span>-quit<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>has_command<span class="w"> </span>pnpm<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nv">pnpm_cmd</span><span class="o">=(</span>pnpm<span class="o">)</span>
-<span class="w">    </span><span class="k">elif</span><span class="w"> </span>has_command<span class="w"> </span>mise<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>has_command<span class="w"> </span>mise<span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nv">pnpm_cmd</span><span class="o">=(</span>mise<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>npm:pnpm<span class="w"> </span>--<span class="w"> </span>pnpm<span class="o">)</span>
+<span class="w">    </span><span class="k">elif</span><span class="w"> </span>has_command<span class="w"> </span>pnpm<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">pnpm_cmd</span><span class="o">=(</span>pnpm<span class="o">)</span>
 <span class="w">    </span><span class="k">else</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'WARN: Understand-Anything core not built: pnpm not found; run: cd %q &amp;&amp; pnpm install --frozen-lockfile &amp;&amp; pnpm --filter @understand-anything/core build\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>

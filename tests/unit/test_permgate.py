@@ -199,7 +199,10 @@ class PermgateTest(unittest.TestCase):
             from pathlib import Path
 
             args = sys.argv[1:]
-            prompt = sys.stdin.read()
+            # permgate passes the codex prompt as the last argument and leaves
+            # stdin inherited; reading stdin here would block on an open runner
+            # pipe until the policy timeout.
+            prompt = args[-1]
             Path(os.environ["PERMGATE_TEST_CODEX_CAPTURE"]).write_text(
                 json.dumps({"args": args, "prompt": prompt})
             )
@@ -809,6 +812,9 @@ class PermgateTest(unittest.TestCase):
                 self.assertNotEqual(self.read_log()[-1]["layer"], "deterministic")
 
     def test_bench_runs_five_layer_two_fixtures(self) -> None:
+        # The bench asserts every classification succeeds, so give the fake
+        # CLIs the maximum timeout the policy validator allows.
+        self.write_policy(timeout=8)
         env = os.environ.copy()
         env.update(
             {
@@ -831,12 +837,13 @@ class PermgateTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         benchmark = json.loads(result.stdout)
         self.assertEqual(set(benchmark), {"claude", "codex"})
-        for result in benchmark.values():
-            self.assertEqual(result["n"], 5)
-            self.assertEqual(len(result["latency_ms"]), 5)
-            self.assertEqual(result["successful_classifications"], 5)
-            self.assertEqual(result["status_counts"], {"classified": 5})
-            self.assertTrue(result["ready_for_enablement"])
+        for agent, result in benchmark.items():
+            detail = f"{agent}: {json.dumps(result, sort_keys=True)}"
+            self.assertEqual(result["n"], 5, detail)
+            self.assertEqual(len(result["latency_ms"]), 5, detail)
+            self.assertEqual(result["successful_classifications"], 5, detail)
+            self.assertEqual(result["status_counts"], {"classified": 5}, detail)
+            self.assertTrue(result["ready_for_enablement"], detail)
 
     def test_each_agent_uses_only_its_own_authenticated_cli(self) -> None:
         payload = CODEX_INPUT | {"tool_input": {"command": "gh issue view 123"}}

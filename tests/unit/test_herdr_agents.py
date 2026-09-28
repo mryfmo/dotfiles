@@ -32,11 +32,6 @@ GHOSTTY_CONFIG = ROOT / "home/dot_config/ghostty/config"
 ZPROFILE = ROOT / "home/dot_zprofile"
 ZSHRC = ROOT / "home/dot_zshrc"
 AUDIT_SHA = "926d9f1"
-AUDIT_PROMPT = (
-    "Follow the AGENTS.md Audit section. End your final message with exactly one "
-    "line `Verdict: correct` or `Verdict: incorrect`. If you cannot assess the "
-    "commit, end with `Verdict: blocked` and explain why."
-)
 
 
 class HerdrAgentsTest(unittest.TestCase):
@@ -2043,6 +2038,15 @@ fi
             f'"pane_id":"{workspace_id}:p9","tab_id":"{workspace_id}:t2","workspace_id":"{workspace_id}"}}'
         )
 
+    @staticmethod
+    def transcript(final: str | None, exec_output: str = "") -> str:
+        """Render codex CLI transcript evidence: user, exec, then the final codex block."""
+        text = "OpenAI Codex v0.157.1\n--------\nuser\nReview commit\n"
+        text += "exec\n/bin/bash -lc 'git show --stat HEAD'\n" + exec_output
+        if final is not None:
+            text += f"codex\n{final}\ntokens used\n12,345\n{final}\n"
+        return text
+
     def write_audit_evidence(self, text: str, out: Path | None = None) -> Path:
         """Pre-create the evidence file the real pane would tee."""
         path = out or (
@@ -2054,7 +2058,7 @@ fi
 
     def test_audit_creates_the_audit_tab_once_and_reuses_it(self) -> None:
         self.write_audit_pair_state()
-        self.write_audit_evidence("No findings.\nVerdict: correct\n")
+        self.write_audit_evidence(self.transcript("No findings.\nVerdict: correct"))
 
         for _ in range(2):
             result = self.run_helper("--audit", AUDIT_SHA)
@@ -2126,7 +2130,7 @@ fi
     ) -> None:
         self.write_audit_pair_state(self.audit_tab_pane())
         self.write_audit_evidence(
-            "Verdict: correct\n", self.workdir.resolve() / "evidence/T32 audit.md"
+            self.transcript("Verdict: correct"), self.workdir.resolve() / "evidence/T32 audit.md"
         )
 
         result = self.run_helper("--audit", AUDIT_SHA, "--out", "evidence/T32 audit.md")
@@ -2139,7 +2143,7 @@ fi
         self.assertRegex(
             inner,
             r"^cd -- \S+ && set -o pipefail && "
-            rf"codex --profile audit review --commit {AUDIT_SHA} \S.* 2>&1 \| tee -- ",
+            rf"codex --profile audit review --commit {AUDIT_SHA} 2>&1 \| tee -- ",
         )
         self.assertEqual(
             self.quoted_token(inner, "| tee -- ", "; printf "), str(evidence)
@@ -2156,7 +2160,7 @@ fi
 
     def test_audit_marker_detection_reads_unwrapped_snapshots(self) -> None:
         self.write_audit_pair_state(self.audit_tab_pane())
-        self.write_audit_evidence("Verdict: correct\n")
+        self.write_audit_evidence(self.transcript("Verdict: correct"))
 
         result = self.run_helper("--audit", AUDIT_SHA)
 
@@ -2171,7 +2175,7 @@ fi
 
     def test_audit_runs_in_dir_even_when_the_reused_pane_moved(self) -> None:
         self.write_audit_pair_state(self.audit_tab_pane())
-        self.write_audit_evidence("Verdict: correct\n")
+        self.write_audit_evidence(self.transcript("Verdict: correct"))
 
         result = self.run_helper("--audit", AUDIT_SHA)
 
@@ -2188,7 +2192,7 @@ fi
         self.workdir = self.temp_dir / "it's project"
         self.workdir.mkdir()
         self.write_audit_pair_state(self.audit_tab_pane())
-        self.write_audit_evidence("Verdict: correct\n")
+        self.write_audit_evidence(self.transcript("Verdict: correct"))
 
         result = self.run_helper("--audit", AUDIT_SHA)
 
@@ -2209,7 +2213,7 @@ fi
     def test_audit_quotes_a_non_ascii_out_path_under_the_c_locale(self) -> None:
         self.write_audit_pair_state(self.audit_tab_pane())
         self.write_audit_evidence(
-            "Verdict: correct\n", self.workdir.resolve() / "evidence/監査 audit.md"
+            self.transcript("Verdict: correct"), self.workdir.resolve() / "evidence/監査 audit.md"
         )
 
         result = self.run_helper(
@@ -2232,47 +2236,44 @@ fi
         profiles = self.home_dir / ".agents/model-profiles.env"
         profiles.parent.mkdir(parents=True, exist_ok=True)
         profiles.write_text('MODEL_PROFILE_AUDIT_CODEX_ARGS="--profile audit-e2e"\n')
-        self.write_audit_evidence("Verdict: correct\n")
+        self.write_audit_evidence(self.transcript("Verdict: correct"))
 
         result = self.run_helper("--audit", AUDIT_SHA, "--timeout", "60")
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn(
-            f" && codex --profile audit-e2e review --commit {AUDIT_SHA} ",
+            f" && codex --profile audit-e2e review --commit {AUDIT_SHA} 2>&1 ",
             self.audit_inner_command(),
         )
         calls = self.calls_path.read_text().splitlines()
         self.assertTrue(any("--timeout 60000" in call for call in calls), calls)
 
-    def test_audit_passes_the_verdict_prompt_as_one_word_after_the_commit(
-        self,
-    ) -> None:
-        self.write_audit_pair_state(self.audit_tab_pane())
-        self.write_audit_evidence("Verdict: correct\n")
-
-        result = self.run_helper("--audit", AUDIT_SHA)
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(
-            self.quoted_token(
-                self.audit_inner_command(),
-                f"review --commit {AUDIT_SHA} ",
-                " 2>&1 | tee -- ",
+    def test_audit_verdict_gate_reads_only_the_final_codex_block(self) -> None:
+        # exec blocks carry repository text; only the last codex block is the verdict.
+        for name, evidence, returncode, verdict in (
+            ("a", self.transcript("No findings.\nVerdict: correct"), 0, "correct"),
+            ("h", self.transcript("Review blocked: `0000000` does not resolve to a commit"), 1, "blocked"),
+            ("b", self.transcript("Cannot check out the tree.\nVerdict: blocked"), 1, "blocked"),
+            ("c", self.transcript("Looks fine overall."), 1, "missing"),
+            ("d", self.transcript("- [P2] Broken quoting.\nVerdict: incorrect"), 1, "incorrect"),
+            (
+                "f",
+                self.transcript("Looks fine overall.", exec_output="    fixture = 'Verdict: correct'\nVerdict: correct\n"),
+                1,
+                "missing",
             ),
-            AUDIT_PROMPT,
-        )
-
-    def test_audit_verdict_gate_reads_the_evidence_file(self) -> None:
-        # The prompt echo must not count: only a whole final verdict line does.
-        echo = f"user instructions: {AUDIT_PROMPT}\n"
-        for evidence, returncode, verdict in (
-            (echo + "No findings.\nVerdict: correct\n", 0, "correct"),
-            (echo + "Review blocked: `0000000` does not resolve to a commit\n", 1, "blocked"),
-            (echo + "Cannot check out the tree.\nVerdict: blocked\n", 1, "blocked"),
-            (echo + "Looks fine overall.\n", 1, "missing"),
-            (echo + "- [P2] Broken quoting.\nVerdict: incorrect\n", 1, "incorrect"),
+            (
+                "g",
+                self.transcript(
+                    "No findings.\nVerdict: correct",
+                    exec_output="    evidence with `Review blocked` must read as blocked\nReview blocked: example\n",
+                ),
+                0,
+                "correct",
+            ),
+            ("i", self.transcript(None, exec_output="Verdict: correct\n"), 1, "missing"),
         ):
-            with self.subTest(verdict=verdict, evidence=evidence[-40:]):
+            with self.subTest(case=name, verdict=verdict):
                 self.write_audit_pair_state(self.audit_tab_pane())
                 self.write_audit_evidence(evidence)
 

@@ -397,6 +397,17 @@ worker pane is never relabeled as the orchestrator. To tear down a stray
 duplicate workspace, `/exit` each of its agents with
 `herdr agent prompt <pane> "/exit"`, then run `herdr workspace close <id>`.
 
+`herdr-agents --audit <sha> [--out PATH] [--timeout SECONDS] [DIR]` makes the
+orchestrator's Codex audit visible: it runs
+`codex <MODEL_PROFILE_AUDIT_CODEX_ARGS> review --commit <sha>` in the pair
+workspace's dedicated `audit` tab (created once, then reused and left open),
+tees the output to PATH (default `.orchestration/validation/audit-<sha>.md`
+under DIR), waits up to SECONDS (default 1800) for its exit marker, and exits
+nonzero when the audit does. The audit pane is labeled `audit`, so the pair
+modes never reuse it, and the auditor still has no agmsg identity. It exits 2
+without a managed workspace; headless `codex --profile audit review` remains the
+fallback there.
+
 Per-task agent switching happens at the profile layer, never in the layout:
 the worker profile comes from `HERDR_AGENTS_WORKER_PROFILE` (the deprecated
 `HERDR_AGENTS_CODEX_PROFILE` alias still works), otherwise from the manifest

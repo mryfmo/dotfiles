@@ -1,4 +1,6 @@
-# AGMSG-TASK dot-orchestration-rules-T33a-a01 (revision 2)
+# AGMSG-TASK dot-orchestration-rules-T33a-a01 (revision 3)
+
+Revision 3 (2026-09-28, pre-merge Codex audit of 8798076, P2): the "agent-side substitute evidence when Crit data is unavailable" clause names no evidence format that `make require-crit-review` accepts. Item 6 added; `AGENTS.md` ("Agent Review Evidence" section only) added to allowed files. Items 1–5 stay as merged on your branch.
 
 Revision 2 (2026-09-28, ruling on the worker's blocked PONG): the Codex crit mirror is `home/dot_config/codex/AGENTS.md`; option (A) is APPROVED — edit it to align. Item 4 is rewritten below; items 1, 2, 3, 5 are unchanged.
 
@@ -50,6 +52,20 @@ plus two lessons from T31/T32). Text only; no tooling changes.
    read-only probes such as `pane read`/`pane wait-output` against another
    agent's pane, even to learn output shapes; use `--help` and fake CLIs".
 
+6. **Fallback evidence format (audit finding, revision 3).** `scripts/require-crit-review.py`
+   accepts any repo-local JSON file that is a non-empty list of objects with
+   non-empty string `id`, `body`, `scope`, `resolved: true`, and at least one
+   `scope: "review"` record (or a path-bound `line`/`file` record), plus a receipt
+   with `review_surface: crit-data`, `reviewer: <agent>`, `review_source: <that JSON>`,
+   `review_outcome: approved|addressed`. State this in one sentence wherever the
+   fallback is prescribed — `home/dot_config/claude/rules/crit-review.md`,
+   `home/dot_config/codex/AGENTS.md` (Japanese), the SKILL crit bullet — and in
+   `AGENTS.md` "Agent Review Evidence" (repo file; add one bullet): "When the crit
+   CLI or its data is unavailable, save the independent agent review in that same
+   JSON shape (hand-written records are acceptable), mark each record `resolved: true`
+   after addressing it, and reference it from the receipt exactly as crit-exported
+   evidence; the guard validates shape, not provenance." Do not change the guard.
+
 [memory:decision] T33a: interim worker inbox discipline (inbox.sh at each
 milestone for worktree-registered identities from a main-path pane),
 fail-closed task convention with PONG blocked instead of approval requests,
@@ -71,6 +87,7 @@ SKILL (operator 2026-09-28).
 - `home/dot_agents/skills/agmsg-orchestration/SKILL.md`
 - `home/dot_config/claude/rules/crit-review.md` (only if wording must be shared verbatim)
 - `home/dot_config/codex/AGENTS.md` (crit passages only; revision 2)
+- `AGENTS.md` ("Agent Review Evidence" section only; revision 3)
 - `.orchestration/{reports,validation,sandboxes,learning,autoskill/runs}/dot-orchestration-rules-T33a-a01.md` (main checkout)
 
 ## Forbidden actions

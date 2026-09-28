@@ -46,6 +46,7 @@
 
 - Locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` as repo-local agent evidence.
 - Agent evidence must contain at least one resolved record. For a finding-free review, add and resolve one review-scope approval record.
+- When the crit CLI or its data is unavailable, save the independent agent review in that same JSON shape (hand-written records are acceptable), mark each record `resolved: true` after addressing it, and reference it from the receipt exactly as crit-exported evidence; the guard validates shape, not provenance.
 - This local evidence is process evidence, not reviewer authentication. Human `CRIT_REVIEWED=1` receipts remain supported.
 
 ## Audit

@@ -11,7 +11,8 @@
 #   claude exit dialog once and relabeling a legacy worker pane label. Audit
 #   mode runs the read-only Codex audit of one commit visibly in the pair
 #   workspace's dedicated `audit` tab, tees it to an evidence file, and waits
-#   (bounded) for its exit marker; the auditor keeps no agmsg identity.
+#   (bounded) for its exit marker, then gates on the `Verdict:` line of the
+#   transcript's final codex message; the auditor keeps no agmsg identity.
 # @option --attach Attach the current Claude pane to its Herdr workspace layout.
 # @option --restart-worker Relaunch the worker agent in the existing pair's worker pane.
 # @option --bootstrap-agmsg Configure repo-scoped agmsg hooks without changing Herdr panes.
@@ -75,7 +76,9 @@ Bootstrap mode only configures missing repo-scoped agmsg hooks.
 Audit mode runs the read-only Codex audit of <sha> in the existing pair
 workspace's audit tab (created once, then reused and left open), tees it to
 PATH (default .orchestration/validation/audit-<sha>.md under DIR), and exits
-nonzero when the audit does; it exits 2 without a managed workspace.
+nonzero when the audit does or when the final codex message in PATH lacks a
+`Verdict: correct` line (a missing, blocked, or incorrect verdict); it exits 2
+without a managed workspace.
 USAGE
 }
 
@@ -934,6 +937,23 @@ if [[ ${audit_mode} == true ]]; then
     } | grep -oE "${audit_marker}:[0-9]+" | tail -n 1 | cut -d: -f2 || true)"
     printf 'Audit exit: %s\nAudit evidence: %s\n' "${audit_status:-unknown}" "${audit_out}"
     [[ ${audit_status} == 0 ]] || exit 1
+    # codex review exits 0 even when it cannot assess the commit, so gate on the
+    # AGENTS.md verdict line. The evidence is the codex transcript, whose exec
+    # blocks carry repository text: judge only the region after the last line
+    # that is exactly `codex`, with no `tokens used` stop (the trailing echo is
+    # the same message, and a quoted transcript must not truncate it). The
+    # auditor ends with its verdict, so the last whole-line verdict wins over
+    # any quoted one; `Review blocked` counts only when no verdict line exists.
+    audit_final="$(awk '/^codex$/ { final = ""; found = 1; next }
+        found { final = final $0 "\n" }
+        END { printf "%s", final }' "${audit_out}" 2> /dev/null || true)"
+    audit_verdict="$(printf '%s\n' "${audit_final}" | grep -E '^[[:space:]]*Verdict: (correct|incorrect|blocked)[[:space:]]*$' |
+        tail -n 1 | sed -E 's/^[[:space:]]*Verdict: ([a-z]+).*/\1/' || true)"
+    if [[ -z ${audit_verdict} ]] && printf '%s\n' "${audit_final}" | grep -q '^Review blocked'; then
+        audit_verdict=blocked
+    fi
+    printf 'Audit verdict: %s\n' "${audit_verdict:-missing}"
+    [[ ${audit_verdict} == correct ]] || exit 1
     exit 0
 fi
 

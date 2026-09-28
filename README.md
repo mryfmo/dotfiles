@@ -431,7 +431,11 @@ to the transcript region after the last line that is exactly `codex`. The gate
 trusts the auditor's own final message, not an auditor that deliberately ends
 with a fake verdict. Before the gate, the transcript and last-message file are
 masked in place with `scripts/validate-agent-assets.py --mask-secrets`, so
-committed evidence never trips the repository's secret scan. The audit pane is labeled `audit`, so the pair modes never
+committed evidence never trips the repository's secret scan. DIR is assumed to
+be the orchestrator's own checkout, where the audited commit is only fetched;
+the masker is refused when DIR is at the audited commit or the validator has
+uncommitted or untracked changes, and a refused or failed mask ends the audit
+with `Audit verdict: unmasked` and exit 1. The audit pane is labeled `audit`, so the pair modes never
 reuse it, and the auditor still has no agmsg identity. It exits 2 without a
 managed workspace; run the same audit headless there:
 

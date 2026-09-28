@@ -2444,6 +2444,26 @@ fi
         )
         if not (self.bin_dir / "python3").exists():
             (self.bin_dir / "python3").symlink_to(sys.executable)
+        self.commit_repo_validator()
+
+    def git(self, *args: str) -> str:
+        return subprocess.run(
+            ["git", "-C", str(self.workdir), *args],
+            check=True,
+            text=True,
+            capture_output=True,
+            env={**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull},
+        ).stdout.strip()
+
+    def commit_repo_validator(self) -> None:
+        """Make DIR the orchestrator's checkout with a committed validator."""
+        if not (self.workdir / ".git").exists():
+            self.git("init", "-q")
+        self.git("add", "scripts/validate-agent-assets.py")
+        self.git(
+            "-c", "user.name=t", "-c", "user.email=t@example.invalid",
+            "commit", "-q", "-m", "validator",
+        )
 
     def test_audit_masks_evidence_before_the_verdict_gate(self) -> None:
         self.write_audit_pair_state(self.audit_tab_pane())
@@ -2480,6 +2500,62 @@ fi
             f"validate --mask-secrets {evidence}", self.calls_path.read_text().splitlines()
         )
         self.assertNotIn(f'{SECRET_FIELD}: "abc"', evidence.read_text())
+
+    def test_audit_fails_as_unmasked_when_masking_fails(self) -> None:
+        self.write_audit_pair_state(self.audit_tab_pane())
+        self.write_fake_repo_validator()
+        script = self.workdir / "scripts/validate-agent-assets.py"
+        script.write_text(script.read_text() + "\nraise SystemExit(1)\n")
+        self.git("-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-qam", "failing masker")
+        evidence = self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"
+        self.write_audit_evidence(self.transcript("No findings.\nVerdict: correct"))
+        self.write_audit_evidence("Verdict: correct\n", Path(f"{evidence}.last.md"))
+
+        result = self.run_helper("--audit", AUDIT_SHA)
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("Audit verdict: unmasked\n", result.stdout)
+        self.assertNotIn("Audit verdict: correct", result.stdout)
+
+    def test_audit_refuses_the_masker_from_the_audited_commit(self) -> None:
+        self.write_audit_pair_state(self.audit_tab_pane())
+        self.write_fake_repo_validator()
+        head = self.git("rev-parse", "HEAD")
+        evidence = self.workdir.resolve() / f".orchestration/validation/audit-{head}.md"
+        self.write_audit_evidence(self.transcript("No findings.\nVerdict: correct"), evidence)
+        self.write_audit_evidence("Verdict: correct\n", Path(f"{evidence}.last.md"))
+
+        result = self.run_helper("--audit", head)
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("Audit verdict: unmasked\n", result.stdout)
+        self.assertIn("is the audited commit or has uncommitted changes", result.stderr)
+        self.assertFalse(
+            any(call.startswith("validate ") for call in self.calls_path.read_text().splitlines())
+        )
+
+    def test_audit_refuses_an_uncommitted_or_untracked_masker(self) -> None:
+        for state in ("modified", "untracked"):
+            with self.subTest(state=state):
+                shutil.rmtree(self.workdir / ".git", ignore_errors=True)
+                self.calls_path.write_text("")
+                self.write_audit_pair_state(self.audit_tab_pane())
+                self.write_fake_repo_validator()
+                script = self.workdir / "scripts/validate-agent-assets.py"
+                if state == "modified":
+                    script.write_text(script.read_text() + "\n# local edit\n")
+                else:
+                    self.git("rm", "-q", "--cached", "scripts/validate-agent-assets.py")
+                    self.git("-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-qm", "untrack")
+                self.write_audit_evidence(self.transcript("No findings.\nVerdict: correct"))
+
+                result = self.run_helper("--audit", AUDIT_SHA)
+
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn("Audit verdict: unmasked\n", result.stdout)
+                self.assertFalse(
+                    any(call.startswith("validate ") for call in self.calls_path.read_text().splitlines())
+                )
 
     def test_audit_skips_masking_without_a_repo_validator(self) -> None:
         self.write_audit_pair_state(self.audit_tab_pane())

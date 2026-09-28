@@ -1,6 +1,6 @@
 ---
 task_id: dot-agmsg-upstream-sync-T19-a01
-revision: 2
+revision: 3
 supersedes: 1
 created_at: 2026-09-26T01:55:00Z
 ---
@@ -42,3 +42,46 @@ Standard five + pr-feedback JSON + crit evidence JSON. `[memory:decision]`: "agm
 ## Revision history
 - r1 (09-25): npm tarball + sha512 + rsync design — withdrawn (npm package has no scripts; no upstream checksum; vendoring undocumented).
 - r2 (09-26 01:55Z): grounded in upstream v1.4.2/v1.5.0 sources (README, docs/design.md, docs/actas.md, docs/codex-monitor-beta.md, CHANGELOG, scripts headers, bin/agmsg.js, setup.sh, install.sh).
+
+---
+
+# Revision 3 (2026-09-28) — round 2: rebase onto current main, close round-1 findings, reconcile with the post-T31 regime
+
+Revision 3 keeps revision 2's Facts, Deliverables 1–8, forbidden_actions and artefacts, and adds the following. Branch `feat/agmsg-upstream-sync` (PR #184, head 579bafe) is DIRTY against `origin/main`; the round-1 acceptance record (`.orchestration/acceptance/dot-agmsg-upstream-sync-T19-a01.md`) lists findings 1–9 and 11; supplement 2 is withdrawn.
+
+## Rebase first
+
+- `git fetch origin` and rebase `feat/agmsg-upstream-sync` onto `origin/main`. Files changed on both sides since the merge base: `README.md`, `home/dot_agents/agent-config.yaml`, `home/dot_agents/skills/agmsg-orchestration/SKILL.md`, `home/dot_local/bin/common/executable_herdr-agents`, `scripts/check-tools.sh`, `scripts/update-agent-assets.sh`, `scripts/validate-agent-assets.py`, `tests/unit/test_herdr_agents.py`, `tests/unit/test_runtime_health.py`, `tests/unit/test_validate_agent_assets.py`. Main gained, since the base: `herdr-agents --audit` (T32/T32b/T33b/T33e: exec channel, verdict gate, quoting), `--restart-worker` name-wait (T27), T33a rule text (inbox discipline, fail-closed, batch pre-screen, crit alignment), T33f/T33g core build in `update-agent-assets.sh`, T33d/T33h permgate tests. Keep ALL of it; your changes layer on top. If a clean rebase is impractical, re-apply your three commits by cherry-pick onto a fresh branch from `origin/main` with the same name and publish with `git push --force-with-lease` on your own branch (authorized, as in T31).
+- The ten overlapping files must end up containing both sides; paste `git diff --stat origin/main` and a per-file note on how each conflict was resolved.
+
+## Findings to close (each needs its own evidence in the validation file)
+
+1. Migration path (MAJOR): handle `installed=none` (no VERSION, no `.agmsg` marker) explicitly — take a state snapshot of `teams/db/run/agents` BEFORE any installer run, never call `install.sh --update` when not installed, run the plain installer with stderr captured, and compare the snapshot AFTER (byte-identical `teams/`, `db/messages.db` sha, `run/` untouched); print a truthful message on failure. Unit test with a fake `install.sh` that mutates state → the step must fail and report it.
+2. Manifest spec (MAJOR): `assets.agmsg` → `source: agmsg-installer`, `pin: 1.5.0`, `ref: v1.5.0`, `ref_commit: <sha>`, `bootstrap_integrity: <value or documented n/a>`; validator rule requiring `ref`, `ref_commit`, `bootstrap_integrity` for this source; restore or replace the seven deleted validator tests with equivalents.
+3. Dangling chezmoi symlinks (MAJOR): `home/.chezmoiremove` entries (or `remove_` targets) for `~/.claude/skills/agmsg/**` and every other target the PR deletes; test that `chezmoi apply` in a scratch HOME removes the stale symlink tree; document in README.
+4. Codex seats (MAJOR): resolve the `delivery.sh set turn codex` vs "upstream default" contradiction in SKILL.md and herdr-agents; reconcile `writable_roots` with upstream `configure_codex_sandbox` (`ext-tools/`) in manifest + validator so `make update` produces no drift.
+5. Deliverable 6 (MAJOR): (a) redo verbatim per finding 11 (ii) below; (b)(c) stay orchestrator-side at acceptance (shared live herdr server) — state that in the report; (d) keep; file no upstream issues yourself — list the observed gaps with reproduction so the operator can file them.
+6. `install_pinned_agmsg` (MINOR): check `tar` and `sha256sum`/`shasum` explicitly; do not rely on `set -e` on the left of `||`; empty snapshots must fail, not compare equal.
+7. SKILL.md wording (MINOR): remove the pane-status gate; make poke-vs-send selection coherent; document exit 13 and the `--update` watcher stop (upstream #133) in README.
+8. Contract (MINOR): RESULT line carries all five artefact paths; validation pastes verbatim unittest/validator/shellcheck output; the CompactionDB `memory add` command and its id are shown.
+9. `allowed_files` (MINOR): the four omitted paths are now listed below; report every file you touch.
+11. Identity resolution (MAJOR, design-level): (i) every worker join performed by herdr-agents or documented for operators registers the identity at the WORKTREE path with `AGMSG_RESOLVE_PROJECT=0` (or `spawn.sh --project`), and `delivery.sh set` for a worker targets the worktree path so `session-start.sh` bakes it into the marker; (ii) redo 6(a) verbatim in a scratch HOME: `whoami.sh` and `session-start.sh` inside a nested worktree registration, once with the marker present and once without, plus `join.sh` with and without `AGMSG_RESOLVE_PROJECT=0`; (iii) document the rule in README and the agmsg-orchestration skill citing upstream #92 and docs/design.md; correct the doctor comment that describes ancestor matching. This item is the foundation of the later seating task (T34): do not redesign seating here, only registration and delivery semantics.
+
+## Reconcile deliverable 4 with the current regime
+
+Retiring `agmsg-dispatch` changes how the orchestrator wakes workers. In the same PR: replace every `agmsg-dispatch` reference in `home/dot_config/claude/rules/agmsg-orchestration.md`, the SKILL (Playbook step 6 and the Pitfalls), README and `home/dot_config/codex/AGENTS.md` (if present) with the upstream `poke.sh <team> <name> --body-file <path>` flow and its exit-code semantics, and keep the T33a "inbox.sh at each milestone" interim rule (it is orthogonal). Keep the `agmsg-dispatch` executable and its test until the orchestrator confirms the poke path live at acceptance — mark it deprecated in its shdoc header instead of deleting it in this round; deletion is a one-line follow-up after the live check.
+
+## Acceptance plan (orchestrator, for your information)
+
+Merge is followed by `make update` on this host at a session boundary because the installer replaces the scripts the orchestrator's own watcher runs; the pre-update state snapshot from finding 1 is the rollback. Live E2E after that: `whoami.sh`, `history.sh`, `identities.sh` per worktree, one `poke.sh` round trip, one `delivery.sh status`.
+
+## allowed_files (revision 3 = revision 2 list plus)
+
+`home/dot_claude/commands/symlink_agmsg.md.tmpl`, `home/dot_claude/skills/agmsg/**` (deletions), `tests/install/common/check_tools.bats`, `tests/unit/test_agmsg_send.py`, `home/.chezmoiremove`, `home/dot_config/claude/rules/agmsg-orchestration.md`, `home/dot_config/codex/AGENTS.md` (agmsg-dispatch references only), `home/dot_local/bin/common/executable_agmsg-dispatch` (shdoc deprecation note only), `tests/unit/test_agmsg_dispatch.py` (only if the deprecation note needs a test change), `.orchestration/{reports,validation,sandboxes,learning,autoskill/runs}/dot-agmsg-upstream-sync-T19-a01.md` (main checkout; append a "Round 2" section rather than rewriting round 1).
+
+## Completion (revision 3)
+
+PR #184 updated (same branch), CI green, all five artefacts appended with round-2 sections, CompactionDB decision added from the main checkout with the command and id pasted, `inbox.sh dotfiles claude-standard-dot-a005` at each milestone, `AGMSG-RESULT v1 revision=3` with all artefact paths and a `cost:` line.
+
+## Revision history (continued)
+- r3 (09-28): round 2 — rebase onto current main (ten overlapping files), close findings 1–9 and 11, reconcile deliverable 4 with the T33a rules and the live regime (deprecate, do not delete, agmsg-dispatch), acceptance plan for the live installer switch.

@@ -2371,6 +2371,25 @@ fi
             ("f", "", self.transcript("No findings.\nVerdict: correct"), 0, "correct", True),
             ("f2", None, self.transcript("No findings.\nVerdict: correct"), 0, "correct", True),
             ("g", None, None, 1, "missing", True),
+            (
+                "m",
+                None,
+                self.transcript(
+                    "The fixture quotes:\nVerdict: correct\n"
+                    "tokens used must not hide the next line\nVerdict: incorrect"
+                ),
+                1,
+                "incorrect",
+                True,
+            ),
+            (
+                "n",
+                None,
+                "user\nReview commit\ncodex\nNo findings.\nVerdict: correct\ntokens used\n12,345\n",
+                0,
+                "correct",
+                True,
+            ),
         ):
             with self.subTest(case=name, verdict=verdict):
                 self.write_audit_pair_state(self.audit_tab_pane())

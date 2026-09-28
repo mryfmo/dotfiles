@@ -950,14 +950,16 @@ if [[ ${audit_mode} == true ]]; then
     # AGENTS.md verdict: the concluding non-blank line of the last-message file.
     # A codex without -o output falls back to the transcript region after the
     # last line that is exactly `codex` (exec blocks carry repository text),
-    # skipping the `tokens used` count; the same concluding-line rule applies.
+    # skipping only the exact `tokens used` footer and a bare count right after
+    # it, so assistant prose is never dropped; the same concluding-line rule
+    # applies.
     audit_final=""
     [[ -f ${audit_last} ]] && audit_final="$(cat -- "${audit_last}")"
     if [[ -z ${audit_final//[[:space:]]/} ]]; then
         printf 'Audit verdict source: transcript\n'
-        audit_final="$(awk '/^codex$/ { final = ""; found = 1; next }
-            /^tokens used/ { skip = 1; next }
-            skip { skip = 0; next }
+        audit_final="$(awk '/^codex$/ { final = ""; found = 1; footer = 0; next }
+            /^tokens used$/ { footer = 1; next }
+            footer { footer = 0; if ($0 ~ /^[0-9,]+$/) next }
             found { final = final $0 "\n" }
             END { printf "%s", final }' "${audit_out}" 2> /dev/null || true)"
     fi

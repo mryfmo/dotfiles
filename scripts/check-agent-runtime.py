@@ -567,6 +567,34 @@ def orphaned_asset_warnings(
     return warnings
 
 
+def understand_anything_core_warnings(home: Path | None = None) -> list[str]:
+    """Warn when the Codex-side Understand-Anything core build is missing or stale.
+
+    `prepare-incremental.mjs` imports packages/core/dist/index.js, so `.ua/`
+    incremental updates fail until `make update` builds it. Stale uses the same
+    rule as the update-agent-assets.sh build guard: dist/index.js is older than
+    any file under packages/core/src or the root pnpm-lock.yaml.
+    """
+    home = home or HOME
+    core = home / ".understand-anything/repo/understand-anything-plugin/packages/core"
+    if not core.is_dir():
+        return []
+    dist = core / "dist/index.js"
+    if not dist.is_file():
+        return [f"WARN: Understand-Anything core not built: {dist} is missing; run make update"]
+    src = core / "src"
+    lockfile = core.parents[1] / "pnpm-lock.yaml"
+    inputs = [path for path in src.rglob("*") if path.is_file()]
+    if lockfile.is_file():
+        inputs.append(lockfile)
+    newest_input = max((path.stat().st_mtime for path in inputs), default=0.0)
+    if newest_input > dist.stat().st_mtime:
+        return [
+            f"WARN: Understand-Anything core build is stale: {dist} is older than {src} or {lockfile}; run make update"
+        ]
+    return []
+
+
 def deployed_target_path(value: str, home: Path) -> Path:
     if value == "~":
         return home
@@ -741,6 +769,7 @@ def check() -> list[str]:
             asset_failure_message(finding) for finding in manifest_asset_findings()
         )
         failures.extend(orphaned_asset_warnings())
+    failures.extend(understand_anything_core_warnings())
     failures.extend(chezmoi_drift_warnings())
     return failures
 

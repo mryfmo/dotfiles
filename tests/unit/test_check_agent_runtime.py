@@ -873,5 +873,79 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         )
 
 
+    def ua_core_tree(self) -> Path:
+        core = self.target_root / ".understand-anything/repo/understand-anything-plugin/packages/core"
+        (core / "src").mkdir(parents=True)
+        (core / "src/index.ts").write_text("export {};\n")
+        return core
+
+    def test_ua_core_warns_when_the_codex_clone_has_no_built_dist(self) -> None:
+        core = self.ua_core_tree()
+
+        warnings = self.module.understand_anything_core_warnings(self.target_root)
+
+        self.assertEqual(
+            [
+                f"WARN: Understand-Anything core not built: {core / 'dist/index.js'} "
+                "is missing; run make update"
+            ],
+            warnings,
+        )
+        self.assertTrue(all(self.module.is_warning(warning) for warning in warnings))
+
+    def test_ua_core_warns_when_dist_is_older_than_src(self) -> None:
+        core = self.ua_core_tree()
+        (core / "dist").mkdir()
+        (core / "dist/index.js").write_text("built\n")
+        os.utime(core / "dist/index.js", (1_000_000, 1_000_000))
+        os.utime(core / "src/index.ts", (2_000_000, 2_000_000))
+
+        warnings = self.module.understand_anything_core_warnings(self.target_root)
+
+        self.assertEqual(
+            [
+                f"WARN: Understand-Anything core build is stale: {core / 'dist/index.js'} "
+                f"is older than {core / 'src'} or {core.parents[1] / 'pnpm-lock.yaml'}; run make update"
+            ],
+            warnings,
+        )
+
+    def test_ua_core_warns_when_dist_is_older_than_the_root_lockfile(self) -> None:
+        core = self.ua_core_tree()
+        (core / "dist").mkdir()
+        (core / "dist/index.js").write_text("built\n")
+        lockfile = core.parents[1] / "pnpm-lock.yaml"
+        lockfile.write_text("lockfileVersion: '9.0'\n")
+        os.utime(core / "src/index.ts", (1_000_000, 1_000_000))
+        os.utime(core / "dist/index.js", (2_000_000, 2_000_000))
+        os.utime(lockfile, (3_000_000, 3_000_000))
+
+        warnings = self.module.understand_anything_core_warnings(self.target_root)
+
+        self.assertEqual(
+            [
+                f"WARN: Understand-Anything core build is stale: {core / 'dist/index.js'} "
+                f"is older than {core / 'src'} or {lockfile}; run make update"
+            ],
+            warnings,
+        )
+
+    def test_ua_core_is_quiet_when_dist_is_fresh_or_no_clone_exists(self) -> None:
+        self.assertEqual([], self.module.understand_anything_core_warnings(self.target_root))
+        core = self.ua_core_tree()
+        (core / "dist").mkdir()
+        (core / "dist/index.js").write_text("built\n")
+        os.utime(core / "src/index.ts", (1_000_000, 1_000_000))
+        os.utime(core / "dist/index.js", (2_000_000, 2_000_000))
+
+        self.assertEqual([], self.module.understand_anything_core_warnings(self.target_root))
+
+    def test_check_includes_ua_core_warnings(self) -> None:
+        with mock.patch.object(
+            self.module, "understand_anything_core_warnings", return_value=["WARN: ua-core sentinel"]
+        ), mock.patch.object(self.module, "chezmoi_drift_warnings", return_value=[]):
+            self.assertIn("WARN: ua-core sentinel", self.module.check())
+
+
 if __name__ == "__main__":
     unittest.main()

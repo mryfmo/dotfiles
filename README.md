@@ -213,6 +213,11 @@ sha256 before execution (bump both constants together in
 installer clones `~/.understand-anything/repo` and symlinks its skills into
 `~/.agents/skills` (expected unmanaged-skill WARNs in `make doctor`, one per
 linked skill); Codex runtime files are provisioned from the version-matched Claude release artifact when available.
+`make update` also builds the plugin's `packages/core` with the mise-pinned
+`npm:pnpm` when its `dist/index.js` is missing or older than any file under
+`packages/core/src` or the root `pnpm-lock.yaml` (in the release artifact, or
+in the Codex clone without one), so `.ua/` incremental updates work, and
+`make doctor` warns under the same rule, so `make update` repairs what it reports.
 
 Crit itself is installed on both Linux and macOS from the pinned amd64/arm64
 GitHub release binary for the matching OS, after SHA-256 verification. All

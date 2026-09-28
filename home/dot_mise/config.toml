@@ -28,6 +28,9 @@ shfmt = "3.14.1"
 "npm:ccusage" = "20.0.23"
 "npm:pyright" = "1.1.414"
 "npm:fast-cli" = "5.2.0"
+# Builds the Understand-Anything plugin core (update-agent-assets.sh); the
+# plugin lockfile is lockfileVersion 9.0 and declares no packageManager.
+"npm:pnpm" = "12.4.1"
 
 "github:x-motemen/ghq" = "1.10.1"
 "github:d-kuro/gwq" = "0.1.1"

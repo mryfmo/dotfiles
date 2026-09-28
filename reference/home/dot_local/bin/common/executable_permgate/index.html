@@ -4122,6 +4122,9 @@ def<span class="w"> </span>classify<span class="o">(</span>
 <span class="w">                        </span>str<span class="o">(</span>output_path<span class="o">)</span>,
 <span class="w">                        </span>prompt,
 <span class="w">                    </span><span class="o">]</span>,
+<span class="w">                    </span><span class="c1"># The prompt travels in argv; never let the child inherit</span>
+<span class="w">                    </span><span class="c1"># (and possibly block on) the hook caller's stdin.</span>
+<span class="w">                    </span><span class="nv">stdin</span><span class="o">=</span>subprocess.DEVNULL,
 <span class="w">                    </span><span class="nv">text</span><span class="o">=</span>True,
 <span class="w">                    </span><span class="nv">stdout</span><span class="o">=</span>subprocess.PIPE,
 <span class="w">                    </span><span class="nv">stderr</span><span class="o">=</span>subprocess.PIPE,

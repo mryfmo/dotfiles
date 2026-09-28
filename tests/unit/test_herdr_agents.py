@@ -2073,6 +2073,39 @@ fi
         self.assertTrue(evidence.parent.is_dir())
         self.assertIn(f"Audit exit: 0\nAudit evidence: {evidence}\n", result.stdout)
 
+    def shell_words(self, command: str) -> list[str]:
+        """Split a shell-quoted string into words without running any command.
+
+        An empty PATH keeps a mis-quoted string from launching binaries.
+        """
+        result = subprocess.run(
+            ["/bin/bash", "-c", 'eval "set -- $1"; printf "%s\\0" "$@"', "_", command],
+            check=True,
+            env={"PATH": str(self.temp_dir / "no-bin"), "LC_ALL": "C"},
+            stdout=subprocess.PIPE,
+        )
+        return result.stdout.decode("utf-8", "surrogateescape").split("\0")[:-1]
+
+    def audit_inner_command(self) -> str:
+        """Return the single bash -c argument sent to the audit pane."""
+        prefix = "pane run w-old:p9 "
+        pane_run = next(
+            call
+            for call in self.calls_path.read_text().splitlines()
+            if call.startswith(prefix)
+        )
+        words = self.shell_words(pane_run.removeprefix(prefix))
+        self.assertEqual(words[:2], ["bash", "-c"], pane_run)
+        self.assertEqual(len(words), 3, words)
+        return words[2]
+
+    def quoted_token(self, inner: str, before: str, after: str) -> str:
+        """Decode the one shell word of inner between two literal markers."""
+        token = inner.split(before, 1)[1].rsplit(after, 1)[0]
+        words = self.shell_words(token)
+        self.assertEqual(len(words), 1, (token, words))
+        return words[0]
+
     def test_audit_pane_command_tees_evidence_and_waits_for_a_fresh_marker(
         self,
     ) -> None:
@@ -2083,17 +2116,18 @@ fi
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
         self.assertFalse(any(call.startswith("tab create ") for call in calls), calls)
-        pane_run = next(call for call in calls if call.startswith("pane run w-old:p9 "))
+        inner = self.audit_inner_command()
         evidence = self.workdir.resolve() / "evidence/T32 audit.md"
-        escaped_evidence = str(evidence).replace(" ", "\\ ")
-        self.assertIn(
-            f"bash -c 'cd -- {self.workdir.resolve()} && set -o pipefail && "
-            f"codex --profile audit review --commit {AUDIT_SHA} "
-            f"2>&1 | tee -- {escaped_evidence}; ",
-            pane_run,
+        self.assertRegex(
+            inner,
+            r"^cd -- \S+ && set -o pipefail && "
+            rf"codex --profile audit review --commit {AUDIT_SHA} 2>&1 \| tee -- ",
         )
-        marker = re.search(r'printf "(AUDIT-EXIT-[0-9]+-[0-9]+):%s\\n" "\$\?"\'$', pane_run)
-        self.assertIsNotNone(marker, pane_run)
+        self.assertEqual(
+            self.quoted_token(inner, "| tee -- ", "; printf "), str(evidence)
+        )
+        marker = re.search(r"; printf '(AUDIT-EXIT-[0-9]+-[0-9]+):%s\\n' \"\$\?\"$", inner)
+        self.assertIsNotNone(marker, inner)
         wait_call = next(
             call for call in calls if call.startswith("pane wait-output w-old:p9 --regex AUDIT-")
         )
@@ -2102,41 +2136,71 @@ fi
         self.assertIn("--timeout 1800000", wait_call)
         self.assertIn(f"Audit evidence: {evidence}", result.stdout)
 
+    def test_audit_marker_detection_reads_unwrapped_snapshots(self) -> None:
+        self.write_audit_pair_state(self.audit_tab_pane())
+
+        result = self.run_helper("--audit", AUDIT_SHA)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        wait_call = next(
+            call for call in calls if call.startswith("pane wait-output w-old:p9 --regex AUDIT-")
+        )
+        # A pane narrower than the marker line must not hide completion.
+        self.assertIn(" --source recent-unwrapped ", wait_call)
+        self.assertIn("pane read w-old:p9 --source recent-unwrapped --lines 200", calls)
+
     def test_audit_runs_in_dir_even_when_the_reused_pane_moved(self) -> None:
         self.write_audit_pair_state(self.audit_tab_pane())
 
         result = self.run_helper("--audit", AUDIT_SHA)
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        pane_run = next(
-            call
-            for call in self.calls_path.read_text().splitlines()
-            if call.startswith("pane run w-old:p9 ")
-        )
+        inner = self.audit_inner_command()
         # tab create --cwd applies only once; every run must cd into DIR itself.
-        self.assertRegex(
-            pane_run,
-            rf"^pane run w-old:p9 bash -c 'cd -- {re.escape(str(self.workdir.resolve()))} && ",
+        self.assertTrue(inner.startswith("cd -- "), inner)
+        self.assertEqual(
+            self.quoted_token(inner, "cd -- ", " && set -o pipefail && "),
+            str(self.workdir.resolve()),
         )
 
-    def test_audit_rejects_a_dir_with_an_apostrophe_before_any_pane_run(
-        self,
-    ) -> None:
+    def test_audit_accepts_a_dir_with_an_apostrophe_quoted_intact(self) -> None:
         self.workdir = self.temp_dir / "it's project"
         self.workdir.mkdir()
         self.write_audit_pair_state(self.audit_tab_pane())
 
         result = self.run_helper("--audit", AUDIT_SHA)
 
-        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
-        self.assertIn("Usage: herdr-agents", result.stderr)
-        calls = (
-            self.calls_path.read_text().splitlines()
-            if self.calls_path.exists()
-            else []
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        inner = self.audit_inner_command()
+        self.assertEqual(
+            self.quoted_token(inner, "cd -- ", " && set -o pipefail && "),
+            str(self.workdir.resolve()),
         )
-        self.assertFalse(
-            any(call.startswith(("pane run", "tab create")) for call in calls), calls
+        self.assertEqual(
+            self.quoted_token(inner, "| tee -- ", "; printf "),
+            str(
+                self.workdir.resolve()
+                / f".orchestration/validation/audit-{AUDIT_SHA}.md"
+            ),
+        )
+
+    def test_audit_quotes_a_non_ascii_out_path_under_the_c_locale(self) -> None:
+        self.write_audit_pair_state(self.audit_tab_pane())
+
+        result = self.run_helper(
+            "--audit",
+            AUDIT_SHA,
+            "--out",
+            "evidence/監査 audit.md",
+            extra_env={"LC_ALL": "C"},
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        inner = self.audit_inner_command()
+        self.assertEqual(
+            self.quoted_token(inner, "| tee -- ", "; printf "),
+            str(self.workdir.resolve() / "evidence/監査 audit.md"),
         )
 
     def test_audit_uses_manifest_audit_codex_args(self) -> None:
@@ -2148,15 +2212,11 @@ fi
         result = self.run_helper("--audit", AUDIT_SHA, "--timeout", "60")
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        calls = self.calls_path.read_text().splitlines()
-        self.assertTrue(
-            any(
-                f"codex --profile audit-e2e review --commit {AUDIT_SHA} " in call
-                for call in calls
-                if call.startswith("pane run ")
-            ),
-            calls,
+        self.assertIn(
+            f" && codex --profile audit-e2e review --commit {AUDIT_SHA} 2>&1 ",
+            self.audit_inner_command(),
         )
+        calls = self.calls_path.read_text().splitlines()
         self.assertTrue(any("--timeout 60000" in call for call in calls), calls)
 
     def test_audit_nonzero_exit_marker_fails_the_helper(self) -> None:
@@ -2189,7 +2249,6 @@ fi
             ("--audit",),
             ("--audit", "926d9f1;touch pwned"),
             ("--audit", AUDIT_SHA, "--timeout", "0"),
-            ("--audit", AUDIT_SHA, "--out", "it's.md"),
         ):
             with self.subTest(args=args):
                 result = self.run_helper(*args)

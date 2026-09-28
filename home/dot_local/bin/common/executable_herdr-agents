@@ -11,7 +11,8 @@
 #   claude exit dialog once and relabeling a legacy worker pane label. Audit
 #   mode runs the read-only Codex audit of one commit visibly in the pair
 #   workspace's dedicated `audit` tab, tees it to an evidence file, and waits
-#   (bounded) for its exit marker; the auditor keeps no agmsg identity.
+#   (bounded) for its exit marker, then gates on the evidence file's final
+#   `Verdict:` line; the auditor keeps no agmsg identity.
 # @option --attach Attach the current Claude pane to its Herdr workspace layout.
 # @option --restart-worker Relaunch the worker agent in the existing pair's worker pane.
 # @option --bootstrap-agmsg Configure repo-scoped agmsg hooks without changing Herdr panes.
@@ -75,7 +76,9 @@ Bootstrap mode only configures missing repo-scoped agmsg hooks.
 Audit mode runs the read-only Codex audit of <sha> in the existing pair
 workspace's audit tab (created once, then reused and left open), tees it to
 PATH (default .orchestration/validation/audit-<sha>.md under DIR), and exits
-nonzero when the audit does; it exits 2 without a managed workspace.
+nonzero when the audit does or when PATH lacks a final `Verdict: correct` line
+(a missing, blocked, or incorrect verdict); it exits 2 without a managed
+workspace.
 USAGE
 }
 
@@ -920,8 +923,13 @@ if [[ ${audit_mode} == true ]]; then
     # no path character can escape into the pane shell's syntax.
     audit_marker="AUDIT-EXIT-$(date +%s)-$$"
     read -ra audit_args <<< "$(resolve_audit_codex_args)"
-    printf -v audit_inner "cd -- %q && set -o pipefail && codex%s review --commit %s 2>&1 | tee -- %q; printf '%s:%%s\\\\n' \"\$?\"" \
-        "${workdir}" "$(printf ' %q' "${audit_args[@]}")" "${audit_commit}" "${audit_out}" "${audit_marker}"
+    # codex review exits 0 even when it cannot assess the commit, so ask for an
+    # explicit final verdict line and gate on it below. The backticks are literal
+    # prompt text for codex, not command substitutions.
+    # shellcheck disable=SC2016
+    audit_prompt='Follow the AGENTS.md Audit section. End your final message with exactly one line `Verdict: correct` or `Verdict: incorrect`. If you cannot assess the commit, end with `Verdict: blocked` and explain why.'
+    printf -v audit_inner "cd -- %q && set -o pipefail && codex%s review --commit %s %q 2>&1 | tee -- %q; printf '%s:%%s\\\\n' \"\$?\"" \
+        "${workdir}" "$(printf ' %q' "${audit_args[@]}")" "${audit_commit}" "${audit_prompt}" "${audit_out}" "${audit_marker}"
     herdr pane run "${audit_pane}" "bash -c $(printf '%q' "${audit_inner}")" > /dev/null
     # Unwrapped snapshots keep a pane narrower than the marker from hiding it.
     if ! wait_output="$(herdr pane wait-output "${audit_pane}" --regex "${audit_marker}:[0-9]+" --source recent-unwrapped --timeout "$((audit_timeout * 1000))")"; then
@@ -934,6 +942,14 @@ if [[ ${audit_mode} == true ]]; then
     } | grep -oE "${audit_marker}:[0-9]+" | tail -n 1 | cut -d: -f2 || true)"
     printf 'Audit exit: %s\nAudit evidence: %s\n' "${audit_status:-unknown}" "${audit_out}"
     [[ ${audit_status} == 0 ]] || exit 1
+    # Whole-line matches only, so an echoed prompt never counts as a verdict.
+    audit_verdict="$(grep -E '^[[:space:]]*Verdict: (correct|incorrect|blocked)[[:space:]]*$' -- "${audit_out}" 2> /dev/null |
+        tail -n 1 | sed -E 's/^[[:space:]]*Verdict: ([a-z]+).*/\1/' || true)"
+    if grep -qE '^[[:space:]]*Verdict: blocked[[:space:]]*$|Review blocked' -- "${audit_out}" 2> /dev/null; then
+        audit_verdict=blocked
+    fi
+    printf 'Audit verdict: %s\n' "${audit_verdict:-missing}"
+    [[ ${audit_verdict} == correct ]] || exit 1
     exit 0
 fi
 

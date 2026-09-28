@@ -403,10 +403,19 @@ orchestrator's Codex audit visible: it runs
 workspace's dedicated `audit` tab (created once, then reused and left open),
 tees the output to PATH (default `.orchestration/validation/audit-<sha>.md`
 under DIR), waits up to SECONDS (default 1800) for its exit marker, and exits
-nonzero when the audit does. The audit pane is labeled `audit`, so the pair
+nonzero when the audit does. Because `codex review` exits 0 even when it cannot
+assess the commit, the review gets an explicit verdict prompt, and the helper
+then reads the evidence file. It prints `Audit verdict: correct`, `incorrect`,
+`blocked` (a `Verdict: blocked` line or a `Review blocked` message), or
+`missing` (no final whole-line verdict), and exits 1 for anything but
+`correct`. The audit pane is labeled `audit`, so the pair
 modes never reuse it, and the auditor still has no agmsg identity. It exits 2
 without a managed workspace; headless `codex --profile audit review` remains the
-fallback there.
+fallback there, and it should pass the same prompt after `--commit <sha>`:
+
+```sh
+codex --profile audit review --commit <sha> 'Follow the AGENTS.md Audit section. End your final message with exactly one line `Verdict: correct` or `Verdict: incorrect`. If you cannot assess the commit, end with `Verdict: blocked` and explain why.'
+```
 
 Per-task agent switching happens at the profile layer, never in the layout:
 the worker profile comes from `HERDR_AGENTS_WORKER_PROFILE` (the deprecated

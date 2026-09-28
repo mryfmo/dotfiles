@@ -28,11 +28,14 @@
 
 ## Crit レビュー運用
 
-- 計画レビュー、コードレビュー、diff レビュー、PR レビュー、または「レビュー」と明示された作業では、まず Codex 内の `/diff`、`/review`、Codex app の Review pane、または取得済みの Crit data を使ってください。ユーザが Crit web UI を明示した場合、または Crit data を取得できない場合のみ `$crit` / `crit` をブラウザ review として使ってください。
+- 計画レビュー、コードレビュー、diff レビュー、PR レビュー、または「レビュー」と明示された作業では、まず Codex 内の `/diff`、`/review`、Codex app の Review pane、または取得済みの Crit data を使ってください。ユーザが Crit web UI を明示した場合のみ `$crit` / `crit` をブラウザ review として使ってください。Crit data を取得できない場合は、ブラウザ review を開かず agent-side のレビュー証跡(独立した subagent レビューと保存済みの記録)で代替し、ユーザにレビューを依頼しないでください。
 - Codex では Crit plugin の `Stop` hook による Plan Mode レビューが発火した場合は尊重してください。`CRIT_PLAN_REVIEW=off` が明示されていない限り、発火済みの計画レビュー hook を迂回しないでください。
 - 完了報告前に git diff がある場合は `make require-crit-review` を実行してください。agent lifecycle、hooks、plugins、permissions、scripts、広い diff など意味のある変更だけレビューを要求します。
 - `make require-crit-review` がレビューを要求したら、既定ではブラウザ版 Crit を起動しないでください。Codex は `crit status --json` で review file を特定し、`crit comments --all --json <review.json>` の出力を repo 内の `.agents/worklog/.../*.json` に保存して内容を判断し、指摘へ対応してください。Agent evidence には resolved record が 1 件以上必要です。指摘がない場合は review-scope の approval record を追加して resolve してください。このローカルデータは作業手順の証跡にすぎず、レビュー実施者を認証するものではありません。その後 `review_surface: crit-data` `reviewer: codex` `review_source: <repo 内 JSON evidence path>` `review_outcome:` を含む receipt を作り、`AGENT_REVIEWED=1 REVIEW_EVIDENCE=<receipt> make require-crit-review` を通してください。Crit data の JSON evidence を読まない `AGENT_REVIEWED=1` だけの自己申告は禁止です。
-- ユーザが明示的に Crit web UI を求めた場合、または Crit data を取得できない場合だけ `crit --no-open` または `crit` を使ってください。その場合は `http://localhost` で始まるレビュー URL と「Finish Review をクリックする」旨をユーザ向けメッセージとして TUI 上に表示し、完了後に receipt を作り `CRIT_REVIEWED=1 REVIEW_EVIDENCE=<receipt> make require-crit-review` を通してください。
+- ユーザが明示的に Crit web UI を求めた場合だけ `crit --no-open` または `crit` を使ってください。その場合は `http://localhost` で始まるレビュー URL と「Finish Review をクリックする」旨をユーザ向けメッセージとして TUI 上に表示し、完了後に receipt を作り `CRIT_REVIEWED=1 REVIEW_EVIDENCE=<receipt> make require-crit-review` を通してください。
+- Crit は自分(エージェント)自身のレビューにのみ使う: `crit comment` 等の CLI でコメントを起票・返信・解決し、JSON 証跡を `.orchestration/` または `.agents/worklog/` に保存する。`crit share` などの publish は、ユーザが明示的に求めた場合だけ実行する。
+- ブラウザ Crit レビューを開いたり、人間のユーザーにレビューを依頼する目的で Crit を使うことは禁止(2026-07-18 操作者指示)。
+- Plan Mode hook が開いた Crit セッションは、レビューが終わったら閉じてください(ローカルの Crit web server を常駐させない)。
 - ユーザが明示的に Crit/review を無効化した場合のみ `CRIT_REVIEW=off` を使ってください。
 
 ## モデル選択
@@ -58,12 +61,7 @@
 - リポジトリ全体の探索やシンボル検索の前に、`.ua/knowledge-graph.json` があればまず node の `summary` と `filePath` を照会し、`.ua/meta.json` の `gitCommitHash` が `git rev-parse HEAD` と一致するか、異なる場合も `git diff --name-only <hash>..HEAD` が `.ua/` または `.orchestration/` 内の path だけなら current と扱い、graph が存在しないか別の path が含まれる場合だけ grep にフォールバックしてください。
 - インストーラは skills を `~/.agents/skills` に symlink します。導入・更新後は CLI を再起動してください。
 
-## Crit レビューの利用方針
-
 ## CompactionDB
 
 - CompactionDB 導入済み project では、Codex standard/deep profile の turn 完了が同じ project DB へ自動記録されます。
 - 永続的な決定は従来どおり `python3 .claude/hooks/contextdb_cli.py memory add --kind decision --scope project` で明示記録します。
-
-- Crit は自分(エージェント)自身のレビューにのみ使う: `crit comment` / `crit share` 等の CLI でコメントを起票・返信・解決し、JSON 証跡を `.orchestration/` または `.agents/worklog/` に保存する。
-- ブラウザ Crit レビューを開いたり、人間のユーザーにレビューを依頼する目的で Crit を使うことは禁止(2026-07-18 操作者指示)。

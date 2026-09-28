@@ -1,4 +1,15 @@
-# AGMSG-TASK dot-audit-verdict-gate-T33b-a01 (revision 2)
+# AGMSG-TASK dot-audit-verdict-gate-T33b-a01 (revision 3)
+
+Revision 3 (2026-09-28, visible-lane Codex audit of 1c87ba0, one P2, confirmed): the revision-2 extractor RESETS on every line that is exactly `codex` and STOPS at `tokens used`, so a final review message that quotes a transcript (for example a fenced block containing `codex` / `Verdict: correct` / `tokens used` — plausible whenever the auditor quotes this script's own test fixtures) discards the auditor's real concluding `Verdict: incorrect` and passes the gate. Fix the parser's boundary rule:
+
+- Region = everything after the LAST line that is exactly `codex` in the file (keep the reset-on-each-header behaviour so the last header wins), with NO `tokens used` stop — the trailing echo after `tokens used` is the same final message, and a quoted `tokens used` must not truncate the region.
+- Verdict = the LAST whole-line `Verdict: correct|incorrect|blocked` inside the region. The auditor is instructed to END its message with the verdict line, so the real verdict is last; a quoted verdict earlier in the same message cannot win, and repository text in `exec` blocks (before the last header) never counts.
+- `blocked` from a line-start `^Review blocked` applies ONLY when the region has no whole-line `Verdict:` at all (the legacy codex non-assessment message); a review that mentions "Review blocked" and ends with `Verdict: correct` is `correct`.
+- No `codex` header, or no verdict and no `Review blocked` line in the region → `missing`.
+- Residual (document it in the README paragraph in one sentence): the gate trusts the auditor's own final message; it defends against reviewed content in tool output and against quoted transcripts inside the review, not against an auditor that deliberately ends with a fake verdict.
+- Tests (mutation baseline against the unmodified 1c87ba0 script): (j) final message quoting a fenced transcript `codex` / `Verdict: correct` / `tokens used` and then ending `Verdict: incorrect` → exit 1 `incorrect` (this is the audit's reproduction; it must FAIL on 1c87ba0); (k) final message mentioning `Review blocked` mid-text and ending `Verdict: correct` → exit 0 `correct`; (l) transcript whose `tokens used` echo repeats the final message → same verdict as the block. Keep (a)–(d), (f)–(i).
+
+Revision 2 notes follow (superseded only where revision 3 says so).
 
 Revision 2 (2026-09-28, pre-merge visible-lane Codex audit of 05f689b: P1 + P2, both confirmed by the orchestrator):
 

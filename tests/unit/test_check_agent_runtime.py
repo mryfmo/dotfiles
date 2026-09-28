@@ -905,7 +905,27 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertEqual(
             [
                 f"WARN: Understand-Anything core build is stale: {core / 'dist/index.js'} "
-                f"is older than {core / 'src'}; run make update"
+                f"is older than {core / 'src'} or {core.parents[1] / 'pnpm-lock.yaml'}; run make update"
+            ],
+            warnings,
+        )
+
+    def test_ua_core_warns_when_dist_is_older_than_the_root_lockfile(self) -> None:
+        core = self.ua_core_tree()
+        (core / "dist").mkdir()
+        (core / "dist/index.js").write_text("built\n")
+        lockfile = core.parents[1] / "pnpm-lock.yaml"
+        lockfile.write_text("lockfileVersion: '9.0'\n")
+        os.utime(core / "src/index.ts", (1_000_000, 1_000_000))
+        os.utime(core / "dist/index.js", (2_000_000, 2_000_000))
+        os.utime(lockfile, (3_000_000, 3_000_000))
+
+        warnings = self.module.understand_anything_core_warnings(self.target_root)
+
+        self.assertEqual(
+            [
+                f"WARN: Understand-Anything core build is stale: {core / 'dist/index.js'} "
+                f"is older than {core / 'src'} or {lockfile}; run make update"
             ],
             warnings,
         )

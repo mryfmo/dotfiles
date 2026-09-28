@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -14,6 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 UPDATER = ROOT / "scripts/update-agent-assets.sh"
+CHECKER = ROOT / "scripts/check-agent-runtime.py"
 VERSION = "2.9.7"
 
 
@@ -32,7 +35,7 @@ class UnderstandAnythingCoreBuildTest(unittest.TestCase):
         )
         self.make_plugin_tree(self.clone)
         (self.bin / "python3").symlink_to(sys.executable)
-        for tool in ("bash", "cat", "cp", "dirname", "mkdir", "rm"):
+        for tool in ("bash", "cat", "cp", "dirname", "find", "mkdir", "rm"):
             found = shutil.which(tool)
             if found:
                 (self.bin / tool).symlink_to(found)
@@ -126,6 +129,10 @@ class UnderstandAnythingCoreBuildTest(unittest.TestCase):
         self.make_plugin_tree(self.release)
         (self.release / "packages/core/dist").mkdir(parents=True)
         (self.release / "packages/core/dist/index.js").write_text("prebuilt\n")
+        (self.release / "pnpm-lock.yaml").write_text("lockfileVersion: '9.0'\n")
+        self.set_mtime(self.release / "packages/core/src/index.ts", 1_000_000)
+        self.set_mtime(self.release / "pnpm-lock.yaml", 1_000_000)
+        self.set_mtime(self.release / "packages/core/dist/index.js", 2_000_000)
         self.write_fake_pnpm()
 
         result = self.provision()
@@ -135,6 +142,62 @@ class UnderstandAnythingCoreBuildTest(unittest.TestCase):
         self.assertEqual(
             (self.clone / "packages/core/dist/index.js").read_text(), "prebuilt\n"
         )
+
+    @staticmethod
+    def set_mtime(path: Path, seconds: int) -> None:
+        os.utime(path, (seconds, seconds))
+
+    def stale_dist(self, root: Path, *, newer: str) -> None:
+        """Give root a prebuilt dist that is older than `newer` (src or lockfile)."""
+        (root / "packages/core/dist").mkdir(parents=True)
+        (root / "packages/core/dist/index.js").write_text("stale\n")
+        (root / "pnpm-lock.yaml").write_text("lockfileVersion: '9.0'\n")
+        for path in (root / "packages/core/src/index.ts", root / "pnpm-lock.yaml"):
+            self.set_mtime(path, 1_000_000)
+        self.set_mtime(root / "packages/core/dist/index.js", 2_000_000)
+        target = root / "packages/core/src/index.ts" if newer == "src" else root / "pnpm-lock.yaml"
+        self.set_mtime(target, 3_000_000)
+
+    def test_rebuilds_a_release_dist_older_than_its_sources(self) -> None:
+        for newer in ("src", "lockfile"):
+            with self.subTest(newer=newer):
+                shutil.rmtree(self.release, ignore_errors=True)
+                shutil.rmtree(self.clone / "packages/core/dist", ignore_errors=True)
+                self.log.unlink(missing_ok=True)
+                self.make_plugin_tree(self.release)
+                self.stale_dist(self.release, newer=newer)
+                self.write_fake_pnpm()
+
+                result = self.provision()
+
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(
+                    [call.split("|", 1)[1] for call in self.calls()],
+                    [
+                        "pnpm install --frozen-lockfile",
+                        "pnpm --filter @understand-anything/core build",
+                    ],
+                )
+                self.assertEqual(
+                    (self.clone / "packages/core/dist/index.js").read_text(), "built\n"
+                )
+
+    def test_doctor_stale_warning_is_cleared_by_the_update_build(self) -> None:
+        spec = importlib.util.spec_from_file_location("check_agent_runtime", CHECKER)
+        assert spec is not None and spec.loader is not None
+        doctor = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(doctor)
+        self.stale_dist(self.clone, newer="src")
+        self.write_fake_pnpm()
+
+        before = doctor.understand_anything_core_warnings(self.home)
+        result = self.provision()
+        after = doctor.understand_anything_core_warnings(self.home)
+
+        self.assertEqual(len(before), 1, before)
+        self.assertIn("Understand-Anything core build is stale", before[0])
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(after, [])
 
     def test_builds_in_the_clone_when_no_release_artifact_exists(self) -> None:
         self.write_fake_pnpm()

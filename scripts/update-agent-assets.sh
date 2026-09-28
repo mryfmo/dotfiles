@@ -636,10 +636,12 @@ function update_codex_crit() {
 }
 
 #
-# @description Build Understand-Anything packages/core in a plugin tree when its dist is missing.
+# @description Build Understand-Anything packages/core in a plugin tree when its dist is missing or stale.
 # @description
 #   Mirrors upstream skills/understand/SKILL.md, which builds in place wherever
-#   the plugin root resolves; the dist/index.js guard keeps it idempotent. pnpm
+#   the plugin root resolves. It rebuilds when dist/index.js is missing or older
+#   than any file under packages/core/src or the root pnpm-lock.yaml, the same
+#   freshness rule `make doctor` reports, and otherwise skips (idempotent). pnpm
 #   comes from PATH (the mise shim for the pinned npm:pnpm) or `mise exec`.
 #   A missing pnpm or a failed build only warns, so make update never fails
 #   for it.
@@ -651,7 +653,10 @@ function build_understand_anything_core() {
     local -a pnpm_cmd
 
     [ -d "${root}/packages/core" ] || return 0
-    [ -f "${root}/packages/core/dist/index.js" ] && return 0
+    if [ -f "${root}/packages/core/dist/index.js" ] &&
+        [ -z "$(find "${root}/packages/core/src" "${root}/pnpm-lock.yaml" -type f -newer "${root}/packages/core/dist/index.js" -print -quit 2> /dev/null || true)" ]; then
+        return 0
+    fi
     if has_command pnpm; then
         pnpm_cmd=(pnpm)
     elif has_command mise; then

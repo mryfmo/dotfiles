@@ -1668,7 +1668,7 @@
         "tested"
       ],
       "complexity": "moderate",
-      "lineRange": "Uses .PHONY targets with $(if $(filter ...)) conditionals and backslash-continued shell recipes that accumulate exit statuses so doctor reports a combined summary."
+      "languageNotes": "Uses .PHONY targets with $(if $(filter ...)) conditionals and backslash-continued shell recipes that accumulate exit statuses so doctor reports a combined summary."
     },
     {
       "id": "document:README.md",
@@ -1756,7 +1756,7 @@
         "tested"
       ],
       "complexity": "complex",
-      "lineRange": "Strict-mode Bash (set -Eeuo pipefail) with shdoc annotations, an accumulating EXIT trap via at_exit, nested function definitions, and a BASH_SOURCE guard so the script can be sourced by tests without running main."
+      "languageNotes": "Strict-mode Bash (set -Eeuo pipefail) with shdoc annotations, an accumulating EXIT trap via at_exit, nested function definitions, and a BASH_SOURCE guard so the script can be sourced by tests without running main."
     },
     {
       "id": "function:setup.sh:fetch_url",

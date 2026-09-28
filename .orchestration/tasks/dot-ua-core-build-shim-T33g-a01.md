@@ -1,4 +1,6 @@
-# AGMSG-TASK dot-ua-core-build-shim-T33g-a01
+# AGMSG-TASK dot-ua-core-build-shim-T33g-a01 (revision 2)
+
+Revision 2 (2026-09-28, ruling on the worker's blocked PONG): option (A) APPROVED — keep item 2 and update `tests/install/common/lifecycle.bats` so the exact `make update` call-sequence assertions (full-output equality at L117–127 and the failure-injection case at L130–133) include `npm:pnpm` on the same `mise install --locked npm:ccstatusline npm:ccusage npm:pnpm` line (order: append). Bats runs in CI only (repo policy); do not run it locally.
 
 ## Objective
 
@@ -49,6 +51,7 @@ failure).
 
 - `scripts/update-agent-assets.sh`
 - `Makefile` (the `update` recipe's mise install line only)
+- `tests/install/common/lifecycle.bats` (the two `make update` call-sequence expectations only; revision 2)
 - `tests/unit/test_update_agent_assets_ua_core.py` and one Makefile-recipe test file if needed
 - `README.md`
 - `.orchestration/{reports,validation,sandboxes,learning,autoskill/runs}/dot-ua-core-build-shim-T33g-a01.md` (main checkout)

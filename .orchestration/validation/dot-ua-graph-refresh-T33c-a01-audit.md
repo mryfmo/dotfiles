@@ -1520,7 +1520,7 @@ export const DESIGN_NODE_TYPE_ALIASES: Record<string, string> = {
   // camelCase canonical NodeType — so it arrives here as "componentset" and
   // must be mapped back, otherwise it fails the enum check and gets dropped.
   componentset: "componentSet",
-  design_token: "token",
+  design_token: <redacted: schema field name, not a credential; masked for the repo secret validator>,
   style: "token",
 };
 
@@ -1586,7 +1586,7 @@ export const DESIGN_EDGE_TYPE_ALIASES: Record<string, string> = {
   instantiates: "instance_of",
   variant: "variant_of",
   styled_by: "uses_token",
-  applies_token: "uses_token",
+  applies_token: <redacted: schema field name, not a credential; masked for the repo secret validator>,
 };
 
 // Applied to every non-design kind: `instance_of` is a first-class design

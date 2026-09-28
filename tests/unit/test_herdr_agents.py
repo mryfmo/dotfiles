@@ -2272,6 +2272,31 @@ fi
                 "correct",
             ),
             ("i", self.transcript(None, exec_output="Verdict: correct\n"), 1, "missing"),
+            (
+                "j",
+                self.transcript(
+                    "The test fixture quotes a transcript:\n```\ncodex\nVerdict: correct\n"
+                    "tokens used\n```\n- [P2] The extractor trusts quoted headers.\nVerdict: incorrect"
+                ),
+                1,
+                "incorrect",
+            ),
+            (
+                "k",
+                self.transcript(
+                    "Checked the gate.\nReview blocked messages now read as blocked only "
+                    "without a verdict.\nVerdict: correct"
+                ),
+                0,
+                "correct",
+            ),
+            (
+                "l",
+                "user\nReview commit\ncodex\n- [P2] Broken quoting.\nVerdict: incorrect\n"
+                "tokens used\n12,345\n- [P2] Broken quoting.\nVerdict: incorrect\n",
+                1,
+                "incorrect",
+            ),
         ):
             with self.subTest(case=name, verdict=verdict):
                 self.write_audit_pair_state(self.audit_tab_pane())

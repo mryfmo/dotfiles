@@ -567,6 +567,31 @@ def orphaned_asset_warnings(
     return warnings
 
 
+def understand_anything_core_warnings(home: Path | None = None) -> list[str]:
+    """Warn when the Codex-side Understand-Anything core build is missing or stale.
+
+    `prepare-incremental.mjs` imports packages/core/dist/index.js, so `.ua/`
+    incremental updates fail until `make update` builds it.
+    """
+    home = home or HOME
+    core = home / ".understand-anything/repo/understand-anything-plugin/packages/core"
+    if not core.is_dir():
+        return []
+    dist = core / "dist/index.js"
+    if not dist.is_file():
+        return [f"WARN: Understand-Anything core not built: {dist} is missing; run make update"]
+    src = core / "src"
+    newest_src = max(
+        (path.stat().st_mtime for path in src.rglob("*") if path.is_file()),
+        default=0.0,
+    )
+    if newest_src > dist.stat().st_mtime:
+        return [
+            f"WARN: Understand-Anything core build is stale: {dist} is older than {src}; run make update"
+        ]
+    return []
+
+
 def deployed_target_path(value: str, home: Path) -> Path:
     if value == "~":
         return home
@@ -741,6 +766,7 @@ def check() -> list[str]:
             asset_failure_message(finding) for finding in manifest_asset_findings()
         )
         failures.extend(orphaned_asset_warnings())
+    failures.extend(understand_anything_core_warnings())
     failures.extend(chezmoi_drift_warnings())
     return failures
 

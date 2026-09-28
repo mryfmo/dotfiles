@@ -536,6 +536,10 @@ backend = "npm:ccusage"
 version = "5.2.0"
 backend = "npm:fast-cli"
 
+[[tools."npm:pnpm"]]
+version = "12.4.1"
+backend = "npm:pnpm"
+
 [[tools."npm:pyright"]]
 version = "1.1.414"
 backend = "npm:pyright"

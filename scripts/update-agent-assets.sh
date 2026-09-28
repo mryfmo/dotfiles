@@ -636,7 +636,47 @@ function update_codex_crit() {
 }
 
 #
+# @description Build Understand-Anything packages/core in a plugin tree when its dist is missing.
+# @description
+#   Mirrors upstream skills/understand/SKILL.md, which builds in place wherever
+#   the plugin root resolves; the dist/index.js guard keeps it idempotent. pnpm
+#   comes from PATH (the mise shim for the pinned npm:pnpm) or `mise exec`.
+#   A missing pnpm or a failed build only warns, so make update never fails
+#   for it.
+# @arg $1 path Plugin tree that contains packages/core.
+# @stderr One WARN line naming the manual command when the build cannot run or fails.
+#
+function build_understand_anything_core() {
+    local root="$1"
+    local -a pnpm_cmd
+
+    [ -d "${root}/packages/core" ] || return 0
+    [ -f "${root}/packages/core/dist/index.js" ] && return 0
+    if has_command pnpm; then
+        pnpm_cmd=(pnpm)
+    elif has_command mise; then
+        pnpm_cmd=(mise exec npm:pnpm -- pnpm)
+    else
+        printf 'WARN: Understand-Anything core not built: pnpm not found; run: cd %q && pnpm install --frozen-lockfile && pnpm --filter @understand-anything/core build\n' "${root}" >&2
+        return 0
+    fi
+    if ! (
+        cd "${root}" &&
+            { "${pnpm_cmd[@]}" install --frozen-lockfile 2> /dev/null || "${pnpm_cmd[@]}" install; } &&
+            "${pnpm_cmd[@]}" --filter @understand-anything/core build
+    ); then
+        printf 'WARN: Understand-Anything core build failed in %s; run: cd %q && %s install --frozen-lockfile && %s --filter @understand-anything/core build\n' \
+            "${root}" "${root}" "${pnpm_cmd[*]}" "${pnpm_cmd[*]}" >&2
+    fi
+    return 0
+}
+
+#
 # @description Provision Codex Understand-Anything runtime files from the matching Claude release artifact.
+# @description
+#   Builds packages/core in the release artifact first (upstream builds there
+#   in Claude sessions) and copies dist/node_modules into the Codex clone.
+#   Without a matching release artifact it builds directly in the clone.
 # @stdout Prints a skip message when no matching Claude release artifact is available.
 #
 function provision_codex_understand_anything_runtime() {
@@ -646,6 +686,7 @@ function provision_codex_understand_anything_runtime() {
     claude_cache="${HOME}/.claude/plugins/cache/understand-anything/understand-anything"
     if ! has_command python3; then
         printf 'Understand-Anything Codex runtime not provisioned: no matching Claude plugin release artifact; run make update after installing the Claude plugin.\n'
+        build_understand_anything_core "${plugin_root}"
         return 0
     fi
     release_root="$(
@@ -677,9 +718,11 @@ PY
     )"
     if [ -z "${release_root}" ]; then
         printf 'Understand-Anything Codex runtime not provisioned: no matching Claude plugin release artifact; run make update after installing the Claude plugin.\n'
+        build_understand_anything_core "${plugin_root}"
         return 0
     fi
 
+    build_understand_anything_core "${release_root}"
     for source in "packages/core/dist" "packages/core/node_modules" "node_modules"; do
         destination="${plugin_root}/${source}"
         [ -d "${release_root}/${source}" ] || continue

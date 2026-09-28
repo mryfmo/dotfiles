@@ -1,0 +1,23 @@
+[
+  {
+    "scope": "review",
+    "id": "r_d126a2",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: T32 dot-audit-pane-visibility-T32-a01 adversarial review found no correctness, regression, security, or omission issues at PR #194 head 9691870 (revision 2). herdr-agents --audit: argument validation before any herdr call (sha regex, positive timeout, resolved workdir+evidence path free of quotes/control chars, fail closed); audit tab created once and reused; nonce exit marker; pipefail-propagated exit; cd into DIR on every run; empty_pane_id/split-source exclude the audit label (guards strengthened, none weakened). 13 audit tests re-run OK by the orchestrator at 9691870; mutation baselines pasted (rev1 8/11 FAIL vs origin/main, rev2 3/13 FAIL vs 8af8d11); 488 unit tests OK; CI 12/12 pass (nix skipped); diff scope exactly the 5 allowed files. Pre-merge Codex audits: 8af8d11 -\u003e 2xP2 (fixed in rev2), 9691870 -\u003e no actionable regressions.",
+    "author": "claude-code",
+    "created_at": "2026-09-28T00:13:34Z",
+    "updated_at": "2026-09-28T00:13:52Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_6b9b89",
+        "body": "Resolved: orchestrator acceptance recorded in .orchestration/acceptance/dot-audit-pane-visibility-T32-a01.md; agent-side process evidence, not reviewer authentication.",
+        "author": "claude-code",
+        "created_at": "2026-09-28T00:13:52Z",
+        "review_round": 1
+      }
+    ]
+  }
+]

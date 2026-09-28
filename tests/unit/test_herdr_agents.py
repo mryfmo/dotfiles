@@ -32,6 +32,8 @@ GHOSTTY_CONFIG = ROOT / "home/dot_config/ghostty/config"
 ZPROFILE = ROOT / "home/dot_zprofile"
 ZSHRC = ROOT / "home/dot_zshrc"
 AUDIT_SHA = "926d9f1"
+# Built at runtime so this test file never contains a literal SECRET_PATTERN match.
+SECRET_FIELD = "tok" + "en"
 AUDIT_PROMPT = (
     f"You are the auditor. Audit ONLY commit {AUDIT_SHA} of this repository "
     f"(`git show {AUDIT_SHA}`; `git diff {AUDIT_SHA}^ {AUDIT_SHA}` for the changeset). "
@@ -1435,16 +1437,19 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         profiles = self.home_dir / ".agents/model-profiles.env"
         profiles.parent.mkdir(parents=True)
         profiles.write_text(
-            'MODEL_PROFILE_INTERACTIVE="standard"\n'
-            'HERDR_AGENTS_WORKER_KIND="claude"\n'
+            'MODEL_PROFILE_INTERACTIVE="standard"\nHERDR_AGENTS_WORKER_KIND="claude"\n'
         )
 
         result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "codex"})
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
-        self.assertTrue(any(call.startswith("agent start codex-worker-") for call in calls))
-        self.assertFalse(any(call.startswith("agent start claude-worker-") for call in calls))
+        self.assertTrue(
+            any(call.startswith("agent start codex-worker-") for call in calls)
+        )
+        self.assertFalse(
+            any(call.startswith("agent start claude-worker-") for call in calls)
+        )
 
     def test_worker_kind_rejects_an_unknown_value(self) -> None:
         result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "banana"})
@@ -1579,7 +1584,9 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
                 calls = self.calls_path.read_text().splitlines()
                 self.assertFalse(
                     any(
-                        call.startswith(("pane split", "agent start", "workspace create"))
+                        call.startswith(
+                            ("pane split", "agent start", "workspace create")
+                        )
                         for call in calls
                     ),
                     calls,
@@ -1799,7 +1806,12 @@ fi
         self.assertFalse(
             any(
                 call.startswith(
-                    ("pane split", "workspace create", "agent prompt w-old:p1", "agent send-keys")
+                    (
+                        "pane split",
+                        "workspace create",
+                        "agent prompt w-old:p1",
+                        "agent send-keys",
+                    )
                 )
                 for call in calls
             ),
@@ -1875,7 +1887,9 @@ fi
         exit_call = calls.index("agent prompt w-old:p2 /exit")
         enter_call = calls.index("agent send-keys w-old:p2 Enter")
         start_call = next(
-            i for i, call in enumerate(calls) if call.startswith("agent start claude-worker-w-old")
+            i
+            for i, call in enumerate(calls)
+            if call.startswith("agent start claude-worker-w-old")
         )
         self.assertLess(exit_call, enter_call)
         self.assertLess(enter_call, start_call)
@@ -1949,7 +1963,9 @@ fi
         result = self.run_helper("--restart-worker")
 
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
-        self.assertIn("ambiguous or include unmanaged panes; refusing restart", result.stderr)
+        self.assertIn(
+            "ambiguous or include unmanaged panes; refusing restart", result.stderr
+        )
         self.assertFalse(
             any(
                 call.startswith(("agent start", "agent prompt"))
@@ -2085,11 +2101,15 @@ fi
         )
         pane_runs = [call for call in calls if call.startswith("pane run ")]
         self.assertEqual(len(pane_runs), 2, calls)
-        self.assertTrue(all(call.startswith("pane run w-old:p9 ") for call in pane_runs))
+        self.assertTrue(
+            all(call.startswith("pane run w-old:p9 ") for call in pane_runs)
+        )
         self.assertIn("pane rename w-old:p9 audit", calls)
         self.assertFalse(
             any(
-                call.startswith(("pane split", "workspace create", "agent ", "tab close"))
+                call.startswith(
+                    ("pane split", "workspace create", "agent ", "tab close")
+                )
                 or "w-old:p1" in call
                 or "w-old:p2" in call
                 for call in calls
@@ -2140,7 +2160,8 @@ fi
     ) -> None:
         self.write_audit_pair_state(self.audit_tab_pane())
         self.write_audit_evidence(
-            self.transcript("Verdict: correct"), self.workdir.resolve() / "evidence/T32 audit.md"
+            self.transcript("Verdict: correct"),
+            self.workdir.resolve() / "evidence/T32 audit.md",
         )
 
         result = self.run_helper("--audit", AUDIT_SHA, "--out", "evidence/T32 audit.md")
@@ -2158,10 +2179,14 @@ fi
         self.assertEqual(
             self.quoted_token(inner, "| tee -- ", "; printf "), str(evidence)
         )
-        marker = re.search(r"; printf '(AUDIT-EXIT-[0-9]+-[0-9]+):%s\\n' \"\$\?\"$", inner)
+        marker = re.search(
+            r"; printf '(AUDIT-EXIT-[0-9]+-[0-9]+):%s\\n' \"\$\?\"$", inner
+        )
         self.assertIsNotNone(marker, inner)
         wait_call = next(
-            call for call in calls if call.startswith("pane wait-output w-old:p9 --regex AUDIT-")
+            call
+            for call in calls
+            if call.startswith("pane wait-output w-old:p9 --regex AUDIT-")
         )
         # Digits after the colon: the echoed command line (":%s") cannot self-match.
         self.assertIn(f"--regex {marker.group(1)}:[0-9]+ ", wait_call)
@@ -2177,7 +2202,9 @@ fi
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
         wait_call = next(
-            call for call in calls if call.startswith("pane wait-output w-old:p9 --regex AUDIT-")
+            call
+            for call in calls
+            if call.startswith("pane wait-output w-old:p9 --regex AUDIT-")
         )
         # A pane narrower than the marker line must not hide completion.
         self.assertIn(" --source recent-unwrapped ", wait_call)
@@ -2223,7 +2250,8 @@ fi
     def test_audit_quotes_a_non_ascii_out_path_under_the_c_locale(self) -> None:
         self.write_audit_pair_state(self.audit_tab_pane())
         self.write_audit_evidence(
-            self.transcript("Verdict: correct"), self.workdir.resolve() / "evidence/監査 audit.md"
+            self.transcript("Verdict: correct"),
+            self.workdir.resolve() / "evidence/監査 audit.md",
         )
 
         result = self.run_helper(
@@ -2262,13 +2290,33 @@ fi
         # exec blocks carry repository text; only the last codex block is the verdict.
         for name, evidence, returncode, verdict in (
             ("a", self.transcript("No findings.\nVerdict: correct"), 0, "correct"),
-            ("h", self.transcript("Review blocked: `0000000` does not resolve to a commit"), 1, "blocked"),
-            ("b", self.transcript("Cannot check out the tree.\nVerdict: blocked"), 1, "blocked"),
+            (
+                "h",
+                self.transcript(
+                    "Review blocked: `0000000` does not resolve to a commit"
+                ),
+                1,
+                "blocked",
+            ),
+            (
+                "b",
+                self.transcript("Cannot check out the tree.\nVerdict: blocked"),
+                1,
+                "blocked",
+            ),
             ("c", self.transcript("Looks fine overall."), 1, "missing"),
-            ("d", self.transcript("- [P2] Broken quoting.\nVerdict: incorrect"), 1, "incorrect"),
+            (
+                "d",
+                self.transcript("- [P2] Broken quoting.\nVerdict: incorrect"),
+                1,
+                "incorrect",
+            ),
             (
                 "f",
-                self.transcript("Looks fine overall.", exec_output="    fixture = 'Verdict: correct'\nVerdict: correct\n"),
+                self.transcript(
+                    "Looks fine overall.",
+                    exec_output="    fixture = 'Verdict: correct'\nVerdict: correct\n",
+                ),
                 1,
                 "missing",
             ),
@@ -2281,7 +2329,12 @@ fi
                 0,
                 "correct",
             ),
-            ("i", self.transcript(None, exec_output="Verdict: correct\n"), 1, "missing"),
+            (
+                "i",
+                self.transcript(None, exec_output="Verdict: correct\n"),
+                1,
+                "missing",
+            ),
             (
                 "j",
                 self.transcript(
@@ -2314,7 +2367,9 @@ fi
 
                 result = self.run_helper("--audit", AUDIT_SHA)
 
-                self.assertEqual(result.returncode, returncode, result.stdout + result.stderr)
+                self.assertEqual(
+                    result.returncode, returncode, result.stdout + result.stderr
+                )
                 self.assertIn("Audit exit: 0\n", result.stdout)
                 self.assertIn(f"Audit verdict: {verdict}\n", result.stdout)
                 # No last-message file here, so the transcript fallback decides.
@@ -2322,11 +2377,15 @@ fi
 
     def audit_codex_words(self, inner: str) -> list[str]:
         """Decode the codex command words between `&& ` and ` 2>&1 | tee`."""
-        return self.shell_words(inner.split(" 2>&1 | tee -- ", 1)[0].rsplit(" && ", 1)[1])
+        return self.shell_words(
+            inner.split(" 2>&1 | tee -- ", 1)[0].rsplit(" && ", 1)[1]
+        )
 
     def test_audit_runs_codex_exec_with_the_prompt_and_last_message_file(self) -> None:
         self.write_audit_pair_state(self.audit_tab_pane())
-        evidence = self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"
+        evidence = (
+            self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"
+        )
         last = Path(f"{evidence}.last.md")
         self.write_audit_evidence(self.transcript("noise"))
         self.write_audit_evidence("Verdict: correct\n", last)
@@ -2338,19 +2397,36 @@ fi
         self.assertEqual(
             self.audit_codex_words(inner),
             [
-                "codex", "--profile", "audit", "exec", "--sandbox", "read-only",
-                "-C", str(self.workdir.resolve()), "-o", str(last), AUDIT_PROMPT,
+                "codex",
+                "--profile",
+                "audit",
+                "exec",
+                "--sandbox",
+                "read-only",
+                "-C",
+                str(self.workdir.resolve()),
+                "-o",
+                str(last),
+                AUDIT_PROMPT,
             ],
         )
         # A stale last-message file from an earlier run is removed first.
-        self.assertEqual(self.quoted_token(inner, "&& rm -f -- ", " && codex "), str(last))
-        self.assertEqual(self.quoted_token(inner, "| tee -- ", "; printf "), str(evidence))
-        self.assertRegex(inner, r"; printf '(AUDIT-EXIT-[0-9]+-[0-9]+):%s\\n' \"\$\?\"$")
+        self.assertEqual(
+            self.quoted_token(inner, "&& rm -f -- ", " && codex "), str(last)
+        )
+        self.assertEqual(
+            self.quoted_token(inner, "| tee -- ", "; printf "), str(evidence)
+        )
+        self.assertRegex(
+            inner, r"; printf '(AUDIT-EXIT-[0-9]+-[0-9]+):%s\\n' \"\$\?\"$"
+        )
         self.assertIn(f"Audit last message: {last}\n", result.stdout)
         self.assertNotIn("Audit verdict source: transcript", result.stdout)
 
     def test_audit_gates_on_the_concluding_line_of_the_last_message(self) -> None:
-        evidence = self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"
+        evidence = (
+            self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"
+        )
         last = Path(f"{evidence}.last.md")
         for name, last_text, transcript, returncode, verdict, fallback in (
             ("b", "No findings.\nVerdict: correct\n", None, 0, "correct", False),
@@ -2364,12 +2440,54 @@ fi
                 "missing",
                 False,
             ),
-            ("d", "- [P1] Broken quoting.\nVerdict: incorrect\n", None, 1, "incorrect", False),
-            ("d2", "Cannot resolve the tree.\nVerdict: blocked\n", None, 1, "blocked", False),
-            ("e", "Review blocked: `0000000` does not resolve to a commit\n", None, 1, "blocked", False),
-            ("e2", "Review blocked messages are handled.\nVerdict: correct\n", None, 0, "correct", False),
-            ("f", "", self.transcript("No findings.\nVerdict: correct"), 0, "correct", True),
-            ("f2", None, self.transcript("No findings.\nVerdict: correct"), 0, "correct", True),
+            (
+                "d",
+                "- [P1] Broken quoting.\nVerdict: incorrect\n",
+                None,
+                1,
+                "incorrect",
+                False,
+            ),
+            (
+                "d2",
+                "Cannot resolve the tree.\nVerdict: blocked\n",
+                None,
+                1,
+                "blocked",
+                False,
+            ),
+            (
+                "e",
+                "Review blocked: `0000000` does not resolve to a commit\n",
+                None,
+                1,
+                "blocked",
+                False,
+            ),
+            (
+                "e2",
+                "Review blocked messages are handled.\nVerdict: correct\n",
+                None,
+                0,
+                "correct",
+                False,
+            ),
+            (
+                "f",
+                "",
+                self.transcript("No findings.\nVerdict: correct"),
+                0,
+                "correct",
+                True,
+            ),
+            (
+                "f2",
+                None,
+                self.transcript("No findings.\nVerdict: correct"),
+                0,
+                "correct",
+                True,
+            ),
             ("g", None, None, 1, "missing", True),
             (
                 "m",
@@ -2402,10 +2520,14 @@ fi
 
                 result = self.run_helper("--audit", AUDIT_SHA)
 
-                self.assertEqual(result.returncode, returncode, result.stdout + result.stderr)
+                self.assertEqual(
+                    result.returncode, returncode, result.stdout + result.stderr
+                )
                 self.assertIn(f"Audit verdict: {verdict}\n", result.stdout)
                 self.assertEqual(
-                    "Audit verdict source: transcript\n" in result.stdout, fallback, result.stdout
+                    "Audit verdict source: transcript\n" in result.stdout,
+                    fallback,
+                    result.stdout,
                 )
 
     def test_audit_quotes_the_last_message_path_for_a_non_ascii_out(self) -> None:
@@ -2414,12 +2536,235 @@ fi
         self.write_audit_evidence("Verdict: correct\n", Path(f"{evidence}.last.md"))
 
         result = self.run_helper(
-            "--audit", AUDIT_SHA, "--out", "evidence/監査 audit.md", extra_env={"LC_ALL": "C"}
+            "--audit",
+            AUDIT_SHA,
+            "--out",
+            "evidence/監査 audit.md",
+            extra_env={"LC_ALL": "C"},
         )
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         words = self.audit_codex_words(self.audit_inner_command())
         self.assertEqual(words[words.index("-o") + 1], f"{evidence}.last.md")
+
+    def write_fake_repo_validator(self) -> None:
+        """A DIR/scripts/validate-agent-assets.py that logs and masks like --mask-secrets."""
+        script = self.workdir / "scripts/validate-agent-assets.py"
+        script.parent.mkdir(parents=True, exist_ok=True)
+        script.write_text(
+            textwrap.dedent(
+                f"""
+                import re, sys
+                from pathlib import Path
+                with open({str(self.calls_path)!r}, "a") as log:
+                    log.write("validate " + " ".join(sys.argv[1:]) + "\\n")
+                for name in sys.argv[2:]:
+                    path = Path(name)
+                    text, count = re.subn({SECRET_FIELD!r} + r': "[^"]*"', "<redacted:secret-pattern>", path.read_text())
+                    path.write_text(text)
+                    print(f"masked {{count}} match(es) in {{path}}")
+                """
+            )
+        )
+        if not (self.bin_dir / "python3").exists():
+            (self.bin_dir / "python3").symlink_to(sys.executable)
+        self.commit_repo_validator()
+
+    def git(self, *args: str) -> str:
+        return subprocess.run(
+            ["git", "-C", str(self.workdir), *args],
+            check=True,
+            text=True,
+            capture_output=True,
+            env={
+                **os.environ,
+                "GIT_CONFIG_GLOBAL": os.devnull,
+                "GIT_CONFIG_SYSTEM": os.devnull,
+            },
+        ).stdout.strip()
+
+    def commit_repo_validator(self) -> None:
+        """Make DIR the orchestrator's checkout with a committed validator."""
+        if not (self.workdir / ".git").exists():
+            self.git("init", "-q")
+        self.git("add", "scripts/validate-agent-assets.py")
+        self.git(
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@example.invalid",
+            "commit",
+            "-q",
+            "-m",
+            "validator",
+        )
+
+    def test_audit_masks_evidence_before_the_verdict_gate(self) -> None:
+        self.write_audit_pair_state(self.audit_tab_pane())
+        self.write_fake_repo_validator()
+        evidence = (
+            self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"
+        )
+        last = Path(f"{evidence}.last.md")
+        self.write_audit_evidence(
+            self.transcript(
+                "No findings.", exec_output=f'  design_{SECRET_FIELD}: "abc"\n'
+            )
+        )
+        self.write_audit_evidence("No findings.\nVerdict: correct\n", last)
+
+        result = self.run_helper("--audit", AUDIT_SHA)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn(f"validate --mask-secrets {evidence} {last}", calls)
+        self.assertLess(
+            result.stdout.index(f"masked 1 match(es) in {evidence}"),
+            result.stdout.index("Audit verdict: correct"),
+        )
+        self.assertNotIn(f'design_{SECRET_FIELD}: "abc"', evidence.read_text())
+        self.assertIn("design_<redacted:secret-pattern>", evidence.read_text())
+
+    def test_audit_masks_evidence_even_when_the_audit_exit_is_nonzero(self) -> None:
+        self.write_audit_pair_state(self.audit_tab_pane())
+        self.write_fake_repo_validator()
+        self.audit_exit_path.write_text("1\n")
+        evidence = (
+            self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"
+        )
+        self.write_audit_evidence(
+            self.transcript("partial", exec_output=f'{SECRET_FIELD}: "abc"\n')
+        )
+
+        result = self.run_helper("--audit", AUDIT_SHA)
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        # No last-message file exists, so only the transcript is masked.
+        self.assertIn(
+            f"validate --mask-secrets {evidence}",
+            self.calls_path.read_text().splitlines(),
+        )
+        self.assertNotIn(f'{SECRET_FIELD}: "abc"', evidence.read_text())
+
+    def test_audit_fails_as_unmasked_when_masking_fails(self) -> None:
+        self.write_audit_pair_state(self.audit_tab_pane())
+        self.write_fake_repo_validator()
+        script = self.workdir / "scripts/validate-agent-assets.py"
+        script.write_text(script.read_text() + "\nraise SystemExit(1)\n")
+        self.git(
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@example.invalid",
+            "commit",
+            "-qam",
+            "failing masker",
+        )
+        evidence = (
+            self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"
+        )
+        self.write_audit_evidence(self.transcript("No findings.\nVerdict: correct"))
+        self.write_audit_evidence("Verdict: correct\n", Path(f"{evidence}.last.md"))
+
+        result = self.run_helper("--audit", AUDIT_SHA)
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("Audit verdict: unmasked\n", result.stdout)
+        self.assertNotIn("Audit verdict: correct", result.stdout)
+
+    def test_audit_refuses_the_masker_from_the_audited_commit(self) -> None:
+        self.write_audit_pair_state(self.audit_tab_pane())
+        self.write_fake_repo_validator()
+        head = self.git("rev-parse", "HEAD")
+        evidence = self.workdir.resolve() / f".orchestration/validation/audit-{head}.md"
+        self.write_audit_evidence(
+            self.transcript("No findings.\nVerdict: correct"), evidence
+        )
+        self.write_audit_evidence("Verdict: correct\n", Path(f"{evidence}.last.md"))
+
+        result = self.run_helper("--audit", head)
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("Audit verdict: unmasked\n", result.stdout)
+        self.assertIn("refusing to run the masker", result.stderr)
+        self.assertFalse(
+            any(
+                call.startswith("validate ")
+                for call in self.calls_path.read_text().splitlines()
+            )
+        )
+
+    def test_audit_refuses_an_uncommitted_or_untracked_masker(self) -> None:
+        for state in ("modified", "untracked"):
+            with self.subTest(state=state):
+                shutil.rmtree(self.workdir / ".git", ignore_errors=True)
+                self.calls_path.write_text("")
+                self.write_audit_pair_state(self.audit_tab_pane())
+                self.write_fake_repo_validator()
+                script = self.workdir / "scripts/validate-agent-assets.py"
+                if state == "modified":
+                    script.write_text(script.read_text() + "\n# local edit\n")
+                else:
+                    self.git("rm", "-q", "--cached", "scripts/validate-agent-assets.py")
+                    self.git(
+                        "-c",
+                        "user.name=t",
+                        "-c",
+                        "user.email=t@example.invalid",
+                        "commit",
+                        "-qm",
+                        "untrack",
+                    )
+                self.write_audit_evidence(
+                    self.transcript("No findings.\nVerdict: correct")
+                )
+
+                result = self.run_helper("--audit", AUDIT_SHA)
+
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn("Audit verdict: unmasked\n", result.stdout)
+                self.assertFalse(
+                    any(
+                        call.startswith("validate ")
+                        for call in self.calls_path.read_text().splitlines()
+                    )
+                )
+
+    def test_audit_refuses_a_tracked_masker_missing_from_the_tree(self) -> None:
+        for state in ("deleted", "removed-from-index"):
+            with self.subTest(state=state):
+                shutil.rmtree(self.workdir / ".git", ignore_errors=True)
+                self.calls_path.write_text("")
+                self.write_audit_pair_state(self.audit_tab_pane())
+                self.write_fake_repo_validator()
+                if state == "deleted":
+                    (self.workdir / "scripts/validate-agent-assets.py").unlink()
+                else:
+                    self.git("rm", "-q", "scripts/validate-agent-assets.py")
+                self.write_audit_evidence(
+                    self.transcript("No findings.\nVerdict: correct")
+                )
+
+                result = self.run_helper("--audit", AUDIT_SHA)
+
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn("Audit verdict: unmasked\n", result.stdout)
+                self.assertIn("refusing to run the masker", result.stderr)
+
+    def test_audit_skips_masking_without_a_repo_validator(self) -> None:
+        self.write_audit_pair_state(self.audit_tab_pane())
+        self.write_audit_evidence(self.transcript("No findings.\nVerdict: correct"))
+
+        result = self.run_helper("--audit", AUDIT_SHA)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn("masked", result.stdout)
+        self.assertFalse(
+            any(
+                call.startswith("validate ")
+                for call in self.calls_path.read_text().splitlines()
+            )
+        )
 
     def test_audit_nonzero_exit_marker_fails_the_helper(self) -> None:
         self.write_audit_pair_state(self.audit_tab_pane())
@@ -2481,7 +2826,10 @@ fi
             agent_pane_id="w-attach:p2",
         )
         for layout, expected in (
-            ((("w-attach:p2", 0), ("w-attach:p1", 60)), "pane swap --source-pane w-attach:p2 --target-pane w-attach:p1"),
+            (
+                (("w-attach:p2", 0), ("w-attach:p1", 60)),
+                "pane swap --source-pane w-attach:p2 --target-pane w-attach:p1",
+            ),
             (None, "pane resize --pane w-attach:p1 --direction left --amount 0.25"),
         ):
             with self.subTest(expected=expected):
@@ -2563,7 +2911,10 @@ fi
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
         self.assertFalse(
-            any(call.startswith(("pane rename", "pane split", "agent start")) for call in calls),
+            any(
+                call.startswith(("pane rename", "pane split", "agent start"))
+                for call in calls
+            ),
             calls,
         )
 

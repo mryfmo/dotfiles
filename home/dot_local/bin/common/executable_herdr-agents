@@ -16,8 +16,9 @@
 #   Before the gate it masks the evidence with DIR/scripts/validate-agent-assets.py
 #   --mask-secrets. DIR must be the orchestrator's own checkout (the audited
 #   commit is only fetched): the masker is refused, and the audit fails as
-#   `unmasked`, when DIR is at the audited commit or the validator is not
-#   committed as-is, and a failed mask also fails the audit.
+#   `unmasked`, when DIR is at the audited commit or the validator is missing
+#   though git tracks it, untracked, or changed, and a failed mask also fails.
+#   Masking is skipped only when git tracks no validator and none is on disk.
 # @option --attach Attach the current Claude pane to its Herdr workspace layout.
 # @option --restart-worker Relaunch the worker agent in the existing pair's worker pane.
 # @option --bootstrap-agmsg Configure repo-scoped agmsg hooks without changing Herdr panes.
@@ -953,20 +954,25 @@ if [[ ${audit_mode} == true ]]; then
     # The evidence quotes reviewed content, so mask what the repo's committed-
     # secret scan would flag before anything reads or commits it (a Verdict:
     # line never matches). The repo validator is the single source of truth;
-    # without it (another repository) masking is skipped. DIR is assumed to be
-    # the orchestrator's own checkout, where the reviewed commit is only
-    # fetched, so the masker is trusted code; it is refused when DIR sits at
-    # the audited commit or the validator has uncommitted or untracked
-    # changes. A refused or failed mask never lets the audit pass.
+    # masking is skipped only when git tracks no validator and none is on disk
+    # (another repository). DIR is assumed to be the orchestrator's own
+    # checkout, where the reviewed commit is only fetched, so the masker is
+    # trusted code; it is refused when DIR sits at the audited commit or the
+    # validator is missing, untracked, or changed against HEAD. A refused or
+    # failed mask never lets the audit pass.
     audit_masked=true
-    audit_validator="${workdir}/scripts/validate-agent-assets.py"
-    if [[ -f ${audit_validator} ]]; then
+    audit_validator_rel=scripts/validate-agent-assets.py
+    audit_validator="${workdir}/${audit_validator_rel}"
+    if git -C "${workdir}" ls-files --error-unmatch -- "${audit_validator_rel}" > /dev/null 2>&1 ||
+        git -C "${workdir}" cat-file -e "HEAD:${audit_validator_rel}" 2> /dev/null ||
+        [[ -e ${audit_validator} || -L ${audit_validator} ]]; then
         audit_head="$(git -C "${workdir}" rev-parse HEAD 2> /dev/null || true)"
         audit_full="$(git -C "${workdir}" rev-parse --verify --quiet "${audit_commit}^{commit}" 2> /dev/null || true)"
-        if [[ -n ${audit_full} && ${audit_head} == "${audit_full}" ]] ||
-            ! git -C "${workdir}" ls-files --error-unmatch -- scripts/validate-agent-assets.py > /dev/null 2>&1 ||
-            ! git -C "${workdir}" diff --quiet HEAD -- scripts/validate-agent-assets.py 2> /dev/null; then
-            printf 'WARN: herdr-agents: refusing to run the masker in %s: it is the audited commit or has uncommitted changes; evidence stays unmasked.\n' "${workdir}" >&2
+        if [[ ! -f ${audit_validator} ]] ||
+            [[ -n ${audit_full} && ${audit_head} == "${audit_full}" ]] ||
+            ! git -C "${workdir}" ls-files --error-unmatch -- "${audit_validator_rel}" > /dev/null 2>&1 ||
+            ! git -C "${workdir}" diff --quiet HEAD -- "${audit_validator_rel}" 2> /dev/null; then
+            printf 'WARN: herdr-agents: refusing to run the masker in %s: it is the audited commit, or the validator is missing, untracked, or changed; evidence stays unmasked.\n' "${workdir}" >&2
             audit_masked=false
         elif ! command -v python3 > /dev/null 2>&1; then
             printf 'WARN: herdr-agents: python3 not found; evidence stays unmasked.\n' >&2

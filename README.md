@@ -399,26 +399,33 @@ duplicate workspace, `/exit` each of its agents with
 
 `herdr-agents --audit <sha> [--out PATH] [--timeout SECONDS] [DIR]` makes the
 orchestrator's Codex audit visible: it runs
-`codex <MODEL_PROFILE_AUDIT_CODEX_ARGS> review --commit <sha>` in the pair
-workspace's dedicated `audit` tab (created once, then reused and left open),
-tees the output to PATH (default `.orchestration/validation/audit-<sha>.md`
-under DIR), waits up to SECONDS (default 1800) for its exit marker, and exits
-nonzero when the audit does. Because `codex review` exits 0 even when it cannot
-assess the commit, the helper then gates on the verdict line that the AGENTS.md
-"Audit" section requires. It reads only the transcript region after the last
-line that is exactly `codex`, because earlier `exec` blocks carry repository
-text, and the last whole-line `Verdict:` there wins. It prints
-`Audit verdict: correct`, `incorrect`, `blocked` (a final `Verdict: blocked`,
-or a line starting `Review blocked` when no verdict line exists), or `missing`,
-and exits 1 for anything but `correct`; a `missing` verdict is the
-orchestrator's signal to judge the evidence manually. The gate trusts the
-auditor's own final message: it defends against reviewed content in tool
-output and against quoted transcripts inside the review, not against an
-auditor that deliberately ends with a fake verdict.
-The audit pane is labeled `audit`, so the pair
-modes never reuse it, and the auditor still has no agmsg identity. It exits 2
-without a managed workspace; headless `codex --profile audit review` remains the
-fallback there.
+`codex <MODEL_PROFILE_AUDIT_CODEX_ARGS> exec --sandbox read-only -C DIR -o PATH.last.md '<prompt>'`
+in the pair workspace's dedicated `audit` tab (created once, then reused and
+left open). The prompt tells the auditor to audit only `<sha>`, follow the
+AGENTS.md "Audit" section, and end with one concluding `Verdict:` line. The
+helper tees the transcript to PATH (default
+`.orchestration/validation/audit-<sha>.md` under DIR), waits up to SECONDS
+(default 1800) for its exit marker, and exits nonzero when the audit does.
+`codex review --commit` is not used: it accepts no prompt with `--commit` and
+never produced the AGENTS.md verdict. Because codex exits 0 even when it cannot
+assess the commit, the helper then gates on `PATH.last.md`, which `-o` fills
+with only the final assistant message. The concluding non-blank line must be a
+whole-line `Verdict: correct`, `incorrect`, or `blocked`; a concluding line
+starting `Review blocked` reads as `blocked`, and anything else, including a
+quoted verdict earlier in the message or an empty or missing file, reads as
+`missing`. It prints `Audit verdict: <verdict>` and exits 1 for anything but
+`correct`; a `missing` verdict is the orchestrator's signal to judge the
+evidence manually. When `-o` wrote nothing (an older codex), it prints
+`Audit verdict source: transcript` and applies the same concluding-line rule
+to the transcript region after the last line that is exactly `codex`. The gate
+trusts the auditor's own final message, not an auditor that deliberately ends
+with a fake verdict. The audit pane is labeled `audit`, so the pair modes never
+reuse it, and the auditor still has no agmsg identity. It exits 2 without a
+managed workspace; run the same audit headless there:
+
+```sh
+codex --profile audit exec --sandbox read-only -C <dir> -o <file> '<prompt>'
+```
 
 Per-task agent switching happens at the profile layer, never in the layout:
 the worker profile comes from `HERDR_AGENTS_WORKER_PROFILE` (the deprecated

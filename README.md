@@ -219,6 +219,10 @@ its `dist/index.js` is missing or older than any file under
 `packages/core/src` or the root `pnpm-lock.yaml` (in the release artifact, or
 in the Codex clone without one), so `.ua/` incremental updates work, and
 `make doctor` warns under the same rule, so `make update` repairs what it reports.
+Plugin 2.9.7 has two known coverage gaps: `merge-batch-graphs.py` drops
+`tested_by` edges from `.bats` tests and from non-`file:` production nodes, and
+`extract-structure.mjs` misses shell functions with a subshell body. A full
+rebuild therefore under-reports test coverage until upstream fixes land.
 
 Crit itself is installed on both Linux and macOS from the pinned amd64/arm64
 GitHub release binary for the matching OS, after SHA-256 verification. All
@@ -425,7 +429,9 @@ evidence manually. When `-o` wrote nothing (an older codex), it prints
 `Audit verdict source: transcript` and applies the same concluding-line rule
 to the transcript region after the last line that is exactly `codex`. The gate
 trusts the auditor's own final message, not an auditor that deliberately ends
-with a fake verdict. The audit pane is labeled `audit`, so the pair modes never
+with a fake verdict. Before the gate, the transcript and last-message file are
+masked in place with `scripts/validate-agent-assets.py --mask-secrets`, so
+committed evidence never trips the repository's secret scan. The audit pane is labeled `audit`, so the pair modes never
 reuse it, and the auditor still has no agmsg identity. It exits 2 without a
 managed workspace; run the same audit headless there:
 

@@ -8,6 +8,7 @@ import importlib.util
 import io
 import json
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -828,6 +829,79 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         )
 
         self.module.validate_claude_command_parity()
+
+
+
+# Built at runtime so this test file never contains a literal SECRET_PATTERN match.
+FIELD = "tok" + "en"
+
+
+class MaskSecretsModeTest(unittest.TestCase):
+    """`--mask-secrets` rewrites SECRET_PATTERN matches in place (audit evidence)."""
+
+    def setUp(self) -> None:
+        self.temp_dir = Path(tempfile.mkdtemp(prefix="mask-secrets-test-"))
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.temp_dir)
+
+    def run_mask(self, *paths: Path) -> "subprocess.CompletedProcess[str]":
+        return subprocess.run(
+            [sys.executable, str(VALIDATOR), "--mask-secrets", *map(str, paths)],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    def test_masks_every_match_in_place_and_reports_counts(self) -> None:
+        evidence = self.temp_dir / "audit.md"
+        evidence.write_text(
+            f'schema:\n  design_{FIELD}: "abcdefgh"\n  applies_{FIELD}: "xyz"\n'
+            "prose line stays\n"
+            "Verdict: correct\n"
+        )
+        last = self.temp_dir / "audit.md.last.md"
+        last.write_text("No findings.\nVerdict: correct\n")
+
+        result = self.run_mask(evidence, last)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(
+            result.stdout,
+            f"masked 2 match(es) in {evidence}\nmasked 0 match(es) in {last}\n",
+        )
+        text = evidence.read_text()
+        self.assertEqual(
+            text,
+            "schema:\n  design_<redacted:secret-pattern>\n  applies_<redacted:secret-pattern>\n"
+            "prose line stays\n"
+            "Verdict: correct\n",
+        )
+        self.assertEqual(last.read_text(), "No findings.\nVerdict: correct\n")
+        module = load_validator()
+        self.assertIsNone(module.SECRET_PATTERN.search(text))
+
+    def test_leaves_allowed_placeholders_the_scan_accepts(self) -> None:
+        evidence = self.temp_dir / "audit.md"
+        placeholder = "GITHUB_PERSONAL_ACCESS_" + FIELD.upper()
+        original = f'{placeholder}: "${{{placeholder}}}"\n'
+        evidence.write_text(original)
+
+        result = self.run_mask(evidence)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stdout, f"masked 0 match(es) in {evidence}\n")
+        self.assertEqual(evidence.read_text(), original)
+
+    def test_missing_file_exits_2_without_touching_others(self) -> None:
+        evidence = self.temp_dir / "audit.md"
+        evidence.write_text(f'{FIELD}: "abc"\n')
+
+        result = self.run_mask(evidence, self.temp_dir / "missing.md")
+
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("missing.md", result.stderr)
+        self.assertEqual(evidence.read_text(), f'{FIELD}: "abc"\n')
 
 
 if __name__ == "__main__":

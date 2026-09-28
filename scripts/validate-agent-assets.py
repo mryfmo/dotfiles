@@ -1204,11 +1204,64 @@ def read_scannable_text(path: Path) -> str | None:
         return None
 
 
-def validate_no_obvious_secrets() -> None:
-    allowed_secret_placeholders = {
+ALLOWED_SECRET_PLACEHOLDERS = frozenset(
+    {
         "GITHUB_PERSONAL_ACCESS_TOKEN",
         "FIGMA_OAUTH_TOKEN",
     }
+)
+SECRET_MASK = "<redacted:secret-pattern>"
+
+
+def strip_allowed_secret_placeholders(text: str) -> str:
+    for placeholder in ALLOWED_SECRET_PLACEHOLDERS:
+        text = text.replace(placeholder, "")
+    return text
+
+
+def mask_secret_matches(text: str) -> tuple[str, int]:
+    """Replace the SECRET_PATTERN matches the committed-secret scan would flag.
+
+    Mirrors validate_no_obvious_secrets(): allowed placeholders are stripped
+    before matching, so a line is masked only when its stripped form still
+    matches and every other line is kept byte for byte. A final whole-text
+    pass covers a match that spans lines, so masked output always passes the
+    scan.
+    """
+    count = 0
+    lines = []
+    for line in text.splitlines(keepends=True):
+        sanitized = strip_allowed_secret_placeholders(line)
+        if SECRET_PATTERN.search(sanitized):
+            sanitized, matches = SECRET_PATTERN.subn(SECRET_MASK, sanitized)
+            count += matches
+            lines.append(sanitized)
+        else:
+            lines.append(line)
+    masked = "".join(lines)
+    if SECRET_PATTERN.search(strip_allowed_secret_placeholders(masked)):
+        masked, matches = SECRET_PATTERN.subn(SECRET_MASK, strip_allowed_secret_placeholders(masked))
+        count += matches
+    return masked, count
+
+
+def mask_secrets(paths: list[str]) -> int:
+    """Mask SECRET_PATTERN matches in place (audit evidence); 2 if any file is missing."""
+    missing = [name for name in paths if not Path(name).is_file()]
+    if missing:
+        for name in missing:
+            print(f"--mask-secrets: no such file: {name}", file=sys.stderr)
+        return 2
+    for name in paths:
+        path = Path(name)
+        masked, count = mask_secret_matches(path.read_text())
+        if count:
+            path.write_text(masked)
+        print(f"masked {count} match(es) in {path}")
+    return 0
+
+
+def validate_no_obvious_secrets() -> None:
     # CompactionDB uses intentional dummy credentials to exercise its redaction boundary.
     compactiondb_dummy_secret_fixtures = {
         Path("vendor/compactiondb/validate.py"),
@@ -1228,10 +1281,7 @@ def validate_no_obvious_secrets() -> None:
         text = read_scannable_text(path)
         if text is None:
             continue
-        sanitized = text
-        for placeholder in allowed_secret_placeholders:
-            sanitized = sanitized.replace(placeholder, "")
-        if SECRET_PATTERN.search(sanitized):
+        if SECRET_PATTERN.search(strip_allowed_secret_placeholders(text)):
             fail(f"possible committed secret in {path.relative_to(ROOT)}")
 
 
@@ -1280,4 +1330,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    if sys.argv[1:2] == ["--mask-secrets"]:
+        raise SystemExit(mask_secrets(sys.argv[2:]))
     main()

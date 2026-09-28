@@ -32,6 +32,8 @@ GHOSTTY_CONFIG = ROOT / "home/dot_config/ghostty/config"
 ZPROFILE = ROOT / "home/dot_zprofile"
 ZSHRC = ROOT / "home/dot_zshrc"
 AUDIT_SHA = "926d9f1"
+# Built at runtime so this test file never contains a literal SECRET_PATTERN match.
+SECRET_FIELD = "tok" + "en"
 AUDIT_PROMPT = (
     f"You are the auditor. Audit ONLY commit {AUDIT_SHA} of this repository "
     f"(`git show {AUDIT_SHA}`; `git diff {AUDIT_SHA}^ {AUDIT_SHA}` for the changeset). "
@@ -2420,6 +2422,76 @@ fi
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         words = self.audit_codex_words(self.audit_inner_command())
         self.assertEqual(words[words.index("-o") + 1], f"{evidence}.last.md")
+
+    def write_fake_repo_validator(self) -> None:
+        """A DIR/scripts/validate-agent-assets.py that logs and masks like --mask-secrets."""
+        script = self.workdir / "scripts/validate-agent-assets.py"
+        script.parent.mkdir(parents=True, exist_ok=True)
+        script.write_text(
+            textwrap.dedent(
+                f"""
+                import re, sys
+                from pathlib import Path
+                with open({str(self.calls_path)!r}, "a") as log:
+                    log.write("validate " + " ".join(sys.argv[1:]) + "\\n")
+                for name in sys.argv[2:]:
+                    path = Path(name)
+                    text, count = re.subn({SECRET_FIELD!r} + r': "[^"]*"', "<redacted:secret-pattern>", path.read_text())
+                    path.write_text(text)
+                    print(f"masked {{count}} match(es) in {{path}}")
+                """
+            )
+        )
+        if not (self.bin_dir / "python3").exists():
+            (self.bin_dir / "python3").symlink_to(sys.executable)
+
+    def test_audit_masks_evidence_before_the_verdict_gate(self) -> None:
+        self.write_audit_pair_state(self.audit_tab_pane())
+        self.write_fake_repo_validator()
+        evidence = self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"
+        last = Path(f"{evidence}.last.md")
+        self.write_audit_evidence(self.transcript("No findings.", exec_output=f'  design_{SECRET_FIELD}: "abc"\n'))
+        self.write_audit_evidence("No findings.\nVerdict: correct\n", last)
+
+        result = self.run_helper("--audit", AUDIT_SHA)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn(f"validate --mask-secrets {evidence} {last}", calls)
+        self.assertLess(
+            result.stdout.index(f"masked 1 match(es) in {evidence}"),
+            result.stdout.index("Audit verdict: correct"),
+        )
+        self.assertNotIn(f'design_{SECRET_FIELD}: "abc"', evidence.read_text())
+        self.assertIn("design_<redacted:secret-pattern>", evidence.read_text())
+
+    def test_audit_masks_evidence_even_when_the_audit_exit_is_nonzero(self) -> None:
+        self.write_audit_pair_state(self.audit_tab_pane())
+        self.write_fake_repo_validator()
+        self.audit_exit_path.write_text("1\n")
+        evidence = self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"
+        self.write_audit_evidence(self.transcript("partial", exec_output=f'{SECRET_FIELD}: "abc"\n'))
+
+        result = self.run_helper("--audit", AUDIT_SHA)
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        # No last-message file exists, so only the transcript is masked.
+        self.assertIn(
+            f"validate --mask-secrets {evidence}", self.calls_path.read_text().splitlines()
+        )
+        self.assertNotIn(f'{SECRET_FIELD}: "abc"', evidence.read_text())
+
+    def test_audit_skips_masking_without_a_repo_validator(self) -> None:
+        self.write_audit_pair_state(self.audit_tab_pane())
+        self.write_audit_evidence(self.transcript("No findings.\nVerdict: correct"))
+
+        result = self.run_helper("--audit", AUDIT_SHA)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn("masked", result.stdout)
+        self.assertFalse(
+            any(call.startswith("validate ") for call in self.calls_path.read_text().splitlines())
+        )
 
     def test_audit_nonzero_exit_marker_fails_the_helper(self) -> None:
         self.write_audit_pair_state(self.audit_tab_pane())

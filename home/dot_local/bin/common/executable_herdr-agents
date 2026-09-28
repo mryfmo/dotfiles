@@ -945,6 +945,20 @@ if [[ ${audit_mode} == true ]]; then
         herdr pane read "${audit_pane}" --source recent-unwrapped --lines 200 2> /dev/null || true
     } | grep -oE "${audit_marker}:[0-9]+" | tail -n 1 | cut -d: -f2 || true)"
     printf 'Audit exit: %s\nAudit evidence: %s\nAudit last message: %s\n' "${audit_status:-unknown}" "${audit_out}" "${audit_last}"
+    # The evidence quotes reviewed content, so mask what the repo's committed-
+    # secret scan would flag before anything reads or commits it (a Verdict:
+    # line never matches). The repo validator is the single source of truth;
+    # without it (another repository) masking is skipped.
+    if [[ -f ${workdir}/scripts/validate-agent-assets.py ]] && command -v python3 > /dev/null 2>&1; then
+        audit_mask_files=()
+        for audit_mask_file in "${audit_out}" "${audit_last}"; do
+            [[ -f ${audit_mask_file} ]] && audit_mask_files+=("${audit_mask_file}")
+        done
+        if ((${#audit_mask_files[@]})); then
+            python3 "${workdir}/scripts/validate-agent-assets.py" --mask-secrets "${audit_mask_files[@]}" ||
+                printf 'herdr-agents: masking audit evidence failed; review %s before committing it.\n' "${audit_out}" >&2
+        fi
+    fi
     [[ ${audit_status} == 0 ]] || exit 1
     # codex exits 0 even when it cannot assess the commit, so gate on the
     # AGENTS.md verdict: the concluding non-blank line of the last-message file.

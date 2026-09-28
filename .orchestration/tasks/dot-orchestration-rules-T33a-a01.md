@@ -1,4 +1,6 @@
-# AGMSG-TASK dot-orchestration-rules-T33a-a01
+# AGMSG-TASK dot-orchestration-rules-T33a-a01 (revision 2)
+
+Revision 2 (2026-09-28, ruling on the worker's blocked PONG): the Codex crit mirror is `home/dot_config/codex/AGENTS.md`; option (A) is APPROVED — edit it to align. Item 4 is rewritten below; items 1, 2, 3, 5 are unchanged.
 
 ## Objective
 
@@ -26,14 +28,23 @@ plus two lessons from T31/T32). Text only; no tooling changes.
    --commit <sha>`, visible lane when available) before the orchestrator's
    sequential adversarial review; acceptance authority never moves, and each
    RESULT still gets its own acceptance record.
-4. **Crit "no web UI" principle (T33-5).** Make the Codex-side crit guidance
-   identical to the Claude rule `home/dot_config/claude/rules/crit-review.md`:
-   agent-side crit-data evidence, never a browser review to ask the user;
-   `crit share`/publish only on explicit user request; a crit session opened
-   by the Plan Mode hook is closed once the review is done (no resident local
-   web server). Locate the Codex mirror yourself (`grep -rn -i "crit" home/dot_agents home/dot_codex`);
-   if no Codex-side crit text exists, add the clause to the agmsg-orchestration
-   SKILL "Review and integration invariants" and say so in the report.
+4. **Crit "no web UI" principle (T33-5) — edit `home/dot_config/codex/AGENTS.md`.**
+   Align the Codex-side text with the Claude rule `home/dot_config/claude/rules/crit-review.md`:
+   (a) in the "Crit レビュー運用" section, remove both "Crit data を取得できない場合" browser
+   fallbacks (the first and the `crit --no-open`/`crit` bullet): when Crit data is
+   unavailable, substitute agent-side review evidence (independent subagent review
+   with a saved record) — never open a browser review to ask the user; a browser
+   review happens only when the user explicitly asks for the Crit web UI, and then
+   the existing CRIT_REVIEWED receipt flow applies; (b) make `crit share`/publish
+   explicit-user-request-only (the "Crit は自分…" bullet must not list `crit share` as
+   routine); (c) add that a crit session opened by the Plan Mode hook is closed once
+   the review is done (no resident local web server); (d) fix the structure: the empty
+   "## Crit レビューの利用方針" heading and the two crit bullets misplaced under
+   "## CompactionDB" — move those bullets under the crit heading (or merge into "Crit
+   レビュー運用") and delete the empty heading. Keep the file in Japanese; keep every
+   non-crit sentence byte-identical. Quote the before/after of each changed bullet in
+   the report.
+
 5. **No pane probes.** Extend the existing "never read worker panes or
    screens" bullet (SKILL "Regime activation and progress") with "including
    read-only probes such as `pane read`/`pane wait-output` against another
@@ -59,7 +70,7 @@ SKILL (operator 2026-09-28).
 - `home/dot_config/claude/rules/agmsg-orchestration.md`
 - `home/dot_agents/skills/agmsg-orchestration/SKILL.md`
 - `home/dot_config/claude/rules/crit-review.md` (only if wording must be shared verbatim)
-- the Codex-side crit mirror file you locate under `home/dot_agents/` or `home/dot_codex/` (name it in the report)
+- `home/dot_config/codex/AGENTS.md` (crit passages only; revision 2)
 - `.orchestration/{reports,validation,sandboxes,learning,autoskill/runs}/dot-orchestration-rules-T33a-a01.md` (main checkout)
 
 ## Forbidden actions

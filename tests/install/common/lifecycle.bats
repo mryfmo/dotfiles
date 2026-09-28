@@ -120,17 +120,17 @@ EOF
     [ "$output" = "chezmoi apply --verbose
 chezmoi --source ${UPDATE_FIXTURE}/home/.local/share/chezmoi-private --config ${UPDATE_FIXTURE}/home/.config/chezmoi-private/chezmoi.yaml apply --verbose
 mise install --locked node
-mise install --locked npm:ccstatusline npm:ccusage
+mise install --locked npm:ccstatusline npm:ccusage npm:pnpm
 assets
 herdr status server --json
 herdr server reload-config" ]
 }
 
 @test "[common] update stops before agent assets and Herdr when statusline install fails" {
-    run_update_fixture running 0 0 0 0 24 "install --locked npm:ccstatusline npm:ccusage"
+    run_update_fixture running 0 0 0 0 24 "install --locked npm:ccstatusline npm:ccusage npm:pnpm"
     [ "$status" -ne 0 ]
     grep -q '^mise install --locked node$' "${UPDATE_FIXTURE}/calls"
-    grep -q '^mise install --locked npm:ccstatusline npm:ccusage$' "${UPDATE_FIXTURE}/calls"
+    grep -q '^mise install --locked npm:ccstatusline npm:ccusage npm:pnpm$' "${UPDATE_FIXTURE}/calls"
     ! grep -q '^assets$' "${UPDATE_FIXTURE}/calls"
     ! grep -q '^herdr ' "${UPDATE_FIXTURE}/calls"
 }

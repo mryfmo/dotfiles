@@ -641,8 +641,11 @@ function update_codex_crit() {
 #   Mirrors upstream skills/understand/SKILL.md, which builds in place wherever
 #   the plugin root resolves. It rebuilds when dist/index.js is missing or older
 #   than any file under packages/core/src or the root pnpm-lock.yaml, the same
-#   freshness rule `make doctor` reports, and otherwise skips (idempotent). pnpm
-#   comes from PATH (the mise shim for the pinned npm:pnpm) or `mise exec`.
+#   freshness rule `make doctor` reports, and otherwise skips (idempotent). With
+#   mise, pnpm always runs as `mise exec npm:pnpm`, which installs the pinned
+#   version on demand: a mise shim can exist before that version is installed
+#   ("No version is set for shim"). A bare pnpm from PATH is used only without
+#   mise.
 #   A missing pnpm or a failed build only warns, so make update never fails
 #   for it.
 # @arg $1 path Plugin tree that contains packages/core.
@@ -657,10 +660,10 @@ function build_understand_anything_core() {
         [ -z "$(find "${root}/packages/core/src" "${root}/pnpm-lock.yaml" -type f -newer "${root}/packages/core/dist/index.js" -print -quit 2> /dev/null || true)" ]; then
         return 0
     fi
-    if has_command pnpm; then
-        pnpm_cmd=(pnpm)
-    elif has_command mise; then
+    if has_command mise; then
         pnpm_cmd=(mise exec npm:pnpm -- pnpm)
+    elif has_command pnpm; then
+        pnpm_cmd=(pnpm)
     else
         printf 'WARN: Understand-Anything core not built: pnpm not found; run: cd %q && pnpm install --frozen-lockfile && pnpm --filter @understand-anything/core build\n' "${root}" >&2
         return 0

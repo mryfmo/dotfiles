@@ -3719,7 +3719,7 @@
 
 
 <h1 id="homedot_localbincommonexecutable_herdr-agents">home/dot_local/bin/common/executable_herdr-agents<a class="headerlink" href="#homedot_localbincommonexecutable_herdr-agents" title="Permanent link">&para;</a></h1>
-<p>Full mode creates or repairs an agents workspace and never creates a second workspace for a directory that already has a managed pair. Attach mode adds the worker beside Claude in the current Herdr pane without restarting Claude. Restart-worker mode relaunches the worker agent in its existing pane so new worker launch arguments take effect, confirming a claude exit dialog once and relabeling a legacy worker pane label. Audit mode runs the read-only Codex audit of one commit visibly in the pair workspace's dedicated <code>audit</code> tab, tees it to an evidence file, and waits (bounded) for its exit marker; the auditor keeps no agmsg identity.</p>
+<p>Full mode creates or repairs an agents workspace and never creates a second workspace for a directory that already has a managed pair. Attach mode adds the worker beside Claude in the current Herdr pane without restarting Claude. Restart-worker mode relaunches the worker agent in its existing pane so new worker launch arguments take effect, confirming a claude exit dialog once and relabeling a legacy worker pane label. Audit mode runs the read-only Codex audit of one commit visibly in the pair workspace's dedicated <code>audit</code> tab, tees it to an evidence file, and waits (bounded) for its exit marker, then gates on the <code>Verdict:</code> line of the transcript's final codex message; the auditor keeps no agmsg identity.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_herdr-agents</code></li>
@@ -3779,7 +3779,8 @@
 <span class="c1">#   claude exit dialog once and relabeling a legacy worker pane label. Audit</span>
 <span class="c1">#   mode runs the read-only Codex audit of one commit visibly in the pair</span>
 <span class="c1">#   workspace's dedicated `audit` tab, tees it to an evidence file, and waits</span>
-<span class="c1">#   (bounded) for its exit marker; the auditor keeps no agmsg identity.</span>
+<span class="c1">#   (bounded) for its exit marker, then gates on the `Verdict:` line of the</span>
+<span class="c1">#   transcript's final codex message; the auditor keeps no agmsg identity.</span>
 <span class="c1"># @option --attach Attach the current Claude pane to its Herdr workspace layout.</span>
 <span class="c1"># @option --restart-worker Relaunch the worker agent in the existing pair's worker pane.</span>
 <span class="c1"># @option --bootstrap-agmsg Configure repo-scoped agmsg hooks without changing Herdr panes.</span>
@@ -3843,7 +3844,9 @@
 <span class="s">Audit mode runs the read-only Codex audit of &lt;sha&gt; in the existing pair</span>
 <span class="s">workspace's audit tab (created once, then reused and left open), tees it to</span>
 <span class="s">PATH (default .orchestration/validation/audit-&lt;sha&gt;.md under DIR), and exits</span>
-<span class="s">nonzero when the audit does; it exits 2 without a managed workspace.</span>
+<span class="s">nonzero when the audit does or when the final codex message in PATH lacks a</span>
+<span class="s">`Verdict: correct` line (a missing, blocked, or incorrect verdict); it exits 2</span>
+<span class="s">without a managed workspace.</span>
 <span class="s">USAGE</span>
 <span class="o">}</span>
 
@@ -4702,6 +4705,23 @@
 <span class="w">    </span><span class="o">}</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-oE<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">audit_marker</span><span class="si">}</span><span class="s2">:[0-9]+"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-d:<span class="w"> </span>-f2<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Audit exit: %s\nAudit evidence: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">audit_status</span><span class="k">:-</span><span class="nv">unknown</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">audit_out</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">audit_status</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="c1"># codex review exits 0 even when it cannot assess the commit, so gate on the</span>
+<span class="w">    </span><span class="c1"># AGENTS.md verdict line. The evidence is the codex transcript, whose exec</span>
+<span class="w">    </span><span class="c1"># blocks carry repository text: judge only the region after the last line</span>
+<span class="w">    </span><span class="c1"># that is exactly `codex`, with no `tokens used` stop (the trailing echo is</span>
+<span class="w">    </span><span class="c1"># the same message, and a quoted transcript must not truncate it). The</span>
+<span class="w">    </span><span class="c1"># auditor ends with its verdict, so the last whole-line verdict wins over</span>
+<span class="w">    </span><span class="c1"># any quoted one; `Review blocked` counts only when no verdict line exists.</span>
+<span class="w">    </span><span class="nv">audit_final</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>awk<span class="w"> </span><span class="s1">'/^codex$/ { final = ""; found = 1; next }</span>
+<span class="s1">        found { final = final $0 "\n" }</span>
+<span class="s1">        END { printf "%s", final }'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">audit_out</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">audit_verdict</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">audit_final</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">'^[[:space:]]*Verdict: (correct|incorrect|blocked)[[:space:]]*$'</span><span class="w"> </span><span class="p">|</span>
+<span class="w">        </span>tail<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-E<span class="w"> </span><span class="s1">'s/^[[:space:]]*Verdict: ([a-z]+).*/\1/'</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">audit_verdict</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">audit_final</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-q<span class="w"> </span><span class="s1">'^Review blocked'</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">audit_verdict</span><span class="o">=</span>blocked
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Audit verdict: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">audit_verdict</span><span class="k">:-</span><span class="nv">missing</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">audit_verdict</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>correct<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="k">fi</span>
 

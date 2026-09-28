@@ -416,6 +416,9 @@ def classify(
                         str(output_path),
                         prompt,
                     ],
+                    # The prompt travels in argv; never let the child inherit
+                    # (and possibly block on) the hook caller's stdin.
+                    stdin=subprocess.DEVNULL,
                     text=True,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,

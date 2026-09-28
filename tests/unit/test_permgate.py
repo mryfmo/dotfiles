@@ -845,6 +845,55 @@ class PermgateTest(unittest.TestCase):
             self.assertEqual(result["status_counts"], {"classified": 5}, detail)
             self.assertTrue(result["ready_for_enablement"], detail)
 
+    def test_codex_classifier_never_reads_the_callers_open_stdin(self) -> None:
+        # The real codex CLI may read an inherited stdin. permgate must not let
+        # the caller's stdin decide the outcome, so the bench runs with an open
+        # pipe as stdin while this fake codex reads stdin to EOF.
+        self.write_fake_codex(
+            """
+            import json
+            import sys
+            from pathlib import Path
+
+            args = sys.argv[1:]
+            sys.stdin.read()
+            output = args[args.index("--output-last-message") + 1]
+            Path(output).write_text(json.dumps({
+                "category": "status",
+                "confidence": 0.99
+            }))
+            """
+        )
+        env = os.environ.copy()
+        env.update(
+            {
+                "PERMGATE_POLICY_PATH": str(self.policy_path),
+                "PERMGATE_STATE_PATH": str(self.state_path),
+                "PERMGATE_CLAUDE_COMMAND": str(self.fake_claude),
+                "PERMGATE_CODEX_COMMAND": str(self.fake_codex),
+                "PERMGATE_TEST_CLAUDE_CAPTURE": str(self.claude_capture),
+                "PERMGATE_TEST_CODEX_CAPTURE": str(self.codex_capture),
+            }
+        )
+        read_fd, write_fd = os.pipe()
+        try:
+            result = subprocess.run(
+                [sys.executable, str(PERMGATE), "bench"],
+                stdin=read_fd,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                check=False,
+                timeout=60,
+            )
+        finally:
+            os.close(read_fd)
+            os.close(write_fd)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        codex = json.loads(result.stdout)["codex"]
+        self.assertEqual(codex["status_counts"], {"classified": 5}, json.dumps(codex))
+
     def test_each_agent_uses_only_its_own_authenticated_cli(self) -> None:
         payload = CODEX_INPUT | {"tool_input": {"command": "gh issue view 123"}}
         self.run_gate("codex", payload)

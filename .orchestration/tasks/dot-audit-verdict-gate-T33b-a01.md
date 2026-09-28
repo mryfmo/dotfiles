@@ -1,4 +1,12 @@
-# AGMSG-TASK dot-audit-verdict-gate-T33b-a01
+# AGMSG-TASK dot-audit-verdict-gate-T33b-a01 (revision 2)
+
+Revision 2 (2026-09-28, pre-merge visible-lane Codex audit of 05f689b: P1 + P2, both confirmed by the orchestrator):
+
+- **P1 — drop the positional PROMPT.** The pinned Codex CLI 0.157.1 rejects it: `codex review --commit <sha> 'x'` → `error: the argument '--commit <SHA>' cannot be used with '[PROMPT]'`, exit 2 (orchestrator reproduced on the real CLI; revision 1's task text was wrong to assert otherwise). Remove `audit_prompt` and the `%q` PROMPT from the inner command, the README PROMPT example and "headless parity" sentence, `AUDIT_PROMPT` and the prompt test. The verdict instruction channel is the AGENTS.md Audit section alone (already tightened to the exact `Verdict:` line in this PR; codex review reads the project AGENTS.md). Keep the gate: a missing verdict exits 1 as `missing`, which is the orchestrator's signal to judge manually.
+- **P2 — parse only the auditor's final response.** The evidence file is the codex CLI transcript: blocks introduced by a line that is exactly `user`, `thinking`, `exec`, or `codex`; the final assistant message is the text after the LAST line matching `^codex$` (to EOF or a following `tokens used` line). Tool output (`exec` blocks) contains repository text — the T32 live evidence carries 16 lines of `AUDIT-EXIT` from a diff, and the audit of THIS PR carries 12 lines with `Review blocked` from its own README/tests — so matching the whole file yields false `blocked` (this PR's merge commit would fail its own live E2E) and false `correct` (a fixture line in an exec block). Extract the last `codex` block first, then apply the whole-line `Verdict:` match (last one wins) and a LINE-START `^Review blocked` match inside that block only. No `codex` block at all → `missing`.
+- Tests (mutation baseline against the unmodified 05f689b script for the new/changed cases): evidence fixtures must use the transcript format; add (f) `exec` block containing `Verdict: correct` as a printed fixture, `codex` block without a verdict → exit 1 `missing`; (g) `exec` block containing a commit message line with `Review blocked` plus a `codex` block ending `Verdict: correct` → exit 0 `correct`; (h) `codex` block starting `Review blocked: …` → `blocked`; (i) no `codex` block → `missing`; keep (a)–(d) in transcript form; delete (e).
+
+Items below are the revision-1 text, superseded where the notes above say so.
 
 ## Objective
 

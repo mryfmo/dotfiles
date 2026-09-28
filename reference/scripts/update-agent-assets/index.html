@@ -3722,6 +3722,7 @@
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
+<li><code>build_understand_anything_core</code></li>
 <li><code>claude_crit_plugin_is_enabled</code></li>
 <li><code>claude_ponytail_plugin_is_enabled</code></li>
 <li><code>claude_understand_anything_plugin_is_enabled</code></li>
@@ -4397,7 +4398,52 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Build Understand-Anything packages/core in a plugin tree when its dist is missing or stale.</span>
+<span class="c1"># @description</span>
+<span class="c1">#   Mirrors upstream skills/understand/SKILL.md, which builds in place wherever</span>
+<span class="c1">#   the plugin root resolves. It rebuilds when dist/index.js is missing or older</span>
+<span class="c1">#   than any file under packages/core/src or the root pnpm-lock.yaml, the same</span>
+<span class="c1">#   freshness rule `make doctor` reports, and otherwise skips (idempotent). pnpm</span>
+<span class="c1">#   comes from PATH (the mise shim for the pinned npm:pnpm) or `mise exec`.</span>
+<span class="c1">#   A missing pnpm or a failed build only warns, so make update never fails</span>
+<span class="c1">#   for it.</span>
+<span class="c1"># @arg $1 path Plugin tree that contains packages/core.</span>
+<span class="c1"># @stderr One WARN line naming the manual command when the build cannot run or fails.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>build_understand_anything_core<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">root</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>-a<span class="w"> </span>pnpm_cmd
+
+<span class="w">    </span><span class="o">[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">/packages/core"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">/packages/core/dist/index.js"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">        </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>find<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">/packages/core/src"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">/pnpm-lock.yaml"</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-newer<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">/packages/core/dist/index.js"</span><span class="w"> </span>-print<span class="w"> </span>-quit<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>has_command<span class="w"> </span>pnpm<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">pnpm_cmd</span><span class="o">=(</span>pnpm<span class="o">)</span>
+<span class="w">    </span><span class="k">elif</span><span class="w"> </span>has_command<span class="w"> </span>mise<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">pnpm_cmd</span><span class="o">=(</span>mise<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>npm:pnpm<span class="w"> </span>--<span class="w"> </span>pnpm<span class="o">)</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'WARN: Understand-Anything core not built: pnpm not found; run: cd %q &amp;&amp; pnpm install --frozen-lockfile &amp;&amp; pnpm --filter @understand-anything/core build\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="o">(</span>
+<span class="w">        </span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">            </span><span class="o">{</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pnpm_cmd</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>install<span class="w"> </span>--frozen-lockfile<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pnpm_cmd</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>install<span class="p">;</span><span class="w"> </span><span class="o">}</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">            </span><span class="s2">"</span><span class="si">${</span><span class="nv">pnpm_cmd</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--filter<span class="w"> </span>@understand-anything/core<span class="w"> </span>build
+<span class="w">    </span><span class="o">)</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'WARN: Understand-Anything core build failed in %s; run: cd %q &amp;&amp; %s install --frozen-lockfile &amp;&amp; %s --filter @understand-anything/core build\n'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">            </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pnpm_cmd</span><span class="p">[*]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pnpm_cmd</span><span class="p">[*]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Provision Codex Understand-Anything runtime files from the matching Claude release artifact.</span>
+<span class="c1"># @description</span>
+<span class="c1">#   Builds packages/core in the release artifact first (upstream builds there</span>
+<span class="c1">#   in Claude sessions) and copies dist/node_modules into the Codex clone.</span>
+<span class="c1">#   Without a matching release artifact it builds directly in the clone.</span>
 <span class="c1"># @stdout Prints a skip message when no matching Claude release artifact is available.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>provision_codex_understand_anything_runtime<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -4407,6 +4453,7 @@
 <span class="w">    </span><span class="nv">claude_cache</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.claude/plugins/cache/understand-anything/understand-anything"</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>python3<span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Understand-Anything Codex runtime not provisioned: no matching Claude plugin release artifact; run make update after installing the Claude plugin.\n'</span>
+<span class="w">        </span>build_understand_anything_core<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_root</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="nv">release_root</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>
@@ -4438,9 +4485,11 @@
 <span class="w">    </span><span class="k">)</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">release_root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Understand-Anything Codex runtime not provisioned: no matching Claude plugin release artifact; run make update after installing the Claude plugin.\n'</span>
+<span class="w">        </span>build_understand_anything_core<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_root</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 
+<span class="w">    </span>build_understand_anything_core<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">release_root</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nb">source</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"packages/core/dist"</span><span class="w"> </span><span class="s2">"packages/core/node_modules"</span><span class="w"> </span><span class="s2">"node_modules"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">        </span><span class="nv">destination</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">plugin_root</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">source</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="o">[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">release_root</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">source</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>

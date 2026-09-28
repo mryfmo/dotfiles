@@ -2087,7 +2087,8 @@ fi
         evidence = self.workdir.resolve() / "evidence/T32 audit.md"
         escaped_evidence = str(evidence).replace(" ", "\\ ")
         self.assertIn(
-            f"bash -c 'set -o pipefail; codex --profile audit review --commit {AUDIT_SHA} "
+            f"bash -c 'cd -- {self.workdir.resolve()} && set -o pipefail && "
+            f"codex --profile audit review --commit {AUDIT_SHA} "
             f"2>&1 | tee -- {escaped_evidence}; ",
             pane_run,
         )
@@ -2100,6 +2101,43 @@ fi
         self.assertIn(f"--regex {marker.group(1)}:[0-9]+ ", wait_call)
         self.assertIn("--timeout 1800000", wait_call)
         self.assertIn(f"Audit evidence: {evidence}", result.stdout)
+
+    def test_audit_runs_in_dir_even_when_the_reused_pane_moved(self) -> None:
+        self.write_audit_pair_state(self.audit_tab_pane())
+
+        result = self.run_helper("--audit", AUDIT_SHA)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        pane_run = next(
+            call
+            for call in self.calls_path.read_text().splitlines()
+            if call.startswith("pane run w-old:p9 ")
+        )
+        # tab create --cwd applies only once; every run must cd into DIR itself.
+        self.assertRegex(
+            pane_run,
+            rf"^pane run w-old:p9 bash -c 'cd -- {re.escape(str(self.workdir.resolve()))} && ",
+        )
+
+    def test_audit_rejects_a_dir_with_an_apostrophe_before_any_pane_run(
+        self,
+    ) -> None:
+        self.workdir = self.temp_dir / "it's project"
+        self.workdir.mkdir()
+        self.write_audit_pair_state(self.audit_tab_pane())
+
+        result = self.run_helper("--audit", AUDIT_SHA)
+
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("Usage: herdr-agents", result.stderr)
+        calls = (
+            self.calls_path.read_text().splitlines()
+            if self.calls_path.exists()
+            else []
+        )
+        self.assertFalse(
+            any(call.startswith(("pane run", "tab create")) for call in calls), calls
+        )
 
     def test_audit_uses_manifest_audit_codex_args(self) -> None:
         self.write_audit_pair_state(self.audit_tab_pane())

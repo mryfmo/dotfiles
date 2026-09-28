@@ -889,8 +889,8 @@ if [[ ${bootstrap_mode} == true ]]; then
 fi
 
 if [[ ${audit_mode} == true ]]; then
-    # The commit and path are interpolated into a pane command line.
-    if [[ ! ${audit_commit} =~ ^[0-9a-fA-F]{7,40}$ || ! ${audit_timeout} =~ ^[1-9][0-9]*$ || ${audit_out} == *[\'[:cntrl:]]* ]]; then
+    # The commit is interpolated into a pane command line.
+    if [[ ! ${audit_commit} =~ ^[0-9a-fA-F]{7,40}$ || ! ${audit_timeout} =~ ^[1-9][0-9]*$ ]]; then
         usage >&2
         exit 2
     fi
@@ -900,13 +900,18 @@ if [[ ${audit_mode} == true ]]; then
     workdir="${1:-$PWD}"
     cd -- "${workdir}"
     workdir="$(pwd -P)"
+    audit_out="${audit_out:-.orchestration/validation/audit-${audit_commit}.md}"
+    [[ ${audit_out} == /* ]] || audit_out="${workdir}/${audit_out}"
+    # Both resolved paths land inside the single-quoted bash -c pane command.
+    if [[ ${workdir}${audit_out} == *[\'[:cntrl:]]* ]]; then
+        usage >&2
+        exit 2
+    fi
     workspace_id="$(single_managed_workspace "$(basename "${workdir}") agents" "${workdir}")"
     if [[ -z ${workspace_id} ]]; then
         printf 'herdr-agents: no managed Herdr workspace for %q; run herdr-agents %q (full mode) to create one, or run codex --profile audit review headless.\n' "${workdir}" "${workdir}" >&2
         exit 2
     fi
-    audit_out="${audit_out:-.orchestration/validation/audit-${audit_commit}.md}"
-    [[ ${audit_out} == /* ]] || audit_out="${workdir}/${audit_out}"
     mkdir -p -- "$(dirname -- "${audit_out}")"
     audit_pane="$(audit_pane_id "${workspace_id}" "${workdir}")"
     if ! wait_for_shell_prompt "${audit_pane}"; then
@@ -914,10 +919,12 @@ if [[ ${audit_mode} == true ]]; then
         exit 2
     fi
     # A per-run nonce keeps a reused pane's previous exit marker from matching.
+    # The pane shell may have left DIR (tab --cwd applies only at creation), so
+    # the command cds first; a failed cd still reaches the exit marker.
     audit_marker="AUDIT-EXIT-$(date +%s)-$$"
     read -ra audit_args <<< "$(resolve_audit_codex_args)"
     audit_codex="codex$(printf ' %q' "${audit_args[@]}") review --commit ${audit_commit}"
-    herdr pane run "${audit_pane}" "bash -c 'set -o pipefail; ${audit_codex} 2>&1 | tee -- $(printf '%q' "${audit_out}"); printf \"${audit_marker}:%s\\n\" \"\$?\"'" > /dev/null
+    herdr pane run "${audit_pane}" "bash -c 'cd -- $(printf '%q' "${workdir}") && set -o pipefail && ${audit_codex} 2>&1 | tee -- $(printf '%q' "${audit_out}"); printf \"${audit_marker}:%s\\n\" \"\$?\"'" > /dev/null
     if ! wait_output="$(herdr pane wait-output "${audit_pane}" --regex "${audit_marker}:[0-9]+" --source recent --timeout "$((audit_timeout * 1000))")"; then
         printf 'herdr-agents: audit still running in pane %s after %ss; evidence: %s\n' "${audit_pane}" "${audit_timeout}" "${audit_out}" >&2
         exit 1

@@ -3719,7 +3719,7 @@
 
 
 <h1 id="homedot_localbincommonexecutable_herdr-agents">home/dot_local/bin/common/executable_herdr-agents<a class="headerlink" href="#homedot_localbincommonexecutable_herdr-agents" title="Permanent link">&para;</a></h1>
-<p>Full mode creates or repairs an agents workspace and never creates a second workspace for a directory that already has a managed pair. Attach mode adds the worker beside Claude in the current Herdr pane without restarting Claude. Restart-worker mode relaunches the worker agent in its existing pane so new worker launch arguments take effect, confirming a claude exit dialog once and relabeling a legacy worker pane label.</p>
+<p>Full mode creates or repairs an agents workspace and never creates a second workspace for a directory that already has a managed pair. Attach mode adds the worker beside Claude in the current Herdr pane without restarting Claude. Restart-worker mode relaunches the worker agent in its existing pane so new worker launch arguments take effect, confirming a claude exit dialog once and relabeling a legacy worker pane label. Audit mode runs the read-only Codex audit of one commit visibly in the pair workspace's dedicated <code>audit</code> tab, tees it to an evidence file, and waits (bounded) for its exit marker; the auditor keeps no agmsg identity.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_herdr-agents</code></li>
@@ -3731,6 +3731,8 @@
 <li><code>accept_claude_workspace_trust_dialog</code></li>
 <li><code>agent_name_for_workspace</code></li>
 <li><code>attach_panes_are_unambiguous</code></li>
+<li><code>audit_pane_id</code></li>
+<li><code>audit_tab_ids</code></li>
 <li><code>bootstrap_agmsg</code></li>
 <li><code>distinct_agmsg_identity_count</code></li>
 <li><code>empty_pane_id</code></li>
@@ -3748,6 +3750,7 @@
 <li><code>repair_attach_pane_ratio</code></li>
 <li><code>require_command</code></li>
 <li><code>require_distinct_worker_identity</code></li>
+<li><code>resolve_audit_codex_args</code></li>
 <li><code>resolve_worker_kind</code></li>
 <li><code>resolve_worker_profile</code></li>
 <li><code>restart_worker_in_pane</code></li>
@@ -3773,10 +3776,17 @@
 <span class="c1">#   mode adds the worker beside Claude in the current Herdr pane without</span>
 <span class="c1">#   restarting Claude. Restart-worker mode relaunches the worker agent in its</span>
 <span class="c1">#   existing pane so new worker launch arguments take effect, confirming a</span>
-<span class="c1">#   claude exit dialog once and relabeling a legacy worker pane label.</span>
+<span class="c1">#   claude exit dialog once and relabeling a legacy worker pane label. Audit</span>
+<span class="c1">#   mode runs the read-only Codex audit of one commit visibly in the pair</span>
+<span class="c1">#   workspace's dedicated `audit` tab, tees it to an evidence file, and waits</span>
+<span class="c1">#   (bounded) for its exit marker; the auditor keeps no agmsg identity.</span>
 <span class="c1"># @option --attach Attach the current Claude pane to its Herdr workspace layout.</span>
 <span class="c1"># @option --restart-worker Relaunch the worker agent in the existing pair's worker pane.</span>
 <span class="c1"># @option --bootstrap-agmsg Configure repo-scoped agmsg hooks without changing Herdr panes.</span>
+<span class="c1"># @option --audit &lt;sha&gt; Run `codex &lt;audit profile args&gt; review --commit &lt;sha&gt;` in the pair's audit tab.</span>
+<span class="c1"># @option --out &lt;path&gt; Audit evidence path, relative to DIR. Defaults to</span>
+<span class="c1">#   `.orchestration/validation/audit-&lt;sha&gt;.md`.</span>
+<span class="c1"># @option --timeout &lt;seconds&gt; Audit exit-marker wait bound. Defaults to 1800.</span>
 <span class="c1"># @arg DIR Optional directory for the Herdr workspace. Defaults to the current directory.</span>
 <span class="c1"># @arg HERDR_AGENTS_WORKER_KIND Worker agent kind, `codex` or `claude`. Defaults</span>
 <span class="c1">#   to `worker_kind` from the manifest via ~/.agents/model-profiles.env, then</span>
@@ -3802,6 +3812,8 @@
 <span class="c1">#   herdr-agents --restart-worker ~/Workspace/dotfiles</span>
 <span class="c1"># @example</span>
 <span class="c1">#   herdr-agents --bootstrap-agmsg ~/Workspace/dotfiles</span>
+<span class="c1"># @example</span>
+<span class="c1">#   herdr-agents --audit 926d9f1 --out .orchestration/validation/T31-audit.md ~/Workspace/dotfiles</span>
 
 <span class="nb">set</span><span class="w"> </span>-euo<span class="w"> </span>pipefail
 
@@ -3812,6 +3824,7 @@
 <span class="s">       herdr-agents --attach</span>
 <span class="s">       herdr-agents --restart-worker [DIR]</span>
 <span class="s">       herdr-agents --bootstrap-agmsg [DIR]</span>
+<span class="s">       herdr-agents --audit &lt;sha&gt; [--out PATH] [--timeout SECONDS] [DIR]</span>
 
 <span class="s">Create a Herdr workspace for DIR with equal-width Claude Code and worker</span>
 <span class="s">panes from left to right, and open DIR in Zed when available. Herdr, jq,</span>
@@ -3827,6 +3840,10 @@
 <span class="s">and starts it again in the same pane with the current worker_kind and</span>
 <span class="s">worker_profile launch arguments; it never creates panes or workspaces.</span>
 <span class="s">Bootstrap mode only configures missing repo-scoped agmsg hooks.</span>
+<span class="s">Audit mode runs the read-only Codex audit of &lt;sha&gt; in the existing pair</span>
+<span class="s">workspace's audit tab (created once, then reused and left open), tees it to</span>
+<span class="s">PATH (default .orchestration/validation/audit-&lt;sha&gt;.md under DIR), and exits</span>
+<span class="s">nonzero when the audit does; it exits 2 without a managed workspace.</span>
 <span class="s">USAGE</span>
 <span class="o">}</span>
 
@@ -4509,8 +4526,8 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">panes_json</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">exclude_pane_id</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">2</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span>
 
-<span class="w">    </span><span class="c1"># Preserve legacy files panes as unmanaged operator-owned panes.</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span>--arg<span class="w"> </span>exclude<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">exclude_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'.result.panes[]? | select((.agent? // "") == "" and .label? != "files" and .pane_id != $exclude) | .pane_id // empty'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="c1"># Preserve legacy files panes and the audit pane as non-agent panes.</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span>--arg<span class="w"> </span>exclude<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">exclude_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'.result.panes[]? | select((.agent? // "") == "" and .label? != "files" and .label? != "audit" and .pane_id != $exclude) | .pane_id // empty'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
 <span class="o">}</span>
 
 <span class="c1"># @description Remove a node-global npm copy that shadows the dedicated mise tool install.</span>
@@ -4527,6 +4544,49 @@
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>npm<span class="w"> </span>list<span class="w"> </span>-g<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">npm_package</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--depth<span class="o">=</span><span class="m">0</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span>npm<span class="w"> </span>uninstall<span class="w"> </span>-g<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">npm_package</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 <span class="w">    </span><span class="k">fi</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Print the audit Codex arguments from the manifest-generated</span>
+<span class="c1">#   ~/.agents/model-profiles.env, defaulting to the audit profile.</span>
+<span class="k">function</span><span class="w"> </span>resolve_audit_codex_args<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">MODEL_PROFILE_AUDIT_CODEX_ARGS</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span>/.agents/model-profiles.env<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="c1"># shellcheck source=/dev/null</span>
+<span class="w">        </span><span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/model-profiles.env"</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">MODEL_PROFILE_AUDIT_CODEX_ARGS</span><span class="k">:-</span><span class="p">--profile audit</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Print the tab id of the workspace tab labeled audit.</span>
+<span class="c1"># @arg $1 string Herdr workspace id.</span>
+<span class="k">function</span><span class="w"> </span>audit_tab_ids<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span>herdr<span class="w"> </span>tab<span class="w"> </span>list<span class="w"> </span>--workspace<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.result.tabs[]? | select(.label == "audit") | .tab_id'</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Print the single audit pane id, creating the audit tab once.</span>
+<span class="c1">#   The pane is labeled audit so the pair modes never reuse it.</span>
+<span class="c1"># @arg $1 string Herdr workspace id.</span>
+<span class="c1"># @arg $2 workdir Absolute workdir path.</span>
+<span class="c1"># @exitcode 2 If the audit tab or its pane is ambiguous.</span>
+<span class="k">function</span><span class="w"> </span>audit_pane_id<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">workspace_id</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">workdir</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>tab_ids
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>pane_id
+
+<span class="w">    </span><span class="nv">tab_ids</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>audit_tab_ids<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">tab_ids</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>herdr<span class="w"> </span>tab<span class="w"> </span>create<span class="w"> </span>--workspace<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--cwd<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--label<span class="w"> </span>audit<span class="w"> </span>--no-focus<span class="w"> </span>&gt;<span class="w"> </span>/dev/null
+<span class="w">        </span><span class="nv">tab_ids</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>audit_tab_ids<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">tab_ids</span><span class="si">}</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="si">${</span><span class="nv">tab_ids</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>*<span class="s1">$'\n'</span>*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span>
+<span class="w">        </span>!<span class="w"> </span><span class="nv">pane_id</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>herdr<span class="w"> </span>pane<span class="w"> </span>list<span class="w"> </span>--workspace<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-er<span class="w"> </span>--arg<span class="w"> </span>tab<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tab_ids</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">            </span><span class="s1">'[.result.panes[]? | select(.tab_id == $tab) | .pane_id] | if length == 1 then .[0] else empty end'</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: Herdr workspace %s needs exactly one audit tab with one pane; refusing audit.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>herdr<span class="w"> </span>pane<span class="w"> </span>rename<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>audit<span class="w"> </span>&gt;<span class="w"> </span>/dev/null
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1"># @description Require a command before starting a partial layout.</span>
@@ -4548,6 +4608,9 @@
 <span class="nv">attach_mode</span><span class="o">=</span><span class="nb">false</span>
 <span class="nv">bootstrap_mode</span><span class="o">=</span><span class="nb">false</span>
 <span class="nv">restart_mode</span><span class="o">=</span><span class="nb">false</span>
+<span class="nv">audit_mode</span><span class="o">=</span><span class="nb">false</span>
+<span class="nv">audit_out</span><span class="o">=</span><span class="s2">""</span>
+<span class="nv">audit_timeout</span><span class="o">=</span><span class="m">1800</span>
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"--attach"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nv">attach_mode</span><span class="o">=</span><span class="nb">true</span>
 <span class="w">    </span><span class="nb">shift</span>
@@ -4561,6 +4624,22 @@
 <span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"--restart-worker"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nv">restart_mode</span><span class="o">=</span><span class="nb">true</span>
 <span class="w">    </span><span class="nb">shift</span>
+<span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"--audit"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nv">audit_mode</span><span class="o">=</span><span class="nb">true</span>
+<span class="w">    </span><span class="nb">shift</span>
+<span class="w">    </span><span class="nv">audit_commit</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="nv">$#</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">shift</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"--out"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"--timeout"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="nv">$#</span><span class="w"> </span>-lt<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span>usage<span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="k">in</span>
+<span class="w">        </span>--out<span class="o">)</span><span class="w"> </span><span class="nv">audit_out</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">        </span>--timeout<span class="o">)</span><span class="w"> </span><span class="nv">audit_timeout</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="w"> </span><span class="p">;;</span>
+<span class="w">        </span><span class="k">esac</span>
+<span class="w">        </span><span class="nb">shift</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">done</span>
 <span class="k">fi</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">{</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">attach_mode</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="nv">$#</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="o">}</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="nv">$#</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
@@ -4574,6 +4653,56 @@
 <span class="w">    </span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="nv">workdir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span>
 <span class="w">    </span>bootstrap_agmsg<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="k">fi</span>
+
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">audit_mode</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="c1"># The commit is interpolated into a pane command line.</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span><span class="si">${</span><span class="nv">audit_commit</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">0</span>-9a-fA-F<span class="o">]{</span><span class="m">7</span>,40<span class="o">}</span>$<span class="w"> </span><span class="o">||</span><span class="w"> </span>!<span class="w"> </span><span class="si">${</span><span class="nv">audit_timeout</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">1</span>-9<span class="o">][</span><span class="m">0</span>-9<span class="o">]</span>*$<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>usage<span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>require_command<span class="w"> </span>herdr
+<span class="w">    </span>require_command<span class="w"> </span>jq
+<span class="w">    </span>require_command<span class="w"> </span>codex
+<span class="w">    </span><span class="nv">workdir</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="nv">$PWD</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">workdir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">audit_out</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">audit_out</span><span class="k">:-</span><span class="p">.orchestration/validation/audit-</span><span class="si">${</span><span class="nv">audit_commit</span><span class="si">}</span><span class="p">.md</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">audit_out</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>/*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">audit_out</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">audit_out</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="c1"># Both resolved paths land inside the single-quoted bash -c pane command.</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">workdir</span><span class="si">}${</span><span class="nv">audit_out</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>*<span class="o">[</span><span class="se">\'</span><span class="o">[</span>:cntrl:<span class="o">]]</span>*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>usage<span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">workspace_id</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>single_managed_workspace<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>basename<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2"> agents"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: no managed Herdr workspace for %q; run herdr-agents %q (full mode) to create one, or run codex --profile audit review headless.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">audit_out</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">audit_pane</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>audit_pane_id<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>wait_for_shell_prompt<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">audit_pane</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: audit pane %s is busy (not at a shell prompt); refusing a second audit.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">audit_pane</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="c1"># A per-run nonce keeps a reused pane's previous exit marker from matching.</span>
+<span class="w">    </span><span class="c1"># The pane shell may have left DIR (tab --cwd applies only at creation), so</span>
+<span class="w">    </span><span class="c1"># the command cds first; a failed cd still reaches the exit marker.</span>
+<span class="w">    </span><span class="nv">audit_marker</span><span class="o">=</span><span class="s2">"AUDIT-EXIT-</span><span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="s2">-</span><span class="nv">$$</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">read</span><span class="w"> </span>-ra<span class="w"> </span>audit_args<span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>resolve_audit_codex_args<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">audit_codex</span><span class="o">=</span><span class="s2">"codex</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">' %q'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">audit_args</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2"> review --commit </span><span class="si">${</span><span class="nv">audit_commit</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span>herdr<span class="w"> </span>pane<span class="w"> </span>run<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">audit_pane</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"bash -c 'cd -- </span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%q'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2"> &amp;&amp; set -o pipefail &amp;&amp; </span><span class="si">${</span><span class="nv">audit_codex</span><span class="si">}</span><span class="s2"> 2&gt;&amp;1 | tee -- </span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%q'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">audit_out</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">; printf \"</span><span class="si">${</span><span class="nv">audit_marker</span><span class="si">}</span><span class="s2">:%s\\n\" \"\$?\"'"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">wait_output</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>herdr<span class="w"> </span>pane<span class="w"> </span>wait-output<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">audit_pane</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--regex<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">audit_marker</span><span class="si">}</span><span class="s2">:[0-9]+"</span><span class="w"> </span>--source<span class="w"> </span>recent<span class="w"> </span>--timeout<span class="w"> </span><span class="s2">"</span><span class="k">$((</span><span class="nv">audit_timeout</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="m">1000</span><span class="k">))</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: audit still running in pane %s after %ss; evidence: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">audit_pane</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">audit_timeout</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">audit_out</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">audit_status</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="o">{</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">wait_output</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span>herdr<span class="w"> </span>pane<span class="w"> </span><span class="nb">read</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">audit_pane</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--source<span class="w"> </span>recent<span class="w"> </span>--lines<span class="w"> </span><span class="m">200</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">    </span><span class="o">}</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-oE<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">audit_marker</span><span class="si">}</span><span class="s2">:[0-9]+"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-d:<span class="w"> </span>-f2<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Audit exit: %s\nAudit evidence: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">audit_status</span><span class="k">:-</span><span class="nv">unknown</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">audit_out</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">audit_status</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="k">fi</span>
 
@@ -4703,7 +4832,7 @@ require_distinct_worker_identity<span class="w"> </span><span class="s2">"</span
 <span class="w">        </span><span class="nv">worker_pane_id</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>empty_pane_id<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 <span class="w">        </span><span class="nv">worker_pane_is_new</span><span class="o">=</span><span class="nb">false</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nv">split_source_pane_id</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.result.panes[0].pane_id // empty'</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">            </span><span class="nv">split_source_pane_id</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'[.result.panes[]? | select(.label? != "audit")][0].pane_id // empty'</span><span class="k">)</span><span class="s2">"</span>
 <span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">split_source_pane_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">                </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Unable to find a pane for %s worker repair in Herdr workspace: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_kind</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">                </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>

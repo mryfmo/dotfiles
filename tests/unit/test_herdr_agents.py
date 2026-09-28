@@ -68,8 +68,14 @@ class HerdrAgentsTest(unittest.TestCase):
         self.agent_list_taken_polls_path = self.temp_dir / "agent-list-taken-polls.txt"
         self.agent_taken_name_path = self.temp_dir / "agent-taken-name.txt"
         self.trust_dialog_match_path = self.temp_dir / "trust-dialog-match.txt"
-        # shell, exit-dialog (claude foreground until an Enter), or stuck.
+        # shell, shell-pid (a non-sh name that is the pane's shell_pid),
+        # exit-dialog (claude foreground until an Enter), stuck, or unavailable.
         self.process_info_state_path = self.temp_dir / "process-info-state.txt"
+        # 1 makes the visible snapshot stale: it shows old transcript text and
+        # a prompt wait on it times out, as for a background tab.
+        self.visible_stale_path = self.temp_dir / "visible-stale.txt"
+        # The recent-unwrapped snapshot text.
+        self.recent_text_path = self.temp_dir / "recent-text.txt"
         self.pane_counter_path = self.temp_dir / "pane-counter.txt"
         self.tab_list_path = self.temp_dir / "tab-list.json"
         # Exit code the fake audit pane reports in its AUDIT-EXIT marker.
@@ -94,6 +100,8 @@ class HerdrAgentsTest(unittest.TestCase):
         self.agent_list_taken_polls_path.write_text("0\n")
         self.trust_dialog_match_path.write_text("0\n")
         self.process_info_state_path.write_text("shell\n")
+        self.visible_stale_path.write_text("0\n")
+        self.recent_text_path.write_text("~/project \u276f \n\n\n")
         self.pane_counter_path.write_text("2\n")
         self.tab_list_path.write_text('{"id":"cli:tab:list","result":{"tabs":[]}}\n')
         self.audit_exit_path.write_text("0\n")
@@ -159,9 +167,16 @@ if [[ $1 == tab && $2 == create ]]; then
     exit 0
 fi
 if [[ $1 == pane && $2 == read ]]; then
+    case " $* " in
+    *" --source visible "*) [[ $(cat {self.visible_stale_path}) == 1 ]] && printf 'stale audit transcript line\\n' ;;
+    *" --source recent-unwrapped "*) cat {self.recent_text_path} ;;
+    esac
     exit 0
 fi
 if [[ $1 == pane && $2 == wait-output ]]; then
+    if [[ " $* " == *" --source visible "* && $(cat {self.visible_stale_path}) == 1 ]]; then
+        exit 1
+    fi
     for arg in "$@"; do
         if [[ $arg == AUDIT-EXIT-*':[0-9]+' ]]; then
             printf '{{"id":"cli:pane:wait-output","result":{{"matched_line":"%s:%s"}}}}\\n' "${{arg%':[0-9]+'}}" "$(cat {self.audit_exit_path})"
@@ -175,7 +190,15 @@ if [[ $1 == pane && $2 == wait-output ]]; then
     exit 0
 fi
 if [[ $1 == pane && $2 == process-info ]]; then
-    if [[ $(cat {self.process_info_state_path}) != shell ]]; then
+    state="$(cat {self.process_info_state_path})"
+    if [[ $state == unavailable ]]; then
+        exit 1
+    fi
+    if [[ $state == shell-pid ]]; then
+        printf '%s\\n' '{{"id":"cli:pane:process_info","result":{{"process_info":{{"shell_pid":4242,"foreground_processes":[{{"argv":["nu"],"cmdline":"nu","name":"nu","pid":4242}}]}}}}}}'
+        exit 0
+    fi
+    if [[ $state != shell ]]; then
         printf '%s\\n' '{{"id":"cli:pane:process_info","result":{{"process_info":{{"foreground_processes":[{{"argv":["claude"],"cmdline":"claude","name":"claude","pid":4343}}]}}}}}}'
         exit 0
     fi
@@ -2789,6 +2812,54 @@ fi
                 for call in self.calls_path.read_text().splitlines()
             )
         )
+
+    def test_audit_trusts_a_shell_foreground_over_a_stale_visible_snapshot(self) -> None:
+        for state in ("shell", "shell-pid"):
+            with self.subTest(state=state):
+                self.calls_path.write_text("")
+                self.write_audit_pair_state(self.audit_tab_pane())
+                self.process_info_state_path.write_text(f"{state}\n")
+                self.visible_stale_path.write_text("1\n")
+                self.recent_text_path.write_text("codex output\n")
+                self.write_audit_evidence(self.transcript("No findings.\nVerdict: correct"))
+
+                result = self.run_helper("--audit", AUDIT_SHA)
+
+                calls = self.calls_path.read_text().splitlines()
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertTrue(any(call.startswith("pane run w-old:p9 ") for call in calls))
+                self.assertFalse(any("--source visible" in call for call in calls))
+
+    def test_audit_falls_back_to_the_recent_unwrapped_prompt_without_process_info(self) -> None:
+        for recent, expected in (("~/project \u276f \n\n\n", 0), ("codex output\n\n", 2)):
+            with self.subTest(recent=recent):
+                self.calls_path.write_text("")
+                self.write_audit_pair_state(self.audit_tab_pane())
+                self.process_info_state_path.write_text("unavailable\n")
+                self.visible_stale_path.write_text("1\n")
+                self.recent_text_path.write_text(recent)
+                self.write_audit_evidence(self.transcript("No findings.\nVerdict: correct"))
+
+                result = self.run_helper("--audit", AUDIT_SHA)
+
+                calls = self.calls_path.read_text().splitlines()
+                self.assertEqual(result.returncode, expected, result.stdout + result.stderr)
+                self.assertIn("pane read w-old:p9 --source recent-unwrapped --lines 50", calls)
+                self.assertFalse(any("--source visible" in call for call in calls))
+                if expected:
+                    self.assertIn("audit pane w-old:p9 is busy", result.stderr)
+
+    def test_audit_waits_for_the_prompt_on_a_new_audit_tab(self) -> None:
+        self.write_audit_pair_state()
+        self.recent_text_path.write_text("\n\n")
+
+        result = self.run_helper("--audit", AUDIT_SHA)
+
+        calls = self.calls_path.read_text().splitlines()
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn(f"tab create --workspace w-old --cwd {self.workdir.resolve()} --label audit --no-focus", calls)
+        self.assertIn("pane read w-old:p9 --source recent-unwrapped --lines 50", calls)
+        self.assertFalse(any(call.startswith("pane run ") for call in calls))
 
     def test_audit_rejects_unsafe_arguments_before_calling_herdr(self) -> None:
         self.write_audit_pair_state(self.audit_tab_pane())

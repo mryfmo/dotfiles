@@ -437,7 +437,9 @@ masking is skipped only when git tracks no validator in DIR and none is on
 disk (another repository). The masker is refused when DIR is at the audited
 commit or the validator is missing, untracked, or changed against `HEAD`, and a
 refused or failed mask ends the audit
-with `Audit verdict: unmasked` and exit 1. The audit pane is labeled `audit`, so the pair modes never
+with `Audit verdict: unmasked` and exit 1. The busy check is based on the audit pane's foreground process (the pane's
+shell alone means free), not on its visible snapshot, which can be stale for a
+background tab. The audit pane is labeled `audit`, so the pair modes never
 reuse it, and the auditor still has no agmsg identity. It exits 2 without a
 managed workspace; run the same audit headless there:
 

@@ -154,21 +154,40 @@ function agent_name_for_workspace() {
     printf '%s\n' "${name}"
 }
 
-# @description Wait for a shell prompt after pane creation.
-#   A split can return before zsh enables its prompt; starting an agent during
-#   that window injects bracketed-paste control bytes into the line editor.
+# @description Succeed when the pane's last non-blank output line ends in a prompt.
+#   It reads recent-unwrapped: a background tab's visible snapshot can be stale.
 # @arg $1 pane_id Herdr pane id to inspect.
+function pane_shows_shell_prompt() {
+    herdr pane read "$1" --source recent-unwrapped --lines 50 2> /dev/null |
+        sed '/^[[:space:]]*$/d' | tail -n 1 | grep -qE '[$#%❯➜>]+[[:space:]]*$'
+}
+
+# @description Wait (bounded) until the pane's shell is idle.
+#   The foreground process decides: the pane's shell alone means idle. A new
+#   pane also needs its prompt drawn, because a split can return before zsh
+#   enables its prompt and starting an agent during that window injects
+#   bracketed-paste control bytes into the line editor. Without process-info,
+#   the prompt text alone decides.
+# @arg $1 pane_id Herdr pane id to inspect.
+# @arg $2 string Optional `prompt` to also require a drawn prompt.
 function wait_for_shell_prompt() {
     local pane_id="$1"
+    local require_prompt="${2:-}"
     local process_json
 
     for _ in {1..50}; do
-        if process_json="$(herdr pane process-info --pane "${pane_id}" 2> /dev/null)" &&
-            printf '%s\n' "${process_json}" | jq -e \
-                '.result.process_info.foreground_processes as $processes
+        if process_json="$(herdr pane process-info --pane "${pane_id}" 2> /dev/null)"; then
+            if printf '%s\n' "${process_json}" | jq -e \
+                '.result.process_info as $info
+                 | $info.foreground_processes as $processes
                  | ($processes | length) == 1
-                   and (($processes[0].argv[0] // $processes[0].name // "") | test("(^|/)-?(ba|z|fi)?sh$"))' > /dev/null; then
-            herdr pane wait-output "${pane_id}" --regex '[$#%❯➜>]+[[:space:]]*$' --source visible --lines 5 --timeout 10000 > /dev/null || return 1
+                   and (($info.shell_pid != null and $processes[0].pid == $info.shell_pid)
+                     or (($processes[0].argv[0] // $processes[0].name // "") | test("(^|/)-?(ba|z|fi)?sh$")))' > /dev/null &&
+                { [[ ${require_prompt} != prompt ]] || pane_shows_shell_prompt "${pane_id}"; }; then
+                sleep 0.2
+                return 0
+            fi
+        elif pane_shows_shell_prompt "${pane_id}"; then
             sleep 0.2
             return 0
         fi
@@ -260,7 +279,7 @@ function start_agent_in_pane() {
     local agent_output
     shift 4
 
-    if [[ ${newly_created} == true ]] && ! wait_for_shell_prompt "${pane_id}"; then
+    if [[ ${newly_created} == true ]] && ! wait_for_shell_prompt "${pane_id}" prompt; then
         printf 'Herdr pane %s did not reach an interactive shell prompt; refusing agent start.\n' "${pane_id}" >&2
         return 1
     fi
@@ -281,7 +300,7 @@ function start_agent_in_pane() {
         fi
         ;;
     *timeout* | *Timeout* | *timed\ out* | *TIMED_OUT*)
-        if [[ ${newly_created} == true ]] && wait_for_shell_prompt "${pane_id}"; then
+        if [[ ${newly_created} == true ]] && wait_for_shell_prompt "${pane_id}" prompt; then
             if agent_output="$(herdr agent start "${agent_name}" --kind "${kind}" --pane "${pane_id}" --timeout 30000 -- "$@" 2>&1)"; then
                 printf '%s\n' "${pane_id}"
                 return
@@ -310,7 +329,7 @@ function start_claude_in_pane() {
     fi
     if [[ ${newly_created} == false ]]; then
         herdr pane run "${pane_id}" "export CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed" > /dev/null
-        wait_for_shell_prompt "${pane_id}" || return 1
+        wait_for_shell_prompt "${pane_id}" prompt || return 1
     fi
     herdr pane rename "${pane_id}" claude-orchestrator > /dev/null
     if [[ ${#claude_args[@]} -gt 0 ]]; then
@@ -917,8 +936,11 @@ if [[ ${audit_mode} == true ]]; then
         exit 2
     fi
     mkdir -p -- "$(dirname -- "${audit_out}")"
+    # A new audit tab's shell must draw its prompt before the command is sent.
+    audit_prompt=""
+    [[ -n $(audit_tab_ids "${workspace_id}") ]] || audit_prompt=prompt
     audit_pane="$(audit_pane_id "${workspace_id}" "${workdir}")"
-    if ! wait_for_shell_prompt "${audit_pane}"; then
+    if ! wait_for_shell_prompt "${audit_pane}" "${audit_prompt}"; then
         printf 'herdr-agents: audit pane %s is busy (not at a shell prompt); refusing a second audit.\n' "${audit_pane}" >&2
         exit 2
     fi

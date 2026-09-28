@@ -16,6 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 UPDATER = ROOT / "scripts/update-agent-assets.sh"
+MAKEFILE = ROOT / "Makefile"
 CHECKER = ROOT / "scripts/check-agent-runtime.py"
 VERSION = "2.9.7"
 
@@ -292,6 +293,20 @@ class UnderstandAnythingCoreBuildTest(unittest.TestCase):
         self.assertFalse((self.bin / "mise").exists())
         self.assertTrue(all("|pnpm " in call for call in self.calls()), self.calls())
         self.assertTrue((self.clone / "packages/core/dist/index.js").is_file())
+
+    def test_make_update_installs_the_pinned_pnpm(self) -> None:
+        result = subprocess.run(
+            ["make", "-n", "-f", str(MAKEFILE), "update"],
+            cwd=ROOT,
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            "mise install --locked npm:ccstatusline npm:ccusage npm:pnpm\n", result.stdout
+        )
 
     def test_warns_and_continues_when_no_pnpm_is_resolvable(self) -> None:
         self.make_plugin_tree(self.release)

@@ -1,0 +1,75 @@
+name: CodeRabbit trigger
+
+# CodeRabbit reviews this repository only on an explicit command, and the plan
+# allows one review per hour. Request one full review per head SHA when a PR
+# opens, leaves draft, or gets the review-requested label; never on every push.
+# No checkout: pull_request_target runs with a write token, so PR code never runs.
+on:
+  pull_request_target:
+    types: [opened, ready_for_review, labeled]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number
+        required: true
+
+permissions:
+  pull-requests: write
+
+# Runs for one PR queue instead of racing, so a later run sees the marker an
+# earlier run posted and does not request a second review.
+concurrency:
+  group: coderabbit-trigger-${{ github.event.pull_request.number || inputs.pr }}
+  cancel-in-progress: false
+
+jobs:
+  request-review:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.draft == false &&
+       (github.event.action != 'labeled' || github.event.label.name == 'review-requested'))
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Request one CodeRabbit full review for the head commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number || inputs.pr }}
+          # Manual runs and the review-requested label re-request after a
+          # rate-limited or failed request; only automatic events dedupe on the marker.
+          EXPLICIT: ${{ github.event_name == 'workflow_dispatch' || github.event.action == 'labeled' }}
+        run: |
+          set -euo pipefail
+          [[ "${PR}" =~ ^[0-9]+$ ]] || { echo "invalid PR number: ${PR}" >&2; exit 1; }
+          # Re-read the head after posting: a push in between gets its own request
+          # on the next pass instead of leaving only a stale-SHA marker.
+          for attempt in 1 2 3; do
+            sha="$(gh api "repos/${REPO}/pulls/${PR}" --jq .head.sha)"
+            marker="<!-- coderabbit-trigger:${sha} -->"
+            # A posted request is not a review: CodeRabbit may decline it when rate
+            # limited. Skip only once CodeRabbit has reviewed this head, or, for an
+            # automatic event, once this workflow already requested it.
+            reviewed="$(gh api --paginate "repos/${REPO}/pulls/${PR}/reviews" \
+              --jq "any(.[]; .user.login == \"coderabbitai[bot]\" and .commit_id == \"${sha}\")")"
+            # Count a marker only in this workflow's own request comment, so another
+            # commenter cannot pre-post it to suppress the review. Capture instead of
+            # piping into grep -q, which can SIGPIPE gh under pipefail.
+            found="$(gh api --paginate "repos/${REPO}/issues/${PR}/comments" \
+              --jq "any(.[]; .user.login == \"github-actions[bot]\" and (.body | startswith(\"@coderabbitai full review\")) and (.body | contains(\"${marker}\")))")"
+            if [[ "${reviewed}" == *true* ]]; then
+              echo "CodeRabbit already reviewed ${sha}."
+            elif [[ "${found}" == *true* && "${EXPLICIT}" != true ]]; then
+              echo "A full review was already requested for ${sha}; re-request with the review-requested label or a manual run."
+            else
+              gh api "repos/${REPO}/issues/${PR}/comments" -f body="@coderabbitai full review
+          ${marker}" > /dev/null
+              echo "Requested a CodeRabbit full review for ${sha}."
+            fi
+            if [[ "$(gh api "repos/${REPO}/pulls/${PR}" --jq .head.sha)" == "${sha}" ]]; then
+              exit 0
+            fi
+            echo "The head moved during attempt ${attempt}; checking the new head."
+          done
+          echo "The head kept moving; rerun this workflow once pushes settle." >&2
+          exit 1

@@ -23,6 +23,7 @@ For pull requests, keep the description aligned with the full current PR content
 5. If additional commits are pushed after PR creation, inspect the updated commits/diff with `gh` and refresh the PR description so it reflects the full current PR, not only the latest increment.
 6. Include inspected URLs in the response.
 7. Write commit messages in Conventional Commit format.
+8. Before merging or accepting a PR, follow the PR integration rule: comment `@coderabbitai full review` on the final head and wait for it, run `scripts/pr-feedback.py <pr> --json <out>`, give every item a `fixed:<commit>` (root-cause fix) or `not-applicable:<reason>` disposition, save the JSON as `.orchestration/validation/<task>-pr-feedback.json`, and pass it to `BASE=origin/main PR_FEEDBACK_EVIDENCE=<json> make require-crit-review`.
 
 ## Output Checklist
 
@@ -31,6 +32,7 @@ For pull requests, keep the description aligned with the full current PR content
 - Include inspected issue/PR URLs.
 - When commits were added after PR creation, confirm the PR description was updated to match the full current PR.
 - Keep commit subject in Conventional Commit form: `<type>(<scope>): <summary>`.
+- Before a merge: the CodeRabbit full review ran on the final head, and every `pr-feedback.py` item, including every `failure` and `warning` annotation, has a disposition in the saved JSON.
 - Do NOT include local absolute file paths (e.g., `/Users/.../`, `/home/.../`) in any output. Use repository-relative paths instead.
 
 Use [gh-git-rules.md](references/gh-git-rules.md) for command examples and commit-type guidance.

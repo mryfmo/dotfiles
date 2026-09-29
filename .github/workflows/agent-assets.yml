@@ -34,6 +34,16 @@ jobs:
       - name: Validate agent assets
         run: uv run --with pyyaml scripts/validate-agent-assets.py
 
+      - name: Parse CodeRabbit config and trigger workflow
+        run: |
+          uv run --with pyyaml python -c '
+          import yaml
+          for path in (".coderabbit.yaml", ".github/workflows/coderabbit-trigger.yml"):
+              data = yaml.safe_load(open(path))
+              assert isinstance(data, dict) and data, path
+              print("parsed", path)
+          '
+
       - name: Check upstream documentation links
         if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
         run: |

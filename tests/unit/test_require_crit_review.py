@@ -39,11 +39,25 @@ class ReviewGuardTest(unittest.TestCase):
         run(["git", "config", "user.email", "codex@example.com"], self.temp_dir)
         run(["git", "config", "user.name", "Codex"], self.temp_dir)
         (self.temp_dir / "README.md").write_text("# Test\n")
-        run(["git", "add", "README.md"], self.temp_dir)
+        # Stand-in collector: the guard re-runs scripts/pr-feedback.py under
+        # --base; this one writes the document $FAKE_COLLECTED points to.
+        collector = self.temp_dir / "scripts/pr-feedback.py"
+        collector.parent.mkdir()
+        collector.write_text(
+            "import os, sys\n"
+            "if not os.environ.get('FAKE_COLLECTED'):\n"
+            "    sys.exit('gh is not authenticated')\n"
+            "out = sys.argv[sys.argv.index('--json') + 1]\n"
+            "open(out, 'w').write(open(os.environ['FAKE_COLLECTED']).read())\n"
+        )
+        run(["git", "add", "README.md", "scripts/pr-feedback.py"], self.temp_dir)
         run(["git", "commit", "-m", "init"], self.temp_dir)
+        self.collected_dir = Path(tempfile.mkdtemp(prefix="crit-guard-collected-"))
+        self.collected = self.collected_dir / "collected.json"
 
     def tearDown(self) -> None:
         shutil.rmtree(self.temp_dir)
+        shutil.rmtree(self.collected_dir)
 
     def guard(self, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
         return run([sys.executable, str(GUARD)], self.temp_dir, env)
@@ -331,6 +345,243 @@ class ReviewGuardTest(unittest.TestCase):
         result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn("bare agent self-attestation", result.stdout)
+
+    def commit_on_branch(self, relative_path: str) -> None:
+        run(["git", "switch", "-c", "feature"], self.temp_dir)
+        path = self.temp_dir / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("#!/usr/bin/env bash\n")
+        run(["git", "add", relative_path], self.temp_dir)
+        run(["git", "commit", "-m", "feature"], self.temp_dir)
+
+    def head_commit(self) -> str:
+        return run(["git", "rev-parse", "HEAD"], self.temp_dir).stdout.strip()
+
+    def write_feedback(
+        self,
+        items: list[dict],
+        relative_path: str = ".orchestration/validation/pr-feedback.json",
+        head_sha: str | None = None,
+    ) -> str:
+        items = [*items, {**self.bot_review(), "disposition": "not-applicable:CodeRabbit review of HEAD"}]
+        document = {"pr": 1, "head_sha": head_sha or self.head_commit(), "items": items}
+        self.write_review_file(relative_path, json.dumps(document))
+        self.write_collected([{key: value for key, value in item.items() if key != "disposition"} for item in items])
+        return relative_path
+
+    def bot_review(self) -> dict:
+        return {"source": "review", "author": "coderabbitai[bot]", "level": "commented", "commit": self.head_commit()}
+
+    def write_collected(self, items: list[dict], head_sha: str | None = None) -> None:
+        document = {"pr": 1, "head_sha": head_sha or self.head_commit(), "items": items}
+        self.collected.write_text(json.dumps(document))
+
+    def guard_base(self, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+        defaults = {"CRIT_REVIEW": "", "FAKE_COLLECTED": str(self.collected)}
+        return run([sys.executable, str(GUARD), "--base", "main"], self.temp_dir, {**defaults, **(env or {})})
+
+    def test_base_reviews_committed_branch_changes(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        self.commit_on_branch("scripts/update-agent-assets.sh")
+
+        plain = self.guard()
+        self.assertEqual(plain.returncode, 0, plain.stdout)
+        self.assertIn("Review not required", plain.stdout)
+
+        feedback = self.write_feedback([{"source": "status", "level": "success", "disposition": "not-applicable:ok"}])
+        based = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+        self.assertEqual(based.returncode, 1, based.stdout)
+        self.assertIn("agent lifecycle path changed: scripts/update-agent-assets.sh", based.stdout)
+
+    def test_base_requires_pr_feedback_evidence(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": ""})
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("PR_FEEDBACK_EVIDENCE must point to the filled scripts/pr-feedback.py JSON", result.stdout)
+
+    def test_pr_feedback_rejects_incomplete_or_invalid_dispositions(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        commit = self.head_commit()
+        cases = {
+            "missing disposition": ([{"source": "annotation", "level": "notice", "disposition": ""}],
+                                    "needs a disposition"),
+            "stopgap wording": ([{"source": "review_comment", "level": "comment", "disposition": "later"}],
+                                "needs a disposition"),
+            "unknown commit": ([{"source": "annotation", "level": "warning", "disposition": "fixed:deadbee"}],
+                               "cites an unknown commit: deadbee"),
+            "short failure reason": ([{"source": "annotation", "level": "failure", "disposition": "not-applicable:flaky"}],
+                                     "failure-level; not-applicable needs a reason of at least 20 characters"),
+            "short in-progress reason": ([{"source": "check_run", "level": "in_progress", "disposition": "not-applicable:wip"}],
+                                         "in_progress-level; not-applicable needs a reason of at least 20 characters"),
+            "short cancelled reason": ([{"source": "check_run", "level": "cancelled", "disposition": "not-applicable:rerun"}],
+                                       "cancelled-level; not-applicable needs a reason of at least 20 characters"),
+            "not an items document": ([], None),
+        }
+        for name, (items, message) in cases.items():
+            with self.subTest(case=name):
+                if message is None:
+                    self.write_review_file(".orchestration/validation/pr-feedback.json", json.dumps([]))
+                    feedback = ".orchestration/validation/pr-feedback.json"
+                    message = "must be a pr-feedback.py document with an items list"
+                else:
+                    feedback = self.write_feedback(items)
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn(message, result.stdout)
+        self.assertTrue(commit)
+
+    def test_pr_feedback_must_be_collected_for_the_current_head(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback(
+            [{"source": "status", "level": "success", "disposition": "not-applicable:review completed"}],
+            head_sha="0" * 40,
+        )
+
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn(f"not the current HEAD {self.head_commit()}", result.stdout)
+
+    def test_pr_feedback_rejects_evidence_outside_the_repository(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
+            json.dump({"items": []}, handle)
+        self.addCleanup(os.unlink, handle.name)
+
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": handle.name})
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("must point to a repo-local JSON file", result.stdout)
+
+    def test_pr_feedback_accepts_complete_root_cause_dispositions(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        self.commit_on_branch("docs/fix.md")
+        commit = self.head_commit()
+        feedback = self.write_feedback(
+            [
+                {"source": "review_comment", "level": "comment", "disposition": f"fixed:{commit[:7]}"},
+                {
+                    "source": "annotation",
+                    "level": "failure",
+                    "disposition": "not-applicable:annotation belongs to a job on the base branch run, not this head",
+                },
+                {"source": "status", "level": "success", "disposition": "not-applicable:review completed"},
+            ]
+        )
+
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn(f"PR feedback evidence accepted: {feedback}", result.stdout)
+        self.assertIn("Review not required", result.stdout)
+
+    def test_pr_feedback_evidence_file_is_not_counted_as_a_change(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        items = [
+            {"source": "annotation", "level": "notice", "disposition": f"not-applicable:runner notice {index}"}
+            for index in range(60)
+        ]
+        feedback = self.write_feedback(items)
+        path = self.temp_dir / feedback
+        path.write_text(json.dumps(json.loads(path.read_text()), indent=2))
+        self.assertGreater(len(path.read_text().splitlines()), 200)
+
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("Review not required", result.stdout)
+
+    def test_pr_feedback_must_cover_every_currently_collected_item(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        listed = {"source": "status", "level": "success", "url": "https://x/s", "body": "CodeRabbit: done"}
+        unlisted = {"source": "annotation", "level": "warning", "url": "https://x/j", "body": "untrusted taps"}
+        for name, evidence_items in (
+            ("one item missing", [{**listed, "disposition": "not-applicable:review completed"}]),
+            ("hand-written empty list", []),
+        ):
+            with self.subTest(case=name):
+                feedback = self.write_feedback(evidence_items)
+                self.write_collected([listed, unlisted, self.bot_review()])
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn("current feedback item(s) for PR #1", result.stdout)
+
+    def test_pr_feedback_requires_the_github_head_to_match(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+        self.write_collected([self.bot_review()], head_sha="1" * 40)
+
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("head on GitHub is 1111", result.stdout)
+        self.assertIn("push first", result.stdout)
+
+    def test_pr_feedback_requires_a_completed_bot_review_of_head(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+        self.write_collected([{**self.bot_review(), "commit": "2" * 40}])
+
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("has no completed coderabbitai[bot] review of HEAD", result.stdout)
+
+    def test_pr_feedback_uses_the_base_collector_not_the_prs_own(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        run(["git", "switch", "-c", "feature"], self.temp_dir)
+        tampered = self.temp_dir / "scripts/pr-feedback.py"
+        tampered.write_text(
+            "import json, sys\n"
+            "out = sys.argv[sys.argv.index('--json') + 1]\n"
+            "open(out, 'w').write(json.dumps({'head_sha': 'x', 'items': []}))\n"
+        )
+        run(["git", "commit", "-am", "tamper with the collector"], self.temp_dir)
+        feedback = self.write_feedback([])
+        unlisted = {"source": "annotation", "level": "warning", "url": "https://x/j", "body": "untrusted taps"}
+        self.write_collected([unlisted, self.bot_review()])
+
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("lacks 1 current feedback item(s) for PR #1", result.stdout)
+
+    def test_pr_feedback_fails_when_the_collector_cannot_run(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "FAKE_COLLECTED": ""})
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("could not re-collect PR #1 feedback", result.stdout)
+
+    def test_pr_feedback_without_base_is_only_format_checked(self) -> None:
+        feedback = self.write_feedback([{"source": "status", "level": "success", "disposition": "not-applicable:ok"}])
+
+        result = self.guard({"PR_FEEDBACK_EVIDENCE": feedback, "CRIT_REVIEW": ""})
+
+        self.assertIn("PR feedback evidence format checked only", result.stdout)
+        self.assertNotIn("PR feedback evidence accepted", result.stdout)
+
+    def test_pr_feedback_fixed_commit_must_be_in_the_pr_range(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        base_commit = self.head_commit()
+        run(["git", "switch", "-c", "elsewhere"], self.temp_dir)
+        (self.temp_dir / "other.md").write_text("other\n")
+        run(["git", "add", "other.md"], self.temp_dir)
+        run(["git", "commit", "-m", "elsewhere"], self.temp_dir)
+        unrelated_commit = self.head_commit()
+        run(["git", "switch", "main"], self.temp_dir)
+        self.commit_on_branch("docs/fix.md")
+        for label, commit in (("predates the base", base_commit), ("not in HEAD", unrelated_commit)):
+            with self.subTest(case=label):
+                feedback = self.write_feedback(
+                    [{"source": "review_comment", "level": "comment", "disposition": f"fixed:{commit[:7]}"}]
+                )
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn(f"cites commit {commit[:7]} outside main..HEAD", result.stdout)
 
     def test_explicit_disable_skips_guard(self) -> None:
         self.touch_lifecycle_script()

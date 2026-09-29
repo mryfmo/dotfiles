@@ -222,6 +222,9 @@ its `dist/index.js` is missing or older than any file under
 `packages/core/src` or the root `pnpm-lock.yaml` (in the release artifact, or
 in the Codex clone without one), so `.ua/` incremental updates work, and
 `make doctor` warns under the same rule, so `make update` repairs what it reports.
+A `.ua/` refresh is accepted only when `scripts/ua-symbol-coverage.py` shows no
+unexplained per-file function/class regressions against the previous graph
+(`home/dot_config/claude/rules/understand-anything.md`).
 Plugin 2.9.7 has two known coverage gaps: `merge-batch-graphs.py` drops
 `tested_by` edges from `.bats` tests and from non-`file:` production nodes, and
 `extract-structure.mjs` misses shell functions with a subshell body. A full
@@ -257,6 +260,9 @@ efforts live. The generator renders the interactive profile into the managed
 Claude settings and Codex config, one `~/.codex/<profile>.config.toml` file per
 profile for `codex --profile <name>`, `~/.agents/model-profiles.env` for the
 launchers, and the low-cost `express-explorer` Claude subagent.
+`make render-check` runs `uv run --with pyyaml scripts/generate-agent-configs.py
+--check` to confirm every rendered file matches the manifest; tasks and docs
+name that one command, since a bare `python3` run fails without PyYAML.
 
 Agent work runs as a three-role constellation. The orchestrator uses the
 `deep` profile (Claude `claude-fable-5-1`, high effort, advisor fable) to

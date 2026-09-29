@@ -1621,7 +1621,6 @@ else
 fi
 cd -- "${workdir}"
 workdir="$(pwd -P)"
-load_seat_labels "${workdir}"
 HERDR_AGENTS_WORKER_PROFILE="$(resolve_worker_profile)"
 worker_worktree="$(resolve_worker_worktree)"
 worker_seat_dir="${workdir}"
@@ -1631,6 +1630,8 @@ if [[ ${attach_mode} == true && -n ${worker_worktree} ]] &&
     # The worktree-seated worker's own SessionStart hook: attach is for the orchestrator pane.
     exit 0
 fi
+# After the worker's own quiet exit: the seat lookups are only for the pair modes.
+load_seat_labels "${workdir}"
 worker_seat_applies "${workdir}" || worker_worktree=""
 # A worktree-seated worker has its own path, so its identity cannot collide;
 # the T14 guard only covers the legacy seat in the main checkout.

@@ -503,12 +503,15 @@ when the seat acts, and its herdr agent to a hash key (`scripts/lib/self-name.sh
 `<kind>-worker` pane labels, and the `<kind>-worker-<workspace>` agent names,
 do not survive on a live pair; herdr exposes no workspace env to key on either.
 `herdr-agents` therefore reads pane labels through the repository's agmsg
-seats:
+seats, read at the main checkout (also from a linked worktree):
 - a pane labeled `<team>:<name>` counts as `claude-orchestrator` when `<name>`
   is the orchestrator, meaning the non-worker (no `-aNNN`) `claude-code`
-  identity registered at DIR;
-- such a pane counts as the worker when `<name>` is another member of that
-  team;
+  identity registered there;
+- such a pane counts as the worker when `<name>` is the pair's own
+  worker-type seat: the one registered at `HERDR_AGENTS_WORKER_WORKTREE`, or
+  for the legacy seat an `-aNNN` identity at the main checkout;
+- other members of the team are not the pair's worker, so they never become
+  a second worker;
 - the legacy labels keep working.
 
 It never renames a pane that already carries a `<team>:<name>` label, so it does

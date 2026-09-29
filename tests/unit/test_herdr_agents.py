@@ -2884,7 +2884,7 @@ fi
         """A pair relabeled by upstream agmsg self-naming: workspace label `dotfiles`,
         pane labels `<team>:<name>`, herdr agents renamed to hash keys (no agent get)."""
         scripts = self.install_agmsg_fakes(
-            claude_identities_output="dotfiles\tclaude-remediation-dot\ndotfiles\tclaude-standard-dot-a006"
+            claude_identities_output="dotfiles\tclaude-remediation-dot\ndotfiles\tclaude-standard-dot-a005"
         )
         team = scripts / "team.sh"
         team.write_text(
@@ -2974,6 +2974,63 @@ fi
         calls = self.calls()
         self.assertFalse(any(c.startswith(("workspace create", "pane split", "agent start", "pane rename", "agent prompt")) for c in calls), calls)
         self.assertIn("workspace focus w-old", calls)
+
+    def test_another_team_members_pane_is_not_a_second_worker(self) -> None:
+        self.write_self_named_pair(
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"dotfiles:claude-standard-dot-a006","pane_id":"w-old:p3","workspace_id":"w-old"}}'
+        )
+
+        result = self.run_helper("--restart-worker")
+
+        calls = self.calls()
+        self.assertFalse(any(c.startswith(("agent prompt w-old:p3", "pane split")) for c in calls), calls)
+        self.assertFalse(any(c.startswith("agent start") and "w-old:p3" in c for c in calls), calls)
+        self.assertIn("refusing restart", result.stderr)
+
+    def test_attach_completes_bootstrap_on_a_self_named_pair(self) -> None:
+        self.write_self_named_pair()
+
+        result = self.run_attach_helper(in_herdr=True, workspace_id="w-old", pane_id="w-old:p1")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn("refusing repair", result.stderr)
+        self.assertTrue(any(c.startswith("doctor ") for c in self.calls()), self.calls())
+        self.assertIn("Herdr agents workspace: w-old", result.stdout)
+
+    def test_mixed_legacy_and_seat_labels_are_one_pair(self) -> None:
+        self.write_self_named_pair()
+        panes = json.loads(self.pane_list_path.read_text())
+        panes["result"]["panes"][0]["label"] = "claude-orchestrator"
+        self.pane_list_path.write_text(json.dumps(panes) + "\n")
+
+        result = self.run_helper("--restart-worker")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("agent prompt w-old:p2 /exit", self.calls())
+
+    def test_worker_seat_label_comes_from_the_worker_worktree_registration(self) -> None:
+        self.write_self_named_pair()
+        scripts = self.home_dir / ".agents/skills/agmsg/scripts"
+        # The main checkout keeps a second (legacy) identity for the T14 guard on this
+        # branch; the pane's seat a005 is registered only at the worker worktree.
+        (scripts / "claude-identities-output.txt").write_text(
+            "dotfiles\tclaude-remediation-dot\ndotfiles\tclaude-standard-dot-a006\n"
+        )
+        (self.workdir / ".claude/worktrees/worker-c").mkdir(parents=True)
+        worktree = (self.workdir / ".claude/worktrees/worker-c").resolve()
+        (scripts / "identities.sh").write_text(
+            "#!/usr/bin/env bash\n"
+            f"printf 'identities %s\\n' \"$*\" >> {self.calls_path}\n"
+            f"case \"$1\" in {worktree}) printf 'dotfiles\\tclaude-standard-dot-a005\\n' ;; *) cat {scripts / 'claude-identities-output.txt'} ;; esac\n"
+        )
+        with (self.home_dir / ".agents/model-profiles.env").open("a") as env:
+            env.write('HERDR_AGENTS_WORKER_WORKTREE=".claude/worktrees/worker-c"\n')
+
+        result = self.run_attach_helper(in_herdr=True, workspace_id="w-old", pane_id="w-old:p2")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(any(c.startswith(("pane rename", "pane split", "agent start")) for c in self.calls()), self.calls())
+        self.assertIn(f"identities {worktree} claude-code", self.calls())
 
     def test_two_self_named_pair_workspaces_still_refuse(self) -> None:
         self.write_self_named_pair(self.audit_tab_pane(), extra_workspace_ids=("w-new",))

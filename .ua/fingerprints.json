@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "gitCommitHash": "7b69b1e76bb7cd8896007b7f78b70bc5b8620659",
-  "generatedAt": "2026-09-29T06:20:57.312Z",
+  "gitCommitHash": "72b890157078c583f45d71a61ee6eba0df86afb5",
+  "generatedAt": "2026-09-29T11:42:45.192Z",
   "files": {
     ".chezmoiroot": {
       "filePath": ".chezmoiroot",
@@ -2206,6 +2206,16 @@
       "totalLines": 234,
       "hasStructuralAnalysis": false
     },
+    ".coderabbit.yaml": {
+      "filePath": ".coderabbit.yaml",
+      "contentHash": "b074e7d8864b197a343e269bbac23e794dc57e555762980a7c0d12a500371718",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 19,
+      "hasStructuralAnalysis": false
+    },
     ".github/copilot-instructions.md": {
       "filePath": ".github/copilot-instructions.md",
       "contentHash": "1adbd02dcd6ffaef05678d49068b17663c03dd9d04c40cb60cf93bcf5a7779a4",
@@ -2228,12 +2238,12 @@
     },
     ".github/workflows/agent-assets.yml": {
       "filePath": ".github/workflows/agent-assets.yml",
-      "contentHash": "3f26c4814b655a75c1d6b5022aac794bff065bd6e7b995cf7713b5ec805e717c",
+      "contentHash": "16296222ab760b7abbe86a6b1bf7ae9b1401f353b949b6147de3638c9939cb96",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 65,
+      "totalLines": 75,
       "hasStructuralAnalysis": false
     },
     ".github/workflows/docs.yml": {
@@ -2248,7 +2258,7 @@
     },
     ".github/workflows/macos.yaml": {
       "filePath": ".github/workflows/macos.yaml",
-      "contentHash": "ab0b49d67fd026a273aab9b6f3af7f8b4b3b8e5ca46b809ce718af45370e5fee",
+      "contentHash": "a120d6aef2761471f3eab6dda729bb5c62ab1c4d329d3ea4ff9e0d0a0f2f9a33",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -2268,7 +2278,7 @@
     },
     ".github/workflows/test.yaml": {
       "filePath": ".github/workflows/test.yaml",
-      "contentHash": "c3922f49106b8e89f26c03da59e637cd352f8f7477fc89ae476cc8bc375d0447",
+      "contentHash": "7fda2f4f769a75973269b15a47f5b52c48ae4d629f604c0c3f17ba9a4369cfcd",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -2308,27 +2318,27 @@
     },
     ".ua/fingerprints.json": {
       "filePath": ".ua/fingerprints.json",
-      "contentHash": "d7e1a0f6ef5c8b764d01ebbab0340a081d418d5381f3c3060e5d82fc24d5a7ab",
+      "contentHash": "c6e3bb91175fa72c82061ae410f4f14a040562953646cb457b57a03df7e4bde4",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 10566,
+      "totalLines": 10698,
       "hasStructuralAnalysis": false
     },
     ".ua/knowledge-graph.json": {
       "filePath": ".ua/knowledge-graph.json",
-      "contentHash": "29f2e5c877e833cb6e997e0f4f33d4a5223a2f832dc568b1dd0cda58f29cd254",
+      "contentHash": "f9322ade02750d2ad986953b85c6c7b7fdb2fddb0a3a130a96cf596e93aadb72",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 22952,
+      "totalLines": 24183,
       "hasStructuralAnalysis": false
     },
     ".ua/meta.json": {
       "filePath": ".ua/meta.json",
-      "contentHash": "0fb45ed0f7e0f57e4ab1eb510f88b847b0dd23632d06817bfcd3fa7f790bf11c",
+      "contentHash": "575f8afe67b9b34f434c8a944796fe5a05fe9795fa8bb6c7dada96046e444134",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -2338,12 +2348,12 @@
     },
     "AGENTS.md": {
       "filePath": "AGENTS.md",
-      "contentHash": "bca9cf929a455211fea4a994cf8abec3bcb369a97b8845db7aa4f64a86db0805",
+      "contentHash": "ebc25e2f05676118ab6e20f6359ce35cf46066b2c27c0451da72186f5f86f706",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 80,
+      "totalLines": 81,
       "hasStructuralAnalysis": false
     },
     "CLAUDE.md": {
@@ -2368,22 +2378,22 @@
     },
     "Makefile": {
       "filePath": "Makefile",
-      "contentHash": "1709aa858dfc91a6fbc86c95e35565a9073d8c47f94bdf98be5ad8722ddebd1a",
+      "contentHash": "560895a14a5ca7f9228ac37c895f0fd7ceec5699f4554990d083df08748bde1a",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 199,
+      "totalLines": 201,
       "hasStructuralAnalysis": false
     },
     "README.md": {
       "filePath": "README.md",
-      "contentHash": "32039cf98723188c46c8c58e10b1f77b317a18b963fe536380be99839b6a9ba2",
+      "contentHash": "75cef155b61725610209130745d8ea624ac1641178667feac32307b0d2f7a738",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 898,
+      "totalLines": 1026,
       "hasStructuralAnalysis": false
     },
     "codecov.yml": {
@@ -2868,12 +2878,12 @@
     },
     "home/.chezmoitemplates/claude-settings-managed.json": {
       "filePath": "home/.chezmoitemplates/claude-settings-managed.json",
-      "contentHash": "fff4e17ab44270ecdc81205a1f586ad5aa2b464a31cefb9ae1dc4f9cc1dfbaab",
+      "contentHash": "d515426481a75f4cd8b01daf8a3b2a77b031a08c4b732a85da8874199421e244",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 101,
+      "totalLines": 128,
       "hasStructuralAnalysis": false
     },
     "home/.chezmoitemplates/codex-config-managed.toml": {
@@ -2908,22 +2918,22 @@
     },
     "home/dot_agents/README.md": {
       "filePath": "home/dot_agents/README.md",
-      "contentHash": "384af2b1b076a59ef34562648e991c1b3b34c9863848675503b41694eed3183a",
+      "contentHash": "c9c119655a7700c969a316910a9ee60e1926dcc9443ec1f284523f9c1ea16f85",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 79,
+      "totalLines": 80,
       "hasStructuralAnalysis": false
     },
     "home/dot_agents/agent-config.yaml": {
       "filePath": "home/dot_agents/agent-config.yaml",
-      "contentHash": "9558cd20a663fe0a00134898c384bcd7fb2f608abcceb3b8f2ac81038d2bbbe3",
+      "contentHash": "80c653d6ec8e94cc3ffb784285bb3d6418dd08b0da0e2ce7da66fb169c504afe",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 594,
+      "totalLines": 626,
       "hasStructuralAnalysis": false
     },
     "home/dot_agents/model-profiles.env": {
@@ -2968,12 +2978,12 @@
     },
     "home/dot_agents/skills/agmsg-orchestration/SKILL.md": {
       "filePath": "home/dot_agents/skills/agmsg-orchestration/SKILL.md",
-      "contentHash": "ec620a36b0e5fcec7a64b5bc636be8cbfeb54326ce51a6df9364a7bc016bda62",
+      "contentHash": "a30dfc0f0a67265c8f74429bd69e49356b12484f3048a2d1820f1ed4df41add6",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 192,
+      "totalLines": 193,
       "hasStructuralAnalysis": false
     },
     "home/dot_agents/skills/convert-to-transformers/SKILL.md": {
@@ -3369,12 +3379,12 @@
     },
     "home/dot_agents/skills/gh-first-workflow/SKILL.md": {
       "filePath": "home/dot_agents/skills/gh-first-workflow/SKILL.md",
-      "contentHash": "44e7ede69a805c46b7cbe9e5292f31e19f6e0611ce6437bec9ec5d427fc425a4",
+      "contentHash": "af693d7a55dc4ea482b11c05c356618defcdf2fe4fc68c392b60aa00b0dc56a1",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 37,
+      "totalLines": 39,
       "hasStructuralAnalysis": false
     },
     "home/dot_agents/skills/gh-first-workflow/agents/openai.yaml": {
@@ -3718,6 +3728,16 @@
     "home/dot_claude/rules/symlink_ponytail.md.tmpl": {
       "filePath": "home/dot_claude/rules/symlink_ponytail.md.tmpl",
       "contentHash": "3a0b5fc71deb135cba70555305607d7811a286191f1671dfd90a8355e4805416",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2,
+      "hasStructuralAnalysis": false
+    },
+    "home/dot_claude/rules/symlink_pr-integration.md.tmpl": {
+      "filePath": "home/dot_claude/rules/symlink_pr-integration.md.tmpl",
+      "contentHash": "bdbdc3985f7a3d33b464f9c0f022650a808298f94b0f836f806d2d5e2f01a07f",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -4097,7 +4117,7 @@
     },
     "home/dot_config/claude/rules/crit-review.md": {
       "filePath": "home/dot_config/claude/rules/crit-review.md",
-      "contentHash": "8c39fe3a244cb7f4a42aca2b6a8d256fac69fbd00fd4ef2a2389cbcf298edecd",
+      "contentHash": "6b4a4d796f4e18655762120be059a844dff7ff25d7c0a49fffd99df685bfaf83",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -4145,6 +4165,16 @@
       "totalLines": 7,
       "hasStructuralAnalysis": false
     },
+    "home/dot_config/claude/rules/pr-integration.md": {
+      "filePath": "home/dot_config/claude/rules/pr-integration.md",
+      "contentHash": "6fb33103812b5acb55bfcdbc8b23abe4ddb41a35b513942e5a3c776388b1fd46",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 8,
+      "hasStructuralAnalysis": false
+    },
     "home/dot_config/claude/rules/python.md": {
       "filePath": "home/dot_config/claude/rules/python.md",
       "contentHash": "3715200b63c012268d95b2e270a85796be03bd56c6b86b00826eccdd680ba979",
@@ -4167,12 +4197,12 @@
     },
     "home/dot_config/codex/AGENTS.md": {
       "filePath": "home/dot_config/codex/AGENTS.md",
-      "contentHash": "92269bee6adbf19856cc669774917842875f75b300b4bca05a5a83528c3bccd3",
+      "contentHash": "d2c1546a50b1b609b56cb5a84732a035c5d40e23ce3e214fd25c0833d9ee5b80",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 68,
+      "totalLines": 76,
       "hasStructuralAnalysis": false
     },
     "home/dot_config/ghostty/config": {
@@ -4667,7 +4697,7 @@
     },
     "home/dot_mise/config.toml": {
       "filePath": "home/dot_mise/config.toml",
-      "contentHash": "64103bb9381938ac37e78e938aa92ed2e8414189805b8937304720d70692009e",
+      "contentHash": "a38f30768963f0ad7934cb6fdf9079688592c506aa2b47cb6a56a383d0ad654b",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -4987,7 +5017,7 @@
     },
     "install/ubuntu/common/aws_cli.sh": {
       "filePath": "install/ubuntu/common/aws_cli.sh",
-      "contentHash": "9ed47dced4a82d58d4904013806adc0668cd072b662560090e594febbbc0b0cb",
+      "contentHash": "e2e4a3b171bbfa74ae2fa1a7333ea823c094168b188cf078a2ec40815d782328",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -4997,12 +5027,12 @@
     },
     "install/ubuntu/common/dependencies.sh": {
       "filePath": "install/ubuntu/common/dependencies.sh",
-      "contentHash": "1b8c40b745241de019ae8748c22c17d35ff491d29dc012195ade20ac55e34411",
+      "contentHash": "d44b7f40e17ecb14906e241abdb1c68eeb95be48f9ea85a08c24448149595274",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 113,
+      "totalLines": 117,
       "hasStructuralAnalysis": false
     },
     "install/ubuntu/common/setup_locale.sh": {
@@ -5639,7 +5669,7 @@
     },
     "scripts/check-statusline-tools.py": {
       "filePath": "scripts/check-statusline-tools.py",
-      "contentHash": "a42781e510ce0aa963453b77948d78e60f6f368764536e42d40a69c7d034acb1",
+      "contentHash": "f58b9fc26a658f9e7666403783737ddcc0067431dbede3916f535923e0d94fdc",
       "functions": [
         {
           "name": "run",
@@ -5718,17 +5748,17 @@
     },
     "scripts/check-tools.sh": {
       "filePath": "scripts/check-tools.sh",
-      "contentHash": "8fb9c7b61bd2d45f9f72f1cacb3fc41211186617b05b0ca31dcf29699cf87c35",
+      "contentHash": "731f25205496174046783b70db77be1ef52aaba6a2318344f6352a6d9fb1ea61",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 286,
+      "totalLines": 311,
       "hasStructuralAnalysis": false
     },
     "scripts/generate-agent-configs.py": {
       "filePath": "scripts/generate-agent-configs.py",
-      "contentHash": "eb4b05d62fd445a529b50810d28f02627df896509f0deb36375c8c30a22b399b",
+      "contentHash": "5a301cdbb76a4618d69beb05aaa8c8aa50e90c291071fb012939be26ba9bacde",
       "functions": [
         {
           "name": "fail",
@@ -5906,13 +5936,22 @@
           "lineCount": 139
         },
         {
+          "name": "render_claude_sandbox",
+          "params": [
+            "manifest"
+          ],
+          "returnType": "dict[str, Any]",
+          "exported": true,
+          "lineCount": 17
+        },
+        {
           "name": "render_claude_settings",
           "params": [
             "manifest"
           ],
           "returnType": "str",
           "exported": true,
-          "lineCount": 78
+          "lineCount": 79
         },
         {
           "name": "claude_mcp_entry",
@@ -6123,6 +6162,7 @@
         "set_asset_field",
         "render_asset_constants",
         "render_codex",
+        "render_claude_sandbox",
         "render_claude_settings",
         "claude_mcp_entry",
         "render_claude_mcp",
@@ -6141,7 +6181,7 @@
         "stale_profile_outputs",
         "main"
       ],
-      "totalLines": 955,
+      "totalLines": 975,
       "hasStructuralAnalysis": true
     },
     "scripts/generate-docs.sh": {
@@ -6166,13 +6206,206 @@
     },
     "scripts/lib/installer-pins.sh": {
       "filePath": "scripts/lib/installer-pins.sh",
-      "contentHash": "4659347da7f4e55c6f4d44f6d707761f3aa764156c71b3ea70d6c05729f4b4cd",
+      "contentHash": "3757a55f3416d15beae2bd1e5717f2ac0d55b67ae45ad7210ef99e166cbbc835",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
       "totalLines": 28,
       "hasStructuralAnalysis": false
+    },
+    "scripts/pr-feedback.py": {
+      "filePath": "scripts/pr-feedback.py",
+      "contentHash": "d7e82510ccbf0d2a9eec5fd36f94d94f0833e41e7a4607869fb515bb60d0a716",
+      "functions": [
+        {
+          "name": "gh_env",
+          "params": [],
+          "returnType": "dict[str, str]",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "gh",
+          "params": [
+            "args"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "gh_fetch",
+          "params": [
+            "path",
+            "paginate"
+          ],
+          "returnType": "Any",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "gh_graphql",
+          "params": [
+            "query",
+            "variables"
+          ],
+          "returnType": "Any",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "require_auth",
+          "params": [],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "flatten",
+          "params": [
+            "pages",
+            "key"
+          ],
+          "returnType": "list[Any]",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "is_bot",
+          "params": [
+            "actor"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "item",
+          "params": [
+            "source",
+            "actor",
+            "level",
+            "body",
+            "url",
+            "path",
+            "line"
+          ],
+          "returnType": "dict[str, Any]",
+          "exported": true,
+          "lineCount": 22
+        },
+        {
+          "name": "thread_states",
+          "params": [
+            "repo",
+            "number",
+            "graphql"
+          ],
+          "returnType": "dict[int, dict[str, bool]]",
+          "exported": true,
+          "lineCount": 29
+        },
+        {
+          "name": "collect",
+          "params": [
+            "repo",
+            "number",
+            "fetch",
+            "graphql"
+          ],
+          "returnType": "dict[str, Any]",
+          "exported": true,
+          "lineCount": 115
+        },
+        {
+          "name": "main",
+          "params": [
+            "argv"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 33
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "collections",
+          "specifiers": [
+            "Counter"
+          ]
+        },
+        {
+          "source": "collections.abc",
+          "specifiers": [
+            "Callable"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any"
+          ]
+        }
+      ],
+      "exports": [
+        "gh_env",
+        "gh",
+        "gh_fetch",
+        "gh_graphql",
+        "require_auth",
+        "flatten",
+        "is_bot",
+        "item",
+        "thread_states",
+        "collect",
+        "main"
+      ],
+      "totalLines": 340,
+      "hasStructuralAnalysis": true
     },
     "scripts/refresh-mkdocs-toc.py": {
       "filePath": "scripts/refresh-mkdocs-toc.py",
@@ -6209,7 +6442,7 @@
     },
     "scripts/require-crit-review.py": {
       "filePath": "scripts/require-crit-review.py",
-      "contentHash": "d9e7f4c5b9a4fefe4848edafd477fcc05658c2057b6e4b9e63e29e48f4165ed6",
+      "contentHash": "0b59432b4857d809d505177ff5ce4967c83bb4dc49b97494da216b96cd9c1b90",
       "functions": [
         {
           "name": "run_git",
@@ -6229,22 +6462,34 @@
           "lineCount": 6
         },
         {
+          "name": "is_ignored",
+          "params": [
+            "root",
+            "path"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 11
+        },
+        {
           "name": "changed_paths",
           "params": [
-            "root"
+            "root",
+            "base"
           ],
           "returnType": "list[str]",
           "exported": true,
-          "lineCount": 12
+          "lineCount": 14
         },
         {
           "name": "numstat_line_count",
           "params": [
-            "root"
+            "root",
+            "base"
           ],
           "returnType": "int",
           "exported": true,
-          "lineCount": 22
+          "lineCount": 25
         },
         {
           "name": "is_low_risk_docs_only",
@@ -6268,7 +6513,8 @@
           "name": "review_reasons",
           "params": [
             "root",
-            "paths"
+            "paths",
+            "base"
           ],
           "returnType": "list[str]",
           "exported": true,
@@ -6325,6 +6571,51 @@
           "lineCount": 39
         },
         {
+          "name": "commit_in_range",
+          "params": [
+            "root",
+            "commit",
+            "base",
+            "head"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "pr_feedback_errors",
+          "params": [
+            "root",
+            "required",
+            "head",
+            "base"
+          ],
+          "returnType": "list[str]",
+          "exported": true,
+          "lineCount": 55
+        },
+        {
+          "name": "feedback_key",
+          "params": [
+            "item"
+          ],
+          "returnType": "tuple",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "collected_feedback_errors",
+          "params": [
+            "root",
+            "evidence",
+            "head",
+            "base"
+          ],
+          "returnType": "list[str]",
+          "exported": true,
+          "lineCount": 44
+        },
+        {
           "name": "evidence_field",
           "params": [
             "text",
@@ -6342,15 +6633,31 @@
           "lineCount": 6
         },
         {
+          "name": "base_ref_error",
+          "params": [
+            "root",
+            "base"
+          ],
+          "returnType": "str | None",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
           "name": "main",
           "params": [],
           "returnType": "None",
           "exported": true,
-          "lineCount": 37
+          "lineCount": 64
         }
       ],
       "classes": [],
       "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
         {
           "source": "json",
           "specifiers": [
@@ -6364,9 +6671,27 @@
           ]
         },
         {
+          "source": "re",
+          "specifiers": [
+            "re"
+          ]
+        },
+        {
           "source": "subprocess",
           "specifiers": [
             "subprocess"
+          ]
+        },
+        {
+          "source": "tempfile",
+          "specifiers": [
+            "tempfile"
+          ]
+        },
+        {
+          "source": "collections",
+          "specifiers": [
+            "Counter"
           ]
         },
         {
@@ -6385,6 +6710,7 @@
       "exports": [
         "run_git",
         "git_root",
+        "is_ignored",
         "changed_paths",
         "numstat_line_count",
         "is_low_risk_docs_only",
@@ -6395,11 +6721,16 @@
         "is_agent_reviewer",
         "agent_review_errors",
         "crit_data_errors",
+        "commit_in_range",
+        "pr_feedback_errors",
+        "feedback_key",
+        "collected_feedback_errors",
         "evidence_field",
         "review_marker",
+        "base_ref_error",
         "main"
       ],
-      "totalLines": 342,
+      "totalLines": 533,
       "hasStructuralAnalysis": true
     },
     "scripts/run_bashcov_unit_test.rb": {
@@ -6734,7 +7065,7 @@
     },
     "scripts/validate-agent-assets.py": {
       "filePath": "scripts/validate-agent-assets.py",
-      "contentHash": "92888358020b8e6c9c31fe2d2ec19d7c79ad44f9610a9ff81acfc906eaff7e43",
+      "contentHash": "adca38e8631272e9ab808a8fe1f230d3d8cfeb77d2724e677ad72e94326f2e09",
       "functions": [
         {
           "name": "fail",
@@ -6852,13 +7183,24 @@
           "lineCount": 7
         },
         {
+          "name": "validate_claude_sandbox",
+          "params": [
+            "sandbox",
+            "writable_roots",
+            "label"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 42
+        },
+        {
           "name": "validate_claude_settings",
           "params": [
             "manifest"
           ],
           "returnType": "None",
           "exported": true,
-          "lineCount": 33
+          "lineCount": 38
         },
         {
           "name": "validate_codex_config",
@@ -7153,6 +7495,7 @@
         "validate_codex_plugins",
         "validate_exact_keys",
         "validate_codex_agmsg_writable_roots",
+        "validate_claude_sandbox",
         "validate_claude_settings",
         "validate_codex_config",
         "validate_claude_mcp_config",
@@ -7181,7 +7524,7 @@
         "validate_repo_claude_settings_portable",
         "main"
       ],
-      "totalLines": 1402,
+      "totalLines": 1454,
       "hasStructuralAnalysis": true
     },
     "setup.sh": {
@@ -7446,12 +7789,12 @@
     },
     "tests/install/ubuntu/common/dependencies.bats": {
       "filePath": "tests/install/ubuntu/common/dependencies.bats",
-      "contentHash": "f094ebc14f15f3ef9dab07b9ac3de44898d9ed7aa53ee71349b79d41e2d32d05",
+      "contentHash": "097ea8b51c7b0ff016d91de5ff41bf8dde90fca8928d7e51eb40b36fc7a65e6d",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 100,
+      "totalLines": 102,
       "hasStructuralAnalysis": false
     },
     "tests/install/ubuntu/common/dependencies_unit.bats": {
@@ -9104,6 +9447,148 @@
       "totalLines": 1080,
       "hasStructuralAnalysis": true
     },
+    "tests/unit/test_pr_feedback.py": {
+      "filePath": "tests/unit/test_pr_feedback.py",
+      "contentHash": "b7ee4158c61cd6a1a36e63b8959d741c797c4a0f1df5f7220fa4d731f91d001b",
+      "functions": [
+        {
+          "name": "load_script",
+          "params": [],
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "fetch",
+          "params": [
+            "path",
+            "_paginate"
+          ],
+          "returnType": "Any",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "graphql",
+          "params": [
+            "_query",
+            "variables"
+          ],
+          "returnType": "Any",
+          "exported": true,
+          "lineCount": 5
+        }
+      ],
+      "classes": [
+        {
+          "name": "PrFeedbackTest",
+          "methods": [
+            "setUp",
+            "by_source",
+            "test_collects_every_feedback_source_for_the_head",
+            "test_every_item_carries_the_disposition_schema",
+            "test_bots_are_detected_from_type_login_or_app",
+            "test_review_comments_carry_thread_resolution_across_pages",
+            "test_thread_state_covers_comments_beyond_the_first_page",
+            "test_annotations_keep_every_level_even_on_passing_checks",
+            "test_only_non_passing_check_runs_become_items",
+            "test_commit_status_keeps_the_latest_state_per_context",
+            "test_unauthenticated_gh_exits_non_zero",
+            "test_gh_never_receives_forced_colour",
+            "test_main_writes_the_document_to_json"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 141
+        },
+        {
+          "name": "PrIntegrationRuleParityTest",
+          "methods": [
+            "test_rule_symlink_points_at_the_rule",
+            "test_rule_mirrors_and_skills_carry_the_same_requirements"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 29
+        }
+      ],
+      "imports": [
+        {
+          "source": "importlib.util",
+          "specifiers": [
+            "importlib.util"
+          ]
+        },
+        {
+          "source": "io",
+          "specifiers": [
+            "io"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "tempfile",
+          "specifiers": [
+            "tempfile"
+          ]
+        },
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "contextlib",
+          "specifiers": [
+            "redirect_stderr"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any"
+          ]
+        },
+        {
+          "source": "unittest",
+          "specifiers": [
+            "mock"
+          ]
+        }
+      ],
+      "exports": [
+        "load_script",
+        "fetch",
+        "graphql",
+        "PrFeedbackTest",
+        "PrIntegrationRuleParityTest"
+      ],
+      "totalLines": 405,
+      "hasStructuralAnalysis": true
+    },
     "tests/unit/test_release_asset_pins.py": {
       "filePath": "tests/unit/test_release_asset_pins.py",
       "contentHash": "7679ec1310babcc84ea4b3d47af3bf0dc2cd2bcc098f41bcb451044339960ecf",
@@ -9305,7 +9790,7 @@
     },
     "tests/unit/test_require_crit_review.py": {
       "filePath": "tests/unit/test_require_crit_review.py",
-      "contentHash": "e4b0a0d4d7794a40a4a3a37c2a00c77ad3f3654dba85fc46eaf72d19e259f3ec",
+      "contentHash": "41c7955d38b1aa7397c371caf5838612756671166977fa686629b095ac4ff957",
       "functions": [
         {
           "name": "run",
@@ -9354,11 +9839,31 @@
             "test_agent_reviewer_with_external_crit_json_still_requires_review",
             "test_agent_reviewer_with_crit_reviewed_marker_still_requires_review",
             "test_agent_self_review_flag_evidence_still_requires_review",
+            "commit_on_branch",
+            "head_commit",
+            "write_feedback",
+            "write_collected",
+            "guard_base",
+            "test_base_reviews_committed_branch_changes",
+            "test_base_fails_closed_when_unresolvable_or_option_like",
+            "test_base_requires_pr_feedback_evidence",
+            "test_pr_feedback_rejects_incomplete_or_invalid_dispositions",
+            "test_pr_feedback_must_be_collected_for_the_current_head",
+            "test_pr_feedback_rejects_evidence_outside_the_repository",
+            "test_pr_feedback_accepts_complete_root_cause_dispositions",
+            "test_pr_feedback_evidence_file_is_not_counted_as_a_change",
+            "test_pr_feedback_must_cover_every_currently_collected_item",
+            "test_pr_feedback_requires_the_github_head_to_match",
+            "test_pr_feedback_accepts_complete_evidence_without_a_bot_review",
+            "test_pr_feedback_uses_the_base_collector_not_the_prs_own",
+            "test_pr_feedback_fails_when_the_collector_cannot_run",
+            "test_pr_feedback_without_base_is_only_format_checked",
+            "test_pr_feedback_fixed_commit_must_be_in_the_pr_range",
             "test_explicit_disable_skips_guard"
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 305
+          "lineCount": 572
         }
       ],
       "imports": [
@@ -9415,12 +9920,12 @@
         "run",
         "ReviewGuardTest"
       ],
-      "totalLines": 344,
+      "totalLines": 611,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_runtime_health.py": {
       "filePath": "tests/unit/test_runtime_health.py",
-      "contentHash": "0ed394e990dc3ca2026236e4e2cb591b896292763eb52dc6e706541ec0c1385a",
+      "contentHash": "052363017f66d910047eeb1502362f9380ed4c76a12d1fc3dc8c276c709593f3",
       "functions": [],
       "classes": [
         {
@@ -9469,6 +9974,7 @@
             "test_agent_fanout_refuses_symlink_artifacts",
             "doctor_environment",
             "test_doctor_required_optional_and_healthy_statuses",
+            "test_doctor_reports_claude_sandbox_prerequisites",
             "test_make_doctor_propagates_runtime_drift_after_tool_checks",
             "test_make_doctor_does_not_skip_runtime_check_when_deployed_root_is_missing",
             "test_make_doctor_passes_repair_variable_to_runtime_check",
@@ -9485,7 +9991,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 1897
+          "lineCount": 1920
         }
       ],
       "imports": [
@@ -9553,12 +10059,12 @@
       "exports": [
         "RuntimeHealthTest"
       ],
-      "totalLines": 1921,
+      "totalLines": 1944,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_statusline_tools.py": {
       "filePath": "tests/unit/test_statusline_tools.py",
-      "contentHash": "da1e890bee254640475a28b82546f8f061e7584a095ef476fa4803597350b733",
+      "contentHash": "e5363e8b706327000aa61d3dbf00643c6e9a3317ed8a6803f01c18254e99f27e",
       "functions": [],
       "classes": [
         {
@@ -9935,7 +10441,7 @@
     },
     "tests/unit/test_validate_agent_assets.py": {
       "filePath": "tests/unit/test_validate_agent_assets.py",
-      "contentHash": "395dd1969092eb6140a8305c26b69807ddf9422892ffa74573428cca37c17031",
+      "contentHash": "40cfbd89724105083b2dd74e656a643d6938c684bcee8f11a4077cdd3c66eb62",
       "functions": [
         {
           "name": "load_validator",
@@ -9993,6 +10499,11 @@
             "test_hook_composition_requires_permgate_first",
             "test_hook_composition_rejects_sync_timeout_over_budget",
             "test_hook_composition_pins_sessionstart_order",
+            "valid_claude_sandbox",
+            "test_claude_sandbox_accepts_manifest_symmetric_settings",
+            "test_claude_sandbox_rejects_each_broken_rule",
+            "test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs",
+            "test_claude_sandbox_requires_extra_codex_writable_roots",
             "test_codex_sandbox_workspace_write_must_match_manifest",
             "test_codex_sandbox_workspace_write_accepts_matching_manifest",
             "test_codex_sandbox_workspace_write_requires_all_agmsg_roots",
@@ -10017,7 +10528,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 871
+          "lineCount": 938
         },
         {
           "name": "MaskSecretsModeTest",
@@ -10101,7 +10612,7 @@
         "ValidateAgentAssetsTest",
         "MaskSecretsModeTest"
       ],
-      "totalLines": 979,
+      "totalLines": 1046,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_workflow_security.py": {

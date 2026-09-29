@@ -140,6 +140,143 @@ function resolve_worker_kind() {
     printf '%s\n' "${HERDR_AGENTS_WORKER_KIND:-codex}"
 }
 
+# @description Resolve the pair worker's worktree, relative to the repository,
+#   from the manifest-generated ~/.agents/model-profiles.env only. Empty means
+#   the legacy seat: the worker pane runs in the main checkout.
+# @exitcode 2 If the value is not a single path segment under .claude/worktrees/.
+function resolve_worker_worktree() {
+    local HERDR_AGENTS_WORKER_WORKTREE=""
+
+    if [[ -f ${HOME}/.agents/model-profiles.env ]]; then
+        # shellcheck source=/dev/null
+        source "${HOME}/.agents/model-profiles.env"
+    fi
+    if [[ -n ${HERDR_AGENTS_WORKER_WORKTREE} ]] && {
+        [[ ! ${HERDR_AGENTS_WORKER_WORKTREE} =~ ^\.claude/worktrees/[A-Za-z0-9._-]+$ ]] ||
+            [[ ${HERDR_AGENTS_WORKER_WORKTREE##*/} == . || ${HERDR_AGENTS_WORKER_WORKTREE##*/} == .. ]]
+    }; then
+        printf 'herdr-agents: HERDR_AGENTS_WORKER_WORKTREE must be a path under .claude/worktrees/; got %q\n' "${HERDR_AGENTS_WORKER_WORKTREE}" >&2
+        exit 2
+    fi
+    printf '%s\n' "${HERDR_AGENTS_WORKER_WORKTREE}"
+}
+
+# @description Print the absolute worker worktree for a repository, creating it
+#   detached at origin/main when missing. An existing path must be a worktree
+#   of this repository; its checkout is never changed.
+# @arg $1 workdir Absolute main checkout path.
+# @arg $2 path Worker worktree relative to workdir.
+# @exitcode 2 If the path exists but is not a worktree of this repository, or cannot be created.
+function ensure_worker_worktree() {
+    local workdir="$1"
+    local path="$1/$2"
+    local listed
+
+    if [[ -e ${path} ]]; then
+        path="$(cd -- "${path}" && pwd -P)"
+        listed="$(git -C "${workdir}" worktree list --porcelain 2> /dev/null | sed -n 's/^worktree //p')"
+        if ! grep -Fxq -- "${path}" <<< "${listed}"; then
+            printf 'herdr-agents: %s exists but is not a worktree of %s; refusing to seat the worker there.\n' "${path}" "${workdir}" >&2
+            exit 2
+        fi
+    elif ! git -C "${workdir}" worktree add --detach "${path}" origin/main > /dev/null 2>&1; then
+        printf 'herdr-agents: unable to create worker worktree %s from origin/main in %s.\n' "${path}" "${workdir}" >&2
+        exit 2
+    else
+        path="$(cd -- "${path}" && pwd -P)"
+    fi
+    printf '%s\n' "${path}"
+}
+
+# @description Print the agmsg identity seated at a worker worktree, registering
+#   one when none exists. An existing single registration there is reused. A new
+#   one joins the orchestrator's team as <kind>-<profile>-<suffix>-aNNN (next
+#   free NNN), where team and suffix come from the orchestrator's one
+#   non-worker (no -aNNN) claude-code identity at the main checkout. The join
+#   runs with AGMSG_RESOLVE_PROJECT=0 so upstream project resolution (#92)
+#   cannot rewrite the worktree path to the main checkout.
+# @arg $1 string Worker kind.
+# @arg $2 workdir Absolute main checkout path.
+# @arg $3 path Absolute worker worktree path.
+# @exitcode 2 If the worktree or orchestrator registration is ambiguous.
+function ensure_worker_identity() {
+    local kind="$1"
+    local workdir="$2"
+    local worktree="$3"
+    local scripts="${HOME}/.agents/skills/agmsg/scripts"
+    local agent_type seated orchestrator team suffix name next
+
+    agent_type="$(worker_agmsg_type "${kind}")"
+    if [[ ! -x ${scripts}/identities.sh || ! -x ${scripts}/join.sh ]]; then
+        printf 'agmsg scripts not found; skipping worker identity registration: %s\n' "${scripts}" >&2
+        return 0
+    fi
+    seated="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${worktree}" "${agent_type}" 2> /dev/null | cut -f 2 | sort -u)"
+    if [[ ${seated} == *$'\n'* ]]; then
+        printf 'herdr-agents: several agmsg %s identities are registered at %s (%s); refusing to pick one.\n' "${agent_type}" "${worktree}" "$(tr '\n' ' ' <<< "${seated}" | sed 's/ $//')" >&2
+        exit 2
+    fi
+    if [[ -n ${seated} ]]; then
+        printf '%s\n' "${seated}"
+        return 0
+    fi
+    orchestrator="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${workdir}" claude-code 2> /dev/null |
+        awk -F '\t' '$2 !~ /-a[0-9][0-9][0-9]$/' | sort -u)"
+    if [[ -z ${orchestrator} || ${orchestrator} == *$'\n'* ]]; then
+        printf 'herdr-agents: need exactly one orchestrator claude-code identity at %s to name the worker; register the worker yourself with: AGMSG_RESOLVE_PROJECT=0 %s/join.sh <team> <name> %s %q\n' \
+            "${workdir}" "${scripts}" "${agent_type}" "${worktree}" >&2
+        exit 2
+    fi
+    team="${orchestrator%%$'\t'*}"
+    suffix="${orchestrator##*-}"
+    next="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/team.sh" "${team}" --json 2> /dev/null |
+        jq -r '.[]?.member // empty' | sed -n 's/.*-a\([0-9][0-9][0-9]\)$/\1/p' | sort -n | tail -n 1)"
+    printf -v name '%s-%s-%s-a%03d' "${kind}" "${HERDR_AGENTS_WORKER_PROFILE}" "${suffix}" "$((10#${next:-0} + 1))"
+    AGMSG_RESOLVE_PROJECT=0 "${scripts}/join.sh" "${team}" "${name}" "${agent_type}" "${worktree}" > /dev/null
+    printf '%s\n' "${name}"
+}
+
+# @description Point agmsg delivery at the worker worktree when its hook is
+#   missing: `both` for claude-code (turn delivery; upstream session-start.sh
+#   skips sessions under .claude/worktrees, #367, so no Monitor watch starts
+#   there), `turn` for codex. delivery.sh bakes the path into the hook.
+# @arg $1 string Worker kind.
+# @arg $2 path Absolute worker worktree path.
+function ensure_worker_delivery() {
+    local kind="$1"
+    local worktree="$2"
+    local delivery="${HOME}/.agents/skills/agmsg/scripts/delivery.sh"
+    local log_file="${HOME}/.config/herdr/herdr-agents.log"
+
+    [[ -x ${delivery} ]] || return 0
+    mkdir -p "${log_file%/*}"
+    if [[ ${kind} == claude ]]; then
+        jq -e 'any(.hooks.Stop[]?.hooks[]?; ((.command // "") | contains("agmsg/scripts/check-inbox.sh")))' \
+            "${worktree}/.claude/settings.local.json" > /dev/null 2>&1 && return 0
+        "${delivery}" set both claude-code "${worktree}" >> "${log_file}" 2>&1 || true
+    else
+        jq -e 'any(.hooks.Stop[]?.hooks[]?; ((.bash // .command // "") | contains("agmsg/scripts/check-inbox.sh")))' \
+            "${worktree}/.codex/hooks.json" > /dev/null 2>&1 && return 0
+        "${delivery}" set turn codex "${worktree}" >> "${log_file}" 2>&1 || true
+    fi
+}
+
+# @description Prepare the worker seat before a worker agent starts: the
+#   worktree, its identity, and its delivery hook. Sets worker_seat_dir to the
+#   pane cwd (the worktree, or workdir for the legacy main-path seat).
+# @arg $1 string Worker kind.
+# @arg $2 workdir Absolute main checkout path.
+function prepare_worker_seat() {
+    local identity
+
+    worker_seat_dir="$2"
+    [[ -n ${worker_worktree} ]] || return 0
+    worker_seat_dir="$(ensure_worker_worktree "$2" "${worker_worktree}")"
+    identity="$(ensure_worker_identity "$1" "$2" "${worker_seat_dir}")"
+    ensure_worker_delivery "$1" "${worker_seat_dir}"
+    [[ -z ${identity} ]] || printf 'Herdr agents worker seat: %s (agmsg %s)\n' "${worker_seat_dir}" "${identity}" >&2
+}
+
 # @description Derive and validate a herdr 0.8.2 agent registration name.
 # @arg $1 string Agent role prefix.
 # @arg $2 string Herdr workspace id.
@@ -576,11 +713,19 @@ function restart_worker_in_pane() {
     local pane_id="$3"
     local panes_json="$4"
 
+    local cd_command
+
     if pane_has_agent "${panes_json}" "${pane_id}"; then
         herdr agent prompt "${pane_id}" "/exit" > /dev/null
         if ! wait_for_shell_prompt "${pane_id}"; then
             herdr agent send-keys "${pane_id}" Enter > /dev/null
         fi
+    fi
+    # herdr agent start has no --cwd: move the pane shell into the seat first,
+    # which re-seats a legacy main-path worker pane into its worktree.
+    if [[ ${worker_seat_dir:-} != "${workdir:-}" ]] && wait_for_shell_prompt "${pane_id}"; then
+        printf -v cd_command 'cd -- %q' "${worker_seat_dir}"
+        herdr pane run "${pane_id}" "${cd_command}" > /dev/null
     fi
     start_worker_agent "${kind}" "${agent_name}" "${pane_id}" true > /dev/null
 }
@@ -811,7 +956,12 @@ function bootstrap_agmsg() {
     local agent_types=(codex claude-code)
     local max_identities=1
 
-    if [[ "$(worker_agmsg_type "$(resolve_worker_kind)")" == claude-code ]]; then
+    if [[ -n ${worker_worktree:-} ]]; then
+        # The worker is seated in its worktree, with its own hooks there; the
+        # main checkout only carries the orchestrator's claude-code identity.
+        codex_worker=false
+        agent_types=(claude-code)
+    elif [[ "$(worker_agmsg_type "$(resolve_worker_kind)")" == claude-code ]]; then
         # A claude worker is a second claude-code identity: no Codex hooks.
         codex_worker=false
         agent_types=(claude-code)
@@ -1016,7 +1166,13 @@ if [[ ${bootstrap_mode} == true ]]; then
     workdir="${1:-$PWD}"
     cd -- "${workdir}"
     workdir="$(pwd -P)"
+    worker_worktree="$(resolve_worker_worktree)"
     bootstrap_agmsg "${workdir}"
+    # Hooks only: an existing worker worktree gets its delivery hook; seating
+    # (worktree creation, identity) stays with the pane-managing modes.
+    if [[ -n ${worker_worktree} && -d ${workdir}/${worker_worktree} ]]; then
+        ensure_worker_delivery "$(resolve_worker_kind)" "$(cd -- "${workdir}/${worker_worktree}" && pwd -P)"
+    fi
     exit 0
 fi
 
@@ -1180,7 +1336,17 @@ cd -- "${workdir}"
 workdir="$(pwd -P)"
 load_seat_labels "${workdir}"
 HERDR_AGENTS_WORKER_PROFILE="$(resolve_worker_profile)"
-require_distinct_worker_identity "${worker_kind}" "${workdir}"
+worker_worktree="$(resolve_worker_worktree)"
+worker_seat_dir="${workdir}"
+if [[ ${attach_mode} == true && -n ${worker_worktree} ]] &&
+    repo_common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2> /dev/null)" &&
+    [[ "$(cd -- "${repo_common_dir%/.git}/${worker_worktree}" 2> /dev/null && pwd -P)" == "${workdir}" ]]; then
+    # The worktree-seated worker's own SessionStart hook: attach is for the orchestrator pane.
+    exit 0
+fi
+# A worktree-seated worker has its own path, so its identity cannot collide;
+# the T14 guard only covers the legacy seat in the main checkout.
+[[ -n ${worker_worktree} ]] || require_distinct_worker_identity "${worker_kind}" "${workdir}"
 
 if [[ ${attach_mode} == true ]]; then
     workspace_id="${HERDR_WORKSPACE_ID}"
@@ -1219,14 +1385,15 @@ if [[ ${attach_mode} == true ]]; then
     fi
 
     if [[ -z ${worker_pane_id} && -z ${workspace_worker_pane_id} ]]; then
+        prepare_worker_seat "${worker_kind}" "${workdir}"
         # A resident claude-kind worker's Monitor watch re-arms unconditionally
         # on expiry (upstream default: re-arm only if the expired watch
         # delivered something); an unattended worker pane has no one to notice
         # a silently dropped watch, unlike the interactive orchestrator pane.
         if [[ ${worker_kind} == claude ]]; then
-            worker_pane_id="$(split_agent_pane "${claude_pane_id}" "${workdir}" --env AGMSG_CC_MONITOR_KEEP_ALIVE=1 --env AGMSG_RESOLVE_PROJECT=0)"
+            worker_pane_id="$(split_agent_pane "${claude_pane_id}" "${worker_seat_dir}" --env AGMSG_CC_MONITOR_KEEP_ALIVE=1 --env AGMSG_RESOLVE_PROJECT=0)"
         else
-            worker_pane_id="$(split_agent_pane "${claude_pane_id}" "${workdir}" --env AGMSG_RESOLVE_PROJECT=0)"
+            worker_pane_id="$(split_agent_pane "${claude_pane_id}" "${worker_seat_dir}" --env AGMSG_RESOLVE_PROJECT=0)"
         fi
         start_worker_agent "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" true > /dev/null
     fi
@@ -1275,6 +1442,7 @@ if [[ ${restart_mode} == true ]]; then
     if ! printf '%s\n' "${panes_json}" | jq -e --arg pane_id "${worker_pane_id}" --arg label "${worker_kind}-worker" '.result.panes[]? | select(.pane_id == $pane_id and .label == $label)' > /dev/null; then
         rename_pane_unless_seat_named "${worker_pane_id}" "${worker_kind}-worker"
     fi
+    prepare_worker_seat "${worker_kind}" "${workdir}"
     restart_worker_in_pane "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" "${panes_json}"
     printf 'Herdr agents worker restarted in pane %s\n' "${worker_pane_id}"
     exit 0
@@ -1289,11 +1457,13 @@ if [[ -n ${existing_workspace_id} ]]; then
     if [[ -z ${worker_pane_id} ]] && worker_pane_id="$(labeled_worker_pane_id "${worker_kind}" "${panes_json}")"; then
         # Reuse the labeled worker pane; an exited worker leaves it agentless.
         if ! pane_has_agent "${panes_json}" "${worker_pane_id}"; then
+            prepare_worker_seat "${worker_kind}" "${workdir}"
             restart_worker_in_pane "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" "${panes_json}"
             panes_json="$(managed_pane_list "${workspace_id}")"
         fi
     fi
     if [[ -z ${worker_pane_id} ]]; then
+        prepare_worker_seat "${worker_kind}" "${workdir}"
         worker_pane_id="$(empty_pane_id "${panes_json}")"
         worker_pane_is_new=false
         if [[ -z ${worker_pane_id} ]]; then
@@ -1303,9 +1473,9 @@ if [[ -n ${existing_workspace_id} ]]; then
                 exit 1
             fi
             if [[ ${worker_kind} == claude ]]; then
-                worker_pane_id="$(split_agent_pane "${split_source_pane_id}" "${workdir}" --env AGMSG_CC_MONITOR_KEEP_ALIVE=1 --env AGMSG_RESOLVE_PROJECT=0)"
+                worker_pane_id="$(split_agent_pane "${split_source_pane_id}" "${worker_seat_dir}" --env AGMSG_CC_MONITOR_KEEP_ALIVE=1 --env AGMSG_RESOLVE_PROJECT=0)"
             else
-                worker_pane_id="$(split_agent_pane "${split_source_pane_id}" "${workdir}" --env AGMSG_RESOLVE_PROJECT=0)"
+                worker_pane_id="$(split_agent_pane "${split_source_pane_id}" "${worker_seat_dir}" --env AGMSG_RESOLVE_PROJECT=0)"
             fi
             worker_pane_is_new=true
         fi
@@ -1360,10 +1530,11 @@ fi
 
 worker_agent_name="$(agent_name_for_workspace "${worker_kind}-worker" "${workspace_id}")"
 start_claude_in_pane "${root_pane_id}" "${workspace_id}" true
+prepare_worker_seat "${worker_kind}" "${workdir}"
 if [[ ${worker_kind} == claude ]]; then
-    worker_pane_id="$(split_agent_pane "${root_pane_id}" "${workdir}" --env AGMSG_CC_MONITOR_KEEP_ALIVE=1 --env AGMSG_RESOLVE_PROJECT=0)"
+    worker_pane_id="$(split_agent_pane "${root_pane_id}" "${worker_seat_dir}" --env AGMSG_CC_MONITOR_KEEP_ALIVE=1 --env AGMSG_RESOLVE_PROJECT=0)"
 else
-    worker_pane_id="$(split_agent_pane "${root_pane_id}" "${workdir}" --env AGMSG_RESOLVE_PROJECT=0)"
+    worker_pane_id="$(split_agent_pane "${root_pane_id}" "${worker_seat_dir}" --env AGMSG_RESOLVE_PROJECT=0)"
 fi
 start_worker_agent "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" true > /dev/null
 bootstrap_agmsg "${workdir}"

@@ -229,6 +229,22 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     self.module.validate_agent_manifest()
                 self.assertIn("worker_kind must be codex or claude", stderr.getvalue())
 
+    def test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees(self) -> None:
+        manifest = self.write_valid_agent_manifest()
+        manifest["worker_worktree"] = ".claude/worktrees/worker-c"
+
+        self.module.validate_agent_manifest()
+
+    def test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees(self) -> None:
+        for value in ("worker-c", "/abs/.claude/worktrees/x", ".claude/worktrees/..", ".claude/worktrees/a/b", 3):
+            with self.subTest(worker_worktree=value):
+                manifest = self.write_valid_agent_manifest()
+                manifest["worker_worktree"] = value
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_agent_manifest()
+                self.assertIn("worker_worktree must be a relative path under .claude/worktrees/", stderr.getvalue())
+
     def test_agent_manifest_rejects_unknown_worker_profile(self) -> None:
         manifest = self.write_valid_agent_manifest()
         manifest["worker_profile"] = "banana"

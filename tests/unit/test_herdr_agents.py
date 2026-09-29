@@ -1878,6 +1878,159 @@ fi
             label=label,
         )
 
+    def write_worktree_seat(
+        self,
+        *,
+        worktree_identities: str = "",
+        main_identities: str = "dotfiles\tclaude-remediation-dot\ndotfiles\tclaude-standard-dot-a006",
+        team_members: tuple[str, ...] = ("claude-remediation-dot", "claude-standard-dot-a005", "claude-standard-dot-a006"),
+    ) -> Path:
+        """A git repo with origin/main, a manifest worker_worktree, and path-aware agmsg fakes."""
+        for args in (
+            ("init", "-q"),
+            ("-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-q", "--allow-empty", "-m", "init"),
+            ("update-ref", "refs/remotes/origin/main", "HEAD"),
+        ):
+            subprocess.run(["git", "-C", str(self.workdir), *args], check=True, capture_output=True)
+        profiles = self.home_dir / ".agents/model-profiles.env"
+        profiles.parent.mkdir(parents=True, exist_ok=True)
+        profiles.write_text(
+            'HERDR_AGENTS_WORKER_KIND="claude"\n'
+            'HERDR_AGENTS_WORKER_PROFILE="standard"\n'
+            'HERDR_AGENTS_WORKER_WORKTREE=".claude/worktrees/worker-c"\n'
+            'MODEL_PROFILE_STANDARD_CLAUDE_ARGS="--model opus --effort high"\n'
+        )
+        scripts = self.home_dir / ".agents/skills/agmsg/scripts"
+        scripts.mkdir(parents=True, exist_ok=True)
+        worktree = self.workdir.resolve() / ".claude/worktrees/worker-c"
+        (scripts / "at-main.txt").write_text(main_identities)
+        (scripts / "at-worktree.txt").write_text(worktree_identities)
+        for name, body in {
+            "identities.sh": f"""printf 'identities %s resolve=%s\\n' "$*" "${{AGMSG_RESOLVE_PROJECT:-}}" >> {self.calls_path}
+case "$1" in
+{worktree}) cat {scripts / "at-worktree.txt"} ;;
+{self.workdir.resolve()}) [[ $2 == claude-code ]] && cat {scripts / "at-main.txt"} ;;
+esac
+""",
+            "join.sh": f"""printf 'join %s resolve=%s\\n' "$*" "${{AGMSG_RESOLVE_PROJECT:-}}" >> {self.calls_path}
+printf 'Joined team %s as %s\\n' "$1" "$2"
+""",
+            "team.sh": "printf '%s\\n' '" + json.dumps([{"member": m} for m in team_members]) + "'\n",
+            "delivery.sh": f"""printf 'delivery %s\\n' "$*" >> {self.calls_path}
+""",
+        }.items():
+            (scripts / name).write_text("#!/usr/bin/env bash\n" + body)
+            (scripts / name).chmod(0o755)
+        return worktree
+
+    def write_legacy_seated_pair(self) -> None:
+        """A claude pair whose worker pane still runs in the main checkout."""
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-worker","pane_id":"w-old:p2","workspace_id":"w-old"}}',
+            agent_pane_id="w-old:p2",
+            label="project",
+        )
+
+    def test_restart_worker_reseats_a_main_path_worker_into_its_worktree(self) -> None:
+        worktree = self.write_worktree_seat()
+        self.write_legacy_seated_pair()
+
+        result = self.run_helper("--restart-worker")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        listed = subprocess.run(
+            ["git", "-C", str(self.workdir), "worktree", "list", "--porcelain"],
+            check=True, capture_output=True, text=True,
+        ).stdout
+        self.assertIn(f"worktree {worktree}\n", listed)
+        self.assertIn(f"join dotfiles claude-standard-dot-a007 claude-code {worktree} resolve=0", calls)
+        self.assertIn(f"delivery set both claude-code {worktree}", calls)
+        exit_call = calls.index("agent prompt w-old:p2 /exit")
+        cd_call = calls.index(f"pane run w-old:p2 cd -- {worktree}")
+        start_call = calls.index(
+            "agent start claude-worker-w-old --kind claude --pane w-old:p2 "
+            "--timeout 30000 -- --model opus --effort high"
+        )
+        self.assertLess(calls.index(f"delivery set both claude-code {worktree}"), start_call)
+        self.assertLess(exit_call, cd_call)
+        self.assertLess(cd_call, start_call)
+        self.assertIn(f"Herdr agents worker seat: {worktree} (agmsg claude-standard-dot-a007)", result.stderr)
+
+    def test_worker_seat_reuses_the_identity_and_hook_already_at_the_worktree(self) -> None:
+        worktree = self.write_worktree_seat(worktree_identities="dotfiles\tclaude-standard-dot-a005")
+        subprocess.run(
+            ["git", "-C", str(self.workdir), "worktree", "add", "-q", "--detach", str(worktree), "origin/main"],
+            check=True, capture_output=True,
+        )
+        hooks = worktree / ".claude/settings.local.json"
+        hooks.parent.mkdir(parents=True)
+        hooks.write_text(json.dumps({"hooks": {"Stop": [{"hooks": [{"command": "bash ~/.agents/skills/agmsg/scripts/check-inbox.sh claude-code x"}]}]}}))
+        self.write_legacy_seated_pair()
+
+        result = self.run_helper("--restart-worker")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertFalse(any(call.startswith("join ") for call in calls), calls)
+        self.assertFalse(any(call.startswith("delivery set") and str(worktree) in call for call in calls), calls)
+        self.assertIn(f"identities {worktree} claude-code resolve=0", calls)
+        self.assertIn(f"Herdr agents worker seat: {worktree} (agmsg claude-standard-dot-a005)", result.stderr)
+
+    def test_full_mode_splits_the_worker_pane_in_its_worktree(self) -> None:
+        worktree = self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        worker_split = [call for call in calls if call.startswith("pane split") and "AGMSG_RESOLVE_PROJECT=0" in call]
+        self.assertEqual(len(worker_split), 1, calls)
+        self.assertIn(f"--cwd {worktree} ", worker_split[0])
+        self.assertIn("--env AGMSG_CC_MONITOR_KEEP_ALIVE=1", worker_split[0])
+        self.assertIn(f"join dotfiles claude-standard-dot-a007 claude-code {worktree} resolve=0", calls)
+        self.assertLess(calls.index(f"delivery set both claude-code {worktree}"), calls.index(worker_split[0]))
+        self.assertNotIn("would share the orchestrator's claude-code agmsg identity", result.stderr)
+
+    def test_worker_seat_refuses_a_path_that_is_not_a_worktree(self) -> None:
+        worktree = self.write_worktree_seat()
+        worktree.mkdir(parents=True)
+        self.write_legacy_seated_pair()
+
+        result = self.run_helper("--restart-worker")
+
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn(f"{worktree} exists but is not a worktree of", result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertFalse(any(call.startswith(("agent prompt", "agent start", "join ")) for call in calls), calls)
+
+    def test_worker_seat_refuses_an_ambiguous_orchestrator_identity(self) -> None:
+        worktree = self.write_worktree_seat(main_identities="dotfiles\tclaude-a\ndotfiles\tclaude-b")
+        self.write_legacy_seated_pair()
+
+        result = self.run_helper("--restart-worker")
+
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("need exactly one orchestrator claude-code identity", result.stderr)
+        self.assertIn(f"AGMSG_RESOLVE_PROJECT=0 {self.home_dir}/.agents/skills/agmsg/scripts/join.sh <team> <name> claude-code {worktree}", result.stderr)
+        self.assertFalse(any(call.startswith(("join ", "agent start")) for call in self.calls_path.read_text().splitlines()))
+
+    def test_attach_from_the_worker_worktree_exits_quietly(self) -> None:
+        worktree = self.write_worktree_seat()
+        subprocess.run(
+            ["git", "-C", str(self.workdir), "worktree", "add", "-q", "--detach", str(worktree), "origin/main"],
+            check=True, capture_output=True,
+        )
+        self.workdir = worktree
+
+        result = self.run_attach_helper(in_herdr=True, workspace_id="w-old", pane_id="w-old:p2")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stderr, "")
+        self.assertFalse(self.calls_path.exists() and self.calls_path.read_text())
+
     def test_restart_worker_relaunches_the_worker_in_its_existing_pane(self) -> None:
         self.write_claude_pair_state(
             f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-worker","pane_id":"w-old:p2","workspace_id":"w-old"}}'

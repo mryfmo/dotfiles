@@ -460,9 +460,40 @@ inheriting the same managed
 lifecycle: dedicated workspace creation, pane wait/prompt handling, layout
 repair, and attach-mode healing. A claude worker also gets an unattended
 `Down`+`Enter` sent to its workspace-trust dialog on first start, since that
-dialog otherwise defaults to "No" and exits. Because agmsg resolves identity by
-project path and agent type, a claude worker shares the orchestrator's
-`claude-code` identity, so `herdr-agents` exits 2 before touching panes until
+dialog otherwise defaults to "No" and exits.
+
+The worker pane is seated in its own worktree. The worktree is
+`worker_worktree` in the manifest (currently `.claude/worktrees/worker-c`),
+rendered into `~/.agents/model-profiles.env` as `HERDR_AGENTS_WORKER_WORKTREE`.
+Before any worker agent starts (full mode, attach repair, and
+`--restart-worker`), `herdr-agents` prepares the seat:
+
+- It creates the worktree detached at `origin/main` when it is missing, and
+  refuses a path that exists but is not a worktree of this repository. It
+  never changes an existing worktree's checkout.
+- It reuses the single agmsg identity registered at that path. If there is
+  none, it joins `<kind>-<profile>-<suffix>-aNNN` into the orchestrator's team
+  with `AGMSG_RESOLVE_PROJECT=0`. The team and suffix come from the
+  orchestrator's one non-worker `claude-code` identity at the main checkout,
+  and NNN is the next free number. It refuses on any ambiguity.
+- It points delivery at the worktree: `both` for claude-code, `turn` for
+  codex.
+
+It then splits the worker pane with `--cwd <worktree>`.
+
+Delivery reaches the worker through its own Stop hook as turn delivery. Upstream
+`session-start.sh` skips sessions whose cwd is under `.claude/worktrees/` (#367),
+so no Monitor watch starts there, and the pane's `AGMSG_CC_MONITOR_KEEP_ALIVE=1`
+has no effect. `herdr-agents --restart-worker` re-seats a worker pane that
+still runs in the main checkout: after `/exit` it runs
+`cd -- <worktree>` in the pane before starting the agent, because
+`herdr agent start` has no cwd option. The worker's own SessionStart
+`--attach` hook exits quietly when its cwd is that worktree.
+
+With `worker_worktree` unset (the legacy seat in the main checkout), because
+agmsg resolves identity by project path and agent type, a claude worker shares
+the orchestrator's `claude-code` identity, so `herdr-agents` exits 2 before
+touching panes until
 a second `claude-code` identity is registered for the directory with
 `AGMSG_RESOLVE_PROJECT=0 ~/.agents/skills/agmsg/scripts/join.sh <team> <role> claude-code <dir>`.
 Registering it only lifts this temporary guard: both sessions still resolve to
@@ -483,9 +514,9 @@ such as a legacy `files` pane restored from a pre-two-pane persisted session
 — are deliberately preserved, never closed, split, or reused. Full mode
 (`herdr-agents [DIR]`) creates or heals the two managed panes and focuses a
 healthy existing workspace instead of recreating it, again leaving any
-unmanaged panes in place. Both agents start in
-the same project cwd and use the shared agmsg scripts/state for cross-agent
-messaging; the worker is a resident interactive session, kept warm so
+unmanaged panes in place. The orchestrator starts in DIR and the worker in its
+worktree; both use the shared agmsg scripts/state for cross-agent
+messaging. The worker is a resident interactive session, kept warm so
 delegation avoids per-task cold starts and survives Herdr session restores.
 Claude Code seats use agmsg's `both` delivery mode (monitor's push plus
 turn's pull), one notch more redundant than upstream's own `monitor` default,

@@ -714,6 +714,16 @@ def validate_agent_manifest() -> dict[str, Any]:
         fail(f"README.md must state the manifest worker_kind as (currently `{worker_kind}`;")
     if "herdr-agents --restart-worker" not in readme:
         fail("README.md must document herdr-agents --restart-worker for worker relaunches")
+    worker_worktree = manifest.get("worker_worktree")
+    if worker_worktree is not None and (
+        not isinstance(worker_worktree, str)
+        or not re.fullmatch(r"\.claude/worktrees/[A-Za-z0-9._-]+", worker_worktree)
+        or worker_worktree.rsplit("/", 1)[1] in {".", ".."}
+    ):
+        fail(
+            f"{manifest_path} worker_worktree must be a relative path under .claude/worktrees/: "
+            f"{worker_worktree!r}"
+        )
     worker_profile = manifest.get("worker_profile")
     if worker_profile is not None and worker_profile not in profiles:
         fail(

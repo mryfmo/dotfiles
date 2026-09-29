@@ -144,3 +144,34 @@ $ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/validation/dot-claude-sandbox-
 Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
 exit 0
 ```
+
+## Live E2E — leg 1: running session after `make update` (2026-09-29 ~13:20Z)
+
+Operator ran `make -C ~/.local/share/chezmoi update` (canonical 258339f, drift
+0). Claude Code hot-reloaded the settings: this orchestrator session's Bash
+now runs under the sandbox (`Seccomp: 2`, `NoNewPrivs: 1`, writes outside the
+cwd fail with a read-only filesystem). Results, in checklist order:
+
+| Check | Result |
+|---|---|
+| `herdr pane list` inside the sandbox | **FAIL**: `PermissionDenied: Operation not permitted` (allowUnixSockets ignored on Linux, as documented) |
+| same call retried unsandboxed via the harness | works after the permission gate (auto mode) — every herdr / agmsg-dispatch / herdr-agents call now needs that retry |
+| write to `~/.agents/skills/agmsg/run` (allowWrite root) | ok |
+| `history.sh dotfiles` (agmsg read) | ok |
+| `git fetch` / `gh api` (GitHub hosts) | ok (git printed a harmless `.gitmodules` permission warning) |
+| `.orchestration/` write in cwd | ok |
+| `curl https://registry.npmjs.org/`, `https://example.com/` (NOT allowlisted) | **200 — not blocked**; egress goes through the proxy at localhost:3128 and raw TCP is blocked, but `allowedDomains` was not enforced in this hot-reloaded session |
+| `curl https://api.openai.com/` | 421 (server-side misdirect; proxy let it through) |
+| `mise exec npm:pnpm -- pnpm --version` | 12.5.1, no prompt |
+| `make doctor` "Claude Code sandbox" | bwrap and socat found |
+| `~/.codex/security.config.toml` | `model = "gpt-6-astra"` (T42 live) |
+
+Findings: (1) the Linux socket gap is real and operational — the orchestrator's
+control plane (herdr socket) fails inside the sandbox on every call; decision
+needed now (`allowAllUnixSockets: true` vs `excludedCommands` for
+`herdr`, `agmsg-dispatch`, `herdr-agents`). (2) `network.allowedDomains` did
+not restrict egress in the hot-reloaded session; to be re-tested in leg 2
+(fresh session after restart) before concluding it is a Claude Code behaviour
+rather than a reload artefact.
+
+Leg 2 (fresh session) and the `failIfUnavailable: true` flip remain pending.

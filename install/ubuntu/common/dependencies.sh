@@ -5,6 +5,8 @@
 # @description
 #   Ensures the base command-line toolchain required by the repository is
 #   present, including `sudo` when starting from a minimal container.
+#   `bubblewrap` and `socat` are the Linux prerequisites of the Claude Code
+#   Bash sandbox.
 
 set -Eeuo pipefail
 
@@ -13,6 +15,7 @@ if [ "${DOTFILES_DEBUG:-}" ]; then
 fi
 
 readonly PACKAGES=(
+    bubblewrap
     build-essential
     cmake
     curl
@@ -24,6 +27,7 @@ readonly PACKAGES=(
     mosh
     perl
     pinentry-curses
+    socat
     sudo
     unzip
     vim

@@ -229,28 +229,28 @@ url = "https://github.com/Kitware/CMake/releases/download/v4.4.3/cmake-4.4.3-mac
 url_api = "https://api.github.com/repos/Kitware/CMake/releases/assets/529577557"
 
 [[tools.dotenvx]]
-version = "2.28.2"
+version = "2.29.0"
 backend = "aqua:dotenvx/dotenvx"
 
 [tools.dotenvx."platforms.linux-arm64"]
-checksum = "sha256:d7617a9540c614c60fa97ef8c6b3313526ac7cbe789d37638197416b01eca542"
-url = "https://github.com/dotenvx/dotenvx/releases/download/v2.28.2/dotenvx-2.28.2-linux-aarch64.tar.gz"
-url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/575747948"
+checksum = "sha256:6f5a7cac9b4d5dc8368937c8b38afa4d12f44e887df62fb7c1cc77a5fed9fdd2"
+url = "https://github.com/dotenvx/dotenvx/releases/download/v2.29.0/dotenvx-2.29.0-linux-aarch64.tar.gz"
+url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/579937118"
 
 [tools.dotenvx."platforms.linux-x64"]
-checksum = "sha256:16c0ed2885863f61fe1123345cf3e153f9fef966be91c1e1afd5a8bac6bfb5fc"
-url = "https://github.com/dotenvx/dotenvx/releases/download/v2.28.2/dotenvx-2.28.2-linux-amd64.tar.gz"
-url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/575747945"
+checksum = "sha256:cbae5e9d2b8340d4ee0e1799ecbd4e07e222862a427fb9bc97b0319c980cda8b"
+url = "https://github.com/dotenvx/dotenvx/releases/download/v2.29.0/dotenvx-2.29.0-linux-amd64.tar.gz"
+url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/579937126"
 
 [tools.dotenvx."platforms.macos-arm64"]
-checksum = "sha256:92043dab1ade27226ad7ea6fb8d1c7041bc7d0555d212cf10895e4a94092ecc3"
-url = "https://github.com/dotenvx/dotenvx/releases/download/v2.28.2/dotenvx-2.28.2-darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/575747924"
+checksum = "sha256:85903167852a17f2ab276ad69f6ca9c70d8603d589ed5183eee27f04bdf0832c"
+url = "https://github.com/dotenvx/dotenvx/releases/download/v2.29.0/dotenvx-2.29.0-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/579937104"
 
 [tools.dotenvx."platforms.macos-x64"]
-checksum = "sha256:98072ee54d0f32f19866688fb6c9a7fb12185256b96643798df0e011db9866c5"
-url = "https://github.com/dotenvx/dotenvx/releases/download/v2.28.2/dotenvx-2.28.2-darwin-amd64.tar.gz"
-url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/575747944"
+checksum = "sha256:03e805be4ec09e43f9498d2402c6bffe475f5cfdeb301250bef5ff4cd3b3143d"
+url = "https://github.com/dotenvx/dotenvx/releases/download/v2.29.0/dotenvx-2.29.0-darwin-amd64.tar.gz"
+url_api = "https://api.github.com/repos/dotenvx/dotenvx/releases/assets/579937105"
 
 [[tools.fd]]
 version = "10.3.0"
@@ -490,34 +490,34 @@ url_api = "https://api.github.com/repos/jqlang/jq/releases/assets/453012782"
 provenance = "github-attestations"
 
 [[tools.node]]
-version = "26.9.0"
+version = "26.10.0"
 backend = "core:node"
 
 [tools.node."platforms.linux-arm64"]
-checksum = "sha256:d5077591aa38b48d90bf9b3ac10da8d2f40dce289b20294913c58c19f153eb12"
-url = "https://nodejs.org/dist/v26.9.0/node-v26.9.0-linux-arm64.tar.gz"
+checksum = "sha256:423a41bff8e2a2fa15e702fefe2919ef95823b2378744daccb8439302534b44f"
+url = "https://nodejs.org/dist/v26.10.0/node-v26.10.0-linux-arm64.tar.gz"
 
 [tools.node."platforms.linux-x64"]
-checksum = "sha256:03d9104fc4f19652e74480fed11c023d75981464b7292f21a601c3f95ce7d90d"
-url = "https://nodejs.org/dist/v26.9.0/node-v26.9.0-linux-x64.tar.gz"
+checksum = "sha256:cb5c9ce9c80d7b8821e3a258543c71b939138cf17c74d5cc44bbe85d6dbc5ad8"
+url = "https://nodejs.org/dist/v26.10.0/node-v26.10.0-linux-x64.tar.gz"
 
 [tools.node."platforms.macos-arm64"]
-checksum = "sha256:6f3de7ed853ee283b4bf24b6e426618f1d357401ce5815db1866eb85eb4b05d9"
-url = "https://nodejs.org/dist/v26.9.0/node-v26.9.0-darwin-arm64.tar.gz"
+checksum = "sha256:751fdf7439f115d87ee2a8f3f18c065b6151852068e3e666ac60ac2996f75ac9"
+url = "https://nodejs.org/dist/v26.10.0/node-v26.10.0-darwin-arm64.tar.gz"
 
 [tools.node."platforms.macos-x64"]
-checksum = "sha256:06b2e742ed9025dc84adc830243b3f731956eac9c321bccd0ede384209af02a8"
-url = "https://nodejs.org/dist/v26.9.0/node-v26.9.0-darwin-x64.tar.gz"
+checksum = "sha256:ebbe9ab9b58ad6bb54390d6e2c862c1afa7d4475fb7e8ae8146acde211bf70df"
+url = "https://nodejs.org/dist/v26.10.0/node-v26.10.0-darwin-x64.tar.gz"
 
 [[tools."npm:@anthropic-ai/claude-code"]]
-version = "2.1.283"
+version = "2.1.284"
 backend = "npm:@anthropic-ai/claude-code"
 
 [tools."npm:@anthropic-ai/claude-code".options]
 allow_builds = '["@anthropic-ai/claude-code"]'
 
 [[tools."npm:@openai/codex"]]
-version = "0.157.1"
+version = "0.158.0"
 backend = "npm:@openai/codex"
 
 [[tools."npm:bash-language-server"]]
@@ -529,7 +529,7 @@ version = "2.2.30"
 backend = "npm:ccstatusline"
 
 [[tools."npm:ccusage"]]
-version = "20.0.23"
+version = "20.0.24"
 backend = "npm:ccusage"
 
 [[tools."npm:fast-cli"]]
@@ -537,7 +537,7 @@ version = "5.2.0"
 backend = "npm:fast-cli"
 
 [[tools."npm:pnpm"]]
-version = "12.4.1"
+version = "12.5.1"
 backend = "npm:pnpm"
 
 [[tools."npm:pyright"]]

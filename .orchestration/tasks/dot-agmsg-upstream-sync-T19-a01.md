@@ -85,3 +85,9 @@ PR #184 updated (same branch), CI green, all five artefacts appended with round-
 
 ## Revision history (continued)
 - r3 (09-28): round 2 — rebase onto current main (ten overlapping files), close findings 1–9 and 11, reconcile deliverable 4 with the T33a rules and the live regime (deprecate, do not delete, agmsg-dispatch), acceptance plan for the live installer switch.
+
+### Revision 3 — ruling addendum (2026-09-29, on the worker's boundary question)
+
+Worker evidence (scratch-HOME E2E): upstream `install.sh` prunes `scripts/` entries that 1.5.0 does not ship on the plain install path too (install.sh:929), so the vendored `scripts/lib/identifier.sh` disappears and `agmsg-dispatch` fails at `source`; 1.5.0 provides `lib/validate.sh` (`agmsg_validate_team_name`, `agmsg_validate_agent_name`) instead; `poke.sh` exits 1 ("no placement record") for every hand-joined member, i.e. every current herdr-agents worker, so the orchestrator would have no herdr wake path after the upgrade.
+
+Ruling: **option A**. Authorize a minimal code change to `home/dot_local/bin/common/executable_agmsg-dispatch`: replace the `lib/identifier.sh` source + `agmsg_validate_identifiers` call with upstream `lib/validate.sh` (validate the team name and the two agent names), behavior otherwise unchanged; update `tests/unit/test_agmsg_dispatch.py`'s lib fixture accordingly. `agmsg-dispatch` stays the sanctioned orchestrator wake path until the seating task (T34) writes placement records for workers; its shdoc header says so instead of "deprecated". Rule/SKILL text keeps `agmsg-dispatch` for herdr-paned workers and adds `poke.sh` only for spawn-seated members. `allowed_files` accordingly: `home/dot_local/bin/common/executable_agmsg-dispatch` (this change), `tests/unit/test_agmsg_dispatch.py`.

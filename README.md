@@ -630,13 +630,38 @@ carries `advisor: fable` on its claude side, rendered into those launch args as
 `herdr-agents --restart-worker`. The orchestrator side
 follows `interactive_profile` in `home/dot_agents/agent-config.yaml`,
 escalating with `/model` and `/effort` only at task boundaries. Parallelism
-never adds panes
-to this workspace: one git worktree equals one resident worker in its own
-tab/workspace. Its pane receives the worktree through
-`herdr pane split <pane> --direction right --cwd <worktree>`, and its worker
-starts with `herdr agent start <name> --kind <worker_kind> --pane <id>`.
-Completion is detected only through agmsg RESULT messages, and about three
-concurrent workers is the practical supervision ceiling.
+never adds panes to this workspace: one git worktree equals one resident worker
+in its own workspace. `herdr-agents --add-worker <worktree> [--kind
+codex|claude] [--profile NAME] [DIR]` and `herdr-agents --remove-worker
+<worktree> [--force] [DIR]` are the only sanctioned way to add or remove one.
+`<worktree>` is a path under `DIR/.claude/worktrees/`.
+
+Add-worker:
+- creates the worktree from `origin/main` when missing and names the identity
+  as for the pair worker;
+- points delivery at the worktree;
+- creates or reuses the workspace `<repo> worker <name>`;
+- seats the worker through upstream `spawn.sh <type> <name> --project
+  <worktree> --team <team> --terminal-driver herdr --window`, which pre-joins
+  the identity with project resolution off, opens the tab, boots the CLI with
+  its actas prompt, writes the placement record that `poke.sh` and
+  `despawn.sh` need, and waits for readiness.
+
+The profile's launch arguments reach the CLI through a generated
+`AGMSG_SPAWN_OPTIONS_FILE` section:
+- a claude worker gets `MODEL_PROFILE_<NAME>_CLAUDE_ARGS`, so model, effort
+  and advisor are all carried;
+- a codex worker gets `--profile <name> --sandbox workspace-write`.
+
+Re-running for a workspace that already has an agent is a no-op.
+
+Remove-worker refuses a worktree with uncommitted changes unless `--force`.
+Otherwise it runs `despawn.sh <team> <orchestrator> <name>` (with `--force`
+passed through), then `delivery.sh set off`, `leave.sh`, and `herdr workspace
+close`. The worktree itself is kept. Raw herdr topology commands (`tab
+create`, `pane split`, `workspace create`) stay forbidden to the orchestrator
+(T21 G7). Completion is detected only through agmsg RESULT messages, and about
+three concurrent workers is the practical supervision ceiling.
 
 New workspaces no longer create a persistent files pane; `prefix+f` opens the
 on-demand `herdr-file-viewer` popup instead. A legacy `files` pane restored

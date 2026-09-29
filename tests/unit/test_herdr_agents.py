@@ -1908,7 +1908,7 @@ fi
         for name, body in {
             "identities.sh": f"""printf 'identities %s resolve=%s\\n' "$*" "${{AGMSG_RESOLVE_PROJECT:-}}" >> {self.calls_path}
 case "$1" in
-{worktree}) cat {scripts / "at-worktree.txt"} ;;
+{self.workdir.resolve()}/.claude/worktrees/*) [[ $2 == claude-code ]] && cat {scripts / "at-worktree.txt"} ;;
 {self.workdir.resolve()}) [[ $2 == claude-code ]] && cat {scripts / "at-main.txt"} ;;
 esac
 """,
@@ -2030,6 +2030,158 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(result.stderr, "")
         self.assertFalse(self.calls_path.exists() and self.calls_path.read_text())
+
+    def write_seat_lifecycle_fakes(self, *, despawn_exit: int = 0) -> Path:
+        """Fake agmsg spawn/despawn/leave on top of the worktree-seat fakes."""
+        scripts = self.home_dir / ".agents/skills/agmsg/scripts"
+        options_copy = self.temp_dir / "spawn-options.yaml"
+        for name, body in {
+            "spawn.sh": f"""printf 'spawn %s ws=%s\\n' "$*" "${{HERDR_WORKSPACE_ID:-}}" >> {self.calls_path}
+cp "$AGMSG_SPAWN_OPTIONS_FILE" {options_copy}
+""",
+            "despawn.sh": f"""printf 'despawn %s\\n' "$*" >> {self.calls_path}
+exit {despawn_exit}
+""",
+            "leave.sh": f"""printf 'leave %s\\n' "$*" >> {self.calls_path}
+""",
+        }.items():
+            (scripts / name).write_text("#!/usr/bin/env bash\n" + body)
+            (scripts / name).chmod(0o755)
+        return options_copy
+
+    def add_seat_worktree(self, name: str) -> Path:
+        path = self.workdir.resolve() / ".claude/worktrees" / name
+        subprocess.run(
+            ["git", "-C", str(self.workdir), "worktree", "add", "-q", "--detach", str(path), "origin/main"],
+            check=True, capture_output=True,
+        )
+        return path
+
+    def test_add_worker_spawns_the_seat_in_its_own_workspace_with_profile_args(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        options = self.write_seat_lifecycle_fakes()
+        worktree = self.workdir.resolve() / ".claude/worktrees/b1"
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/b1")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn(
+            f"workspace create --cwd {worktree} --label project worker b1 --env HERDR_AGENTS_LAYOUT=managed --no-focus",
+            calls,
+        )
+        self.assertIn(
+            f"spawn claude-code claude-standard-dot-a007 --project {worktree} --team dotfiles "
+            "--terminal-driver herdr --window ws=w-test",
+            calls,
+        )
+        self.assertFalse(any(call.startswith("join ") for call in calls), calls)
+        self.assertLess(calls.index(f"delivery set both claude-code {worktree}"), next(i for i, c in enumerate(calls) if c.startswith("spawn ")))
+        self.assertEqual(options.read_text(), "claude-code:\n  --model: opus\n  --effort: high\n")
+        self.assertIn(f"Herdr agents worker added: claude-standard-dot-a007 in workspace w-test ({worktree})", result.stdout)
+
+    def test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        options = self.write_seat_lifecycle_fakes()
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/b2", "--kind", "codex", "--profile", "review")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(options.read_text(), "codex:\n  --profile: review\n  --sandbox: workspace-write\n")
+        calls = self.calls_path.read_text().splitlines()
+        self.assertTrue(any(c.startswith("spawn codex codex-review-dot-a007 ") for c in calls), calls)
+        self.assertIn(f"delivery set turn codex {self.workdir.resolve() / '.claude/worktrees/b2'}", calls)
+
+    def test_add_worker_reuses_a_seated_workspace(self) -> None:
+        self.write_worktree_seat(worktree_identities="dotfiles\tclaude-standard-dot-a007")
+        self.write_seat_lifecycle_fakes()
+        worktree = self.add_seat_worktree("b1")
+        self.workspace_list_path.write_text(json.dumps({"result": {"workspaces": [{"workspace_id": "w-b1", "label": "project worker b1"}]}}))
+        self.pane_list_path.write_text(json.dumps({"result": {"panes": [{"pane_id": "w-b1:p2", "agent": "claude", "cwd": str(worktree), "workspace_id": "w-b1"}]}}))
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/b1")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertFalse(any(c.startswith(("spawn ", "workspace create")) for c in calls), calls)
+        self.assertIn(f"Herdr agents worker claude-standard-dot-a007 is already seated in workspace w-b1 ({worktree})", result.stdout)
+
+    def test_add_worker_rejects_a_worktree_outside_claude_worktrees(self) -> None:
+        self.write_worktree_seat()
+        self.write_seat_lifecycle_fakes()
+        for path in ("../elsewhere", ".claude/worktrees/..", ".claude/worktrees/a/b", "/tmp/x"):
+            with self.subTest(path=path):
+                self.calls_path.write_text("")
+                result = self.run_helper("--add-worker", path)
+                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                self.assertIn("the worker worktree must be a path under .claude/worktrees/", result.stderr)
+                self.assertEqual(self.calls_path.read_text(), "")
+
+    def test_remove_worker_despawns_then_turns_delivery_off_leaves_and_closes(self) -> None:
+        self.write_worktree_seat(
+            main_identities="dotfiles\tclaude-remediation-dot",
+            worktree_identities="dotfiles\tclaude-standard-dot-a007",
+        )
+        self.write_seat_lifecycle_fakes()
+        worktree = self.add_seat_worktree("b1")
+        self.workspace_list_path.write_text(json.dumps({"result": {"workspaces": [{"workspace_id": "w-b1", "label": "project worker b1"}]}}))
+
+        result = self.run_helper("--remove-worker", ".claude/worktrees/b1")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        order = [
+            "despawn dotfiles claude-remediation-dot claude-standard-dot-a007",
+            f"delivery set off claude-code {worktree}",
+            "leave dotfiles claude-standard-dot-a007",
+            "workspace close w-b1",
+        ]
+        indexes = [calls.index(call) for call in order]
+        self.assertEqual(indexes, sorted(indexes), calls)
+        self.assertTrue(worktree.is_dir())
+
+    def test_remove_worker_refuses_a_dirty_worktree_without_force(self) -> None:
+        self.write_worktree_seat(worktree_identities="dotfiles\tclaude-standard-dot-a007")
+        self.write_seat_lifecycle_fakes()
+        worktree = self.add_seat_worktree("b1")
+        (worktree / "uncommitted.txt").write_text("work\n")
+
+        result = self.run_helper("--remove-worker", ".claude/worktrees/b1")
+
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("has uncommitted changes; commit them or pass --force", result.stderr)
+        self.assertFalse(any(c.startswith(("despawn", "leave", "workspace close")) for c in self.calls_path.read_text().splitlines()))
+
+    def test_remove_worker_force_passes_through_to_despawn(self) -> None:
+        self.write_worktree_seat(
+            main_identities="dotfiles\tclaude-remediation-dot",
+            worktree_identities="dotfiles\tclaude-standard-dot-a007",
+        )
+        self.write_seat_lifecycle_fakes()
+        worktree = self.add_seat_worktree("b1")
+        (worktree / "uncommitted.txt").write_text("work\n")
+
+        result = self.run_helper("--remove-worker", ".claude/worktrees/b1", "--force")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            "despawn dotfiles claude-remediation-dot claude-standard-dot-a007 --force",
+            self.calls_path.read_text().splitlines(),
+        )
+
+    def test_remove_worker_stops_when_a_graceful_despawn_fails(self) -> None:
+        self.write_worktree_seat(
+            main_identities="dotfiles\tclaude-remediation-dot",
+            worktree_identities="dotfiles\tclaude-standard-dot-a007",
+        )
+        self.write_seat_lifecycle_fakes(despawn_exit=1)
+        self.add_seat_worktree("b1")
+
+        result = self.run_helper("--remove-worker", ".claude/worktrees/b1")
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("despawn of claude-standard-dot-a007 did not complete; re-run with --force", result.stderr)
+        self.assertFalse(any(c.startswith(("leave", "workspace close", "delivery set off")) for c in self.calls_path.read_text().splitlines()))
 
     def test_restart_worker_relaunches_the_worker_in_its_existing_pane(self) -> None:
         self.write_claude_pair_state(

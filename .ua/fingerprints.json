@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "gitCommitHash": "935e198406e5df993c84de67c695c7083f4b6b54",
-  "generatedAt": "2026-09-28T07:33:12.465Z",
+  "gitCommitHash": "7b69b1e76bb7cd8896007b7f78b70bc5b8620659",
+  "generatedAt": "2026-09-29T06:20:57.312Z",
   "files": {
     ".chezmoiroot": {
       "filePath": ".chezmoiroot",
@@ -2308,27 +2308,27 @@
     },
     ".ua/fingerprints.json": {
       "filePath": ".ua/fingerprints.json",
-      "contentHash": "9c82c236b9bffae6deffaaec4989de1588097bcf80577a8341cb4d7eb351ee71",
+      "contentHash": "d7e1a0f6ef5c8b764d01ebbab0340a081d418d5381f3c3060e5d82fc24d5a7ab",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 12071,
+      "totalLines": 10566,
       "hasStructuralAnalysis": false
     },
     ".ua/knowledge-graph.json": {
       "filePath": ".ua/knowledge-graph.json",
-      "contentHash": "1be0cb6aba91d1374efc8b0271d70b24c90e527dc85100339cc96b3edee78fe0",
+      "contentHash": "29f2e5c877e833cb6e997e0f4f33d4a5223a2f832dc568b1dd0cda58f29cd254",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 23858,
+      "totalLines": 22952,
       "hasStructuralAnalysis": false
     },
     ".ua/meta.json": {
       "filePath": ".ua/meta.json",
-      "contentHash": "286bf2b56ac25abf873aa3cf27fbf2811ea602f9e4643d7b23b679c1e0b240e9",
+      "contentHash": "0fb45ed0f7e0f57e4ab1eb510f88b847b0dd23632d06817bfcd3fa7f790bf11c",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -2368,7 +2368,7 @@
     },
     "Makefile": {
       "filePath": "Makefile",
-      "contentHash": "8193c5b62a1325603bb2a70940488e87d724d122ce856cc751c5781d703f3954",
+      "contentHash": "1709aa858dfc91a6fbc86c95e35565a9073d8c47f94bdf98be5ad8722ddebd1a",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -2378,12 +2378,12 @@
     },
     "README.md": {
       "filePath": "README.md",
-      "contentHash": "20b6d1fd3d8e9440f3d9adf341177d42997c97886d88cd07c47593ee2fb108d8",
+      "contentHash": "32039cf98723188c46c8c58e10b1f77b317a18b963fe536380be99839b6a9ba2",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 663,
+      "totalLines": 898,
       "hasStructuralAnalysis": false
     },
     "codecov.yml": {
@@ -2478,12 +2478,12 @@
     },
     "home/.chezmoiremove": {
       "filePath": "home/.chezmoiremove",
-      "contentHash": "57239f5f505286c398c5e598ae68d8ffe05fcc6199256fc41d5a3d5e5140b285",
+      "contentHash": "4fb1e60dc9ab391a041d21fb8df647b231df9afc4b46b43a03eccd35dc2f19dd",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 4,
+      "totalLines": 5,
       "hasStructuralAnalysis": false
     },
     "home/.chezmoiscripts/common/run_once_after_01-setup-chezmoi-private.sh.tmpl": {
@@ -2878,7 +2878,7 @@
     },
     "home/.chezmoitemplates/codex-config-managed.toml": {
       "filePath": "home/.chezmoitemplates/codex-config-managed.toml",
-      "contentHash": "c62152cecf58e8f24495d92df4221d762c28a75d7ee1f312f10025003afb6075",
+      "contentHash": "8feee60ef27a4d594a858b8ae03b7183d24a13b61b62c101bd22c0a6ec5c1e00",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -2918,22 +2918,22 @@
     },
     "home/dot_agents/agent-config.yaml": {
       "filePath": "home/dot_agents/agent-config.yaml",
-      "contentHash": "502207156df4e51f6b7d7e2fd681414118c36a7ffeeee142e6ffcb3ee5123fe5",
+      "contentHash": "9558cd20a663fe0a00134898c384bcd7fb2f608abcceb3b8f2ac81038d2bbbe3",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 565,
+      "totalLines": 594,
       "hasStructuralAnalysis": false
     },
     "home/dot_agents/model-profiles.env": {
       "filePath": "home/dot_agents/model-profiles.env",
-      "contentHash": "5b65b67a9483e1143aeaaef7544c9368abb44adc520a4598d154d55646aeb0a8",
+      "contentHash": "9e94e231793e9f48c3925050b8cebfe45a1a0e18a34bc23294ceabaec1d1d5f6",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 20,
+      "totalLines": 21,
       "hasStructuralAnalysis": false
     },
     "home/dot_agents/permgate-policy.yaml": {
@@ -2968,352 +2968,12 @@
     },
     "home/dot_agents/skills/agmsg-orchestration/SKILL.md": {
       "filePath": "home/dot_agents/skills/agmsg-orchestration/SKILL.md",
-      "contentHash": "c2361685b25360d3c85decb206e6e0c44796a102e9904bbf1af37b4be58cc95c",
+      "contentHash": "ec620a36b0e5fcec7a64b5bc636be8cbfeb54326ce51a6df9364a7bc016bda62",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 188,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/SKILL.md": {
-      "filePath": "home/dot_agents/skills/agmsg/SKILL.md",
-      "contentHash": "78bba63eb331efc17934cf49e37d5362f5abee5f43b47b0ae7c682c4a661dd4e",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 137,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/agents/openai.yaml": {
-      "filePath": "home/dot_agents/skills/agmsg/agents/openai.yaml",
-      "contentHash": "96cac1a6f3c426fc635eca7bd9fd917f018c3fba707731ab71ecb237d09b75dd",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 6,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/db/.keep": {
-      "filePath": "home/dot_agents/skills/agmsg/db/.keep",
-      "contentHash": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/run/.keep": {
-      "filePath": "home/dot_agents/skills/agmsg/run/.keep",
-      "contentHash": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/scripts/executable_actas-claim.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/executable_actas-claim.sh",
-      "contentHash": "31ddb3ee016213b43c8833936933f943a2e88ec2d02a6f55dd76f01261426f1e",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 79,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/scripts/executable_check-inbox.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/executable_check-inbox.sh",
-      "contentHash": "52b99384d60b36cdcfda294887f1e2215bf6f822610b9f31e27de6daa2a75fe0",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 167,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/scripts/executable_config.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/executable_config.sh",
-      "contentHash": "6ee6a78b02ba3226683a20f1c2101c9172a13d72815133954ecf62cf91058832",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 177,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/scripts/executable_delivery.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/executable_delivery.sh",
-      "contentHash": "3ce7cc799bff4ded3cadb07118713467b8e10072e1eb4d93c92bcca381d2ed1e",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 578,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/scripts/executable_history.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/executable_history.sh",
-      "contentHash": "4127ad78d16a13f823a3cad899d627469dc9e5728bcbdd05e8b147213410518d",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 42,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/scripts/executable_hook.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/executable_hook.sh",
-      "contentHash": "3fd56592b204631e485716351a1065b02474dee13c81f0681267cabae364a61d",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 27,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/scripts/executable_identities.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/executable_identities.sh",
-      "contentHash": "b882c00918e9b5dac07e889e2e149fb0ddfa58f3d6e39959442e66cb0ed42f3c",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 49,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/scripts/executable_inbox.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/executable_inbox.sh",
-      "contentHash": "df9912abf3d7d80508deb26cfb1d1ebf8edda5669720104a6569ec2489e8c8cd",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 49,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/scripts/executable_init-db.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/executable_init-db.sh",
-      "contentHash": "3688d542e84cd78d720da742642d95724685c2e5bbd73a4956167889525cf97c",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 29,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/scripts/executable_join.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/executable_join.sh",
-      "contentHash": "7100d4e398915c6b15fc2b1477492190e2fe901a23f2c17226d8030801f5af76",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 105,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/scripts/executable_leave.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/executable_leave.sh",
-      "contentHash": "327f0c19d4ff9ce71ff33339f5f45368fcf89eb7b0495ed20d7320227e71db3f",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 46,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/scripts/executable_rename-team.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/executable_rename-team.sh",
-      "contentHash": "eb6f53dc38669f9ff9cc50abd6ed6e19f8a763d437d1894ba0ed62679e7c226e",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 63,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/scripts/executable_rename.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/executable_rename.sh",
-      "contentHash": "00c183778e4cdd3ffab7aceed9983a55b0bbeafee44cf2023c48741fef64c570",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 60,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/scripts/executable_reset.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/executable_reset.sh",
-      "contentHash": "94803040b898db74582e5ca70ffdf469a124afeac5f4980deaa33a62abc4bfed",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 138,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/scripts/executable_send.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/executable_send.sh",
-      "contentHash": "d52406f2e48de7c3b89f88d39ee1089fa440386e8bf3b6f897503657532b38ca",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 44,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/scripts/executable_session-end.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/executable_session-end.sh",
-      "contentHash": "bf3264340ad59231e6f385d5f18956ec9a3213180b226ac3dee0fdaefdb3a931",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 67,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/scripts/executable_session-start.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/executable_session-start.sh",
-      "contentHash": "e50267afab25596e85c492f005557c02cee928fdeb03649011a50e1c0af13d2f",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 188,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/scripts/executable_team.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/executable_team.sh",
-      "contentHash": "2beb84e9e2198c4dfbfbcae7bf52676ba220675040824bd50074a2f01c9c88b8",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 54,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/scripts/executable_watch.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/executable_watch.sh",
-      "contentHash": "9351ba0878e154b6e8e766e71ea6696670293147876cb2c4ad7b42533cac5d02",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 195,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/scripts/executable_whoami.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/executable_whoami.sh",
-      "contentHash": "0b2fbc6d63d8688f44c8a2b79351d981b6f99cbd5090f449c92a3e2a7de62315",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 135,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/scripts/lib/actas-lock.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/lib/actas-lock.sh",
-      "contentHash": "897964199efdac16c73505175d5efbcc50eae0e5a515dc9ad10a2035e29a9eaa",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 242,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/scripts/lib/identifier.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/lib/identifier.sh",
-      "contentHash": "271dcfc70e648665482e7749d1cbf6da1fe443aec39828d83eb2ce300f91b9bd",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 22,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/scripts/lib/storage.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/lib/storage.sh",
-      "contentHash": "e84a579bb27ddefbf2eac864c67298371c1a16792f219e5012e47dc3be1b1043",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 34,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/scripts/release/executable_sync-version.sh": {
-      "filePath": "home/dot_agents/skills/agmsg/scripts/release/executable_sync-version.sh",
-      "contentHash": "e0f10ad93b165019abb0fdc2aa48a8e9a8b00b85b904480f9c185338cbeefe72",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 95,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/teams/.keep": {
-      "filePath": "home/dot_agents/skills/agmsg/teams/.keep",
-      "contentHash": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/templates/cmd.antigravity.md": {
-      "filePath": "home/dot_agents/skills/agmsg/templates/cmd.antigravity.md",
-      "contentHash": "8c049170c801d017b506036d5a73114a953a6d362479fa22207fd0f5de8152e0",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 137,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/templates/cmd.claude-code.md": {
-      "filePath": "home/dot_agents/skills/agmsg/templates/cmd.claude-code.md",
-      "contentHash": "918e08696519a9b4b3be4bc0e45456853fdcc00feb208f879ae9deaf5961b254",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 350,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/templates/cmd.codex.md": {
-      "filePath": "home/dot_agents/skills/agmsg/templates/cmd.codex.md",
-      "contentHash": "78bba63eb331efc17934cf49e37d5362f5abee5f43b47b0ae7c682c4a661dd4e",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 137,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/templates/cmd.copilot.md": {
-      "filePath": "home/dot_agents/skills/agmsg/templates/cmd.copilot.md",
-      "contentHash": "8d14d7e2490740ef9ae61739952bc1ab1d74fbe9109019ccc02a56ebc922152a",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 137,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_agents/skills/agmsg/templates/cmd.gemini.md": {
-      "filePath": "home/dot_agents/skills/agmsg/templates/cmd.gemini.md",
-      "contentHash": "88bb281091e6b295bcd75eaefdccf1cb401b071fc0493be133301407316cf5a8",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 137,
+      "totalLines": 192,
       "hasStructuralAnalysis": false
     },
     "home/dot_agents/skills/convert-to-transformers/SKILL.md": {
@@ -3877,16 +3537,6 @@
       "totalLines": 120,
       "hasStructuralAnalysis": false
     },
-    "home/dot_claude/commands/symlink_agmsg.md.tmpl": {
-      "filePath": "home/dot_claude/commands/symlink_agmsg.md.tmpl",
-      "contentHash": "9f0ee98916cb40189e15a4a16c2679d296678efe275b5a0202c135ac0b066cf3",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
     "home/dot_claude/hooks/executable_enforce-uv.sh": {
       "filePath": "home/dot_claude/hooks/executable_enforce-uv.sh",
       "contentHash": "c9db012b301dd83cce40e791215d43a8ca0031dafc2ac59445ad70ab3ab88f0d",
@@ -4098,316 +3748,6 @@
     "home/dot_claude/skills/agmsg-orchestration/symlink_SKILL.md.tmpl": {
       "filePath": "home/dot_claude/skills/agmsg-orchestration/symlink_SKILL.md.tmpl",
       "contentHash": "af5f507206303b8ff3d377cc5d3a126f6109aa834362c5077e1521cd67f7f81e",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/agents/symlink_openai.yaml.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/agents/symlink_openai.yaml.tmpl",
-      "contentHash": "938462b6971695545a3f08aa54b9483d9bce67aa64f799ea9e4a5bba97f65183",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/scripts/lib/symlink_actas-lock.sh.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/scripts/lib/symlink_actas-lock.sh.tmpl",
-      "contentHash": "e87c58505a80d956799043b57a3fa972d5cba1fbb059cca77ec2f3052eee5d9a",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/scripts/lib/symlink_identifier.sh.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/scripts/lib/symlink_identifier.sh.tmpl",
-      "contentHash": "fd0f0562dfe720362f837adb884723677c882c3a3fa9a4d42abc464103882b7f",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/scripts/lib/symlink_storage.sh.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/scripts/lib/symlink_storage.sh.tmpl",
-      "contentHash": "dee17fba182ae55542136613ccff8883cdb20a0285194a8cc697b14163e2c8e4",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/scripts/release/symlink_sync-version.sh.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/scripts/release/symlink_sync-version.sh.tmpl",
-      "contentHash": "08e02d426d584eb57d76884f68211c8d0bd4356d08f6e2bcfa3a2c7473b86bb8",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/scripts/symlink_actas-claim.sh.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/scripts/symlink_actas-claim.sh.tmpl",
-      "contentHash": "d04f324fe7ce97056ec18730f52bb340f952515e11ded947ebd2d683112e0ce5",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/scripts/symlink_check-inbox.sh.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/scripts/symlink_check-inbox.sh.tmpl",
-      "contentHash": "28d82d25e0bc94df6ff67e7ed40ee88c9b8862cff8731a8421dbdf435a9b4b03",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/scripts/symlink_config.sh.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/scripts/symlink_config.sh.tmpl",
-      "contentHash": "ecea23a6714b0a189d13c3add0e10f96338122e8ac30b3705996e96e09eec3e9",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/scripts/symlink_delivery.sh.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/scripts/symlink_delivery.sh.tmpl",
-      "contentHash": "35240bc2a0352aee6b4a07cd1587d9a6594aa0941866fa6a42877a173d65a528",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/scripts/symlink_history.sh.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/scripts/symlink_history.sh.tmpl",
-      "contentHash": "7c8e46680dc6d3d1c8f8da3c1676a7ad4e8253d824eeb81dac4a9ceacc5ae800",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/scripts/symlink_hook.sh.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/scripts/symlink_hook.sh.tmpl",
-      "contentHash": "67bb3b28954c845ecddaf6bcdb0c82cb8582723eba18880ed709d1cb1f294dcc",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/scripts/symlink_identities.sh.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/scripts/symlink_identities.sh.tmpl",
-      "contentHash": "58e6c0b37545184bcef56ab899561f13f6fd36e0c23a8cbd9a69a49f22a6e4e4",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/scripts/symlink_inbox.sh.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/scripts/symlink_inbox.sh.tmpl",
-      "contentHash": "6dccea9da236e0bb33746dcfd4cd40470e266d8db2b46137f9976f6d84f3e3da",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/scripts/symlink_init-db.sh.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/scripts/symlink_init-db.sh.tmpl",
-      "contentHash": "06e13fc3295287f194d0bd2d0c41cc1dc17897559589a697f6d31d797969cc6c",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/scripts/symlink_join.sh.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/scripts/symlink_join.sh.tmpl",
-      "contentHash": "097a6b01aef77c764dbc15c487cfe3f1c94990b793eb8bc66d84734fd10c19f2",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/scripts/symlink_leave.sh.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/scripts/symlink_leave.sh.tmpl",
-      "contentHash": "4eb46b0df7eaafefc84bbda7059ce155723f4c01bd09058bebb49823694f873c",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/scripts/symlink_rename-team.sh.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/scripts/symlink_rename-team.sh.tmpl",
-      "contentHash": "980b1d6e181057dda702a670fb6f103ee33326b7f92dbdbd8385ab84590f4dfe",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/scripts/symlink_rename.sh.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/scripts/symlink_rename.sh.tmpl",
-      "contentHash": "caf7f5aa9b2dbc48d12e8e668d8b740f1755dcdf60b8c4281f658062643f7ec9",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/scripts/symlink_reset.sh.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/scripts/symlink_reset.sh.tmpl",
-      "contentHash": "451ddeee2de0e5a9862ef6196fcbd3a779d7cf1c1564bcbc10a739278863d0b0",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/scripts/symlink_send.sh.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/scripts/symlink_send.sh.tmpl",
-      "contentHash": "82e06bb1bed258fc77526ada1ea12f03145b1a6c15e4320e3fba990fb5550678",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/scripts/symlink_session-end.sh.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/scripts/symlink_session-end.sh.tmpl",
-      "contentHash": "1ca43c9592e132cb77d6500c228f0faee2712dc7384d511127e02518b215cf19",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/scripts/symlink_session-start.sh.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/scripts/symlink_session-start.sh.tmpl",
-      "contentHash": "decb29e3c2f610ad7125570d92bce6f55e52035367ac16a032ce405756622a78",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/scripts/symlink_team.sh.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/scripts/symlink_team.sh.tmpl",
-      "contentHash": "3d22c1d8d600210c3abe40e174633c3a0a366f32b79bd577bcf7486416ba458b",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/scripts/symlink_watch.sh.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/scripts/symlink_watch.sh.tmpl",
-      "contentHash": "2242885093a48df0561cb78bc716fd5af620d9dc9a8589267f639dab15890118",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/scripts/symlink_whoami.sh.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/scripts/symlink_whoami.sh.tmpl",
-      "contentHash": "d6a2341fe7e5ccb52b6b1ead969a9255b579c5a8ad8a3b19a59fbcacd57d5c5b",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/symlink_SKILL.md.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/symlink_SKILL.md.tmpl",
-      "contentHash": "d51b68eaa5b23d3dc84fec053712c9025176c3eb619a11ce709f634723a7b379",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/templates/symlink_cmd.antigravity.md.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/templates/symlink_cmd.antigravity.md.tmpl",
-      "contentHash": "8738312b593c1715cc3519db467322ac4107eef157eabdfb152f3603bd518238",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/templates/symlink_cmd.claude-code.md.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/templates/symlink_cmd.claude-code.md.tmpl",
-      "contentHash": "9f0ee98916cb40189e15a4a16c2679d296678efe275b5a0202c135ac0b066cf3",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/templates/symlink_cmd.codex.md.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/templates/symlink_cmd.codex.md.tmpl",
-      "contentHash": "f0a70b4782be93e231f59d1417902d4badb152108580b9684f6438af2e7e37d9",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/templates/symlink_cmd.copilot.md.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/templates/symlink_cmd.copilot.md.tmpl",
-      "contentHash": "97e079fc293337664dd6bb8e947033be7a31c21dd1653190858b92a14e3900b3",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 2,
-      "hasStructuralAnalysis": false
-    },
-    "home/dot_claude/skills/agmsg/templates/symlink_cmd.gemini.md.tmpl": {
-      "filePath": "home/dot_claude/skills/agmsg/templates/symlink_cmd.gemini.md.tmpl",
-      "contentHash": "6850df6e1a12ad883bdd869831bd79048ac4ec1be01f4668160ab64ecd449683",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -4727,12 +4067,12 @@
     },
     "home/dot_config/claude/rules/agmsg-orchestration.md": {
       "filePath": "home/dot_config/claude/rules/agmsg-orchestration.md",
-      "contentHash": "5a143630dd4600cee482b7f8f1f4390c0b9434941742b31c7528b2f408fd82a9",
+      "contentHash": "fd17891de31a20d48bc87d4c46e946d92b1f130b3f1d5c03aaf5232f3955c57c",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 14,
+      "totalLines": 16,
       "hasStructuralAnalysis": false
     },
     "home/dot_config/claude/rules/ask-user-question.md": {
@@ -5097,12 +4437,12 @@
     },
     "home/dot_local/bin/common/executable_agmsg-dispatch": {
       "filePath": "home/dot_local/bin/common/executable_agmsg-dispatch",
-      "contentHash": "bd91a84da8db19e7006f54f7d1bd86c241c9b40957a127dbf95638541f343f7a",
+      "contentHash": "dbf3f826fb274e045205d12cfdd63ca9499b90249368440bb6f1d90348aa68a2",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 101,
+      "totalLines": 117,
       "hasStructuralAnalysis": false
     },
     "home/dot_local/bin/common/executable_cdgwq": {
@@ -5187,12 +4527,12 @@
     },
     "home/dot_local/bin/common/executable_herdr-agents": {
       "filePath": "home/dot_local/bin/common/executable_herdr-agents",
-      "contentHash": "49cac48e0eb07c7db484b048f88cf35751b47b58f6a80b2d8dc03ad2d93c78dc",
+      "contentHash": "5b761c811a27e38d83b02e47d993ac6c8a0ab9c20a375e142ba4fe7fbeca47f7",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 1154,
+      "totalLines": 1837,
       "hasStructuralAnalysis": false
     },
     "home/dot_local/bin/common/executable_herdr-session": {
@@ -5207,12 +4547,12 @@
     },
     "home/dot_local/bin/common/executable_permgate": {
       "filePath": "home/dot_local/bin/common/executable_permgate",
-      "contentHash": "990d3f14ac8df16a49da125cf1861929129dbc1b7796ab8565de97995e91bb20",
+      "contentHash": "f9f5c6297481051452bd6af9ccb2d2e892685dd03871b917c94507059971ac8f",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 786,
+      "totalLines": 789,
       "hasStructuralAnalysis": false
     },
     "home/dot_local/bin/common/executable_provision-machine-key": {
@@ -5327,12 +4667,12 @@
     },
     "home/dot_mise/config.toml": {
       "filePath": "home/dot_mise/config.toml",
-      "contentHash": "7d8da34cedb30ac79a2df033b1c34d53834804950209a38e83b8efb7ea1895fd",
+      "contentHash": "64103bb9381938ac37e78e938aa92ed2e8414189805b8937304720d70692009e",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 70,
+      "totalLines": 73,
       "hasStructuralAnalysis": false
     },
     "home/dot_npmrc": {
@@ -5847,7 +5187,7 @@
     },
     "scripts/check-agent-runtime.py": {
       "filePath": "scripts/check-agent-runtime.py",
-      "contentHash": "eecfc911f93a5d1bc8f39d0709cbaf3211cb64ab8b21b0f1ed2241d31e4c72e4",
+      "contentHash": "72c26d27a01d05bc22387c73e67dfbd4f7b33445753d3e5a0e26541652d557b5",
       "functions": [
         {
           "name": "render_template",
@@ -6094,7 +5434,16 @@
           ],
           "returnType": "list[str]",
           "exported": true,
-          "lineCount": 51
+          "lineCount": 52
+        },
+        {
+          "name": "understand_anything_core_warnings",
+          "params": [
+            "home"
+          ],
+          "returnType": "list[str]",
+          "exported": true,
+          "lineCount": 26
         },
         {
           "name": "deployed_target_path",
@@ -6139,7 +5488,7 @@
           "params": [],
           "returnType": "list[str]",
           "exported": true,
-          "lineCount": 79
+          "lineCount": 80
         },
         {
           "name": "run_session_staleness",
@@ -6276,6 +5625,7 @@
         "source_derived_directory_names",
         "direct_asset_directories",
         "orphaned_asset_warnings",
+        "understand_anything_core_warnings",
         "deployed_target_path",
         "repair_actions",
         "execute_repair",
@@ -6284,7 +5634,7 @@
         "run_session_staleness",
         "main"
       ],
-      "totalLines": 790,
+      "totalLines": 821,
       "hasStructuralAnalysis": true
     },
     "scripts/check-statusline-tools.py": {
@@ -6368,17 +5718,17 @@
     },
     "scripts/check-tools.sh": {
       "filePath": "scripts/check-tools.sh",
-      "contentHash": "b562bbb4c666bc0c3f0ca084974de5bbebc9c217350687498788f496f8c8b2e6",
+      "contentHash": "8fb9c7b61bd2d45f9f72f1cacb3fc41211186617b05b0ca31dcf29699cf87c35",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 256,
+      "totalLines": 286,
       "hasStructuralAnalysis": false
     },
     "scripts/generate-agent-configs.py": {
       "filePath": "scripts/generate-agent-configs.py",
-      "contentHash": "758f415aecf7d2161d104dcbba32bf2b748a59ffdc023cb5d19cbea4bb8b3bde",
+      "contentHash": "eb4b05d62fd445a529b50810d28f02627df896509f0deb36375c8c30a22b399b",
       "functions": [
         {
           "name": "fail",
@@ -6486,6 +5836,15 @@
           "returnType": "str | None",
           "exported": true,
           "lineCount": 5
+        },
+        {
+          "name": "worker_worktree",
+          "params": [
+            "manifest"
+          ],
+          "returnType": "str | None",
+          "exported": true,
+          "lineCount": 9
         },
         {
           "name": "interactive_profile",
@@ -6643,7 +6002,7 @@
           ],
           "returnType": "str",
           "exported": true,
-          "lineCount": 20
+          "lineCount": 22
         },
         {
           "name": "render_claude_express_agent",
@@ -6757,6 +6116,7 @@
         "validate_adh_profile",
         "worker_kind",
         "worker_profile",
+        "worker_worktree",
         "interactive_profile",
         "codex_marketplace_revision",
         "asset_field",
@@ -6781,7 +6141,7 @@
         "stale_profile_outputs",
         "main"
       ],
-      "totalLines": 939,
+      "totalLines": 955,
       "hasStructuralAnalysis": true
     },
     "scripts/generate-docs.sh": {
@@ -7119,12 +6479,12 @@
     },
     "scripts/update-agent-assets.sh": {
       "filePath": "scripts/update-agent-assets.sh",
-      "contentHash": "d6f67df0d2bea7d07d92359f8b429a26e34107d727c213f4180d35efaf38a534",
+      "contentHash": "cb922c6d5bef84c09ee5f22046b69c3ac6cbdf10969291ebc715852119884beb",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 873,
+      "totalLines": 1103,
       "hasStructuralAnalysis": false
     },
     "scripts/upgrade-tools.sh": {
@@ -7374,7 +6734,7 @@
     },
     "scripts/validate-agent-assets.py": {
       "filePath": "scripts/validate-agent-assets.py",
-      "contentHash": "6d63e33c742fa85831a6b2a68d60c60cf1f03fd2444f50563f71e384e97f6230",
+      "contentHash": "92888358020b8e6c9c31fe2d2ec19d7c79ad44f9610a9ff81acfc906eaff7e43",
       "functions": [
         {
           "name": "fail",
@@ -7457,13 +6817,6 @@
           "lineCount": 19
         },
         {
-          "name": "validate_claude_command_parity",
-          "params": [],
-          "returnType": "None",
-          "exported": true,
-          "lineCount": 17
-        },
-        {
           "name": "validate_manifest_home_paths",
           "params": [],
           "returnType": "None",
@@ -7487,13 +6840,6 @@
           "returnType": "None",
           "exported": true,
           "lineCount": 10
-        },
-        {
-          "name": "validate_agmsg_script_modes",
-          "params": [],
-          "returnType": "None",
-          "exported": true,
-          "lineCount": 11
         },
         {
           "name": "validate_codex_agmsg_writable_roots",
@@ -7521,7 +6867,7 @@
           ],
           "returnType": "dict[str, Any]",
           "exported": true,
-          "lineCount": 120
+          "lineCount": 124
         },
         {
           "name": "validate_claude_mcp_config",
@@ -7540,20 +6886,37 @@
           "lineCount": 11
         },
         {
+          "name": "validate_agmsg_installer_asset",
+          "params": [
+            "name",
+            "asset"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 19
+        },
+        {
+          "name": "validate_agmsg_is_installer_owned",
+          "params": [],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 23
+        },
+        {
           "name": "validate_assets",
           "params": [
             "manifest"
           ],
           "returnType": "None",
           "exported": true,
-          "lineCount": 37
+          "lineCount": 51
         },
         {
           "name": "validate_agent_manifest",
           "params": [],
           "returnType": "dict[str, Any]",
           "exported": true,
-          "lineCount": 103
+          "lineCount": 113
         },
         {
           "name": "validate_adh_profile",
@@ -7664,11 +7027,38 @@
           "lineCount": 13
         },
         {
+          "name": "strip_allowed_secret_placeholders",
+          "params": [
+            "text"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "mask_secret_matches",
+          "params": [
+            "text"
+          ],
+          "returnType": "tuple[str, int]",
+          "exported": true,
+          "lineCount": 24
+        },
+        {
+          "name": "mask_secrets",
+          "params": [
+            "paths"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 14
+        },
+        {
           "name": "validate_no_obvious_secrets",
           "params": [],
           "returnType": "None",
           "exported": true,
-          "lineCount": 29
+          "lineCount": 22
         },
         {
           "name": "validate_repo_claude_settings_portable",
@@ -7682,7 +7072,7 @@
           "params": [],
           "returnType": "None",
           "exported": true,
-          "lineCount": 26
+          "lineCount": 25
         }
       ],
       "classes": [],
@@ -7691,6 +7081,12 @@
           "source": "configparser",
           "specifiers": [
             "configparser"
+          ]
+        },
+        {
+          "source": "fnmatch",
+          "specifiers": [
+            "fnmatch"
           ]
         },
         {
@@ -7753,16 +7149,16 @@
         "shared_skill_names",
         "validate_skills",
         "validate_claude_skill_parity",
-        "validate_claude_command_parity",
         "validate_manifest_home_paths",
         "validate_codex_plugins",
         "validate_exact_keys",
-        "validate_agmsg_script_modes",
         "validate_codex_agmsg_writable_roots",
         "validate_claude_settings",
         "validate_codex_config",
         "validate_claude_mcp_config",
         "asset_pin_values",
+        "validate_agmsg_installer_asset",
+        "validate_agmsg_is_installer_owned",
         "validate_assets",
         "validate_agent_manifest",
         "validate_adh_profile",
@@ -7778,11 +7174,14 @@
         "is_nested_git_tree",
         "validate_no_removed_claude_skill",
         "read_scannable_text",
+        "strip_allowed_secret_placeholders",
+        "mask_secret_matches",
+        "mask_secrets",
         "validate_no_obvious_secrets",
         "validate_repo_claude_settings_portable",
         "main"
       ],
-      "totalLines": 1284,
+      "totalLines": 1402,
       "hasStructuralAnalysis": true
     },
     "setup.sh": {
@@ -7837,12 +7236,12 @@
     },
     "tests/install/common/check_tools.bats": {
       "filePath": "tests/install/common/check_tools.bats",
-      "contentHash": "39471f0043d58c9eca868644ea260747ddf8dac64212dc6f309c4b154c82cf51",
+      "contentHash": "68843698b2547d1557c51ce9adbc3d8ab357338e88dda5c1cc71ef1eee970fdb",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 55,
+      "totalLines": 83,
       "hasStructuralAnalysis": false
     },
     "tests/install/common/chezmoi_private.bats": {
@@ -7877,7 +7276,7 @@
     },
     "tests/install/common/lifecycle.bats": {
       "filePath": "tests/install/common/lifecycle.bats",
-      "contentHash": "624914120b3c30c15d625e55d5152dcc14220a36f1de7fb28ed39c80099524c1",
+      "contentHash": "fdb71d3caaa431ee67debc949d9e8e7bf61983c0bc8ed3b8bf4c911f9261ffa4",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -8254,7 +7653,7 @@
     },
     "tests/unit/test_agmsg_dispatch.py": {
       "filePath": "tests/unit/test_agmsg_dispatch.py",
-      "contentHash": "799339d898614bb998a3fd9d7c077b4c3395e9889a7d3d84e9ae7d82ff038ba4",
+      "contentHash": "315150486c5208659b3d7101c1ff63fd65d21053cb250ed1b8015010fe74e118",
       "functions": [],
       "classes": [
         {
@@ -8263,6 +7662,7 @@
             "setUp",
             "write_script",
             "dispatch",
+            "test_rejects_identifiers_outside_the_strict_grammar",
             "test_idle_wakes_once_and_reads",
             "test_working_does_not_wake",
             "test_unread_retries_once_then_fails",
@@ -8277,7 +7677,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 145
+          "lineCount": 157
         }
       ],
       "imports": [
@@ -8333,86 +7733,26 @@
       "exports": [
         "AgmsgDispatchTest"
       ],
-      "totalLines": 166,
+      "totalLines": 195,
       "hasStructuralAnalysis": true
     },
-    "tests/unit/test_agmsg_send.py": {
-      "filePath": "tests/unit/test_agmsg_send.py",
-      "contentHash": "fda8d09996245982b96e3047f144128b71374a957ccd522ccc53fab13e9e343c",
+    "tests/unit/test_agmsg_orchestration_docs.py": {
+      "filePath": "tests/unit/test_agmsg_orchestration_docs.py",
+      "contentHash": "150b1df319e5ec3af31cec9da9055fa731ff463d5e29b769bb11891ebc9559a2",
       "functions": [],
       "classes": [
         {
-          "name": "AgmsgSendTest",
+          "name": "AgmsgOrchestrationDocsParityTest",
           "methods": [
-            "setUp",
-            "tearDown",
-            "test_valid_identifiers_store_message",
-            "test_invalid_identifiers_fail_before_storage_access",
-            "test_quote_bearing_body_round_trips",
-            "test_touched_shell_entrypoints_have_shdoc_headers"
+            "test_rule_and_skill_share_the_registration_and_delivery_invariants",
+            "test_skill_drops_the_pane_status_gate_and_raw_pane_wakes"
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 121
-        },
-        {
-          "name": "AgmsgRegistrationGrammarTest",
-          "methods": [
-            "setUp",
-            "tearDown",
-            "make_skill",
-            "run_script",
-            "seed_team_and_db",
-            "state",
-            "assert_usage_rejection",
-            "test_join_rejects_invalid_team_and_agent_without_mutation",
-            "test_rename_rejects_invalid_identifiers_without_mutation",
-            "test_team_rename_rejects_invalid_names_without_mutation",
-            "test_valid_registration_and_renames_still_work",
-            "test_identifier_grammar_has_one_source_of_truth"
-          ],
-          "properties": [],
-          "exported": true,
-          "lineCount": 200
+          "lineCount": 27
         }
       ],
       "imports": [
-        {
-          "source": "json",
-          "specifiers": [
-            "json"
-          ]
-        },
-        {
-          "source": "os",
-          "specifiers": [
-            "os"
-          ]
-        },
-        {
-          "source": "shutil",
-          "specifiers": [
-            "shutil"
-          ]
-        },
-        {
-          "source": "sqlite3",
-          "specifiers": [
-            "sqlite3"
-          ]
-        },
-        {
-          "source": "subprocess",
-          "specifiers": [
-            "subprocess"
-          ]
-        },
-        {
-          "source": "tempfile",
-          "specifiers": [
-            "tempfile"
-          ]
-        },
         {
           "source": "unittest",
           "specifiers": [
@@ -8427,10 +7767,9 @@
         }
       ],
       "exports": [
-        "AgmsgSendTest",
-        "AgmsgRegistrationGrammarTest"
+        "AgmsgOrchestrationDocsParityTest"
       ],
-      "totalLines": 348,
+      "totalLines": 40,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_apparmor_userns.py": {
@@ -8518,7 +7857,7 @@
     },
     "tests/unit/test_asset_manifest.py": {
       "filePath": "tests/unit/test_asset_manifest.py",
-      "contentHash": "309bd4f740e2d0eb9b4ef5aaf186ee81bb0c35b3d74f1287ed33d59d52113de3",
+      "contentHash": "6b5e481020cf4ed19e60748d52747980220265ce1e0be52f1d98b88a6fb2423c",
       "functions": [],
       "classes": [
         {
@@ -8543,7 +7882,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 335
+          "lineCount": 336
         }
       ],
       "imports": [
@@ -8605,7 +7944,7 @@
       "exports": [
         "AssetManifestTest"
       ],
-      "totalLines": 363,
+      "totalLines": 364,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_aws_cli_acquisition.py": {
@@ -8692,7 +8031,7 @@
     },
     "tests/unit/test_check_agent_runtime.py": {
       "filePath": "tests/unit/test_check_agent_runtime.py",
-      "contentHash": "17f060679faeb3226166305d06c8fead480ac60c446c000ac3b91632fc3d46b3",
+      "contentHash": "2625e307c824db2c9c06f6017e5cce6f87ece10cb34a7c180fa850d734ea6333",
       "functions": [],
       "classes": [
         {
@@ -8719,6 +8058,7 @@
             "test_chezmoi_drift_warnings_classify_status_and_mode_only",
             "test_chezmoi_drift_status_failure_is_warning",
             "test_orphan_detection_classifies_accounted_stale_and_orphan",
+            "test_installer_owned_agmsg_skill_and_backups_are_not_orphans",
             "test_terminal_browser_receipt_links_are_not_orphans",
             "test_crit_codex_skills_are_not_orphans",
             "test_missing_terminal_browser_receipt_is_harmless",
@@ -8738,11 +8078,17 @@
             "test_repair_mode_converges_once_and_reports_each_action",
             "test_repair_mode_fails_after_one_non_convergent_round",
             "test_repair_unset_is_byte_identical_and_never_mutates",
-            "test_repair_mode_never_acts_on_stale_or_orphan_warnings"
+            "test_repair_mode_never_acts_on_stale_or_orphan_warnings",
+            "ua_core_tree",
+            "test_ua_core_warns_when_the_codex_clone_has_no_built_dist",
+            "test_ua_core_warns_when_dist_is_older_than_src",
+            "test_ua_core_warns_when_dist_is_older_than_the_root_lockfile",
+            "test_ua_core_is_quiet_when_dist_is_fresh_or_no_clone_exists",
+            "test_check_includes_ua_core_warnings"
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 853
+          "lineCount": 956
         }
       ],
       "imports": [
@@ -8810,7 +8156,60 @@
       "exports": [
         "CheckAgentRuntimeTest"
       ],
-      "totalLines": 878,
+      "totalLines": 981,
+      "hasStructuralAnalysis": true
+    },
+    "tests/unit/test_chezmoiremove_agmsg.py": {
+      "filePath": "tests/unit/test_chezmoiremove_agmsg.py",
+      "contentHash": "24cd6d317057d0380af972e2335e5bd065a02efe58b278067db663e5963d25ee",
+      "functions": [],
+      "classes": [
+        {
+          "name": "ChezmoiRemoveAgmsgTest",
+          "methods": [
+            "test_apply_removes_the_symlink_farm_and_keeps_installer_owned_paths"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 46
+        }
+      ],
+      "imports": [
+        {
+          "source": "shutil",
+          "specifiers": [
+            "shutil"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "tempfile",
+          "specifiers": [
+            "tempfile"
+          ]
+        },
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        }
+      ],
+      "exports": [
+        "ChezmoiRemoveAgmsgTest"
+      ],
+      "totalLines": 62,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_claude_settings_merge.py": {
@@ -9086,7 +8485,7 @@
     },
     "tests/unit/test_generate_agent_configs.py": {
       "filePath": "tests/unit/test_generate_agent_configs.py",
-      "contentHash": "1c44299bb9b63f21a1c25221af4fcdb5b4487a36c561f3eba337dda18a057aae",
+      "contentHash": "b68faa8ead618b64c5f29ab9c918e0cc6f7f9b5bd5be29dbf4375fe9528a56b9",
       "functions": [
         {
           "name": "load_generator",
@@ -9143,6 +8542,9 @@
             "test_unknown_worker_kind_fails",
             "test_model_profiles_env_renders_worker_profile",
             "test_absent_worker_profile_renders_no_env_line",
+            "test_model_profiles_env_renders_worker_worktree",
+            "test_absent_worker_worktree_renders_no_env_line",
+            "test_worker_worktree_outside_claude_worktrees_fails",
             "test_unknown_worker_profile_fails",
             "test_unknown_interactive_profile_fails",
             "test_model_profiles_env_renders_claude_advisor_only_when_set",
@@ -9155,7 +8557,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 803
+          "lineCount": 824
         }
       ],
       "imports": [
@@ -9243,12 +8645,12 @@
         "sample_manifest",
         "GenerateAgentConfigsTest"
       ],
-      "totalLines": 912,
+      "totalLines": 933,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_herdr_agents.py": {
       "filePath": "tests/unit/test_herdr_agents.py",
-      "contentHash": "7b35245972b1ae7cf9af39d2d90731a1413c7b59b3506bc58930b7dcc7c9cffa",
+      "contentHash": "dc089fc904661a6ba2fd9523846296311aef0c673d10137936e12cf9fbc57d4f",
       "functions": [],
       "classes": [
         {
@@ -9336,6 +8738,38 @@
             "test_start_skips_node_global_removal_without_stray",
             "test_start_keeps_node_global_without_mise_tool_install",
             "write_claude_pair_state",
+            "write_worktree_seat",
+            "write_legacy_seated_pair",
+            "test_restart_worker_reseats_a_main_path_worker_into_its_worktree",
+            "test_worker_seat_reuses_the_identity_and_hook_already_at_the_worktree",
+            "test_full_mode_splits_the_worker_pane_in_its_worktree",
+            "test_worker_seat_refuses_a_path_that_is_not_a_worktree",
+            "test_worker_seat_refuses_an_ambiguous_orchestrator_identity",
+            "test_attach_from_the_worker_worktree_exits_quietly",
+            "test_full_mode_heal_moves_a_reused_empty_pane_into_the_worktree",
+            "test_worker_seat_is_skipped_in_an_unregistered_repository",
+            "test_worker_seat_is_skipped_outside_a_git_main_checkout",
+            "test_worker_seat_is_skipped_in_a_non_git_directory",
+            "test_worker_seat_ambiguity_leaves_no_worktree_behind",
+            "test_attach_repair_splits_the_missing_worker_pane_in_its_worktree",
+            "test_restart_worker_refuses_to_start_outside_the_seat_when_the_pane_hangs",
+            "test_add_worker_refuses_an_undefined_profile_before_any_change",
+            "write_seat_lifecycle_fakes",
+            "add_seat_worktree",
+            "test_add_worker_spawns_the_seat_in_its_own_workspace_with_profile_args",
+            "test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options",
+            "test_add_worker_reuses_a_seated_workspace",
+            "test_add_worker_rejects_a_worktree_outside_claude_worktrees",
+            "test_remove_worker_despawns_then_turns_delivery_off_leaves_and_closes",
+            "test_remove_worker_refuses_a_dirty_worktree_without_force",
+            "seat_remove_fixture",
+            "assert_full_seat_cleanup",
+            "test_remove_worker_force_retries_a_failed_graceful_despawn",
+            "test_remove_worker_force_skips_the_forced_despawn_when_graceful_succeeds",
+            "test_remove_worker_forces_despawn_when_graceful_reports_needs_force",
+            "test_remove_worker_stops_when_the_forced_retry_also_fails",
+            "test_remove_worker_cleans_up_a_codex_seat_without_a_placement_record",
+            "test_remove_worker_stops_when_a_graceful_despawn_fails",
             "test_restart_worker_relaunches_the_worker_in_its_existing_pane",
             "test_restart_worker_waits_for_stale_registration_then_retries_once",
             "test_restart_worker_passes_manifest_advisor_args_to_claude_worker",
@@ -9362,8 +8796,41 @@
             "test_audit_quotes_a_non_ascii_out_path_under_the_c_locale",
             "test_audit_uses_manifest_audit_codex_args",
             "test_audit_verdict_gate_reads_only_the_final_codex_block",
+            "audit_codex_words",
+            "test_audit_runs_codex_exec_with_the_prompt_and_last_message_file",
+            "test_audit_gates_on_the_concluding_line_of_the_last_message",
+            "test_audit_quotes_the_last_message_path_for_a_non_ascii_out",
+            "write_fake_repo_validator",
+            "git",
+            "commit_repo_validator",
+            "test_audit_masks_evidence_before_the_verdict_gate",
+            "test_audit_masks_evidence_even_when_the_audit_exit_is_nonzero",
+            "test_audit_fails_as_unmasked_when_masking_fails",
+            "test_audit_refuses_the_masker_from_the_audited_commit",
+            "test_audit_refuses_an_uncommitted_or_untracked_masker",
+            "test_audit_refuses_a_tracked_masker_missing_from_the_tree",
+            "test_audit_skips_masking_without_a_repo_validator",
             "test_audit_nonzero_exit_marker_fails_the_helper",
             "test_audit_refuses_a_busy_audit_pane",
+            "write_self_named_pair",
+            "calls",
+            "test_audit_finds_the_self_named_pair_workspace",
+            "test_attach_leaves_a_self_named_pair_alone",
+            "test_attach_from_the_self_named_worker_pane_exits_quietly",
+            "test_restart_worker_finds_the_worker_by_its_seat_label",
+            "test_full_mode_heals_nothing_in_a_healthy_self_named_pair",
+            "test_another_team_members_pane_is_not_a_second_worker",
+            "test_attach_completes_bootstrap_on_a_self_named_pair",
+            "test_mixed_legacy_and_seat_labels_are_one_pair",
+            "test_worker_seat_label_comes_from_the_worker_worktree_registration",
+            "write_self_named_codex_pair",
+            "test_restart_worker_finds_a_solo_codex_worker_seat",
+            "test_full_mode_does_not_duplicate_a_solo_codex_worker_seat",
+            "test_explicit_worker_kind_and_profile_survive_seat_label_loading",
+            "test_two_self_named_pair_workspaces_still_refuse",
+            "test_audit_trusts_a_shell_foreground_over_a_stale_visible_snapshot",
+            "test_audit_falls_back_to_the_recent_unwrapped_prompt_without_process_info",
+            "test_audit_waits_for_the_prompt_on_a_new_audit_tab",
             "test_audit_rejects_unsafe_arguments_before_calling_herdr",
             "test_audit_exits_2_without_a_managed_workspace",
             "test_audit_tab_does_not_break_attach_order_and_ratio_repair",
@@ -9398,7 +8865,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 2958
+          "lineCount": 4238
         }
       ],
       "imports": [
@@ -9406,6 +8873,12 @@
           "source": "errno",
           "specifiers": [
             "errno"
+          ]
+        },
+        {
+          "source": "hashlib",
+          "specifiers": [
+            "hashlib"
           ]
         },
         {
@@ -9451,6 +8924,12 @@
           ]
         },
         {
+          "source": "tarfile",
+          "specifiers": [
+            "tarfile"
+          ]
+        },
+        {
           "source": "tempfile",
           "specifiers": [
             "tempfile"
@@ -9484,12 +8963,12 @@
       "exports": [
         "HerdrAgentsTest"
       ],
-      "totalLines": 2999,
+      "totalLines": 4293,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_permgate.py": {
       "filePath": "tests/unit/test_permgate.py",
-      "contentHash": "a1c82f4b1d5fe87e5da6cff62c1175d68e869b2c2855ba71c768d7fcd2f61eda",
+      "contentHash": "11d29d31f1195cd9ba8a3b41e5a63584f5de96e69efe3b090eb1f1f50f823fd7",
       "functions": [
         {
           "name": "permission_behavior",
@@ -9545,6 +9024,7 @@
             "test_bash_credentials_skip_classifier",
             "test_script_named_version_is_not_a_version_check",
             "test_bench_runs_five_layer_two_fixtures",
+            "test_codex_classifier_never_reads_the_callers_open_stdin",
             "test_each_agent_uses_only_its_own_authenticated_cli",
             "test_classifier_receives_metadata_without_raw_values",
             "test_unconstrained_native_reads_never_reach_classifier",
@@ -9558,7 +9038,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 971
+          "lineCount": 1027
         }
       ],
       "imports": [
@@ -9621,7 +9101,7 @@
         "permission_behavior",
         "PermgateTest"
       ],
-      "totalLines": 1024,
+      "totalLines": 1080,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_release_asset_pins.py": {
@@ -9940,7 +9420,7 @@
     },
     "tests/unit/test_runtime_health.py": {
       "filePath": "tests/unit/test_runtime_health.py",
-      "contentHash": "f048d1a494f2a9fba087a21db5ae9dd49d1674a4f81c2af4ff5814082034ea55",
+      "contentHash": "0ed394e990dc3ca2026236e4e2cb591b896292763eb52dc6e706541ec0c1385a",
       "functions": [],
       "classes": [
         {
@@ -9965,6 +9445,18 @@
             "test_linux_crit_failure_does_not_leak_cleanup_trap",
             "test_darwin_crit_install_is_pinned_atomic_and_recorded",
             "test_darwin_crit_checksum_failure_preserves_existing_binary",
+            "agmsg_fixture",
+            "test_agmsg_fresh_install_populates_skill_and_records_manifest",
+            "test_agmsg_already_pinned_skips_download",
+            "test_agmsg_checksum_mismatch_fails_closed",
+            "test_agmsg_update_never_touches_teams_db_run",
+            "test_agmsg_migrates_marker_less_legacy_dir_without_losing_live_state",
+            "test_agmsg_update_aborts_when_install_corrupts_live_state",
+            "test_agmsg_migration_reports_an_installer_that_mutates_live_state",
+            "test_agmsg_accepts_a_store_the_installer_creates_and_notes_run_changes",
+            "test_agmsg_reports_an_installer_that_leaves_the_wrong_version",
+            "test_agmsg_refuses_to_install_when_the_state_snapshot_is_empty",
+            "test_agmsg_refuses_to_install_without_tar",
             "update_fixture",
             "test_make_update_pulls_clean_main_before_apply",
             "test_make_update_skips_dirty_main_with_manual_pull_notice",
@@ -9993,7 +9485,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 1463
+          "lineCount": 1897
         }
       ],
       "imports": [
@@ -10061,7 +9553,7 @@
       "exports": [
         "RuntimeHealthTest"
       ],
-      "totalLines": 1487,
+      "totalLines": 1921,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_statusline_tools.py": {
@@ -10234,6 +9726,110 @@
       "totalLines": 516,
       "hasStructuralAnalysis": true
     },
+    "tests/unit/test_update_agent_assets_ua_core.py": {
+      "filePath": "tests/unit/test_update_agent_assets_ua_core.py",
+      "contentHash": "ab8b15946ee5f62993e78cb14aad0de4b966249962f983a0b6f5e308c5a0f035",
+      "functions": [],
+      "classes": [
+        {
+          "name": "UnderstandAnythingCoreBuildTest",
+          "methods": [
+            "setUp",
+            "tearDown",
+            "make_plugin_tree",
+            "write_fake",
+            "write_fake_pnpm",
+            "provision",
+            "calls",
+            "test_builds_missing_core_in_the_release_artifact_then_copies_it",
+            "test_frozen_install_failure_falls_back_to_plain_install",
+            "test_skips_the_build_when_the_release_artifact_already_has_dist",
+            "set_mtime",
+            "stale_dist",
+            "test_rebuilds_a_release_dist_older_than_its_sources",
+            "test_doctor_stale_warning_is_cleared_by_the_update_build",
+            "test_builds_in_the_clone_when_no_release_artifact_exists",
+            "test_uses_mise_exec_when_pnpm_is_not_on_path",
+            "write_fake_mise_exec_pnpm",
+            "test_prefers_mise_exec_over_an_unbacked_pnpm_shim",
+            "test_uses_path_pnpm_only_when_mise_is_absent",
+            "test_make_update_installs_the_pinned_pnpm",
+            "test_warns_and_continues_when_no_pnpm_is_resolvable",
+            "test_warns_and_continues_when_the_build_fails"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 308
+        }
+      ],
+      "imports": [
+        {
+          "source": "importlib.util",
+          "specifiers": [
+            "importlib.util"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "shutil",
+          "specifiers": [
+            "shutil"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "tempfile",
+          "specifiers": [
+            "tempfile"
+          ]
+        },
+        {
+          "source": "textwrap",
+          "specifiers": [
+            "textwrap"
+          ]
+        },
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        }
+      ],
+      "exports": [
+        "UnderstandAnythingCoreBuildTest"
+      ],
+      "totalLines": 336,
+      "hasStructuralAnalysis": true
+    },
     "tests/unit/test_usage_review.py": {
       "filePath": "tests/unit/test_usage_review.py",
       "contentHash": "a6b50eeb5b3d7cc67aa0fc9af7bd0ad1c76a4c7727829ce3c5928b911e241976",
@@ -10339,7 +9935,7 @@
     },
     "tests/unit/test_validate_agent_assets.py": {
       "filePath": "tests/unit/test_validate_agent_assets.py",
-      "contentHash": "1469b8c70b51f41a72fbdf55f3c3a368ce2e75ba132a6523ea2259fcccfbcb79",
+      "contentHash": "395dd1969092eb6140a8305c26b69807ddf9422892ffa74573428cca37c17031",
       "functions": [
         {
           "name": "load_validator",
@@ -10360,7 +9956,6 @@
             "test_repo_claude_settings_reject_machine_specific_interpreter",
             "test_repo_claude_settings_accept_portable_interpreter",
             "test_codex_modify_script_requires_executable_source",
-            "write_agmsg_script",
             "write_text_file",
             "copy_managed_hook_sources",
             "update_json_hook_source",
@@ -10368,6 +9963,8 @@
             "write_valid_agent_manifest",
             "test_agent_manifest_accepts_exact_security_profile_set",
             "test_agent_manifest_rejects_invalid_or_missing_worker_kind",
+            "test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees",
+            "test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees",
             "test_agent_manifest_rejects_unknown_worker_profile",
             "test_agent_manifest_requires_fable_advisor_on_the_worker_profile",
             "test_agent_manifest_requires_readme_to_state_the_worker_kind",
@@ -10375,6 +9972,17 @@
             "asset_manifest",
             "test_assets_accept_complete_declarations_and_rendered_versions",
             "test_assets_reject_each_incomplete_declaration",
+            "assert_agmsg_asset_rejected",
+            "test_agmsg_installer_requires_a_release_pin_and_its_tag",
+            "test_agmsg_installer_requires_the_full_tag_commit",
+            "test_agmsg_installer_requires_the_npm_bootstrap_integrity",
+            "write_agmsg_installer_layout",
+            "assert_agmsg_ownership_rejected",
+            "test_agmsg_ownership_accepts_the_installer_layout",
+            "test_agmsg_ownership_rejects_a_vendored_skill_copy",
+            "test_agmsg_ownership_rejects_a_managed_claude_command",
+            "test_agmsg_ownership_requires_retiring_the_symlink_farm",
+            "test_agmsg_ownership_rejects_removing_installer_owned_paths",
             "test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts",
             "test_agent_manifest_rejects_missing_security_profile",
             "test_agent_manifest_rejects_wrong_security_codex_model",
@@ -10393,9 +10001,6 @@
             "test_codex_projects_reject_hard_coded_macos_home",
             "test_codex_projects_reject_missing_working_tree_placeholder",
             "test_codex_projects_accept_working_tree_placeholder",
-            "test_agmsg_script_modes_accept_prefixed_entrypoints_and_lib_helpers",
-            "test_agmsg_script_modes_reject_unprefixed_direct_entrypoint",
-            "test_agmsg_script_modes_reject_non_executable_prefixed_entrypoint",
             "test_secret_scan_checks_extensionless_executables",
             "test_secret_scan_checks_docs_paths",
             "test_secret_scan_allows_exact_placeholder_tokens",
@@ -10408,16 +10013,25 @@
             "test_manifest_home_paths_allow_flow_style_projects",
             "test_manifest_home_paths_exempt_runtime_owned_projects",
             "test_manifest_home_paths_only_exempt_the_projects_subtree",
-            "test_manifest_home_paths_reject_non_codex_projects_mapping",
-            "write_agmsg_command_symlink",
-            "test_claude_command_parity_rejects_dangling_target",
-            "test_claude_command_parity_rejects_wrong_target",
-            "test_claude_command_parity_rejects_restored_duplicate",
-            "test_claude_command_parity_accepts_symlink_only"
+            "test_manifest_home_paths_reject_non_codex_projects_mapping"
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 800
+          "lineCount": 871
+        },
+        {
+          "name": "MaskSecretsModeTest",
+          "methods": [
+            "setUp",
+            "tearDown",
+            "run_mask",
+            "test_masks_every_match_in_place_and_reports_counts",
+            "test_leaves_allowed_placeholders_the_scan_accepts",
+            "test_missing_file_exits_2_without_touching_others"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 66
         }
       ],
       "imports": [
@@ -10452,6 +10066,12 @@
           ]
         },
         {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
           "source": "sys",
           "specifiers": [
             "sys"
@@ -10478,9 +10098,10 @@
       ],
       "exports": [
         "load_validator",
-        "ValidateAgentAssetsTest"
+        "ValidateAgentAssetsTest",
+        "MaskSecretsModeTest"
       ],
-      "totalLines": 835,
+      "totalLines": 979,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_workflow_security.py": {

@@ -452,6 +452,16 @@ def review_marker() -> str | None:
     return None
 
 
+def base_ref_error(root: Path, base: str) -> str | None:
+    """Fail closed: an unresolvable or option-like --base must not silently skip the base checks."""
+    if not base.strip() or base.startswith("-"):
+        return f"--base {base!r} is not a git ref; pass a branch or commit such as BASE=origin/main"
+    verify = run_git(["rev-parse", "--verify", "--quiet", "--end-of-options", f"{base}^{{commit}}"], root)
+    if verify.returncode != 0:
+        return f"--base {base!r} does not resolve to a commit; fetch it or fix BASE"
+    return None
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -464,6 +474,11 @@ def main() -> None:
         return
 
     root = git_root()
+    if args.base is not None:
+        base_error = base_ref_error(root, args.base)
+        if base_error:
+            print(base_error)
+            raise SystemExit(1)
     head = run_git(["rev-parse", "HEAD"], root).stdout.strip() if args.base else None
     feedback_errors = pr_feedback_errors(root, required=args.base is not None, head=head, base=args.base)
     if feedback_errors:

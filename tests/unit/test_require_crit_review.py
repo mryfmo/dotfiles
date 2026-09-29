@@ -389,6 +389,23 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertEqual(based.returncode, 1, based.stdout)
         self.assertIn("agent lifecycle path changed: scripts/update-agent-assets.sh", based.stdout)
 
+    def test_base_fails_closed_when_unresolvable_or_option_like(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        self.commit_on_branch("docs/fix.md")
+        feedback = self.write_feedback([])
+        env = {"CRIT_REVIEW": "", "FAKE_COLLECTED": str(self.collected), "PR_FEEDBACK_EVIDENCE": feedback}
+        for base, message in (
+            ("no-such-ref", "does not resolve to a commit"),
+            ("--output=leak", "is not a git ref"),
+            ("", "is not a git ref"),
+        ):
+            with self.subTest(base=base):
+                result = run([sys.executable, str(GUARD), f"--base={base}"], self.temp_dir, env)
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn(message, result.stdout)
+                self.assertNotIn("PR feedback evidence accepted", result.stdout)
+        self.assertFalse((self.temp_dir / "leak").exists())
+
     def test_base_requires_pr_feedback_evidence(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
         result = self.guard_base({"PR_FEEDBACK_EVIDENCE": ""})

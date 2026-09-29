@@ -1,0 +1,443 @@
+[
+  {
+    "scope": "review",
+    "id": "r_d126a2",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: T32 dot-audit-pane-visibility-T32-a01 adversarial review found no correctness, regression, security, or omission issues at PR #194 head 9691870 (revision 2). herdr-agents --audit: argument validation before any herdr call (sha regex, positive timeout, resolved workdir+evidence path free of quotes/control chars, fail closed); audit tab created once and reused; nonce exit marker; pipefail-propagated exit; cd into DIR on every run; empty_pane_id/split-source exclude the audit label (guards strengthened, none weakened). 13 audit tests re-run OK by the orchestrator at 9691870; mutation baselines pasted (rev1 8/11 FAIL vs origin/main, rev2 3/13 FAIL vs 8af8d11); 488 unit tests OK; CI 12/12 pass (nix skipped); diff scope exactly the 5 allowed files. Pre-merge Codex audits: 8af8d11 -\u003e 2xP2 (fixed in rev2), 9691870 -\u003e no actionable regressions.",
+    "author": "claude-code",
+    "created_at": "2026-09-28T00:13:34Z",
+    "updated_at": "2026-09-28T00:13:52Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_6b9b89",
+        "body": "Resolved: orchestrator acceptance recorded in .orchestration/acceptance/dot-audit-pane-visibility-T32-a01.md; agent-side process evidence, not reviewer authentication.",
+        "author": "claude-code",
+        "created_at": "2026-09-28T00:13:52Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_5e14e4",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: T32b dot-audit-pane-hardening-T32b-a01 adversarial review found no correctness, regression, security, or omission issues at PR #195 head dad7bdf. herdr-agents --audit: inner command built once and quoted once as the single bash -c argument (no nested %q, blocklist removed); marker wait-output and pane read use --source recent-unwrapped; sha/timeout validation, nonce marker, cd prefix and pipefail propagation unchanged. 15 audit tests re-run OK by the orchestrator at dad7bdf; mutation baseline 4/15 FAIL against 6b9babc pasted; 490 unit tests OK; CI 12/12 pass (nix skipped); zsh runtime check with apostrophe + non-ASCII paths under LC_ALL=C passed; pre-merge Codex audit of dad7bdf: no actionable regressions.",
+    "author": "claude-code",
+    "created_at": "2026-09-28T00:45:47Z",
+    "updated_at": "2026-09-28T00:45:47Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_fc6baa",
+        "body": "Resolved: orchestrator acceptance recorded in .orchestration/acceptance/dot-audit-pane-hardening-T32b-a01.md; agent-side process evidence, not reviewer authentication.",
+        "author": "claude-code",
+        "created_at": "2026-09-28T00:45:47Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_85fda2",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: T33a dot-orchestration-rules-T33a-a01 adversarial review found no correctness, security, or omission issues at PR #196 head 489c83b (revision 3). Docs-only: worker inbox discipline (interim, with retirement condition), fail-closed task convention (PONG blocked, no agent-to-agent approval), auditor pre-screen for batched RESULTs with orchestrator-only acceptance, Codex AGENTS.md crit passages aligned to the Claude no-web-UI rule (browser fallbacks removed, crit share explicit-only, Plan Mode session close, structure fixed), read-only pane-probe ban, and the guard-accepted fallback evidence format stated in all four crit texts (verified against scripts/require-crit-review.py: id/body/scope strings, resolved true, one review-scope record; receipt review_surface crit-data, outcome approved|addressed). validate-agent-assets ok; 490 unit tests OK (one-off permgate bench flake, pre-existing, tasked as T33d); CI 12/12 pass (nix skipped); visible-lane Codex audits: 8798076 -\u003e 1xP2 (fixed in rev3), 489c83b -\u003e no actionable regressions.",
+    "author": "claude-code",
+    "created_at": "2026-09-28T04:29:12Z",
+    "updated_at": "2026-09-28T04:29:12Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_417b61",
+        "body": "Resolved: orchestrator acceptance recorded in .orchestration/acceptance/dot-orchestration-rules-T33a-a01.md; agent-side process evidence, not reviewer authentication.",
+        "author": "claude-code",
+        "created_at": "2026-09-28T04:29:12Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_7b523f",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: T33b dot-audit-verdict-gate-T33b-a01 adversarial review found no correctness, regression, security, or omission issues at PR #197 head a5caef8 (revision 3). herdr-agents --audit: unsupported review PROMPT removed (codex 0.157.1 rejects --commit with [PROMPT], reproduced); AGENTS.md Audit requires the exact Verdict: correct|incorrect|blocked final line; the gate reads the transcript region after the last codex header, last whole-line verdict wins, Review blocked only when no verdict line, missing/blocked/incorrect exit 1; residual documented in README. 16 audit tests re-run OK by the orchestrator at a5caef8; mutation baselines pasted (rev1 7/17 vs origin/main, rev2 vs 05f689b, rev3 j/k vs 1c87ba0); 491 unit tests OK (permgate bench flake x3 -\u003e T33d); CI 12/12 pass; visible-lane Codex audits: 05f689b P1+P2 (fixed rev2), 1c87ba0 P2 (fixed rev3), a5caef8 no actionable defects.",
+    "author": "claude-code",
+    "created_at": "2026-09-28T06:48:50Z",
+    "updated_at": "2026-09-28T06:48:50Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_5f3d97",
+        "body": "Resolved: orchestrator acceptance recorded in .orchestration/acceptance/dot-audit-verdict-gate-T33b-a01.md; agent-side process evidence, not reviewer authentication.",
+        "author": "claude-code",
+        "created_at": "2026-09-28T06:48:50Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_182172",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: T33c dot-ua-graph-refresh-T33c-a01 adversarial review found no correctness, security, or omission issues at PR #198 head 6f46a11 (revision 2). Full .ua/ rebuild (FULL_UPDATE per prepare-incremental, approved; 39 dispatches): scope exactly knowledge-graph.json/fingerprints.json/meta.json, no ignored paths; meta.gitCommitHash = 935e198 = PR parent, analyzedFiles 424; orchestrator re-derived 870 nodes/1333 edges/0 dangling and 0 non-tuple lineRange after rev2; no secret patterns or model-profiles.env values in the graph; count drop 1399-\u003e870 explained (sub-10-line functions skipped, pipeline nodes not recreated, 424/424 file coverage). Visible-lane audits: 297f25f P2 (two nodes with prose in lineRange dropped by core validateGraph with 42 edges) fixed in rev2; 6f46a11 no findings, core validateGraph 870/870 1333/1333 0 issues. CI 12/12 pass.",
+    "author": "claude-code",
+    "created_at": "2026-09-28T08:16:16Z",
+    "updated_at": "2026-09-28T08:16:16Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_4ebef6",
+        "body": "Resolved: orchestrator acceptance recorded in .orchestration/acceptance/dot-ua-graph-refresh-T33c-a01.md; agent-side process evidence, not reviewer authentication.",
+        "author": "claude-code",
+        "created_at": "2026-09-28T08:16:16Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_f2aa5a",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: T33e dot-audit-exec-channel-T33e-a01 adversarial review found no correctness, regression, security, or omission issues at PR #199 head 1696638 (revision 2). herdr-agents --audit now runs codex exec --sandbox read-only -C DIR -o PATH.last.md with an explicit AGENTS.md-Audit prompt (codex review --commit rejected prompts and produced no verdict in 6/6 live runs); gate = concluding non-blank line of the last-message file (Verdict: correct|incorrect|blocked; Review blocked prefix -\u003e blocked; else missing); transcript fallback keeps the concluding-line rule and skips only the exact tokens-used footer plus a bare count. 19 audit tests re-run OK by the orchestrator at 1696638; mutation baselines pasted (24 fail vs 04746ca; case m vs bbd70c1); 494 unit tests OK (permgate flake x4 -\u003e T33d next); validate-agent-assets ok after rebase; CI 12/12 pass; visible-lane audits: bbd70c1 P2 (fallback footer regex) fixed in rev2, 1696638 no actionable regressions.",
+    "author": "claude-code",
+    "created_at": "2026-09-28T09:46:58Z",
+    "updated_at": "2026-09-28T09:46:58Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_432412",
+        "body": "Resolved: orchestrator acceptance recorded in .orchestration/acceptance/dot-audit-exec-channel-T33e-a01.md; agent-side process evidence, not reviewer authentication.",
+        "author": "claude-code",
+        "created_at": "2026-09-28T09:46:58Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_f20b0b",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: T33d dot-permgate-bench-flake-T33d-a01 adversarial review found no correctness, regression, security, or omission issues at PR #200 head e161082. Fixture-only fix (fake codex reads the prompt from argv[-1] as permgate passes it; bench policy timeout raised to the validator maximum; per-agent JSON in assertion messages); the task's load hypothesis was refuted with evidence and the stdin mechanism proven; orchestrator reproduced deterministically with an open stdin pipe on origin/main (FAILED) and confirmed OK at e161082 plus the full permgate module; product code untouched; hardening candidate (stdin=DEVNULL in classify) queued as a follow-up; CI 12/12 pass after one external rerun; visible-lane audit through the exec channel: Verdict: correct.",
+    "author": "claude-code",
+    "created_at": "2026-09-28T10:36:10Z",
+    "updated_at": "2026-09-28T10:36:10Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_45f88d",
+        "body": "Resolved: orchestrator acceptance recorded in .orchestration/acceptance/dot-permgate-bench-flake-T33d-a01.md; agent-side process evidence, not reviewer authentication.",
+        "author": "claude-code",
+        "created_at": "2026-09-28T10:36:10Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_ebaee4",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: T33f dot-ua-core-build-T33f-a01 adversarial review found no correctness, regression, security, or omission issues at PR #201 head 657bfe4 (revision 2). update-agent-assets.sh builds Understand-Anything packages/core in the release artifact (then copies into the Codex clone) or in the clone, rebuilding when dist/index.js is missing or older than any packages/core/src file or the root pnpm-lock.yaml; doctor warns under the same rule so make update repairs what it reports; pnpm via the mise-pinned npm:pnpm 12.4.1 (published 2026-09-10, window-compliant) or mise exec; WARN-never-fail. Orchestrator re-ran the two new test modules at 657bfe4 (OK), shellcheck -x clean, baseline vs 3d63f0a shows the stale-rebuild and repair-path tests failing on the old guard; 505 unit tests OK; validate-agent-assets ok; CI 12/12 pass; visible-lane audits: 3d63f0a Verdict: incorrect (existence-only guard vs doctor remedy) fixed in rev2; 657bfe4 Verdict: correct.",
+    "author": "claude-code",
+    "created_at": "2026-09-28T11:21:09Z",
+    "updated_at": "2026-09-28T11:21:09Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_8bf812",
+        "body": "Resolved: orchestrator acceptance recorded in .orchestration/acceptance/dot-ua-core-build-T33f-a01.md; agent-side process evidence, not reviewer authentication.",
+        "author": "claude-code",
+        "created_at": "2026-09-28T11:21:09Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_80893a",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: T33g dot-ua-core-build-shim-T33g-a01 adversarial review found no correctness, regression, security, or omission issues at PR #202 head 02fdac1 (revision 2). build_understand_anything_core runs pnpm via mise exec npm:pnpm whenever mise exists (installs the pin on demand; PATH pnpm only without mise); make update installs npm:pnpm on the explicit mise install --locked line; lifecycle.bats call-sequence expectations updated (option A ruling). Orchestrator re-ran the unit module, shellcheck -x, and make -n update at 02fdac1; baselines fail on the old code; CI 12/12 pass incl. bats; visible-lane audit Verdict: correct.",
+    "author": "claude-code",
+    "created_at": "2026-09-28T11:52:00Z",
+    "updated_at": "2026-09-28T11:52:00Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_11c9a4",
+        "body": "Resolved: orchestrator acceptance recorded in .orchestration/acceptance/dot-ua-core-build-shim-T33g-a01.md; agent-side process evidence, not reviewer authentication.",
+        "author": "claude-code",
+        "created_at": "2026-09-28T11:52:00Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_861445",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: T33h dot-permgate-codex-stdin-T33h-a01 adversarial review found no correctness, regression, security, or omission issues at PR #203 head 6bc5918. stdin=subprocess.DEVNULL on the codex classify() subprocess (bench and hook share it); test runs bench with an open os.pipe stdin and a stdin-reading fake codex: baseline fails with timeout x5, fixed passes; orchestrator re-ran the full permgate module under an open stdin pipe at 6bc5918 (OK); CI 12/12 pass; visible-lane audit Verdict: correct.",
+    "author": "claude-code",
+    "created_at": "2026-09-28T21:48:41Z",
+    "updated_at": "2026-09-28T21:48:41Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_a0c58e",
+        "body": "Resolved: orchestrator acceptance recorded in .orchestration/acceptance/dot-permgate-codex-stdin-T33h-a01.md; agent-side process evidence, not reviewer authentication.",
+        "author": "claude-code",
+        "created_at": "2026-09-28T21:48:41Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_7dcfaa",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: T33i dot-orchestration-hygiene-T33i-a01 adversarial review found no correctness, regression, security, or omission issues at PR #204 head 1994142 (revision 3). validate-agent-assets.py --mask-secrets mirrors the committed-secret scan; herdr-agents --audit masks evidence before the exit check and verdict gate, fails closed (Audit verdict: unmasked, exit 1) on mask failure/missing python3/refused masker, refuses the masker when DIR is at the audited commit or the tracked validator is missing, untracked, or changed, and skips only when git tracks no validator; rule/SKILL text adds boundary-commit validation and task-authoring discipline; README notes UA 2.9.7 gaps. Orchestrator: --mask-secrets applied to the exact evidence that turned main red masks 2 matches and the scan is clean; audit tests OK at each head; shellcheck -x clean; baselines pasted (rev1 3/3+2/3, rev2 guards, rev3 deleted/removed-from-index); 521 unit tests OK; CI 12/12 pass. Audits: 18c7164 incorrect (P1 partially refuted + hardening, P2 accepted), bb190d5 incorrect (P2 deleted-validator bypass, accepted), 1994142 Verdict: correct (headless fallback after the lane's busy-check misfire, tasked as T33j).",
+    "author": "claude-code",
+    "created_at": "2026-09-28T22:55:26Z",
+    "updated_at": "2026-09-28T22:55:26Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_1d2abf",
+        "body": "Resolved: orchestrator acceptance recorded in .orchestration/acceptance/dot-orchestration-hygiene-T33i-a01.md; agent-side process evidence, not reviewer authentication.",
+        "author": "claude-code",
+        "created_at": "2026-09-28T22:55:26Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_00ff01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: T33j dot-audit-pane-prompt-detect-T33j-a01 adversarial review found no correctness, regression, security, or omission issues at PR #205 head 4b88402. wait_for_shell_prompt: process-info authoritative (pane shell alone = idle), prompt drawn required only for new panes/tabs and read from recent-unwrapped, no-process-info fallback on the prompt text; worker-pane busy/stuck/exit-dialog paths unchanged. Orchestrator re-ran the full herdr-agents module (126 OK), shellcheck -x clean, baseline 5 fails on the old script, 525 unit tests OK, CI 12/12 pass incl. macOS; headless Codex audit (the pre-fix lane refused the reused pane again, exactly the defect) Verdict: correct.",
+    "author": "claude-code",
+    "created_at": "2026-09-29T00:04:37Z",
+    "updated_at": "2026-09-29T00:04:37Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_abf9c9",
+        "body": "Resolved: orchestrator acceptance recorded in .orchestration/acceptance/dot-audit-pane-prompt-detect-T33j-a01.md; agent-side process evidence, not reviewer authentication.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T00:04:37Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_94c3ed",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: T19 dot-agmsg-upstream-sync-T19-a01 round 2 (revision 3) adversarial review found no correctness, regression, security, or omission issues at PR #184 head 55faae0. Rebase onto 5ea0d9d replayed 14 round-1 commits with every main line present in all 10 overlapping files; findings 1-9 and 11 closed with evidence (marker-gated --update vs plain install, state backup to ~/.agents/backups, teams/ and db/messages.db byte-identical guard with run/ reported; manifest source agmsg-installer pin 1.5.0 ref v1.5.0 ref_commit c487be2 + archive sha256 + npm sha512 all independently re-derived by the orchestrator; .chezmoiremove for ~/.claude/skills/agmsg verified in a scratch HOME; Codex turn documented; AGMSG_RESOLVE_PROJECT=0 registration + worktree-path delivery + docs citing #92; sha/tar checks; poke exit codes; contract and file completeness; doctor allowlists per ruling 2; agmsg-dispatch on upstream lib/validate.sh + strict SQL grammar per ruling 1). Orchestrator: make validate-agent-assets ok, 533 unit tests OK, shellcheck -x clean on all touched shell scripts, files within revision-3 allowed_files; CI 12/12 pass; visible-lane audit Verdict: correct; worker's independent subagent review fixed its own P1 + 3 P2 + 5 P3 with resolved crit evidence.",
+    "author": "claude-code",
+    "created_at": "2026-09-29T01:55:24Z",
+    "updated_at": "2026-09-29T01:55:24Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_4b7c27",
+        "body": "Resolved: orchestrator acceptance recorded in .orchestration/acceptance/dot-agmsg-upstream-sync-T19-a01.md (Round 2 section); agent-side process evidence, not reviewer authentication.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T01:55:24Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_77ee9a",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: T35 dot-herdr-agents-seat-labels-T35-a01 adversarial review found no correctness, regression, security, or omission issues at PR #207 head 72a0a14 (revision 2). herdr-agents recognizes the pair under upstream agmsg 1.5.0 self-naming: seats loaded at the main checkout (orchestrator = non-aNNN claude-code identity; worker = any worker-type seat at the worker worktree, else any non-orchestrator identity at main, solo and -aNNN alike; env read in a subshell), \u003cteam\u003e:\u003cname\u003e labels normalized to the role labels on every pane list, self-named panes never relabeled, legacy labels kept, audit tab unchanged. Orchestrator: test_herdr_agents 139 OK at 72a0a14, shellcheck -x clean, validate ok, baselines pasted (6/6 vs origin/main, 3/3 vs 903c9fa), CI 12/12 pass; headless Codex audits: 903c9fa incorrect (2 P2: solo-worker filter, env scope leak) fixed in rev2, 72a0a14 Verdict: correct.",
+    "author": "claude-code",
+    "created_at": "2026-09-29T05:21:22Z",
+    "updated_at": "2026-09-29T05:21:22Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_f9236f",
+        "body": "Resolved: orchestrator acceptance recorded in .orchestration/acceptance/dot-herdr-agents-seat-labels-T35-a01.md; agent-side process evidence, not reviewer authentication.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T05:21:22Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_213b6d",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: T34 dot-herdr-agents-add-worker-T22-a01 revision 6 adversarial review found no correctness, regression, security, or omission issues at PR #206 head 9da17b9 (rebased onto 2e0c6f4). Deliverable A: pair worker seated in its worktree (manifest worker_worktree -\u003e HERDR_AGENTS_WORKER_WORKTREE, prepare_worker_seat before every worker start, identity joined with AGMSG_RESOLVE_PROJECT=0 at the worktree or existing seat reused, delivery on the worktree, cd -- reseat for reused panes, T14 guard scoped to the legacy seat, docs state upstream #367 turn-only delivery). Deliverable B: --add-worker/--remove-worker on upstream spawn.sh/despawn.sh with a generated options file carrying full profile args; graceful-first despawn per upstream semantics. Rebase kept both SKILL bullets; integration fix loads seat labels after the worker's quiet attach exit. Orchestrator: validate ok, 577 unit tests OK, shellcheck -x clean, file mode 100644, CI 12/12 pass, merge state CLEAN; headless audits: e226c27 incorrect (P2 forced despawn) fixed in rev5, 16d095f correct, 9da17b9 correct. Live E2E (re-seat + PING via Stop hook) follows deployment.",
+    "author": "claude-code",
+    "created_at": "2026-09-29T05:43:10Z",
+    "updated_at": "2026-09-29T05:43:10Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_2ee595",
+        "body": "Resolved: orchestrator acceptance recorded in .orchestration/acceptance/dot-herdr-agents-add-worker-T22-a01.md (Revision 4/T34 sections); agent-side process evidence, not reviewer authentication.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T05:43:10Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_414f92",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: T36 dot-ua-graph-refresh-T36-a01 adversarial review found no correctness, security, or omission issues at PR #208 head 476c6e1. Full .ua/ rebuild (FULL_UPDATE per prepare-incremental, approved; 35 dispatches, 0 retries): scope exactly the three .ua files, no ignored paths; meta.gitCommitHash = 7b69b1e = PR parent, analyzedFiles 360; orchestrator re-derived 853 nodes / 1219 edges / 0 dangling / 0 non-tuple lineRange / 0 vendored agmsg nodes / herdr-agents 35 nodes / no secret patterns or env values; worker gates: core validateGraph 853/853 1219/1219 0 issues; CI 12/12 pass; visible-lane audit Verdict: correct.",
+    "author": "claude-code",
+    "created_at": "2026-09-29T06:43:18Z",
+    "updated_at": "2026-09-29T06:43:18Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_a68d28",
+        "body": "Resolved: orchestrator acceptance recorded in .orchestration/acceptance/dot-ua-graph-refresh-T36-a01.md; agent-side process evidence, not reviewer authentication.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T06:43:18Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_d09ef8",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: T37 dot-upgrade-pins-sync-T37-a01 adversarial review found no correctness, security, or omission issues at PR #209 head 52d9f6b. The five pin files carried from the canonical clone are blob-identical (orchestrator re-checked all five); versions changed are exactly node 26.10.0, dotenvx 2.29.0, claude-code 2.1.284, codex 0.158.0, ccusage 20.0.24, pnpm 12.5.1, aws-cli 2.36.50, crit v0.21.0; ccusage synced in check-statusline-tools.py, its test (2) and test.yaml (2), no 20.0.23 left; supply chain re-derived by the orchestrator: crit v0.21.0 checksums.txt matches all four manifest sha256, aws-cli tag 2.36.50 exists (63d7343); orchestrator ran validate ok, 577 unit tests OK, render check up to date at 52d9f6b; CI 14/14 pass; visible-lane audit Verdict: correct.",
+    "author": "claude-code",
+    "created_at": "2026-09-29T07:48:27Z",
+    "updated_at": "2026-09-29T07:48:27Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_735ff1",
+        "body": "Resolved: orchestrator acceptance recorded in .orchestration/acceptance/dot-upgrade-pins-sync-T37-a01.md; agent-side process evidence, not reviewer authentication.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T07:48:27Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_fa36e9",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "T38 review-scope approval: PR #210 (head 98991e6) carries PR #182 with hunk-identical PR edits in all 6 auto-merged/conflicted files (verified against origin/pr/182 and origin/main), removes the mandatory coderabbitai[bot] review gate with an accept-without-bot-review test, drops coderabbit-trigger.yml and its two references, adds a fail-closed --base check with a 3-case test; 605 unit tests, validate ok, render ok, PR checks all pass, self-run guard exit 0 with 15 not-applicable dispositions (no strict-level short reasons); Codex audits of 98991e6 and fa934f7 both Verdict: correct; findings (2)(3)(4) deferred to a security-lane task.",
+    "author": "claude-code",
+    "created_at": "2026-09-29T09:37:22Z",
+    "updated_at": "2026-09-29T09:37:34Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_37e74d",
+        "body": "Resolved: review-scope approval recorded for T38 (r_fa36e9 is the approval; r_658b63 was a stray top-level echo of the resolution text).",
+        "author": "claude-code",
+        "created_at": "2026-09-29T09:37:34Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_658b63",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Resolved: review-scope approval recorded for T38.",
+    "author": "claude-code",
+    "created_at": "2026-09-29T09:37:22Z",
+    "updated_at": "2026-09-29T09:37:34Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_0aa4f6",
+        "body": "Resolved: review-scope approval recorded for T38 (r_fa36e9 is the approval; r_658b63 was a stray top-level echo of the resolution text).",
+        "author": "claude-code",
+        "created_at": "2026-09-29T09:37:34Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_5b03f8",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "T39 review-scope approval: PR #211 (head 271e8ef) carries PR #179 minus its AppArmor part (three files absent from every commit tree; main's bwrap-userns files untouched), renders claude.sandbox with exactly the operator-approved values (failIfUnavailable false, herdr socket in allowUnixSockets), allowWrite has all four Codex roots, validator + 5 tests, presence-only doctor check, bubblewrap+socat with bats count 18; 610 unit OK, validate ok, render ok, PR checks all pass. Audits: 2815528 Verdict correct; 841e12b Verdict incorrect with P2 (socket IPC gap, operator ruled merge-as-is and decide after live E2E) and P3 (README bwrap profile text, fixed in 2815528 at head).",
+    "author": "claude-code",
+    "created_at": "2026-09-29T10:25:23Z",
+    "updated_at": "2026-09-29T10:25:23Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_99642f",
+        "body": "Resolved: review-scope approval recorded for T39; audit P2 dispositioned as operator-ruled known gap pending live E2E, P3 resolved at head.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T10:25:23Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_c057c2",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "T41 review-scope approval: PR #212 (head 7ee3658) full Understand-Anything rebuild at 72b8901 plus the rev2 coverage repair; orchestrator re-derived on the head graph 885 nodes/1325 edges, 0 files with fewer function+class nodes than the previous graph, 0 old node IDs missing, 0 non-tuple lineRange, 0 dangling edges, 0 secret-pattern matches, only .ua files changed, meta 72b8901; CI all pass. Audits: c3afc7a Verdict incorrect (P2 coverage regression, corroborating the orchestrator revise), 7ee3658 Verdict correct.",
+    "author": "claude-code",
+    "created_at": "2026-09-29T12:01:10Z",
+    "updated_at": "2026-09-29T12:01:10Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_cc8ec4",
+        "body": "Resolved: T41 approval recorded; round-1 P2 fixed in 7ee3658.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T12:01:10Z",
+        "review_round": 1
+      }
+    ]
+  }
+]

@@ -488,8 +488,9 @@ Ghostty starts at a normal zsh prompt. In Ghostty zsh sessions, bare `herdr`
 delegates to `herdr-session`, which simply execs the real `herdr` CLI: the
 terminal opens as one plain pane with no agent layout. Agent panes are added
 lazily — starting Claude Code inside a Herdr pane fires the Claude
-`SessionStart` hook, which runs `herdr-agents --attach` (logged to
-`~/.config/herdr/herdr-agents.log`). Exiting Herdr returns to the shell.
+`SessionStart` hook, which runs `herdr-agents --attach` (its stdout reaches
+the session context; stderr is logged to `~/.config/herdr/herdr-agents.log`).
+Exiting Herdr returns to the shell.
 Argumented Herdr calls such as `herdr --remote` and `herdr server
 reload-config` still run the real Herdr CLI, as does bare `herdr` outside
 Ghostty. Already-open Ghostty shells keep the zsh function they sourced at

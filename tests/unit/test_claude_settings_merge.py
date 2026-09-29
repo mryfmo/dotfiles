@@ -170,7 +170,7 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         self.assertTrue(
             commands[0].startswith(str(self.home_dir))
             and commands[0].endswith(
-                '/herdr-agents --attach >> "$HOME/.config/herdr/herdr-agents.log" 2>&1 || true'
+                '/herdr-agents --attach 2>> "$HOME/.config/herdr/herdr-agents.log" || true'
             ),
             f"attach hook must migrate to an absolute path, got {commands[0]!r}",
         )

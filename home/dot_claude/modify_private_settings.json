@@ -177,7 +177,7 @@ def main() -> int:
                 "hooks": [
                     {
                         "type": "command",
-                        "command": f'{home_dir()}/.local/bin/common/herdr-agents --attach >> "$HOME/.config/herdr/herdr-agents.log" 2>&1 || true',
+                        "command": f'{home_dir()}/.local/bin/common/herdr-agents --attach 2>> "$HOME/.config/herdr/herdr-agents.log" || true',
                         "timeout": 10,
                     }
                 ],

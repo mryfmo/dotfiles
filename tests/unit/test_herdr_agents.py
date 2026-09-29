@@ -1325,9 +1325,11 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         session_hooks = json.loads(result.stdout)["hooks"]["SessionStart"]
         command = session_hooks[-1]["hooks"][0]["command"]
-        self.assertIn("herdr-agents --attach", command)
-        self.assertIn("herdr-agents.log", command)
-        self.assertTrue(command.endswith("|| true"))
+        # stdout (the plain-start summary line) reaches the SessionStart context; stderr is logged.
+        self.assertTrue(
+            command.endswith('/herdr-agents --attach 2>> "$HOME/.config/herdr/herdr-agents.log" || true'),
+            command,
+        )
 
     def test_herdr_session_does_not_prebuild_agent_layout(self) -> None:
         self.assertNotIn("herdr-agents", HERDR_SESSION_SCRIPT.read_text())

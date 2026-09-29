@@ -35,7 +35,8 @@ AGMSG_LEGACY_RUNTIME_FILES = {
     Path("agmsg/messages.db-shm"),
     Path("agmsg/messages.db-wal"),
 }
-AGENT_ROOT_ALLOWLIST = {"compactiondb", "db", "run", "teams", "worklog"}
+# backups/ holds update_agmsg's pre-install state copies (agmsg-state-<UTC>).
+AGENT_ROOT_ALLOWLIST = {"backups", "compactiondb", "db", "run", "teams", "worklog"}
 UNDERSTAND_SKILL_ALLOWLIST = {
     "understand",
     "understand-chat",
@@ -536,7 +537,8 @@ def orphaned_asset_warnings(
         UNDERSTAND_SKILL_ALLOWLIST
         | CRIT_PLUGIN_SKILLS
         | receipt_skill_names
-        | {"db", "run", "teams"}
+        # agmsg is owned by its upstream installer (update_agmsg), not chezmoi.
+        | {"agmsg", "db", "run", "teams"}
     )
     candidates = [
         (path, source_root_names, AGENT_ROOT_ALLOWLIST)

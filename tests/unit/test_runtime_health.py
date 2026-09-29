@@ -683,6 +683,15 @@ EOF
             chmod +x "$skill_dir/scripts/send.sh"
             touch "$skill_dir/.agmsg"
             printf 'openai: fake\n' > "$skill_dir/agents/openai.yaml"
+            # Like upstream install.sh: create the store when it is missing.
+            if [ ! -f "$skill_dir/db/messages.db" ]; then
+                mkdir -p "$skill_dir/db"
+                printf 'fresh store\n' > "$skill_dir/db/messages.db"
+            fi
+            if [ -n "${AGMSG_FIXTURE_TOUCH_RUN:-}" ]; then
+                mkdir -p "$skill_dir/run"
+                printf 'restarted\n' > "$skill_dir/run/remote-sync.team.pid"
+            fi
             if [ -n "${AGMSG_FIXTURE_CORRUPT_STATE:-}" ]; then
                 printf 'corrupted\n' >> "$skill_dir/teams/example/data.txt" 2>/dev/null || true
             fi
@@ -890,8 +899,10 @@ EOF
         )
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertIn("changed during install.sh --update", result.stdout + result.stderr)
-        self.assertIn("installer failed", result.stdout + result.stderr)
+        output = result.stdout + result.stderr
+        self.assertIn("install.sh --update --cmd agmsg --agent-type claude-code changed or removed existing live state", output)
+        self.assertIn(str(skill_dir / "teams/example/data.txt"), output)
+        self.assertIn("installer failed", output)
 
     def test_agmsg_migration_reports_an_installer_that_mutates_live_state(
         self,
@@ -922,13 +933,65 @@ EOF
         self.assertNotIn("update=true", (repo / "commands.log").read_text())
         backup = next((home / ".agents/backups").glob("agmsg-state-*"))
         self.assertIn(
-            "changed during install.sh --cmd agmsg --agent-type claude-code; "
-            f"pre-install state copy: {backup}",
+            "install.sh --cmd agmsg --agent-type claude-code changed or removed "
+            f"existing live state (the installer or a concurrent writer); pre-install state copy: {backup}",
             output,
         )
         self.assertIn("agmsg installer failed (installed: none)", output)
         self.assertEqual("live state\n", (backup / "teams/example/data.txt").read_text())
         self.assertEqual(b"sqlite bytes", (backup / "db/messages.db").read_bytes())
+
+    def test_agmsg_accepts_a_store_the_installer_creates_and_notes_run_changes(
+        self,
+    ) -> None:
+        repo, home, env, checksum = self.agmsg_fixture()
+        skill_dir = home / ".agents/skills/agmsg"
+        for state_dir in ("teams", "db", "run"):
+            (skill_dir / state_dir).mkdir(parents=True)
+            (skill_dir / state_dir / ".keep").write_text("")
+        env["AGMSG_FIXTURE_TOUCH_RUN"] = "1"
+
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                "source scripts/update-agent-assets.sh; "
+                f"AGMSG_PIN_SHA256={checksum}; "
+                "AGMSG_PIN_VERSION=9.9.9; "
+                "update_agmsg",
+            ],
+            cwd=repo,
+            env=env,
+        )
+
+        output = result.stdout + result.stderr
+        self.assertEqual(0, result.returncode, output)
+        self.assertNotIn("installer failed", output)
+        self.assertEqual("fresh store\n", (skill_dir / "db/messages.db").read_text())
+        self.assertIn("agmsg: note: run/ changed during install.sh", result.stdout)
+
+    def test_agmsg_reports_an_installer_that_leaves_the_wrong_version(self) -> None:
+        repo, home, env, checksum = self.agmsg_fixture()
+
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                "source scripts/update-agent-assets.sh; "
+                f"AGMSG_PIN_SHA256={checksum}; "
+                "update_agmsg",
+            ],
+            cwd=repo,
+            env=env,
+        )
+
+        output = result.stdout + result.stderr
+        self.assertEqual(0, result.returncode, output)
+        self.assertIn(
+            "agmsg: install.sh --cmd agmsg --agent-type claude-code left VERSION 9.9.9 (want 1.5.0)",
+            output,
+        )
+        self.assertIn("agmsg installer failed (installed: none)", output)
 
     def test_agmsg_refuses_to_install_when_the_state_snapshot_is_empty(self) -> None:
         repo, home, env, checksum = self.agmsg_fixture(preinstalled_version="1.0.0")

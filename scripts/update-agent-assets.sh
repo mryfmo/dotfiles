@@ -913,32 +913,42 @@ function agmsg_sha256() {
 }
 
 #
-# @description Print a sorted sha256 manifest of the agmsg live state no
-#   installer run may change: every file under teams/ and run/, plus
-#   db/messages.db. It prints nothing when that state does not exist yet, and
-#   fails rather than print a short (e.g. empty) manifest that would compare
-#   equal by accident.
+# @description Print a sorted sha256 manifest of every file under the given
+#   paths of an agmsg skill directory, skipping paths that do not exist. It
+#   fails rather than print a short (e.g. empty) manifest, including when find
+#   cannot list a subtree.
 # @arg $1 path Skill directory (e.g. ~/.agents/skills/agmsg).
-# @exitcode 1 If the state cannot be hashed completely.
+# @arg $@ path Paths relative to the skill directory (dirs or files).
+# @exitcode 1 If the paths cannot be listed or hashed completely.
 #
 function agmsg_state_snapshot() {
     local skill_dir="$1"
-    local file hashes
-    local -a files=()
+    local relative list file hashes
+    local -a paths=() files=()
+    shift
 
+    for relative in "$@"; do
+        [ ! -e "${skill_dir}/${relative}" ] || paths+=("${skill_dir}/${relative}")
+    done
+    ((${#paths[@]})) || return 0
+    list="$(mktemp)" || return 1
+    if ! find "${paths[@]}" -type f -print0 > "${list}"; then
+        rm -f "${list}"
+        printf 'agmsg: could not list the live state under %s\n' "${skill_dir}" >&2
+        return 1
+    fi
     while IFS= read -r -d '' file; do
         files+=("${file}")
-    done < <(
-        find "${skill_dir}/teams" "${skill_dir}/run" -type f -print0 2> /dev/null
-        [ ! -f "${skill_dir}/db/messages.db" ] || printf '%s\0' "${skill_dir}/db/messages.db"
-    )
+    done < "${list}"
+    rm -f "${list}"
     ((${#files[@]})) || return 0
     hashes="$(agmsg_sha256 "${files[@]}")" || return 1
-    if [ "$(printf '%s\n' "${hashes}" | grep -c '^[0-9a-f]\{64\} ')" -ne "${#files[@]}" ]; then
+    # sha256sum/shasum prefix a line with \ when the name needs escaping.
+    if [ "$(printf '%s\n' "${hashes}" | grep -c '^\\\{0,1\}[0-9a-f]\{64\} ')" -ne "${#files[@]}" ]; then
         printf 'agmsg: hashed fewer live-state files than exist under %s\n' "${skill_dir}" >&2
         return 1
     fi
-    printf '%s\n' "${hashes}" | sort
+    printf '%s\n' "${hashes}" | LC_ALL=C sort
 }
 
 #
@@ -948,8 +958,11 @@ function agmsg_state_snapshot() {
 #   anything else, including the marker-less legacy vendored directory, gets
 #   the plain installer, never --update. Before any installer run, the live
 #   state (teams/, db/, run/, agents/) is copied to
-#   ~/.agents/backups/agmsg-state-<UTC time>/ as the rollback, and a sha256
-#   manifest of teams/, run/ and db/messages.db must be identical afterwards.
+#   ~/.agents/backups/agmsg-state-<UTC time>/ as the rollback. Afterwards every
+#   file that existed under teams/ and db/messages.db must be byte-identical
+#   (the installer may add files, e.g. create a missing messages.db); run/ is
+#   only reported, because live watchers and --update's sync-engine restarts
+#   rewrite it by design.
 #   Every step checks its own status: this runs on the left of `||`, where
 #   `set -e` is inert.
 # @arg $1 path Skill directory (e.g. ~/.agents/skills/agmsg).
@@ -958,7 +971,7 @@ function agmsg_state_snapshot() {
 function install_pinned_agmsg() (
     local skill_dir="$1"
     local fetch_url="https://github.com/fujibee/agmsg/archive/${AGMSG_PIN_COMMIT}.tar.gz"
-    local tool tarball extract_dir actual before_state after_state install_log backup_dir state_dir installed
+    local tool tarball extract_dir actual before_state after_state before_run after_run changed install_log backup_dir state_dir installed
     local -a install_args=(--cmd agmsg --agent-type claude-code)
 
     for tool in curl tar; do
@@ -967,10 +980,11 @@ function install_pinned_agmsg() (
             return 1
         }
     done
-    before_state="$(agmsg_state_snapshot "${skill_dir}")" || {
+    before_state="$(agmsg_state_snapshot "${skill_dir}" teams db/messages.db)" || {
         printf 'agmsg: could not snapshot the live state under %s; nothing was installed\n' "${skill_dir}" >&2
         return 1
     }
+    before_run="$(agmsg_state_snapshot "${skill_dir}" run 2> /dev/null || printf 'unavailable')"
     if [ -f "${skill_dir}/.agmsg" ]; then
         install_args=(--update "${install_args[@]}")
     fi
@@ -1010,12 +1024,20 @@ function install_pinned_agmsg() (
             "${install_args[*]}" "${backup_dir:+; pre-install state copy: ${backup_dir}}" >&2
         return 1
     fi
-    after_state="$(agmsg_state_snapshot "${skill_dir}")" || return 1
-    [ "${before_state}" = "${after_state}" ] || {
-        printf 'agmsg: live state under teams/, run/ or db/messages.db changed during install.sh %s; pre-install state copy: %s\n' \
+    after_state="$(agmsg_state_snapshot "${skill_dir}" teams db/messages.db)" || {
+        printf 'agmsg: install.sh %s finished, but the live state could not be re-checked; pre-install state copy: %s\n' \
             "${install_args[*]}" "${backup_dir:-none}" >&2
         return 1
     }
+    changed="$(LC_ALL=C comm -23 <(printf '%s\n' "${before_state}") <(printf '%s\n' "${after_state}") | sed 's/^[^ ]*  *//')"
+    if [ -n "${changed}" ]; then
+        printf 'agmsg: install.sh %s changed or removed existing live state (the installer or a concurrent writer); pre-install state copy: %s\n%s\n' \
+            "${install_args[*]}" "${backup_dir:-none}" "${changed}" >&2
+        return 1
+    fi
+    after_run="$(agmsg_state_snapshot "${skill_dir}" run 2> /dev/null || printf 'unavailable')"
+    [ "${before_run}" = "${after_run}" ] ||
+        printf 'agmsg: note: run/ changed during install.sh %s (watchers and sync engines rewrite it); not treated as a failure\n' "${install_args[*]}"
     installed="$(cat "${skill_dir}/VERSION" 2> /dev/null || printf 'none')"
     if ! [ -f "${skill_dir}/.agmsg" ] || [ "${installed}" != "${AGMSG_PIN_VERSION}" ]; then
         printf 'agmsg: install.sh %s left VERSION %s (want %s)\n' "${install_args[*]}" "${installed}" "${AGMSG_PIN_VERSION}" >&2

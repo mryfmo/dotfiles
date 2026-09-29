@@ -574,6 +574,10 @@ def validate_agmsg_installer_asset(name: str, asset: dict[str, Any]) -> None:
 # the deleted vendored tree, so chezmoi must remove it.
 AGMSG_INSTALLER_OWNED_TARGETS = (
     ".agents/skills/agmsg",
+    ".agents/skills/agmsg/.agmsg",
+    ".agents/skills/agmsg/VERSION",
+    ".agents/skills/agmsg/SKILL.md",
+    ".agents/skills/agmsg/scripts/send.sh",
     ".agents/skills/agmsg/db/messages.db",
     ".agents/skills/agmsg/teams/team/config.json",
     ".claude/commands/agmsg.md",
@@ -583,9 +587,12 @@ AGMSG_RETIRED_SYMLINK_FARM_REMOVAL = ".claude/skills/agmsg/**"
 
 def validate_agmsg_is_installer_owned() -> None:
     """Keep agmsg out of chezmoi: no vendored copy, no managed command, stale links retired."""
-    for vendored in ("home/dot_agents/skills/agmsg", "home/dot_claude/skills/agmsg"):
-        if (ROOT / vendored).exists():
-            fail(f"{vendored} must not exist: upstream install.sh owns the agmsg skill")
+    # Globs so chezmoi attribute prefixes (private_, exact_, symlink_, ...) match too.
+    for pattern in ("home/*dot_agents/skills/*agmsg", "home/*dot_claude/skills/*agmsg"):
+        for vendored in sorted(ROOT.glob(pattern)):
+            fail(
+                f"{vendored.relative_to(ROOT)} must not exist: upstream install.sh owns the agmsg skill"
+            )
     commands = ROOT / "home/dot_claude/commands"
     for path in sorted(commands.glob("*agmsg.md*")) if commands.exists() else ():
         fail(f"{path.relative_to(ROOT)} must not exist: install.sh renders ~/.claude/commands/agmsg.md")

@@ -7,9 +7,10 @@
 #   The retry shares the original deadline and rechecks the pane's current state.
 #   Only routing metadata, never the message body, is sent to the terminal.
 #   This is the orchestrator's wake path for herdr-agents worker panes until
-#   worker seating writes agmsg placement records: upstream poke.sh refuses a
-#   member without one ("no placement record"), and every herdr-agents worker
-#   is hand-joined today. Use poke.sh only for spawn-seated members.
+#   worker seating writes agmsg placement records at launch: upstream poke.sh
+#   refuses a member without one ("no placement record"), and a hand-joined
+#   herdr-agents worker gets one only after it first acts from its own pane.
+#   Use poke.sh only for spawn-seated members.
 # @arg $1 string Team identifier.
 # @arg $2 string Sender identifier.
 # @arg $3 string Recipient identifier.

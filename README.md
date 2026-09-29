@@ -346,17 +346,23 @@ differs from the pin or the upstream `.agmsg` marker is missing:
   vendored copy therefore takes the plain installer, which upstream `--update`
   refuses ("Not installed").
 - Before the installer runs, it copies `teams/`, `db/`, `run/`, and `agents/`
-  to `~/.agents/backups/agmsg-state-<UTC time>/` as the rollback. The sha256
-  manifest of `teams/`, `run/`, and `db/messages.db` must be identical
-  afterwards, and `VERSION` must equal the pin. Every failure names what
-  changed and where the copy is. Remove old copies with
-  `rm -rf ~/.agents/backups/agmsg-state-*`.
+  to `~/.agents/backups/agmsg-state-<UTC time>/` as the rollback.
+- Afterwards, every file that existed under `teams/`, and `db/messages.db`,
+  must be byte-identical. The installer may add files, for example create a
+  missing `messages.db`. `VERSION` must equal the pin.
+- `run/` changes are only reported: live watchers, and the sync-engine
+  restart that `--update` performs, rewrite it by design.
+- A failure says what failed. A live-state failure also lists the changed
+  files and the path of the copy; failures before the installer runs say
+  that nothing was installed.
+- Remove old copies with `rm -rf ~/.agents/backups/agmsg-state-*`.
 - `npx agmsg@<pin>` installs the same tag but clones it without any checksum,
   which is why the lifecycle verifies the archive instead.
 - `install.sh --update` makes in-flight `watch.sh` watchers stand down on
-  their own. Restart running agent sessions after `make update` to bring
-  delivery back. The upstream installer prints this; #133 covers the related
-  hook re-registration after an upgrade.
+  their own. After `make update`, restart running agent sessions to bring
+  delivery back. Re-run `delivery.sh set <mode> <type> <project>` where a
+  project's hooks were dropped, and check with `delivery.sh status <type>
+  <project>`. The upstream installer prints both steps (#133).
 
 chezmoi no longer manages anything under `~/.agents/skills/agmsg`.
 `home/.chezmoiremove` retires the old `~/.claude/skills/agmsg/**` symlink farm,
@@ -402,23 +408,27 @@ Wake and send:
   <to> <pane_id> "<message>"`. It sends, sends a generic inbox wake, and waits
   for `read_at`, using upstream `lib/validate.sh` and `lib/storage.sh` plus a
   strict identifier grammar. It stays the sanctioned path until worker seating
-  writes placement records, because `poke.sh` exits 1 with "no placement
-  record" for a hand-joined member, which includes every `herdr-agents`
-  worker today.
+  writes placement records at launch. `poke.sh` exits 1 with "no placement
+  record" for a hand-joined member. A `herdr-agents` worker gets a record
+  only once it acts from its own pane: upstream `send.sh` and `inbox.sh`
+  record the acting pane (#1109). Until then, poke cannot reach it.
 - Wake a spawn-seated member (`team.sh <team> --json` shows its pane) with
   `poke.sh <team> <name> --body-file <path>`.
 - Reach a pane-less member with `send.sh <team> <from> <to> --body-file
   <path>`.
-- Pass bodies with `--body-file`, since a positional body passes through the
-  caller's shell (#378).
+- Pass `send.sh`/`poke.sh` bodies with `--body-file`, since a positional body
+  passes through the caller's shell (#378). `agmsg-dispatch` is the one
+  exception: it takes a single-line, shell-safe positional message.
 
 `poke.sh` exit codes:
 
 - 10: terminal unreachable.
 - 12: pane gone.
 - 14/15: refused to type over a changing or unlocatable input box.
-- 13: no poke path for this pane. Nothing was delivered, and the message names
-  the native channel. Never retry a 13 as `send.sh`.
+- 13: no poke path for this pane, and nothing was delivered. The message says
+  why: it names the native channel (a claude-code target from a claude-code
+  caller), tells the caller to claim its own identity first, or reports that
+  poke's own message fallback failed. Never retry a 13 as `send.sh`.
 
 Health checks are read-only: `team.sh <team> --json`, `doctor.sh --project
 <p>`, `peek.sh <team>`, and `delivery.sh status <type> <project>`.

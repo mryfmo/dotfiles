@@ -379,13 +379,13 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         return stderr.getvalue()
 
     def test_agmsg_installer_requires_a_release_pin_and_its_tag(self) -> None:
-        for changes in (
-            {"pin": "c487be269c1973aeb01ca831806eb3f65ff3366d"},
-            {"ref": None},
-            {"ref": "v1.4.2"},
+        for changes, message in (
+            ({"pin": "c487be269c1973aeb01ca831806eb3f65ff3366d"}, "must be an upstream release"),
+            ({"ref": None}, "must be the release tag v1.5.0"),
+            ({"ref": "v1.4.2"}, "must be the release tag v1.5.0"),
         ):
             with self.subTest(changes=changes):
-                self.assert_agmsg_asset_rejected(**changes)
+                self.assertIn(message, self.assert_agmsg_asset_rejected(**changes))
 
     def test_agmsg_installer_requires_the_full_tag_commit(self) -> None:
         for changes in ({"ref_commit": None}, {"ref_commit": "c487be2"}):
@@ -418,7 +418,11 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.module.validate_agmsg_is_installer_owned()
 
     def test_agmsg_ownership_rejects_a_vendored_skill_copy(self) -> None:
-        for vendored in ("home/dot_agents/skills/agmsg", "home/dot_claude/skills/agmsg"):
+        for vendored in (
+            "home/dot_agents/skills/agmsg",
+            "home/dot_claude/skills/agmsg",
+            "home/private_dot_agents/skills/exact_agmsg",
+        ):
             with self.subTest(vendored=vendored):
                 self.write_agmsg_installer_layout()
                 self.write_text_file(f"{vendored}/SKILL.md", "vendored\n")
@@ -440,7 +444,13 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.assert_agmsg_ownership_rejected("must retire .claude/skills/agmsg/**")
 
     def test_agmsg_ownership_rejects_removing_installer_owned_paths(self) -> None:
-        for pattern in (".agents/skills/agmsg", ".agents/skills/agmsg/**", ".claude/commands/agmsg.md"):
+        for pattern in (
+            ".agents/skills/agmsg",
+            ".agents/skills/agmsg/**",
+            ".agents/skills/agmsg/.agmsg",
+            ".agents/skills/agmsg/VERSION",
+            ".claude/commands/agmsg.md",
+        ):
             with self.subTest(pattern=pattern):
                 self.write_text_file(
                     "home/.chezmoiremove", f".claude/skills/agmsg/**\n{pattern}\n"

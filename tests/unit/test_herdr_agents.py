@@ -3032,6 +3032,57 @@ fi
         self.assertFalse(any(c.startswith(("pane rename", "pane split", "agent start")) for c in self.calls()), self.calls())
         self.assertIn(f"identities {worktree} claude-code", self.calls())
 
+    def write_self_named_codex_pair(self) -> None:
+        """A self-named pair whose worker is a solo (no -aNNN) codex identity."""
+        self.install_agmsg_fakes(
+            identities_output="dotfiles\tcodex-standard-dot",
+            claude_identities_output="dotfiles\tclaude-remediation-dot",
+        )
+        profiles = self.home_dir / ".agents/model-profiles.env"
+        profiles.parent.mkdir(parents=True, exist_ok=True)
+        profiles.write_text('HERDR_AGENTS_WORKER_KIND="codex"\nHERDR_AGENTS_WORKER_PROFILE="standard"\n')
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"dotfiles:claude-remediation-dot","pane_id":"w-old:p1","workspace_id":"w-old"}},'
+            f'{{"agent":"codex","cwd":"{self.workdir}","label":"dotfiles:codex-standard-dot","pane_id":"w-old:p2","workspace_id":"w-old"}}',
+            label="dotfiles",
+        )
+        self.write_pane_layout([("w-old:p1", 0), ("w-old:p2", 40)])
+
+    def test_restart_worker_finds_a_solo_codex_worker_seat(self) -> None:
+        self.write_self_named_codex_pair()
+
+        result = self.run_helper("--restart-worker")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls()
+        self.assertIn("agent prompt w-old:p2 /exit", calls)
+        self.assertTrue(any(c.startswith("agent start codex-worker-w-old --kind codex --pane w-old:p2") for c in calls), calls)
+
+    def test_full_mode_does_not_duplicate_a_solo_codex_worker_seat(self) -> None:
+        self.write_self_named_codex_pair()
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(any(c.startswith(("pane split", "agent start")) for c in self.calls()), self.calls())
+
+    def test_explicit_worker_kind_and_profile_survive_seat_label_loading(self) -> None:
+        self.install_agmsg_fakes()
+        profiles = self.home_dir / ".agents/model-profiles.env"
+        profiles.parent.mkdir(parents=True, exist_ok=True)
+        profiles.write_text('HERDR_AGENTS_WORKER_KIND="claude"\nHERDR_AGENTS_WORKER_PROFILE="standard"\n')
+
+        result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "codex", "HERDR_AGENTS_WORKER_PROFILE": "express"})
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls()
+        self.assertTrue(
+            any(c.startswith("agent start codex-worker-") and c.endswith("--sandbox workspace-write --profile express") for c in calls),
+            calls,
+        )
+        self.assertIn(f"delivery set turn codex {self.workdir.resolve()}", calls)
+
     def test_two_self_named_pair_workspaces_still_refuse(self) -> None:
         self.write_self_named_pair(self.audit_tab_pane(), extra_workspace_ids=("w-new",))
 

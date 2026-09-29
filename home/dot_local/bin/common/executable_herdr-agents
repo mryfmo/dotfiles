@@ -402,16 +402,17 @@ function start_worker_agent() {
 #   labels and agent names disappear. Seats are read at the repository's main
 #   checkout (the git common dir's parent, so a linked worktree resolves too):
 #   the orchestrator is its non-worker (no -aNNN) claude-code identity, and the
-#   worker is the worker-type seat registered at HERDR_AGENTS_WORKER_WORKTREE
-#   (from ~/.agents/model-profiles.env) or, for the legacy seat, an -aNNN
-#   worker-type identity at the main checkout. Other team members are not the
-#   pair's worker. Sets seat_orchestrator_labels and seat_worker_labels (JSON
-#   arrays of `<team>:<name>`).
+#   worker is any worker-type seat registered at HERDR_AGENTS_WORKER_WORKTREE
+#   (read from ~/.agents/model-profiles.env in a subshell, never in the
+#   caller's scope) or, for the legacy seat, any worker-type identity at the
+#   main checkout that is not the orchestrator, solo or -aNNN alike. Members
+#   registered elsewhere are not the pair's worker. Sets
+#   seat_orchestrator_labels and seat_worker_labels (JSON arrays of
+#   `<team>:<name>`).
 # @arg $1 workdir Absolute directory.
 function load_seat_labels() {
     local scripts="${HOME}/.agents/skills/agmsg/scripts"
     local main="$1" common rows worker_type seat_worktree
-    local HERDR_AGENTS_WORKER_WORKTREE=""
 
     seat_orchestrator_labels='[]'
     seat_worker_labels='[]'
@@ -427,13 +428,14 @@ function load_seat_labels() {
     [[ -n ${rows} ]] || return 0
     seat_orchestrator_labels="$(jq -Rnc '[inputs | split("\t") | "\(.[0]):\(.[1])"]' <<< "${rows}")"
     worker_type="$(worker_agmsg_type "${worker_kind:-$(resolve_worker_kind)}")"
-    if [[ -f ${HOME}/.agents/model-profiles.env ]]; then
+    seat_worktree="$(
         # shellcheck source=/dev/null
-        source "${HOME}/.agents/model-profiles.env"
-    fi
+        [[ ! -f ${HOME}/.agents/model-profiles.env ]] || source "${HOME}/.agents/model-profiles.env"
+        printf '%s' "${HERDR_AGENTS_WORKER_WORKTREE:-}"
+    )"
     rows="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${main}" "${worker_type}" 2> /dev/null |
-        awk -F '\t' 'NF == 2 && $2 ~ /-a[0-9][0-9][0-9]$/')" || rows=""
-    seat_worktree="${HERDR_AGENTS_WORKER_WORKTREE}"
+        jq -Rr --argjson orchestrators "${seat_orchestrator_labels}" \
+            'split("\t") | select(length == 2) | select(("\(.[0]):\(.[1])") as $label | $orchestrators | index($label) | not) | join("\t")')" || rows=""
     if [[ ${seat_worktree} =~ ^\.claude/worktrees/[A-Za-z0-9._-]+$ && -d ${main}/${seat_worktree} ]]; then
         rows+=$'\n'"$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${main}/${seat_worktree}" "${worker_type}" 2> /dev/null)" || true
     fi

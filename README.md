@@ -508,8 +508,9 @@ seats, read at the main checkout (also from a linked worktree):
   is the orchestrator, meaning the non-worker (no `-aNNN`) `claude-code`
   identity registered there;
 - such a pane counts as the worker when `<name>` is the pair's own
-  worker-type seat: the one registered at `HERDR_AGENTS_WORKER_WORKTREE`, or
-  for the legacy seat an `-aNNN` identity at the main checkout;
+  worker-type seat: one registered at `HERDR_AGENTS_WORKER_WORKTREE`, or for
+  the legacy seat any worker-type identity at the main checkout other than the
+  orchestrator, whether solo (e.g. `codex-standard-dot`) or `-aNNN`;
 - other members of the team are not the pair's worker, so they never become
   a second worker;
 - the legacy labels keep working.

@@ -67,3 +67,19 @@
   uses. Declining to implement a stale instruction, with the verified reason recorded, is
   the correct action — not implementing it anyway "to be safe", which would have made the
   README say something false about the pinned version.
+
+## Round 2 (task revision 3), worker claude-standard-dot-a005
+
+1. **A before/after guard must model what the tool legitimately creates.** Upstream `install.sh` creates a missing `db/messages.db`, so a strict equality check falsely failed every fresh install. My fixture never created the store, which hid this until an independent reviewer ran the real installer. Compare only *pre-existing* files, and make fixtures do what the real tool does.
+2. **Run the real upstream artifact end to end before trusting a fake-based suite.** Scratch-HOME runs of the real pinned archive found three problems that no unit test did:
+   - the plain install prunes unshipped scripts, which broke agmsg-dispatch;
+   - `agmsg_db_path` needs a team selector;
+   - poke refuses hand-joined members.
+3. **Upstream docs and issue states can contradict the code.** The README gives two different Codex defaults, and #1101 is still OPEN although it is fixed in 1.5.0. Cite the tagged source and verified behaviour, not the prose or the issue tracker.
+4. **CI's shellcheck can be newer than the local one.** SC2015 passed locally on 0.11.0 and failed in CI. Before pushing, run the exact CI command (`git ls-files … | xargs -0 shellcheck -x`).
+5. **`crit comments --json` is sorted by path, not by creation order.** Look up a new comment's id by its body; `.[-1]` misattributes replies.
+6. **Mind the tool that will deliver a boundary message.** The installed vendored `send.sh` has no `--body-file`, so that message arrived as the literal flag. Use a single-line positional body until 1.5.0 is live.
+
+## Promotion
+
+None. These are candidates only; promotion is the orchestrator's call.

@@ -269,3 +269,157 @@ request: upstream's shim-based `monitor` bridge has three open reliability defec
 v1.5.0 — #149/#151/#1236); every worker pane exports `AGMSG_RESOLVE_PROJECT=0` so
 join.sh/whoami.sh/watch.sh register at the worker's own worktree path instead of the
 orchestrator's ancestor-resolved main checkout (upstream #92)."
+
+---
+
+## Round 2 (task revision 3), worker claude-standard-dot-a005
+
+- **Worker and worktree.** worker `claude-standard-dot-a005` in `.claude/worktrees/worker-c`. Round 1 was done by a004 in worker-b.
+- **Task revisions.** `task_rev` was verified by sha256 against `origin/main` at each ruling:
+  - r3 `54f12a56…` at fb11017;
+  - addendum 1 `bdb79730…` at b008d84;
+  - addendum 2 `a454e2e3…` at 5ea0d9d.
+- **Branch.** `feat/agmsg-upstream-sync`, recreated per ruling with `git switch -C feat/agmsg-upstream-sync origin/feat/agmsg-upstream-sync` (579bafe, the PR head). The local-only `1aefa58` (withdrawn supplement 2) was not carried. The branch is rebased onto `origin/main` 5ea0d9d and pushed with `--force-with-lease` on my own branch, as authorized.
+- **PR.** https://github.com/mryfmo/dotfiles/pull/184, head `55faae062d34b7b8f9dc06203069982547540d50`. CI is green: every check passes, and nix is skipped. Run history: 7bd66ac failed on SC2015 in CI's shellcheck, e0674d1 was green, and 55faae0 is green. The verbatim output is in the validation file.
+- **Round-2 commits, final SHAs** (pre-rebase SHAs in brackets, as cited in the crit replies and baselines):
+  - `aa5c038` [54f25df]: installer migration and state guard (findings 1, 6).
+  - `ad7338d` [5999c76]: manifest spec and validator ownership rules (finding 2).
+  - `13e6d6b` [8fcc681]: registration, delivery and wake docs, plus the parity and chezmoi tests (findings 3, 4, 7, 11).
+  - `c39e4d1` [d069161]: agmsg-dispatch on the upstream 1.5.0 libs (ruling addendum 1, option A).
+  - `7c0e1d7` [e0674d1]: SC2015 fix; CI's shellcheck flagged `A && B || C`.
+  - `5623e83` [cca3e6b]: review fixes (guard P1/P2, validator, docs).
+  - `55faae0` [7546cc4]: doctor allowlists (ruling addendum 2, option A).
+
+### Rebase (ten overlapping files)
+
+The rebase replayed round 1's 14 commits. Conflicts came up in three files only, and the other seven auto-merged:
+- `tests/unit/test_validate_agent_assets.py`, conflicting twice:
+  - The first time, the branch deleted the vendored-command parity tests and main appended T33i's `MaskSecretsModeTest` after them. Resolution: drop the parity tests, keep `MaskSecretsModeTest`.
+  - The second time, it was the same region against a8bb307 (the validator's provenance rules). Resolution: keep main's side.
+- `home/dot_agents/skills/agmsg-orchestration/SKILL.md`, conflicting twice (f53c7de, 1dc861c). Resolution: take the branch's delivery bullets and keep main's T33a interim inbox-discipline bullet.
+- `scripts/validate-agent-assets.py`, once (a8bb307). The branch only reformatted one `fail()` call, while main added the `worker_profile` and advisor checks. Resolution: keep main's side.
+
+`README.md`, `home/dot_agents/agent-config.yaml`, `executable_herdr-agents`, `scripts/check-tools.sh`, `scripts/update-agent-assets.sh`, `tests/unit/test_herdr_agents.py` and `tests/unit/test_runtime_health.py` auto-merged.
+
+A mechanical check found that every line main added to the ten files since the round-1 base `3375fb0` is present at HEAD, with **0 missing in each file**. That output and `git diff --stat origin/main` are pasted in the validation file.
+
+### Findings closed
+
+1. **Migration path (MAJOR).**
+   - `update_agmsg` selects the mode from the upstream `.agmsg` marker: `install.sh --update` only when the marker exists, and the plain installer otherwise. The marker-less legacy vendored directory therefore never gets `--update`.
+   - Before any installer run, `teams/`, `db/`, `run/` and `agents/` are copied to `~/.agents/backups/agmsg-state-<UTC>/`. That copy is the rollback.
+   - Installer stderr is captured and printed on failure.
+   - Afterwards every *pre-existing* file under `teams/`, and `db/messages.db`, must be byte-identical. New files are allowed, because upstream creates a missing `messages.db`. `VERSION` must equal the pin with the marker present.
+   - `run/` changes are reported, not failed. This deviation from the literal "run/ untouched" is accepted in ruling addendum 2. Upstream evidence: `--update` runs `remote.sh sync restart`, whose pidfiles live under `SKILL_DIR/run` (`remote.sh:42,1779`), and live watchers rewrite `run/`.
+   - Failure messages name what failed. The live-state failure lists the changed paths and the copy.
+   - Tests: a fake installer that mutates state fails both the `--update` path and the migration path. There are also tests for the store the installer creates plus a `run/` note, VERSION ≠ pin, an empty snapshot, and missing `tar`.
+   - E2E in scratch HOMEs with the real pinned archive:
+     - the origin/main vendored tree plus live state kept byte-identical sha256s, the marker, VERSION 1.5.0, and the backup;
+     - a fresh HOME and a legacy directory holding only `.keep` files both succeed;
+     - a second run is a no-op.
+2. **Manifest spec (MAJOR).**
+   - `assets.agmsg` fields: `source: agmsg-installer`, `pin: "1.5.0"`, `ref: v1.5.0`, `ref_commit: c487be2…` (40 chars), `sha256` of GitHub's archive for `ref_commit` (the accepted change request), and `bootstrap_integrity` (npm sha512, for provenance). The renderer maps `AGMSG_PIN_COMMIT←ref_commit` and `AGMSG_PIN_VERSION←pin`.
+   - Validator: `validate_agmsg_installer_asset` requires a release pin, `ref == v<pin>`, a full `ref_commit`, and an npm sha512 integrity.
+   - `validate_agmsg_is_installer_owned` rejects:
+     - a vendored `dot_agents`/`dot_claude` agmsg skill, including attribute-prefixed ones;
+     - any chezmoi-managed `~/.claude/commands/agmsg.md`;
+     - a missing `.claude/skills/agmsg/**` removal;
+     - `.chezmoiremove` entries that would delete installer-owned paths (the skill dir, `.agmsg`, `VERSION`, `SKILL.md`, `scripts/`, `db`, `teams`, the command file).
+   - Eight named tests replace the seven deleted in round 1.
+3. **Dangling chezmoi symlinks (MAJOR).**
+   - `home/.chezmoiremove` retires `.claude/skills/agmsg/**`. A scratch-HOME `chezmoi apply` with both the `**` form and the plain form removes the whole stale symlink tree and keeps unrelated skills. The repo test `test_chezmoiremove_agmsg` applies the real `.chezmoiremove` and checks that installer-owned paths survive.
+   - `~/.claude/commands/agmsg.md` is deliberately not removed: upstream's fresh install renders to a temp file and `mv -f`s it over the stale link, which replaces the link and does not write through it. A `.chezmoiremove` entry would delete upstream's file on every apply.
+   - The other deleted targets under `~/.agents/skills/agmsg` are installer-owned. Upstream prunes the vendored scripts that 1.5.0 does not ship, on the plain install path too (install.sh:929).
+   - Documented in README.
+4. **Codex seats (MAJOR).**
+   - Upstream's README contradicts itself on the Codex default: line 63 says `monitor`, while its delivery table says `turn`. The SKILL, README and herdr-agents now state this repo's explicit `turn` choice. The reason is three Codex monitor-bridge issues, all verified still **open** with `gh issue view`: #149, #151 and #1236.
+   - The four writable roots, including `ext-tools`, in the manifest, the template and the validator match upstream `configure_codex_sandbox`. That function greps for each root and reports "already configured", so it makes no edit and no drift follows.
+5. **Deliverable 6.**
+   - (a) Redone verbatim per 11(ii) in a scratch HOME with a real v1.5.0 install. Output is in the validation file.
+   - (b)(c) stay orchestrator-side at acceptance (shared live herdr server).
+   - (d) `team.sh t19 --json` output is pasted.
+   - No upstream issues were filed by me. Observed gaps for the operator:
+     - (i) `session-start.sh` exits before starting a watcher or writing a marker for any session whose cwd is under `.claude/worktrees/` (#367). A resident Claude seat launched inside a nested worktree gets no Monitor delivery. Repro: case 5 in the 6(a) output.
+     - (ii) The vendored `send.sh` on live hosts takes `--body-file` as the message body (the #1101 behaviour). This session's message 461 arrived with the literal body `--body-file`. 1.5.0 fixes it in code, but #1101 is still OPEN on GitHub.
+     - (iii) `poke.sh` refuses a hand-joined member until it has acted from its own pane (no placement record).
+6. **`install_pinned_agmsg` (MINOR).**
+   - `curl` and `tar` are checked explicitly, and hashing uses `sha256sum`, or `shasum -a 256` on macOS, through one helper that fails when neither exists.
+   - Every step checks its own status, because this function runs on the left of `||` where `set -e` is inert.
+   - The snapshot fails when `find` cannot list a subtree, or when it hashed fewer files than exist, so an empty snapshot can no longer compare equal.
+7. **SKILL wording (MINOR).**
+   - The pane-status gate and raw `herdr pane run` wakes are gone.
+   - Wake selection goes by seating: agmsg-dispatch for herdr-agents panes, `poke.sh --body-file` for spawn-seated members, `send.sh --body-file` for pane-less ones.
+   - Exit 13 is documented with its three messages, and "never retry as send.sh" is stated.
+   - README documents the `--update` watcher stand-down and the post-update `delivery.sh set` re-run that upstream prints (#133).
+8. **Contract (MINOR).** The RESULT carries all five artifact paths. The validation file pastes verbatim unittest, validator, shellcheck and CI output. The CompactionDB command and its id are below.
+9. **allowed_files (MINOR).** Every path touched in round 2 is listed below, and all are within r3 plus addenda 1 and 2.
+11. **Identity resolution (MAJOR, design).**
+    - (i) The documented operator procedure (SKILL, rule, README) registers a worker with `AGMSG_RESOLVE_PROJECT=0 join.sh <team> <name> <type> <worktree>` and points `delivery.sh set` at the worktree. herdr-agents' printed join hints carry the opt-out, and every worker pane it creates exports the opt-out (round 1). herdr-agents itself performs no joins, and seating was not redesigned.
+    - (ii) Verified verbatim:
+      - a join from inside the worktree without the opt-out registers at the main checkout; with it, at the worktree;
+      - `whoami.sh` inside the worktree without a marker resolves to the worktree registration;
+      - with a marker naming the main checkout (a seat launched from the main path), `whoami.sh` inside the worktree answers `multiple=true agents=orch,w-resolved … project=<main>`; the opt-out restores the worktree;
+      - a marker naming the worktree (delivery baked with the worktree path) resolves to the worktree.
+    - (iii) Documented in README, the SKILL and the rule with #92 and docs/design.md, including the full order (marker → ancestor → git common dir) and the `.claude/worktrees` skip. The herdr-agents identity-count comment is corrected: it now names all three signals and drops the history note.
+
+### Deliverable 4 reconciled with the regime (rulings)
+
+- **agmsg-dispatch is kept.** Upstream 1.5.0 has no `lib/identifier.sh`, and the plain install prunes it. `agmsg_db_path` now requires a team selector. So `origin/main`'s dispatch fails after the upgrade (E2E: `line 25: …/lib/identifier.sh: No such file or directory`).
+- **Ruling option A:**
+  - It now sources upstream `lib/validate.sh`, validating the team name and both agent names.
+  - It keeps the strict `^[a-z0-9][a-z0-9_-]{0,63}$` grammar, because the identifiers are interpolated into SQL and upstream's deny-lists allow `'`.
+  - It passes the team to `agmsg_db_path`.
+  - The shdoc states it is the sanctioned wake path for herdr-agents worker panes until seating writes placement records.
+- **E2E against a real 1.5.0 install** with a fake herdr: the message was sent, the pane woken, `read_at` set, and an SQL-unsafe sender refused.
+
+### Independent review
+
+A subagent in a separate context adversarially reviewed the four original round-2 commits:
+- It found 1 P1, 3 P2 and 5 P3 findings, with the verdict **incorrect** on the pre-fix head.
+- The P1 was mine: the guard falsely failed every fresh install, and my fixture hid it.
+- All 9 findings are resolved (fixes 5623e83, 55faae0), with crit evidence `…-round2-crit.json` and receipt `…-round2-review-receipt.md`.
+- The review text is pasted in the validation file.
+
+### Files touched in round 2 (all within r3 + addenda)
+
+- Code:
+  - `scripts/update-agent-assets.sh`
+  - `scripts/validate-agent-assets.py`
+  - `scripts/check-agent-runtime.py`
+  - `home/dot_agents/agent-config.yaml`
+  - `home/dot_local/bin/common/executable_herdr-agents`
+  - `home/dot_local/bin/common/executable_agmsg-dispatch`
+- Docs:
+  - `home/dot_agents/skills/agmsg-orchestration/SKILL.md`
+  - `home/dot_config/claude/rules/agmsg-orchestration.md`
+  - `README.md`
+- Restored:
+  - `home/dot_local/bin/common/executable_agmsg-dispatch`
+  - `tests/unit/test_agmsg_dispatch.py`
+- Tests:
+  - `tests/unit/test_runtime_health.py`
+  - `tests/unit/test_validate_agent_assets.py`
+  - `tests/unit/test_herdr_agents.py`
+  - `tests/unit/test_check_agent_runtime.py`
+  - `tests/unit/test_agmsg_dispatch.py`
+  - new `tests/unit/test_agmsg_orchestration_docs.py`
+  - new `tests/unit/test_chezmoiremove_agmsg.py`
+- Round 1's deletions (`home/dot_agents/skills/agmsg/**`, `home/dot_claude/skills/agmsg/**`, `home/dot_claude/commands/symlink_agmsg.md.tmpl`, `tests/unit/test_agmsg_send.py`) and `tests/install/common/check_tools.bats` are carried unchanged.
+- Artifacts (main checkout): the five task files, plus `…-round2-crit.json` and `…-round2-review-receipt.md`.
+
+### Effects
+
+`effects=agmsg-state-backup`. When `make update` next runs on a host, it creates `~/.agents/backups/agmsg-state-<UTC>/`. Reverse mapping: remove it with the documented `rm -rf ~/.agents/backups/agmsg-state-*`. I made no writes to the real HOME; all E2E ran in scratch HOMEs under the session scratchpad.
+
+### CompactionDB
+
+[memory:decision] agmsg is installed by the upstream installer at a pinned tag verified by commit sha, recorded in the asset manifest; the vendored snapshot and agmsg-dispatch are retired; wake uses upstream poke, health uses team/doctor/peek. It is refined by the r3 rulings recorded in the command below. Id `8e20faa2-1754-42ab-a816-07663434e095`; the command and output are in the validation file.
+
+### Not done / for acceptance
+
+- CodeRabbit full review and the pr-feedback sweep need the orchestrator-assigned slot.
+- 6(b)(c) live herdr poke/peek stay orchestrator-side.
+- `make require-crit-review` is the orchestrator's step.
+- The `.ua` knowledge graph was not rebuilt; that is out of scope, since graph builds are separate tasks.
+
+cost: n/a (the Claude Code runtime does not expose session token/cost figures to the worker)

@@ -13,3 +13,13 @@ OpenSandbox not used.
 - A second, separate scratch `$HOME` + scratch chezmoi config/cache for Fix 3's `.chezmoiremove` verification: `chezmoi apply` (both `--dry-run` and real, `--exclude=scripts` to skip an unrelated sudo-gated ubuntu bootstrap script) ran only against that scratch destination, never the real `$HOME`.
 - One CompactionDB `memory add --kind decision --scope project` write (repo-local, gitignored ledger).
 - Not run this round either: `make update`/`make upgrade`/`chezmoi apply` against the real `$HOME`, local bats, force-push, merge.
+
+## Round 2 (task revision 3), worker claude-standard-dot-a005
+
+- **Git.** All git work ran in the dedicated worktree `.claude/worktrees/worker-c`. The branch `feat/agmsg-upstream-sync` was released from worker-b by the orchestrator. There is no container or VM isolation.
+- **Upstream code.** It ran only in scratch HOMEs under the session scratchpad, always as `env -i HOME=<scratch> PATH=/usr/local/bin:/usr/bin:/bin`, so `CODEX_HOME` and `AGMSG_STORAGE_PATH` were unset. That covered the real v1.5.0 `install.sh`, `join/whoami/session-start/send/inbox/poke/team.sh`, and the branch's `update_agmsg` against the real pinned archive. None of it touched the real HOME's `~/.agents/skills/agmsg/{teams,db,run,agents}`.
+- **chezmoi.** It ran only with an explicit `--source/--destination/--config/--persistent-state` in scratch directories.
+- **Excluded:** `make update`, `make upgrade`, `chezmoi apply` on the real HOME, local bats runs, and merges.
+- **Force pushes.** `--force-with-lease` was used only on my own branch, as authorized.
+- **Network.** Reads only: GitHub archive download and `gh issue view`.
+- **Real agmsg bus.** Used only for protocol messages (PONGs and the RESULT).

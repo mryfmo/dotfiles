@@ -7,3 +7,7 @@
 - Inputs/outputs: none.
 - Secrets or sensitive content: no token value was read or recorded.
 - Promotion decision: none.
+
+## Round 2 (task revision 3)
+
+AutoSkill was not used in round 2. The work was bounded code, docs and tests, verified with scratch-HOME end-to-end runs and one independent subagent review.

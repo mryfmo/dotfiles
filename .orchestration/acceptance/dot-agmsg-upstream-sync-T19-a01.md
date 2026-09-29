@@ -42,3 +42,32 @@ Also: your 03:50:46Z reply arrived with body `--body-file` — the vendored send
 Operator directive 2026-09-27 (this session): orchestrator = claude-fable-5 effort high, herdr worker = Claude Code claude-opus-5-5 effort high over agmsg. This supersedes supplement 2 above: `worker_kind` stays `claude`; do NOT set `worker_kind: codex` or the README codex-login prerequisite. The worker model moves to opus-5.5 through a manifest `worker_profile` key instead (task dot-worker-profile-opus55-T24-a01, dispatched to a005). Findings 1–11 of the single revise round remain in scope unchanged. Withdrawal sent to a004 by agmsg at 2026-09-26T23:1xZ UTC (send.sh; lane is pane-less, read_at pending until the lane resumes).
 
 [memory:decision] worker_kind stays claude; worker model = claude-opus-5-5 high via manifest worker_profile (operator 2026-09-27); T19 supplement-2 (worker_kind: codex) withdrawn.
+
+## Round 2 (revision 3) — ACCEPTED (2026-09-29)
+
+RESULT 01:50:58Z from claude-standard-dot-a005 (worker-c; round 1 was a004 in worker-b): PR #184 head 55faae062d34b7b8f9dc06203069982547540d50, rebased onto origin/main 5ea0d9d (14 round-1 commits replayed; withdrawn local-only 1aefa58 dropped per ruling; every main line since 3375fb0 present in the ten overlapping files, 0 missing).
+
+### Rulings during round 2
+1. Branch released by detaching the idle worker-b worktree; base = origin PR head 579bafe.
+2. Addendum 1: `agmsg-dispatch` validates via upstream `lib/validate.sh` (+ strict identifier grammar for its SQL) and stays the herdr wake path until seating writes placement records (upstream `poke.sh` refuses hand-joined members); `poke.sh` only for spawn-seated members.
+3. Addendum 2: doctor allowlists for the live `agmsg` skill and `~/.agents/backups`; finding-1 guard semantics (fresh install creates `messages.db`; `run/` reported, not failed) accepted with upstream evidence.
+4. The worker's first PONG arrived as the literal body `--body-file` because the installed vendored `send.sh` lacks that option (1.5.0 adds it) — resent positionally; the SKILL's new "always `--body-file`" wording applies from the upgrade onward.
+
+### Adversarial review (orchestrator)
+- Scope: 95 files (+2252/−4274); 65 deletions are the vendored `home/dot_agents/skills/agmsg/**` and `home/dot_claude/skills/agmsg/**` trees (deletions only); every other file is within revision 3 + addenda allowed_files.
+- Independent re-derivation at 55faae0: `make validate-agent-assets` ok; 533 unit tests OK; `shellcheck -x` clean on update-agent-assets.sh, check-tools.sh, agmsg-dispatch, herdr-agents; PR CI 12/12 pass (nix skipped); merge state CLEAN.
+- Supply chain re-derived from primary sources: tag `v1.5.0` → commit c487be269c1973aeb01ca831806eb3f65ff3366d (GitHub API); GitHub source archive for that commit sha256 9201cb5f… (downloaded and hashed); npm `agmsg@1.5.0` dist.integrity sha512-n6057L9… — all three equal the manifest values.
+- Installer step: marker-gated `--update` vs plain install; pre-install copy of teams/db/run/agents to `~/.agents/backups/agmsg-state-<UTC>/`; post-install byte-identity guard on pre-existing `teams/` files and `db/messages.db` (new files allowed), `run/` reported; curl/tar/sha checks explicit; VERSION == pin check; failure messages name what failed. Upstream 1.5.0 archive inspected: all 12 scripts this orchestrator session uses (`watch.sh`, `send.sh`, `inbox.sh`, `history.sh`, `identities.sh`, `whoami.sh`, `delivery.sh`, `actas-claim.sh`, `session-start.sh`, `session-end.sh`, `join.sh`, `leave.sh`) ship upstream; `install.sh` copies `scripts/` recursively and prunes removed scripts into `.trash/`, preserving `db/`, `teams/`, `run/`.
+- Docs: rule and SKILL now register worker identities with `AGMSG_RESOLVE_PROJECT=0` at the worktree path and point delivery there (finding 11), keep this repo's explicit Codex `turn` / Claude `both`, keep `agmsg-dispatch` for herdr-paned workers, cite upstream #92 and docs/design.md.
+- Visible-lane Codex audit of 55faae0: `Verdict: correct` — "allowlist additions match installer ownership and backup placement while preserving unrelated orphan warnings"; the regression test failed on the parent and passed on the commit.
+- Worker-side review: independent subagent review of round 2 found a P1 in its own guard (fresh install falsely failed) plus 3 P2 / 5 P3, all fixed with resolved crit evidence (`-round2-crit.json`). Reporting is complete (all five artefacts appended, memory id 8e20faa2 present in the main DB, `cost:` line).
+- Refutation attempts found no correctness, security, or omission issue.
+
+### Review guard
+`make require-crit-review` satisfied via AGENT_REVIEWED=1 with REVIEW_EVIDENCE=.orchestration/validation/dot-agmsg-upstream-sync-T19-a01-round2-orchestrator-receipt.md (resolved review-scope approval record r_94c3ed, crit session 16eb550d49a7, exported JSON at .orchestration/validation/dot-agmsg-upstream-sync-T19-a01-round2-orchestrator-crit.json).
+
+**Decision: ACCEPTED.** Merge #184 --squash (no --delete-branch while worker-c holds the branch). Deployment is the live installer switch: boundary-commit first, then `make update` on this host (installs agmsg 1.5.0 over the vendored skill with the pre-install state copy as rollback), then live E2E: `whoami.sh`, `identities.sh` per worktree, `history.sh`, `delivery.sh status`, a re-armed `watch.sh` Monitor, and one `agmsg-dispatch` round trip to the worker — recorded below. 6(b)(c) live poke/peek checks follow once seating (T34) exists.
+
+[memory:decision] T19 accepted 2026-09-29 (round 2): agmsg is installed by the upstream installer at pinned release 1.5.0 (tag v1.5.0, ref_commit c487be2, archive sha256 and npm sha512 recorded in the asset manifest and enforced by the validator); the vendored snapshot and the chezmoi-managed Claude skill symlinks are retired (`.chezmoiremove`); worker identities register with `AGMSG_RESOLVE_PROJECT=0` at the worktree path with delivery on that path; `agmsg-dispatch` (now on upstream libs) remains the herdr wake path until seating writes placement records; the installer step snapshots live state before running and fails closed on any change to pre-existing teams/ or db/messages.db. PR #184 squash-merged.
+
+cost: n/a (worker report gives no token figures)

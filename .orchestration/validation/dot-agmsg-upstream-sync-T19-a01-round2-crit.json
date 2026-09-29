@@ -1,0 +1,230 @@
+[
+  {
+    "scope": "review",
+    "id": "r_fca819",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review scope: independent adversarial review of the T19 round-2 commits (installer guard, manifest/validator, docs, agmsg-dispatch) in a separate subagent context. Each finding is recorded as its own comment with its disposition.",
+    "author": "claude-code",
+    "created_at": "2026-09-29T01:42:02Z",
+    "updated_at": "2026-09-29T01:42:02Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_530899",
+        "body": "Review complete. All 9 findings are resolved: 8 fixed and 1 addressed with E2E evidence. The reviewer's verdict on the pre-fix head was 'incorrect'; the fixes are cca3e6b and 55faae0.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T01:42:02Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "README.md",
+    "id": "c_506c4b",
+    "start_line": 351,
+    "end_line": 351,
+    "body": "P3 (review): 'Every failure names what changed and where the copy is' was not true.",
+    "anchor": "  must be byte-identical. The installer may add files, for example create a",
+    "author": "claude-code",
+    "created_at": "2026-09-29T01:42:02Z",
+    "updated_at": "2026-09-29T01:42:02Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_8cd14f",
+        "body": "Fixed in cca3e6b. The live-state failure now lists the changed paths and the copy. README says that failures before the installer runs report that nothing was installed.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T01:42:02Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "README.md",
+    "id": "c_44baf8",
+    "start_line": 405,
+    "end_line": 405,
+    "body": "P2 (review): 'poke.sh exits 1 for every herdr-agents worker' holds only until the worker acts, because upstream send.sh/inbox.sh record the acting pane's placement (#1109).",
+    "anchor": "Wake and send:",
+    "author": "claude-code",
+    "created_at": "2026-09-29T01:42:02Z",
+    "updated_at": "2026-09-29T01:42:02Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_df51ee",
+        "body": "Fixed in cca3e6b. README, SKILL and the agmsg-dispatch shdoc now say a hand-joined herdr worker gets a record only once it acts from its own pane. agmsg-dispatch stays the sanctioned path until seating writes records at launch (ruling).",
+        "author": "claude-code",
+        "created_at": "2026-09-29T01:42:02Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "home/dot_agents/skills/agmsg-orchestration/SKILL.md",
+    "id": "c_cbf019",
+    "start_line": 123,
+    "end_line": 123,
+    "body": "P3 (review): three problems. The exit-13 wording is incomplete. The placement filename is wrong, since id-keyed spawn.\u003ckey\u003e records exist. SKILL step 6 and the Pitfalls line (and the README bullets) contradict each other on --body-file versus agmsg-dispatch's positional message.",
+    "anchor": "6. Send `AGMSG-TASK v1` with the exact artifact paths and `done_signal=AGMSG-RESULT`. Pass every `send.sh`/`poke.sh` body with `--body-file \u003cpath\u003e` (both take it in agmsg v1.5.0), never as a positional argument: a positional `\u003ctext\u003e` passes through the caller's own shell first, where a backtick or `$( )` in the body silently executes and vanishes from what arrives (upstream #378). `agmsg-dispatch` is the one exception and takes a single-line, shell-safe positional message. Pick the path by how the recipient is seated, never by inferring pane or agent status: a worker in a `herdr-agents` pane gets `agmsg-dispatch \u003cteam\u003e \u003cfrom\u003e \u003cto\u003e \u003cpane_id\u003e \"\u003cmessage\u003e\"` (send, generic wake, `read_at` wait; single-line shell-safe text only), the sanctioned wake path until worker seating writes placement records at launch, because `poke.sh` exits 1 with \"no placement record\" for a hand-joined member, and a herdr-agents worker gets a record only once it acts from its own pane (upstream `send.sh`/`inbox.sh` record the acting pane, #1109); a spawn-seated member (placement record `run/spawn.*`; `team.sh \u003cteam\u003e --json` shows its pane) gets `poke.sh \u003cteam\u003e \u003cname\u003e --body-file \u003cpath\u003e [--retries N --retry-delay SECONDS --backoff fixed|exponential]`, which types and submits in one call and refuses to type over an in-progress draft (#1321/#1322); a pane-less member gets `send.sh \u003cteam\u003e \u003cfrom\u003e \u003cto\u003e --body-file \u003cpath\u003e` and its own delivery mode. Verify delivery via the messages.db `read_at` column. `poke.sh` exit codes: 10 = terminal unreachable, 12 = pane gone or no live agent, 14/15 = refused to type over a changing or unlocatable input box, 13 = the driver has no poke path for this pane (for example a `plain` terminal); where poke.sh's narrow agmsg-message fallback succeeds it exits 0, so 13 means nothing was delivered, and the printed reason names the native channel, asks the caller to claim its own identity first, or reports that the fallback failed. Never retry a 13 as `send.sh` yourself: that overrides the driver's considered refusal and can double-deliver.",
+    "author": "claude-code",
+    "created_at": "2026-09-29T01:42:02Z",
+    "updated_at": "2026-09-29T01:42:02Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_65e6f5",
+        "body": "Fixed in cca3e6b. The docs now describe exit 13's three messages, write the placement record as run/spawn.*, and name agmsg-dispatch as the one positional-body exception in SKILL step 6, the Pitfall line and README.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T01:42:02Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "scripts/check-agent-runtime.py",
+    "id": "c_ad6628",
+    "start_line": 38,
+    "end_line": 38,
+    "body": "P2 (review): make doctor would flag ~/.agents/skills/agmsg as stale, suggesting remove-agent-asset update_agmsg (which deletes the live skill), and ~/.agents/backups as orphaned.",
+    "anchor": "# backups/ holds update_agmsg's pre-install state copies (agmsg-state-\u003cUTC\u003e).",
+    "author": "claude-code",
+    "created_at": "2026-09-29T01:42:02Z",
+    "updated_at": "2026-09-29T01:42:02Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_83daa3",
+        "body": "Fixed in 55faae0 under ruling addendum 2 (option A). 'agmsg' joins the skill allowlist and 'backups' joins AGENT_ROOT_ALLOWLIST. test_installer_owned_agmsg_skill_and_backups_are_not_orphans fails on the pre-change doctor (t19-baseline-doctor.txt).",
+        "author": "claude-code",
+        "created_at": "2026-09-29T01:42:02Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "scripts/update-agent-assets.sh",
+    "id": "c_a842d9",
+    "start_line": 937,
+    "end_line": 937,
+    "body": "P3 (review): file names that sha256sum escapes (a leading backslash) and unreadable subtrees (find errors were silenced) made the snapshot fail or undercount.",
+    "anchor": "        printf 'agmsg: could not list the live state under %s\\n' \"${skill_dir}\" \u003e\u00262",
+    "author": "claude-code",
+    "created_at": "2026-09-29T01:42:02Z",
+    "updated_at": "2026-09-29T01:42:02Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_6e6ca2",
+        "body": "Fixed in cca3e6b. The line count accepts the optional leading backslash, and find's exit status is now checked (its output goes to a temp file).",
+        "author": "claude-code",
+        "created_at": "2026-09-29T01:42:02Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "scripts/update-agent-assets.sh",
+    "id": "c_e1c540",
+    "start_line": 1000,
+    "end_line": 1000,
+    "body": "P1 (review): a fresh install, or a legacy dir without db/messages.db, always reported failure: the before/after live-state manifests were compared for equality, and upstream install.sh creates a missing messages.db.",
+    "anchor": "    actual=\"$(agmsg_sha256 \"${tarball}\")\" || return 1",
+    "author": "claude-code",
+    "created_at": "2026-09-29T01:42:02Z",
+    "updated_at": "2026-09-29T01:42:02Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_c7343f",
+        "body": "Fixed in cca3e6b. Only pre-existing teams/ files and db/messages.db must stay byte-identical (comm -23), and new files are allowed. The fixture now creates the store as upstream does. Baseline t19-baseline-guard.txt: 6 of 11 fail on the old guard. The real-archive E2E t19-fresh.txt (fresh and legacy-keep) now succeeds.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T01:42:02Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "scripts/update-agent-assets.sh",
+    "id": "c_fac75c",
+    "start_line": 1010,
+    "end_line": 1010,
+    "body": "P2 (review): strict equality over run/ misfires with live watchers and with --update's own sync-engine restart (pidfiles under SKILL_DIR/run).",
+    "anchor": "    if [ -d \"${skill_dir}\" ]; then",
+    "author": "claude-code",
+    "created_at": "2026-09-29T01:42:02Z",
+    "updated_at": "2026-09-29T01:42:02Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_045269",
+        "body": "Fixed in cca3e6b. run/ changes are reported as a note, not a failure. The orchestrator accepted this deviation from the r3 'run/ untouched' wording (ruling addendum 2, 5ea0d9d), with upstream evidence: install.sh's sync restart and remote.sh:1779.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T01:42:02Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "scripts/validate-agent-assets.py",
+    "id": "c_8f0a8b",
+    "start_line": 575,
+    "end_line": 575,
+    "body": "P3 (review): the ownership rules under-matched. .agmsg, VERSION, SKILL.md and scripts/ were not listed as installer-owned, and attribute-prefixed vendored copies (private_, exact_) evaded the exact-path check.",
+    "anchor": "AGMSG_INSTALLER_OWNED_TARGETS = (",
+    "author": "claude-code",
+    "created_at": "2026-09-29T01:42:02Z",
+    "updated_at": "2026-09-29T01:42:02Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_4e3ca8",
+        "body": "Fixed in cca3e6b. Those targets are added, the vendored check uses home/*dot_agents/skills/*agmsg globs, and the tests cover private_dot_agents/skills/exact_agmsg, .agmsg and VERSION.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T01:42:02Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "tests/unit/test_agmsg_dispatch.py",
+    "id": "c_ba489a",
+    "start_line": 14,
+    "end_line": 14,
+    "body": "P3 (review): the dispatch tests use stub validate.sh/storage.sh, the pin/ref tests accepted any SystemExit, and no test covers VERSION != pin.",
+    "anchor": "# Minimal stand-ins for upstream agmsg 1.5.0 scripts/lib/{validate,storage}.sh:",
+    "author": "claude-code",
+    "created_at": "2026-09-29T01:42:02Z",
+    "updated_at": "2026-09-29T01:42:02Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_51be06",
+        "body": "Addressed in cca3e6b. The pin/ref tests now assert their messages, and test_agmsg_reports_an_installer_that_leaves_the_wrong_version is added. The stubs stay, since there is no upstream copy in the repo. The real-lib path is covered by the scratch-HOME E2E t19-dispatch-e2e.txt against a real 1.5.0 install: the message was sent, the pane woken, read_at set, and an SQL-unsafe id refused.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T01:42:02Z",
+        "review_round": 1
+      }
+    ]
+  }
+]

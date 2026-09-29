@@ -41,11 +41,10 @@
 ## PR 統合
 
 - PR を merge する前に、最終 head commit に対する GitHub のフィードバックを `scripts/pr-feedback.py <pr> --json <out>` で必ず全件取得してください。issue comment、review、thread の解決状態付き inline review comment、失敗・未完了の check run、全レベル(`notice`・`warning`・`failure`)の check-run annotation、commit status を含みます。
-- 最終 head に `@coderabbitai full review` をコメントして bot review を明示的に依頼し、完了を待ってください。`CodeRabbit` status の「Review skipped」は review ではありません。プランは 1 時間に 1 review で、incremental も full も review event ごとに 1 回消費します(docs.coderabbit.ai/management/rate-limits)。push のたびではなく最終 head で 1 回だけ依頼してください。
+- 最終 head に `@coderabbitai full review` を依頼してもかまいません(任意)。プランは 1 時間に 1 review で、review event ごとに 1 回消費します(docs.coderabbit.ai/management/rate-limits)。依頼は最終 head で多くとも 1 回にしてください。CodeRabbit の review が存在する場合は他の item と同様に取得して disposition を付けます。ゲートは bot review を要求しません。
 - 全 item に disposition を付けてください。`fixed:<commit>`(その commit で根本原因を修正)か `not-applicable:<理由>` のどちらかです。stopgap・抑制・「後で」は disposition として認めません。`failure` と `warning` の annotation を未処分のまま残さず、`failure` を `not-applicable` にする場合は 20 文字以上の具体的な理由が必要です。
 - 記入済み JSON を `.orchestration/validation/<task>-pr-feedback.json` に保存し、`BASE=origin/main PR_FEEDBACK_EVIDENCE=<json> make require-crit-review` で統合ガードに渡し、disposition の要約を acceptance 記録に書いてください。
 - 新しい push の後は取得をやり直してください。disposition は記入した時点の head commit にだけ有効です。
-- 収束: 最終 head の full review の指摘が Minor・nit だけなら、それ以外を変えない 1 commit で修正して各 thread に返信し、その commit に対する bot の確認または resolve をもってレビュー完了とします。Major 以上の指摘がある場合、または追加 commit が指摘の修正以外を変える場合は、新しい full review が必要です。
 
 ## モデル選択
 

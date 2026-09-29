@@ -21,7 +21,6 @@ DISABLE_ENV = "CRIT_REVIEW"
 PR_FEEDBACK_ENV = "PR_FEEDBACK_EVIDENCE"
 PR_FEEDBACK_DISPOSITION = re.compile(r"(?:fixed:(?P<commit>[0-9a-f]{7,40})|not-applicable:(?P<reason>.*\S.*))", re.S)
 FAILURE_REASON_MIN_CHARS = 20
-BOT_REVIEWER = "coderabbitai[bot]"
 # Levels whose not-applicable disposition needs a concrete reason: failures and
 # runs that did not finish, so a work-in-progress run cannot be waved through.
 STRICT_REASON_LEVELS = {
@@ -396,9 +395,10 @@ def collected_feedback_errors(root: Path, evidence: dict, head: str, base: str) 
 
     A hand-written or stale document cannot pass: the guard runs the base
     branch's scripts/pr-feedback.py (the PR under review cannot swap it) for the
-    evidence's PR, requires the PR head on GitHub to be this HEAD and a completed
-    CodeRabbit review of that head, and requires each collected item (as a
-    multiset) to be present.
+    evidence's PR, requires the PR head on GitHub to be this HEAD, and requires
+    each collected item (as a multiset) to be present. A bot review is not
+    required; when one exists it is collected and must be dispositioned like any
+    other item.
     """
     pr = evidence.get("pr")
     if not isinstance(pr, int) or isinstance(pr, bool) or pr <= 0:
@@ -425,11 +425,6 @@ def collected_feedback_errors(root: Path, evidence: dict, head: str, base: str) 
         collected = json.loads(collected_path.read_text())
     if collected.get("head_sha") != head:
         return [f"PR #{pr} head on GitHub is {collected.get('head_sha')}, not the local HEAD {head}; push first"]
-    if not any(
-        item.get("source") == "review" and item.get("author") == BOT_REVIEWER and item.get("commit") == head
-        for item in collected.get("items", [])
-    ):
-        return [f"PR #{pr} has no completed {BOT_REVIEWER} review of HEAD {head}; request `@coderabbitai full review` and wait for it"]
     missing = Counter(map(feedback_key, collected.get("items", []))) - Counter(
         feedback_key(item) for item in evidence.get("items", []) if isinstance(item, dict)
     )

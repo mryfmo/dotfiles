@@ -48,7 +48,7 @@
 - Agent evidence must contain at least one resolved record. For a finding-free review, add and resolve one review-scope approval record.
 - When the crit CLI or its data is unavailable, save the independent agent review in that same JSON shape (hand-written records are acceptable), mark each record `resolved: true` after addressing it, and reference it from the receipt exactly as crit-exported evidence; the guard validates shape, not provenance.
 - This local evidence is process evidence, not reviewer authentication. Human `CRIT_REVIEWED=1` receipts remain supported.
-- Before merging a pull request, request `@coderabbitai full review` on the final head, run `scripts/pr-feedback.py <pr> --json .orchestration/validation/<task>-pr-feedback.json`, give every item a `fixed:<commit>` or `not-applicable:<reason>` disposition, and pass the file with `BASE=origin/main PR_FEEDBACK_EVIDENCE=<json> make require-crit-review` (see `home/dot_config/claude/rules/pr-integration.md`).
+- Before merging a pull request, optionally request `@coderabbitai full review` on the final head (when a CodeRabbit review exists it is swept and dispositioned like any other item; the gate does not require a bot review), run `scripts/pr-feedback.py <pr> --json .orchestration/validation/<task>-pr-feedback.json`, give every item a `fixed:<commit>` or `not-applicable:<reason>` disposition, and pass the file with `BASE=origin/main PR_FEEDBACK_EVIDENCE=<json> make require-crit-review` (see `home/dot_config/claude/rules/pr-integration.md`).
 
 ## Audit
 

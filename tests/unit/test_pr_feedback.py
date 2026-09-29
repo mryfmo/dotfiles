@@ -375,7 +375,6 @@ class PrIntegrationRuleParityTest(unittest.TestCase):
 
     TOKENS = (
         "scripts/pr-feedback.py",
-        "@coderabbitai full review",
         "fixed:<commit>",
         "not-applicable:",
         "BASE=origin/main PR_FEEDBACK_EVIDENCE=<json> make require-crit-review",

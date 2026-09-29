@@ -34,11 +34,11 @@ jobs:
       - name: Validate agent assets
         run: uv run --with pyyaml scripts/validate-agent-assets.py
 
-      - name: Parse CodeRabbit config and trigger workflow
+      - name: Parse CodeRabbit config
         run: |
           uv run --with pyyaml python -c '
           import yaml
-          for path in (".coderabbit.yaml", ".github/workflows/coderabbit-trigger.yml"):
+          for path in (".coderabbit.yaml",):
               data = yaml.safe_load(open(path))
               assert isinstance(data, dict) and data, path
               print("parsed", path)

@@ -742,8 +742,9 @@ head must be collected and dispositioned (rule:
 `home/dot_config/codex/AGENTS.md`):
 
 ```bash
-# Request one CodeRabbit full review on the final head and wait for it; the
-# plan allows one review per hour and each review event spends one.
+# Optional: request one CodeRabbit full review on the final head. The plan
+# allows one review per hour and each review event spends one; the gate does
+# not require a bot review.
 gh pr comment <pr> --body '@coderabbitai full review'
 # Collect comments, reviews, inline threads, non-passing checks, every
 # check-run annotation (notice/warning/failure), and commit statuses.
@@ -765,21 +766,16 @@ characters on an item that failed or did not finish (`failure`, `error`,
 `in_progress`, `queued`, or `pending`). It also re-runs the
 base branch's `scripts/pr-feedback.py` (so the PR under review cannot swap
 the collector) for the evidence's `pr` and fails unless GitHub's head for that
-PR is the local `HEAD`, a `coderabbitai[bot]` review of that head exists, and
-every currently collected item is present in the evidence, so a hand-written
-or stale file cannot pass. Without
+PR is the local `HEAD` and every currently collected item is present in the
+evidence, so a hand-written or stale file cannot pass. Bot-review presence is
+not gated: a CodeRabbit review that exists is collected and must be
+dispositioned like any other item, and its absence is not an error. Without
 `BASE` the evidence is only format-checked. The evidence file itself is not
 counted toward the diff that decides whether review is required.
-`.github/workflows/coderabbit-trigger.yml` comments `@coderabbitai full review`
-once per head SHA when a pull request opens, leaves draft, or gets the
-`review-requested` label (never on every push); a manual run or the label
-re-requests a head CodeRabbit has not reviewed yet, for example after a
-rate-limited request. Whether CodeRabbit acts on a
-command posted by `github-actions[bot]` is not yet verified, so the manual
-comment above stays required. `.coderabbit.yaml` writes reviews in Japanese,
-excludes `.orchestration/`, `reviews/`, and `.ua/`, turns off automatic reviews
-(on open and per push) so only the explicit request runs, and lets CodeRabbit
-request changes.
+`.coderabbit.yaml` writes reviews in Japanese, excludes `.orchestration/`,
+`reviews/`, and `.ua/`, turns off automatic reviews (on open and per push) so a
+review runs only when explicitly requested, and lets CodeRabbit request
+changes. No workflow posts review requests automatically.
 
 `main` has no branch protection yet. A repository admin can require the
 integration checks and resolved review threads with this ruleset (not applied
@@ -808,18 +804,16 @@ gh api -X POST repos/mryfmo/dotfiles/rulesets --input - <<'JSON'
         {"context": "test (macos-14, client)"},
         {"context": "public-bootstrap (ubuntu-latest, server)"},
         {"context": "public-bootstrap (ubuntu-latest, client)"},
-        {"context": "public-bootstrap (macos-14, client)"},
-        {"context": "CodeRabbit"}]}}
+        {"context": "public-bootstrap (macos-14, client)"}]}}
   ]
 }
 JSON
 ```
 
-The `CodeRabbit` status reports success even when it skipped the review, so
-the integration gate does not trust it: with `BASE`, it requires a completed
-`coderabbitai[bot]` review whose commit is the final `HEAD` among the
-re-collected feedback, alongside the resolved threads and the dispositioned
-JSON.
+Bot-review presence is not gated. The `CodeRabbit` status is not a required
+check (it reports success even when it skipped the review); with `BASE`, the
+integration gate relies on the resolved threads and the dispositioned JSON
+re-collected for the final `HEAD`.
 
 Ponytail keeps coding tasks biased toward YAGNI, existing code, standard
 library and native platform features, and the smallest correct diff. The

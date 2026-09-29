@@ -688,6 +688,31 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                         sandbox, self.required_agmsg_writable_roots, "sandbox"
                     )
 
+    def test_claude_sandbox_allow_all_unix_sockets_must_be_boolean(self) -> None:
+        for value in (True, False):
+            with self.subTest(accepts=value):
+                sandbox = self.valid_claude_sandbox()
+                sandbox["network"]["allowAllUnixSockets"] = value
+                self.module.validate_claude_sandbox(sandbox, self.required_agmsg_writable_roots, "sandbox")
+
+        sandbox = self.valid_claude_sandbox()
+        sandbox["network"]["allowAllUnixSockets"] = "true"
+        with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+            self.module.validate_claude_sandbox(sandbox, self.required_agmsg_writable_roots, "sandbox")
+        self.assertIn("allowAllUnixSockets must be a boolean", stderr.getvalue())
+
+    def test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs(self) -> None:
+        sandbox = self.valid_claude_sandbox()
+        sandbox["filesystem"]["allowWrite"].append("~/.cache/uv")
+        self.module.validate_claude_sandbox(sandbox, self.required_agmsg_writable_roots, "sandbox")
+        for path in ("relative/cache", "~cache", "/tmp/*", 7):
+            with self.subTest(path=path):
+                sandbox = self.valid_claude_sandbox()
+                sandbox["filesystem"]["allowWrite"].append(path)
+                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                    self.module.validate_claude_sandbox(sandbox, self.required_agmsg_writable_roots, "sandbox")
+                self.assertIn("allowWrite extra entries must be absolute or ~/ paths", stderr.getvalue())
+
     def test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs(self) -> None:
         for socket in ("relative/herdr.sock", "./herdr.sock", "~herdr.sock", "/run/user/*/cc.sock", "~/.config/herdr/{a,b}.sock", 7):
             with self.subTest(socket=socket):

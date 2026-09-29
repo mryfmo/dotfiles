@@ -204,6 +204,13 @@ claude:
     allowUnsandboxedCommands: true
     # Add entries only with E2E evidence, one comment per entry.
     excludedCommands: []
+    filesystem:
+      # Rendered into sandbox.filesystem.allowWrite after the Codex writable
+      # roots. ~/.cache/uv: every `uv run` target (make unit-test,
+      # validate-agent-assets, render-check) needs the uv cache writable; a
+      # filesystem relaxation limited to that directory (T39 live E2E leg 1).
+      extra_allow_write:
+        - ~/.cache/uv
     network:
       allowedDomains:
         - github.com
@@ -217,6 +224,12 @@ claude:
       # be listed without a glob, so it is not.
       allowUnixSockets:
         - ~/.config/herdr/herdr.sock
+      # Linux/WSL2 ignore allowUnixSockets, and the seccomp filter otherwise
+      # blocks every Unix socket: the herdr control-plane socket (herdr,
+      # agmsg-dispatch, herdr-agents) and the keyring D-Bus socket gh reads its
+      # token through must be reachable from sandboxed Bash. File and network
+      # isolation are unchanged (T39 live E2E leg 1).
+      allowAllUnixSockets: true
   hooks:
     enforce_uv_hook: ~/.claude/hooks/enforce-uv.sh
     format_edited_files_hook: ~/.claude/hooks/format-edited-files.py

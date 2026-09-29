@@ -41,7 +41,8 @@
         "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db",
         "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/teams",
         "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/run",
-        "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/ext-tools"
+        "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/ext-tools",
+        "~/.cache/uv"
       ]
     },
     "network": {
@@ -54,7 +55,8 @@
       ],
       "allowUnixSockets": [
         "~/.config/herdr/herdr.sock"
-      ]
+      ],
+      "allowAllUnixSockets": true
     }
   },
   "hooks": {

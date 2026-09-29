@@ -411,7 +411,10 @@ def render_claude_sandbox(manifest: dict[str, Any]) -> dict[str, Any]:
         "filesystem": {
             "allowWrite": manifest["codex"]["sandbox_workspace_write"]["writable_roots"]
         },
-        "network": {"allowedDomains": sandbox["network"]["allowedDomains"]},
+        "network": {
+            "allowedDomains": sandbox["network"]["allowedDomains"],
+            "allowUnixSockets": sandbox["network"]["allowUnixSockets"],
+        },
     }
 
 

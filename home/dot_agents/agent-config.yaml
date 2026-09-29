@@ -190,11 +190,15 @@ claude:
   # filesystem.allowWrite. The generator renders allowWrite from
   # codex.sandbox_workspace_write.writable_roots so both agents share one agmsg
   # writable-roots list; ~/.claude is sandbox-protected, so it is not listed.
-  # bubblewrap, socat, and the Ubuntu bwrap AppArmor profile come from the
-  # installers that the operator runs with `make update` outside Claude sessions.
+  # bubblewrap and socat come from the installers that the operator runs with
+  # `make update` outside Claude sessions; on Ubuntu 24.04+ the bwrap-userns
+  # AppArmor profile (install/ubuntu/common/apparmor_userns.sh) lets bwrap
+  # create user namespaces.
   sandbox:
     enabled: true
-    failIfUnavailable: true
+    # Two-stage rollout: warn and run unsandboxed while bwrap/socat are missing;
+    # flip to true only after live E2E.
+    failIfUnavailable: false
     autoAllowBashIfSandboxed: true
     allowUnsandboxedCommands: true
     # Add entries only with E2E evidence, one comment per entry.
@@ -206,6 +210,12 @@ claude:
         - uploads.github.com
         - objects.githubusercontent.com
         - codeload.github.com
+      # macOS only: Claude Code ignores this list on Linux and WSL2, where the
+      # seccomp filter can't inspect socket paths. The Claude messaging socket
+      # (CLAUDE_CODE_MESSAGING_SOCKET, a per-process path set at runtime) cannot
+      # be listed without a glob, so it is not.
+      allowUnixSockets:
+        - ~/.config/herdr/herdr.sock
   hooks:
     enforce_uv_hook: ~/.claude/hooks/enforce-uv.sh
     format_edited_files_hook: ~/.claude/hooks/format-edited-files.py

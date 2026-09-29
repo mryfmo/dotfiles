@@ -331,9 +331,11 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str)
     """Require the confined, prompt-free Claude sandbox that mirrors the Codex one."""
     if not isinstance(sandbox, dict):
         fail(f"{label} must define the sandbox object")
-    for key in ("enabled", "failIfUnavailable", "autoAllowBashIfSandboxed"):
+    for key in ("enabled", "autoAllowBashIfSandboxed"):
         if sandbox.get(key) is not True:
             fail(f"{label}.{key} must be true")
+    if not isinstance(sandbox.get("failIfUnavailable"), bool):
+        fail(f"{label}.failIfUnavailable must be a boolean")
     allow_write = sandbox.get("filesystem", {}).get("allowWrite", [])
     validate_codex_agmsg_writable_roots(
         {"writable_roots": allow_write}, f"{label}.filesystem.allowWrite"
@@ -353,6 +355,20 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str)
     ]
     if invalid:
         fail(f"{label}.network.allowedDomains must contain only hostnames: {invalid}")
+    sockets = sandbox.get("network", {}).get("allowUnixSockets", [])
+    if not isinstance(sockets, list):
+        fail(f"{label}.network.allowUnixSockets must be a list")
+    invalid = [
+        socket
+        for socket in sockets
+        if not isinstance(socket, str)
+        or not socket.startswith(("/", "~/"))
+        or any(char in socket for char in "*?[]{}")
+    ]
+    if invalid:
+        fail(
+            f"{label}.network.allowUnixSockets entries must be absolute or ~/ paths without globs: {invalid}"
+        )
 
 
 def validate_claude_settings(manifest: dict[str, Any]) -> None:

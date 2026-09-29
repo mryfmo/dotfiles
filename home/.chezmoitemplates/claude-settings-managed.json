@@ -32,7 +32,7 @@
   },
   "sandbox": {
     "enabled": true,
-    "failIfUnavailable": true,
+    "failIfUnavailable": false,
     "autoAllowBashIfSandboxed": true,
     "allowUnsandboxedCommands": true,
     "excludedCommands": [],
@@ -51,6 +51,9 @@
         "uploads.github.com",
         "objects.githubusercontent.com",
         "codeload.github.com"
+      ],
+      "allowUnixSockets": [
+        "~/.config/herdr/herdr.sock"
       ]
     }
   },

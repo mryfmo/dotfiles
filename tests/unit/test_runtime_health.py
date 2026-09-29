@@ -746,6 +746,7 @@ EOF
                 "-c",
                 "source scripts/update-agent-assets.sh; "
                 f"AGMSG_PIN_SHA256={checksum}; "
+                "AGMSG_PIN_VERSION=9.9.9; "
                 "update_agmsg",
             ],
             cwd=repo,
@@ -753,6 +754,8 @@ EOF
         )
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertNotIn("installer failed", result.stdout + result.stderr)
+        self.assertFalse((home / ".agents/backups").exists())
         skill_dir = home / ".agents/skills/agmsg"
         self.assertEqual("9.9.9\n", (skill_dir / "VERSION").read_text())
         self.assertTrue((skill_dir / "scripts/send.sh").is_file())
@@ -840,6 +843,7 @@ EOF
                 "-c",
                 "source scripts/update-agent-assets.sh; "
                 f"AGMSG_PIN_SHA256={checksum}; "
+                "AGMSG_PIN_VERSION=9.9.9; "
                 "update_agmsg",
             ],
             cwd=repo,
@@ -847,13 +851,22 @@ EOF
         )
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertIn("not installed", result.stdout + result.stderr)
+        log = (repo / "commands.log").read_text()
+        self.assertIn("update=false", log)
+        self.assertNotIn("update=true", log)
+        self.assertNotIn("installer failed", result.stdout + result.stderr)
         self.assertEqual("9.9.9\n", (skill_dir / "VERSION").read_text())
         self.assertTrue((skill_dir / ".agmsg").exists())
         for state_dir in ("teams", "db", "run"):
             self.assertEqual(
                 "live state\n", (skill_dir / state_dir / "example/data.txt").read_text()
             )
+        backups = list((home / ".agents/backups").glob("agmsg-state-*"))
+        self.assertEqual(1, len(backups))
+        self.assertEqual(
+            "live state\n", (backups[0] / "teams/example/data.txt").read_text()
+        )
+        self.assertIn(f"live state copied to {backups[0]}", result.stdout)
 
     def test_agmsg_update_aborts_when_install_corrupts_live_state(self) -> None:
         repo, home, env, checksum = self.agmsg_fixture(
@@ -877,8 +890,102 @@ EOF
         )
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertIn("touched live runtime state", result.stdout + result.stderr)
+        self.assertIn("changed during install.sh --update", result.stdout + result.stderr)
         self.assertIn("installer failed", result.stdout + result.stderr)
+
+    def test_agmsg_migration_reports_an_installer_that_mutates_live_state(
+        self,
+    ) -> None:
+        repo, home, env, checksum = self.agmsg_fixture(corrupt_state_on_install=True)
+        skill_dir = home / ".agents/skills/agmsg"
+        (skill_dir / "scripts").mkdir(parents=True)
+        (skill_dir / "teams/example").mkdir(parents=True)
+        (skill_dir / "teams/example/data.txt").write_text("live state\n")
+        (skill_dir / "db").mkdir()
+        (skill_dir / "db/messages.db").write_bytes(b"sqlite bytes")
+
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                "source scripts/update-agent-assets.sh; "
+                f"AGMSG_PIN_SHA256={checksum}; "
+                "AGMSG_PIN_VERSION=9.9.9; "
+                "update_agmsg",
+            ],
+            cwd=repo,
+            env=env,
+        )
+
+        output = result.stdout + result.stderr
+        self.assertEqual(0, result.returncode, output)
+        self.assertNotIn("update=true", (repo / "commands.log").read_text())
+        backup = next((home / ".agents/backups").glob("agmsg-state-*"))
+        self.assertIn(
+            "changed during install.sh --cmd agmsg --agent-type claude-code; "
+            f"pre-install state copy: {backup}",
+            output,
+        )
+        self.assertIn("agmsg installer failed (installed: none)", output)
+        self.assertEqual("live state\n", (backup / "teams/example/data.txt").read_text())
+        self.assertEqual(b"sqlite bytes", (backup / "db/messages.db").read_bytes())
+
+    def test_agmsg_refuses_to_install_when_the_state_snapshot_is_empty(self) -> None:
+        repo, home, env, checksum = self.agmsg_fixture(preinstalled_version="1.0.0")
+        skill_dir = home / ".agents/skills/agmsg"
+        (skill_dir / "teams/example").mkdir(parents=True)
+        (skill_dir / "teams/example/data.txt").write_text("live state\n")
+        bin_dir = repo / "bin"
+        for tool in ("sha256sum", "shasum"):
+            self.executable(bin_dir / tool, "exit 0\n")
+
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                "source scripts/update-agent-assets.sh; "
+                f"AGMSG_PIN_SHA256={checksum}; "
+                "AGMSG_PIN_VERSION=9.9.9; "
+                "update_agmsg",
+            ],
+            cwd=repo,
+            env=env,
+        )
+
+        output = result.stdout + result.stderr
+        self.assertEqual(0, result.returncode, output)
+        self.assertIn("hashed fewer live-state files than exist", output)
+        self.assertIn("could not snapshot the live state", output)
+        self.assertFalse((repo / "commands.log").exists())
+        self.assertEqual("1.0.0\n", (skill_dir / "VERSION").read_text())
+
+    def test_agmsg_refuses_to_install_without_tar(self) -> None:
+        repo, home, env, checksum = self.agmsg_fixture()
+        no_tar = self.temp_dir / "no-tar-bin"
+        no_tar.mkdir()
+        for directory in ("/usr/bin", "/bin"):
+            for tool in Path(directory).iterdir():
+                if tool.name != "tar" and not (no_tar / tool.name).exists():
+                    (no_tar / tool.name).symlink_to(tool)
+        env["PATH"] = f"{repo / 'bin'}:{no_tar}"
+
+        result = self.run_test_command(
+            [
+                "bash",
+                "-c",
+                "source scripts/update-agent-assets.sh; "
+                f"AGMSG_PIN_SHA256={checksum}; "
+                "update_agmsg",
+            ],
+            cwd=repo,
+            env=env,
+        )
+
+        output = result.stdout + result.stderr
+        self.assertEqual(0, result.returncode, output)
+        self.assertIn("agmsg: tar not found; nothing was installed", output)
+        self.assertFalse((repo / "commands.log").exists())
+        self.assertFalse((home / ".agents/skills/agmsg").exists())
 
     def update_fixture(
         self,

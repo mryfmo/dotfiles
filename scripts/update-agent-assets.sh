@@ -897,66 +897,128 @@ function update_compactiondb() {
 }
 
 #
-# @description Print a stable sha256 snapshot of every file under an agmsg
-#   skill's teams/db/run state directories, skipping any that don't exist yet.
-# @arg $1 path Skill directory (e.g. ~/.agents/skills/agmsg).
+# @description Print sha256 lines for files with sha256sum, or shasum on macOS.
+# @arg $@ path Files to hash.
+# @exitcode 1 If neither tool exists or hashing fails.
 #
-function agmsg_state_snapshot() {
-    local skill_dir="$1"
-    local state_dir
-
-    for state_dir in teams db run; do
-        [ -d "${skill_dir}/${state_dir}" ] || continue
-        find "${skill_dir}/${state_dir}" -type f -exec shasum -a 256 {} +
-    done | sort
+function agmsg_sha256() {
+    if command -v sha256sum > /dev/null 2>&1; then
+        sha256sum -- "$@"
+    elif command -v shasum > /dev/null 2>&1; then
+        shasum -a 256 -- "$@"
+    else
+        printf 'agmsg: neither sha256sum nor shasum is available\n' >&2
+        return 1
+    fi
 }
 
 #
-# @description Download, verify, and apply one pinned agmsg release via
-#   upstream install.sh, which owns SKILL.md/VERSION/scripts/ in place. A
-#   before/after sha256 snapshot of teams/db/run always brackets the call,
-#   since a marker-less legacy directory (no .agmsg/VERSION, e.g. migrating
-#   from the old vendored skill) can still hold live runtime state that
-#   "installed == none" would otherwise let through unguarded.
+# @description Print a sorted sha256 manifest of the agmsg live state no
+#   installer run may change: every file under teams/ and run/, plus
+#   db/messages.db. It prints nothing when that state does not exist yet, and
+#   fails rather than print a short (e.g. empty) manifest that would compare
+#   equal by accident.
 # @arg $1 path Skill directory (e.g. ~/.agents/skills/agmsg).
+# @exitcode 1 If the state cannot be hashed completely.
+#
+function agmsg_state_snapshot() {
+    local skill_dir="$1"
+    local file hashes
+    local -a files=()
+
+    while IFS= read -r -d '' file; do
+        files+=("${file}")
+    done < <(
+        find "${skill_dir}/teams" "${skill_dir}/run" -type f -print0 2> /dev/null
+        [ ! -f "${skill_dir}/db/messages.db" ] || printf '%s\0' "${skill_dir}/db/messages.db"
+    )
+    ((${#files[@]})) || return 0
+    hashes="$(agmsg_sha256 "${files[@]}")" || return 1
+    if [ "$(printf '%s\n' "${hashes}" | grep -c '^[0-9a-f]\{64\} ')" -ne "${#files[@]}" ]; then
+        printf 'agmsg: hashed fewer live-state files than exist under %s\n' "${skill_dir}" >&2
+        return 1
+    fi
+    printf '%s\n' "${hashes}" | sort
+}
+
+#
+# @description Download, verify, and apply one pinned agmsg release through
+#   upstream install.sh, which owns SKILL.md/VERSION/scripts/ in place. An
+#   existing install (the upstream .agmsg marker) gets `install.sh --update`;
+#   anything else, including the marker-less legacy vendored directory, gets
+#   the plain installer, never --update. Before any installer run, the live
+#   state (teams/, db/, run/, agents/) is copied to
+#   ~/.agents/backups/agmsg-state-<UTC time>/ as the rollback, and a sha256
+#   manifest of teams/, run/ and db/messages.db must be identical afterwards.
+#   Every step checks its own status: this runs on the left of `||`, where
+#   `set -e` is inert.
+# @arg $1 path Skill directory (e.g. ~/.agents/skills/agmsg).
+# @exitcode 1 On any failure, with the reason on stderr.
 #
 function install_pinned_agmsg() (
     local skill_dir="$1"
     local fetch_url="https://github.com/fujibee/agmsg/archive/${AGMSG_PIN_COMMIT}.tar.gz"
-    local tarball extract_dir actual before_state after_state update_log
+    local tool tarball extract_dir actual before_state after_state install_log backup_dir state_dir installed
+    local -a install_args=(--cmd agmsg --agent-type claude-code)
+
+    for tool in curl tar; do
+        command -v "${tool}" > /dev/null 2>&1 || {
+            printf 'agmsg: %s not found; nothing was installed\n' "${tool}" >&2
+            return 1
+        }
+    done
+    before_state="$(agmsg_state_snapshot "${skill_dir}")" || {
+        printf 'agmsg: could not snapshot the live state under %s; nothing was installed\n' "${skill_dir}" >&2
+        return 1
+    }
+    if [ -f "${skill_dir}/.agmsg" ]; then
+        install_args=(--update "${install_args[@]}")
+    fi
 
     tarball="$(mktemp)" || return 1
     extract_dir="$(mktemp -d)" || return 1
-    trap 'rm -f "${tarball}"; rm -rf "${extract_dir}"' EXIT
+    install_log="$(mktemp)" || return 1
+    trap 'rm -f "${tarball}" "${install_log}"; rm -rf "${extract_dir}"' EXIT
     curl -fsSL "${fetch_url}" -o "${tarball}" || {
-        printf 'agmsg download failed: %s\n' "${fetch_url}" >&2
+        printf 'agmsg download failed: %s; nothing was installed\n' "${fetch_url}" >&2
         return 1
     }
-    actual="$(shasum -a 256 "${tarball}" | awk '{ print $1 }')" || return 1
-    [ "${actual}" = "${AGMSG_PIN_SHA256}" ] || {
-        printf 'agmsg checksum mismatch for %s.\n' "${fetch_url}" >&2
+    actual="$(agmsg_sha256 "${tarball}")" || return 1
+    [ "${actual%% *}" = "${AGMSG_PIN_SHA256}" ] || {
+        printf 'agmsg checksum mismatch for %s; nothing was installed\n' "${fetch_url}" >&2
         return 1
     }
     tar xzf "${tarball}" -C "${extract_dir}" --strip-components=1 || {
-        printf 'agmsg extraction failed for %s\n' "${fetch_url}" >&2
+        printf 'agmsg extraction failed for %s; nothing was installed\n' "${fetch_url}" >&2
         return 1
     }
 
-    before_state="$(agmsg_state_snapshot "${skill_dir}")" || return 1
-    update_log="$(mktemp)" || return 1
-    if ! bash "${extract_dir}/install.sh" --update --cmd agmsg --agent-type claude-code > "${update_log}" 2>&1; then
-        cat "${update_log}" >&2
-        rm -f "${update_log}"
-        bash "${extract_dir}/install.sh" --cmd agmsg --agent-type claude-code || {
-            printf 'agmsg install.sh failed\n' >&2
-            return 1
-        }
-    else
-        rm -f "${update_log}"
+    if [ -d "${skill_dir}" ]; then
+        backup_dir="${HOME}/.agents/backups/agmsg-state-$(date -u +%Y%m%dT%H%M%SZ)"
+        mkdir -p "${backup_dir}" || return 1
+        for state_dir in teams db run agents; do
+            [ ! -e "${skill_dir}/${state_dir}" ] || cp -Rp "${skill_dir}/${state_dir}" "${backup_dir}/" || {
+                printf 'agmsg: could not back up %s/%s; nothing was installed\n' "${skill_dir}" "${state_dir}" >&2
+                return 1
+            }
+        done
+        printf 'agmsg: live state copied to %s before install.sh %s\n' "${backup_dir}" "${install_args[*]}"
+    fi
+    if ! bash "${extract_dir}/install.sh" "${install_args[@]}" > "${install_log}" 2>&1; then
+        cat "${install_log}" >&2
+        printf 'agmsg: install.sh %s failed; the skill directory may be partially updated%s\n' \
+            "${install_args[*]}" "${backup_dir:+; pre-install state copy: ${backup_dir}}" >&2
+        return 1
     fi
     after_state="$(agmsg_state_snapshot "${skill_dir}")" || return 1
     [ "${before_state}" = "${after_state}" ] || {
-        printf 'agmsg update touched live runtime state under teams/db/run; aborting\n' >&2
+        printf 'agmsg: live state under teams/, run/ or db/messages.db changed during install.sh %s; pre-install state copy: %s\n' \
+            "${install_args[*]}" "${backup_dir:-none}" >&2
+        return 1
+    }
+    installed="$(cat "${skill_dir}/VERSION" 2> /dev/null || printf 'none')"
+    [ -f "${skill_dir}/.agmsg" ] && [ "${installed}" = "${AGMSG_PIN_VERSION}" ] || {
+        printf 'agmsg: install.sh %s left VERSION %s (want %s)\n' "${install_args[*]}" "${installed}" "${AGMSG_PIN_VERSION}" >&2
         return 1
     }
 )
@@ -970,17 +1032,17 @@ function update_agmsg() {
 
     section "agmsg"
     installed="$(cat "${skill_dir}/VERSION" 2> /dev/null || printf 'none\n')"
-    if [ "${installed}" != "${AGMSG_PIN_VERSION}" ] || ! [ -x "${skill_dir}/scripts/send.sh" ]; then
+    if [ "${installed}" != "${AGMSG_PIN_VERSION}" ] || ! [ -f "${skill_dir}/.agmsg" ] || ! [ -x "${skill_dir}/scripts/send.sh" ]; then
         install_pinned_agmsg "${skill_dir}" ||
-            printf 'agmsg installer failed; see stderr above for details.\n' >&2
+            printf 'agmsg installer failed (installed: %s); see the reason above.\n' "${installed}" >&2
     fi
 
     manifest_record "update_agmsg" installer \
         "$(cat "${skill_dir}/VERSION" 2> /dev/null || printf 'none\n')" \
         "${skill_dir}/SKILL.md" "${skill_dir}/scripts" "${skill_dir}/VERSION" -- \
         "curl -fsSL https://github.com/fujibee/agmsg/archive/${AGMSG_PIN_COMMIT}.tar.gz" \
-        "shasum -a 256 <tarball>" \
-        "bash <extracted>/install.sh --update --cmd agmsg --agent-type claude-code"
+        "sha256sum <tarball> (shasum -a 256 on macOS)" \
+        "bash <extracted>/install.sh [--update when .agmsg exists] --cmd agmsg --agent-type claude-code"
 }
 
 #

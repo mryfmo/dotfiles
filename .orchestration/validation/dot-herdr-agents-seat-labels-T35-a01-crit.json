@@ -1,0 +1,184 @@
+[
+  {
+    "scope": "review",
+    "id": "r_382529",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review scope: an independent adversarial review of 549b257 (T35) in a separate subagent context. The verdict was 'incorrect'; each finding and its disposition is recorded below.",
+    "author": "claude-code",
+    "created_at": "2026-09-29T04:41:27Z",
+    "updated_at": "2026-09-29T04:41:27Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_7eb13a",
+        "body": "All 7 findings are resolved in 903c9fa.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T04:41:27Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "README.md",
+    "id": "c_21ad64",
+    "start_line": 515,
+    "end_line": 515,
+    "body": "P3: the claim that the worker's attach recognizes its pane was false for a worktree-seated worker, because seats were read at the worktree.",
+    "anchor": "- the legacy labels keep working.",
+    "author": "claude-code",
+    "created_at": "2026-09-29T04:41:27Z",
+    "updated_at": "2026-09-29T04:41:27Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_fa2f88",
+        "body": "Fixed in 903c9fa: seats are now read at the main checkout, resolved from the git common dir. Tested by test_worker_seat_label_comes_from_the_worker_worktree_registration.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T04:41:27Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "home/dot_local/bin/common/executable_herdr-agents",
+    "id": "c_bc22a3",
+    "start_line": 1,
+    "end_line": 1,
+    "body": "P3: the file mode changed from 100644 to 100755.",
+    "anchor": "#!/usr/bin/env bash",
+    "author": "claude-code",
+    "created_at": "2026-09-29T04:41:27Z",
+    "updated_at": "2026-09-29T04:41:27Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_f44712",
+        "body": "Fixed in 903c9fa: restored to 100644. The flip came from chmod +x in my baseline swap.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T04:41:27Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "home/dot_local/bin/common/executable_herdr-agents",
+    "id": "c_75d6f2",
+    "start_line": 421,
+    "end_line": 421,
+    "body": "P2: every team member was mapped to \u003ckind\u003e-worker, so another member's pane made the worker ambiguous, heal split a duplicate worker, and restart refused.",
+    "anchor": "    if common=\"$(git -C \"$1\" rev-parse --path-format=absolute --git-common-dir 2\u003e /dev/null)\" \u0026\u0026",
+    "author": "claude-code",
+    "created_at": "2026-09-29T04:41:27Z",
+    "updated_at": "2026-09-29T04:41:27Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_df9135",
+        "body": "Fixed in 903c9fa: only the pair's own worker-type seat is the worker (the HERDR_AGENTS_WORKER_WORKTREE seat, or a legacy -aNNN at the main checkout). Tested by test_another_team_members_pane_is_not_a_second_worker, which fails on 549b257.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T04:41:27Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "home/dot_local/bin/common/executable_herdr-agents",
+    "id": "c_189263",
+    "start_line": 424,
+    "end_line": 424,
+    "body": "P3: the member type was ignored, so under worker_kind=codex a claude-code member would be relabeled codex-worker.",
+    "anchor": "    fi",
+    "author": "claude-code",
+    "created_at": "2026-09-29T04:41:27Z",
+    "updated_at": "2026-09-29T04:41:27Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_3defc0",
+        "body": "Fixed in 903c9fa: worker seats are looked up by the worker agmsg type only.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T04:41:27Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "home/dot_local/bin/common/executable_herdr-agents",
+    "id": "c_b6500f",
+    "start_line": 1165,
+    "end_line": 1165,
+    "body": "P3: team.sh --json (about 1.8 s live) ran on every attach.",
+    "anchor": "    require_command claude",
+    "author": "claude-code",
+    "created_at": "2026-09-29T04:41:27Z",
+    "updated_at": "2026-09-29T04:41:27Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_be6a37",
+        "body": "Fixed in 903c9fa: team.sh is gone, and seat labels now come from two or three identities.sh lookups.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T04:41:27Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "home/dot_local/bin/common/executable_herdr-agents",
+    "id": "c_c3fd7c",
+    "start_line": 1187,
+    "end_line": 1187,
+    "body": "P2: the orchestrator's attach found the worker only by its herdr agent name, which upstream renames, so it refused and skipped bootstrap and repair.",
+    "anchor": "    panes_json=\"$(managed_pane_list \"${workspace_id}\")\"",
+    "author": "claude-code",
+    "created_at": "2026-09-29T04:41:27Z",
+    "updated_at": "2026-09-29T04:41:27Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_a69692",
+        "body": "Fixed in 903c9fa: attach falls back to labeled_worker_pane_id for both the tab and the workspace lookup. Tested by test_attach_completes_bootstrap_on_a_self_named_pair, which fails on 549b257.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T04:41:27Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "tests/unit/test_herdr_agents.py",
+    "id": "c_d8b65b",
+    "start_line": 2883,
+    "end_line": 2883,
+    "body": "P3: missing tests: a third member pane, an attach that completes, mixed labels, and the HOME guard.",
+    "anchor": "    def write_self_named_pair(self, *extra_panes: str, extra_workspace_ids: tuple[str, ...] = ()) -\u003e None:",
+    "author": "claude-code",
+    "created_at": "2026-09-29T04:41:27Z",
+    "updated_at": "2026-09-29T04:41:27Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_b67ec3",
+        "body": "Addressed in 903c9fa: 4 new tests (3 fail on 549b257, mixed labels is a regression guard). The HOME guard is covered by the existing test_full_mode_skips_agmsg_bootstrap_for_home, which failed during development until the guard was added.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T04:41:27Z",
+        "review_round": 1
+      }
+    ]
+  }
+]

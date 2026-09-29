@@ -1,0 +1,251 @@
+[
+  {
+    "scope": "review",
+    "id": "r_64506d",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review scope: an independent adversarial review of 3eeaeee (deliverable A) and 9d5cf7c (deliverable B), run by a subagent in a separate context. The verdict on that head was 'incorrect'; each finding and its disposition is recorded below.",
+    "author": "claude-code",
+    "created_at": "2026-09-29T03:41:27Z",
+    "updated_at": "2026-09-29T03:41:27Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_856284",
+        "body": "All 10 findings are resolved in e226c27: 1 P1, 3 P2 and 6 P3, with 9 tests added.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T03:41:27Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "README.md",
+    "id": "c_083777",
+    "start_line": 400,
+    "end_line": 400,
+    "body": "P3: README still said a nested-worktree seat relies on milestone inbox.sh checks, contradicting the retirement of that rule.",
+    "anchor": "- `session-start.sh` exits before starting a watcher or writing a marker for",
+    "author": "claude-code",
+    "created_at": "2026-09-29T03:41:27Z",
+    "updated_at": "2026-09-29T03:41:27Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_7eab8e",
+        "body": "Fixed in e226c27. The README sentence now describes the pair worker's turn delivery and the spawn-seat Monitor instead.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T03:41:27Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "home/dot_agents/skills/agmsg-orchestration/SKILL.md",
+    "id": "c_16a503",
+    "start_line": 41,
+    "end_line": 41,
+    "body": "P3: the 'no Monitor watch' claim was too broad, since spawn-seated workers start a Monitor through actas, and the add-worker workspace lacked AGMSG_CC_MONITOR_KEEP_ALIVE=1 and AGMSG_RESOLVE_PROJECT=0.",
+    "anchor": "- Worker panes run in their worktree: `herdr-agents` seats the pair worker in the manifest's `worker_worktree` (created from `origin/main` when missing), registers its identity there with `AGMSG_RESOLVE_PROJECT=0`, and sets delivery on that path, so turn delivery reaches the worker directly through the worktree's Stop hook. Upstream `session-start.sh` skips sessions under `.claude/worktrees/` (#367), so the worktree-seated pair worker (started without an actas boot) has no Monitor watch; delivery arrives at turn end, for example after `agmsg-dispatch`'s wake starts a turn. The interim worker inbox discipline (running `~/.agents/skills/agmsg/scripts/inbox.sh \u003cteam\u003e \u003cidentity\u003e` at each milestone: task start, push, CI green, before RESULT, after any PONG) is retired for a worktree-seated worker; it applies only to a worker still acting under a worktree-registered identity from a main-path pane, until `herdr-agents --restart-worker` re-seats it.",
+    "author": "claude-code",
+    "created_at": "2026-09-29T03:41:27Z",
+    "updated_at": "2026-09-29T03:41:27Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_32bbc4",
+        "body": "Fixed in e226c27. The docs scope the claim to the pair worker, and the add-worker workspace now carries both env vars (KEEP_ALIVE for claude only).",
+        "author": "claude-code",
+        "created_at": "2026-09-29T03:41:27Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "home/dot_local/bin/common/executable_herdr-agents",
+    "id": "c_8d74a0",
+    "start_line": 230,
+    "end_line": 230,
+    "body": "P3: one name registered in two teams was refused as ambiguous.",
+    "anchor": "    # One name in several teams is one seat (distinct names decide, as in",
+    "author": "claude-code",
+    "created_at": "2026-09-29T03:41:27Z",
+    "updated_at": "2026-09-29T03:41:27Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_da3d9b",
+        "body": "Fixed in e226c27. Distinct names decide, as in distinct_agmsg_identity_count.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T03:41:27Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "home/dot_local/bin/common/executable_herdr-agents",
+    "id": "c_9a3f54",
+    "start_line": 275,
+    "end_line": 275,
+    "body": "P3: codex worktree hooks printed no trust notice.",
+    "anchor": "        \"${delivery}\" set both claude-code \"${worktree}\" \u003e\u003e \"${log_file}\" 2\u003e\u00261 || true",
+    "author": "claude-code",
+    "created_at": "2026-09-29T03:41:27Z",
+    "updated_at": "2026-09-29T03:41:27Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_c2657d",
+        "body": "Fixed in e226c27. ensure_worker_delivery prints the Codex trust notice when it writes the hook.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T03:41:27Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "home/dot_local/bin/common/executable_herdr-agents",
+    "id": "c_67c771",
+    "start_line": 343,
+    "end_line": 343,
+    "body": "P2: worker_worktree is host-global. It created .claude/worktrees/worker-c in unregistered repositories and nested it inside linked worktrees, and half-built workspaces in non-git directories.",
+    "anchor": "    local git_dir common_dir",
+    "author": "claude-code",
+    "created_at": "2026-09-29T03:41:27Z",
+    "updated_at": "2026-09-29T03:41:27Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_d61cce",
+        "body": "Fixed in e226c27. worker_seat_applies gates the seat, before any side effect, to a git main checkout whose worktree exists, or that has origin/main and an orchestrator identity; everywhere else the legacy seat stays. The identity is now derived before the worktree is created. Three skip tests and an ambiguity test check that no worktree is left behind.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T03:41:27Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "home/dot_local/bin/common/executable_herdr-agents",
+    "id": "c_3f17c7",
+    "start_line": 714,
+    "end_line": 714,
+    "body": "P3: the re-seat cd was skipped silently when the prompt wait timed out.",
+    "author": "claude-code",
+    "created_at": "2026-09-29T03:41:27Z",
+    "updated_at": "2026-09-29T03:41:27Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_04fb13",
+        "body": "Fixed in e226c27. seat_pane_shell refuses with exit 1 and a message. Tested by test_restart_worker_refuses_to_start_outside_the_seat_when_the_pane_hangs.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T03:41:27Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "home/dot_local/bin/common/executable_herdr-agents",
+    "id": "c_acbd19",
+    "start_line": 1238,
+    "end_line": 1238,
+    "body": "P2: an unknown --profile passed the regex and booted the CLI's default model under the profile's name; the write_spawn_options comment overclaimed HERDR_AGENTS_CLAUDE_WORKER_ARGS.",
+    "author": "claude-code",
+    "created_at": "2026-09-29T03:41:27Z",
+    "updated_at": "2026-09-29T03:41:27Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_c80f05",
+        "body": "Fixed in e226c27. write_spawn_options refuses an undefined MODEL_PROFILE_\u003cP\u003e_\u003cKIND\u003e_ARGS before any change, and the comment now says the extras are not carried. Tested by test_add_worker_refuses_an_undefined_profile_before_any_change.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T03:41:27Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "home/dot_local/bin/common/executable_herdr-agents",
+    "id": "c_56ae2e",
+    "start_line": 1275,
+    "end_line": 1275,
+    "body": "P2: a codex seat never holds an actas lock, so a graceful despawn always ends needs-force, and --force also disabled the dirty-worktree refusal.",
+    "anchor": "        '[.result.workspaces[]? | select(.label == $label) | .workspace_id] | if length \u003e 1 then error(\"ambiguous\") else (.[0] // \"\") end')\"; then",
+    "author": "claude-code",
+    "created_at": "2026-09-29T03:41:27Z",
+    "updated_at": "2026-09-29T03:41:27Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_b8140f",
+        "body": "Fixed in e226c27. A codex seat's despawn is always forced, while the dirty refusal still needs an explicit --force. Documented in README; tested by test_remove_worker_forces_despawn_for_a_codex_seat.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T03:41:27Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "home/dot_local/bin/common/executable_herdr-agents",
+    "id": "c_784be0",
+    "start_line": 1577,
+    "end_line": 1577,
+    "body": "P1: full mode's heal path reused an agentless pane and started the pair worker in the main checkout, with no cd into the worktree.",
+    "anchor": "    fi",
+    "author": "claude-code",
+    "created_at": "2026-09-29T03:41:27Z",
+    "updated_at": "2026-09-29T03:41:27Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_635c86",
+        "body": "Fixed in e226c27. seat_pane_shell moves every reused pane into the worktree before the agent starts, on both the heal and restart paths. test_full_mode_heal_moves_a_reused_empty_pane_into_the_worktree fails on 9d5cf7c.",
+        "author": "claude-code",
+        "created_at": "2026-09-29T03:41:27Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "path": "tests/unit/test_herdr_agents.py",
+    "id": "c_3637ee",
+    "start_line": 1,
+    "end_line": 1,
+    "body": "P3: the tests did not cover attach repair with a seat, the heal path, codex remove, or non-git and other-repo directories.",
+    "anchor": "#!/usr/bin/env python3",
+    "author": "claude-code",
+    "created_at": "2026-09-29T03:41:27Z",
+    "updated_at": "2026-09-29T03:41:27Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_a3672c",
+        "body": "Fixed in e226c27 with 9 new tests; 7 of them fail on 9d5cf7c and 2 are regression guards (baseline in the validation file).",
+        "author": "claude-code",
+        "created_at": "2026-09-29T03:41:27Z",
+        "review_round": 1
+      }
+    ]
+  }
+]

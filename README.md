@@ -170,7 +170,8 @@ ensures the locked Node/npm runtime is installed before the two locked
 statusline tools required by the applied config, without upgrading other tools.
 The asset refresh also converges configured GitHub CLI extensions, syncs the
 vendored CompactionDB tree, and updates the pinned agmsg skill in place
-(never touching its `teams`/`db`/`run` runtime state). It then reloads a
+(see [agmsg](#agmsg); its `teams`/`db`/`run` runtime state is backed up first
+and must come through unchanged). It then reloads a
 running Herdr server, skips reload
 when the server is reported as not running or the command is unavailable, and
 fails on ambiguous status or reload errors other than `protocol_mismatch`. A
@@ -329,6 +330,90 @@ CRIT_REVIEW=off make require-crit-review
 make upgrade
 ```
 
+### agmsg
+
+agmsg is installed by its upstream installer at a pinned release, never
+vendored. `assets.agmsg` in `home/dot_agents/agent-config.yaml` records the
+release (`pin: "1.5.0"`), its tag (`ref: v1.5.0`), the tag's commit
+(`ref_commit`), the sha256 of GitHub's source archive for that commit, and the
+npm `bootstrap_integrity` of `agmsg@<pin>`. `make update` runs `update_agmsg`
+in `scripts/update-agent-assets.sh` whenever `~/.agents/skills/agmsg/VERSION`
+differs from the pin or the upstream `.agmsg` marker is missing:
+
+- It downloads the archive for `ref_commit`, verifies its sha256, and runs that
+  tree's own `install.sh`: `--update` only when the `.agmsg` marker exists,
+  otherwise the plain installer. The marker-less directory left by the old
+  vendored copy therefore takes the plain installer, which upstream `--update`
+  refuses ("Not installed").
+- Before the installer runs, it copies `teams/`, `db/`, `run/`, and `agents/`
+  to `~/.agents/backups/agmsg-state-<UTC time>/` as the rollback. The sha256
+  manifest of `teams/`, `run/`, and `db/messages.db` must be identical
+  afterwards, and `VERSION` must equal the pin. Every failure names what
+  changed and where the copy is. Remove old copies with
+  `rm -rf ~/.agents/backups/agmsg-state-*`.
+- `npx agmsg@<pin>` installs the same tag but clones it without any checksum,
+  which is why the lifecycle verifies the archive instead.
+- `install.sh --update` makes in-flight `watch.sh` watchers stand down on
+  their own. Restart running agent sessions after `make update` to bring
+  delivery back. The upstream installer prints this; #133 covers the related
+  hook re-registration after an upgrade.
+
+chezmoi no longer manages anything under `~/.agents/skills/agmsg`.
+`home/.chezmoiremove` retires the old `~/.claude/skills/agmsg/**` symlink farm,
+which pointed into the deleted vendored tree; upstream never installs that
+path. `~/.claude/commands/agmsg.md` is upstream's own rendered command. The
+old chezmoi symlink there dangles until the first install replaces it (the
+installer renders to a temp file and `mv -f`s it over the link). It is
+therefore not in `.chezmoiremove`, which would delete upstream's file on
+every apply. `validate-agent-assets` enforces all of this.
+
+Delivery: Claude Code seats use `both`, and a resident Claude worker pane also
+carries `AGMSG_CC_MONITOR_KEEP_ALIVE=1` (see the herdr section above). Codex
+seats use `turn`, not upstream's shim-based `monitor` bridge, while its
+defects #149, #151, and #1236 stay open.
+
+Registration: upstream project resolution
+([#92](https://github.com/fujibee/agmsg/issues/92), `docs/design.md` "Project
+resolution") lets `join.sh`, `whoami.sh`, `actas-claim.sh`, `reset.sh`, and
+`watch.sh` rewrite a path. It tries three signals in order: the live
+SessionStart marker `run/proj.<agent_pid>.project`, then the nearest
+registered ancestor, then the registered main checkout via
+`git rev-parse --git-common-dir`. `identities.sh` stays an exact lookup.
+Register a worker at its own worktree with
+`AGMSG_RESOLVE_PROJECT=0 join.sh <team> <name> <type> <worktree>`, and point
+`delivery.sh set <mode> <type> <worktree>` at the same path.
+
+Verified against a scratch v1.5.0 install:
+
+- Without the opt-out, a `join.sh` from inside `.claude/worktrees/<x>`
+  registers at the main checkout.
+- A seat launched from the main path carries a marker that names the main
+  checkout. For that seat, `whoami.sh` inside the worktree answers with the
+  main checkout's identities.
+- The opt-out restores the worktree in both cases.
+- `session-start.sh` exits before starting a watcher or writing a marker for
+  any session whose cwd is under `.claude/worktrees/` (#367). A Claude seat
+  launched inside a nested worktree therefore relies on turn delivery and
+  milestone `inbox.sh` checks.
+
+Wake and send: always pass the body with `--body-file`, since a positional
+body passes through the caller's shell (#378). Use `poke.sh <team> <name>
+--body-file <path>` for a member with a placement record (`team.sh <team>
+--json` shows its pane). Use `send.sh <team> <from> <to> --body-file <path>`
+for anyone else. `poke.sh` exits 1 with "no placement record" for a hand-joined
+member, which includes every worker `herdr-agents` launches today, so the
+deprecated `agmsg-dispatch` stays the wake path for those panes until the
+poke path is confirmed live. `poke.sh` exit codes:
+
+- 10: terminal unreachable.
+- 12: pane gone.
+- 14/15: refused to type over a changing or unlocatable input box.
+- 13: no poke path for this pane. Nothing was delivered, and the message names
+  the native channel. Never retry a 13 as `send.sh`.
+
+Health checks are read-only: `team.sh <team> --json`, `doctor.sh --project
+<p>`, `peek.sh <team>`, and `delivery.sh status <type> <project>`.
+
 ### Herdr and Ghostty agent workspace
 
 Ghostty starts at a normal zsh prompt. In Ghostty zsh sessions, bare `herdr`
@@ -360,7 +445,7 @@ dialog otherwise defaults to "No" and exits. Because agmsg resolves identity by
 project path and agent type, a claude worker shares the orchestrator's
 `claude-code` identity, so `herdr-agents` exits 2 before touching panes until
 a second `claude-code` identity is registered for the directory with
-`~/.agents/skills/agmsg/scripts/join.sh <team> <role> claude-code <dir>`.
+`AGMSG_RESOLVE_PROJECT=0 ~/.agents/skills/agmsg/scripts/join.sh <team> <role> claude-code <dir>`.
 Registering it only lifts this temporary guard: both sessions still resolve to
 the same inbox (`whoami.sh` reports multiple identities and `check-inbox.sh`
 takes the first), so separate delivery needs `worker_kind=codex` until agmsg
@@ -389,23 +474,9 @@ since an unattended resident pane has no one to notice a Monitor watch that
 silently failed to re-arm; a resident Claude worker pane's environment also
 carries `AGMSG_CC_MONITOR_KEEP_ALIVE=1` so its watch re-arms unconditionally
 on expiry rather than only when the expired watch delivered something.
-Every worker pane's environment also carries `AGMSG_RESOLVE_PROJECT=0`.
-agmsg's project resolution (upstream [#92](https://github.com/fujibee/agmsg/issues/92),
-`docs/design.md` "Project resolution") lets `join.sh`/`whoami.sh`/
-`actas-claim.sh`/`reset.sh`/`watch.sh` rewrite an explicit project path up to
-the nearest _registered_ ancestor — by design, so a session started in a
-subdirectory of its own registered project still resolves correctly. Since
-the orchestrator's own `claude-code` identity is already registered at this
-repository's main checkout, and every worker worktree lives _under_ that
-checkout at `.claude/worktrees/<name>`, that same ancestor walk would rewrite
-a worker's own `join.sh`/`watch.sh` calls up to the orchestrator's already-
-registered path, colliding with it instead of registering the worker's own
-worktree — verified directly against a real, pinned v1.5.0 install (a
-`join.sh` from inside a nested worktree, with resolution left on, silently
-registers at the parent instead; the identical call with
-`AGMSG_RESOLVE_PROJECT=0` registers at the worktree, exactly as intended).
-`AGMSG_RESOLVE_PROJECT=0` opts every such call in a worker pane out of that
-rewrite, matching how `spawn.sh --project` opts out for agmsg-spawned seats.
+Every worker pane's environment also carries `AGMSG_RESOLVE_PROJECT=0`, so
+agmsg's project resolution keeps a worker's own path; see [agmsg](#agmsg)
+for the registration rule.
 
 An orchestrator/worker pair always lives in one Herdr workspace. A workspace
 counts as managed for DIR when it carries the full-mode `<dir> agents` label

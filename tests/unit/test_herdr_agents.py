@@ -1175,7 +1175,10 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("No agmsg Claude Code identity", result.stderr)
-        self.assertIn("join.sh <team> <agent-name> claude-code", result.stderr)
+        self.assertIn(
+            f"run: AGMSG_RESOLVE_PROJECT=0 {scripts}/join.sh <team> <agent-name> claude-code",
+            result.stderr,
+        )
         self.assertFalse(
             any(
                 call.startswith("join ")
@@ -1661,7 +1664,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
                     f"claude-code agmsg identity on {self.workdir.resolve()} (1 "
                     "claude-code identity registered); refusing so messages do not "
                     "collide silently. Registering a second identity "
-                    f"({scripts}/join.sh <team> <role> claude-code "
+                    f"(AGMSG_RESOLVE_PROJECT=0 {scripts}/join.sh <team> <role> claude-code "
                     f"{self.workdir.resolve()}) lifts this guard but does not give "
                     "the two sessions distinct delivery until agmsg roles land; use "
                     "worker_kind=codex for separate delivery now. See the "

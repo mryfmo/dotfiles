@@ -2137,24 +2137,13 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
         self.assertFalse((self.workdir / ".claude/worktrees/b3").exists())
         self.assertFalse(any(c.startswith(("workspace create", "spawn ", "delivery")) for c in self.calls_path.read_text().splitlines()))
 
-    def test_remove_worker_forces_despawn_for_a_codex_seat(self) -> None:
-        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
-        self.write_seat_lifecycle_fakes()
-        self.add_seat_worktree("b1")
-        scripts = self.home_dir / ".agents/skills/agmsg/scripts"
-        (scripts / "identities.sh").write_text(
-            "#!/usr/bin/env bash\n"
-            f"case \"$1:$2\" in */worktrees/b1:codex) printf 'dotfiles\\tcodex-standard-dot-a008\\n' ;; {self.workdir.resolve()}:claude-code) printf 'dotfiles\\tclaude-remediation-dot\\n' ;; esac\n"
-        )
-
-        result = self.run_helper("--remove-worker", ".claude/worktrees/b1")
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        calls = self.calls_path.read_text().splitlines()
-        self.assertIn("despawn dotfiles claude-remediation-dot codex-standard-dot-a008 --force", calls)
-        self.assertIn(f"delivery set off codex {self.workdir.resolve() / '.claude/worktrees/b1'}", calls)
-
-    def write_seat_lifecycle_fakes(self, *, despawn_exit: int = 0) -> Path:
+    def write_seat_lifecycle_fakes(
+        self,
+        *,
+        despawn_exit: int = 0,
+        despawn_output: str = "status=ok name=x team=dotfiles",
+        force_exit: int = 0,
+    ) -> Path:
         """Fake agmsg spawn/despawn/leave on top of the worktree-seat fakes."""
         scripts = self.home_dir / ".agents/skills/agmsg/scripts"
         options_copy = self.temp_dir / "spawn-options.yaml"
@@ -2163,6 +2152,10 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
 cp "$AGMSG_SPAWN_OPTIONS_FILE" {options_copy}
 """,
             "despawn.sh": f"""printf 'despawn %s\\n' "$*" >> {self.calls_path}
+if [[ " $* " == *" --force "* ]]; then
+    exit {force_exit}
+fi
+printf '%s\\n' '{despawn_output}'
 exit {despawn_exit}
 """,
             "leave.sh": f"""printf 'leave %s\\n' "$*" >> {self.calls_path}
@@ -2276,29 +2269,88 @@ exit {despawn_exit}
         self.assertIn("has uncommitted changes; commit them or pass --force", result.stderr)
         self.assertFalse(any(c.startswith(("despawn", "leave", "workspace close")) for c in self.calls_path.read_text().splitlines()))
 
-    def test_remove_worker_force_passes_through_to_despawn(self) -> None:
+    def seat_remove_fixture(self, **fakes: object) -> Path:
         self.write_worktree_seat(
             main_identities="dotfiles\tclaude-remediation-dot",
             worktree_identities="dotfiles\tclaude-standard-dot-a007",
         )
-        self.write_seat_lifecycle_fakes()
+        self.write_seat_lifecycle_fakes(**fakes)
         worktree = self.add_seat_worktree("b1")
+        self.workspace_list_path.write_text(json.dumps({"result": {"workspaces": [{"workspace_id": "w-b1", "label": "project worker b1"}]}}))
+        return worktree
+
+    def assert_full_seat_cleanup(self, worktree: Path, seat_type: str, name: str) -> None:
+        calls = self.calls_path.read_text().splitlines()
+        for call in (f"delivery set off {seat_type} {worktree}", f"leave dotfiles {name}", "workspace close w-b1"):
+            self.assertIn(call, calls)
+
+    def test_remove_worker_force_retries_a_failed_graceful_despawn(self) -> None:
+        worktree = self.seat_remove_fixture(despawn_exit=3, despawn_output="status=timeout name=x team=dotfiles after=30s")
         (worktree / "uncommitted.txt").write_text("work\n")
 
         result = self.run_helper("--remove-worker", ".claude/worktrees/b1", "--force")
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn(
-            "despawn dotfiles claude-remediation-dot claude-standard-dot-a007 --force",
-            self.calls_path.read_text().splitlines(),
+        calls = self.calls_path.read_text().splitlines()
+        graceful = calls.index("despawn dotfiles claude-remediation-dot claude-standard-dot-a007")
+        forced = calls.index("despawn dotfiles claude-remediation-dot claude-standard-dot-a007 --force")
+        self.assertLess(graceful, forced)
+        self.assert_full_seat_cleanup(worktree, "claude-code", "claude-standard-dot-a007")
+
+    def test_remove_worker_force_skips_the_forced_despawn_when_graceful_succeeds(self) -> None:
+        worktree = self.seat_remove_fixture()
+
+        result = self.run_helper("--remove-worker", ".claude/worktrees/b1", "--force")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(any(c.endswith(" --force") and c.startswith("despawn") for c in self.calls_path.read_text().splitlines()))
+        self.assert_full_seat_cleanup(worktree, "claude-code", "claude-standard-dot-a007")
+
+    def test_remove_worker_forces_despawn_when_graceful_reports_needs_force(self) -> None:
+        worktree = self.seat_remove_fixture(despawn_exit=1, despawn_output="status=needs-force name=x team=dotfiles note=no-live-lock-recorded")
+
+        result = self.run_helper("--remove-worker", ".claude/worktrees/b1")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("despawn dotfiles claude-remediation-dot claude-standard-dot-a007 --force", self.calls_path.read_text().splitlines())
+        self.assert_full_seat_cleanup(worktree, "claude-code", "claude-standard-dot-a007")
+
+    def test_remove_worker_stops_when_the_forced_retry_also_fails(self) -> None:
+        self.seat_remove_fixture(despawn_exit=1, despawn_output="status=needs-force name=x team=dotfiles", force_exit=1)
+
+        result = self.run_helper("--remove-worker", ".claude/worktrees/b1")
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("did not complete; re-run with --force", result.stderr)
+        self.assertFalse(any(c.startswith(("leave", "workspace close", "delivery set off")) for c in self.calls_path.read_text().splitlines()))
+
+    def test_remove_worker_cleans_up_a_codex_seat_without_a_placement_record(self) -> None:
+        # After a failed spawn the identity exists but no placement record: upstream
+        # graceful despawn reports ok and --force would fail, so it must not be forced.
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes(despawn_output="status=ok name=codex-standard-dot-a008 team=dotfiles note=no-live-lock", force_exit=1)
+        worktree = self.add_seat_worktree("b1")
+        self.workspace_list_path.write_text(json.dumps({"result": {"workspaces": [{"workspace_id": "w-b1", "label": "project worker b1"}]}}))
+        scripts = self.home_dir / ".agents/skills/agmsg/scripts"
+        (scripts / "identities.sh").write_text(
+            "#!/usr/bin/env bash\n"
+            f"case \"$1:$2\" in */worktrees/b1:codex) printf 'dotfiles\\tcodex-standard-dot-a008\\n' ;; {self.workdir.resolve()}:claude-code) printf 'dotfiles\\tclaude-remediation-dot\\n' ;; esac\n"
         )
+
+        result = self.run_helper("--remove-worker", ".claude/worktrees/b1")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn("despawn dotfiles claude-remediation-dot codex-standard-dot-a008", calls)
+        self.assertNotIn("despawn dotfiles claude-remediation-dot codex-standard-dot-a008 --force", calls)
+        self.assert_full_seat_cleanup(worktree, "codex", "codex-standard-dot-a008")
 
     def test_remove_worker_stops_when_a_graceful_despawn_fails(self) -> None:
         self.write_worktree_seat(
             main_identities="dotfiles\tclaude-remediation-dot",
             worktree_identities="dotfiles\tclaude-standard-dot-a007",
         )
-        self.write_seat_lifecycle_fakes(despawn_exit=1)
+        self.write_seat_lifecycle_fakes(despawn_exit=3, despawn_output="status=timeout name=x team=dotfiles after=30s")
         self.add_seat_worktree("b1")
 
         result = self.run_helper("--remove-worker", ".claude/worktrees/b1")

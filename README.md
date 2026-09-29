@@ -665,10 +665,14 @@ The profile's launch arguments reach the CLI through a generated
 Re-running for a workspace that already has an agent is a no-op.
 
 Remove-worker refuses a worktree with uncommitted changes unless `--force`.
-Otherwise it runs `despawn.sh <team> <orchestrator> <name>` (with `--force`
-passed through; always forced for a codex seat, which never holds the actas
-lock that a graceful despawn waits for), then `delivery.sh set off`,
-`leave.sh`, and `herdr workspace close`. Add-worker refuses a profile that
+Otherwise it despawns graceful-first, following upstream `despawn.sh`.
+A graceful `despawn.sh <team> <orchestrator> <name>` is enough when it succeeds,
+and that includes a member with no placement record, for example after a
+failed spawn, where `--force` would fail. It retries with `--force` only when
+the graceful call reports `status=needs-force` (a record but no live actas
+lock, as for a codex seat) or when you passed `--force`. After a completed
+despawn it always runs `delivery.sh set off`, `leave.sh`, and `herdr workspace
+close`; a despawn that cannot complete stops removal with a hint. Add-worker refuses a profile that
 `~/.agents/model-profiles.env` does not define. The worktree itself is kept. Raw herdr topology commands (`tab
 create`, `pane split`, `workspace create`) stay forbidden to the orchestrator
 (T21 G7). Completion is detected only through agmsg RESULT messages, and about

@@ -322,6 +322,29 @@ function write_spawn_options() {
     done
 }
 
+# @description Despawn a worker seat graceful-first, following upstream
+#   despawn.sh: a graceful `ok` (which includes a member with no placement
+#   record, e.g. after a failed spawn) is done; `status=needs-force` (a record
+#   but no live actas lock, as for every codex seat) or an explicit --force
+#   retries with --force, which needs the placement record. Output goes to
+#   stderr.
+# @arg $1 string Team.
+# @arg $2 string Leader (the orchestrator identity).
+# @arg $3 string Worker identity.
+# @exitcode 1 If the seat could not be despawned.
+function despawn_worker_seat() {
+    local despawn="${HOME}/.agents/skills/agmsg/scripts/despawn.sh"
+    local output status=0
+
+    output="$("${despawn}" "$1" "$2" "$3" 2>&1)" || status=$?
+    [[ -z ${output} ]] || printf '%s\n' "${output}" >&2
+    ((status != 0)) || return 0
+    if [[ ${output} == *"status=needs-force"* || ${seat_force} == true ]]; then
+        "${despawn}" "$1" "$2" "$3" --force >&2 && return 0
+    fi
+    return 1
+}
+
 # @description Print the absolute path of an existing worktree of a repository.
 # @arg $1 workdir Absolute main checkout path.
 # @arg $2 path Worktree relative to workdir.
@@ -1418,8 +1441,6 @@ if [[ ${remove_worker_mode} == true ]]; then
         printf 'herdr-agents: %s has uncommitted changes; commit them or pass --force.\n' "${seat_dir}" >&2
         exit 2
     fi
-    despawn_args=()
-    [[ ${seat_force} != true ]] || despawn_args=(--force)
     leader="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${workdir}" claude-code 2> /dev/null |
         awk -F '\t' '$2 !~ /-a[0-9][0-9][0-9]$/ { print $2 }' | sort -u)" || leader=""
     for seat_type in claude-code codex; do
@@ -1429,11 +1450,7 @@ if [[ ${remove_worker_mode} == true ]]; then
                 printf 'herdr-agents: need exactly one orchestrator claude-code identity at %s to despawn %s.\n' "${workdir}" "${seat_name}" >&2
                 exit 2
             fi
-            seat_despawn_args=(${despawn_args[@]+"${despawn_args[@]}"})
-            # A codex seat never holds an actas lock, so upstream's graceful
-            # despawn always ends needs-force for it.
-            [[ ${seat_type} != codex || ${#seat_despawn_args[@]} -gt 0 ]] || seat_despawn_args=(--force)
-            if ! "${scripts}/despawn.sh" "${seat_team}" "${leader}" "${seat_name}" ${seat_despawn_args[@]+"${seat_despawn_args[@]}"}; then
+            if ! despawn_worker_seat "${seat_team}" "${leader}" "${seat_name}"; then
                 printf 'herdr-agents: despawn of %s did not complete; re-run with --force.\n' "${seat_name}" >&2
                 exit 1
             fi

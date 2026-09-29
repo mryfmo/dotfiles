@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import configparser
+import fnmatch
 import json
 import re
 import subprocess
@@ -506,6 +507,7 @@ ASSET_VERIFY_BY_SOURCE = {
     "https-download": {"sha256", "gpg"},
     "crates": {"cargo-locked"},
     "git-commit": {"sha256"},
+    "agmsg-installer": {"sha256"},
     "installer-script": {"installer-sha256"},
     "vendored": {"manifest-sha256", "none"},
     "claude-plugin": {"none"},
@@ -517,6 +519,7 @@ INSTALLING_ASSET_SOURCES = {
     "https-download",
     "crates",
     "git-commit",
+    "agmsg-installer",
     "installer-script",
     "vendored",
 }
@@ -540,6 +543,64 @@ def asset_pin_values(asset: dict[str, Any]) -> list[tuple[str, Any]]:
     for plugin, config in asset.get("plugins", {}).items():
         values.append((f"plugins.{plugin}.pin", config.get("pin")))
     return values
+
+
+AGMSG_RELEASE = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
+
+
+def validate_agmsg_installer_asset(name: str, asset: dict[str, Any]) -> None:
+    """Require the agmsg-installer provenance fields: release, tag, commit, npm integrity."""
+    pin = asset.get("pin")
+    if not isinstance(pin, str) or not AGMSG_RELEASE.match(pin):
+        fail(f"assets.{name}.pin must be an upstream release like 1.5.0, not {pin!r}")
+    if asset.get("ref") != f"v{pin}":
+        fail(f"assets.{name}.ref must be the release tag v{pin}, not {asset.get('ref')!r}")
+    ref_commit = asset.get("ref_commit")
+    if not isinstance(ref_commit, str) or not GIT_COMMIT_SHA.match(ref_commit):
+        fail(
+            f"assets.{name}.ref_commit must be the full 40-character commit sha behind "
+            f"the tag, not {ref_commit!r}"
+        )
+    integrity = asset.get("bootstrap_integrity")
+    if not isinstance(integrity, str) or not NPM_SHA512_INTEGRITY.match(integrity):
+        fail(
+            f"assets.{name}.bootstrap_integrity must be an npm sha512-<base64> "
+            f"integrity string, not {integrity!r}"
+        )
+
+
+# Targets upstream install.sh owns on a live host: chezmoi must neither manage
+# nor remove them. The retired ~/.claude/skills/agmsg symlink farm pointed into
+# the deleted vendored tree, so chezmoi must remove it.
+AGMSG_INSTALLER_OWNED_TARGETS = (
+    ".agents/skills/agmsg",
+    ".agents/skills/agmsg/db/messages.db",
+    ".agents/skills/agmsg/teams/team/config.json",
+    ".claude/commands/agmsg.md",
+)
+AGMSG_RETIRED_SYMLINK_FARM_REMOVAL = ".claude/skills/agmsg/**"
+
+
+def validate_agmsg_is_installer_owned() -> None:
+    """Keep agmsg out of chezmoi: no vendored copy, no managed command, stale links retired."""
+    for vendored in ("home/dot_agents/skills/agmsg", "home/dot_claude/skills/agmsg"):
+        if (ROOT / vendored).exists():
+            fail(f"{vendored} must not exist: upstream install.sh owns the agmsg skill")
+    commands = ROOT / "home/dot_claude/commands"
+    for path in sorted(commands.glob("*agmsg.md*")) if commands.exists() else ():
+        fail(f"{path.relative_to(ROOT)} must not exist: install.sh renders ~/.claude/commands/agmsg.md")
+    removal_file = ROOT / "home/.chezmoiremove"
+    removals = [
+        line.strip()
+        for line in (removal_file.read_text().splitlines() if removal_file.exists() else [])
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+    if AGMSG_RETIRED_SYMLINK_FARM_REMOVAL not in removals:
+        fail(f"home/.chezmoiremove must retire {AGMSG_RETIRED_SYMLINK_FARM_REMOVAL}")
+    for pattern in removals:
+        for target in AGMSG_INSTALLER_OWNED_TARGETS:
+            if fnmatch.fnmatchcase(target, pattern):
+                fail(f"home/.chezmoiremove entry {pattern!r} would remove installer-owned {target}")
 
 
 def validate_assets(manifest: dict[str, Any]) -> None:
@@ -567,25 +628,8 @@ def validate_assets(manifest: dict[str, Any]) -> None:
             fail(f"assets.{name} must record sha256 for verify {asset['verify']!r}")
         if asset["verify"] == "gpg" and not asset.get("gpg_fingerprint"):
             fail(f"assets.{name} must record gpg_fingerprint for verify 'gpg'")
-        if name == "agmsg":
-            ref = asset.get("ref")
-            if not ref or not isinstance(ref, str):
-                fail(
-                    f"assets.{name} must record a ref (the tag the pinned commit belongs to)"
-                )
-            pin = asset.get("pin")
-            if not isinstance(pin, str) or not GIT_COMMIT_SHA.match(pin):
-                fail(
-                    f"assets.{name}.pin must be a full 40-character git commit sha, not {pin!r}"
-                )
-            integrity = asset.get("bootstrap_integrity")
-            if not isinstance(integrity, str) or not NPM_SHA512_INTEGRITY.match(
-                integrity
-            ):
-                fail(
-                    f"assets.{name}.bootstrap_integrity must be an npm sha512-<base64> "
-                    f"integrity string, not {integrity!r}"
-                )
+        if asset["source"] == "agmsg-installer":
+            validate_agmsg_installer_asset(name, asset)
         if asset["source"] in INSTALLING_ASSET_SOURCES:
             absent = [
                 key for key in ("install_path", "installer") if not asset.get(key)
@@ -1311,6 +1355,7 @@ def main() -> None:
     manifest = validate_agent_manifest()
     validate_adh_profile(manifest)
     validate_assets(manifest)
+    validate_agmsg_is_installer_owned()
     validate_generated_agent_configs()
     validate_hook_composition()
     validate_skills()

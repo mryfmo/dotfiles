@@ -318,10 +318,11 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     },
                 },
                 "agmsg": {
-                    "source": "git-commit",
+                    "source": "agmsg-installer",
                     "upstream": "https://github.com/fujibee/agmsg",
-                    "pin": "c487be269c1973aeb01ca831806eb3f65ff3366d",
+                    "pin": "1.5.0",
                     "ref": "v1.5.0",
+                    "ref_commit": "c487be269c1973aeb01ca831806eb3f65ff3366d",
                     "verify": "sha256",
                     "sha256": "9201cb5ff23ddd9ddaa19ff821dce0d0f2d58c6c292aade252a8d824b3dfc059",
                     "bootstrap_integrity": "sha512-n6057L93AE+tnItTkBnClv3QvgsOlI6AO1SwodvKFJvqqTJqITHg/2O6jjHZZfh0nKbq49VKQv6F3t2d/62gyg==",
@@ -353,14 +354,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "float plugin pin": lambda assets: assets["plugins"]["plugins"][
                 "crit"
             ].update(pin=1.1),
-            "agmsg missing ref": lambda assets: assets["agmsg"].pop("ref"),
-            "agmsg short pin": lambda assets: assets["agmsg"].update(pin="c487be2"),
-            "agmsg missing bootstrap_integrity": lambda assets: assets["agmsg"].pop(
-                "bootstrap_integrity"
-            ),
-            "agmsg malformed bootstrap_integrity": lambda assets: assets[
-                "agmsg"
-            ].update(bootstrap_integrity="sha256-not-an-npm-integrity-string"),
+            "agmsg missing installer": lambda assets: assets["agmsg"].pop("installer"),
         }
         for name, breaks in cases.items():
             with self.subTest(case=name):
@@ -371,6 +365,87 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     self.assertRaises(SystemExit),
                 ):
                     self.module.validate_assets(manifest)
+
+    def assert_agmsg_asset_rejected(self, **changes: object) -> str:
+        manifest = self.asset_manifest()
+        for key, value in changes.items():
+            if value is None:
+                manifest["assets"]["agmsg"].pop(key)
+            else:
+                manifest["assets"]["agmsg"][key] = value
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_assets(manifest)
+        return stderr.getvalue()
+
+    def test_agmsg_installer_requires_a_release_pin_and_its_tag(self) -> None:
+        for changes in (
+            {"pin": "c487be269c1973aeb01ca831806eb3f65ff3366d"},
+            {"ref": None},
+            {"ref": "v1.4.2"},
+        ):
+            with self.subTest(changes=changes):
+                self.assert_agmsg_asset_rejected(**changes)
+
+    def test_agmsg_installer_requires_the_full_tag_commit(self) -> None:
+        for changes in ({"ref_commit": None}, {"ref_commit": "c487be2"}):
+            with self.subTest(changes=changes):
+                self.assertIn("ref_commit", self.assert_agmsg_asset_rejected(**changes))
+
+    def test_agmsg_installer_requires_the_npm_bootstrap_integrity(self) -> None:
+        for changes in (
+            {"bootstrap_integrity": None},
+            {"bootstrap_integrity": "sha256-not-an-npm-integrity-string"},
+        ):
+            with self.subTest(changes=changes):
+                self.assertIn(
+                    "bootstrap_integrity", self.assert_agmsg_asset_rejected(**changes)
+                )
+
+    def write_agmsg_installer_layout(self) -> None:
+        self.write_text_file("home/.chezmoiremove", ".claude/skills/agmsg/**\n")
+
+    def assert_agmsg_ownership_rejected(self, message: str) -> None:
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_agmsg_is_installer_owned()
+        self.assertIn(message, stderr.getvalue())
+
+    def test_agmsg_ownership_accepts_the_installer_layout(self) -> None:
+        self.write_agmsg_installer_layout()
+        self.write_text_file("home/dot_claude/commands/other.md", "other\n")
+
+        self.module.validate_agmsg_is_installer_owned()
+
+    def test_agmsg_ownership_rejects_a_vendored_skill_copy(self) -> None:
+        for vendored in ("home/dot_agents/skills/agmsg", "home/dot_claude/skills/agmsg"):
+            with self.subTest(vendored=vendored):
+                self.write_agmsg_installer_layout()
+                self.write_text_file(f"{vendored}/SKILL.md", "vendored\n")
+                self.assert_agmsg_ownership_rejected(f"{vendored} must not exist")
+                shutil.rmtree(self.temp_dir / vendored)
+
+    def test_agmsg_ownership_rejects_a_managed_claude_command(self) -> None:
+        for name in ("symlink_agmsg.md.tmpl", "agmsg.md"):
+            with self.subTest(name=name):
+                self.write_agmsg_installer_layout()
+                path = f"home/dot_claude/commands/{name}"
+                self.write_text_file(path, "managed\n")
+                self.assert_agmsg_ownership_rejected(f"{path} must not exist")
+                (self.temp_dir / path).unlink()
+
+    def test_agmsg_ownership_requires_retiring_the_symlink_farm(self) -> None:
+        self.write_text_file("home/.chezmoiremove", ".codex/ccgate.jsonnet\n")
+
+        self.assert_agmsg_ownership_rejected("must retire .claude/skills/agmsg/**")
+
+    def test_agmsg_ownership_rejects_removing_installer_owned_paths(self) -> None:
+        for pattern in (".agents/skills/agmsg", ".agents/skills/agmsg/**", ".claude/commands/agmsg.md"):
+            with self.subTest(pattern=pattern):
+                self.write_text_file(
+                    "home/.chezmoiremove", f".claude/skills/agmsg/**\n{pattern}\n"
+                )
+                self.assert_agmsg_ownership_rejected(f"entry {pattern!r} would remove")
 
     def test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts(
         self,

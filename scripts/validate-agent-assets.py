@@ -324,6 +324,53 @@ def validate_codex_agmsg_writable_roots(
         fail(f"{label} must include agmsg writable roots: missing={sorted(missing)}")
 
 
+SANDBOX_HOSTNAME = re.compile(r"[a-z0-9-]+(\.[a-z0-9-]+)+")
+
+
+def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str) -> None:
+    """Require the confined, prompt-free Claude sandbox that mirrors the Codex one."""
+    if not isinstance(sandbox, dict):
+        fail(f"{label} must define the sandbox object")
+    for key in ("enabled", "autoAllowBashIfSandboxed"):
+        if sandbox.get(key) is not True:
+            fail(f"{label}.{key} must be true")
+    if not isinstance(sandbox.get("failIfUnavailable"), bool):
+        fail(f"{label}.failIfUnavailable must be a boolean")
+    allow_write = sandbox.get("filesystem", {}).get("allowWrite", [])
+    validate_codex_agmsg_writable_roots(
+        {"writable_roots": allow_write}, f"{label}.filesystem.allowWrite"
+    )
+    missing = set(writable_roots) - set(allow_write)
+    if missing:
+        fail(
+            f"{label}.filesystem.allowWrite must include every Codex writable root: missing={sorted(missing)}"
+        )
+    domains = sandbox.get("network", {}).get("allowedDomains")
+    if not isinstance(domains, list) or not domains:
+        fail(f"{label}.network.allowedDomains must be a non-empty list")
+    invalid = [
+        domain
+        for domain in domains
+        if not isinstance(domain, str) or not SANDBOX_HOSTNAME.fullmatch(domain)
+    ]
+    if invalid:
+        fail(f"{label}.network.allowedDomains must contain only hostnames: {invalid}")
+    sockets = sandbox.get("network", {}).get("allowUnixSockets", [])
+    if not isinstance(sockets, list):
+        fail(f"{label}.network.allowUnixSockets must be a list")
+    invalid = [
+        socket
+        for socket in sockets
+        if not isinstance(socket, str)
+        or not socket.startswith(("/", "~/"))
+        or any(char in socket for char in "*?[]{}")
+    ]
+    if invalid:
+        fail(
+            f"{label}.network.allowUnixSockets entries must be absolute or ~/ paths without globs: {invalid}"
+        )
+
+
 def validate_claude_settings(manifest: dict[str, Any]) -> None:
     settings_path = ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
     settings = json.loads(render_template_text(settings_path))
@@ -349,6 +396,11 @@ def validate_claude_settings(manifest: dict[str, Any]) -> None:
         fail(f"{settings_path} still references the legacy type checker")
     if "format-edited-files.py" not in commands:
         fail(f"{settings_path} must use the robust Python post-edit hook")
+    validate_claude_sandbox(
+        settings.get("sandbox"),
+        manifest.get("codex", {}).get("sandbox_workspace_write", {}).get("writable_roots", []),
+        f"{settings_path} sandbox",
+    )
     enabled_plugins = settings.get("enabledPlugins", {})
     if enabled_plugins:
         fail(

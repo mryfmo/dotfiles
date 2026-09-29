@@ -239,6 +239,28 @@ function check_agmsg() {
 }
 
 #
+# @description Report the Linux prerequisites of the Claude Code Bash sandbox:
+#   bwrap and socat on PATH. check_apparmor_userns covers the user-namespace
+#   side, so this check has no sysctl or profile logic.
+#
+function check_claude_sandbox() {
+    local command_name
+
+    if [ "$(uname)" != "Linux" ]; then
+        printf 'not applicable: Claude Code sandbox prerequisites (non-Linux; macOS uses Seatbelt)\n'
+        return 0
+    fi
+
+    for command_name in bwrap socat; do
+        if command -v "${command_name}" > /dev/null 2>&1; then
+            printf 'found:   %s -> %s\n' "${command_name}" "$(command -v "${command_name}")"
+        else
+            warn_optional "Claude Code sandbox prerequisite is missing: ${command_name} (run make update)"
+        fi
+    done
+}
+
+#
 # @description Run the read-only dotfiles health checks.
 #
 function main() {
@@ -268,6 +290,9 @@ function main() {
 
     section "AppArmor"
     check_apparmor_userns
+
+    section "Claude Code sandbox"
+    check_claude_sandbox
 
     section "GitHub CLI extensions"
     check_gh_extensions

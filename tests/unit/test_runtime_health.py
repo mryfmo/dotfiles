@@ -1330,7 +1330,7 @@ EOF
         log = self.temp_dir / "doctor.log"
         bin_dir.mkdir()
         missing = fail.removeprefix("missing:") if fail.startswith("missing:") else ""
-        for command in ("git", "chezmoi", "mise", "uv", "gh", "brew"):
+        for command in ("git", "chezmoi", "mise", "uv", "gh", "brew", "bwrap", "socat"):
             if command == missing:
                 continue
             self.executable(
@@ -1383,6 +1383,29 @@ EOF
         )
         self.assertNotEqual(0, result.returncode)
         self.assertIn("required missing: brew", result.stderr)
+
+    def test_doctor_reports_claude_sandbox_prerequisites(self) -> None:
+        bin_dir = self.temp_dir / "sandbox-bin"
+        self.executable(bin_dir / "uname", "printf 'Linux\\n'\n")
+        self.executable(bin_dir / "bwrap", "exit 0\n")
+        script = f"source {ROOT / 'scripts/check-tools.sh'}; check_claude_sandbox; echo warnings=$optional_warnings"
+
+        result = self.run_test_command(["/bin/bash", "-c", script], env={"PATH": str(bin_dir)})
+        output = result.stdout + result.stderr
+        self.assertEqual(0, result.returncode, output)
+        self.assertIn(f"found:   bwrap -> {bin_dir / 'bwrap'}", output)
+        self.assertIn("prerequisite is missing: socat", output)
+        self.assertIn("warnings=1", output)
+
+        self.executable(bin_dir / "socat", "exit 0\n")
+        result = self.run_test_command(["/bin/bash", "-c", script], env={"PATH": str(bin_dir)})
+        self.assertIn(f"found:   socat -> {bin_dir / 'socat'}", result.stdout)
+        self.assertIn("warnings=0", result.stdout)
+
+        self.executable(bin_dir / "uname", "printf 'Darwin\\n'\n")
+        result = self.run_test_command(["/bin/bash", "-c", script], env={"PATH": str(bin_dir)})
+        self.assertIn("not applicable: Claude Code sandbox prerequisites", result.stdout)
+        self.assertIn("warnings=0", result.stdout)
 
     def test_make_doctor_propagates_runtime_drift_after_tool_checks(self) -> None:
         repo = self.temp_dir / "doctor-repo"

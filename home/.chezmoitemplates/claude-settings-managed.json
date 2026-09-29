@@ -30,6 +30,33 @@
       "Bash(kubectl apply:*)"
     ]
   },
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": false,
+    "autoAllowBashIfSandboxed": true,
+    "allowUnsandboxedCommands": true,
+    "excludedCommands": [],
+    "filesystem": {
+      "allowWrite": [
+        "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db",
+        "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/teams",
+        "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/run",
+        "{{ .chezmoi.homeDir }}/.agents/skills/agmsg/ext-tools"
+      ]
+    },
+    "network": {
+      "allowedDomains": [
+        "github.com",
+        "api.github.com",
+        "uploads.github.com",
+        "objects.githubusercontent.com",
+        "codeload.github.com"
+      ],
+      "allowUnixSockets": [
+        "~/.config/herdr/herdr.sock"
+      ]
+    }
+  },
   "hooks": {
     "PreToolUse": [
       {

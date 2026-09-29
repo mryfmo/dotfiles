@@ -10,6 +10,7 @@
 # - Store credentials as environment-variable references or inherited environment only.
 # - Use current maintained MCP servers; deprecated packages are rejected by validation.
 # - Keep Codex writable roots for shared agmsg state under codex.sandbox_workspace_write.
+#   The Claude sandbox allowWrite list is rendered from the same entries.
 # - Let upstream install.sh own ~/.agents/skills/agmsg; never vendor it (assets.agmsg).
 
 schema_version: 1
@@ -184,6 +185,37 @@ claude:
       - Bash(uv publish:*)
       - Bash(terraform apply:*)
       - Bash(kubectl apply:*)
+  # Claude Code Bash sandbox, the counterpart of codex.sandbox_workspace_write:
+  # commands may write only the working directory, the session TMPDIR, and
+  # filesystem.allowWrite. The generator renders allowWrite from
+  # codex.sandbox_workspace_write.writable_roots so both agents share one agmsg
+  # writable-roots list; ~/.claude is sandbox-protected, so it is not listed.
+  # bubblewrap and socat come from the installers that the operator runs with
+  # `make update` outside Claude sessions; on Ubuntu 24.04+ the bwrap-userns
+  # AppArmor profile (install/ubuntu/common/apparmor_userns.sh) lets bwrap
+  # create user namespaces.
+  sandbox:
+    enabled: true
+    # Two-stage rollout: warn and run unsandboxed while bwrap/socat are missing;
+    # flip to true only after live E2E.
+    failIfUnavailable: false
+    autoAllowBashIfSandboxed: true
+    allowUnsandboxedCommands: true
+    # Add entries only with E2E evidence, one comment per entry.
+    excludedCommands: []
+    network:
+      allowedDomains:
+        - github.com
+        - api.github.com
+        - uploads.github.com
+        - objects.githubusercontent.com
+        - codeload.github.com
+      # macOS only: Claude Code ignores this list on Linux and WSL2, where the
+      # seccomp filter can't inspect socket paths. The Claude messaging socket
+      # (CLAUDE_CODE_MESSAGING_SOCKET, a per-process path set at runtime) cannot
+      # be listed without a glob, so it is not.
+      allowUnixSockets:
+        - ~/.config/herdr/herdr.sock
   hooks:
     enforce_uv_hook: ~/.claude/hooks/enforce-uv.sh
     format_edited_files_hook: ~/.claude/hooks/format-edited-files.py

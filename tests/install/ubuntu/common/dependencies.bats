@@ -10,9 +10,10 @@ readonly SCRIPT_PATH="./install/ubuntu/common/dependencies.sh"
     '
 
     [ "${status}" -eq 0 ]
-    [ "${lines[0]}" -eq 16 ]
+    [ "${lines[0]}" -eq 18 ]
 
     expected_packages=(
+        bubblewrap
         build-essential
         cmake
         curl
@@ -24,6 +25,7 @@ readonly SCRIPT_PATH="./install/ubuntu/common/dependencies.sh"
         mosh
         perl
         pinentry-curses
+        socat
         sudo
         unzip
         vim

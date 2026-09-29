@@ -330,6 +330,53 @@ CRIT_REVIEW=off make require-crit-review
 make upgrade
 ```
 
+### Claude Code sandbox
+
+`claude.sandbox` in `home/dot_agents/agent-config.yaml` renders the `sandbox`
+block of the managed Claude settings, the counterpart of the Codex
+`workspace-write` sandbox. Bash commands, their child processes, and subagent
+Bash calls may write only the working directory, the session `$TMPDIR`, and
+`sandbox.filesystem.allowWrite`, which the generator renders from
+`codex.sandbox_workspace_write.writable_roots` so both agents share one list of
+agmsg store directories. Network access from sandboxed commands is limited to
+the GitHub hosts in `sandbox.network.allowedDomains`; other hosts prompt.
+`sandbox.network.allowUnixSockets` lists the herdr socket
+(`~/.config/herdr/herdr.sock`). Claude Code honours that list only on macOS and
+ignores it on Linux and WSL2. The Claude messaging socket is a per-process path
+set at runtime (`CLAUDE_CODE_MESSAGING_SOCKET`), so it cannot be listed.
+`failIfUnavailable` is `false` for the first rollout stage: when the sandbox
+cannot start, Claude Code warns and runs commands unsandboxed. A later change
+flips it to `true` after live end-to-end verification.
+`autoAllowBashIfSandboxed` skips the bare Bash prompt for sandboxed
+commands, while deny rules and content-scoped ask rules such as
+`Bash(git push:*)` still apply. A command that fails under the sandbox can
+still be retried unsandboxed through the normal permission prompt.
+
+On Ubuntu, `make update` installs `bubblewrap` and `socat`. On Ubuntu 24.04
+and later, the user-namespace restriction is handled by the `bwrap-userns`
+AppArmor profile described in "Agent review and permission assets" above; no
+separate `bwrap` profile is installed. `make doctor` reports `bwrap` and
+`socat` under "Claude Code sandbox" as found or as optional warnings. macOS
+needs nothing because the sandbox uses Seatbelt.
+
+Operator-visible effect: after the next `make update`, Claude Code Bash
+commands run confined to the working directory, the session `$TMPDIR`, and
+`allowWrite`. Network hosts other than the listed GitHub domains prompt. A
+command that fails inside the sandbox may be retried unsandboxed after a
+normal permission prompt. Missing `bwrap` or `socat` only warns while
+`failIfUnavailable` is `false`.
+
+Nested worktrees under `.claude/worktrees/` stay writable. From the main
+checkout they are subdirectories of the working directory and are not among
+the sandbox-protected `.claude` settings, skills, agents, commands, or hooks
+paths. A session started inside a linked worktree may also write the main
+repository's shared `.git` directory, except its `hooks/` and `config`.
+
+Plan mode is the exception to auto-allow: sandboxed commands still prompt there.
+Sandbox denials appear in the blocked command's result, naming the path or
+host; run `/sandbox` and open the Config tab to see the effective write paths,
+domains, and protected paths.
+
 ### agmsg
 
 agmsg is installed by its upstream installer at a pinned release, never

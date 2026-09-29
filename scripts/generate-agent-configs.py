@@ -166,6 +166,20 @@ def worker_profile(manifest: dict[str, Any]) -> str | None:
     return name
 
 
+WORKER_WORKTREE = re.compile(r"\.claude/worktrees/[A-Za-z0-9._-]+")
+
+
+def worker_worktree(manifest: dict[str, Any]) -> str | None:
+    path = manifest.get("worker_worktree")
+    if path is not None and (
+        not isinstance(path, str)
+        or not WORKER_WORKTREE.fullmatch(path)
+        or path.rsplit("/", 1)[1] in {".", ".."}
+    ):
+        fail(f"worker_worktree must be a relative path under .claude/worktrees/: {path!r}")
+    return path
+
+
 def interactive_profile(manifest: dict[str, Any]) -> dict[str, Any]:
     profiles = model_profiles(manifest)
     name = manifest.get("interactive_profile")
@@ -773,6 +787,8 @@ def render_model_profiles_env(manifest: dict[str, Any]) -> str:
     ]
     if (profile_name := worker_profile(manifest)) is not None:
         lines.append(f'HERDR_AGENTS_WORKER_PROFILE="{profile_name}"')
+    if (worktree := worker_worktree(manifest)) is not None:
+        lines.append(f'HERDR_AGENTS_WORKER_WORKTREE="{worktree}"')
     for name, profile in sorted(profiles.items()):
         var = str(name).upper()
         claude = profile["claude"]

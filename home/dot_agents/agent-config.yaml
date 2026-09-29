@@ -77,6 +77,11 @@ worker_kind: claude
 # ~/.agents/model-profiles.env as HERDR_AGENTS_WORKER_PROFILE; an explicit
 # HERDR_AGENTS_WORKER_PROFILE in the environment still overrides it.
 worker_profile: standard
+# Worktree that seats the herdr-agents pair's worker pane, relative to the
+# repository root. Renders into ~/.agents/model-profiles.env as
+# HERDR_AGENTS_WORKER_WORKTREE; herdr-agents creates it from origin/main when
+# missing, registers the worker identity there, and sets delivery on it.
+worker_worktree: .claude/worktrees/worker-c
 
 codex:
   config_path: home/.chezmoitemplates/codex-config-managed.toml

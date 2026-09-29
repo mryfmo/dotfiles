@@ -791,6 +791,27 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
         self.assertNotIn("HERDR_AGENTS_WORKER_PROFILE", env)
 
+    def test_model_profiles_env_renders_worker_worktree(self) -> None:
+        manifest = sample_manifest()
+        manifest["worker_worktree"] = ".claude/worktrees/worker-c"
+
+        env = self.module.render_model_profiles_env(manifest)
+
+        self.assertIn('HERDR_AGENTS_WORKER_WORKTREE=".claude/worktrees/worker-c"', env)
+
+    def test_absent_worker_worktree_renders_no_env_line(self) -> None:
+        env = self.module.render_model_profiles_env(sample_manifest())
+
+        self.assertNotIn("HERDR_AGENTS_WORKER_WORKTREE", env)
+
+    def test_worker_worktree_outside_claude_worktrees_fails(self) -> None:
+        for path in ("worker-c", "/abs/.claude/worktrees/x", ".claude/worktrees/..", ".claude/worktrees/a/b", ".claude/worktrees/$(x)"):
+            with self.subTest(path=path):
+                manifest = sample_manifest()
+                manifest["worker_worktree"] = path
+                with self.assertRaises(SystemExit):
+                    self.module.render_model_profiles_env(manifest)
+
     def test_unknown_worker_profile_fails(self) -> None:
         manifest = sample_manifest()
         manifest["worker_profile"] = "missing"

@@ -1,5 +1,7 @@
 # AGMSG-TASK dot-pr-gate-trust-boundary-T40-a01
 
+revision: 2 (2026-09-30: README and Codex AGENTS.md removed from scope so the task is file-disjoint from the concurrent T44; the doc sentence goes into the PR description for a later doc sync).
+
 Lane: security (Codex worker on the `security` profile, identity
 `codex-security-dot`; orchestrator-side acceptance). Origin: three review
 findings deferred from T38 (PR #210, merged as d2f19ec); all three are
@@ -35,9 +37,11 @@ Close the three deferred findings in `scripts/require-crit-review.py` and
    names become numbers, `@file` values read files). Add a test that an
    all-digit owner and an `@`-prefixed cursor arrive as strings.
 
-Also: update the README "PR feedback and the merge gate" rejection list and
-`home/dot_config/claude/rules/pr-integration.md` only where the new
-rejection conditions need a sentence; no other rule changes.
+Also: update `home/dot_config/claude/rules/pr-integration.md` only where the new
+rejection conditions need a sentence. Do NOT edit README.md or
+`home/dot_config/codex/AGENTS.md` (owned by the concurrent T44/T43 lane);
+put the one-sentence README/mirror wording in the PR description under
+"Doc follow-up" instead.
 
 [memory:decision] T40: the PR integration gate binds `--base` to the PR's
 recorded GitHub base, excludes from diff sizing only a
@@ -47,8 +51,8 @@ T38 (operator 2026-09-29).
 
 ## Repo / branch
 
-- Work ONLY in the worktree the orchestrator names in the AGMSG-TASK
-  `repo=` field; branch `fix/pr-gate-trust-boundary` from `origin/main`.
+- Work ONLY in `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-sec`;
+  ignore the Understand-Anything auto-update hook during this task; branch `fix/pr-gate-trust-boundary` from `origin/main`.
   Verify the dispatched task_rev sha256 against this file; else stop and
   PONG blocked.
 
@@ -56,12 +60,12 @@ T38 (operator 2026-09-29).
 
 - `scripts/require-crit-review.py`, `scripts/pr-feedback.py`
 - `tests/unit/test_require_crit_review.py`, `tests/unit/test_pr_feedback.py`
-- `README.md` (the PR feedback section only), `home/dot_config/claude/rules/pr-integration.md`, `home/dot_config/codex/AGENTS.md` (`## PR 統合` only, if the rule sentence changes)
+- `home/dot_config/claude/rules/pr-integration.md`
 - `.orchestration/{reports,validation,sandboxes,learning,autoskill/runs}/dot-pr-gate-trust-boundary-T40-a01.md`
 
 ## Forbidden actions
 
-- Weakening any existing check (head-match, fixed-range, reason length, multiset coverage, fail-closed base); touching `.github/workflows/**`, `Makefile`, hooks, settings, permgate, `.ua/**`, `.orchestration/tasks/**`; posting PR comments; merging; force push; local bats; `make update`/`upgrade`.
+- Editing `README.md` or `home/dot_config/codex/AGENTS.md` (concurrent lane); weakening any existing check (head-match, fixed-range, reason length, multiset coverage, fail-closed base); touching `.github/workflows/**`, `Makefile`, hooks, settings, permgate, `.ua/**`, `.orchestration/tasks/**`; posting PR comments; merging; force push; local bats; `make update`/`upgrade`.
 
 ## Validation commands (paste verbatim output)
 
@@ -69,7 +73,7 @@ T38 (operator 2026-09-29).
 git merge-base --is-ancestor origin/main HEAD && echo base-ok
 git diff --stat origin/main
 make unit-test
-make validate-agent-assets
+make validate-agent-assets  # if uv cannot write ~/.cache/uv inside a sandbox, prefix UV_CACHE_DIR=$TMPDIR/uv-cache
 python3 scripts/pr-feedback.py <pr> --json .orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-pr-feedback.json && python3 -c 'import json;d=json.load(open(".orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-pr-feedback.json"));print(d["head_sha"],d.get("base_ref"),d.get("base_sha"))'
 PR_FEEDBACK_EVIDENCE=.orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-pr-feedback.json AGENT_REVIEWED=1 REVIEW_EVIDENCE=<receipt> python3 scripts/require-crit-review.py --base origin/main ; echo "guard exit $?"
 PR_FEEDBACK_EVIDENCE=.orchestration/validation/dot-pr-gate-trust-boundary-T40-a01-pr-feedback.json AGENT_REVIEWED=1 REVIEW_EVIDENCE=<receipt> python3 scripts/require-crit-review.py --base HEAD ; echo "guard exit $? (must be non-zero)"

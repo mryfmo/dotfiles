@@ -7,10 +7,15 @@ Prints one row per `filePath` (old count, new count, and the number of
 def-like source lines at REF when given) and exits 1 when a file lost
 function/class nodes while its source still has at least as many def-like
 lines as the old graph had symbols. Without --repo-ref every decrease counts
-as a regression; a file whose source is gone at REF, or whose def-like count
-fell below the old symbol count, is an explained decrease. `validateGraph`
+as a regression. With --repo-ref, a decrease is explained only when the path
+is absent at REF (per `git ls-tree`), or when the new count still covers
+min(old count, def-like lines at REF); any further loss is a regression, and
+so is any decrease in a file type without a def grammar. `validateGraph`
 checks schema and references only, so this is the completeness gate for a
 `.ua/` refresh (home/dot_config/claude/rules/understand-anything.md).
+
+Exit status: 0 no regressions, 1 regressions, 2 when REF does not resolve to
+a commit or a path cannot be read at REF (fail closed, no table-based pass).
 """
 
 from __future__ import annotations
@@ -53,17 +58,29 @@ def def_pattern(path: str, text: str) -> re.Pattern[str] | None:
     return None
 
 
+class CoverageError(Exception):
+    """A ref or path could not be resolved; the gate must fail closed."""
+
+
+def git(*args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(["git", *args], capture_output=True, text=True, errors="replace", check=False)
+
+
+def verify_ref(ref: str) -> None:
+    if not ref.strip() or ref.startswith("-"):
+        raise CoverageError(f"--repo-ref {ref!r} is not a git ref")
+    if git("rev-parse", "--verify", "--quiet", "--end-of-options", f"{ref}^{{commit}}").returncode != 0:
+        raise CoverageError(f"--repo-ref {ref!r} does not resolve to a commit")
+
+
 def def_lines(ref: str, path: str) -> int | str | None:
-    """Return def-like line count at REF, "-" without a grammar, or None when the file is gone."""
-    shown = subprocess.run(
-        ["git", "show", f"{ref}:{path}"],
-        capture_output=True,
-        text=True,
-        errors="replace",
-        check=False,
-    )
+    """Return def-like line count at REF, "-" without a grammar, or None when the path is absent at REF."""
+    shown = git("show", f"{ref}:{path}")
     if shown.returncode != 0:
-        return None
+        listed = git("ls-tree", "--name-only", ref, "--", path)
+        if listed.returncode == 0 and not listed.stdout.strip():
+            return None
+        raise CoverageError(f"cannot read {path} at {ref}: {shown.stderr.strip() or listed.stderr.strip()}")
     pattern = def_pattern(path, shown.stdout)
     if pattern is None:
         return "-"
@@ -78,22 +95,29 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     old, new = symbol_counts(args.old_graph), symbol_counts(args.new_graph)
+    try:
+        if args.repo_ref is not None:
+            verify_ref(args.repo_ref)
+        rows = [
+            (path, old.get(path, 0), new.get(path, 0), def_lines(args.repo_ref, path) if args.repo_ref else "-")
+            for path in sorted(set(old) | set(new))
+        ]
+    except CoverageError as error:
+        print(f"ua-symbol-coverage: {error}", file=sys.stderr)
+        return 2
     regressions = 0
     print("| file | old | new | def-like lines | status |")
     print("|---|---|---|---|---|")
-    for path in sorted(set(old) | set(new)):
-        before, after = old.get(path, 0), new.get(path, 0)
-        defs = def_lines(args.repo_ref, path) if args.repo_ref else "-"
+    for path, before, after, defs in rows:
         status = "ok"
         if after < before:
-            gone = args.repo_ref and defs is None
-            shrank = isinstance(defs, int) and defs < before
-            status = "explained" if gone or shrank else "REGRESSION"
+            explained = defs is None or (isinstance(defs, int) and after >= min(before, defs))
+            status = "explained" if explained else "REGRESSION"
             regressions += status == "REGRESSION"
         print(
             f"| {path} | {before} | {after} | {'gone' if defs is None else defs} | {status} |"
         )
-    print(f"files: {len(set(old) | set(new))}, regressions: {regressions}")
+    print(f"files: {len(rows)}, regressions: {regressions}")
     return 1 if regressions else 0
 
 

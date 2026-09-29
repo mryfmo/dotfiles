@@ -399,8 +399,10 @@ Verified against a scratch v1.5.0 install:
 - The opt-out restores the worktree in both cases.
 - `session-start.sh` exits before starting a watcher or writing a marker for
   any session whose cwd is under `.claude/worktrees/` (#367). A Claude seat
-  launched inside a nested worktree therefore relies on turn delivery and
-  milestone `inbox.sh` checks.
+  launched inside a nested worktree therefore gets no Monitor watch from that
+  hook: the herdr-agents pair worker relies on turn delivery through its own
+  Stop hook, while a spawn-seated worker (`--add-worker`) starts its own
+  Monitor through its actas boot prompt.
 
 Wake and send:
 
@@ -481,10 +483,17 @@ Before any worker agent starts (full mode, attach repair, and
 
 It then splits the worker pane with `--cwd <worktree>`.
 
-Delivery reaches the worker through its own Stop hook as turn delivery. Upstream
-`session-start.sh` skips sessions whose cwd is under `.claude/worktrees/` (#367),
-so no Monitor watch starts there, and the pane's `AGMSG_CC_MONITOR_KEEP_ALIVE=1`
-has no effect. `herdr-agents --restart-worker` re-seats a worker pane that
+Delivery reaches the pair worker through its own Stop hook as turn delivery.
+Upstream `session-start.sh` skips sessions whose cwd is under
+`.claude/worktrees/` (#367), and the pair worker is started without an actas
+boot, so no Monitor watch starts there and the pane's
+`AGMSG_CC_MONITOR_KEEP_ALIVE=1` has no effect. Seating applies only to a git
+main checkout whose worker worktree already exists, or that has `origin/main`
+and an orchestrator identity to name the worker from; anywhere else (an
+unregistered repository, a linked worktree, a non-git directory) the legacy
+main-path seat stays unchanged. A reused worker pane is moved into the worktree
+with `cd -- <worktree>` before the agent starts, and `herdr-agents` refuses to
+start the worker when that pane never reaches a shell prompt. `herdr-agents --restart-worker` re-seats a worker pane that
 still runs in the main checkout: after `/exit` it runs
 `cd -- <worktree>` in the pane before starting the agent, because
 `herdr agent start` has no cwd option. The worker's own SessionStart
@@ -657,8 +666,10 @@ Re-running for a workspace that already has an agent is a no-op.
 
 Remove-worker refuses a worktree with uncommitted changes unless `--force`.
 Otherwise it runs `despawn.sh <team> <orchestrator> <name>` (with `--force`
-passed through), then `delivery.sh set off`, `leave.sh`, and `herdr workspace
-close`. The worktree itself is kept. Raw herdr topology commands (`tab
+passed through; always forced for a codex seat, which never holds the actas
+lock that a graceful despawn waits for), then `delivery.sh set off`,
+`leave.sh`, and `herdr workspace close`. Add-worker refuses a profile that
+`~/.agents/model-profiles.env` does not define. The worktree itself is kept. Raw herdr topology commands (`tab
 create`, `pane split`, `workspace create`) stay forbidden to the orchestrator
 (T21 G7). Completion is detected only through agmsg RESULT messages, and about
 three concurrent workers is the practical supervision ceiling.

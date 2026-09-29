@@ -3724,6 +3724,7 @@
 <ul>
 <li><code>check_agmsg</code></li>
 <li><code>check_apparmor_userns</code></li>
+<li><code>check_claude_sandbox</code></li>
 <li><code>check_command</code></li>
 <li><code>check_crit_cli</code></li>
 <li><code>check_gh_extensions</code></li>
@@ -3978,6 +3979,28 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Report the Linux prerequisites of the Claude Code Bash sandbox:</span>
+<span class="c1">#   bwrap and socat on PATH. check_apparmor_userns covers the user-namespace</span>
+<span class="c1">#   side, so this check has no sysctl or profile logic.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>check_claude_sandbox<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>command_name
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>uname<span class="k">)</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"Linux"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'not applicable: Claude Code sandbox prerequisites (non-Linux; macOS uses Seatbelt)\n'</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>command_name<span class="w"> </span><span class="k">in</span><span class="w"> </span>bwrap<span class="w"> </span>socat<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">command_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'found:   %s -&gt; %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">command_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">command_name</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">else</span>
+<span class="w">            </span>warn_optional<span class="w"> </span><span class="s2">"Claude Code sandbox prerequisite is missing: </span><span class="si">${</span><span class="nv">command_name</span><span class="si">}</span><span class="s2"> (run make update)"</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Run the read-only dotfiles health checks.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -4007,6 +4030,9 @@
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">"AppArmor"</span>
 <span class="w">    </span>check_apparmor_userns
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">"Claude Code sandbox"</span>
+<span class="w">    </span>check_claude_sandbox
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">"GitHub CLI extensions"</span>
 <span class="w">    </span>check_gh_extensions

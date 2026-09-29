@@ -3717,7 +3717,7 @@
 
 
 <h1 id="installubuntucommondependenciessh">install/ubuntu/common/dependencies.sh<a class="headerlink" href="#installubuntucommondependenciessh" title="Permanent link">&para;</a></h1>
-<p>Ensures the base command-line toolchain required by the repository is present, including <code>sudo</code> when starting from a minimal container.</p>
+<p>Ensures the base command-line toolchain required by the repository is present, including <code>sudo</code> when starting from a minimal container. <code>bubblewrap</code> and <code>socat</code> are the Linux prerequisites of the Claude Code Bash sandbox.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>install/ubuntu/common/dependencies.sh</code></li>
@@ -3739,6 +3739,8 @@
 <span class="c1"># @description</span>
 <span class="c1">#   Ensures the base command-line toolchain required by the repository is</span>
 <span class="c1">#   present, including `sudo` when starting from a minimal container.</span>
+<span class="c1">#   `bubblewrap` and `socat` are the Linux prerequisites of the Claude Code</span>
+<span class="c1">#   Bash sandbox.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
@@ -3747,6 +3749,7 @@
 <span class="k">fi</span>
 
 <span class="nb">readonly</span><span class="w"> </span><span class="nv">PACKAGES</span><span class="o">=(</span>
+<span class="w">    </span>bubblewrap
 <span class="w">    </span>build-essential
 <span class="w">    </span>cmake
 <span class="w">    </span>curl
@@ -3758,6 +3761,7 @@
 <span class="w">    </span>mosh
 <span class="w">    </span>perl
 <span class="w">    </span>pinentry-curses
+<span class="w">    </span>socat
 <span class="w">    </span>sudo
 <span class="w">    </span>unzip
 <span class="w">    </span>vim

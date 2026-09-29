@@ -1,0 +1,7 @@
+## PR integration
+
+- Before merging any pull request, MUST sweep all of its GitHub feedback for the final head commit with `scripts/pr-feedback.py <pr> --json <out>`. It covers issue comments, reviews, inline review comments with thread resolution, non-passing check runs, check-run annotations at every level (`notice`, `warning`, `failure`), and commit statuses.
+- A `@coderabbitai full review` MAY be requested on the final head; the plan allows one review per hour and every review event spends one (docs.coderabbit.ai/management/rate-limits), so request it at most once on the final head. When a CodeRabbit review exists it is swept and dispositioned like any other item; the gate does not require a bot review.
+- MUST give every item a disposition: `fixed:<commit>` with the root-cause fix in that commit, or `not-applicable:<reason>`. Stopgaps, suppressions, or "later" are not dispositions. `failure` and `warning` annotations are never left undispositioned, and a `failure` marked `not-applicable` needs a concrete reason of at least 20 characters.
+- MUST save the filled JSON as `.orchestration/validation/<task>-pr-feedback.json`, pass it to the integration guard with `BASE=origin/main PR_FEEDBACK_EVIDENCE=<json> make require-crit-review`, and summarise the dispositions in the acceptance record.
+- Re-run the sweep after any new push; a disposition applies only to the head commit it was written for.

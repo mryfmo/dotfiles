@@ -30,13 +30,21 @@
 
 - 計画レビュー、コードレビュー、diff レビュー、PR レビュー、または「レビュー」と明示された作業では、まず Codex 内の `/diff`、`/review`、Codex app の Review pane、または取得済みの Crit data を使ってください。ユーザが Crit web UI を明示した場合のみ `$crit` / `crit` をブラウザ review として使ってください。Crit data を取得できない場合は、ブラウザ review を開かず agent-side のレビュー証跡(独立した subagent レビューと保存済みの記録)で代替し、ユーザにレビューを依頼しないでください。その代替証跡は、空でない文字列の `id`・`body`・`scope` と `resolved: true` を持つオブジェクトの repo 内 JSON リスト(`scope: "review"` の record、または空でない `path` を持つ `line`/`file` の record を 1 件以上含む。guard は形式だけを検証し出所は問わないため手書きの record でも可)として保存し、receipt に `review_surface: crit-data`、`reviewer: codex`、`review_source: <その JSON>`、`review_outcome: approved` または `addressed` を記載してください。
 - Codex では Crit plugin の `Stop` hook による Plan Mode レビューが発火した場合は尊重してください。`CRIT_PLAN_REVIEW=off` が明示されていない限り、発火済みの計画レビュー hook を迂回しないでください。
-- 完了報告前に git diff がある場合は `make require-crit-review` を実行してください。agent lifecycle、hooks、plugins、permissions、scripts、広い diff など意味のある変更だけレビューを要求します。
+- 完了報告前に git diff がある場合は `make require-crit-review` を実行してください。PR 統合時も同じゲートを `BASE=origin/main PR_FEEDBACK_EVIDENCE=<json>` 付きで実行してください(PR 統合を参照)。agent lifecycle、hooks、plugins、permissions、scripts、広い diff など意味のある変更だけレビューを要求します。
 - `make require-crit-review` がレビューを要求したら、既定ではブラウザ版 Crit を起動しないでください。Codex は `crit status --json` で review file を特定し、`crit comments --all --json <review.json>` の出力を repo 内の `.agents/worklog/.../*.json` に保存して内容を判断し、指摘へ対応してください。Agent evidence には resolved record が 1 件以上必要です。指摘がない場合は review-scope の approval record を追加して resolve してください。このローカルデータは作業手順の証跡にすぎず、レビュー実施者を認証するものではありません。その後 `review_surface: crit-data` `reviewer: codex` `review_source: <repo 内 JSON evidence path>` `review_outcome:` を含む receipt を作り、`AGENT_REVIEWED=1 REVIEW_EVIDENCE=<receipt> make require-crit-review` を通してください。Crit data の JSON evidence を読まない `AGENT_REVIEWED=1` だけの自己申告は禁止です。
 - ユーザが明示的に Crit web UI を求めた場合だけ `crit --no-open` または `crit` を使ってください。その場合は `http://localhost` で始まるレビュー URL と「Finish Review をクリックする」旨をユーザ向けメッセージとして TUI 上に表示し、完了後に receipt を作り `CRIT_REVIEWED=1 REVIEW_EVIDENCE=<receipt> make require-crit-review` を通してください。
 - Crit は自分(エージェント)自身のレビューにのみ使う: `crit comment` 等の CLI でコメントを起票・返信・解決し、JSON 証跡を `.orchestration/` または `.agents/worklog/` に保存する。`crit share` などの publish は、ユーザが明示的に求めた場合だけ実行する。
 - ブラウザ Crit レビューを開いたり、人間のユーザーにレビューを依頼する目的で Crit を使うことは禁止(2026-07-18 操作者指示)。
 - Plan Mode hook が開いた Crit セッションは、レビューが終わったら閉じてください(ローカルの Crit web server を常駐させない)。
 - ユーザが明示的に Crit/review を無効化した場合のみ `CRIT_REVIEW=off` を使ってください。
+
+## PR 統合
+
+- PR を merge する前に、最終 head commit に対する GitHub のフィードバックを `scripts/pr-feedback.py <pr> --json <out>` で必ず全件取得してください。issue comment、review、thread の解決状態付き inline review comment、失敗・未完了の check run、全レベル(`notice`・`warning`・`failure`)の check-run annotation、commit status を含みます。
+- 最終 head に `@coderabbitai full review` を依頼してもかまいません(任意)。プランは 1 時間に 1 review で、review event ごとに 1 回消費します(docs.coderabbit.ai/management/rate-limits)。依頼は最終 head で多くとも 1 回にしてください。CodeRabbit の review が存在する場合は他の item と同様に取得して disposition を付けます。ゲートは bot review を要求しません。
+- 全 item に disposition を付けてください。`fixed:<commit>`(その commit で根本原因を修正)か `not-applicable:<理由>` のどちらかです。stopgap・抑制・「後で」は disposition として認めません。`failure` と `warning` の annotation を未処分のまま残さず、`failure` を `not-applicable` にする場合は 20 文字以上の具体的な理由が必要です。
+- 記入済み JSON を `.orchestration/validation/<task>-pr-feedback.json` に保存し、`BASE=origin/main PR_FEEDBACK_EVIDENCE=<json> make require-crit-review` で統合ガードに渡し、disposition の要約を acceptance 記録に書いてください。
+- 新しい push の後は取得をやり直してください。disposition は記入した時点の head commit にだけ有効です。
 
 ## モデル選択
 

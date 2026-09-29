@@ -740,10 +740,15 @@ def validate_agent_manifest() -> dict[str, Any]:
         fail(
             f"{manifest_path} must define the six base profiles and only the optional adh profile"
         )
-    if profiles["security"].get("codex", {}).get("model") != "gpt-daybreak-blue-latest":
-        fail(
-            f"{manifest_path} security Codex profile must use gpt-daybreak-blue-latest"
-        )
+    # Operator decision (2026-09-29): security runs codex gpt-6-astra high under
+    # ChatGPT login; gpt-daybreak-blue-latest needs API-key auth.
+    security_codex = profiles["security"].get("codex", {})
+    for key, expected in (("model", "gpt-6-astra"), ("model_reasoning_effort", "high")):
+        if security_codex.get(key) != expected:
+            fail(
+                f"{manifest_path} security profile must set codex.{key}: {expected} "
+                f"(operator decision 2026-09-29): {security_codex.get(key)!r}"
+            )
     # Operator pin (2026-09-27): the auditor is codex gpt-6-astra high, read-only.
     audit_codex = profiles["audit"].get("codex", {})
     for key, expected in (

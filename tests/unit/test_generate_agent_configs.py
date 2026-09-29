@@ -449,7 +449,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         manifest["model_profiles"]["security"] = {
             "claude": {"model": "claude-fable-5", "effort": "high"},
             "codex": {
-                "model": "gpt-daybreak-blue-latest",
+                "model": "gpt-6-astra",
                 "model_reasoning_effort": "high",
                 "notify": [
                     "{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify"
@@ -474,7 +474,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         )
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn('model = "gpt-daybreak-blue-latest"', result.stdout)
+        self.assertIn('model = "gpt-6-astra"', result.stdout)
         self.assertIn('model_reasoning_effort = "high"', result.stdout)
         self.assertIn(
             f'notify = ["{home}/.local/bin/common/contextdb-codex-notify"]',

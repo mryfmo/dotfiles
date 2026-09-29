@@ -396,14 +396,23 @@ Verified against a scratch v1.5.0 install:
   launched inside a nested worktree therefore relies on turn delivery and
   milestone `inbox.sh` checks.
 
-Wake and send: always pass the body with `--body-file`, since a positional
-body passes through the caller's shell (#378). Use `poke.sh <team> <name>
---body-file <path>` for a member with a placement record (`team.sh <team>
---json` shows its pane). Use `send.sh <team> <from> <to> --body-file <path>`
-for anyone else. `poke.sh` exits 1 with "no placement record" for a hand-joined
-member, which includes every worker `herdr-agents` launches today, so the
-deprecated `agmsg-dispatch` stays the wake path for those panes until the
-poke path is confirmed live. `poke.sh` exit codes:
+Wake and send:
+
+- Wake a worker in a `herdr-agents` pane with `agmsg-dispatch <team> <from>
+  <to> <pane_id> "<message>"`. It sends, sends a generic inbox wake, and waits
+  for `read_at`, using upstream `lib/validate.sh` and `lib/storage.sh` plus a
+  strict identifier grammar. It stays the sanctioned path until worker seating
+  writes placement records, because `poke.sh` exits 1 with "no placement
+  record" for a hand-joined member, which includes every `herdr-agents`
+  worker today.
+- Wake a spawn-seated member (`team.sh <team> --json` shows its pane) with
+  `poke.sh <team> <name> --body-file <path>`.
+- Reach a pane-less member with `send.sh <team> <from> <to> --body-file
+  <path>`.
+- Pass bodies with `--body-file`, since a positional body passes through the
+  caller's shell (#378).
+
+`poke.sh` exit codes:
 
 - 10: terminal unreachable.
 - 12: pane gone.

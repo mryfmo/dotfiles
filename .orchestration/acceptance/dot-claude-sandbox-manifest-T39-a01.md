@@ -1,7 +1,8 @@
 # Acceptance: dot-claude-sandbox-manifest-T39-a01
 
-Status: task authored 2026-09-29 (not yet dispatched; follows T38 because both
-touch README.md and one worker seat is available). Decision pending RESULT.
+Status: dispatched 2026-09-29T09:5xZ (task_commit d2f19ec); RESULT received
+10:18Z (revision 1, ready_for_review, head 271e8ef6b300b527c1315cd93d39190767a1cf85,
+PR #211, base origin/main 83b8567). Review and decision below the checklist.
 
 ## Live E2E checklist (acceptance criterion, pre-written)
 
@@ -32,3 +33,114 @@ Fresh session and restored session, each:
 
 Observed prompt counts and any failure go in this record; a follow-up task
 flips `failIfUnavailable` to `true` only after both sessions pass.
+
+## Adversarial review (orchestrator, from origin refs only)
+
+- Base: `origin/main` is an ancestor of the head; commits 841e12b (carry
+  minus AppArmor), 2815528 (approved defaults + herdr socket), 271e8ef
+  (merge of main 83b8567, `.orchestration` only, no force push).
+- Scope: 11 files changed, all inside `allowed_files`; the three dropped
+  AppArmor files are absent from every commit's tree (`ls-tree` on each);
+  no `BWRAP_APPARMOR_*` or `/etc/apparmor.d/bwrap` (non-userns) reference
+  remains; main's four bwrap-userns files are untouched (empty diff).
+- Manifest: `claude.sandbox` carries exactly the approved keys and values
+  (`enabled true`, `failIfUnavailable false`, `autoAllowBashIfSandboxed
+  true`, `allowUnsandboxedCommands true`, `excludedCommands []`, five GitHub
+  domains, `allowUnixSockets [~/.config/herdr/herdr.sock]`); header comment
+  keeps main's lines plus the PR continuation.
+- Rendered template: `sandbox` sits between `permissions` and `hooks`;
+  `filesystem.allowWrite` lists all FOUR Codex writable roots including
+  `agmsg/ext-tools` (the PR head had three); `--check` passes via
+  `uv run --with pyyaml` (bare `python3` lacks PyYAML: both outputs pasted;
+  the task's bare form was my wording error, flagged in the dispatch note).
+- Validator: `enabled`/`autoAllowBashIfSandboxed` must be true,
+  `failIfUnavailable` must be a boolean (the PR's "must be true" would have
+  rejected the approved value), allowWrite ⊇ Codex roots and passes the agmsg
+  roots check, hostnames only, `allowUnixSockets` entries absolute or `~/`
+  without globs. Five new tests incl. per-rule negatives.
+- Doctor: `check_claude_sandbox` is presence-only (bwrap, socat on PATH;
+  WARN via `warn_optional`; non-Linux prints not applicable) in a
+  "Claude Code sandbox" section after "AppArmor"; the sysctl/profile logic
+  stays in `check_apparmor_userns`. `test_runtime_health` fixture keeps
+  `APPARMOR_USERNS_SYSCTL`.
+- Packages: `bubblewrap`, `socat` added to `dependencies.sh`; bats count 18.
+  CI ran the three bats test jobs green (the PR #179 failure was in the
+  dropped fixture).
+- README: sandbox section carries the PR text, points at the bwrap-userns
+  paragraph, states the operator-visible effect, and documents the
+  macOS-only scope of `allowUnixSockets` and the messaging-socket gap.
+- Validation file: `Ran 610 tests` / `OK`, `agent asset validation ok`,
+  render check, shellcheck/shfmt clean, the rendered `sandbox` JSON, the
+  Claude Code docs excerpt for `allowUnixSockets` pasted verbatim, the new
+  socket test red-then-green (3 tests).
+- Gaps reported by the worker (not hidden): (a) `allowUnixSockets` is
+  macOS-only; on Linux only `allowAllUnixSockets` opens sockets under the
+  seccomp filter; (b) the Claude messaging socket is a per-process path and
+  cannot be listed. Operator ruling 2026-09-29: merge as is and decide
+  `allowAllUnixSockets` vs `excludedCommands` after the live E2E. The T39
+  `[memory:decision]` text ("herdr/Claude unix sockets allowed") is therefore
+  overstated for Linux; the worker recorded it verbatim and added a
+  `[memory:failure]`; this record supersedes it (see Decision).
+- CI: `gh pr checks 211` all pass (nix skipping). CompactionDB decision
+  41736f91-68ac-4412-9874-9960402043ad present. Sandbox record: worker-c on
+  `feat/claude-sandbox-manifest-r2`, clean; #179 untouched.
+- Minor notes, no revise: `render_claude_sandbox` indexes
+  `network.allowUnixSockets` unconditionally (manifest always has it; a
+  missing key would raise KeyError at render time, which `--check` would
+  surface); the validator requires `enabled: true`, so disabling later needs
+  a validator change too.
+
+## Codex audit dispositions
+
+Two audits (`herdr-agents --audit` is per commit; 271e8ef is a plain merge
+of `.orchestration` files).
+
+- 2815528 (`…-audit.md`): no findings; `Verdict: correct`. "Live CI could
+  not be verified" → CI verified by the orchestrator (all checks pass).
+- 841e12b (`…-audit-841e12b.md`): `Verdict: incorrect`.
+  - P2 `agent-config.yaml:202` — enabling the sandbox without a Unix-socket
+    path breaks sandboxed `herdr` calls; `agmsg-dispatch` fails at its first
+    `herdr pane list` and unsandboxed retries prompt. Disposition: the head
+    adds `allowUnixSockets` for macOS; on Linux the gap is real and the
+    operator ruled on 2026-09-29 to merge as is and choose
+    `allowAllUnixSockets` or `excludedCommands` after the live E2E (checklist
+    above gains the concrete `agmsg-dispatch` probe). Known gap, accepted,
+    follow-up task after E2E.
+  - P3 `README.md:351` — text still described `/etc/apparmor.d/bwrap`.
+    Disposition: fixed in 2815528; at the head README mentions only
+    `bwrap-userns` (grep verified).
+  - "CI results concern 271e8ef, not 841e12b" → expected: the PR head is
+    what CI runs and what merges.
+
+## Review guard
+
+crit-data evidence `dot-claude-sandbox-manifest-T39-a01-crit.json` (20
+records, 20 resolved; approval r_5b03f8), receipt `…-receipt.md`.
+
+## Decision
+
+**Decision: ACCEPTED, merge; live E2E pending** (2026-09-29). Squash-merge
+PR #211 without `--delete-branch`; close #179 with a pointer. The settings
+become live only after the operator runs `make -C ~/.local/share/chezmoi
+update` (sudo for bubblewrap/socat) and restarts Claude Code; the E2E
+checklist above then runs in a fresh and a restored session before any
+`failIfUnavailable: true` or socket-policy follow-up.
+
+[memory:decision] T39 accepted: the Claude Code sandbox renders from
+`claude.sandbox` (enabled, failIfUnavailable=false, GitHub-only domains,
+allowWrite = Codex writable roots, `allowUnixSockets` = herdr socket, which
+Claude Code honours on macOS only); Linux socket policy
+(`allowAllUnixSockets` vs `excludedCommands`) is decided after the live E2E;
+PR #179's own bwrap profile is dropped for main's bwrap-userns (operator
+2026-09-29). Supersedes the T39 task-text wording "herdr/Claude sockets
+allowed".
+
+cost: worker-reported 0 subagent dispatches; orchestrating session n/a; two audit-lane runs.
+
+## Review guard record
+
+```
+$ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/validation/dot-claude-sandbox-manifest-T39-a01-receipt.md make require-crit-review
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+exit 0
+```

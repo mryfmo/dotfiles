@@ -1017,10 +1017,10 @@ function install_pinned_agmsg() (
         return 1
     }
     installed="$(cat "${skill_dir}/VERSION" 2> /dev/null || printf 'none')"
-    [ -f "${skill_dir}/.agmsg" ] && [ "${installed}" = "${AGMSG_PIN_VERSION}" ] || {
+    if ! [ -f "${skill_dir}/.agmsg" ] || [ "${installed}" != "${AGMSG_PIN_VERSION}" ]; then
         printf 'agmsg: install.sh %s left VERSION %s (want %s)\n' "${install_args[*]}" "${installed}" "${AGMSG_PIN_VERSION}" >&2
         return 1
-    }
+    fi
 )
 
 #

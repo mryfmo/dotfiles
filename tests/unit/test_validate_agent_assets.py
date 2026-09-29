@@ -71,7 +71,10 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     top_file.write_text(token)
                     try:
                         stderr = io.StringIO()
-                        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                        with (
+                            contextlib.redirect_stderr(stderr),
+                            self.assertRaises(SystemExit),
+                        ):
                             scan()
                         self.assertIn("top.txt", stderr.getvalue())
                         self.assertNotIn("nested.txt", stderr.getvalue())
@@ -119,7 +122,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                                     {
                                         "type": "command",
                                         "command": command,
-                                        "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"],
+                                        "args": [
+                                            "${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"
+                                        ],
                                     }
                                 ],
                             }
@@ -152,12 +157,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
         path.chmod(0o755)
         self.module.validate_codex_modify_script()
-
-    def write_agmsg_script(self, relative_path: str, executable: bool = True) -> None:
-        path = self.temp_dir / "home/dot_agents/skills/agmsg/scripts" / relative_path
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text("#!/bin/sh\n")
-        path.chmod(0o755 if executable else 0o644)
 
     def write_text_file(self, relative_path: str, content: str) -> Path:
         path = self.temp_dir / relative_path
@@ -314,7 +313,21 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     "upstream": "marketplaces",
                     "pin": "per-plugin",
                     "verify": "none",
-                    "plugins": {"crit": {"marketplace": "tomasz-tomczyk/crit", "pin": "1.8.10"}},
+                    "plugins": {
+                        "crit": {"marketplace": "tomasz-tomczyk/crit", "pin": "1.8.10"}
+                    },
+                },
+                "agmsg": {
+                    "source": "agmsg-installer",
+                    "upstream": "https://github.com/fujibee/agmsg",
+                    "pin": "1.5.0",
+                    "ref": "v1.5.0",
+                    "ref_commit": "c487be269c1973aeb01ca831806eb3f65ff3366d",
+                    "verify": "sha256",
+                    "sha256": "9201cb5ff23ddd9ddaa19ff821dce0d0f2d58c6c292aade252a8d824b3dfc059",
+                    "bootstrap_integrity": "sha512-n6057L93AE+tnItTkBnClv3QvgsOlI6AO1SwodvKFJvqqTJqITHg/2O6jjHZZfh0nKbq49VKQv6F3t2d/62gyg==",
+                    "install_path": "~/.agents/skills/agmsg",
+                    "installer": "scripts/update-agent-assets.sh#update_agmsg",
                 },
             }
         }
@@ -338,29 +351,138 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "missing install_path": lambda assets: assets["brew"].pop("install_path"),
             "missing installer": lambda assets: assets["aws"].pop("installer"),
             "float pin": lambda assets: assets["aws"].update(pin=1.1),
-            "float plugin pin": lambda assets: assets["plugins"]["plugins"]["crit"].update(
-                pin=1.1
-            ),
+            "float plugin pin": lambda assets: assets["plugins"]["plugins"][
+                "crit"
+            ].update(pin=1.1),
+            "agmsg missing installer": lambda assets: assets["agmsg"].pop("installer"),
         }
         for name, breaks in cases.items():
             with self.subTest(case=name):
                 manifest = self.asset_manifest()
                 breaks(manifest["assets"])
-                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(
-                    SystemExit
+                with (
+                    contextlib.redirect_stderr(io.StringIO()),
+                    self.assertRaises(SystemExit),
                 ):
                     self.module.validate_assets(manifest)
+
+    def assert_agmsg_asset_rejected(self, **changes: object) -> str:
+        manifest = self.asset_manifest()
+        for key, value in changes.items():
+            if value is None:
+                manifest["assets"]["agmsg"].pop(key)
+            else:
+                manifest["assets"]["agmsg"][key] = value
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_assets(manifest)
+        return stderr.getvalue()
+
+    def test_agmsg_installer_requires_a_release_pin_and_its_tag(self) -> None:
+        for changes, message in (
+            ({"pin": "c487be269c1973aeb01ca831806eb3f65ff3366d"}, "must be an upstream release"),
+            ({"ref": None}, "must be the release tag v1.5.0"),
+            ({"ref": "v1.4.2"}, "must be the release tag v1.5.0"),
+        ):
+            with self.subTest(changes=changes):
+                self.assertIn(message, self.assert_agmsg_asset_rejected(**changes))
+
+    def test_agmsg_installer_requires_the_full_tag_commit(self) -> None:
+        for changes in ({"ref_commit": None}, {"ref_commit": "c487be2"}):
+            with self.subTest(changes=changes):
+                self.assertIn("ref_commit", self.assert_agmsg_asset_rejected(**changes))
+
+    def test_agmsg_installer_requires_the_npm_bootstrap_integrity(self) -> None:
+        for changes in (
+            {"bootstrap_integrity": None},
+            {"bootstrap_integrity": "sha256-not-an-npm-integrity-string"},
+        ):
+            with self.subTest(changes=changes):
+                self.assertIn(
+                    "bootstrap_integrity", self.assert_agmsg_asset_rejected(**changes)
+                )
+
+    def write_agmsg_installer_layout(self) -> None:
+        self.write_text_file("home/.chezmoiremove", ".claude/skills/agmsg/**\n")
+
+    def assert_agmsg_ownership_rejected(self, message: str) -> None:
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_agmsg_is_installer_owned()
+        self.assertIn(message, stderr.getvalue())
+
+    def test_agmsg_ownership_accepts_the_installer_layout(self) -> None:
+        self.write_agmsg_installer_layout()
+        self.write_text_file("home/dot_claude/commands/other.md", "other\n")
+
+        self.module.validate_agmsg_is_installer_owned()
+
+    def test_agmsg_ownership_rejects_a_vendored_skill_copy(self) -> None:
+        for vendored in (
+            "home/dot_agents/skills/agmsg",
+            "home/dot_claude/skills/agmsg",
+            "home/private_dot_agents/skills/exact_agmsg",
+        ):
+            with self.subTest(vendored=vendored):
+                self.write_agmsg_installer_layout()
+                self.write_text_file(f"{vendored}/SKILL.md", "vendored\n")
+                self.assert_agmsg_ownership_rejected(f"{vendored} must not exist")
+                shutil.rmtree(self.temp_dir / vendored)
+
+    def test_agmsg_ownership_rejects_a_managed_claude_command(self) -> None:
+        for name in ("symlink_agmsg.md.tmpl", "agmsg.md"):
+            with self.subTest(name=name):
+                self.write_agmsg_installer_layout()
+                path = f"home/dot_claude/commands/{name}"
+                self.write_text_file(path, "managed\n")
+                self.assert_agmsg_ownership_rejected(f"{path} must not exist")
+                (self.temp_dir / path).unlink()
+
+    def test_agmsg_ownership_requires_retiring_the_symlink_farm(self) -> None:
+        self.write_text_file("home/.chezmoiremove", ".codex/ccgate.jsonnet\n")
+
+        self.assert_agmsg_ownership_rejected("must retire .claude/skills/agmsg/**")
+
+    def test_agmsg_ownership_rejects_removing_installer_owned_paths(self) -> None:
+        for pattern in (
+            ".agents/skills/agmsg",
+            ".agents/skills/agmsg/**",
+            ".agents/skills/agmsg/.agmsg",
+            ".agents/skills/agmsg/VERSION",
+            ".claude/commands/agmsg.md",
+        ):
+            with self.subTest(pattern=pattern):
+                self.write_text_file(
+                    "home/.chezmoiremove", f".claude/skills/agmsg/**\n{pattern}\n"
+                )
+                self.assert_agmsg_ownership_rejected(f"entry {pattern!r} would remove")
 
     def test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts(
         self,
     ) -> None:
         cases = (
-            ("install/ubuntu/common/tool.sh", 'readonly TOOL_VERSION="1.2.3"\n', "TOOL_VERSION"),
-            ("install/ubuntu/common/copy.sh", 'readonly MISE_VERSION="v0"\n', "MISE_VERSION"),
+            (
+                "install/ubuntu/common/tool.sh",
+                'readonly TOOL_VERSION="1.2.3"\n',
+                "TOOL_VERSION",
+            ),
+            (
+                "install/ubuntu/common/copy.sh",
+                'readonly MISE_VERSION="v0"\n',
+                "MISE_VERSION",
+            ),
             ("scripts/lib/other.sh", 'OTHER_VERSION="2"\n', "OTHER_VERSION"),
             ("scripts/tool.sh", '    local version="3.0"\n', "version"),
-            ("install/ubuntu/common/bare.sh", "readonly TOOL_VERSION=1.2.3\n", "TOOL_VERSION"),
-            ("install/ubuntu/common/single.sh", "TOOL_VERSION='1.2.3'; export TOOL_VERSION\n", "TOOL_VERSION"),
+            (
+                "install/ubuntu/common/bare.sh",
+                "readonly TOOL_VERSION=1.2.3\n",
+                "TOOL_VERSION",
+            ),
+            (
+                "install/ubuntu/common/single.sh",
+                "TOOL_VERSION='1.2.3'; export TOOL_VERSION\n",
+                "TOOL_VERSION",
+            ),
         )
         for relative, content, constant in cases:
             with self.subTest(file=relative):
@@ -645,27 +767,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
         self.module.validate_codex_config(manifest)
 
-    def test_agmsg_script_modes_accept_prefixed_entrypoints_and_lib_helpers(
-        self,
-    ) -> None:
-        self.write_agmsg_script("executable_send.sh")
-        self.write_agmsg_script("release/executable_sync-version.sh")
-        self.write_agmsg_script("lib/storage.sh", executable=False)
-
-        self.module.validate_agmsg_script_modes()
-
-    def test_agmsg_script_modes_reject_unprefixed_direct_entrypoint(self) -> None:
-        self.write_agmsg_script("send.sh")
-
-        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-            self.module.validate_agmsg_script_modes()
-
-    def test_agmsg_script_modes_reject_non_executable_prefixed_entrypoint(self) -> None:
-        self.write_agmsg_script("executable_send.sh", executable=False)
-
-        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-            self.module.validate_agmsg_script_modes()
-
     def test_secret_scan_checks_extensionless_executables(self) -> None:
         path = self.write_text_file(
             "home/dot_local/bin/common/executable_leaky",
@@ -783,53 +884,6 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_manifest_home_paths()
-
-    AGMSG_COMMAND_TARGET = "dot_agents/skills/agmsg/templates/cmd.claude-code.md"
-
-    def write_agmsg_command_symlink(
-        self, target: str, create_target: bool = True
-    ) -> None:
-        path = self.temp_dir / "home/dot_claude/commands/symlink_agmsg.md.tmpl"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(target)
-        if create_target:
-            template = self.temp_dir / "home" / self.AGMSG_COMMAND_TARGET
-            template.parent.mkdir(parents=True, exist_ok=True)
-            template.write_text("shared command template\n")
-
-    def test_claude_command_parity_rejects_dangling_target(self) -> None:
-        self.write_agmsg_command_symlink(
-            "{{ .chezmoi.sourceDir }}/" + self.AGMSG_COMMAND_TARGET + "\n",
-            create_target=False,
-        )
-
-        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-            self.module.validate_claude_command_parity()
-
-    def test_claude_command_parity_rejects_wrong_target(self) -> None:
-        self.write_agmsg_command_symlink(
-            "{{ .chezmoi.sourceDir }}/dot_claude/elsewhere.md\n"
-        )
-
-        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-            self.module.validate_claude_command_parity()
-
-    def test_claude_command_parity_rejects_restored_duplicate(self) -> None:
-        self.write_agmsg_command_symlink(
-            "{{ .chezmoi.sourceDir }}/dot_agents/skills/agmsg/templates/cmd.claude-code.md\n"
-        )
-        (self.temp_dir / "home/dot_claude/commands/agmsg.md").write_text("duplicate\n")
-
-        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-            self.module.validate_claude_command_parity()
-
-    def test_claude_command_parity_accepts_symlink_only(self) -> None:
-        self.write_agmsg_command_symlink(
-            "{{ .chezmoi.sourceDir }}/dot_agents/skills/agmsg/templates/cmd.claude-code.md\n"
-        )
-
-        self.module.validate_claude_command_parity()
-
 
 
 # Built at runtime so this test file never contains a literal SECRET_PATTERN match.

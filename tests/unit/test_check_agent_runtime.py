@@ -319,6 +319,35 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         ):
             self.assertNotIn(str(accounted), joined)
 
+    def test_installer_owned_agmsg_skill_and_backups_are_not_orphans(self) -> None:
+        home = self.temp_dir / "home"
+        source = self.temp_dir / "repo-source"
+        agents = home / ".agents"
+        skills = agents / "skills"
+        (source / "dot_agents/skills/managed").mkdir(parents=True)
+        for path in (
+            skills / "agmsg/scripts",
+            agents / "backups/agmsg-state-20260929T000000Z/teams",
+            agents / "orphan-root",
+        ):
+            path.mkdir(parents=True)
+        manifest = {
+            "version": 1,
+            "steps": {
+                "update_agmsg": {
+                    "paths": [str(skills / "agmsg/SKILL.md"), str(skills / "agmsg/scripts")]
+                }
+            },
+        }
+        (agents / ".installed-manifest.json").write_text(json.dumps(manifest))
+
+        warnings = self.module.orphaned_asset_warnings(home, source)
+
+        self.assertEqual(
+            [f"WARN: orphaned agent asset: {agents / 'orphan-root'}; manual review required"],
+            warnings,
+        )
+
     def test_terminal_browser_receipt_links_are_not_orphans(self) -> None:
         home = self.temp_dir / "home"
         source = self.temp_dir / "repo-source"

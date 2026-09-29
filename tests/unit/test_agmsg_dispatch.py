@@ -11,7 +11,24 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "home/dot_local/bin/common/executable_agmsg-dispatch"
-LIB = ROOT / "home/dot_agents/skills/agmsg/scripts/lib"
+# Minimal stand-ins for upstream agmsg 1.5.0 scripts/lib/{validate,storage}.sh:
+# the deny-list name checks and a store path that requires a team selector.
+VALIDATE_SH = r"""
+agmsg_validate_team_name() {
+    case "$1" in ''|.|..|*/*|-*) echo "agmsg: invalid team name '$1'" >&2; return 1 ;; esac
+}
+agmsg_validate_agent_name() {
+    case "$1" in ''|.|..|-*|*[./\\\"]*|*[][]*) echo "agmsg: invalid agent name '$1'" >&2; return 1 ;; esac
+}
+"""
+STORAGE_SH = r"""
+source "$(dirname "${BASH_SOURCE[0]}")/validate.sh"
+agmsg_db_path() {
+    [ -n "${1-}" ] || { echo "Error: agmsg_db_path requires a team selector" >&2; return 1; }
+    agmsg_validate_team_name "$1" || return 1
+    printf '%s/messages.db\n' "${AGMSG_STORAGE_PATH:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/db}"
+}
+"""
 
 
 class AgmsgDispatchTest(unittest.TestCase):
@@ -21,8 +38,8 @@ class AgmsgDispatchTest(unittest.TestCase):
         self.root = Path(self.temp.name)
         scripts = self.root / ".agents/skills/agmsg/scripts"
         (scripts / "lib").mkdir(parents=True)
-        for name in ("storage.sh", "identifier.sh"):
-            shutil.copyfile(LIB / name, scripts / "lib" / name)
+        (scripts / "lib/validate.sh").write_text(VALIDATE_SH)
+        (scripts / "lib/storage.sh").write_text(STORAGE_SH)
         self.db = self.root / "alternate/messages.db"
         self.db.parent.mkdir()
         with sqlite3.connect(self.db) as db:
@@ -36,9 +53,9 @@ class AgmsgDispatchTest(unittest.TestCase):
         self.write_script(scripts / "send.sh", r"""
 source "$(dirname "$0")/lib/storage.sh"
 body="${4//\'/\'\'}"
-sqlite3 "$(agmsg_db_path)" "INSERT INTO messages(team,from_agent,to_agent,body) VALUES ('$1','$2','$3','$body');"
+sqlite3 "$(agmsg_db_path "$1")" "INSERT INTO messages(team,from_agent,to_agent,body) VALUES ('$1','$2','$3','$body');"
 if [[ ${FAKE_STATUS} == working && ${FAKE_READ} == yes ]]; then
-    sqlite3 "$(agmsg_db_path)" "UPDATE messages SET read_at='read';"
+    sqlite3 "$(agmsg_db_path "$1")" "UPDATE messages SET read_at='read';"
 fi
 """)
         bindir = self.root / "bin"
@@ -70,11 +87,23 @@ fi
         path.write_text("#!/usr/bin/env bash\nset -eu\n" + body)
         path.chmod(0o755)
 
-    def dispatch(self):
+    def dispatch(self, team="team", sender="sender", worker="worker"):
         return subprocess.run(
-            ["bash", str(SCRIPT), "team", "sender", "worker", "w1:p1",
+            ["bash", str(SCRIPT), team, sender, worker, "w1:p1",
              "private-message-body"], env=self.env, capture_output=True,
             text=True, timeout=10)
+
+    def test_rejects_identifiers_outside_the_strict_grammar(self):
+        for team, sender, worker in (("team", "o'brien", "worker"),
+                                     ("te'am", "sender", "worker"),
+                                     ("team", "sender", "Worker"),
+                                     ("team", "sender", "a.b")):
+            with self.subTest(team=team, sender=sender, worker=worker):
+                result = self.dispatch(team, sender, worker)
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertEqual(self.calls.read_text(), "")
+                with sqlite3.connect(self.db) as db:
+                    self.assertEqual(db.execute("SELECT count(*) FROM messages").fetchone()[0], 0)
 
     def test_idle_wakes_once_and_reads(self):
         result = self.dispatch()

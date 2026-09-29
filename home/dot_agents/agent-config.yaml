@@ -10,7 +10,7 @@
 # - Store credentials as environment-variable references or inherited environment only.
 # - Use current maintained MCP servers; deprecated packages are rejected by validation.
 # - Keep Codex writable roots for shared agmsg state under codex.sandbox_workspace_write.
-# - Name direct agmsg entrypoint sources with chezmoi executable_ prefixes.
+# - Let upstream install.sh own ~/.agents/skills/agmsg; never vendor it (assets.agmsg).
 
 schema_version: 1
 
@@ -108,6 +108,7 @@ codex:
       - '{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db'
       - '{{ .chezmoi.homeDir }}/.agents/skills/agmsg/teams'
       - '{{ .chezmoi.homeDir }}/.agents/skills/agmsg/run'
+      - '{{ .chezmoi.homeDir }}/.agents/skills/agmsg/ext-tools'
   shell_environment_policy:
     inherit: core
     set:
@@ -524,13 +525,36 @@ assets:
     install_path: ~/.agents/compactiondb
     installer: scripts/update-agent-assets.sh#update_compactiondb
   agmsg:
-    source: vendored
+    source: agmsg-installer
     upstream: https://github.com/fujibee/agmsg
-    pin: unknown
-    verify: none
+    pin: "1.5.0"
+    ref: v1.5.0
+    ref_commit: c487be269c1973aeb01ca831806eb3f65ff3366d
+    verify: sha256
+    sha256: 9201cb5ff23ddd9ddaa19ff821dce0d0f2d58c6c292aade252a8d824b3dfc059
+    bootstrap_integrity: sha512-n6057L93AE+tnItTkBnClv3QvgsOlI6AO1SwodvKFJvqqTJqITHg/2O6jjHZZfh0nKbq49VKQv6F3t2d/62gyg==
     install_path: ~/.agents/skills/agmsg
-    installer: chezmoi (home/dot_agents/skills/agmsg)
-    note: imported in commit 83eb1e4 (2026-06-22) without an upstream version; replaced by an npm pin in L.7
+    installer: scripts/update-agent-assets.sh#update_agmsg
+    note: >-
+      pin is the upstream release and ref its tag; ref_commit is the commit
+      behind that tag (lightweight tag, c487be2), and sha256 is the digest of
+      GitHub's source archive for ref_commit, which update_agmsg downloads,
+      verifies, and hands to that tree's own install.sh (--update only when
+      the upstream .agmsg marker exists). The archive + sha256 path replaces
+      the task's `git clone --branch` + `rev-parse` check (accepted change
+      request: a git checkout makes install.sh derive VERSION from `git
+      describe`, which defeats the VERSION == pin skip). bootstrap_integrity
+      is the npm dist.integrity of agmsg@<pin>, the bootstrapper behind
+      `npx agmsg@<pin>`; it is recorded for provenance only because that path
+      clones the tag with no checksum and ships no scripts itself. Bump pin,
+      ref, ref_commit, sha256 and bootstrap_integrity together after
+      reviewing the upstream diff.
+    render:
+      file: scripts/update-agent-assets.sh
+      constants:
+        AGMSG_PIN_COMMIT: ref_commit
+        AGMSG_PIN_SHA256: sha256
+        AGMSG_PIN_VERSION: pin
   claude-plugins:
     source: claude-plugin
     upstream: marketplaces

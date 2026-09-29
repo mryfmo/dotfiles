@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 # @file agmsg-dispatch
 # @brief Send an agmsg message, wake an idle worker, and verify receipt.
-# @description Uses the installed agmsg storage helpers. Polls every five seconds
-#   for AGMSG_DISPATCH_TIMEOUT seconds (default 120), retrying an idle wake once.
+# @description Uses the installed upstream agmsg helpers (lib/validate.sh and
+#   lib/storage.sh from agmsg 1.5.0). Polls every five seconds for
+#   AGMSG_DISPATCH_TIMEOUT seconds (default 120), retrying an idle wake once.
 #   The retry shares the original deadline and rechecks the pane's current state.
 #   Only routing metadata, never the message body, is sent to the terminal.
+#   This is the orchestrator's wake path for herdr-agents worker panes until
+#   worker seating writes agmsg placement records at launch: upstream poke.sh
+#   refuses a member without one ("no placement record"), and a hand-joined
+#   herdr-agents worker gets one only after it first acts from its own pane.
+#   Use poke.sh only for spawn-seated members.
 # @arg $1 string Team identifier.
 # @arg $2 string Sender identifier.
 # @arg $3 string Recipient identifier.
@@ -22,8 +28,18 @@ team=$1 from=$2 to=$3 pane=$4
 shift 4
 scripts="${HOME}/.agents/skills/agmsg/scripts"
 # shellcheck source=/dev/null
-source "$scripts/lib/identifier.sh"
-agmsg_validate_identifiers "$usage" "$team" "$from" "$to"
+source "$scripts/lib/validate.sh"
+agmsg_validate_team_name "$team"
+agmsg_validate_agent_name "$from"
+agmsg_validate_agent_name "$to"
+# The identifiers are interpolated into SQL below, so keep the strict grammar
+# the vendored lib/identifier.sh enforced; upstream's deny-lists allow quotes.
+for identifier in "$team" "$from" "$to"; do
+    if [[ ! $identifier =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]]; then
+        printf 'Usage: %s (identifiers must match ^[a-z0-9][a-z0-9_-]{0,63}$)\n' "$usage" >&2
+        exit 1
+    fi
+done
 timeout=${AGMSG_DISPATCH_TIMEOUT:-120}
 if [[ ! $timeout =~ ^[1-9][0-9]{0,5}$ ]]; then
     printf 'agmsg-dispatch: timeout must be a positive integer up to 999999 seconds\n' >&2
@@ -31,7 +47,7 @@ if [[ ! $timeout =~ ^[1-9][0-9]{0,5}$ ]]; then
 fi
 # shellcheck source=/dev/null
 source "$scripts/lib/storage.sh"
-db=$(agmsg_db_path)
+db=$(agmsg_db_path "$team")
 
 # @description Resolve exactly one existing pane before sending or retrying.
 get_pane_status() {

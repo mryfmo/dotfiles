@@ -3719,7 +3719,7 @@
 
 
 <h1 id="homedot_localbincommonexecutable_agmsg-dispatch">home/dot_local/bin/common/executable_agmsg-dispatch<a class="headerlink" href="#homedot_localbincommonexecutable_agmsg-dispatch" title="Permanent link">&para;</a></h1>
-<p>for AGMSG_DISPATCH_TIMEOUT seconds (default 120), retrying an idle wake once. The retry shares the original deadline and rechecks the pane's current state. Only routing metadata, never the message body, is sent to the terminal.</p>
+<p>lib/storage.sh from agmsg 1.5.0). Polls every five seconds for AGMSG_DISPATCH_TIMEOUT seconds (default 120), retrying an idle wake once. The retry shares the original deadline and rechecks the pane's current state. Only routing metadata, never the message body, is sent to the terminal. This is the orchestrator's wake path for herdr-agents worker panes until worker seating writes agmsg placement records at launch: upstream poke.sh refuses a member without one ("no placement record"), and a hand-joined herdr-agents worker gets one only after it first acts from its own pane. Use poke.sh only for spawn-seated members.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_agmsg-dispatch</code></li>
@@ -3737,10 +3737,16 @@
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
 <span class="c1"># @file agmsg-dispatch</span>
 <span class="c1"># @brief Send an agmsg message, wake an idle worker, and verify receipt.</span>
-<span class="c1"># @description Uses the installed agmsg storage helpers. Polls every five seconds</span>
-<span class="c1">#   for AGMSG_DISPATCH_TIMEOUT seconds (default 120), retrying an idle wake once.</span>
+<span class="c1"># @description Uses the installed upstream agmsg helpers (lib/validate.sh and</span>
+<span class="c1">#   lib/storage.sh from agmsg 1.5.0). Polls every five seconds for</span>
+<span class="c1">#   AGMSG_DISPATCH_TIMEOUT seconds (default 120), retrying an idle wake once.</span>
 <span class="c1">#   The retry shares the original deadline and rechecks the pane's current state.</span>
 <span class="c1">#   Only routing metadata, never the message body, is sent to the terminal.</span>
+<span class="c1">#   This is the orchestrator's wake path for herdr-agents worker panes until</span>
+<span class="c1">#   worker seating writes agmsg placement records at launch: upstream poke.sh</span>
+<span class="c1">#   refuses a member without one ("no placement record"), and a hand-joined</span>
+<span class="c1">#   herdr-agents worker gets one only after it first acts from its own pane.</span>
+<span class="c1">#   Use poke.sh only for spawn-seated members.</span>
 <span class="c1"># @arg $1 string Team identifier.</span>
 <span class="c1"># @arg $2 string Sender identifier.</span>
 <span class="c1"># @arg $3 string Recipient identifier.</span>
@@ -3758,8 +3764,18 @@
 <span class="nb">shift</span><span class="w"> </span><span class="m">4</span>
 <span class="nv">scripts</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/agmsg/scripts"</span>
 <span class="c1"># shellcheck source=/dev/null</span>
-<span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="nv">$scripts</span><span class="s2">/lib/identifier.sh"</span>
-agmsg_validate_identifiers<span class="w"> </span><span class="s2">"</span><span class="nv">$usage</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$team</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$from</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$to</span><span class="s2">"</span>
+<span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="nv">$scripts</span><span class="s2">/lib/validate.sh"</span>
+agmsg_validate_team_name<span class="w"> </span><span class="s2">"</span><span class="nv">$team</span><span class="s2">"</span>
+agmsg_validate_agent_name<span class="w"> </span><span class="s2">"</span><span class="nv">$from</span><span class="s2">"</span>
+agmsg_validate_agent_name<span class="w"> </span><span class="s2">"</span><span class="nv">$to</span><span class="s2">"</span>
+<span class="c1"># The identifiers are interpolated into SQL below, so keep the strict grammar</span>
+<span class="c1"># the vendored lib/identifier.sh enforced; upstream's deny-lists allow quotes.</span>
+<span class="k">for</span><span class="w"> </span>identifier<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="nv">$team</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$from</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$to</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span><span class="nv">$identifier</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span>a-z0-9<span class="o">][</span>a-z0-9_-<span class="o">]{</span><span class="m">0</span>,63<span class="o">}</span>$<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Usage: %s (identifiers must match ^[a-z0-9][a-z0-9_-]{0,63}$)\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$usage</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="k">done</span>
 <span class="nv">timeout</span><span class="o">=</span><span class="si">${</span><span class="nv">AGMSG_DISPATCH_TIMEOUT</span><span class="k">:-</span><span class="nv">120</span><span class="si">}</span>
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span><span class="nv">$timeout</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>^<span class="o">[</span><span class="m">1</span>-9<span class="o">][</span><span class="m">0</span>-9<span class="o">]{</span><span class="m">0</span>,5<span class="o">}</span>$<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg-dispatch: timeout must be a positive integer up to 999999 seconds\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
@@ -3767,7 +3783,7 @@ agmsg_validate_identifiers<span class="w"> </span><span class="s2">"</span><span
 <span class="k">fi</span>
 <span class="c1"># shellcheck source=/dev/null</span>
 <span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="nv">$scripts</span><span class="s2">/lib/storage.sh"</span>
-<span class="nv">db</span><span class="o">=</span><span class="k">$(</span>agmsg_db_path<span class="k">)</span>
+<span class="nv">db</span><span class="o">=</span><span class="k">$(</span>agmsg_db_path<span class="w"> </span><span class="s2">"</span><span class="nv">$team</span><span class="s2">"</span><span class="k">)</span>
 
 <span class="c1"># @description Resolve exactly one existing pane before sending or retrying.</span>
 get_pane_status<span class="o">()</span><span class="w"> </span><span class="o">{</span>

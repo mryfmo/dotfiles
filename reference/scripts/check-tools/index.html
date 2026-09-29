@@ -3722,6 +3722,7 @@
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
+<li><code>check_agmsg</code></li>
 <li><code>check_apparmor_userns</code></li>
 <li><code>check_command</code></li>
 <li><code>check_crit_cli</code></li>
@@ -3950,6 +3951,33 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description Report the installed agmsg skill's version against the pinned</span>
+<span class="c1">#   manifest version. Installed by update_agmsg in</span>
+<span class="c1">#   scripts/update-agent-assets.sh from the pinned upstream commit; not</span>
+<span class="c1">#   required, so a missing install is not a failure.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>check_agmsg<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">target</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="p">%/</span><span class="si">}</span><span class="s2">/.agents/skills/agmsg"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>script_dir<span class="w"> </span>pin<span class="w"> </span>installed
+
+<span class="w">    </span><span class="nv">script_dir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">pin</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>awk<span class="w"> </span>-F<span class="s1">'"'</span><span class="w"> </span><span class="s1">'/^AGMSG_PIN_VERSION=/ { print $2; exit }'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">script_dir</span><span class="si">}</span><span class="s2">/update-agent-assets.sh"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span><span class="s2">"</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>!<span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">/VERSION"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'not applicable: agmsg (not installed)\n'</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+
+<span class="w">    </span><span class="nv">installed</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>cat<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">/VERSION"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pin</span><span class="k">:-</span><span class="nv">unknown</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'found:   agmsg -&gt; %s (version %s, matches pin)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'found:   agmsg -&gt; %s (version %s, pin %s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">target</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pin</span><span class="k">:-</span><span class="nv">unknown</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span>warn_optional<span class="w"> </span><span class="s2">"agmsg version </span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="s2"> does not match the pinned </span><span class="si">${</span><span class="nv">pin</span><span class="k">:-</span><span class="nv">unknown</span><span class="si">}</span><span class="s2">; run make update"</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Run the read-only dotfiles health checks.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -3982,6 +4010,9 @@
 
 <span class="w">    </span>section<span class="w"> </span><span class="s2">"GitHub CLI extensions"</span>
 <span class="w">    </span>check_gh_extensions
+
+<span class="w">    </span>section<span class="w"> </span><span class="s2">"agmsg"</span>
+<span class="w">    </span>check_agmsg
 
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'\nTool check summary: required failures: %d; optional warnings: %d\n'</span><span class="w"> </span><span class="se">\</span>
 <span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">required_failures</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">optional_warnings</span><span class="si">}</span><span class="s2">"</span>

@@ -190,7 +190,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             }
             for name in ("express", "standard", "review", "deep", "security", "audit")
         }
-        profiles["security"]["codex"]["model"] = "gpt-daybreak-blue-latest"
+        profiles["security"]["codex"]["model"] = "gpt-6-astra"
         profiles["audit"]["codex"].update(
             model="gpt-6-astra", sandbox_mode="read-only"
         )
@@ -526,11 +526,19 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             self.module.validate_agent_manifest()
 
     def test_agent_manifest_rejects_wrong_security_codex_model(self) -> None:
-        manifest = self.write_valid_agent_manifest()
-        manifest["model_profiles"]["security"]["codex"]["model"] = "gpt-5.6-sol"
+        for key, value in (
+            ("model", "gpt-5.6-sol"),
+            ("model", "gpt-daybreak-blue-latest"),
+            ("model_reasoning_effort", "medium"),
+        ):
+            with self.subTest(key=key, value=value):
+                manifest = self.write_valid_agent_manifest()
+                manifest["model_profiles"]["security"]["codex"][key] = value
 
-        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-            self.module.validate_agent_manifest()
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_agent_manifest()
+                self.assertIn(f"security profile must set codex.{key}", stderr.getvalue())
 
     def test_agent_manifest_rejects_missing_audit_profile(self) -> None:
         manifest = self.write_valid_agent_manifest()

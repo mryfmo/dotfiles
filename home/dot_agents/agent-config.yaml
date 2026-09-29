@@ -50,7 +50,8 @@ model_profiles:
     # Security-audit tier: specialist model for auditing pending changes.
     claude: { model: claude-fable-5, effort: high }
     codex:
-      model: gpt-daybreak-blue-latest
+      # gpt-daybreak-blue-latest requires API-key auth (rejected under ChatGPT login).
+      model: gpt-6-astra
       model_reasoning_effort: high
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
   audit:

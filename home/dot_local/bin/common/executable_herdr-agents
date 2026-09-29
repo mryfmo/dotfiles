@@ -6,7 +6,8 @@
 #   Full mode creates or repairs an agents workspace and never creates a
 #   second workspace for a directory that already has a managed pair. Attach
 #   mode adds the worker beside Claude in the current Herdr pane without
-#   restarting Claude. Restart-worker mode relaunches the worker agent in its
+#   restarting Claude; outside a Herdr pane it only prints a one-line bring-up
+#   summary. Restart-worker mode relaunches the worker agent in its
 #   existing pane so new worker launch arguments take effect, confirming a
 #   claude exit dialog once and relabeling a legacy worker pane label. Audit
 #   mode runs the read-only Codex audit of one commit visibly in the pair
@@ -30,6 +31,7 @@
 # @option --remove-worker <worktree> Despawn that worker and close its workspace.
 # @option --kind <codex|claude> Add-worker agent kind. Defaults to the manifest worker_kind.
 # @option --profile <name> Add-worker model profile. Defaults to the manifest worker_profile.
+# @option --ready-timeout <seconds> Add-worker: spawn.sh readiness wait bound (spawn.sh default 90).
 # @option --force Remove-worker: tear down a dirty worktree's worker and despawn with --force.
 # @arg DIR Optional directory for the Herdr workspace. Defaults to the current directory.
 # @arg HERDR_AGENTS_WORKER_KIND Worker agent kind, `codex` or `claude`. Defaults
@@ -69,7 +71,7 @@ Usage: herdr-agents [DIR]
        herdr-agents --restart-worker [DIR]
        herdr-agents --bootstrap-agmsg [DIR]
        herdr-agents --audit <sha> [--out PATH] [--timeout SECONDS] [DIR]
-       herdr-agents --add-worker <worktree> [--kind codex|claude] [--profile NAME] [DIR]
+       herdr-agents --add-worker <worktree> [--kind codex|claude] [--profile NAME] [--ready-timeout SECONDS] [DIR]
        herdr-agents --remove-worker <worktree> [--force] [DIR]
 
 Create a Herdr workspace for DIR with equal-width Claude Code and worker
@@ -81,7 +83,9 @@ directory. HERDR_AGENTS_WORKER_KIND selects the worker pane's agent kind
 then codex.
 Full mode heals an existing managed workspace for DIR instead of creating a
 second one, and exits 2 when more than one managed workspace exists.
-Attach mode uses the current Herdr pane for Claude.
+Attach mode uses the current Herdr pane for Claude. Outside a Herdr pane it
+changes nothing and prints one line: the pair is not started, the on-demand
+worker and auditor commands, and the manifest worktree's seated worker, if any.
 Restart-worker mode exits the worker agent in the existing pair's worker pane
 and starts it again in the same pane with the current worker_kind and
 worker_profile launch arguments; it never creates panes or workspaces.
@@ -95,6 +99,9 @@ incorrect verdict); it exits 2 without a managed workspace.
 Add-worker mode seats an extra resident worker for <worktree> (a path under
 DIR/.claude/worktrees/, created from origin/main when missing) in its own
 workspace through upstream agmsg spawn.sh, with the profile's launch args;
+a pane-less caller gets HERDR_SOCKET_PATH derived from the default Herdr server
+socket, a claude worker's workspace-trust dialog is accepted while spawn.sh
+waits, and --ready-timeout bounds that wait (spawn.sh default 90 seconds);
 remove-worker mode despawns it, turns its delivery off, leaves its team, and
 closes that workspace, refusing a dirty worktree unless --force.
 USAGE
@@ -631,12 +638,75 @@ function start_claude_in_pane() {
 #   worker pane started unattended must actively select "Yes, I trust this
 #   folder" (Down then Enter) instead of leaving the default in place.
 # @arg $1 pane_id Target pane id.
+# @arg $2 number Optional wait bound in milliseconds. Defaults to 3000.
+# @exitcode 1 If no dialog appeared within the bound.
 function accept_claude_workspace_trust_dialog() {
     local pane_id="$1"
 
-    if herdr pane wait-output "${pane_id}" --match 'trust this folder' --timeout 3000 > /dev/null 2>&1; then
-        herdr pane send-keys "${pane_id}" Down Enter > /dev/null
+    herdr pane wait-output "${pane_id}" --match 'trust this folder' --timeout "${2:-3000}" > /dev/null 2>&1 || return 1
+    herdr pane send-keys "${pane_id}" Down Enter > /dev/null
+}
+
+# @description Accept the workspace-trust dialog of a claude worker while
+#   spawn.sh seats it. spawn.sh places the pane before its readiness wait, and a
+#   first start in an untrusted worktree sits on the dialog until that wait
+#   times out, so watch the workspace's new pane for as long as spawn.sh runs.
+# @arg $1 workspace_id Worker workspace id.
+# @arg $2 json Pane ids (a JSON array) in that workspace before spawn.sh started.
+# @arg $3 pid spawn.sh process id.
+function accept_spawned_claude_trust_dialog() {
+    local workspace_id="$1"
+    local known="$2"
+    local spawn_pid="$3"
+    local pane_id=""
+
+    while kill -0 "${spawn_pid}" 2> /dev/null; do
+        if [[ -z ${pane_id} ]]; then
+            pane_id="$(herdr pane list --workspace "${workspace_id}" 2> /dev/null |
+                jq -r --argjson known "${known}" '[.result.panes[]?.pane_id | select(IN($known[]) | not)][0] // empty')" || pane_id=""
+            if [[ -z ${pane_id} ]]; then
+                sleep 1
+                continue
+            fi
+        fi
+        accept_claude_workspace_trust_dialog "${pane_id}" 2000 && return 0
+    done
+}
+
+# @description Print the one-line SessionStart summary of a session outside a
+#   Herdr pane, which never seats a worker: the pair is not started, the
+#   on-demand worker and auditor commands, and, when the manifest worker
+#   worktree has an agmsg identity with a placement record, that worker's name
+#   and `<socket>:<pane>` location. Prints nothing for the worktree-seated
+#   worker's own session. Reads only; changes no Herdr or agmsg state.
+function print_plain_start_summary() {
+    local scripts="${HOME}/.agents/skills/agmsg/scripts"
+    local workdir worker_worktree common_dir seat_dir="" seat_type seat="" pane="" seated
+
+    workdir="$(pwd -P)"
+    worker_worktree="$(resolve_worker_worktree)"
+    if [[ -n ${worker_worktree} ]] && common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2> /dev/null)"; then
+        seat_dir="$(cd -- "${common_dir%/.git}/${worker_worktree}" 2> /dev/null && pwd -P)" || seat_dir=""
+        # The worktree-seated worker's own SessionStart hook stays quiet.
+        [[ ${seat_dir} != "${workdir}" ]] || return 0
     fi
+    if [[ -n ${seat_dir} && -x ${scripts}/identities.sh && -x ${scripts}/team.sh ]] && command -v jq > /dev/null 2>&1; then
+        for seat_type in claude-code codex; do
+            seat="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${seat_dir}" "${seat_type}" 2> /dev/null | head -n 1)" || seat=""
+            [[ -z ${seat} ]] || break
+        done
+    fi
+    if [[ -n ${seat} ]]; then
+        pane="$("${scripts}/team.sh" "${seat%%$'\t'*}" --json 2> /dev/null |
+            jq -r --arg member "${seat#*$'\t'}" '.[]? | select(.member == $member) | .pane // empty' 2> /dev/null)" || pane=""
+    fi
+    if [[ -n ${pane} && ${pane} != unknown:* ]]; then
+        seated="worker ${seat#*$'\t'} is seated at ${pane}"
+    else
+        seated="no worker is seated at ${worker_worktree:-the manifest worker_worktree}"
+    fi
+    printf 'herdr-agents: not in a Herdr pane, so the agent pair is not started; start the worker on demand with "herdr-agents --add-worker %s [DIR]" and run the auditor headless with "codex --profile audit review --commit <sha>"; %s.\n' \
+        "${worker_worktree:-<worktree>}" "${seated}"
 }
 
 # @description Start a worker agent (codex or claude) in an existing pane and return its pane id.
@@ -673,7 +743,7 @@ function start_worker_agent() {
             worker_args+=(${extra_worker_args[@]+"${extra_worker_args[@]}"})
         fi
         start_agent_in_pane claude "${agent_name}" "${pane_id}" "${newly_created}" ${worker_args[@]+"${worker_args[@]}"} > /dev/null
-        accept_claude_workspace_trust_dialog "${pane_id}"
+        accept_claude_workspace_trust_dialog "${pane_id}" || true
     else
         start_agent_in_pane codex "${agent_name}" "${pane_id}" "${newly_created}" \
             --sandbox workspace-write --profile "${HERDR_AGENTS_WORKER_PROFILE:-standard}" > /dev/null
@@ -1275,10 +1345,14 @@ seat_worktree=""
 seat_kind=""
 seat_profile=""
 seat_force=false
+seat_ready_timeout=""
 if [[ ${1:-} == "--attach" ]]; then
     attach_mode=true
     shift
     if [[ -z ${HERDR_ENV:-} || -z ${HERDR_PANE_ID:-} || -z ${HERDR_WORKSPACE_ID:-} ]]; then
+        # A plain-shell start (mosh/ssh, `claude -p`) never seats a worker, but
+        # SessionStart always says what it found and what to run next.
+        print_plain_start_summary
         exit 0
     fi
     [[ ${HERDR_AGENTS_LAYOUT:-} == managed ]] && exit 0
@@ -1297,18 +1371,18 @@ elif [[ ${1:-} == "--add-worker" || ${1:-} == "--remove-worker" ]]; then
     shift
     seat_worktree="${1:-}"
     [[ $# -gt 0 ]] && shift
-    while [[ ${1:-} == "--kind" || ${1:-} == "--profile" || ${1:-} == "--force" ]]; do
+    while [[ ${1:-} == "--kind" || ${1:-} == "--profile" || ${1:-} == "--ready-timeout" || ${1:-} == "--force" ]]; do
         case "$1" in
-        --kind | --profile)
+        --kind | --profile | --ready-timeout)
             if [[ ${add_worker_mode} != true || $# -lt 2 ]]; then
                 usage >&2
                 exit 2
             fi
-            if [[ $1 == "--kind" ]]; then
-                seat_kind="$2"
-            else
-                seat_profile="$2"
-            fi
+            case "$1" in
+            --kind) seat_kind="$2" ;;
+            --profile) seat_profile="$2" ;;
+            --ready-timeout) seat_ready_timeout="$2" ;;
+            esac
             shift 2
             ;;
         --force)
@@ -1372,6 +1446,21 @@ if [[ ${add_worker_mode} == true || ${remove_worker_mode} == true ]]; then
         usage >&2
         exit 2
     fi
+    if [[ -n ${seat_ready_timeout} && ! ${seat_ready_timeout} =~ ^[1-9][0-9]*$ ]]; then
+        printf 'herdr-agents: --ready-timeout must be a positive number of seconds; got %q\n' "${seat_ready_timeout}" >&2
+        exit 2
+    fi
+    if [[ ${add_worker_mode} == true && -z ${HERDR_SOCKET_PATH:-} ]]; then
+        # A pane-less caller has no HERDR_SOCKET_PATH, and spawn.sh's herdr
+        # driver refuses without it; derive the default server socket before
+        # anything is created so a failure leaves no partial workspace.
+        HERDR_SOCKET_PATH="${XDG_CONFIG_HOME:-${HOME}/.config}/herdr/herdr.sock"
+        if [[ ! -S ${HERDR_SOCKET_PATH} ]]; then
+            printf 'herdr-agents: HERDR_SOCKET_PATH is unset and no Herdr server socket is at %s; start Herdr or export HERDR_SOCKET_PATH.\n' "${HERDR_SOCKET_PATH}" >&2
+            exit 2
+        fi
+        export HERDR_SOCKET_PATH
+    fi
     scripts="${HOME}/.agents/skills/agmsg/scripts"
     seat_label="$(basename "${workdir}") worker ${seat_worktree##*/}"
     if ! seat_workspace_id="$(herdr workspace list | jq -er --arg label "${seat_label}" \
@@ -1425,12 +1514,23 @@ if [[ ${add_worker_mode} == true ]]; then
     seat_options="$(mktemp)"
     trap 'rm -f "${seat_options}"' EXIT
     write_spawn_options "${seat_kind}" > "${seat_options}"
+    seat_panes="$(herdr pane list --workspace "${seat_workspace_id}" | jq -c '[.result.panes[]?.pane_id]')"
     # spawn.sh seats the member (placement record, actas boot, readiness wait);
     # --window opens a tab in HERDR_WORKSPACE_ID, and --project opts the join
-    # out of project resolution.
+    # out of project resolution. It runs in the background so a claude worker's
+    # trust dialog is accepted during the readiness wait, not after it.
     HERDR_WORKSPACE_ID="${seat_workspace_id}" AGMSG_SPAWN_OPTIONS_FILE="${seat_options}" \
         "${scripts}/spawn.sh" "$(worker_agmsg_type "${seat_kind}")" "${seat_name}" \
-        --project "${seat_dir}" --team "${seat_team}" --terminal-driver herdr --window
+        --project "${seat_dir}" --team "${seat_team}" --terminal-driver herdr --window \
+        ${seat_ready_timeout:+--ready-timeout "${seat_ready_timeout}"} &
+    spawn_pid=$!
+    [[ ${seat_kind} != claude ]] || accept_spawned_claude_trust_dialog "${seat_workspace_id}" "${seat_panes}" "${spawn_pid}"
+    spawn_rc=0
+    wait "${spawn_pid}" || spawn_rc=$?
+    if [[ ${spawn_rc} -ne 0 ]]; then
+        printf 'herdr-agents: spawn.sh exited %s for worker %s in workspace %s; confirm linkage with AGMSG-PING before dispatching.\n' "${spawn_rc}" "${seat_name}" "${seat_workspace_id}" >&2
+        exit "${spawn_rc}"
+    fi
     printf 'Herdr agents worker added: %s in workspace %s (%s)\n' "${seat_name}" "${seat_workspace_id}" "${seat_dir}"
     exit 0
 fi

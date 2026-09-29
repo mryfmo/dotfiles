@@ -496,6 +496,21 @@ Ghostty. Already-open Ghostty shells keep the zsh function they sourced at
 startup; run `exec zsh` or open a new window after updating these dotfiles
 when the wrapper changes.
 
+A Claude Code session started from a plain shell outside Herdr (for example
+over mosh or ssh, or `claude -p`) never seats a worker. Its SessionStart hook
+prints one line into the session context: not in a Herdr pane, the pair is not
+started, the on-demand commands, and the manifest worktree's worker with its
+`<socket>:<pane>` location when one is seated. Such a pane-less orchestrator
+claims its seat with `actas-claim.sh`, seats the worker on demand with
+`herdr-agents --add-worker <worktree>` (which derives `HERDR_SOCKET_PATH` from
+the default Herdr server socket before creating anything, accepts a claude
+worker's workspace-trust dialog during spawn's readiness wait, and takes
+`--ready-timeout <seconds>`), confirms the worker's placement in
+`team.sh <team> --json`, sends `AGMSG-PING` with `poke.sh --body-file`, and
+dispatches no task before the `AGMSG-PONG`. The auditor runs headless
+(`codex --profile audit review --commit <sha>`), and a sandboxed pane-less
+session has no Monitor watch, so RESULTs arrive by turn delivery.
+
 The workspace layout stays centralized in `herdr-agents`, which is also bound
 inside Herdr at `prefix+alt+a`. The target layout is deliberately fixed at
 exactly two managed panes, split 50/50: `claude-orchestrator` on the left and

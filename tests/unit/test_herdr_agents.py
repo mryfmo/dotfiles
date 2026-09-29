@@ -2880,6 +2880,109 @@ fi
             )
         )
 
+    def write_self_named_pair(self, *extra_panes: str, extra_workspace_ids: tuple[str, ...] = ()) -> None:
+        """A pair relabeled by upstream agmsg self-naming: workspace label `dotfiles`,
+        pane labels `<team>:<name>`, herdr agents renamed to hash keys (no agent get)."""
+        scripts = self.install_agmsg_fakes(
+            claude_identities_output="dotfiles\tclaude-remediation-dot\ndotfiles\tclaude-standard-dot-a006"
+        )
+        team = scripts / "team.sh"
+        team.write_text(
+            "#!/usr/bin/env bash\n"
+            f"printf 'team %s\\n' \"$*\" >> {self.calls_path}\n"
+            "printf '%s\\n' '"
+            + json.dumps([
+                {"member": "claude-remediation-dot", "type": "claude-code"},
+                {"member": "claude-standard-dot-a005", "type": "claude-code"},
+                {"member": "claude-standard-dot-a006", "type": "claude-code"},
+            ])
+            + "'\n"
+        )
+        team.chmod(0o755)
+        profiles = self.home_dir / ".agents/model-profiles.env"
+        profiles.parent.mkdir(parents=True, exist_ok=True)
+        profiles.write_text(
+            'HERDR_AGENTS_WORKER_KIND="claude"\n'
+            'HERDR_AGENTS_WORKER_PROFILE="standard"\n'
+            'MODEL_PROFILE_STANDARD_CLAUDE_ARGS="--model opus --effort high"\n'
+        )
+        self.write_workspace_state(
+            "w-old",
+            ",".join(
+                (
+                    f'{{"agent":"claude","cwd":"{self.workdir}","label":"dotfiles:claude-remediation-dot","pane_id":"w-old:p1","workspace_id":"w-old"}}',
+                    f'{{"agent":"claude","cwd":"{self.workdir}","label":"dotfiles:claude-standard-dot-a005","pane_id":"w-old:p2","workspace_id":"w-old"}}',
+                    *extra_panes,
+                )
+            ),
+            label="dotfiles",
+            extra_workspace_ids=extra_workspace_ids,
+        )
+        self.write_pane_layout([("w-old:p1", 0), ("w-old:p2", 40)])
+
+    def calls(self) -> list[str]:
+        return self.calls_path.read_text().splitlines() if self.calls_path.exists() else []
+
+    def test_audit_finds_the_self_named_pair_workspace(self) -> None:
+        self.write_self_named_pair(self.audit_tab_pane())
+        self.write_audit_evidence(self.transcript("No findings.\nVerdict: correct"))
+
+        result = self.run_helper("--audit", AUDIT_SHA)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn("no managed Herdr workspace", result.stderr)
+        self.assertTrue(any(c.startswith("pane run w-old:p9 ") for c in self.calls()), self.calls())
+
+    def test_attach_leaves_a_self_named_pair_alone(self) -> None:
+        self.write_self_named_pair()
+
+        result = self.run_attach_helper(in_herdr=True, workspace_id="w-old", pane_id="w-old:p1")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls()
+        self.assertFalse(any(c.startswith(("pane rename", "pane swap", "pane split", "agent start")) for c in calls), calls)
+
+    def test_attach_from_the_self_named_worker_pane_exits_quietly(self) -> None:
+        self.write_self_named_pair()
+
+        result = self.run_attach_helper(in_herdr=True, workspace_id="w-old", pane_id="w-old:p2")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(any(c.startswith(("pane rename", "pane split", "agent start")) for c in self.calls()), self.calls())
+
+    def test_restart_worker_finds_the_worker_by_its_seat_label(self) -> None:
+        self.write_self_named_pair()
+
+        result = self.run_helper("--restart-worker")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls()
+        self.assertIn("agent prompt w-old:p2 /exit", calls)
+        self.assertIn(
+            "agent start claude-worker-w-old --kind claude --pane w-old:p2 --timeout 30000 -- --model opus --effort high",
+            calls,
+        )
+        self.assertFalse(any(c.startswith("pane rename") for c in calls), calls)
+        self.assertIn("Herdr agents worker restarted in pane w-old:p2", result.stdout)
+
+    def test_full_mode_heals_nothing_in_a_healthy_self_named_pair(self) -> None:
+        self.write_self_named_pair()
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls()
+        self.assertFalse(any(c.startswith(("workspace create", "pane split", "agent start", "pane rename", "agent prompt")) for c in calls), calls)
+        self.assertIn("workspace focus w-old", calls)
+
+    def test_two_self_named_pair_workspaces_still_refuse(self) -> None:
+        self.write_self_named_pair(self.audit_tab_pane(), extra_workspace_ids=("w-new",))
+
+        result = self.run_helper("--audit", AUDIT_SHA)
+
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("multiple managed Herdr workspaces", result.stderr)
+
     def test_audit_trusts_a_shell_foreground_over_a_stale_visible_snapshot(self) -> None:
         for state in ("shell", "shell-pid"):
             with self.subTest(state=state):

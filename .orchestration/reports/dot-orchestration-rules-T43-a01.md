@@ -4,7 +4,7 @@
 - task_rev: 2cf825882d080212e2f6fb0b29164861074308864d162289cdbd84c77949fe89 (sha256 verified against the main-checkout file and the `origin/main:` blob at 258339f)
 - branch: `feat/orchestration-rules-T43` from origin/main 258339f. worker-c was clean and detached before the switch.
 - commit: 557502b
-- PR: https://github.com/mryfmo/dotfiles/pull/214 (head 557502b; CI 12/12 pass incl. the CodeRabbit status check, nix skipped; MERGEABLE)
+- PR: https://github.com/mryfmo/dotfiles/pull/214 (revision 2 head 1843dd1 = fix 99c1174 + .orchestration-only merge of origin/main f45cf73; CI 12/12 pass incl. the CodeRabbit status check, nix skipped; MERGEABLE)
 
 ## Changes
 
@@ -63,3 +63,25 @@ $ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py m
 None outside the repository working tree.
 
 cost: 0 subagent dispatches; orchestrating-session token/cost figures n/a.
+
+## Revision 2 (orchestrator status=revise 20:58:06Z: coverage gate fails open)
+
+The Codex audit of 557502b (Verdict: incorrect) found two P2s; both were reproduced with the new tests.
+
+1. **An unresolvable `--repo-ref` failed open.** At `ua-symbol-coverage.py:65`, any failed `git show` counted as a deleted file, so every loss was "explained" and the script exited 0. This is the same fail-open class as the T38 `--base` bug.
+   - Fix: `verify_ref()` runs `git rev-parse --verify --quiet --end-of-options REF^{commit}` and rejects empty or `-`-prefixed values. It raises `CoverageError`, and `main()` exits **2** before printing any table.
+   - For a valid ref, a failed `git show` means the path is absent only when `git ls-tree --name-only REF -- path` is empty. Any other failure also exits 2.
+2. **`defs < before` excused the whole decrease** (old=2, source defs=1, new=0 passed).
+   - Fix: with an integer def count, a decrease is `explained` only when `after >= min(before, defs)`; any lower `after` is `REGRESSION`.
+   - A file type with no def grammar (`-`) never explains a decrease. Absent at REF gives `gone`, which is explained.
+3. **Tests.** `tests/unit/test_ua_symbol_coverage.py` now has 4 tests: the original regression-vs-clean case, and the four requested cases.
+   - An unresolvable ref (`no-such-ref`, `--output=leak`, empty) exits 2, prints a stderr message and no `regressions:` line, and creates no `leak` file.
+   - A file gone at REF is explained.
+   - A partial deletion with extra loss (2 → 0 with 1 def) is a REGRESSION.
+   - A partial deletion fully accounted for (2 → 1 with 1 def) is explained.
+   - Against 557502b's script, the unresolvable-ref subtests (it returned 0, or 1 for the empty ref) and the extra-loss case (it returned 0) fail. The other two pass on both versions.
+4. **Real data.** T41 rev1 against 72b8901 still gives `regressions: 8`, exit 1. The self-compare gives `regressions: 0`, exit 0. `--repo-ref no-such-ref` gives exit 2 with `does not resolve to a commit`.
+5. **Checks** (outside the sandbox, because of the `uv` cache issue): `make unit-test` 614 OK; `make validate-agent-assets` ok; `make render-check` up to date.
+6. **Commits.** 99c1174 is the fix. 1843dd1 merges origin/main f45cf73, which is `.orchestration` only, so base-ok holds without a force push. The PR is still #214.
+
+cost (revision 2): 0 subagent dispatches; orchestrating session n/a.

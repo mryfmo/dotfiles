@@ -15,3 +15,15 @@
 ## Promotion
 
 None. These are candidates only.
+
+## Revision 2 addendum
+
+3. **Check every gate for fail-open inputs.** Any gate that treats a failed
+   subprocess as "nothing to check" is fail-open. Verify refs up front and
+   separate "absent" (`git ls-tree` empty) from "unreadable" (exit 2). This
+   is the second occurrence after T38's `--base`, and it is worth a
+   repo-wide sweep of `scripts/*` for `returncode != 0` → benign-default
+   patterns.
+4. **Explanations must be quantitative.** An explanation such as "the source
+   lost definitions" must bound the allowed loss (`new >= min(old, defs)`)
+   rather than excuse any decrease once it applies.

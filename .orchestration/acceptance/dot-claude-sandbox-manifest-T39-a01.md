@@ -175,3 +175,36 @@ not restrict egress in the hot-reloaded session; to be re-tested in leg 2
 rather than a reload artefact.
 
 Leg 2 (fresh session) and the `failIfUnavailable: true` flip remain pending.
+
+### Leg 1 addenda (orchestrator + worker-c observations, 2026-09-29/30)
+
+- `uv run` targets (`make validate-agent-assets`, `make render-check`) fail
+  inside the sandbox: `Read-only file system` on `~/.cache/uv`. Workaround
+  `UV_CACHE_DIR=$TMPDIR/uv-cache`; T44 adds the cache dir to allowWrite.
+- `gh` returns HTTP 401 inside the sandbox (keyring D-Bus Unix socket
+  blocked) — intermittently for the orchestrator (REST once worked, GraphQL
+  failed), consistently for worker-c. T44's `allowAllUnixSockets` covers it.
+- `git status --porcelain` inside the sandbox lists phantom untracked entries
+  for the sandbox's protected-path stubs (`.bashrc`, `.zshrc`, `.gitconfig`,
+  `.gitmodules`, `.mcp.json`, `.idea`, `.vscode`, `.claude/{agents,commands,
+  skills,workflows,routines,output-styles,launch.json,loop.md}`); none exist
+  on disk. Hazard for "tree clean" checks and `git add -A`; boundary commits
+  keep using explicit `git add .orchestration/`.
+- agmsg `send.sh` pane rename fails inside the sandbox (herdr socket); the
+  message itself is delivered.
+- `$TMPDIR` differs between sandboxed and unsandboxed Bash calls; a body file
+  written in one is not visible in the other (caused one truncated agmsg
+  message, id 523, corrected by 524).
+- **Recurring `.git/config.lock` stub (2026-09-30 05:57 and 06:01 JST):** a
+  zero-byte, read-only `.git/config.lock` appears in the shared `.git` after
+  a sandboxed git command runs from a linked worktree (the sandbox protects
+  `.git/config`; the half-applied `git switch -c … origin/main` moved the ref,
+  index and tree but not HEAD or the tracking config). While present it
+  blocks every git config write for everyone, sandboxed or not (`push -u`,
+  `--set-upstream-to`, `git config`). Removed twice by the orchestrator
+  (hygiene exemption, after checking no git process held it). Workers now run
+  git outside the sandbox for config-writing commands and push without `-u`.
+  Root-cause follow-up (T45 candidate): reproduce with a minimal sandboxed
+  `git config` from a worktree; decide between `excludedCommands` for git,
+  an upstream Claude Code report, or accepting no config writes in the
+  sandbox.

@@ -497,6 +497,28 @@ Every worker pane's environment also carries `AGMSG_RESOLVE_PROJECT=0`, so
 agmsg's project resolution keeps a worker's own path; see [agmsg](#agmsg)
 for the registration rule.
 
+Upstream agmsg 1.5.0 self-naming renames a seat's pane to `<team>:<name>`
+when the seat acts, and its herdr agent to a hash key (`scripts/lib/self-name.sh`,
+`lib/terminal-registry.sh`). So the legacy `claude-orchestrator` and
+`<kind>-worker` pane labels, and the `<kind>-worker-<workspace>` agent names,
+do not survive on a live pair; herdr exposes no workspace env to key on either.
+`herdr-agents` therefore reads pane labels through the repository's agmsg
+seats, read at the main checkout (also from a linked worktree):
+- a pane labeled `<team>:<name>` counts as `claude-orchestrator` when `<name>`
+  is the orchestrator, meaning the non-worker (no `-aNNN`) `claude-code`
+  identity registered there;
+- such a pane counts as the worker when `<name>` is the pair's own
+  worker-type seat: one registered at `HERDR_AGENTS_WORKER_WORKTREE`, or for
+  the legacy seat any worker-type identity at the main checkout other than the
+  orchestrator, whether solo (e.g. `codex-standard-dot`) or `-aNNN`;
+- other members of the team are not the pair's worker, so they never become
+  a second worker;
+- the legacy labels keep working.
+
+It never renames a pane that already carries a `<team>:<name>` label, so it does
+not fight self-naming, and the worker's own SessionStart `--attach` still
+recognizes its pane as the worker.
+
 An orchestrator/worker pair always lives in one Herdr workspace. A workspace
 counts as managed for DIR when it carries the full-mode `<dir> agents` label
 or has a `claude-orchestrator` pane in DIR (attach mode keeps the workspace's

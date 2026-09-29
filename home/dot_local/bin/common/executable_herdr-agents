@@ -331,7 +331,7 @@ function start_claude_in_pane() {
         herdr pane run "${pane_id}" "export CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed" > /dev/null
         wait_for_shell_prompt "${pane_id}" prompt || return 1
     fi
-    herdr pane rename "${pane_id}" claude-orchestrator > /dev/null
+    rename_pane_unless_seat_named "${pane_id}" claude-orchestrator
     if [[ ${#claude_args[@]} -gt 0 ]]; then
         start_agent_in_pane claude "${agent_name}" "${pane_id}" "${newly_created}" "${claude_args[@]}" > /dev/null
     else
@@ -391,8 +391,88 @@ function start_worker_agent() {
         start_agent_in_pane codex "${agent_name}" "${pane_id}" "${newly_created}" \
             --sandbox workspace-write --profile "${HERDR_AGENTS_WORKER_PROFILE:-standard}" > /dev/null
     fi
-    herdr pane rename "${pane_id}" "${kind}-worker" > /dev/null
+    rename_pane_unless_seat_named "${pane_id}" "${kind}-worker"
     printf '%s\n' "${pane_id}"
+}
+
+# @description Load the pane labels upstream agmsg 1.5.0 self-naming gives the
+#   pair's seats. A seat that acts names its own pane `<team>:<name>`
+#   (scripts/lib/self-name.sh, lib/terminal-registry.sh) and renames its herdr
+#   agent to a hash key, so the legacy `claude-orchestrator` / `<kind>-worker`
+#   labels and agent names disappear. Seats are read at the repository's main
+#   checkout (the git common dir's parent, so a linked worktree resolves too):
+#   the orchestrator is its non-worker (no -aNNN) claude-code identity, and the
+#   worker is any worker-type seat registered at HERDR_AGENTS_WORKER_WORKTREE
+#   (read from ~/.agents/model-profiles.env in a subshell, never in the
+#   caller's scope) or, for the legacy seat, any worker-type identity at the
+#   main checkout that is not the orchestrator, solo or -aNNN alike. Members
+#   registered elsewhere are not the pair's worker. Sets
+#   seat_orchestrator_labels and seat_worker_labels (JSON arrays of
+#   `<team>:<name>`).
+# @arg $1 workdir Absolute directory.
+function load_seat_labels() {
+    local scripts="${HOME}/.agents/skills/agmsg/scripts"
+    local main="$1" common rows worker_type seat_worktree
+
+    seat_orchestrator_labels='[]'
+    seat_worker_labels='[]'
+    # $HOME is never an agmsg project (see bootstrap_agmsg).
+    [[ "$(cd -- "$1" && pwd -P)" != "$(cd -- "${HOME}" && pwd -P)" ]] || return 0
+    [[ -x ${scripts}/identities.sh ]] || return 0
+    if common="$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2> /dev/null)" &&
+        [[ ${common} == */.git && -d ${common%/.git} ]]; then
+        main="$(cd -- "${common%/.git}" && pwd -P)"
+    fi
+    rows="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${main}" claude-code 2> /dev/null |
+        awk -F '\t' 'NF == 2 && $2 !~ /-a[0-9][0-9][0-9]$/' | sort -u)" || rows=""
+    [[ -n ${rows} ]] || return 0
+    seat_orchestrator_labels="$(jq -Rnc '[inputs | split("\t") | "\(.[0]):\(.[1])"]' <<< "${rows}")"
+    worker_type="$(worker_agmsg_type "${worker_kind:-$(resolve_worker_kind)}")"
+    seat_worktree="$(
+        # shellcheck source=/dev/null
+        [[ ! -f ${HOME}/.agents/model-profiles.env ]] || source "${HOME}/.agents/model-profiles.env"
+        printf '%s' "${HERDR_AGENTS_WORKER_WORKTREE:-}"
+    )"
+    rows="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${main}" "${worker_type}" 2> /dev/null |
+        jq -Rr --argjson orchestrators "${seat_orchestrator_labels}" \
+            'split("\t") | select(length == 2) | select(("\(.[0]):\(.[1])") as $label | $orchestrators | index($label) | not) | join("\t")')" || rows=""
+    if [[ ${seat_worktree} =~ ^\.claude/worktrees/[A-Za-z0-9._-]+$ && -d ${main}/${seat_worktree} ]]; then
+        rows+=$'\n'"$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${main}/${seat_worktree}" "${worker_type}" 2> /dev/null)" || true
+    fi
+    seat_worker_labels="$(jq -Rnc '[inputs | split("\t") | select(length == 2) | "\(.[0]):\(.[1])"] | unique' <<< "${rows}")"
+}
+
+# @description Map self-named seat pane labels on stdin pane-list JSON back to
+#   the pair roles: `<team>:<orchestrator>` to `claude-orchestrator` and the
+#   worker seat's `<team>:<name>` to `<kind>-worker`. The panes keep their real
+#   labels in herdr; only herdr-agents' view changes.
+function normalize_seat_labels() {
+    jq -c --argjson orchestrators "${seat_orchestrator_labels:-[]}" --argjson workers "${seat_worker_labels:-[]}" \
+        --arg worker "${worker_kind:-$(resolve_worker_kind)}-worker" \
+        'if (.result.panes | type) == "array" then
+             .result.panes |= map((.label // "") as $label
+                 | if ($orchestrators | index($label)) then .label = "claude-orchestrator"
+                   elif ($workers | index($label)) then .label = $worker
+                   else . end)
+         else . end'
+}
+
+# @description Print a workspace's pane-list JSON with seat labels normalized.
+# @arg $1 string Herdr workspace id.
+function managed_pane_list() {
+    herdr pane list --workspace "$1" | normalize_seat_labels
+}
+
+# @description Rename a pane unless upstream agmsg self-naming already labeled
+#   it `<team>:<name>`; relabeling would fight the seat's own naming.
+# @arg $1 pane_id Pane id (`<workspace>:<pane>`).
+# @arg $2 string Label.
+function rename_pane_unless_seat_named() {
+    if herdr pane list --workspace "${1%%:*}" 2> /dev/null | jq -e --arg pane "$1" \
+        '.result.panes[]? | select(.pane_id == $pane and ((.label // "") | test("^[^:[:space:]]+:[^:[:space:]]+$")))' > /dev/null; then
+        return 0
+    fi
+    herdr pane rename "$1" "$2" > /dev/null
 }
 
 # @description Print every herdr-agents-managed workspace id for a workdir.
@@ -412,7 +492,7 @@ function find_managed_workspaces() {
     workspace_list_json="$(herdr workspace list)"
     while IFS=$'\t' read -r workspace_id workspace_label; do
         [[ -n ${workspace_id} ]] || continue
-        if ! panes_json="$(herdr pane list --workspace "${workspace_id}")"; then
+        if ! panes_json="$(managed_pane_list "${workspace_id}")"; then
             continue
         fi
         if printf '%s\n' "${panes_json}" | jq -e --arg cwd "${workdir}" --arg label "${label}" --arg workspace_label "${workspace_label}" \
@@ -952,6 +1032,7 @@ if [[ ${audit_mode} == true ]]; then
     workdir="${1:-$PWD}"
     cd -- "${workdir}"
     workdir="$(pwd -P)"
+    load_seat_labels "${workdir}"
     audit_out="${audit_out:-.orchestration/validation/audit-${audit_commit}.md}"
     [[ ${audit_out} == /* ]] || audit_out="${workdir}/${audit_out}"
     workspace_id="$(single_managed_workspace "$(basename "${workdir}") agents" "${workdir}")"
@@ -1097,6 +1178,7 @@ else
 fi
 cd -- "${workdir}"
 workdir="$(pwd -P)"
+load_seat_labels "${workdir}"
 HERDR_AGENTS_WORKER_PROFILE="$(resolve_worker_profile)"
 require_distinct_worker_identity "${worker_kind}" "${workdir}"
 
@@ -1104,18 +1186,29 @@ if [[ ${attach_mode} == true ]]; then
     workspace_id="${HERDR_WORKSPACE_ID}"
     claude_pane_id="${HERDR_PANE_ID}"
     worker_agent_name="$(agent_name_for_workspace "${worker_kind}-worker" "${workspace_id}")"
-    panes_json="$(herdr pane list --workspace "${workspace_id}")"
-    workspace_worker_pane_id="$(live_worker_pane_id "${worker_agent_name}" "${panes_json}")" || workspace_worker_pane_id=""
-    # A claude worker's own SessionStart hook must not relabel its pane as the orchestrator.
+    panes_json="$(managed_pane_list "${workspace_id}")"
+    workspace_worker_pane_id="$(live_worker_pane_id "${worker_agent_name}" "${panes_json}")" ||
+        workspace_worker_pane_id="$(labeled_worker_pane_id "${worker_kind}" "${panes_json}")" ||
+        workspace_worker_pane_id=""
+    # A claude worker's own SessionStart hook must not relabel its pane as the
+    # orchestrator. Upstream self-naming renames the herdr agent, so the pane's
+    # (normalized) seat label identifies the worker too.
     [[ ${workspace_worker_pane_id} == "${claude_pane_id}" ]] && exit 0
+    if printf '%s\n' "${panes_json}" | jq -e --arg pane "${claude_pane_id}" --arg label "${worker_kind}-worker" \
+        '.result.panes[]? | select(.pane_id == $pane and .label == $label)' > /dev/null; then
+        exit 0
+    fi
     if ! panes_json="$(panes_on_pane_tab "${panes_json}" "${claude_pane_id}")"; then
         printf 'Unable to identify the current Herdr tab; refusing attach repair.\n' >&2
         exit 0
     fi
-    worker_pane_id="$(live_worker_pane_id "${worker_agent_name}" "${panes_json}")" || worker_pane_id=""
+    # Upstream self-naming renames the herdr agent, so fall back to the seat label.
+    worker_pane_id="$(live_worker_pane_id "${worker_agent_name}" "${panes_json}")" ||
+        worker_pane_id="$(labeled_worker_pane_id "${worker_kind}" "${panes_json}")" ||
+        worker_pane_id=""
 
     if ! printf '%s\n' "${panes_json}" | jq -e --arg pane_id "${claude_pane_id}" '.result.panes[]? | select(.pane_id == $pane_id and .label == "claude-orchestrator")' > /dev/null; then
-        herdr pane rename "${claude_pane_id}" claude-orchestrator
+        rename_pane_unless_seat_named "${claude_pane_id}" claude-orchestrator
     fi
     if ! attach_panes_are_unambiguous "${panes_json}" "${claude_pane_id}" "${worker_pane_id}"; then
         printf 'Herdr attach panes are ambiguous or include unmanaged panes; refusing repair.\n' >&2
@@ -1137,7 +1230,7 @@ if [[ ${attach_mode} == true ]]; then
         fi
         start_worker_agent "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" true > /dev/null
     fi
-    panes_json="$(herdr pane list --workspace "${workspace_id}")"
+    panes_json="$(managed_pane_list "${workspace_id}")"
     if ! panes_json="$(panes_on_pane_tab "${panes_json}" "${claude_pane_id}")"; then
         printf 'Unable to identify the current Herdr tab; refusing order repair.\n' >&2
         exit 0
@@ -1160,7 +1253,7 @@ if [[ ${restart_mode} == true ]]; then
     fi
     workspace_id="${existing_workspace_id}"
     worker_agent_name="$(agent_name_for_workspace "${worker_kind}-worker" "${workspace_id}")"
-    panes_json="$(herdr pane list --workspace "${workspace_id}")"
+    panes_json="$(managed_pane_list "${workspace_id}")"
     worker_pane_id="$(live_worker_pane_id "${worker_agent_name}" "${panes_json}")" ||
         worker_pane_id="$(labeled_worker_pane_id "${worker_kind}" "${panes_json}")" ||
         worker_pane_id="$(empty_pane_id "${panes_json}")"
@@ -1180,7 +1273,7 @@ if [[ ${restart_mode} == true ]]; then
     fi
     # Repair a legacy label (e.g. claude-orchestrator from the pre-T25 attach bug) before the restart can refuse.
     if ! printf '%s\n' "${panes_json}" | jq -e --arg pane_id "${worker_pane_id}" --arg label "${worker_kind}-worker" '.result.panes[]? | select(.pane_id == $pane_id and .label == $label)' > /dev/null; then
-        herdr pane rename "${worker_pane_id}" "${worker_kind}-worker" > /dev/null
+        rename_pane_unless_seat_named "${worker_pane_id}" "${worker_kind}-worker"
     fi
     restart_worker_in_pane "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" "${panes_json}"
     printf 'Herdr agents worker restarted in pane %s\n' "${worker_pane_id}"
@@ -1190,14 +1283,14 @@ fi
 if [[ -n ${existing_workspace_id} ]]; then
     workspace_id="${existing_workspace_id}"
     worker_agent_name="$(agent_name_for_workspace "${worker_kind}-worker" "${workspace_id}")"
-    panes_json="$(herdr pane list --workspace "${workspace_id}")"
+    panes_json="$(managed_pane_list "${workspace_id}")"
     worker_pane_id="$(live_worker_pane_id "${worker_agent_name}" "${panes_json}")" || worker_pane_id=""
 
     if [[ -z ${worker_pane_id} ]] && worker_pane_id="$(labeled_worker_pane_id "${worker_kind}" "${panes_json}")"; then
         # Reuse the labeled worker pane; an exited worker leaves it agentless.
         if ! pane_has_agent "${panes_json}" "${worker_pane_id}"; then
             restart_worker_in_pane "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" "${panes_json}"
-            panes_json="$(herdr pane list --workspace "${workspace_id}")"
+            panes_json="$(managed_pane_list "${workspace_id}")"
         fi
     fi
     if [[ -z ${worker_pane_id} ]]; then
@@ -1217,7 +1310,7 @@ if [[ -n ${existing_workspace_id} ]]; then
             worker_pane_is_new=true
         fi
         start_worker_agent "${worker_kind}" "${worker_agent_name}" "${worker_pane_id}" "${worker_pane_is_new}" > /dev/null
-        panes_json="$(herdr pane list --workspace "${workspace_id}")"
+        panes_json="$(managed_pane_list "${workspace_id}")"
     fi
 
     if ! has_claude_pane "${panes_json}" "${worker_pane_id}"; then
@@ -1231,7 +1324,7 @@ if [[ -n ${existing_workspace_id} ]]; then
         start_claude_in_pane "${claude_pane_id}" "${workspace_id}" "${claude_pane_is_new}"
     fi
 
-    panes_json="$(herdr pane list --workspace "${workspace_id}")"
+    panes_json="$(managed_pane_list "${workspace_id}")"
     if panes_json="$(panes_on_pane_tab "${panes_json}" "${worker_pane_id}")"; then
         claude_pane_id="$(printf '%s\n' "${panes_json}" | jq -r --arg worker "${worker_pane_id}" \
             '.result.panes[]? | select((.agent == "claude" or .label == "claude-orchestrator") and .pane_id != $worker) | .pane_id // empty')"

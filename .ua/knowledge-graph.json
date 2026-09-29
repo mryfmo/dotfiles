@@ -411,16 +411,16 @@
       "type": "file",
       "name": "storage.py",
       "filePath": ".claude/contextdb/contextdb/storage.py",
-      "summary": "SQLite storage layer for CompactionDB defining the schema (projects, sessions, events, event_files, memory candidates, memories, embeddings, memory blocks, FTS5 indexes) and the ContextStore class for ingesting events, managing durable memories, searching, health checks, pruning, and export.",
+      "summary": "SQLite persistence layer for CompactionDB: defines the ledger schema (events, sessions, memories, candidates, embeddings, hierarchical memory blocks) and the ContextStore class that ingests events, curates durable memories, and serves search, recovery, health, and pruning queries.",
       "tags": [
         "data-model",
         "database",
-        "sqlite",
         "service",
-        "persistence"
+        "persistence",
+        "sqlite"
       ],
       "complexity": "complex",
-      "languageNotes": "Durable memories are append-only: retractions and updates supersede prior rows via supersedes_memory_uuid instead of mutating them."
+      "languageNotes": "Uses sqlite3.Row factories, FTS5 virtual tables with a tokenizer fallback (trigram then unicode61), and upsert via ON CONFLICT clauses."
     },
     {
       "id": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
@@ -431,12 +431,13 @@
         184,
         1075
       ],
-      "summary": "Central data-access class wrapping the per-project SQLite database: schema and FTS setup, event insertion with session upserts and memory-candidate extraction, memory add/retract/promote, hierarchical memory blocks, recent/search queries, semantic embedding indexing, hash verification, expiry pruning, and JSONL export.",
+      "summary": "Project-scoped SQLite store that opens hardened connections, applies the schema, ingests redacted lifecycle events, promotes and retracts memories, builds hierarchical memory summaries, and answers search/recovery/health queries.",
       "tags": [
         "data-model",
-        "repository",
-        "sqlite",
-        "service"
+        "service",
+        "database",
+        "memory-store",
+        "exported"
       ],
       "complexity": "complex"
     },
@@ -2454,13 +2455,12 @@
       "type": "file",
       "name": "history.sh",
       "filePath": "home/dot_local/bin/server/history.sh",
-      "summary": "Sourced bash snippet that shares history across concurrent sessions: defines a sed-based tac fallback and a share_history PROMPT_COMMAND hook that appends, de-duplicates, and reloads ~/.bash_history.",
+      "summary": "Sourced bash snippet that provides a sed-based tac fallback and a PROMPT_COMMAND hook merging de-duplicated history across concurrent sessions.",
       "tags": [
-        "shell-snippet",
-        "bash",
-        "history",
-        "server",
-        "event-handler"
+        "shell-config",
+        "bash-history",
+        "utility",
+        "server"
       ],
       "complexity": "simple",
       "languageNotes": "De-duplication keeps the most recent occurrence by reversing the file, filtering with awk '!a[$0]++', then reversing back."
@@ -3035,13 +3035,12 @@
       "type": "file",
       "name": "docker.sh",
       "filePath": "install/ubuntu/client/docker.sh",
-      "summary": "Ubuntu client installer that removes legacy Docker packages, configures Docker's official signed apt repository, installs Docker Engine with containerd and the Compose plugin, and adds the user to the docker group.",
+      "summary": "Ubuntu client installer that removes legacy Docker packages, configures Docker's signed apt repository, installs Docker Engine with compose, and adds the user to the docker group.",
       "tags": [
         "installer",
-        "ubuntu",
         "containerization",
         "apt-repository",
-        "script"
+        "ubuntu"
       ],
       "complexity": "moderate",
       "languageNotes": "Uses the shdoc-annotated main-guard pattern (BASH_SOURCE[0] == $0) so functions can be sourced by bats tests without executing the install flow."
@@ -3055,11 +3054,11 @@
         25,
         38
       ],
-      "summary": "Removes conflicting legacy Docker packages (docker, docker.io, containerd, runc, etc.) that dpkg reports as installed.",
+      "summary": "Removes legacy Docker packages (docker, docker.io, containerd, runc, etc.) that conflict with Docker Engine when installed.",
       "tags": [
         "cleanup",
         "apt",
-        "docker"
+        "containerization"
       ],
       "complexity": "simple"
     },
@@ -3072,12 +3071,11 @@
         43,
         61
       ],
-      "summary": "Installs apt HTTPS prerequisites, dearmors Docker's GPG key into /etc/apt/keyrings, and writes the architecture- and codename-scoped Docker apt source.",
+      "summary": "Installs apt HTTPS prerequisites, stores Docker's dearmored GPG key in /etc/apt/keyrings, and writes the Docker apt source entry.",
       "tags": [
         "apt-repository",
-        "gpg-keyring",
-        "docker",
-        "security"
+        "gpg",
+        "setup"
       ],
       "complexity": "simple"
     },
@@ -3149,13 +3147,12 @@
       "type": "file",
       "name": "tailscale.sh",
       "filePath": "install/ubuntu/client/tailscale.sh",
-      "summary": "Ubuntu client installer that configures Tailscale's official codename-scoped apt repository and signing keyring, then installs the tailscale package; interactive login is left manual.",
+      "summary": "Ubuntu client installer that configures Tailscale's codename-scoped signed apt repository and installs the tailscale package, leaving interactive login manual.",
       "tags": [
         "installer",
-        "ubuntu",
         "networking",
         "apt-repository",
-        "script"
+        "ubuntu"
       ],
       "complexity": "moderate"
     },
@@ -3168,12 +3165,11 @@
         22,
         34
       ],
-      "summary": "Downloads Tailscale's pre-dearmored signing key for the current Ubuntu codename and writes the signed-by apt sources entry.",
+      "summary": "Downloads Tailscale's pre-dearmored keyring for the Ubuntu codename and writes the signed apt sources entry.",
       "tags": [
         "apt-repository",
-        "gpg-keyring",
-        "tailscale",
-        "security"
+        "gpg",
+        "setup"
       ],
       "complexity": "simple"
     },
@@ -3182,16 +3178,16 @@
       "type": "file",
       "name": "zed.sh",
       "filePath": "install/ubuntu/client/zed.sh",
-      "summary": "Ubuntu client installer for the Zed editor that downloads a pinned GitHub release tarball per architecture, verifies its SHA256, atomically installs it under ~/.local/share, and symlinks ~/.local/bin/zed; skips when the pinned version is already installed.",
+      "summary": "Ubuntu client installer that downloads a pinned Zed release tarball for the current architecture, verifies its SHA256, atomically installs it under ~/.local, and links ~/.local/bin/zed; skips when already current.",
       "tags": [
         "installer",
-        "ubuntu",
         "editor",
         "checksum-verification",
-        "script"
+        "pinned-release",
+        "ubuntu"
       ],
       "complexity": "moderate",
-      "languageNotes": "install_pinned_zed uses a subshell function body `() ( ... )` so its EXIT trap cleans temp files without leaking into the caller."
+      "languageNotes": "install_pinned_zed uses a subshell body `name() ( ... )` so its EXIT trap cleans temp files without leaking into the caller."
     },
     {
       "id": "function:install/ubuntu/client/zed.sh:zed_artifact",
@@ -3202,10 +3198,10 @@
         25,
         38
       ],
-      "summary": "Maps the machine architecture to the Zed release tarball name and its pinned SHA256, failing on unsupported architectures.",
+      "summary": "Maps uname -m to the Zed release tarball name and its expected pinned SHA256, failing on unsupported architectures.",
       "tags": [
         "architecture-detection",
-        "pinning",
+        "checksum",
         "utility"
       ],
       "complexity": "simple"
@@ -3219,12 +3215,11 @@
         52,
         76
       ],
-      "summary": "Downloads the pinned Zed tarball, rejects checksum mismatches, extracts to a temp dir, and swaps it into place via a staging directory with trap-based cleanup.",
+      "summary": "Downloads the pinned Zed tarball, verifies its SHA256, extracts to a staging dir, and atomically swaps it into ~/.local/share/zed.app with trap-based cleanup.",
       "tags": [
         "download",
         "checksum-verification",
-        "atomic-install",
-        "security"
+        "atomic-install"
       ],
       "complexity": "moderate"
     },
@@ -6408,252 +6403,251 @@
       "id": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
       "type": "file",
       "name": "attach_comment_files.py",
-      "summary": "CLI script that resolves a GitHub issue/PR URL (directly or via gh), stages local files with unique names, drives a headed persistent Playwright CLI browser to upload them into the comment composer, and prints the resulting hosted attachment URLs as JSON without posting the comment.",
+      "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "summary": "CLI for the gh-comment-attach-files skill: stages local files, drives a persistent Playwright CLI browser to a GitHub issue/PR comment composer, uploads each file, and prints the resulting hosted attachment URLs as JSON without submitting the comment.",
       "tags": [
+        "entry-point",
         "cli",
-        "github",
         "browser-automation",
-        "playwright",
-        "entry-point"
+        "github",
+        "agent-skill"
       ],
       "complexity": "complex",
-      "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
-      "languageNotes": "Injects JavaScript snippets into Playwright CLI run-code via placeholder substitution and diffs before/after page state to infer new attachment URLs."
+      "languageNotes": "Injects JavaScript snippets into the page through `@playwright/cli run-code`, templating JSON payloads into the code string."
     },
     {
       "id": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:parse_args",
       "type": "function",
       "name": "parse_args",
-      "summary": "Builds the argparse CLI (target --url or --repo with --issue/--pr, browser, profile dir, timeouts, cleanup flags, files) and enforces valid target combinations.",
+      "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "lineRange": [
+        216,
+        273
+      ],
+      "summary": "Defines and validates CLI arguments: mutually exclusive --url/--repo target, --issue/--pr selection, browser, profile dir, timeouts, and file list.",
       "tags": [
         "cli",
         "argument-parsing",
         "validation"
       ],
-      "complexity": "moderate",
-      "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
-      "lineRange": [
-        216,
-        273
-      ]
+      "complexity": "moderate"
     },
     {
       "id": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:main",
       "type": "function",
       "name": "main",
-      "summary": "Orchestrates the full workflow: checks required commands, validates and stages files, opens the browser, waits for the composer, uploads, cleans up, and prints the JSON result.",
-      "tags": [
-        "entry-point",
-        "workflow",
-        "orchestration"
-      ],
-      "complexity": "moderate",
       "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
       "lineRange": [
         276,
         321
-      ]
+      ],
+      "summary": "Orchestrates the workflow: checks required commands, validates files, resolves the target URL, stages files, opens the browser, uploads, cleans up, and prints the JSON payload.",
+      "tags": [
+        "entry-point",
+        "orchestration",
+        "cli"
+      ],
+      "complexity": "moderate"
     },
     {
       "id": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:resolve_target_url",
       "type": "function",
       "name": "resolve_target_url",
-      "summary": "Returns the explicit target URL or resolves an issue/PR number to its URL using gh view with a jq filter.",
-      "tags": [
-        "github",
-        "gh-cli",
-        "resolution"
-      ],
-      "complexity": "simple",
       "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
       "lineRange": [
         342,
         374
-      ]
+      ],
+      "summary": "Returns the direct URL or resolves an issue/PR number to its URL via `gh issue view` / `gh pr view`.",
+      "tags": [
+        "github",
+        "gh-cli",
+        "url-resolution"
+      ],
+      "complexity": "moderate"
     },
     {
       "id": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:stage_files",
       "type": "function",
       "name": "stage_files",
-      "summary": "Copies source files into the run's upload directory under unique staged names and returns StagedFile records.",
-      "tags": [
-        "file-staging",
-        "utility"
-      ],
-      "complexity": "simple",
       "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
       "lineRange": [
         386,
         402
-      ]
+      ],
+      "summary": "Copies source files into the run uploads directory under unique staged names and returns StagedFile records.",
+      "tags": [
+        "staging",
+        "filesystem"
+      ],
+      "complexity": "simple"
     },
     {
       "id": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:build_staged_name",
       "type": "function",
       "name": "build_staged_name",
-      "summary": "Generates a sanitized, hash-suffixed staged filename that stays unique within one run.",
-      "tags": [
-        "utility",
-        "naming",
-        "hashing"
-      ],
-      "complexity": "simple",
       "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
       "lineRange": [
         405,
         417
-      ]
+      ],
+      "summary": "Generates a sanitized, hash-suffixed staged filename kept unique within the run.",
+      "tags": [
+        "naming",
+        "hashing",
+        "utility"
+      ],
+      "complexity": "simple"
     },
     {
       "id": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:open_browser",
       "type": "function",
       "name": "open_browser",
-      "summary": "Opens the target page in a headed persistent Playwright CLI session, optionally selecting a browser channel.",
-      "tags": [
-        "playwright",
-        "browser-automation"
-      ],
-      "complexity": "simple",
       "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
       "lineRange": [
         427,
         441
-      ]
+      ],
+      "summary": "Opens the target page headed in a persistent Playwright CLI session, optionally choosing a browser channel.",
+      "tags": [
+        "browser-automation",
+        "playwright"
+      ],
+      "complexity": "simple"
     },
     {
       "id": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:wait_for_comment_composer",
       "type": "function",
       "name": "wait_for_comment_composer",
-      "summary": "Polls until a GitHub comment composer is found in the page or the ready timeout elapses, then exits with the last page info.",
+      "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "lineRange": [
+        453,
+        468
+      ],
+      "summary": "Polls until the GitHub comment composer is tagged and ready, exiting with page context on timeout.",
       "tags": [
         "polling",
         "browser-automation",
         "timeout"
       ],
-      "complexity": "simple",
-      "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
-      "lineRange": [
-        453,
-        468
-      ]
+      "complexity": "simple"
     },
     {
       "id": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:prepare_comment_composer",
       "type": "function",
       "name": "prepare_comment_composer",
-      "summary": "Runs injected page code that tags the active comment textarea and file input using known GitHub selectors.",
-      "tags": [
-        "playwright",
-        "dom",
-        "browser-automation"
-      ],
-      "complexity": "simple",
       "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
       "lineRange": [
         471,
         481
-      ]
+      ],
+      "summary": "Runs injected page code that tags the active comment textarea and file input using selector lists.",
+      "tags": [
+        "browser-automation",
+        "dom",
+        "playwright"
+      ],
+      "complexity": "simple"
     },
     {
       "id": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:upload_files",
       "type": "function",
       "name": "upload_files",
-      "summary": "Uploads staged files one at a time, capturing composer text and snapshots before and after to discover each hosted attachment URL.",
-      "tags": [
-        "upload",
-        "browser-automation",
-        "workflow"
-      ],
-      "complexity": "moderate",
       "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
       "lineRange": [
         484,
         504
-      ]
+      ],
+      "summary": "Uploads staged files one at a time and derives each hosted URL by diffing composer text and page snapshots before and after.",
+      "tags": [
+        "upload",
+        "orchestration",
+        "browser-automation"
+      ],
+      "complexity": "simple"
     },
     {
       "id": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:perform_upload",
       "type": "function",
       "name": "perform_upload",
-      "summary": "Attaches a single staged file through injected Playwright code and fails with a descriptive error when the upload does not succeed.",
+      "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "lineRange": [
+        507,
+        526
+      ],
+      "summary": "Runs the templated upload page code for one staged file and returns the composer state, failing on error.",
       "tags": [
         "upload",
         "playwright",
         "error-handling"
       ],
-      "complexity": "simple",
-      "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
-      "lineRange": [
-        507,
-        526
-      ]
+      "complexity": "simple"
     },
     {
       "id": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:get_composer_markdown",
       "type": "function",
       "name": "get_composer_markdown",
-      "summary": "Reads the current Markdown contents of the tagged comment textarea through Playwright run-code.",
-      "tags": [
-        "playwright",
-        "dom",
-        "reader"
-      ],
-      "complexity": "simple",
       "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
       "lineRange": [
         529,
         541
-      ]
+      ],
+      "summary": "Reads the current Markdown text of the tagged comment textarea.",
+      "tags": [
+        "browser-automation",
+        "dom"
+      ],
+      "complexity": "simple"
     },
     {
       "id": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:find_attachment_url",
       "type": "function",
       "name": "find_attachment_url",
-      "summary": "Infers the newly inserted attachment URL by diffing attachment links before and after upload, preferring a label match on the staged name.",
-      "tags": [
-        "parsing",
-        "diffing",
-        "github"
-      ],
-      "complexity": "moderate",
       "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
       "lineRange": [
         550,
         571
-      ]
+      ],
+      "summary": "Infers the newly inserted attachment URL from before/after texts, preferring a label match, then any new URL, then any label match.",
+      "tags": [
+        "url-discovery",
+        "diffing",
+        "heuristic"
+      ],
+      "complexity": "simple"
     },
     {
       "id": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:extract_attachment_links",
       "type": "function",
       "name": "extract_attachment_links",
-      "summary": "Extracts Markdown links pointing at GitHub attachment hosts from arbitrary text.",
+      "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "lineRange": [
+        574,
+        583
+      ],
+      "summary": "Extracts Markdown links whose URL matches known GitHub attachment host hints.",
       "tags": [
         "parsing",
         "regex",
         "github"
       ],
-      "complexity": "simple",
-      "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
-      "lineRange": [
-        574,
-        583
-      ]
+      "complexity": "simple"
     },
     {
       "id": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run",
       "type": "function",
       "name": "run",
-      "summary": "Runs a subprocess with captured text output, check=True, and the inherited environment; the shared execution primitive for gh and Playwright calls.",
-      "tags": [
-        "subprocess",
-        "utility"
-      ],
-      "complexity": "simple",
       "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
       "lineRange": [
         611,
         621
-      ]
+      ],
+      "summary": "Runs a subprocess with check, captured text output, and the inherited environment.",
+      "tags": [
+        "subprocess",
+        "utility"
+      ],
+      "complexity": "simple"
     },
     {
       "id": "document:home/dot_agents/skills/gh-first-workflow/SKILL.md",
@@ -8086,16 +8080,17 @@
       "type": "file",
       "name": "executable_agent-fanout",
       "filePath": "home/dot_local/bin/common/executable_agent-fanout",
-      "summary": "Runs Codex and Claude Code in parallel with the same prompt (from args or stdin), applying model-profile args from ~/.agents/model-profiles.env and writing private prompt/log artifacts under .agents/runs/.",
+      "summary": "Bash launcher that runs Codex and Claude Code in parallel on the same prompt, resolving model args from the shared model-profiles fragment and writing private prompt, per-agent logs, and a summary under .agents/runs/.",
       "tags": [
+        "entry-point",
         "cli",
-        "ai-agents",
-        "orchestration",
+        "agent-orchestration",
         "parallel-execution",
+        "security",
         "tested"
       ],
-      "complexity": "moderate",
-      "languageNotes": "Bash script that tightens umask to 077 for artifacts but restores the caller umask inside agent subshells."
+      "complexity": "complex",
+      "languageNotes": "Uses indirect expansion (${!ref}) to look up profile variables and backgrounded subshells restoring the caller umask while the script itself runs under umask 077."
     },
     {
       "id": "function:home/dot_local/bin/common/executable_agent-fanout:prepare_artifact",
@@ -8106,11 +8101,11 @@
         44,
         53
       ],
-      "summary": "Creates or truncates an output artifact with 0600 permissions, refusing symlinks or non-regular paths.",
+      "summary": "Refuses symlinked or non-regular artifact paths, then truncates the file and sets mode 600 for private output.",
       "tags": [
         "security",
         "file-io",
-        "utility"
+        "validation"
       ],
       "complexity": "simple"
     },
@@ -11032,14 +11027,15 @@
       "type": "file",
       "name": "run_bashcov_unit_test.rb",
       "filePath": "scripts/run_bashcov_unit_test.rb",
-      "summary": "Ruby wrapper mirroring the bashcov executable that prepends a filter restricting coverage to install/ and scripts/ before converting results to SimpleCov output.",
+      "summary": "Bashcov wrapper that prepends a runner filter restricting coverage to the install/ and scripts/ trees, then runs the command and emits SimpleCov results (with optional merging and muted output).",
       "tags": [
-        "test-coverage",
-        "bashcov",
-        "ruby",
-        "test"
+        "script",
+        "test",
+        "coverage",
+        "build-system"
       ],
-      "complexity": "moderate"
+      "complexity": "moderate",
+      "languageNotes": "Uses Module#prepend to override Bashcov::Runner methods while mirroring the upstream bashcov executable flow."
     },
     {
       "id": "file:scripts/usage-report.py",
@@ -11860,11 +11856,12 @@
         13,
         50
       ],
-      "summary": "Module prepended to Bashcov::Runner that drops coverage for files outside install/ and scripts/ and converts the filtered trace data before SimpleCov processing.",
+      "summary": "Mixin module prepended to Bashcov::Runner that limits coverage to repository install/scripts files and converts coverage into SimpleCov line arrays.",
       "tags": [
-        "test-coverage",
-        "bashcov",
-        "mixin"
+        "mixin",
+        "coverage",
+        "filter",
+        "exported"
       ],
       "complexity": "simple"
     },
@@ -13550,6 +13547,694 @@
         "security"
       ],
       "complexity": "moderate"
+    },
+    {
+      "id": "function:.claude/contextdb/contextdb/storage.py:connect",
+      "type": "function",
+      "name": "connect",
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "lineRange": [
+        190,
+        207
+      ],
+      "summary": "Opens a SQLite connection with busy timeout, foreign keys, and configurable journal/synchronous pragmas, then ensures schema and tightens file permissions; closes the connection on failure.",
+      "tags": [
+        "database",
+        "connection",
+        "configuration"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:.claude/contextdb/contextdb/storage.py:secure_storage_files",
+      "type": "function",
+      "name": "secure_storage_files",
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "lineRange": [
+        209,
+        218
+      ],
+      "summary": "Restricts the DB, WAL/SHM sidecars, lock file, and project-id file to mode 0600 when they exist.",
+      "tags": [
+        "security",
+        "permissions",
+        "filesystem"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:.claude/contextdb/contextdb/storage.py:_ensure_fts",
+      "type": "function",
+      "name": "_ensure_fts",
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "lineRange": [
+        230,
+        254
+      ],
+      "summary": "Creates the events/memories FTS5 tables once, trying the trigram tokenizer then unicode61, and records the selected tokenizer (or none) in schema_meta.",
+      "tags": [
+        "full-text-search",
+        "schema",
+        "fallback"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:.claude/contextdb/contextdb/storage.py:insert_event",
+      "type": "function",
+      "name": "insert_event",
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "lineRange": [
+        256,
+        328
+      ],
+      "summary": "Ingests one redacted event: upserts the project, inserts the event row idempotently, records file refs, updates the session, indexes FTS, inserts memory candidates, and rebuilds memory blocks when memories changed.",
+      "tags": [
+        "ingestion",
+        "event-handler",
+        "database"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:.claude/contextdb/contextdb/storage.py:_upsert_session",
+      "type": "function",
+      "name": "_upsert_session",
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "lineRange": [
+        330,
+        372
+      ],
+      "summary": "Inserts or updates the session row from an event, tracking start/end metadata, model, agent type, title, and the last event id.",
+      "tags": [
+        "session",
+        "upsert",
+        "database"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:.claude/contextdb/contextdb/storage.py:_fts_insert_event",
+      "type": "function",
+      "name": "_fts_insert_event",
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "lineRange": [
+        374,
+        387
+      ],
+      "summary": "Inserts an event summary and detail into the events_fts index when a tokenizer is available.",
+      "tags": [
+        "full-text-search",
+        "indexing",
+        "database"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:.claude/contextdb/contextdb/storage.py:_fts_insert_memory",
+      "type": "function",
+      "name": "_fts_insert_memory",
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "lineRange": [
+        389,
+        402
+      ],
+      "summary": "Inserts a memory kind and content into the memories_fts index when a tokenizer is available.",
+      "tags": [
+        "full-text-search",
+        "indexing",
+        "memory"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:.claude/contextdb/contextdb/storage.py:_insert_candidates",
+      "type": "function",
+      "name": "_insert_candidates",
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "lineRange": [
+        408,
+        465
+      ],
+      "summary": "Records heuristic memory candidates from an event and auto-promotes explicit, compact-summary, or high-confidence allowlisted kinds into durable memories.",
+      "tags": [
+        "memory",
+        "candidate",
+        "auto-promotion"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:.claude/contextdb/contextdb/storage.py:add_memory",
+      "type": "function",
+      "name": "add_memory",
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "lineRange": [
+        467,
+        570
+      ],
+      "summary": "Validates and inserts a durable project or session memory with a content fingerprint, deduplicating identical active memories and supporting supersession and retraction records.",
+      "tags": [
+        "memory",
+        "validation",
+        "deduplication"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:.claude/contextdb/contextdb/storage.py:retract_memory",
+      "type": "function",
+      "name": "retract_memory",
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "lineRange": [
+        572,
+        596
+      ],
+      "summary": "Retracts an existing memory by adding a superseding retraction record, then rebuilds memory blocks.",
+      "tags": [
+        "memory",
+        "retraction",
+        "audit-trail"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:.claude/contextdb/contextdb/storage.py:current_memories",
+      "type": "function",
+      "name": "current_memories",
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "lineRange": [
+        598,
+        629
+      ],
+      "summary": "Returns the active, unexpired, non-superseded memories for a project, optionally filtered to a session plus project scope.",
+      "tags": [
+        "memory",
+        "query",
+        "database"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:.claude/contextdb/contextdb/storage.py:rebuild_memory_blocks",
+      "type": "function",
+      "name": "rebuild_memory_blocks",
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "lineRange": [
+        631,
+        679
+      ],
+      "summary": "Rebuilds the binary hierarchy of project-memory summary blocks by pairwise compressing adjacent nodes level by level; session memories are excluded.",
+      "tags": [
+        "memory",
+        "summarization",
+        "hierarchy"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:.claude/contextdb/contextdb/storage.py:_insert_block",
+      "type": "function",
+      "name": "_insert_block",
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "lineRange": [
+        682,
+        701
+      ],
+      "summary": "Static helper that inserts one hierarchical memory_blocks row.",
+      "tags": [
+        "memory",
+        "database",
+        "helper"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:.claude/contextdb/contextdb/storage.py:hierarchical_memory_context",
+      "type": "function",
+      "name": "hierarchical_memory_context",
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "lineRange": [
+        703,
+        749
+      ],
+      "summary": "Builds the bounded recovery memory context: older project memories collapsed into aligned power-of-two blocks, recent raw project and session memories, clipped to the configured item limit.",
+      "tags": [
+        "recovery",
+        "memory",
+        "context-building"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:.claude/contextdb/contextdb/storage.py:recent_files",
+      "type": "function",
+      "name": "recent_files",
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "lineRange": [
+        776,
+        785
+      ],
+      "summary": "Lists recently touched files for a session with operation, sensitivity, and timestamp.",
+      "tags": [
+        "query",
+        "files",
+        "session"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:.claude/contextdb/contextdb/storage.py:search_events",
+      "type": "function",
+      "name": "search_events",
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "lineRange": [
+        799,
+        845
+      ],
+      "summary": "Searches session or project events via FTS5 phrase match, falling back to LIKE queries when FTS is unavailable or fails.",
+      "tags": [
+        "search",
+        "full-text-search",
+        "events"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:.claude/contextdb/contextdb/storage.py:search_memories",
+      "type": "function",
+      "name": "search_memories",
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "lineRange": [
+        847,
+        879
+      ],
+      "summary": "Searches memories via FTS5 or LIKE and filters results to currently active memories.",
+      "tags": [
+        "search",
+        "memory",
+        "full-text-search"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:.claude/contextdb/contextdb/storage.py:promote_candidate",
+      "type": "function",
+      "name": "promote_candidate",
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "lineRange": [
+        881,
+        914
+      ],
+      "summary": "Promotes a stored memory candidate into a durable memory (idempotently), records the promotion, and rebuilds memory blocks.",
+      "tags": [
+        "memory",
+        "promotion",
+        "candidate"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:.claude/contextdb/contextdb/storage.py:index_memory_embeddings",
+      "type": "function",
+      "name": "index_memory_embeddings",
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "lineRange": [
+        916,
+        960
+      ],
+      "summary": "Computes and upserts embeddings for current memories whose content or model changed, in configured batch sizes.",
+      "tags": [
+        "semantic-search",
+        "embeddings",
+        "indexing"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:.claude/contextdb/contextdb/storage.py:semantic_search_memories",
+      "type": "function",
+      "name": "semantic_search_memories",
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "lineRange": [
+        962,
+        994
+      ],
+      "summary": "Embeds a query and ranks current memories by cosine similarity against stored embeddings.",
+      "tags": [
+        "semantic-search",
+        "embeddings",
+        "ranking"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:.claude/contextdb/contextdb/storage.py:health",
+      "type": "function",
+      "name": "health",
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "lineRange": [
+        996,
+        1012
+      ],
+      "summary": "Reports schema version, FTS tokenizer, journal mode, quick_check integrity, table counts, DB size, and pending/quarantined spool counts.",
+      "tags": [
+        "health-check",
+        "monitoring",
+        "diagnostics"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:.claude/contextdb/contextdb/storage.py:verify_hashes",
+      "type": "function",
+      "name": "verify_hashes",
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "lineRange": [
+        1014,
+        1025
+      ],
+      "summary": "Recomputes SHA-256 of each event detail and reports rows whose stored hash does not match.",
+      "tags": [
+        "integrity",
+        "verification",
+        "security"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:.claude/contextdb/contextdb/storage.py:prune_expired",
+      "type": "function",
+      "name": "prune_expired",
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "lineRange": [
+        1027,
+        1059
+      ],
+      "summary": "Deletes expired events (or events older than N days) in batches of 500, removing FTS rows first.",
+      "tags": [
+        "retention",
+        "pruning",
+        "database"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:.claude/contextdb/contextdb/storage.py:export_events",
+      "type": "function",
+      "name": "export_events",
+      "filePath": ".claude/contextdb/contextdb/storage.py",
+      "lineRange": [
+        1061,
+        1075
+      ],
+      "summary": "Exports all events for a project, or for one session, as plain dicts.",
+      "tags": [
+        "export",
+        "query",
+        "events"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:StagedFile",
+      "type": "class",
+      "name": "StagedFile",
+      "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "lineRange": [
+        208,
+        213
+      ],
+      "summary": "Frozen dataclass mapping a source file to its staged upload path and generated unique name.",
+      "tags": [
+        "data-model",
+        "dataclass"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:ensure_command",
+      "type": "function",
+      "name": "ensure_command",
+      "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "lineRange": [
+        324,
+        329
+      ],
+      "summary": "Exits with an error when a required executable is not on PATH.",
+      "tags": [
+        "validation",
+        "preflight"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:validate_source_files",
+      "type": "function",
+      "name": "validate_source_files",
+      "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "lineRange": [
+        332,
+        339
+      ],
+      "summary": "Ensures every requested upload path exists and is a regular file.",
+      "tags": [
+        "validation",
+        "filesystem"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:resolve_profile_dir",
+      "type": "function",
+      "name": "resolve_profile_dir",
+      "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "lineRange": [
+        377,
+        383
+      ],
+      "summary": "Resolves the Playwright profile directory against the current working directory unless absolute.",
+      "tags": [
+        "path-resolution",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:sanitize_component",
+      "type": "function",
+      "name": "sanitize_component",
+      "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "lineRange": [
+        420,
+        424
+      ],
+      "summary": "Normalizes a filename fragment to safe characters and caps it at 80 characters.",
+      "tags": [
+        "sanitization",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:close_browser",
+      "type": "function",
+      "name": "close_browser",
+      "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "lineRange": [
+        444,
+        450
+      ],
+      "summary": "Closes the Playwright CLI session, ignoring failures if it is already gone.",
+      "tags": [
+        "browser-automation",
+        "cleanup"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:capture_snapshot",
+      "type": "function",
+      "name": "capture_snapshot",
+      "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "lineRange": [
+        544,
+        547
+      ],
+      "summary": "Captures a Playwright CLI page snapshot as text for URL discovery.",
+      "tags": [
+        "playwright",
+        "snapshot"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright",
+      "type": "function",
+      "name": "run_playwright",
+      "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "lineRange": [
+        586,
+        589
+      ],
+      "summary": "Runs an `npx @playwright/cli` command in the run workspace.",
+      "tags": [
+        "playwright",
+        "subprocess"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright_json",
+      "type": "function",
+      "name": "run_playwright_json",
+      "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "lineRange": [
+        592,
+        598
+      ],
+      "summary": "Runs Playwright and returns its decoded value only when it is a JSON object.",
+      "tags": [
+        "playwright",
+        "json"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright_value",
+      "type": "function",
+      "name": "run_playwright_value",
+      "filePath": "home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "lineRange": [
+        601,
+        608
+      ],
+      "summary": "Runs Playwright and JSON-decodes its raw stdout value.",
+      "tags": [
+        "playwright",
+        "json",
+        "subprocess"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/run_bashcov_unit_test.rb:expunge_invalid_files!",
+      "type": "function",
+      "name": "expunge_invalid_files!",
+      "filePath": "scripts/run_bashcov_unit_test.rb",
+      "lineRange": [
+        19,
+        34
+      ],
+      "summary": "Drops coverage entries outside install/ and scripts/, and warns about and drops deleted files or files with invalid Bash syntax.",
+      "tags": [
+        "coverage",
+        "filter",
+        "validation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:scripts/run_bashcov_unit_test.rb:convert_coverage",
+      "type": "function",
+      "name": "convert_coverage",
+      "filePath": "scripts/run_bashcov_unit_test.rb",
+      "lineRange": [
+        36,
+        49
+      ],
+      "summary": "Converts collected coverage into a path-to-lines hash truncated to each file's line count, skipping missing files.",
+      "tags": [
+        "coverage",
+        "conversion",
+        "serialization"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:home/dot_local/bin/common/executable_agent-fanout:usage",
+      "type": "function",
+      "name": "usage",
+      "filePath": "home/dot_local/bin/common/executable_agent-fanout",
+      "lineRange": [
+        24,
+        40
+      ],
+      "summary": "Prints usage help, including supported flags and command/profile environment variables.",
+      "tags": [
+        "cli",
+        "help",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:home/dot_local/bin/server/history.sh:share_history",
+      "type": "function",
+      "name": "share_history",
+      "filePath": "home/dot_local/bin/server/history.sh",
+      "lineRange": [
+        18,
+        26
+      ],
+      "summary": "Appends session history, de-duplicates ~/.bash_history via tac/awk, and reloads it so concurrent sessions share history.",
+      "tags": [
+        "bash-history",
+        "prompt-hook",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:install/ubuntu/client/docker.sh:main",
+      "type": "function",
+      "name": "main",
+      "filePath": "install/ubuntu/client/docker.sh",
+      "lineRange": [
+        92,
+        97
+      ],
+      "summary": "Runs the full Docker install sequence: legacy removal, repository setup, engine install, and docker group configuration.",
+      "tags": [
+        "entry-point",
+        "installer",
+        "orchestration"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:install/ubuntu/client/tailscale.sh:main",
+      "type": "function",
+      "name": "main",
+      "filePath": "install/ubuntu/client/tailscale.sh",
+      "lineRange": [
+        54,
+        57
+      ],
+      "summary": "Configures the Tailscale repository then installs the tailscale package.",
+      "tags": [
+        "entry-point",
+        "installer",
+        "orchestration"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:install/ubuntu/client/zed.sh:main",
+      "type": "function",
+      "name": "main",
+      "filePath": "install/ubuntu/client/zed.sh",
+      "lineRange": [
+        89,
+        95
+      ],
+      "summary": "Skips when the installed Zed matches the pin; otherwise installs the pinned release and links the binary.",
+      "tags": [
+        "entry-point",
+        "installer",
+        "idempotent"
+      ],
+      "complexity": "simple"
     },
     {
       "id": "function:install/ubuntu/common/apparmor_userns.sh:profile_source",
@@ -16949,6 +17634,27 @@
       "type": "contains",
       "direction": "forward",
       "weight": 1.0
+    },
+    {
+      "source": "function:install/ubuntu/common/apparmor_userns.sh:main",
+      "target": "function:install/ubuntu/common/apparmor_userns.sh:skip_reason",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:install/ubuntu/common/apparmor_userns.sh:main",
+      "target": "function:install/ubuntu/common/apparmor_userns.sh:install_profile",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:install/ubuntu/common/apparmor_userns.sh:install_profile",
+      "target": "function:install/ubuntu/common/apparmor_userns.sh:profile_source",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
     },
     {
       "source": "file:install/ubuntu/common/apparmor_userns.sh",
@@ -21949,6 +22655,895 @@
       "weight": 0.5
     },
     {
+      "source": "file:.claude/contextdb/contextdb/storage.py",
+      "target": "function:.claude/contextdb/contextdb/storage.py:connect",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:connect",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.claude/contextdb/contextdb/storage.py",
+      "target": "function:.claude/contextdb/contextdb/storage.py:secure_storage_files",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:secure_storage_files",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.claude/contextdb/contextdb/storage.py",
+      "target": "function:.claude/contextdb/contextdb/storage.py:_ensure_fts",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:_ensure_fts",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.claude/contextdb/contextdb/storage.py",
+      "target": "function:.claude/contextdb/contextdb/storage.py:insert_event",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:insert_event",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.claude/contextdb/contextdb/storage.py",
+      "target": "function:.claude/contextdb/contextdb/storage.py:_upsert_session",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:_upsert_session",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.claude/contextdb/contextdb/storage.py",
+      "target": "function:.claude/contextdb/contextdb/storage.py:_fts_insert_event",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:_fts_insert_event",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.claude/contextdb/contextdb/storage.py",
+      "target": "function:.claude/contextdb/contextdb/storage.py:_fts_insert_memory",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:_fts_insert_memory",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.claude/contextdb/contextdb/storage.py",
+      "target": "function:.claude/contextdb/contextdb/storage.py:_insert_candidates",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:_insert_candidates",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.claude/contextdb/contextdb/storage.py",
+      "target": "function:.claude/contextdb/contextdb/storage.py:add_memory",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:add_memory",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.claude/contextdb/contextdb/storage.py",
+      "target": "function:.claude/contextdb/contextdb/storage.py:retract_memory",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:retract_memory",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.claude/contextdb/contextdb/storage.py",
+      "target": "function:.claude/contextdb/contextdb/storage.py:current_memories",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:current_memories",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.claude/contextdb/contextdb/storage.py",
+      "target": "function:.claude/contextdb/contextdb/storage.py:rebuild_memory_blocks",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:rebuild_memory_blocks",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.claude/contextdb/contextdb/storage.py",
+      "target": "function:.claude/contextdb/contextdb/storage.py:_insert_block",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:_insert_block",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.claude/contextdb/contextdb/storage.py",
+      "target": "function:.claude/contextdb/contextdb/storage.py:hierarchical_memory_context",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:hierarchical_memory_context",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.claude/contextdb/contextdb/storage.py",
+      "target": "function:.claude/contextdb/contextdb/storage.py:recent_files",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:recent_files",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.claude/contextdb/contextdb/storage.py",
+      "target": "function:.claude/contextdb/contextdb/storage.py:search_events",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:search_events",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.claude/contextdb/contextdb/storage.py",
+      "target": "function:.claude/contextdb/contextdb/storage.py:search_memories",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:search_memories",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.claude/contextdb/contextdb/storage.py",
+      "target": "function:.claude/contextdb/contextdb/storage.py:promote_candidate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:promote_candidate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.claude/contextdb/contextdb/storage.py",
+      "target": "function:.claude/contextdb/contextdb/storage.py:index_memory_embeddings",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:index_memory_embeddings",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.claude/contextdb/contextdb/storage.py",
+      "target": "function:.claude/contextdb/contextdb/storage.py:semantic_search_memories",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:semantic_search_memories",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.claude/contextdb/contextdb/storage.py",
+      "target": "function:.claude/contextdb/contextdb/storage.py:health",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:health",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.claude/contextdb/contextdb/storage.py",
+      "target": "function:.claude/contextdb/contextdb/storage.py:verify_hashes",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:verify_hashes",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.claude/contextdb/contextdb/storage.py",
+      "target": "function:.claude/contextdb/contextdb/storage.py:prune_expired",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:prune_expired",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.claude/contextdb/contextdb/storage.py",
+      "target": "function:.claude/contextdb/contextdb/storage.py:export_events",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:export_events",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:connect",
+      "target": "function:.claude/contextdb/contextdb/storage.py:secure_storage_files",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:insert_event",
+      "target": "function:.claude/contextdb/contextdb/storage.py:_upsert_session",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:insert_event",
+      "target": "function:.claude/contextdb/contextdb/storage.py:_fts_insert_event",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:insert_event",
+      "target": "function:.claude/contextdb/contextdb/storage.py:_insert_candidates",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:insert_event",
+      "target": "function:.claude/contextdb/contextdb/storage.py:rebuild_memory_blocks",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:_insert_candidates",
+      "target": "function:.claude/contextdb/contextdb/storage.py:add_memory",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:add_memory",
+      "target": "function:.claude/contextdb/contextdb/storage.py:_fts_insert_memory",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:retract_memory",
+      "target": "function:.claude/contextdb/contextdb/storage.py:add_memory",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:retract_memory",
+      "target": "function:.claude/contextdb/contextdb/storage.py:rebuild_memory_blocks",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:rebuild_memory_blocks",
+      "target": "function:.claude/contextdb/contextdb/storage.py:current_memories",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:rebuild_memory_blocks",
+      "target": "function:.claude/contextdb/contextdb/storage.py:_insert_block",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:hierarchical_memory_context",
+      "target": "function:.claude/contextdb/contextdb/storage.py:current_memories",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:search_memories",
+      "target": "function:.claude/contextdb/contextdb/storage.py:current_memories",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:promote_candidate",
+      "target": "function:.claude/contextdb/contextdb/storage.py:add_memory",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:promote_candidate",
+      "target": "function:.claude/contextdb/contextdb/storage.py:rebuild_memory_blocks",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:index_memory_embeddings",
+      "target": "function:.claude/contextdb/contextdb/storage.py:current_memories",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:semantic_search_memories",
+      "target": "function:.claude/contextdb/contextdb/storage.py:current_memories",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "class:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:StagedFile",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "class:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:StagedFile",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:parse_args",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:main",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:ensure_command",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:ensure_command",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:validate_source_files",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:validate_source_files",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:resolve_target_url",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:resolve_profile_dir",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:resolve_profile_dir",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:stage_files",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:build_staged_name",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:sanitize_component",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:sanitize_component",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:open_browser",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:close_browser",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:close_browser",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:wait_for_comment_composer",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:prepare_comment_composer",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:upload_files",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:perform_upload",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:get_composer_markdown",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:capture_snapshot",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:capture_snapshot",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:find_attachment_url",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:extract_attachment_links",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright_json",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright_json",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright_value",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright_value",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:main",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:ensure_command",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:main",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:validate_source_files",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:main",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:resolve_profile_dir",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:main",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:close_browser",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:build_staged_name",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:sanitize_component",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:close_browser",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:prepare_comment_composer",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright_json",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:upload_files",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:capture_snapshot",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:perform_upload",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright_json",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:get_composer_markdown",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright_value",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:capture_snapshot",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright_json",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright_value",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright_value",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:scripts/run_bashcov_unit_test.rb",
+      "target": "function:scripts/run_bashcov_unit_test.rb:expunge_invalid_files!",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:scripts/run_bashcov_unit_test.rb:DotfilesBashcovRunnerFilter",
+      "target": "function:scripts/run_bashcov_unit_test.rb:expunge_invalid_files!",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:scripts/run_bashcov_unit_test.rb",
+      "target": "function:scripts/run_bashcov_unit_test.rb:convert_coverage",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "class:scripts/run_bashcov_unit_test.rb:DotfilesBashcovRunnerFilter",
+      "target": "function:scripts/run_bashcov_unit_test.rb:convert_coverage",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:home/dot_local/bin/common/executable_agent-fanout",
+      "target": "function:home/dot_local/bin/common/executable_agent-fanout:usage",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:home/dot_local/bin/server/history.sh",
+      "target": "function:home/dot_local/bin/server/history.sh:share_history",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:install/ubuntu/client/docker.sh",
+      "target": "function:install/ubuntu/client/docker.sh:main",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:install/ubuntu/client/tailscale.sh",
+      "target": "function:install/ubuntu/client/tailscale.sh:main",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:install/ubuntu/client/zed.sh",
+      "target": "function:install/ubuntu/client/zed.sh:main",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "function:install/ubuntu/client/zed.sh:install_pinned_zed",
+      "target": "function:install/ubuntu/client/zed.sh:zed_artifact",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:install/ubuntu/client/zed.sh:main",
+      "target": "function:install/ubuntu/client/zed.sh:install_pinned_zed",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:install/ubuntu/client/docker.sh:main",
+      "target": "function:install/ubuntu/client/docker.sh:uninstall_old_docker",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:install/ubuntu/client/docker.sh:main",
+      "target": "function:install/ubuntu/client/docker.sh:setup_repository",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:install/ubuntu/client/tailscale.sh:main",
+      "target": "function:install/ubuntu/client/tailscale.sh:setup_repository",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
       "source": "file:install/ubuntu/common/apparmor_userns.sh",
       "target": "function:install/ubuntu/common/apparmor_userns.sh:profile_source",
       "type": "contains",
@@ -21968,27 +23563,6 @@
       "type": "contains",
       "direction": "forward",
       "weight": 1.0
-    },
-    {
-      "source": "function:install/ubuntu/common/apparmor_userns.sh:main",
-      "target": "function:install/ubuntu/common/apparmor_userns.sh:skip_reason",
-      "type": "calls",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "function:install/ubuntu/common/apparmor_userns.sh:main",
-      "target": "function:install/ubuntu/common/apparmor_userns.sh:install_profile",
-      "type": "calls",
-      "direction": "forward",
-      "weight": 0.8
-    },
-    {
-      "source": "function:install/ubuntu/common/apparmor_userns.sh:install_profile",
-      "target": "function:install/ubuntu/common/apparmor_userns.sh:profile_source",
-      "type": "calls",
-      "direction": "forward",
-      "weight": 0.8
     }
   ],
   "layers": [

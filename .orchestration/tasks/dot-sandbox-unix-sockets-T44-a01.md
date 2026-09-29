@@ -29,6 +29,18 @@ Deliver:
    isolation stay in force; add "Operator-visible effect" wording accordingly.
 6. `make unit-test`, `make validate-agent-assets` green.
 
+7. Second leg-1 finding, same root cause: inside the sandbox `gh` returns
+   HTTP 401 (the keyring D-Bus socket is a Unix socket too), so
+   `allowAllUnixSockets` is expected to fix both herdr and gh; state that in
+   the manifest comment and README sentence.
+8. Third leg-1 finding: every `uv run` target fails inside the sandbox with
+   `Read-only file system` on `~/.cache/uv`. Add `~/.cache/uv` to the Claude
+   sandbox `filesystem.allowWrite` via a NEW manifest list
+   `claude.sandbox.filesystem.extra_allow_write` (rendered after the Codex
+   roots, validated as absolute or `~/` paths without globs, one test), with a
+   comment naming the uv cache. Orchestrator decision 2026-09-30, flagged to
+   the operator as a filesystem relaxation limited to the uv cache directory.
+
 Do not touch `allowedDomains` (a separate finding under investigation) or
 `failIfUnavailable`.
 
@@ -50,6 +62,7 @@ sandboxed Bash on Linux; file and network isolation are unchanged
 
 - `home/dot_agents/agent-config.yaml` (the sandbox.network block only), `scripts/generate-agent-configs.py`, `scripts/validate-agent-assets.py`, `home/.chezmoitemplates/claude-settings-managed.json` (generated only), `tests/unit/test_validate_agent_assets.py`, `tests/unit/test_generate_agent_configs.py`, `README.md` (the Claude Code sandbox section only)
 - `.orchestration/{reports,validation,sandboxes,learning,autoskill/runs}/dot-sandbox-unix-sockets-T44-a01.md` (main checkout)
+- Note: inside a sandboxed shell prefix uv make targets with `UV_CACHE_DIR=$TMPDIR/uv-cache`; `gh` may need the unsandboxed retry until this change is live.
 
 ## Forbidden actions
 
@@ -62,7 +75,7 @@ git merge-base --is-ancestor origin/main HEAD && echo base-ok
 git diff --stat origin/main
 uv run --with pyyaml scripts/generate-agent-configs.py --check
 python3 - <<'PY'
-import json;s=json.load(open('home/.chezmoitemplates/claude-settings-managed.json'));print(json.dumps(s['sandbox']['network'],indent=1,sort_keys=True))
+import json;s=json.load(open('home/.chezmoitemplates/claude-settings-managed.json'));print(json.dumps({k:s['sandbox'][k] for k in ('network','filesystem')},indent=1,sort_keys=True))
 PY
 make validate-agent-assets
 make unit-test

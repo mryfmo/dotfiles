@@ -3,9 +3,7 @@
 ## Objective
 
 Bring the Understand-Anything knowledge graph in `.ua/` up to date with
-`origin/main` (stale since before 926d9f1; the SessionStart/PostToolUse hooks
-have requested an update repeatedly and the regime routes graph rebuilds
-through a worker task).
+`origin/main` (stale since the T33c rebuild at 935e198: T33a–T35 changed herdr-agents, update-agent-assets.sh, validate-agent-assets.py, check-agent-runtime.py, permgate, rules and tests; the plugin core is now built by `make update`, so the incremental path should work).
 
 - Read and execute the plugin's incremental procedure at
   `/home/moriya/.claude/plugins/cache/understand-anything/understand-anything/2.9.7/hooks/auto-update-prompt.md`

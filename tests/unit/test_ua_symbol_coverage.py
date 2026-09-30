@@ -1,4 +1,4 @@
-"""Tests for scripts/ua-symbol-coverage.py."""
+"""Tests for home/dot_local/bin/common/executable_ua-symbol-coverage."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "scripts/ua-symbol-coverage.py"
+SCRIPT = ROOT / "home/dot_local/bin/common/executable_ua-symbol-coverage"
 
 
 def graph(**files: tuple[str, ...]) -> dict:
@@ -109,6 +109,26 @@ class UaSymbolCoverageTest(unittest.TestCase):
         accounted = self.run_coverage(old, graph(a_py=("one",)))
         self.assertEqual(0, accounted.returncode, accounted.stdout)
         self.assertIn("| a.py | 2 | 1 | 1 | explained |", accounted.stdout)
+
+    def test_ref_is_the_new_graph_revision_not_the_base(self) -> None:
+        self.commit(a_py=defs("one", "two"))
+        self.commit(a_py=defs("one"))
+        old, new = graph(a_py=("one", "two")), graph(a_py=("one",))
+
+        deleted_at_ref = self.run_coverage(old, new, ref="HEAD")
+        self.assertEqual(0, deleted_at_ref.returncode, deleted_at_ref.stdout)
+        self.assertIn("| a.py | 2 | 1 | 1 | explained |", deleted_at_ref.stdout)
+
+        unchanged_at_ref = self.run_coverage(old, new, ref="HEAD~1")
+        self.assertEqual(1, unchanged_at_ref.returncode, unchanged_at_ref.stdout)
+        self.assertIn("| a.py | 2 | 1 | 2 | REGRESSION |", unchanged_at_ref.stdout)
+
+    def test_uv_run_script_shebang_is_python(self) -> None:
+        self.commit(tool="#!/usr/bin/env -S uv run --script\n" + defs("one"))
+
+        result = self.run_coverage(graph(tool=("one", "two")), graph(tool=("one",)))
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertIn("| tool | 2 | 1 | 1 | explained |", result.stdout)
 
 
 if __name__ == "__main__":

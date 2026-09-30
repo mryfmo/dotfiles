@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """Compare function+class node counts per file between two Understand-Anything graphs.
 
-Usage: ua-symbol-coverage.py <old-graph.json> <new-graph.json> [--repo-ref REF]
+Usage: ua-symbol-coverage <old-graph.json> <new-graph.json> [--repo-ref REF]
+
+REF is the revision the new graph was built from (the new graph's
+`.ua/meta.json` `gitCommitHash`, normally `HEAD`), never the pre-change base:
+only the source the new graph describes can explain a symbol it no longer has.
 
 Prints one row per `filePath` (old count, new count, and the number of
 def-like source lines at REF when given) and exits 1 when a file lost
@@ -47,7 +51,7 @@ def symbol_counts(graph_path: Path) -> dict[str, int]:
 
 def def_pattern(path: str, text: str) -> re.Pattern[str] | None:
     first = text.split("\n", 1)[0]
-    if path.endswith(".py") or "python" in first:
+    if path.endswith(".py") or "python" in first or "uv run" in first:
         return PYTHON_DEF
     if path.endswith(".rb") or "ruby" in first:
         return RUBY_DEF
@@ -91,7 +95,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("old_graph", type=Path)
     parser.add_argument("new_graph", type=Path)
-    parser.add_argument("--repo-ref", help="git ref whose source explains decreases")
+    parser.add_argument("--repo-ref", help="revision the new graph was built from (its .ua/meta.json gitCommitHash)")
     args = parser.parse_args(argv)
 
     old, new = symbol_counts(args.old_graph), symbol_counts(args.new_graph)

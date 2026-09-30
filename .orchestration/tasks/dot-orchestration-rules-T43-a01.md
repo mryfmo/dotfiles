@@ -82,3 +82,40 @@ gh pr checks <pr-number>
 2. Artifacts at the exact expected paths with verbatim outputs, PR number and head SHA.
 3. CompactionDB from the main checkout: `memory add --kind decision --scope project` with the `[memory:decision]` text above — paste command and output.
 4. `send.sh --body-file` for replies. `AGMSG-RESULT v1` with all artifact paths; `cost:` line in the report.
+
+## Orchestrator amendment r3 (2026-09-30T04:30Z; dispatched as AGMSG-ACCEPTANCE status=revise; task_rev of the original file is superseded by this file's sha256 at dispatch)
+
+Codex GitHub review on 1843dd1 (PR #214) and the Codex audits of 99c1174 and
+1843dd1 leave three confirmed items. Fix all three in one round on
+`feat/orchestration-rules-T43`:
+
+1. **Wrong `--repo-ref` semantics in the rule.** `def_lines(REF)` explains a
+   decrease only when `new >= min(old, defs)`, so `--repo-ref <base>` (the
+   pre-change source) turns every legitimate deletion into a REGRESSION. The
+   ref must be the revision the new graph was built from (`.ua/meta.json`
+   `gitCommitHash` of the new graph, normally `HEAD`). Change the bullet in
+   `home/dot_config/claude/rules/understand-anything.md`, the Codex mirror
+   `home/dot_config/codex/AGENTS.md`, the SKILL sentence, the script's usage
+   text, and add one test: a file whose function is deleted at REF is
+   `explained`, while the same graph loss with the source unchanged at REF is
+   `REGRESSION`.
+2. **The global rule mandates a repo-local script.** The rule is installed for
+   every repository, but `scripts/ua-symbol-coverage.py` exists only here.
+   Ship the helper on PATH as
+   `home/dot_local/bin/common/executable_ua-symbol-coverage` (chezmoi applies it
+   to `~/.local/bin/common`; shdoc/`@file` header not required for a Python
+   executable but keep the module docstring) and make the rule, mirror, SKILL,
+   README and the test import invoke/load that path. Delete `scripts/ua-symbol-coverage.py`
+   (no duplicate). `make render-check` is unaffected.
+3. **`uv run --script` executables are not recognised as Python.**
+   `def_pattern` (script:48-51) matches only `.py` or `python` in line 1;
+   `#!/usr/bin/env -S uv run --script` files (for example
+   `home/dot_local/bin/common/executable_permgate`, 16 nodes) always report
+   REGRESSION. Recognise a first line containing `uv run` as Python; add one
+   test with that shebang.
+
+Validation for r3: every exit code captured directly (`cmd; echo exit=$?`),
+never after a pipe — the 1843dd1 audit rejected `| grep …; echo exit=$?` as
+evidence. Re-run the real-data check (72b8901 graph vs c3afc7a graph,
+`--repo-ref c3afc7a`) and paste the exit. allowed_files += the new executable
+path; everything else unchanged. Keep the PR; push without `-u`.

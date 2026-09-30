@@ -19,6 +19,9 @@
 #   `unmasked`, when DIR is at the audited commit or the validator is missing
 #   though git tracks it, untracked, or changed, and a failed mask also fails.
 #   Masking is skipped only when git tracks no validator and none is on disk.
+#   The orchestrator pane starts Claude with the
+#   `MODEL_PROFILE_<NAME>_CLAUDE_ARGS` of the profile that
+#   MODEL_PROFILE_INTERACTIVE names in ~/.agents/model-profiles.env.
 # @option --attach Attach the current Claude pane to its Herdr workspace layout.
 # @option --restart-worker Relaunch the worker agent in the existing pair's worker pane.
 # @option --bootstrap-agmsg Configure repo-scoped agmsg hooks without changing Herdr panes.
@@ -43,8 +46,8 @@
 #   MODEL_PROFILE_INTERACTIVE from the same file, then standard.
 # @arg HERDR_AGENTS_CODEX_PROFILE Deprecated alias for HERDR_AGENTS_WORKER_PROFILE.
 # @arg HERDR_AGENTS_CLAUDE_ARGS Optional space-delimited Claude arguments for
-#   manifest-sourced E2E profile overrides on the orchestrator pane. Defaults
-#   to no arguments.
+#   manifest-sourced E2E profile overrides on the orchestrator pane, appended
+#   after the interactive profile args. Defaults to no arguments.
 # @arg HERDR_AGENTS_CLAUDE_WORKER_ARGS Optional space-delimited extra Claude
 #   arguments appended after the resolved profile args for a claude worker
 #   pane. Defaults to no arguments.
@@ -608,22 +611,41 @@ function start_claude_in_pane() {
     local workspace_id="$2"
     local newly_created="$3"
     local agent_name
-    local -a claude_args=()
+    local profile profile_args
+    local -a claude_args=() extra_claude_args=()
 
     agent_name="$(agent_name_for_workspace claude-orchestrator "${workspace_id}")"
+    # Subshells: sourcing the env file here would overwrite the already
+    # resolved HERDR_AGENTS_WORKER_* globals before the worker starts.
+    profile="$(
+        MODEL_PROFILE_INTERACTIVE=""
+        # shellcheck source=/dev/null
+        [[ ! -f ${HOME}/.agents/model-profiles.env ]] || source "${HOME}/.agents/model-profiles.env"
+        printf '%s' "${MODEL_PROFILE_INTERACTIVE}"
+    )"
+    profile_args=""
+    if [[ -n ${profile} ]]; then
+        profile_args="$(
+            key="MODEL_PROFILE_$(printf '%s' "${profile}" | tr '[:lower:]' '[:upper:]')_CLAUDE_ARGS"
+            # shellcheck source=/dev/null
+            source "${HOME}/.agents/model-profiles.env"
+            printf '%s' "${!key:-}"
+        )"
+    fi
+    if [[ -n ${profile_args} ]]; then
+        read -r -a claude_args <<< "${profile_args}"
+    fi
     if [[ -n ${HERDR_AGENTS_CLAUDE_ARGS:-} ]]; then
-        read -r -a claude_args <<< "${HERDR_AGENTS_CLAUDE_ARGS}"
+        read -r -a extra_claude_args <<< "${HERDR_AGENTS_CLAUDE_ARGS}"
+        claude_args+=(${extra_claude_args[@]+"${extra_claude_args[@]}"})
     fi
     if [[ ${newly_created} == false ]]; then
         herdr pane run "${pane_id}" "export CLICOLOR_FORCE=1 FORCE_COLOR=1 HERDR_AGENTS_LAYOUT=managed" > /dev/null
         wait_for_shell_prompt "${pane_id}" prompt || return 1
     fi
     rename_pane_unless_seat_named "${pane_id}" claude-orchestrator
-    if [[ ${#claude_args[@]} -gt 0 ]]; then
-        start_agent_in_pane claude "${agent_name}" "${pane_id}" "${newly_created}" "${claude_args[@]}" > /dev/null
-    else
-        start_agent_in_pane claude "${agent_name}" "${pane_id}" "${newly_created}" > /dev/null
-    fi
+    start_agent_in_pane claude "${agent_name}" "${pane_id}" "${newly_created}" ${claude_args[@]+"${claude_args[@]}"} > /dev/null
+    printf 'orchestrator_profile=%s args=%s\n' "${profile:-none}" "${claude_args[*]:-none}"
 }
 
 # @description Accept a claude workspace-trust dialog when one appears.

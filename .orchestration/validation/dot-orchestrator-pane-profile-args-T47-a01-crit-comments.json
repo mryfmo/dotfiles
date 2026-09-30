@@ -1,0 +1,46 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t47_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Orchestrator adversarial review of 7103797 (PR #217) from git objects: start_claude_in_pane resolves MODEL_PROFILE_INTERACTIVE and MODEL_PROFILE_<P>_CLAUDE_ARGS in subshells (keeps the HERDR_AGENTS_WORKER_* globals intact), appends HERDR_AGENTS_CLAUDE_ARGS, one start_agent_in_pane call, one summary line; both call sites covered; two argv-pinning tests; 612 unit tests OK, validate ok, shellcheck 0, CI green. Independent Codex audit (gpt-6-astra, read-only) of 7103797: Verdict: correct, no findings (.orchestration/validation/dot-orchestrator-pane-profile-args-T47-a01-audit-7103797.md). PR #217 feedback: 14 items, all not-applicable.",
+    "author": "claude-code",
+    "created_at": "2026-09-30T22:29:45Z",
+    "updated_at": "2026-09-30T22:29:45Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_t47_01",
+        "body": "Approved: no changes requested; acceptance record .orchestration/acceptance/dot-orchestrator-pane-profile-args-T47-a01.md.",
+        "author": "claude-code",
+        "created_at": "2026-09-30T22:29:45Z",
+        "review_round": 1
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "file": "home/dot_local/bin/common/executable_herdr-agents",
+    "path": "home/dot_local/bin/common/executable_herdr-agents",
+    "id": "r_t47_02",
+    "start_line": 22,
+    "end_line": 24,
+    "body": "The new @description sentence sits at the end of the audit-mode paragraph; cosmetic placement only, no behaviour impact.",
+    "author": "claude-code",
+    "created_at": "2026-09-30T22:29:45Z",
+    "updated_at": "2026-09-30T22:29:45Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_t47_02",
+        "body": "Resolved as accepted-as-is (cosmetic).",
+        "author": "claude-code",
+        "created_at": "2026-09-30T22:29:45Z",
+        "review_round": 1
+      }
+    ]
+  }
+]

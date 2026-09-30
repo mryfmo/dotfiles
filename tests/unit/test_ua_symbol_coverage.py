@@ -16,7 +16,7 @@ SCRIPT = ROOT / "home/dot_local/bin/common/executable_ua-symbol-coverage"
 def graph(**files: tuple[str, ...]) -> dict:
     nodes = []
     for path, symbols in files.items():
-        path = path.replace("__", "/").replace("_py", ".py")
+        path = path.replace("__", "/").replace("_py", ".py").replace("_rb", ".rb")
         nodes.append({"id": f"file:{path}", "type": "file", "filePath": path})
         nodes += [
             {"id": f"function:{path}:{name}", "type": "function", "filePath": path}
@@ -40,7 +40,7 @@ class UaSymbolCoverageTest(unittest.TestCase):
 
     def commit(self, **files: str) -> None:
         for name, text in files.items():
-            (self.repo / name.replace("_py", ".py")).write_text(text)
+            (self.repo / name.replace("_py", ".py").replace("_rb", ".rb")).write_text(text)
         subprocess.run(["git", "add", "-A"], cwd=self.repo, check=True)
         subprocess.run(
             ["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "c"],
@@ -173,6 +173,44 @@ class UaSymbolCoverageTest(unittest.TestCase):
         result = self.run_coverage(graph(tool=("one", "two")), graph(tool=("one",)))
         self.assertEqual(0, result.returncode, result.stdout)
         self.assertIn("| tool | 2 | 1 | 1 | explained |", result.stdout)
+
+    def test_unchanged_source_cannot_explain_a_loss(self) -> None:
+        self.commit(a_py=defs("one", "two"))
+        self.commit(b_py=defs("other"))
+        old, new = graph(a_py=("one", "two", "nested")), graph(a_py=("one", "two"))
+
+        by_defs = self.run_coverage(old, new)
+        self.assertEqual(0, by_defs.returncode, by_defs.stdout)
+        self.assertIn("| a.py | 3 | 2 | 2 | explained |", by_defs.stdout)
+
+        unchanged = self.run_coverage(old, new, old_ref="HEAD~1")
+        self.assertEqual(1, unchanged.returncode, unchanged.stdout)
+        self.assertIn(
+            "| a.py | 3 | 2 | 2 | REGRESSION | source unchanged |", unchanged.stdout
+        )
+
+    def test_ruby_visibility_prefixed_defs_are_counted(self) -> None:
+        self.commit(
+            lib_rb="class A\n  def one\n  end\n\n  private def two\n  end\nend\n"
+        )
+
+        result = self.run_coverage(graph(lib_rb=("A", "one", "two")), graph(lib_rb=("A", "one")))
+        self.assertEqual(1, result.returncode, result.stdout)
+        self.assertIn("| lib.rb | 3 | 2 | 3 | REGRESSION |", result.stdout)
+
+    def test_low_similarity_move_with_no_symbols_is_regression(self) -> None:
+        self.commit(a_py=defs("one", "two"))
+        (self.repo / "a.py").unlink()
+        self.commit(b_py=defs("one", "two") + "".join(f"x{i} = {i}\n" for i in range(80)))
+
+        result = self.run_coverage(
+            graph(a_py=("one", "two")), graph(b_py=()), old_ref="HEAD~1"
+        )
+        self.assertEqual(1, result.returncode, result.stdout)
+        self.assertIn("| a.py | 2 | 0 | gone | explained |", result.stdout)
+        self.assertIn(
+            "| b.py | 0 | 0 | 2 | REGRESSION | new file, no symbols |", result.stdout
+        )
 
 
 if __name__ == "__main__":

@@ -20,8 +20,16 @@ so is any decrease in a file type without a def grammar. A path renamed
 between OLD and REF (`git diff -M --diff-filter=R`) is judged by its
 successor's new count under the same rule, and its row's new column shows
 that successor count; without --old-ref a path absent at REF is a regression
-(fail closed). Ceiling: `-M` pairs renames at >=50% similarity, so a rename
-that also rewrites most of the file reads as a deletion plus a new file. `validateGraph`
+(fail closed). With --old-ref, a path whose blob is identical at OLD and REF
+(or a rename whose successor keeps the blob) cannot explain any decrease: it is
+a regression noted `source unchanged`, whatever the def-like count, because a
+source the refresh did not touch cannot have lost a definition. A path new to
+the graph that exists at REF with at least one def-like line but no symbols is
+a regression noted `new file, no symbols`; this catches a move plus rewrite
+below git's rename threshold. Ceilings: `-M` pairs renames at >=50%
+similarity, so a rename that also rewrites most of the file reads as a
+deletion plus a new file, and such a moved and rewritten file that keeps
+*some* nodes is judged only by the zero-symbol check. `validateGraph`
 checks schema and references only, so this is the completeness gate for a
 `.ua/` refresh (home/dot_config/claude/rules/understand-anything.md).
 
@@ -40,7 +48,7 @@ from pathlib import Path
 
 SYMBOL_TYPES = {"function", "class"}
 PYTHON_DEF = re.compile(r"^\s*(?:async\s+def|def|class)\s+\w+")
-RUBY_DEF = re.compile(r"^\s*(?:def|class|module)\s+\S+")
+RUBY_DEF = re.compile(r"^\s*(?:(?:private|protected|public)\s+)?(?:def|class|module)\s+\S+")
 SHELL_DEF = re.compile(r"^\s*(?:function\s+[\w:.-]+|[\w:.-]+\s*\(\))(?:\s*[{(].*)?\s*$")
 
 
@@ -107,6 +115,18 @@ def renames(old_ref: str, ref: str) -> dict[str, str]:
     return {fields[i + 1]: fields[i + 2] for i in range(0, len(fields) - 2, 3)}
 
 
+def blobs(ref: str) -> dict[str, str]:
+    """Map every path at REF to its blob id (REF is already verified)."""
+    tree = git("ls-tree", "-r", "-z", ref)
+    if tree.returncode != 0:
+        raise CoverageError(f"cannot list {ref}: {tree.stderr.strip()}")
+    entries: dict[str, str] = {}
+    for entry in filter(None, tree.stdout.split("\0")):
+        meta, _, path = entry.partition("\t")
+        entries[path] = meta.split()[2]
+    return entries
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("old_graph", type=Path)
@@ -119,12 +139,15 @@ def main(argv: list[str] | None = None) -> int:
 
     old, new = symbol_counts(args.old_graph), symbol_counts(args.new_graph)
     moved: dict[str, str] = {}
+    old_blobs: dict[str, str] = {}
+    new_blobs: dict[str, str] = {}
     try:
         if args.repo_ref is not None:
             verify_ref(args.repo_ref)
         if args.old_ref is not None:
             verify_ref(args.old_ref, "--old-ref")
             moved = renames(args.old_ref, args.repo_ref)
+            old_blobs, new_blobs = blobs(args.old_ref), blobs(args.repo_ref)
         rows = [
             (path, old.get(path, 0), new.get(path, 0), def_lines(args.repo_ref, path) if args.repo_ref else "-")
             for path in sorted(set(old) | set(new))
@@ -137,23 +160,30 @@ def main(argv: list[str] | None = None) -> int:
     except CoverageError as error:
         print(f"ua-symbol-coverage: {error}", file=sys.stderr)
         return 2
+    # A successor whose predecessor had symbols is judged on the predecessor's row.
+    judged = {successor for path, (successor, _, _) in successors.items() if old.get(path, 0)}
     regressions = 0
-    print("| file | old | new | def-like lines | status |")
-    print("|---|---|---|---|---|")
+    print("| file | old | new | def-like lines | status | note |")
+    print("|---|---|---|---|---|---|")
     for path, before, after, defs in rows:
-        status, shown = "ok", defs
+        status, shown, note, source = "ok", defs, "", path
         if path in successors:
-            shown, after, defs = f"renamed → {successors[path][0]}", *successors[path][1:]
+            source, after, defs = successors[path]
+            shown = f"renamed → {source}"
         elif defs is None:
             shown = "gone"
         if after < before:
-            if path in successors or args.old_ref is None or defs is not None:
+            if path in old_blobs and old_blobs[path] == new_blobs.get(source):
+                explained, note = False, "source unchanged"
+            elif path in successors or args.old_ref is None or defs is not None:
                 explained = isinstance(defs, int) and after >= min(before, defs)
             else:
                 explained = True  # deleted between OLD and REF
             status = "explained" if explained else "REGRESSION"
-            regressions += status == "REGRESSION"
-        print(f"| {path} | {before} | {after} | {shown} | {status} |")
+        elif path not in old and after == 0 and isinstance(defs, int) and defs and path not in judged:
+            status, note = "REGRESSION", "new file, no symbols"
+        regressions += status == "REGRESSION"
+        print(f"| {path} | {before} | {after} | {shown} | {status} | {note} |")
     print(f"files: {len(rows)}, regressions: {regressions}")
     return 1 if regressions else 0
 

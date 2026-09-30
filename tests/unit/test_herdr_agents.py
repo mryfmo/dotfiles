@@ -1498,6 +1498,49 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             self.calls_path.read_text().splitlines(),
         )
 
+    def write_deep_interactive_profile(self) -> None:
+        profiles = self.home_dir / ".agents/model-profiles.env"
+        profiles.parent.mkdir(parents=True, exist_ok=True)
+        profiles.write_text(
+            'MODEL_PROFILE_INTERACTIVE="deep"\n'
+            'MODEL_PROFILE_DEEP_CLAUDE_ARGS="--model claude-fable-5-1 --effort high --advisor fable"\n'
+        )
+
+    def test_orchestrator_pane_uses_interactive_profile_args(self) -> None:
+        self.write_deep_interactive_profile()
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            "agent start claude-orchestrator-w-test --kind claude --pane w-test:p1 --timeout 30000 "
+            "-- --model claude-fable-5-1 --effort high --advisor fable",
+            self.calls_path.read_text().splitlines(),
+        )
+        self.assertIn(
+            "orchestrator_profile=deep args=--model claude-fable-5-1 --effort high --advisor fable",
+            result.stdout.splitlines(),
+        )
+
+    def test_orchestrator_pane_appends_claude_args_after_profile_args(self) -> None:
+        self.write_deep_interactive_profile()
+
+        result = self.run_helper(
+            extra_env={"HERDR_AGENTS_CLAUDE_ARGS": "--model haiku --effort low"}
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            "agent start claude-orchestrator-w-test --kind claude --pane w-test:p1 --timeout 30000 "
+            "-- --model claude-fable-5-1 --effort high --advisor fable --model haiku --effort low",
+            self.calls_path.read_text().splitlines(),
+        )
+        self.assertIn(
+            "orchestrator_profile=deep args=--model claude-fable-5-1 --effort high --advisor fable "
+            "--model haiku --effort low",
+            result.stdout.splitlines(),
+        )
+
     def test_worker_kind_defaults_to_generated_env_fragment(self) -> None:
         self.register_claude_worker_identity()
         profiles = self.home_dir / ".agents/model-profiles.env"

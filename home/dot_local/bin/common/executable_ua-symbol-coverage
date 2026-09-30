@@ -1,24 +1,31 @@
 #!/usr/bin/env python3
 """Compare function+class node counts per file between two Understand-Anything graphs.
 
-Usage: ua-symbol-coverage <old-graph.json> <new-graph.json> [--repo-ref REF]
+Usage: ua-symbol-coverage <old-graph.json> <new-graph.json> [--repo-ref REF [--old-ref OLD]]
 
 REF is the revision the new graph was built from (the new graph's
 `.ua/meta.json` `gitCommitHash`, normally `HEAD`), never the pre-change base:
 only the source the new graph describes can explain a symbol it no longer has.
+OLD is the revision the previous graph was built from (its `gitCommitHash`);
+it lets a path absent at REF be told apart as a rename or a deletion.
 
 Prints one row per `filePath` (old count, new count, and the number of
 def-like source lines at REF when given) and exits 1 when a file lost
 function/class nodes while its source still has at least as many def-like
 lines as the old graph had symbols. Without --repo-ref every decrease counts
 as a regression. With --repo-ref, a decrease is explained only when the path
-is absent at REF (per `git ls-tree`), or when the new count still covers
+is deleted between OLD and REF, or when the new count still covers
 min(old count, def-like lines at REF); any further loss is a regression, and
-so is any decrease in a file type without a def grammar. `validateGraph`
+so is any decrease in a file type without a def grammar. A path renamed
+between OLD and REF (`git diff -M --diff-filter=R`) is judged by its
+successor's new count under the same rule, and its row's new column shows
+that successor count; without --old-ref a path absent at REF is a regression
+(fail closed). Ceiling: `-M` pairs renames at >=50% similarity, so a rename
+that also rewrites most of the file reads as a deletion plus a new file. `validateGraph`
 checks schema and references only, so this is the completeness gate for a
 `.ua/` refresh (home/dot_config/claude/rules/understand-anything.md).
 
-Exit status: 0 no regressions, 1 regressions, 2 when REF does not resolve to
+Exit status: 0 no regressions, 1 regressions, 2 when REF or OLD does not resolve to
 a commit or a path cannot be read at REF (fail closed, no table-based pass).
 """
 
@@ -70,11 +77,11 @@ def git(*args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(["git", *args], capture_output=True, text=True, errors="replace", check=False)
 
 
-def verify_ref(ref: str) -> None:
+def verify_ref(ref: str, option: str = "--repo-ref") -> None:
     if not ref.strip() or ref.startswith("-"):
-        raise CoverageError(f"--repo-ref {ref!r} is not a git ref")
+        raise CoverageError(f"{option} {ref!r} is not a git ref")
     if git("rev-parse", "--verify", "--quiet", "--end-of-options", f"{ref}^{{commit}}").returncode != 0:
-        raise CoverageError(f"--repo-ref {ref!r} does not resolve to a commit")
+        raise CoverageError(f"{option} {ref!r} does not resolve to a commit")
 
 
 def def_lines(ref: str, path: str) -> int | str | None:
@@ -91,21 +98,42 @@ def def_lines(ref: str, path: str) -> int | str | None:
     return sum(1 for line in shown.stdout.splitlines() if pattern.search(line))
 
 
+def renames(old_ref: str, ref: str) -> dict[str, str]:
+    """Map each path renamed between OLD and REF to its successor."""
+    diff = git("diff", "-z", "--name-status", "-M", "--diff-filter=R", old_ref, ref, "--")
+    if diff.returncode != 0:
+        raise CoverageError(f"cannot diff {old_ref}..{ref}: {diff.stderr.strip()}")
+    fields = diff.stdout.split("\0")
+    return {fields[i + 1]: fields[i + 2] for i in range(0, len(fields) - 2, 3)}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("old_graph", type=Path)
     parser.add_argument("new_graph", type=Path)
     parser.add_argument("--repo-ref", help="revision the new graph was built from (its .ua/meta.json gitCommitHash)")
+    parser.add_argument("--old-ref", help="revision the previous graph was built from (its .ua/meta.json gitCommitHash)")
     args = parser.parse_args(argv)
+    if args.old_ref is not None and args.repo_ref is None:
+        parser.error("--old-ref requires --repo-ref")
 
     old, new = symbol_counts(args.old_graph), symbol_counts(args.new_graph)
+    moved: dict[str, str] = {}
     try:
         if args.repo_ref is not None:
             verify_ref(args.repo_ref)
+        if args.old_ref is not None:
+            verify_ref(args.old_ref, "--old-ref")
+            moved = renames(args.old_ref, args.repo_ref)
         rows = [
             (path, old.get(path, 0), new.get(path, 0), def_lines(args.repo_ref, path) if args.repo_ref else "-")
             for path in sorted(set(old) | set(new))
         ]
+        successors = {
+            path: (moved[path], new.get(moved[path], 0), def_lines(args.repo_ref, moved[path]))
+            for path, _, _, defs in rows
+            if defs is None and path in moved
+        }
     except CoverageError as error:
         print(f"ua-symbol-coverage: {error}", file=sys.stderr)
         return 2
@@ -113,14 +141,19 @@ def main(argv: list[str] | None = None) -> int:
     print("| file | old | new | def-like lines | status |")
     print("|---|---|---|---|---|")
     for path, before, after, defs in rows:
-        status = "ok"
+        status, shown = "ok", defs
+        if path in successors:
+            shown, after, defs = f"renamed → {successors[path][0]}", *successors[path][1:]
+        elif defs is None:
+            shown = "gone"
         if after < before:
-            explained = defs is None or (isinstance(defs, int) and after >= min(before, defs))
+            if path in successors or args.old_ref is None or defs is not None:
+                explained = isinstance(defs, int) and after >= min(before, defs)
+            else:
+                explained = True  # deleted between OLD and REF
             status = "explained" if explained else "REGRESSION"
             regressions += status == "REGRESSION"
-        print(
-            f"| {path} | {before} | {after} | {'gone' if defs is None else defs} | {status} |"
-        )
+        print(f"| {path} | {before} | {after} | {shown} | {status} |")
     print(f"files: {len(rows)}, regressions: {regressions}")
     return 1 if regressions else 0
 

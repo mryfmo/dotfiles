@@ -49,12 +49,13 @@ class UaSymbolCoverageTest(unittest.TestCase):
         )
 
     def run_coverage(
-        self, old: dict, new: dict, ref: str = "HEAD"
+        self, old: dict, new: dict, ref: str = "HEAD", old_ref: str | None = None
     ) -> subprocess.CompletedProcess[str]:
         (self.repo / "old.json").write_text(json.dumps(old))
         (self.repo / "new.json").write_text(json.dumps(new))
+        refs = [f"--repo-ref={ref}"] + ([f"--old-ref={old_ref}"] if old_ref else [])
         return subprocess.run(
-            [sys.executable, str(SCRIPT), "old.json", "new.json", f"--repo-ref={ref}"],
+            [sys.executable, str(SCRIPT), "old.json", "new.json", *refs],
             cwd=self.repo,
             capture_output=True,
             text=True,
@@ -87,7 +88,20 @@ class UaSymbolCoverageTest(unittest.TestCase):
                 self.assertNotIn("regressions:", result.stdout)
         self.assertFalse((self.repo / "leak").exists())
 
-    def test_file_gone_at_ref_is_explained(self) -> None:
+    def test_deleted_path_with_old_ref_is_explained(self) -> None:
+        self.commit(a_py=defs("one", "two"), b_py=defs("keep"))
+        (self.repo / "a.py").unlink()
+        self.commit()
+
+        result = self.run_coverage(
+            graph(a_py=("one", "two"), b_py=("keep",)),
+            graph(b_py=("keep",)),
+            old_ref="HEAD~1",
+        )
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertIn("| a.py | 2 | 0 | gone | explained |", result.stdout)
+
+    def test_absent_path_without_old_ref_is_regression(self) -> None:
         self.commit(a_py=defs("one", "two"), b_py=defs("keep"))
         (self.repo / "a.py").unlink()
         self.commit()
@@ -95,8 +109,38 @@ class UaSymbolCoverageTest(unittest.TestCase):
         result = self.run_coverage(
             graph(a_py=("one", "two"), b_py=("keep",)), graph(b_py=("keep",))
         )
+        self.assertEqual(1, result.returncode, result.stdout)
+        self.assertIn("| a.py | 2 | 0 | gone | REGRESSION |", result.stdout)
+
+    def rename_a_to_b(self) -> None:
+        (self.repo / "pkg").mkdir()
+        (self.repo / "pkg/a.py").write_text(defs("one", "two"))
+        self.commit()
+        subprocess.run(["git", "mv", "pkg/a.py", "pkg/b.py"], cwd=self.repo, check=True)
+        self.commit()
+
+    def test_rename_preserving_symbols_is_ok(self) -> None:
+        self.rename_a_to_b()
+
+        result = self.run_coverage(
+            graph(pkg__a_py=("one", "two")),
+            graph(pkg__b_py=("one", "two")),
+            old_ref="HEAD~1",
+        )
         self.assertEqual(0, result.returncode, result.stdout)
-        self.assertIn("| a.py | 2 | 0 | gone | explained |", result.stdout)
+        self.assertIn("| pkg/a.py | 2 | 2 | renamed → pkg/b.py | ok |", result.stdout)
+
+    def test_rename_dropping_symbols_is_regression(self) -> None:
+        self.rename_a_to_b()
+
+        result = self.run_coverage(
+            graph(pkg__a_py=("one", "two")), graph(pkg__b_py=()), old_ref="HEAD~1"
+        )
+        self.assertEqual(1, result.returncode, result.stdout)
+        self.assertIn(
+            "| pkg/a.py | 2 | 0 | renamed → pkg/b.py | REGRESSION |", result.stdout
+        )
+        self.assertIn("regressions: 1", result.stdout)
 
     def test_partial_deletion_is_explained_only_up_to_the_source_loss(self) -> None:
         self.commit(a_py=defs("one"))

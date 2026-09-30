@@ -224,7 +224,8 @@ in the Codex clone without one), so `.ua/` incremental updates work, and
 `make doctor` warns under the same rule, so `make update` repairs what it reports.
 A `.ua/` refresh is accepted only when `ua-symbol-coverage` (installed on PATH
 from `home/dot_local/bin/common/executable_ua-symbol-coverage`), run with
-`--repo-ref` set to the revision the new graph was built from, shows no
+`--repo-ref` and `--old-ref` set to the revisions the new and previous graphs
+were built from (so renames are told apart from deletions), shows no
 unexplained per-file function/class regressions against the previous graph
 (`home/dot_config/claude/rules/understand-anything.md`).
 Plugin 2.9.7 has two known coverage gaps: `merge-batch-graphs.py` drops

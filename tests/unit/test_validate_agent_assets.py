@@ -192,7 +192,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         }
         profiles["security"]["codex"]["model"] = "gpt-6-astra"
         profiles["audit"]["codex"].update(
-            model="gpt-6-astra", sandbox_mode="read-only"
+            model="gpt-6-sol", model_reasoning_effort="xhigh", sandbox_mode="read-only"
         )
         profiles["standard"]["claude"]["advisor"] = "fable"
         manifest = {
@@ -552,7 +552,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
     def test_agent_manifest_pins_the_audit_codex_profile(self) -> None:
         for key, wrong in (
             ("model", "gpt-5.6-sol"),
+            ("model", "gpt-6-astra"),
             ("model_reasoning_effort", "medium"),
+            ("model_reasoning_effort", "high"),
             ("sandbox_mode", "workspace-write"),
             ("sandbox_mode", None),
         ):

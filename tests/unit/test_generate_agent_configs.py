@@ -493,8 +493,8 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         manifest["model_profiles"]["audit"] = {
             "claude": {"model": "claude-fable-5-1", "effort": "high"},
             "codex": {
-                "model": "gpt-6-astra",
-                "model_reasoning_effort": "high",
+                "model": "gpt-6-sol",
+                "model_reasoning_effort": "xhigh",
                 "sandbox_mode": "read-only",
             },
         }

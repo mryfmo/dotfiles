@@ -589,9 +589,15 @@ with `Read-only file system` and needs an escalation. `herdr-agents` passes
 same `--config` entry in the `--add-worker` spawn options file. The list starts
 with the roots configured in `~/.codex/config.toml` (the agmsg store), because
 `-c` replaces the array, followed by `<common>/objects`, `<common>/refs`,
-`<common>/logs` and `<common>/worktrees/<name>`. The common dir itself and its
-`config`, `hooks`, `info`, `HEAD` and `packed-refs` stay read-only (a rebase
-still succeeds; git only logs that it cannot lock `packed-refs`), and
+`<common>/logs` and `<common>/worktrees/<name>`. The file is parsed with
+python3's `tomllib` (3.11+), and the grant fails closed: when the file cannot
+be parsed or its `writable_roots` is not a list of strings, `herdr-agents`
+prints a stderr line and passes no override, so the worker keeps its configured
+roots. The common dir itself and its `config`, `hooks`, `info`, `HEAD` and
+`packed-refs` stay read-only (a rebase still succeeds; git only logs that it
+cannot lock `packed-refs`). In a shallow clone, `<common>/shallow` is not
+granted either, so `git fetch --deepen` or `--unshallow` still needs an
+operator-approved escalation; `herdr-agents` says so on stderr. Finally,
 `approval_policy`, `sandbox_mode` and `network_access` are unchanged, so a
 `git fetch` or `git push` to GitHub still needs the network the sandbox denies.
 A worker never asks another agent to approve an escalation: Codex escalation

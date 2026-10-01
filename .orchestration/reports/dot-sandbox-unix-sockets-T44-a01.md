@@ -63,3 +63,45 @@ $ cd /home/moriya/Workspace/dotfiles && python3 .claude/hooks/contextdb_cli.py m
 None outside the repository working tree. The settings take effect when the operator next runs `make update`.
 
 cost: 0 subagent dispatches; orchestrating-session token/cost figures n/a.
+
+## Revision 2 (orchestrator status=revise 03:06:10Z; amendment r2; task_rev 825fdc0a…6e09 verified)
+
+The operator decided on 2026-10-01 to **remove the socket relaxation and keep the uv cache write**. Before switching, worker-c had finished T43 (merged as c5dd169). Commits:
+- **663ddbd** merges origin/main b9d15b5 into `fix/sandbox-unix-sockets` (clean auto-merge).
+- **dcb8839** is the fix.
+
+There was no force push. PR #215 head is `dcb8839081d3911ceff85577f57c37aaea9efa26` (all CI checks pass, nix skipped; mergeStateStatus CLEAN). The PR is retitled "fix(agents): let the Claude sandbox write the uv cache; keep Unix sockets closed on Linux", and its body is rewritten for revision 2.
+
+1. **Removed** `sandbox.network.allowAllUnixSockets` from:
+   - `home/dot_agents/agent-config.yaml`: the key and its 5-line comment. A 3-line comment now records why the allow-all switch stays off, phrased without the key name so the grep below stays empty.
+   - the generator passthrough in `scripts/generate-agent-configs.py` `render_claude_sandbox`;
+   - the validator's boolean check in `scripts/validate-agent-assets.py` `validate_claude_sandbox`;
+   - the rendered `home/.chezmoitemplates/claude-settings-managed.json` (regenerated; only that key changed);
+   - the two tests that asserted it: the generator test's `assertNotIn` / `assertIs` lines, and the validator test `test_claude_sandbox_allow_all_unix_sockets_must_be_boolean`.
+2. **Kept** `allowUnixSockets: [~/.config/herdr/herdr.sock]` with its macOS-only comment, and `filesystem.extra_allow_write: [~/.cache/uv]` together with its generator rendering, validator check and tests. The generator test still asserts `allowWrite == ["/root-a", "~/.cache/uv"]`.
+3. **README "Claude Code sandbox" section:**
+   - The `allowAllUnixSockets` sentence is replaced. It now says that Linux and WSL2 ignore `allowUnixSockets` (seccomp cannot inspect socket paths), so `herdr`, `agmsg-dispatch`, `herdr-agents` and `gh` (keyring over D-Bus) run through the normal unsandboxed retry prompt on Linux.
+   - It also says `allowAllUnixSockets` is deliberately not used, because with a `docker`-group user or a reachable `systemd --user` bus it turns the auto-approved sandbox into an escape, and links code.claude.com/docs/en/sandboxing#security-limitations.
+   - The "Operator-visible effect" paragraph had said "Local Unix sockets, including herdr and the `gh` keyring, are reachable". I corrected it, because that would otherwise be false: on Linux such commands fail inside the sandbox and go through the unsandboxed retry prompt.
+4. **For the record** (amendment r2 item 3): the round-1 review accepted the relaxation without weighing docker.sock as an escape, and the security-profile review was not run. Removal narrows the boundary, so no separate review is needed for r2.
+
+**Checks** (verbatim in the r2 validation section, every exit captured directly):
+- base-ok after the merge, exit 0.
+- `grep -n allowAllUnixSockets` over the manifest, generator, validator and template: **no output, exit=1**. The same over both test files: exit=1.
+- Rendered sandbox `network`/`filesystem`:
+  - network: `allowUnixSockets` [herdr.sock] and `allowedDomains` [the five GitHub hosts], with no allow-all key;
+  - filesystem: `allowWrite` lists the 4 agmsg roots plus `~/.cache/uv`.
+- `make render-check`: up to date, exit 0.
+- `make unit-test`: 634 tests OK (1 skipped), exit 0.
+- `make validate-agent-assets`: ok, exit 0.
+- `gh pr checks 215`: in the validation file.
+
+**Notes**
+- The Understand-Anything hook fired after the commits. I did not act on it.
+- `allowedDomains` and `failIfUnavailable` are untouched.
+- **Effect** (after the operator's next `make update`): sandboxed Bash gains write access to `~/.cache/uv`. Unix sockets on Linux stay blocked inside the sandbox, which is the status quo before T44.
+- **CompactionDB (main checkout):** **911e61c8-e962-4648-84d9-0598702cfa49** supersedes the r1 decision `5ab13bbc-7eb0-41cf-a99c-9aa95b8a51b3`, which says `allowAllUnixSockets: true`. Please drop or ignore 5ab13bbc at consolidation.
+
+[memory:decision] T44 r2: the Claude Code sandbox does not set network.allowAllUnixSockets (with a docker-group user or a reachable systemd --user bus it makes the auto-approved sandbox an escape); on Linux herdr, agmsg-dispatch, herdr-agents and gh use the unsandboxed retry prompt; filesystem.extra_allow_write [~/.cache/uv] stays (operator decision 2026-10-01). Supersedes the T44 r1 decision.
+
+cost (revision 2): 0 subagent dispatches; about 20k context tokens consumed this round (session budget counter; no per-task figure exposed).

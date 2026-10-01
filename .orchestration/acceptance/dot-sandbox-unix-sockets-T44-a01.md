@@ -81,3 +81,38 @@ decision). Audit finding 1 (macOS scope) becomes moot with the removal; audit
 finding 2 (README trust boundary) is answered by the README sentence r2 adds.
 Queued in worker-c behind T47 and T43 r3 (README overlaps T43 r3, so not a
 parallel candidate). Amendment in the task file; ACCEPTANCE goes out in turn.
+
+## Round 2 review and acceptance (2026-10-01, RESULT msg 572, head dcb8839 = c2c1f62 + merge 663ddbd + dcb8839)
+
+Full PR diff against main read from git objects: `allowAllUnixSockets`
+removed from `agent-config.yaml` (key and comment; a 3-line comment records
+why the allow-all switch stays off), from `render_claude_sandbox`, from the
+validator boolean check, from the rendered `claude-settings-managed.json` and
+from both tests; `git grep allowAllUnixSockets` at the head finds only the
+README sentence that says it is deliberately not used. Kept:
+`allowUnixSockets: [~/.config/herdr/herdr.sock]` (macOS-only comment),
+`filesystem.extra_allow_write: [~/.cache/uv]` with generator rendering,
+validator check (absolute or `~/` paths, no globs) and tests. README: Linux
+ignores `allowUnixSockets`, so herdr/agmsg-dispatch/herdr-agents/gh use the
+unsandboxed retry prompt; the escape rationale (docker-group user,
+`systemd --user` bus) with the upstream security-limitations link; the
+"Operator-visible effect" paragraph corrected (it had claimed sockets were
+reachable). Net trust boundary vs main: narrower except the `~/.cache/uv`
+write. 634 tests OK; render-check up to date; validate ok; CI all pass; CLEAN;
+PR retitled for the uv cache change. Codex audit of dcb8839
+(`…-audit-dcb8839.md`, gpt-6-astra, read-only): **Verdict: correct**; it
+also checked that upgrading removes an existing `allowAllUnixSockets: true`.
+Audit findings of c2c1f62 (macOS scope, README trust boundary) are moot /
+answered by the removal and the README text. PR #215 sweep on dcb8839 (16
+items): Codex P1 → fixed:dcb8839; rest not-applicable. CompactionDB: r1
+decision `5ab13bbc…` (says `allowAllUnixSockets: true`) retracted at
+acceptance; r2 decision `911e61c8…` stands.
+
+Operator-visible impact after `make update`: sandboxed Bash can write
+`~/.cache/uv`; Unix sockets on Linux stay blocked inside the sandbox (status
+quo before T44), so herdr and `gh` keep going through the unsandboxed retry.
+
+cost: ~20k context tokens (r2; worker counter)
+
+**Decision: ACCEPTED.** Merge PR #215 (squash, no `--delete-branch`) after the
+integration gate; T49 is dispatched next.

@@ -19,3 +19,14 @@
 ## Promotion
 
 None. These are candidates only.
+
+## Revision 2 triage
+
+1. **Weigh every socket on the host before allowing all Unix sockets.** A blanket socket
+   allowance combined with auto-approved sandboxed Bash is only as safe as the most powerful
+   socket reachable: `docker.sock` for a docker-group user, the `systemd --user` bus. Trust
+   boundary changes need the security-profile review (`model-selection.md`) before acceptance.
+   Status: observation, which the orchestrator already recorded in the task file.
+2. Candidate check (not done; outside r2's literal scope): the validator could *reject*
+   `network.allowAllUnixSockets: true` instead of the generator silently dropping an unknown key,
+   so the relaxation cannot return unnoticed. Status: candidate, not promoted.

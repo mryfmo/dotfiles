@@ -295,18 +295,78 @@ function ensure_worker_delivery() {
     fi
 }
 
+# @description Print the Codex `-c` override that makes a linked worktree's git
+#   metadata writable for a codex worker. A worktree's index, HEAD and objects
+#   live under the main checkout's git common dir, outside the workspace-write
+#   root, so every git add/commit/fetch/rebase would otherwise need an
+#   operator-approved escalation. Granted: <common>/objects, <common>/refs,
+#   <common>/logs and the worktree's own <common>/worktrees/<name>; the common
+#   dir itself, config, hooks, info, HEAD, packed-refs and, in a shallow
+#   clone, shallow (so git fetch --deepen/--unshallow still needs an
+#   escalation, reported on stderr) stay read-only.
+#   `-c` replaces the array, so the roots configured in
+#   ${CODEX_HOME:-~/.codex}/config.toml (the agmsg store) are kept in front.
+#   The file is parsed with python3's tomllib (3.11+). The grant fails closed:
+#   when the file exists but cannot be parsed, or its writable_roots is not a
+#   list of strings, it prints a stderr line and no override, so the worker
+#   keeps its configured roots. Prints nothing for a main checkout (its git dir
+#   is the common dir).
+# @arg $1 path Worker worktree.
+# @stdout `sandbox_workspace_write.writable_roots=[...]`, or nothing.
+function codex_worktree_writable_roots() {
+    local worktree="$1"
+    local common git_dir config configured="[]"
+
+    [[ -n ${worktree} ]] || return 0
+    common="$(git -C "${worktree}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null)" || return 0
+    git_dir="$(git -C "${worktree}" rev-parse --path-format=absolute --git-dir 2> /dev/null)" || return 0
+    [[ ${git_dir} == "${common}/worktrees/"* ]] || return 0
+    config="${CODEX_HOME:-${HOME}/.codex}/config.toml"
+    # A missing file or key leaves the configured roots empty, which -c cannot
+    # narrow; any other doubt keeps the configured roots by emitting nothing.
+    if [[ -e ${config} ]] && ! configured="$(
+        python3 - "${config}" 2> /dev/null << 'PY'
+import json
+import sys
+import tomllib
+
+with open(sys.argv[1], "rb") as handle:
+    roots = tomllib.load(handle).get("sandbox_workspace_write", {}).get("writable_roots", [])
+if not isinstance(roots, list) or not all(isinstance(root, str) for root in roots):
+    sys.exit(1)
+print(json.dumps(roots))
+PY
+    )"; then
+        printf 'herdr-agents: cannot read sandbox_workspace_write.writable_roots in %s as a list of strings (python3 3.11+ tomllib); the codex worker in %s gets no git metadata roots.\n' "${config}" "${worktree}" >&2
+        return 0
+    fi
+    # The spawn options dialect strips ` #...` as a comment, so no root may hold `#`.
+    if ! jq -cn --argjson configured "${configured}" '$configured + $ARGS.positional |
+        if all(.[]; type == "string" and (contains("#") | not)) then "sandbox_workspace_write.writable_roots=" + tojson else error("unsupported") end' \
+        -r --args "${common}/objects" "${common}/refs" "${common}/logs" "${git_dir}" 2> /dev/null; then
+        printf 'herdr-agents: a writable root for the codex worker in %s contains "#"; it gets no git metadata roots.\n' "${worktree}" >&2
+        return 0
+    fi
+    if [[ "$(git -C "${worktree}" rev-parse --is-shallow-repository 2> /dev/null)" == true ]]; then
+        printf 'herdr-agents: %s is a shallow clone; its shallow metadata (%s/shallow) is not granted, so git fetch --deepen or --unshallow in the codex worker needs an operator-approved escalation.\n' "${worktree}" "${common}" >&2
+    fi
+}
+
 # @description Print the agmsg spawn options YAML that carries a worker
 #   profile's launch arguments (spawn.sh splices the type section into the boot
 #   command): MODEL_PROFILE_<NAME>_CLAUDE_ARGS for claude, and `--profile <name>
 #   --sandbox workspace-write` for codex, as start_worker_agent passes the
-#   profile. HERDR_AGENTS_CLAUDE_WORKER_ARGS (free-form pair-worker extras) is
-#   not carried.
+#   profile, plus the worktree's git metadata roots (`--config`, see
+#   codex_worktree_writable_roots) for a codex worker when a worktree is given.
+#   HERDR_AGENTS_CLAUDE_WORKER_ARGS (free-form pair-worker extras) is not
+#   carried.
 # @arg $1 string Worker kind.
+# @arg $2 path Worker worktree (optional).
 # @exitcode 2 If the profile is not defined in ~/.agents/model-profiles.env or
 #   its arguments are not plain `--flag value` pairs.
 function write_spawn_options() {
     local kind="$1"
-    local profile_env_key args index
+    local profile_env_key args index roots
     local -a words=()
 
     profile_env_key="MODEL_PROFILE_$(printf '%s' "${HERDR_AGENTS_WORKER_PROFILE}" | tr '[:lower:]' '[:upper:]')_$(printf '%s' "${kind}" | tr '[:lower:]' '[:upper:]')_ARGS"
@@ -333,6 +393,10 @@ function write_spawn_options() {
         fi
         printf '  %s: %s\n' "${words[index]}" "${words[index + 1]}"
     done
+    if [[ ${kind} == codex && -n ${2:-} ]]; then
+        roots="$(codex_worktree_writable_roots "$2")"
+        [[ -z ${roots} ]] || printf '  --config: %s\n' "${roots}"
+    fi
 }
 
 # @description Despawn a worker seat graceful-first, following upstream
@@ -1012,6 +1076,7 @@ function start_worker_agent() {
     local agent_name="$2"
     local pane_id="$3"
     local newly_created="$4"
+    local roots
     local -a worker_args=()
 
     if [[ ${kind} == claude ]]; then
@@ -1038,8 +1103,10 @@ function start_worker_agent() {
         start_agent_in_pane claude "${agent_name}" "${pane_id}" "${newly_created}" ${worker_args[@]+"${worker_args[@]}"} > /dev/null
         accept_claude_workspace_trust_dialog "${pane_id}" || true
     else
-        start_agent_in_pane codex "${agent_name}" "${pane_id}" "${newly_created}" \
-            --sandbox workspace-write --profile "${HERDR_AGENTS_WORKER_PROFILE:-standard}" > /dev/null
+        worker_args=(--sandbox workspace-write --profile "${HERDR_AGENTS_WORKER_PROFILE:-standard}")
+        roots="$(codex_worktree_writable_roots "${worker_seat_dir:-}")"
+        [[ -z ${roots} ]] || worker_args+=(-c "${roots}")
+        start_agent_in_pane codex "${agent_name}" "${pane_id}" "${newly_created}" "${worker_args[@]}" > /dev/null
     fi
     rename_pane_unless_seat_named "${pane_id}" "${kind}-worker"
     printf '%s\n' "${pane_id}"
@@ -1832,7 +1899,7 @@ if [[ ${add_worker_mode} == true ]]; then
     fi
     seat_options="$(mktemp)"
     trap 'rm -f "${seat_options}"' EXIT
-    write_spawn_options "${seat_kind}" > "${seat_options}"
+    write_spawn_options "${seat_kind}" "${seat_dir}" > "${seat_options}"
     seat_panes="$(herdr pane list --workspace "${seat_workspace_id}" | jq -c '[.result.panes[]?.pane_id]')"
     # spawn.sh seats the member (placement record, actas boot, readiness wait);
     # --window opens a tab in HERDR_WORKSPACE_ID, and --project opts the join

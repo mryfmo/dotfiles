@@ -593,6 +593,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         env.pop("HERDR_AGENTS_NAME_RELEASE_POLLS", None)
         env.pop("HERDR_AGENTS_NAME_RELEASE_INTERVAL", None)
         env.pop("FPATH", None)
+        env.pop("CODEX_HOME", None)
         env["HERDR_SOCKET_PATH"] = str(self.temp_dir / "herdr.sock")
         env.pop("CLAUDE_CODE_SESSION_ID", None)
         env.pop("CLAUDE_PID", None)
@@ -2482,6 +2483,23 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
         self.assertLess(calls.index(f"delivery set both claude-code {worktree}"), calls.index(worker_split[0]))
         self.assertNotIn("would share the orchestrator's claude-code agmsg identity", result.stderr)
 
+    def test_full_mode_gives_a_codex_worker_its_worktree_git_metadata_roots(self) -> None:
+        worktree = self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        profiles = self.home_dir / ".agents/model-profiles.env"
+        profiles.write_text(profiles.read_text().replace('HERDR_AGENTS_WORKER_KIND="claude"', 'HERDR_AGENTS_WORKER_KIND="codex"'))
+        configured = self.write_codex_config_roots()
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        roots = json.dumps(configured + self.git_metadata_roots(worktree.name), separators=(",", ":"))
+        starts = [call for call in self.calls_path.read_text().splitlines() if call.startswith("agent start codex-worker-")]
+        self.assertEqual(len(starts), 1, starts)
+        self.assertTrue(
+            starts[0].endswith(f" -- --sandbox workspace-write --profile standard -c sandbox_workspace_write.writable_roots={roots}"),
+            starts[0],
+        )
+
     def test_worker_seat_refuses_a_path_that_is_not_a_worktree(self) -> None:
         worktree = self.write_worktree_seat()
         worktree.mkdir(parents=True)
@@ -2719,14 +2737,96 @@ exit {despawn_exit}
         self.assertEqual(options.read_text(), "claude-code:\n  --model: opus\n  --effort: high\n")
         self.assertIn(f"Herdr agents worker added: claude-standard-dot-a007 in workspace w-test ({worktree})", result.stdout)
 
+    def write_codex_config_roots(self, body: str | None = None) -> list[str]:
+        """A ~/.codex/config.toml whose writable_roots are the agmsg store (generated layout by default).
+
+        The launcher parses it with python3's tomllib (3.11+); the restricted
+        test PATH gets this interpreter, since a runner's /usr/bin/python3 may
+        predate tomllib.
+        """
+        roots = [str(self.home_dir / f".agents/skills/agmsg/{name}") for name in ("db", "teams", "run", "ext-tools")]
+        config = self.home_dir / ".codex/config.toml"
+        config.parent.mkdir(parents=True, exist_ok=True)
+        if body is None:
+            body = (
+                'sandbox_mode = "workspace-write"\n\n[sandbox_workspace_write]\nnetwork_access = false\n'
+                f"writable_roots = {json.dumps(roots)}\n\n[shell_environment_policy]\ninherit = \"core\"\n"
+            )
+        config.write_text(body.replace("@ROOTS@", ",\n".join(f"    {json.dumps(root)}" for root in roots)))
+        python = self.bin_dir / "python3"
+        if not python.exists():
+            python.symlink_to(sys.executable)
+        return roots
+
+    def run_codex_add_worker(self) -> tuple[subprocess.CompletedProcess[str], str]:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        options = self.write_seat_lifecycle_fakes()
+        result = self.run_helper("--add-worker", ".claude/worktrees/b2", "--kind", "codex", "--profile", "review")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        return result, options.read_text()
+
+    def test_add_worker_keeps_the_configured_roots_from_an_indented_multi_line_array(self) -> None:
+        configured = self.write_codex_config_roots(
+            "# [sandbox_workspace_write]\n[sandbox_workspace_write]\n  network_access = false\n"
+            "  writable_roots = [\n@ROOTS@,\n  ]\n"
+        )
+
+        _, options = self.run_codex_add_worker()
+
+        roots = json.dumps(configured + self.git_metadata_roots("b2"), separators=(",", ":"))
+        self.assertIn(f"  --config: sandbox_workspace_write.writable_roots={roots}\n", options)
+
+    def test_add_worker_emits_no_override_for_an_unparseable_codex_config(self) -> None:
+        self.write_codex_config_roots("[sandbox_workspace_write\nwritable_roots = [\"/a\"]\n")
+
+        result, options = self.run_codex_add_worker()
+
+        self.assertEqual(options, "codex:\n  --profile: review\n  --sandbox: workspace-write\n")
+        self.assertIn("cannot read sandbox_workspace_write.writable_roots in ", result.stderr)
+        self.assertIn("gets no git metadata roots", result.stderr)
+
+    def test_add_worker_reports_shallow_metadata_as_not_granted(self) -> None:
+        configured = self.write_codex_config_roots()
+        real_git = shutil.which("git")
+        fake_git = self.bin_dir / "git"
+        fake_git.write_text(
+            "#!/usr/bin/env bash\n"
+            'if [[ " $* " == *" --is-shallow-repository "* ]]; then echo true; exit 0; fi\n'
+            f'exec {real_git} "$@"\n'
+        )
+        fake_git.chmod(0o755)
+
+        result, options = self.run_codex_add_worker()
+
+        roots = json.dumps(configured + self.git_metadata_roots("b2"), separators=(",", ":"))
+        self.assertIn(f"  --config: sandbox_workspace_write.writable_roots={roots}\n", options)
+        self.assertIn("is a shallow clone; its shallow metadata (", result.stderr)
+        self.assertIn("needs an operator-approved escalation", result.stderr)
+
+    def git_metadata_roots(self, name: str) -> list[str]:
+        common = subprocess.run(
+            ["git", "-C", str(self.workdir), "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            check=True, capture_output=True, text=True,
+        ).stdout.strip()
+        return [f"{common}/objects", f"{common}/refs", f"{common}/logs", f"{common}/worktrees/{name}"]
+
     def test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options(self) -> None:
         self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
         options = self.write_seat_lifecycle_fakes()
+        configured = self.write_codex_config_roots()
 
         result = self.run_helper("--add-worker", ".claude/worktrees/b2", "--kind", "codex", "--profile", "review")
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(options.read_text(), "codex:\n  --profile: review\n  --sandbox: workspace-write\n")
+        # The manifest roots stay first: -c replaces the whole array.
+        roots = json.dumps(configured + self.git_metadata_roots("b2"), separators=(",", ":"))
+        self.assertEqual(
+            options.read_text(),
+            "codex:\n  --profile: review\n  --sandbox: workspace-write\n"
+            f"  --config: sandbox_workspace_write.writable_roots={roots}\n",
+        )
+        for denied in ("/config", "/hooks", "/info", "/HEAD", "/packed-refs", '.git"'):
+            self.assertNotIn(denied, options.read_text())
         calls = self.calls_path.read_text().splitlines()
         self.assertTrue(any(c.startswith("spawn codex codex-review-dot-a007 ") for c in calls), calls)
         self.assertIn(f"delivery set turn codex {self.workdir.resolve() / '.claude/worktrees/b2'}", calls)

@@ -170,7 +170,12 @@ def missing_from_graph(
         if path in old or path in new or posixpath.dirname(path) not in covered:
             continue
         if not path.endswith(GRAMMAR_SUFFIXES):
-            first = git("show", f"{ref}:{path}").stdout.split("\n", 1)[0] if mode == "100755" else ""
+            if mode != "100755":
+                continue
+            shown = git("show", f"{ref}:{path}")
+            if shown.returncode != 0:
+                raise CoverageError(f"cannot read {path} at {ref}: {shown.stderr.strip()}")
+            first = shown.stdout.split("\n", 1)[0]
             if not first.startswith("#!") or def_pattern(path, first) is None:
                 continue
         defs = def_lines(ref, path)
@@ -230,7 +235,8 @@ def main(argv: list[str] | None = None) -> int:
         if after < before:
             deleted = defs is None and args.old_ref is not None and path not in successors
             status = "explained" if deleted else "REGRESSION"
-            if path in old_blobs and old_blobs[path] == new_blobs.get(source):
+            # Blob ids only: a chmod-only change leaves the bytes unchanged.
+            if path in old_blobs and old_blobs[path][1] == new_blobs.get(source, ("", ""))[1]:
                 note = "source unchanged"
         elif path not in old and path not in judged and isinstance(defs, int) and defs and not after:
             status, note = "REGRESSION", "new file, no symbols"

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -49,7 +51,12 @@ class UaSymbolCoverageTest(unittest.TestCase):
         )
 
     def run_coverage(
-        self, old: dict, new: dict, ref: str = "HEAD", old_ref: str | None = None
+        self,
+        old: dict,
+        new: dict,
+        ref: str = "HEAD",
+        old_ref: str | None = None,
+        env: dict[str, str] | None = None,
     ) -> subprocess.CompletedProcess[str]:
         (self.repo / "old.json").write_text(json.dumps(old))
         (self.repo / "new.json").write_text(json.dumps(new))
@@ -57,6 +64,7 @@ class UaSymbolCoverageTest(unittest.TestCase):
         return subprocess.run(
             [sys.executable, str(SCRIPT), "old.json", "new.json", *refs],
             cwd=self.repo,
+            env=env,
             capture_output=True,
             text=True,
             check=False,
@@ -259,6 +267,35 @@ class UaSymbolCoverageTest(unittest.TestCase):
         self.assertIn("| b.py | 0 | 0 | 2 | REGRESSION | missing from graph |", result.stdout)
         self.assertNotIn("sub/c.py", result.stdout)
         self.assertIn("regressions: 1", result.stdout)
+
+    def test_unreadable_candidate_fails_closed(self) -> None:
+        self.commit(a_py=defs("keep"), tool="#!/bin/sh\nrun() { :; }\n")
+        os.chmod(self.repo / "tool", 0o755)
+        self.commit()
+        fake = self.repo / "fakebin"
+        fake.mkdir()
+        (fake / "git").write_text(
+            '#!/bin/sh\ncase "$*" in *"show HEAD:tool"*) echo "fatal: simulated" >&2; exit 128;; esac\n'
+            f'exec {shutil.which("git")} "$@"\n'
+        )
+        os.chmod(fake / "git", 0o755)
+        env = {**os.environ, "PATH": f"{fake}{os.pathsep}{os.environ['PATH']}"}
+
+        result = self.run_coverage(graph(a_py=("keep",)), graph(a_py=("keep",)), env=env)
+        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+        self.assertIn("ua-symbol-coverage: cannot read tool at HEAD", result.stderr)
+        self.assertNotIn("regressions:", result.stdout)
+
+    def test_chmod_only_change_keeps_the_source_unchanged_note(self) -> None:
+        self.commit(a_py=defs("one", "two"))
+        os.chmod(self.repo / "a.py", 0o755)
+        self.commit()
+
+        result = self.run_coverage(
+            graph(a_py=("one", "two")), graph(a_py=("one",)), old_ref="HEAD~1"
+        )
+        self.assertEqual(1, result.returncode, result.stdout)
+        self.assertIn("| a.py | 2 | 1 | 2 | REGRESSION | source unchanged |", result.stdout)
 
 
 if __name__ == "__main__":

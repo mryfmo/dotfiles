@@ -56,7 +56,8 @@ fi
 
 while IFS= read -r warning; do
     [[ -n ${warning} ]] && violations+=("${warning#WARN: }")
-done < <(python3 - "${root}" << 'PY' 2> /dev/null
+done < <(
+    python3 - "${root}" << 'PY' 2> /dev/null
 import importlib.util
 import sys
 from pathlib import Path

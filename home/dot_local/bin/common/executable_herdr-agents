@@ -1408,7 +1408,11 @@ if [[ ${1:-} == "--attach" ]]; then
     # under this claude's composite id, also in a managed pane. The hook payload
     # on stdin carries the session id. The read is bounded like upstream
     # check-inbox.sh's `timeout 2 cat`, but with bash's own `read -t` so it also
-    # works where GNU timeout is absent (macOS); EOF ends it early.
+    # works where GNU timeout is absent (macOS); EOF ends it early. On a timeout
+    # bash 3.2 discards the partial payload (bash 4+ keeps it); the herdr lookup
+    # (`herdr agent list` -> agent_session.value) then supplies the session id,
+    # so the claim still lands, and it is `seat_claim=unresolved` only when that
+    # lookup fails too.
     HOOK_SESSION_ID=""
     if [[ ! -t 0 ]]; then
         hook_payload=""

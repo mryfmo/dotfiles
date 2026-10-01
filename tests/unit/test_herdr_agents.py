@@ -15,6 +15,8 @@ import sys
 import tarfile
 import tempfile
 import textwrap
+import threading
+import time
 import unittest
 from pathlib import Path
 
@@ -272,7 +274,8 @@ if [[ $1 == agent && $2 == list ]]; then
         exit 0
     fi
     if [[ -s {self.orchestrator_session_path} ]]; then
-        printf '{{"id":"cli:agent:list","result":{{"agents":[{{"agent":"claude","pane_id":"w-test:p1","agent_session":{{"value":"%s"}},"agent_status":"idle"}}]}}}}\\n' "$(cat {self.orchestrator_session_path})"
+        sid="$(cat {self.orchestrator_session_path})"
+        printf '{{"id":"cli:agent:list","result":{{"agents":[{{"agent":"claude","pane_id":"w-test:p1","agent_session":{{"value":"%s"}},"agent_status":"idle"}},{{"agent":"claude","pane_id":"w-attach:p1","agent_session":{{"value":"%s"}},"agent_status":"idle"}}]}}}}\\n' "$sid" "$sid"
         exit 0
     fi
     printf '%s\\n' '{{"id":"cli:agent:list","result":{{"agents":[{{"agent_status":"idle"}}]}}}}'
@@ -625,6 +628,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         pane_id: str = "w-attach:p1",
         extra_env: dict[str, str] | None = None,
         stdin_text: str | None = None,
+        stdin_fd: int | None = None,
     ) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env["HOME"] = str(self.home_dir)
@@ -653,7 +657,9 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         if managed_layout:
             env["HERDR_AGENTS_LAYOUT"] = "managed"
         stdin_args: dict = (
-            {"input": stdin_text} if stdin_text is not None else {"stdin": subprocess.DEVNULL}
+            {"input": stdin_text}
+            if stdin_text is not None
+            else {"stdin": stdin_fd if stdin_fd is not None else subprocess.DEVNULL}
         )
         return subprocess.run(
             ["bash", str(SCRIPT), "--attach"],
@@ -1665,6 +1671,35 @@ printf 'status=ok team=dotfiles\\n'
         self.assertIn(
             "pane process-info --pane w-attach:p1", self.calls_path.read_text().splitlines()
         )
+
+    def test_session_start_attach_claims_when_the_hook_keeps_stdin_open(self) -> None:
+        # The payload arrives without a newline and the pipe stays open past
+        # the 2 s read bound: bash 4+ keeps the partial payload, bash 3.2
+        # (macOS) discards it and the herdr lookup answers the same sid.
+        self.install_orchestrator_seat_fakes()
+        self.orchestrator_session_path.write_text("sid-self\n")
+        read_fd, write_fd = os.pipe()
+
+        def produce() -> None:
+            os.write(write_fd, b'{"session_id":"sid-self"}')
+            time.sleep(3)
+            os.close(write_fd)
+
+        producer = threading.Thread(target=produce)
+        producer.start()
+        try:
+            result = self.run_attach_helper(
+                in_herdr=True,
+                managed_layout=True,
+                extra_env={"AGMSG_AGENT_PID": "777"},
+                stdin_fd=read_fd,
+            )
+        finally:
+            producer.join()
+            os.close(read_fd)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("seat_claim=ok owner=sid-self.777", result.stdout.splitlines())
 
     def test_seat_claim_replaces_a_same_session_bare_lock(self) -> None:
         self.install_orchestrator_seat_fakes(held=(("dotfiles", "sid-stdin"),))

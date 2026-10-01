@@ -1,0 +1,23 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t50_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Orchestrator adversarial review of PR #222 head e334af5 (two commits) from git objects: herdr-agents gives a codex worker in a linked worktree <common>/objects, <common>/refs, <common>/logs and <common>/worktrees/<name> as writable roots (-c sandbox_workspace_write.writable_roots for the pair worker in all start_worker_agent paths; a --config spawn-options entry for --add-worker), keeping the roots configured in ${CODEX_HOME:-~/.codex}/config.toml first because -c replaces the array; the config is parsed with tomllib and the grant fails closed (no override, stderr line) on an unparseable file, a non-string-list value, or a python3 without tomllib; a missing file/key starts from []; roots containing # are refused for the spawn options dialect; a main checkout gets no override; a shallow clone is detected and its non-granted shallow metadata reported on stderr. config, hooks, info, HEAD, packed-refs and the common dir stay read-only; approval_policy, sandbox_mode, network_access unchanged. Evidence: codex sandbox -P :workspace before, a scratch CODEX_HOME permission profile, codex doctor --json effective policy byte-identical to the launcher value, and two disposable codex exec --profile express --sandbox workspace-write runs before/after (four paths writable, six denied, commit/local fetch/rebase/local push --dry-run exit 0, GitHub fetch/push still network-denied); override bytes identical between 5952ab8 and e334af5 so the probes stand. Tests: add-worker spawn options, full-mode pair worker, indented multi-line array keeps configured roots, unparseable config emits nothing, shallow stderr line; negative checks at bb3370a and 5952ab8; 685 OK; render-check, validate, shellcheck, shfmt clean; CI green Linux+macOS; CLEAN. Codex audits: 5952ab8 incorrect (P2 parser, fixed in e334af5), e334af5 correct. PR feedback (17): two Codex P2s fixed:e334af5, rest not-applicable.",
+    "author": "claude-code",
+    "created_at": "2026-10-01T22:50:30Z",
+    "updated_at": "2026-10-01T22:50:30Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_t50_01",
+        "body": "Approved; acceptance record .orchestration/acceptance/dot-codex-worktree-git-writable-T50-a01.md.",
+        "author": "claude-code",
+        "created_at": "2026-10-01T22:50:30Z",
+        "review_round": 1
+      }
+    ]
+  }
+]

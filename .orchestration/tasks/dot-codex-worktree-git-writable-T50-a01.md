@@ -98,3 +98,49 @@ url,headRefOid,mergeStateStatus`, `gh pr checks <n>`, and the CompactionDB
 
 English PR to `main`, CI green on Linux and macOS, artifacts at the expected
 paths, `AGMSG-RESULT v1` with `cost:` in the report. max_turns=40.
+
+## Orchestrator amendment r2 (2026-10-02; dispatched as AGMSG-ACCEPTANCE status=revise)
+
+Pre-screen audit of 5952ab8 is **incorrect** with one P2 (high confidence),
+reproduced by the auditor against the commit's parser:
+`codex_worktree_writable_roots` reads `writable_roots` from
+`~/.codex/config.toml` with an awk line matcher. An indented key, a
+commented-out section header, or a multi-line array yields an empty
+`configured`, and the `-c` override then **replaces** the configured roots
+with the git paths alone — the worker loses write access to the agmsg store
+(`db`, `teams`, `run`, `ext-tools`) and cannot send messages. The generator
+renders the file single-line today, so the live behaviour is right, but the
+grant must never be able to drop configured roots.
+
+Fix in one commit on 5952ab8:
+
+1. Parse the TOML properly: `python3 -c 'import tomllib, json, sys; …'`
+   (stdlib, 3.11+) reading the file and emitting
+   `sandbox_workspace_write.writable_roots` as JSON, or an explicit failure.
+   Keep the `#`-free check for the spawn options dialect.
+2. Fail closed on any doubt: if the file exists but cannot be parsed, or the
+   key is present and not a list of strings, print the stderr line and emit
+   **no** override (the worker keeps its configured roots and falls back to
+   operator-approved escalation). Only a parseable file with a string list
+   (or a missing key / missing file, which `-c` cannot regress) produces the
+   override.
+3. Tests: (a) indented key / multi-line array → the override still carries
+   the configured roots first; (b) unparseable file → no `--config` entry
+   and the stderr line; (c) keep the existing happy-path tests green.
+   Negative check against 5952ab8 for (a) and (b).
+4. Codex GitHub review of 5952ab8 (two P2s; the first is the same parser
+   defect seen from the other side: a multi-line array makes `jq` reject
+   the fragment and the grant is silently skipped — covered by items 1–3).
+   The second: in a shallow clone, `git fetch --deepen/--unshallow` writes
+   `<common>/shallow.lock` and `<common>/shallow`, which stay read-only
+   because the common dir is not granted. Do not widen the grant. Detect it
+   (`git -C <worktree> rev-parse --is-shallow-repository` = true) and print
+   one stderr line saying shallow metadata is not granted and those fetches
+   need an operator-approved escalation; state the same in the README
+   paragraph and the launcher shdoc. One test: a fake `git` answering
+   `true` → the stderr line, override otherwise unchanged.
+
+Validation as before (render-check, unit-test, validate, shfmt, shellcheck,
+the `codex sandbox` probes already recorded need no rerun unless the emitted
+override text changes); push without `-u`; RESULT when CI is green on both
+OSes.

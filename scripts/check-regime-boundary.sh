@@ -82,10 +82,17 @@ fi
 
 if command -v herdr > /dev/null 2>&1 && command -v jq > /dev/null 2>&1 &&
     workspaces="$(herdr workspace list 2> /dev/null)"; then
-    while IFS= read -r label; do
-        [[ -n ${label} ]] && violations+=("additional worker workspace still open: ${label} (herdr-agents --remove-worker)")
+    # The label prefix alone also matches another clone with the same
+    # basename, so a workspace counts only when one of its panes has its cwd
+    # in this main checkout (the find_managed_workspaces rule in herdr-agents).
+    while IFS=$'\t' read -r workspace_id label; do
+        [[ -n ${workspace_id} ]] || continue
+        if herdr pane list --workspace "${workspace_id}" 2> /dev/null |
+            jq -e --arg main "${main}" '.result.panes[]? | (.cwd // "") | select(. == $main or startswith($main + "/"))' > /dev/null 2>&1; then
+            violations+=("additional worker workspace still open: ${label} (herdr-agents --remove-worker)")
+        fi
     done < <(jq -r --arg prefix "$(basename -- "${main}") worker " \
-        '.result.workspaces[]? | .label // empty | select(startswith($prefix))' <<< "${workspaces}" 2> /dev/null)
+        '.result.workspaces[]? | select(.workspace_id and ((.label // "") | startswith($prefix))) | [.workspace_id, .label] | @tsv' <<< "${workspaces}" 2> /dev/null)
 fi
 
 while IFS= read -r warning; do

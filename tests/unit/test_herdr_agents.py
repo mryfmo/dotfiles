@@ -3122,31 +3122,35 @@ exit {exit_code}
         self.assertNotIn("review", result.stdout)
 
     def test_regime_boundary_check_finds_worker_workspaces_from_a_worktree(self) -> None:
-        main = self.temp_dir / "dotfiles"
-        main.mkdir()
-        git = ["git", "-c", "user.name=t", "-c", "user.email=t@t"]
-        subprocess.run([*git, "init", "-q", str(main)], check=True)
-        subprocess.run([*git, "-C", str(main), "commit", "-q", "--allow-empty", "-m", "c"], check=True)
-        worktree = main / ".claude/worktrees/wt"
-        subprocess.run([*git, "-C", str(main), "worktree", "add", "-q", "--detach", str(worktree)], check=True)
-        (worktree / "scripts").mkdir()
-        shutil.copy(ROOT / "scripts/check-regime-boundary.sh", worktree / "scripts")
-        self.workspace_list_path.write_text(
-            json.dumps({"result": {"workspaces": [{"label": "dotfiles worker x"}, {"label": "wt worker y"}]}}) + "\n"
+        main, worktree, _ = self.boundary_repo()
+        # Two `dotfiles worker x` workspaces: w1's pane is in this checkout,
+        # w2 belongs to another clone with the same basename. `wt worker y`
+        # does not match the main checkout's label prefix.
+        (self.bin_dir / "herdr").write_text(
+            "#!/usr/bin/env bash\n"
+            'if [[ $1 == workspace && $2 == list ]]; then\n'
+            "    printf '%s\\n' '"
+            + json.dumps({"result": {"workspaces": [
+                {"workspace_id": "w1", "label": "dotfiles worker x"},
+                {"workspace_id": "w2", "label": "dotfiles worker x"},
+                {"workspace_id": "w3", "label": "wt worker y"},
+            ]}})
+            + "'\n    exit 0\nfi\n"
+            'case "$4" in\n'
+            "    w1) printf '%s\\n' '" + json.dumps({"result": {"panes": [{"pane_id": "w1:p1", "cwd": f"{main.resolve()}/.claude/worktrees/x"}]}}) + "' ;;\n"
+            "    w2) printf '%s\\n' '" + json.dumps({"result": {"panes": [{"pane_id": "w2:p1", "cwd": "/elsewhere/dotfiles/.claude/worktrees/x"}]}}) + "' ;;\n"
+            "    *) printf '%s\\n' '{\"result\":{\"panes\":[]}}' ;;\n"
+            "esac\n"
         )
-        env = {**os.environ, "HOME": str(self.home_dir), "PATH": f"{self.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"}
 
-        result = subprocess.run(
-            ["bash", str(worktree / "scripts/check-regime-boundary.sh"), "--report"],
-            cwd=worktree, env=env, check=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        )
+        result = self.run_boundary_check(worktree)
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn(
-            "regime-boundary: additional worker workspace still open: dotfiles worker x (herdr-agents --remove-worker)",
-            result.stdout.splitlines(),
+        reported = [line for line in result.stdout.splitlines() if "worker workspace still open" in line]
+        self.assertEqual(
+            ["regime-boundary: additional worker workspace still open: dotfiles worker x (herdr-agents --remove-worker)"],
+            reported,
         )
-        self.assertNotIn("wt worker y", result.stdout)
 
     def test_add_worker_reports_a_failed_spawn(self) -> None:
         self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")

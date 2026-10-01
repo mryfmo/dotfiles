@@ -58,7 +58,7 @@ model_profiles:
     # Auditor tier (監査役): cross-vendor read-only audit of worker changesets.
     claude: { model: claude-fable-5-1, effort: high }
     codex:
-      model: gpt-6-sol
+      model: gpt-6.1-sol
       model_reasoning_effort: xhigh
       sandbox_mode: read-only
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']

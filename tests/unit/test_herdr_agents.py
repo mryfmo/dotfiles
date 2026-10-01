@@ -2630,6 +2630,7 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
         force_exit: int = 0,
         dispatch_exit: int = 0,
         pong: bool = False,
+        pong_task_id: str = "",
     ) -> Path:
         """Fake agmsg spawn/despawn/leave on top of the worktree-seat fakes.
 
@@ -2648,8 +2649,11 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
         (scripts / "lib").mkdir(exist_ok=True)
         (scripts / "lib/validate.sh").write_text("agmsg_validate_team_name() { :; }\n")
         (scripts / "lib/storage.sh").write_text(f"agmsg_db_path() {{ printf '%s\\n' {db}; }}\n")
+        # Like a worker, the PONG echoes the PING's task_id (or pong_task_id).
         pong_insert = (
-            f"""sqlite3 {db} "INSERT INTO messages (team, from_agent, to_agent, body) VALUES ('$1', '$3', '$2', 'AGMSG-PONG v1 task_id=bringup status=alive note=x');"\n"""
+            'tid="$(sed -n \'s/.*task_id=\\([^ ]*\\).*/\\1/p\' <<< "$5")"\n'
+            + (f'tid="{pong_task_id}"\n' if pong_task_id else "")
+            + f"""sqlite3 {db} "INSERT INTO messages (team, from_agent, to_agent, body) VALUES ('$1', '$3', '$2', 'AGMSG-PONG v1 task_id=$tid status=alive note=x');"\n"""
             if pong
             else ""
         )
@@ -2860,10 +2864,15 @@ exit {exit_code}
         lines = result.stdout.splitlines()
         self.assertEqual("linkage=ok read_at=2026-10-01T00:00:00Z pong=yes", lines[-1])
         self.assertIn("Herdr agents worker added", result.stdout)
-        self.assertIn(
-            "agmsg-dispatch dotfiles claude-remediation-dot codex-standard-dot-a007 w-test:p9 "
-            "AGMSG-PING v1 task_id=bringup reason=add-worker-linkage",
-            self.calls_path.read_text().splitlines(),
+        self.assertTrue(
+            any(
+                re.fullmatch(
+                    r"agmsg-dispatch dotfiles claude-remediation-dot codex-standard-dot-a007 w-test:p9 "
+                    r"AGMSG-PING v1 task_id=bringup-\d+-\d+ reason=add-worker-linkage",
+                    call,
+                )
+                for call in self.calls_path.read_text().splitlines()
+            )
         )
 
     def test_add_worker_reports_linkage_unreached_after_a_failed_spawn(self) -> None:
@@ -2916,10 +2925,11 @@ exit {exit_code}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
         spawn_at = next(index for index, call in enumerate(calls) if call.startswith("spawn "))
-        self.assertIn(
-            "agmsg-dispatch dotfiles claude-remediation-dot codex-standard-dot-a007 w-test:p7 "
-            "AGMSG-PING v1 task_id=bringup reason=add-worker-linkage",
-            calls,
+        self.assertTrue(
+            any(
+                call.startswith("agmsg-dispatch dotfiles claude-remediation-dot codex-standard-dot-a007 w-test:p7 AGMSG-PING v1 task_id=bringup-")
+                for call in calls
+            )
         )
         self.assertFalse(any(call.startswith("team.sh ") for call in calls[spawn_at:]), calls[spawn_at:])
 
@@ -3019,6 +3029,31 @@ exit {exit_code}
         self.assertIn("several orchestrator claude-code identities in team dotfiles", result.stderr)
         self.assertFalse(any(call.startswith("agmsg-dispatch ") for call in self.calls_path.read_text().splitlines()))
 
+    def test_add_worker_linkage_ignores_a_delayed_pong_for_another_ping(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        # The PONG lands after this PING but answers an earlier instance's PING.
+        self.write_seat_lifecycle_fakes(pong=True, pong_task_id="bringup-1-1")
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "codex")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual("linkage=ok read_at=2026-10-01T00:00:00Z pong=no", result.stdout.splitlines()[-1])
+
+    def test_add_worker_linkage_ignores_a_placement_record_from_another_workspace(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes()
+        run = self.home_dir / ".agents/skills/agmsg/run"
+        run.mkdir(parents=True, exist_ok=True)
+        (run / "spawn.dotfiles__codex-standard-dot-a007").write_text("herdr:/tmp/herdr.sock:w-old:p3\t/project\tcodex\n")
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "codex")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("names workspace w-old, not w-test; using the new pane", result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertTrue(any(call.startswith("agmsg-dispatch ") and " w-test:p9 " in call for call in calls), calls)
+        self.assertFalse(any(" w-old:p3 " in call for call in calls))
+
     def test_add_worker_linkage_ignores_a_pong_older_than_this_ping(self) -> None:
         self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
         self.write_seat_lifecycle_fakes()
@@ -3033,6 +3068,58 @@ exit {exit_code}
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual("linkage=ok read_at=2026-10-01T00:00:00Z pong=no", result.stdout.splitlines()[-1])
+
+    def boundary_repo(self) -> tuple[Path, Path, Path]:
+        """A main checkout `dotfiles` with two linked worktrees and the script in `wt`."""
+        main = self.temp_dir / "dotfiles"
+        main.mkdir()
+        git = ["git", "-c", "user.name=t", "-c", "user.email=t@t"]
+        subprocess.run([*git, "init", "-q", str(main)], check=True)
+        subprocess.run([*git, "-C", str(main), "commit", "-q", "--allow-empty", "-m", "c"], check=True)
+        worktree = main / ".claude/worktrees/wt"
+        other = main / ".claude/worktrees/review"
+        for path in (worktree, other):
+            subprocess.run([*git, "-C", str(main), "worktree", "add", "-q", "--detach", str(path)], check=True)
+        (worktree / "scripts").mkdir()
+        shutil.copy(ROOT / "scripts/check-regime-boundary.sh", worktree / "scripts")
+        return main, worktree, other
+
+    def run_boundary_check(self, worktree: Path) -> subprocess.CompletedProcess[str]:
+        env = {**os.environ, "HOME": str(self.home_dir), "PATH": f"{self.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"}
+        return subprocess.run(
+            ["bash", str(worktree / "scripts/check-regime-boundary.sh"), "--report"],
+            cwd=worktree, env=env, check=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+
+    def test_regime_boundary_check_scans_every_worktree_for_untracked_evidence(self) -> None:
+        main, worktree, other = self.boundary_repo()
+        (other / ".orchestration/reports").mkdir(parents=True)
+        (other / ".orchestration/reports/t.md").write_text("x\n")
+
+        result = self.run_boundary_check(worktree)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            f"regime-boundary: untracked .orchestration file in {other.resolve()}: .orchestration/reports/t.md",
+            result.stdout.splitlines(),
+        )
+
+    def test_regime_boundary_check_flags_empty_seats_only(self) -> None:
+        main, worktree, other = self.boundary_repo()
+        scripts = self.home_dir / ".agents/skills/agmsg/scripts"
+        scripts.mkdir(parents=True, exist_ok=True)
+        # No identities anywhere: the main checkout is a seat, `review` is not.
+        (scripts / "identities.sh").write_text("#!/usr/bin/env bash\nexit 0\n")
+        (scripts / "identities.sh").chmod(0o755)
+
+        result = self.run_boundary_check(worktree)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            f"regime-boundary: no claude-code identity at the main checkout {main.resolve()} (expected one)",
+            result.stdout.splitlines(),
+        )
+        self.assertNotIn("review", result.stdout)
 
     def test_regime_boundary_check_finds_worker_workspaces_from_a_worktree(self) -> None:
         main = self.temp_dir / "dotfiles"

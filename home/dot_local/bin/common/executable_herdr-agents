@@ -803,7 +803,8 @@ function accept_claude_workspace_trust_dialog() {
 
 # @description Verify that a freshly seated worker is reachable, as the
 #   orchestrator would otherwise improvise: send `AGMSG-PING v1
-#   task_id=bringup reason=add-worker-linkage` through agmsg-dispatch (the
+#   task_id=bringup-<nonce> reason=add-worker-linkage` (a per-invocation
+#   task id) through agmsg-dispatch (the
 #   wake path that also works for an unviewed or headless Herdr workspace,
 #   where poke.sh cannot locate the input box) and print one line,
 #   `linkage=ok read_at=<ts> pong=<yes|no>` or
@@ -829,7 +830,7 @@ function accept_claude_workspace_trust_dialog() {
 function check_worker_linkage() {
     local team="$1" orchestrator="$2" worker="$3" workspace_id="$4" known="$5"
     local scripts="${HOME}/.agents/skills/agmsg/scripts"
-    local placement="" pane="" rest rc=0 db read_at="" pong=no hint deadline ping_id="" record err wait_seconds
+    local placement="" pane="" rest rc=0 db read_at="" pong=no hint deadline ping_id="" record err wait_seconds task_id
     local lib="${scripts}/lib/actas-lock.sh"
 
     record="${HOME}/.agents/skills/agmsg/run/spawn.${team}__${worker}"
@@ -855,7 +856,14 @@ function check_worker_linkage() {
     if [[ -n ${placement} ]]; then
         rest="${placement%:*}"
         pane="${rest##*:}:${placement##*:}"
-    else
+        # A retained record may name a pane in an older workspace.
+        if [[ ${rest##*:} != "${workspace_id}" ]]; then
+            printf 'herdr-agents: placement record for %s names workspace %s, not %s; using the new pane.\n' "${worker}" "${rest##*:}" "${workspace_id}" >&2
+            placement=""
+            pane=""
+        fi
+    fi
+    if [[ -z ${placement} ]]; then
         pane="$(herdr pane list --workspace "${workspace_id}" 2> /dev/null |
             jq -r --argjson known "${known}" '[.result.panes[]?.pane_id | select(IN($known[]) | not)][0] // empty')" || pane=""
     fi
@@ -867,8 +875,11 @@ function check_worker_linkage() {
         printf 'linkage=unreached rc=127 hint=agmsg-dispatch\n'
         return 127
     fi
+    # Workers echo the PING's task_id, so a PONG from an earlier instance
+    # cannot answer this one.
+    task_id="bringup-$(date +%s)-$$"
     agmsg-dispatch "${team}" "${orchestrator}" "${worker}" "${pane}" \
-        "AGMSG-PING v1 task_id=bringup reason=add-worker-linkage" > /dev/null 2>&1 || rc=$?
+        "AGMSG-PING v1 task_id=${task_id} reason=add-worker-linkage" > /dev/null 2>&1 || rc=$?
     if [[ ${rc} -ne 0 ]]; then
         hint=attach-a-client
         [[ -z ${placement} ]] || hint=poke
@@ -894,7 +905,7 @@ function check_worker_linkage() {
         # 10#: a leading zero (08, 010) is decimal, not octal.
         deadline=$((SECONDS + 10#${wait_seconds}))
         while :; do
-            if [[ "$(sqlite3 -cmd '.timeout 5000' "${db}" "SELECT count(*) FROM messages WHERE team='${team}' AND from_agent='${worker}' AND to_agent='${orchestrator}' AND id > ${ping_id} AND body LIKE 'AGMSG-PONG v1 task_id=bringup%';" 2> /dev/null)" =~ ^[1-9] ]]; then
+            if [[ "$(sqlite3 -cmd '.timeout 5000' "${db}" "SELECT count(*) FROM messages WHERE team='${team}' AND from_agent='${worker}' AND to_agent='${orchestrator}' AND id > ${ping_id} AND (body = 'AGMSG-PONG v1 task_id=${task_id}' OR body LIKE 'AGMSG-PONG v1 task_id=${task_id} %');" 2> /dev/null)" =~ ^[1-9] ]]; then
                 pong=yes
                 break
             fi

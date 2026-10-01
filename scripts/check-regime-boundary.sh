@@ -32,20 +32,48 @@ fi
 scripts="${HOME}/.agents/skills/agmsg/scripts"
 violations=()
 
-while IFS= read -r path; do
-    [[ -n ${path} ]] && violations+=("untracked .orchestration file: ${path}")
-done < <(git -C "${root}" ls-files --others --exclude-standard -- .orchestration 2> /dev/null)
+checkouts=()
+while IFS= read -r checkout; do
+    [[ -n ${checkout} ]] && checkouts+=("${checkout}")
+done < <(git -C "${root}" worktree list --porcelain 2> /dev/null | sed -n 's/^worktree //p')
+[[ ${#checkouts[@]} -gt 0 ]] || checkouts=("${root}")
+
+for checkout in "${checkouts[@]}"; do
+    while IFS= read -r path; do
+        [[ -n ${path} ]] && violations+=("untracked .orchestration file in ${checkout}: ${path}")
+    done < <(git -C "${checkout}" ls-files --others --exclude-standard -- .orchestration 2> /dev/null)
+done
+
+# @description Print the number of distinct agmsg identity names at a path.
+# @arg $1 path Checkout path.
+# @arg $2 string Agent type.
+count_names() {
+    AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "$1" "$2" 2> /dev/null | cut -f 2 | sort -u | grep -c . || true
+}
 
 if [[ -x ${scripts}/identities.sh ]]; then
-    while IFS= read -r checkout; do
+    for checkout in "${checkouts[@]}"; do
         for agent_type in claude-code codex; do
-            names="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${checkout}" "${agent_type}" 2> /dev/null |
-                cut -f 2 | sort -u | grep -c .)" || names=0
+            names="$(count_names "${checkout}" "${agent_type}")"
             if ((names > 1)); then
                 violations+=("stray ${agent_type} identities at ${checkout}: ${names} names (expected one)")
             fi
         done
-    done < <(git -C "${root}" worktree list --porcelain 2> /dev/null | sed -n 's/^worktree //p')
+    done
+    # The active seats must not be empty: the main checkout's orchestrator and
+    # the manifest worker_worktree's worker. Other worktrees are not seats.
+    if (($(count_names "${main}" claude-code) == 0)); then
+        violations+=("no claude-code identity at the main checkout ${main} (expected one)")
+    fi
+    worker_worktree="$(
+        # shellcheck source=/dev/null
+        [[ ! -f ${HOME}/.agents/model-profiles.env ]] || source "${HOME}/.agents/model-profiles.env"
+        printf '%s' "${HERDR_AGENTS_WORKER_WORKTREE:-}"
+    )"
+    if [[ -n ${worker_worktree} && -d ${main}/${worker_worktree} ]] &&
+        (($(count_names "${main}/${worker_worktree}" claude-code) + $(count_names "${main}/${worker_worktree}" codex) == 0)); then
+        violations+=("no worker identity at the manifest worker_worktree ${main}/${worker_worktree} (expected one)")
+    fi
 fi
 
 if command -v pgrep > /dev/null 2>&1 && pgrep -f 'crit _serve' > /dev/null 2>&1; then

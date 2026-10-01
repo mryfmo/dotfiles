@@ -1777,8 +1777,11 @@ printf 'status=ok team=dotfiles\\n'
             [call.split(" skill_dir=")[0] for call in calls if call.startswith("actas_lock_release ")],
         )
 
-    def test_seat_claim_replaces_a_same_session_composite_lock_of_another_pid(self) -> None:
-        self.install_orchestrator_seat_fakes(held=(("dotfiles", "sid-stdin.111"),))
+    def test_seat_claim_replaces_a_same_session_composite_lock_of_a_dead_pid(self) -> None:
+        reaped = subprocess.Popen(["true"])
+        reaped.wait()
+        dead_owner = f"sid-stdin.{reaped.pid}"
+        self.install_orchestrator_seat_fakes(held=(("dotfiles", dead_owner),))
 
         result = self.run_attach_helper(
             in_herdr=True,
@@ -1793,9 +1796,29 @@ printf 'status=ok team=dotfiles\\n'
             result.stdout.splitlines(),
         )
         self.assertIn(
-            "actas_lock_release dotfiles claude-remediation-dot sid-stdin.111 "
+            f"actas_lock_release dotfiles claude-remediation-dot {dead_owner} "
             f"skill_dir={self.home_dir}/.agents/skills/agmsg",
             self.calls_path.read_text().splitlines(),
+        )
+
+    def test_seat_claim_keeps_a_same_session_composite_lock_of_a_live_pid(self) -> None:
+        live_owner = f"sid-stdin.{os.getpid()}"
+        self.install_orchestrator_seat_fakes(held=(("dotfiles", live_owner),))
+
+        result = self.run_attach_helper(
+            in_herdr=True,
+            managed_layout=True,
+            extra_env={"AGMSG_AGENT_PID": "4343"},
+            stdin_text='{"session_id":"sid-stdin"}\n',
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            f"seat_claim=failed status=held team=dotfiles owner={live_owner}",
+            result.stdout.splitlines(),
+        )
+        self.assertFalse(
+            any(call.startswith("actas_lock_release") for call in self.calls_path.read_text().splitlines())
         )
 
     def test_seat_claim_held_by_another_session_fails_without_release(self) -> None:

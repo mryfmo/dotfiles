@@ -413,10 +413,11 @@ function claude_ancestor_pid() {
 #   then CLAUDE_PID. Whatever is still missing, and everything without
 #   `--self`, comes from `herdr agent list` and `herdr pane process-info`; the
 #   launcher-side claim does not rename the caller's pane. When the lock is
-#   held by our own session id, bare (an earlier sandboxed claim) or composite
-#   with any pid (a predecessor process of this session, for example before a
-#   persisted-session restore), that exact owner token is released through
-#   upstream's owner-exact actas_lock_release and the claim repeated. Prints
+#   stale (bare, or same-session composite whose pid is dead), that exact
+#   owner token is released through upstream's owner-exact actas_lock_release
+#   and the claim repeated. A bare owner can only come from a sandboxed claim
+#   of this session; a same-session composite with a live pid is a parallel
+#   --resume/--continue sibling and is left alone (`seat_claim=failed`). Prints
 #   `seat_claim=ok owner=<sid>.<pid>` (plus `replaced_stale_lock=yes`),
 #   `seat_claim=unresolved` (nothing claimed, never a bare-id lock), or
 #   `seat_claim=failed <status line>`.
@@ -456,8 +457,9 @@ function claim_orchestrator_seat() {
     fi
     # actas-claim.sh stops at the first held team (rolling back earlier claims),
     # so release one same-session stale lock per round: at most one per team.
-    # A held owner is ours when it is our bare sid or `<our sid>.<digits>`: a
-    # process with our session id can only be this session's predecessor.
+    # A held owner is stale when it is our bare sid, or `<our sid>.<pid>` with
+    # a pid `ps -p` cannot see (dead; no locale-dependent kill -0 message, and
+    # a pid owned by another user still counts as alive).
     for ((attempt = 0; attempt <= teams; attempt++)); do
         if result="$(AGMSG_SELF_NAME="${self_name}" AGMSG_RESOLVE_PROJECT=0 \
             "${scripts}/actas-claim.sh" "${workdir}" claude-code "${identity}" "${sid}.${pid}" 2> /dev/null)"; then
@@ -467,7 +469,10 @@ function claim_orchestrator_seat() {
         owner="$(sed -n 's/^status=held .*owner=\([^ ]*\).*/\1/p' <<< "${result}" | head -n 1)"
         team="$(sed -n 's/^status=held team=\([^ ]*\).*/\1/p' <<< "${result}" | head -n 1)"
         [[ ${attempt} -lt ${teams} && -n ${team} ]] || break
-        [[ ${owner} == "${sid}" || (${owner%.*} == "${sid}" && ${owner##*.} =~ ^[0-9]+$) ]] || break
+        if [[ ${owner} != "${sid}" ]]; then
+            [[ ${owner%.*} == "${sid}" && ${owner##*.} =~ ^[0-9]+$ ]] || break
+            ! ps -p "${owner##*.}" > /dev/null 2>&1 || break
+        fi
         (
             export SKILL_DIR="${HOME}/.agents/skills/agmsg"
             # shellcheck source=/dev/null

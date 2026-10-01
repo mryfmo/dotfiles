@@ -1894,7 +1894,9 @@ printf 'status=ok team=dotfiles\\n'
         # A sleeping binary named `claude` stands in for a parallel
         # --resume/--continue sibling that shares our session id.
         fake_claude = self.temp_dir / "claude"
-        shutil.copy2(shutil.which("sleep") or "/bin/sleep", fake_claude)
+        # Contents only: copying /bin/sleep's file flags is refused on macOS.
+        shutil.copyfile(shutil.which("sleep") or "/bin/sleep", fake_claude)
+        fake_claude.chmod(0o755)
         sibling = subprocess.Popen([str(fake_claude), "30"])
         self.addCleanup(sibling.wait)
         self.addCleanup(sibling.kill)

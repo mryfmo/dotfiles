@@ -651,7 +651,8 @@ def orchestrator_seat_lock_warnings(
             warnings.append(
                 f"WARN: orchestrator seat lock {lock} holds the bare session id {owner} "
                 f"while a claude session runs in {project}; turn delivery skips silently. "
-                f"Re-claim outside the sandbox: actas-claim.sh {project} claude-code {name} <sid>.<pid>"
+                "Run `herdr-agents --attach` from the orchestrator pane outside the sandbox "
+                "(it replaces a same-session bare lock)"
             )
     return warnings
 

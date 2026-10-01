@@ -348,12 +348,21 @@ block of the managed Claude settings, the counterpart of the Codex
 Bash calls may write only the working directory, the session `$TMPDIR`, and
 `sandbox.filesystem.allowWrite`, which the generator renders from
 `codex.sandbox_workspace_write.writable_roots` so both agents share one list of
-agmsg store directories. Network access from sandboxed commands is limited to
+agmsg store directories, followed by `claude.sandbox.filesystem.extra_allow_write`
+(currently only `~/.cache/uv`, so `uv run` targets such as `make unit-test`
+work from sandboxed Bash). Network access from sandboxed commands is limited to
 the GitHub hosts in `sandbox.network.allowedDomains`; other hosts prompt.
 `sandbox.network.allowUnixSockets` lists the herdr socket
 (`~/.config/herdr/herdr.sock`). Claude Code honours that list only on macOS and
 ignores it on Linux and WSL2. The Claude messaging socket is a per-process path
 set at runtime (`CLAUDE_CODE_MESSAGING_SOCKET`), so it cannot be listed.
+Because Linux and WSL2 ignore that list (the seccomp filter cannot inspect
+socket paths), `herdr`, `agmsg-dispatch`, `herdr-agents` and `gh` (which reads
+its token from the keyring over D-Bus) run through the normal unsandboxed retry
+prompt on Linux. `sandbox.network.allowAllUnixSockets` is deliberately not
+used: on a workstation with a `docker`-group user or a reachable
+`systemd --user` bus it turns the auto-approved sandbox into an escape (see the
+upstream [security limitations](https://code.claude.com/docs/en/sandboxing#security-limitations)).
 `failIfUnavailable` is `false` for the first rollout stage: when the sandbox
 cannot start, Claude Code warns and runs commands unsandboxed. A later change
 flips it to `true` after live end-to-end verification.
@@ -371,10 +380,12 @@ needs nothing because the sandbox uses Seatbelt.
 
 Operator-visible effect: after the next `make update`, Claude Code Bash
 commands run confined to the working directory, the session `$TMPDIR`, and
-`allowWrite`. Network hosts other than the listed GitHub domains prompt. A
-command that fails inside the sandbox may be retried unsandboxed after a
-normal permission prompt. Missing `bwrap` or `socat` only warns while
-`failIfUnavailable` is `false`.
+`allowWrite` (the agmsg store directories and the uv cache). On Linux,
+commands that need a local Unix socket (herdr, the `gh` keyring) fail inside
+the sandbox and go through the unsandboxed retry prompt. Network hosts
+other than the listed GitHub domains prompt. A command that fails inside the
+sandbox may be retried unsandboxed after a normal permission prompt. Missing
+`bwrap` or `socat` only warns while `failIfUnavailable` is `false`.
 
 Nested worktrees under `.claude/worktrees/` stay writable. From the main
 checkout they are subdirectories of the working directory and are not among

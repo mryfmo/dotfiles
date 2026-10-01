@@ -402,6 +402,10 @@ def render_codex(manifest: dict[str, Any]) -> str:
 def render_claude_sandbox(manifest: dict[str, Any]) -> dict[str, Any]:
     """Render the Claude sandbox; allowWrite reuses the Codex agmsg writable roots."""
     sandbox = manifest["claude"]["sandbox"]
+    network = {
+        "allowedDomains": sandbox["network"]["allowedDomains"],
+        "allowUnixSockets": sandbox["network"]["allowUnixSockets"],
+    }
     return {
         "enabled": sandbox["enabled"],
         "failIfUnavailable": sandbox["failIfUnavailable"],
@@ -409,12 +413,12 @@ def render_claude_sandbox(manifest: dict[str, Any]) -> dict[str, Any]:
         "allowUnsandboxedCommands": sandbox["allowUnsandboxedCommands"],
         "excludedCommands": sandbox["excludedCommands"],
         "filesystem": {
-            "allowWrite": manifest["codex"]["sandbox_workspace_write"]["writable_roots"]
+            "allowWrite": [
+                *manifest["codex"]["sandbox_workspace_write"]["writable_roots"],
+                *sandbox.get("filesystem", {}).get("extra_allow_write", []),
+            ]
         },
-        "network": {
-            "allowedDomains": sandbox["network"]["allowedDomains"],
-            "allowUnixSockets": sandbox["network"]["allowUnixSockets"],
-        },
+        "network": network,
     }
 
 

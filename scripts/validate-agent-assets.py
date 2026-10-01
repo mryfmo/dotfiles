@@ -345,6 +345,18 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str)
         fail(
             f"{label}.filesystem.allowWrite must include every Codex writable root: missing={sorted(missing)}"
         )
+    extra = [path for path in allow_write if path not in writable_roots]
+    invalid = [
+        path
+        for path in extra
+        if not isinstance(path, str)
+        or not path.startswith(("/", "~/"))
+        or any(char in path for char in "*?[]{}")
+    ]
+    if invalid:
+        fail(
+            f"{label}.filesystem.allowWrite extra entries must be absolute or ~/ paths without globs: {invalid}"
+        )
     domains = sandbox.get("network", {}).get("allowedDomains")
     if not isinstance(domains, list) or not domains:
         fail(f"{label}.network.allowedDomains must be a non-empty list")

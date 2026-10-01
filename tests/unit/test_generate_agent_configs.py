@@ -488,6 +488,27 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         )
         self.assertIn('MODEL_PROFILE_SECURITY_CODEX_ARGS="--profile security"', env)
 
+    def test_claude_sandbox_renders_optional_socket_and_extra_write_keys(self) -> None:
+        manifest = {
+            "claude": {
+                "sandbox": {
+                    "enabled": True,
+                    "failIfUnavailable": False,
+                    "autoAllowBashIfSandboxed": True,
+                    "allowUnsandboxedCommands": True,
+                    "excludedCommands": [],
+                    "network": {"allowedDomains": ["github.com"], "allowUnixSockets": []},
+                }
+            },
+            "codex": {"sandbox_workspace_write": {"writable_roots": ["/root-a"]}},
+        }
+        plain = self.module.render_claude_sandbox(manifest)
+        self.assertEqual(["/root-a"], plain["filesystem"]["allowWrite"])
+
+        manifest["claude"]["sandbox"]["filesystem"] = {"extra_allow_write": ["~/.cache/uv"]}
+        extended = self.module.render_claude_sandbox(manifest)
+        self.assertEqual(["/root-a", "~/.cache/uv"], extended["filesystem"]["allowWrite"])
+
     def test_audit_profile_renders_read_only_sandbox_override(self) -> None:
         manifest = sample_manifest()
         manifest["model_profiles"]["audit"] = {

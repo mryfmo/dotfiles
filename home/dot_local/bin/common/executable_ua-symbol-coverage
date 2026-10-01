@@ -9,29 +9,29 @@ only the source the new graph describes can explain a symbol it no longer has.
 OLD is the revision the previous graph was built from (its `gitCommitHash`);
 it lets a path absent at REF be told apart as a rename or a deletion.
 
-Prints one row per `filePath` (old count, new count, and the number of
-def-like source lines at REF when given) and exits 1 when a file lost
-function/class nodes while its source still has at least as many def-like
-lines as the old graph had symbols. Without --repo-ref every decrease counts
-as a regression. With --repo-ref, a decrease is explained only when the path
-is deleted between OLD and REF, or when the new count still covers
-min(old count, def-like lines at REF); any further loss is a regression, and
-so is any decrease in a file type without a def grammar. A path renamed
-between OLD and REF (`git diff -M --diff-filter=R`) is judged by its
-successor's new count under the same rule, and its row's new column shows
-that successor count; without --old-ref a path absent at REF is a regression
-(fail closed). With --old-ref, a path whose blob is identical at OLD and REF
-(or a rename whose successor keeps the blob) cannot explain any decrease: it is
-a regression noted `source unchanged`, whatever the def-like count, because a
-source the refresh did not touch cannot have lost a definition. A path new to
-the graph that exists at REF with at least one def-like line but no symbols is
-a regression noted `new file, no symbols`; this catches a move plus rewrite
-below git's rename threshold. Ceilings: `-M` pairs renames at >=50%
-similarity, so a rename that also rewrites most of the file reads as a
-deletion plus a new file, and such a moved and rewritten file that keeps
-*some* nodes is judged only by the zero-symbol check. `validateGraph`
-checks schema and references only, so this is the completeness gate for a
-`.ua/` refresh (home/dot_config/claude/rules/understand-anything.md).
+Prints one row per `filePath`: old count, new count, the number of def-like
+source lines at REF (information only), status and note. Two principles:
+
+- Structural git facts explain a loss; def-line counts never do. A decrease
+  is `explained` only with --old-ref and only when the path is absent at REF
+  and was not renamed (a deletion, shown `gone`). A path renamed between OLD
+  and REF (`git diff -M --diff-filter=R`) is judged on its successor's new
+  count, which its row's new column shows: `ok` when the successor keeps at
+  least the old count, otherwise a regression. Every other decrease is a
+  regression, including a legitimate function deletion in a changed file; the
+  acceptance rule then requires the validation to cite the source change
+  behind it. A decrease in a file whose blob is identical at OLD and REF is
+  noted `source unchanged`, since no source change can be cited for it.
+- Def-line counts only flag. A path new to the graph that exists at REF with
+  fewer symbols than def-like lines is a regression noted
+  `new file, <new> of <defs> defs`; this also catches a move plus rewrite
+  below git's 50% rename-similarity threshold.
+
+Ceiling: the new-file check is only as complete as the def grammar (Python,
+Ruby, shell; `-` for other file types, which are never flagged by it).
+`validateGraph` checks schema and references only, so this is the
+completeness gate for a `.ua/` refresh
+(home/dot_config/claude/rules/understand-anything.md).
 
 Exit status: 0 no regressions, 1 regressions, 2 when REF or OLD does not resolve to
 a commit or a path cannot be read at REF (fail closed, no table-based pass).
@@ -49,7 +49,8 @@ from pathlib import Path
 SYMBOL_TYPES = {"function", "class"}
 PYTHON_DEF = re.compile(r"^\s*(?:async\s+def|def|class)\s+\w+")
 RUBY_DEF = re.compile(r"^\s*(?:(?:private|protected|public)\s+)?(?:def|class|module)\s+\S+")
-SHELL_DEF = re.compile(r"^\s*(?:function\s+[\w:.-]+|[\w:.-]+\s*\(\))(?:\s*[{(].*)?\s*$")
+# Any name without whitespace, parentheses or `=` (`arr=()` is an array assignment).
+SHELL_DEF = re.compile(r"^\s*(?:function\s+\S+|[^\s()=]+\s*\(\))(?:\s*[{(].*)?\s*$")
 
 
 def symbol_counts(graph_path: Path) -> dict[str, int]:
@@ -153,7 +154,7 @@ def main(argv: list[str] | None = None) -> int:
             for path in sorted(set(old) | set(new))
         ]
         successors = {
-            path: (moved[path], new.get(moved[path], 0), def_lines(args.repo_ref, moved[path]))
+            path: (moved[path], new.get(moved[path], 0))
             for path, _, _, defs in rows
             if defs is None and path in moved
         }
@@ -161,27 +162,24 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ua-symbol-coverage: {error}", file=sys.stderr)
         return 2
     # A successor whose predecessor had symbols is judged on the predecessor's row.
-    judged = {successor for path, (successor, _, _) in successors.items() if old.get(path, 0)}
+    judged = {successor for path, (successor, _) in successors.items() if old.get(path, 0)}
     regressions = 0
     print("| file | old | new | def-like lines | status | note |")
     print("|---|---|---|---|---|---|")
     for path, before, after, defs in rows:
         status, shown, note, source = "ok", defs, "", path
         if path in successors:
-            source, after, defs = successors[path]
+            source, after = successors[path]
             shown = f"renamed → {source}"
         elif defs is None:
             shown = "gone"
         if after < before:
+            deleted = defs is None and args.old_ref is not None and path not in successors
+            status = "explained" if deleted else "REGRESSION"
             if path in old_blobs and old_blobs[path] == new_blobs.get(source):
-                explained, note = False, "source unchanged"
-            elif path in successors or args.old_ref is None or defs is not None:
-                explained = isinstance(defs, int) and after >= min(before, defs)
-            else:
-                explained = True  # deleted between OLD and REF
-            status = "explained" if explained else "REGRESSION"
-        elif path not in old and after == 0 and isinstance(defs, int) and defs and path not in judged:
-            status, note = "REGRESSION", "new file, no symbols"
+                note = "source unchanged"
+        elif path not in old and path not in judged and isinstance(defs, int) and after < defs:
+            status, note = "REGRESSION", f"new file, {after} of {defs} defs"
         regressions += status == "REGRESSION"
         print(f"| {path} | {before} | {after} | {shown} | {status} | {note} |")
     print(f"files: {len(rows)}, regressions: {regressions}")

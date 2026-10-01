@@ -209,20 +209,20 @@ class UaSymbolCoverageTest(unittest.TestCase):
         self.assertEqual(1, result.returncode, result.stdout)
         self.assertIn("| a.py | 2 | 0 | gone | explained |", result.stdout)
         self.assertIn(
-            "| b.py | 0 | 0 | 2 | REGRESSION | new file, 0 of 2 defs |", result.stdout
+            "| b.py | 0 | 0 | 2 | REGRESSION | new file, no symbols |", result.stdout
         )
 
-    def test_new_file_with_fewer_symbols_than_defs_is_regression(self) -> None:
+    def test_partially_covered_new_file_is_not_flagged(self) -> None:
+        # Documented ceiling: def-like lines overcount graph nodes, so only a
+        # new file with zero symbols is flagged.
         self.commit(a_py=defs("keep"))
         self.commit(b_py=defs("one", "two"))
 
         result = self.run_coverage(
             graph(a_py=("keep",)), graph(a_py=("keep",), b_py=("one",)), old_ref="HEAD~1"
         )
-        self.assertEqual(1, result.returncode, result.stdout)
-        self.assertIn(
-            "| b.py | 0 | 1 | 2 | REGRESSION | new file, 1 of 2 defs |", result.stdout
-        )
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertIn("| b.py | 0 | 1 | 2 | ok |  |", result.stdout)
 
     def test_shell_names_with_punctuation_are_counted(self) -> None:
         self.commit(

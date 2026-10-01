@@ -39,9 +39,10 @@ None. These are candidates only.
    pre-change base turns every legitimate deletion into a failure. The same trap applies to any
    before/after gate that takes a ref. Status: observation.
 3. **`python3 -m py_compile` on a file in `home/**` writes `__pycache__` into the chezmoi
-   source tree.** It is git-ignored but can be chezmoi-applied. Prefer
-   `python3 -c 'import ast,sys; ast.parse(open(sys.argv[1]).read())' <file>` or
-   `PYTHONDONTWRITEBYTECODE=1`. Status: candidate learning, not promoted.
+   source tree.** It is git-ignored but can be chezmoi-applied. Use
+   `python3 -c 'import ast,sys; ast.parse(open(sys.argv[1]).read())' <file>`;
+   `PYTHONDONTWRITEBYTECODE=1` does NOT stop an explicit `py_compile` from
+   writing (audit of 85919df, P3). Status: candidate learning, not promoted.
 
 ## Revision 4 triage
 
@@ -67,3 +68,27 @@ None. These are candidates only.
    closed a fail-open path in the same "explained" branch. A table of every branch that can
    produce `explained` (as listed in the r5 docstring) would have exposed them together.
    Status: candidate learning, not promoted.
+
+## Revision 6 triage
+
+1. **Calibrate a flag against the accepted baseline before making it a gate.** `new < defs`
+   looked like a safe flag, but 138 of 185 grammar files in the accepted graph already fail
+   it: the extractor's node model (no per-method or nested nodes) is not the def grammar's.
+   A one-off measurement on the accepted graph prices a proposed threshold before any
+   dispatch. Status: candidate learning for the orchestrator.
+2. Real-data runs keyed on graph **commit** ids rather than each graph's `gitCommitHash` give
+   the right answer only when the source is identical between the two. Status: observation.
+
+## Revision 7 triage
+
+1. **A completeness gate must also see what is absent from both sides.** Before r7, the
+   per-path comparison only iterated the union of the graphs' paths, so a file missing from
+   both was invisible. Enumerating the source tree (scoped to the graph's covered
+   directories) closes that. Status: observation.
+2. **"Self-compare" needs the artifact's own revision.** A graph compared with itself at HEAD
+   is not a self-compare once HEAD has moved past the graph's `gitCommitHash`. Status:
+   observation; the rule text already defines both refs as each graph's `gitCommitHash`.
+
+## Revision 8 triage
+
+1. Every subprocess read on a gate path needs a checked return code; a probe that only decides whether to look closer (the shebang read) is still a gate input. Status: observation.

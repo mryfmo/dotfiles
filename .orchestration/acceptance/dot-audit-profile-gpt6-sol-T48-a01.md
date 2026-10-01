@@ -63,3 +63,12 @@ cost: ~25k context tokens (worker counter; no per-task figure)
 integration gate; live confirmation (`model: gpt-6.1-sol`, `reasoning effort:
 xhigh` in the audit header) is recorded once the operator provisions API-key
 auth and applies the dotfiles.
+
+## Post-merge audit of the squash commit 0a34a68 (2026-10-01 01:57Z, run by mistake in a T43 audit loop that enumerated main's merged commits)
+
+`…-audit-0a34a68.md`: **Verdict: incorrect**, one P1 — the pin breaks the
+audit lane on the ChatGPT-login deployment until API-key auth is provisioned.
+Same fact as the Codex GitHub P1 on #218; disposition unchanged:
+**not-applicable (operator decision with the prerequisite documented; API-key
+provisioning is the operator lane)**. Recorded here so the finding is not
+left undispositioned.

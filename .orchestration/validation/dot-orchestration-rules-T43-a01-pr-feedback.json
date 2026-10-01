@@ -1,68 +1,68 @@
 {
   "repo": "mryfmo/dotfiles",
   "pr": 214,
-  "head_sha": "c878b0d495ee161d010239b20bd191f8007d7aff",
-  "generated_at": "2026-10-01T00:25:54+00:00",
+  "head_sha": "1b6741b8fe4f58b4eaa24b360fffceec2c8cee56",
+  "generated_at": "2026-10-01T03:02:20+00:00",
   "checks": [
     {
       "name": "nix",
       "conclusion": "skipped",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36794512268/job/110154794345"
-    },
-    {
-      "name": "test (macos-14, client)",
-      "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36794512268/job/110154793141"
-    },
-    {
-      "name": "test (ubuntu-latest, client)",
-      "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36794512268/job/110154793093"
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36807731508/job/110195772786"
     },
     {
       "name": "test (ubuntu-latest, server)",
       "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36794512268/job/110154793049"
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36807731508/job/110195772106"
     },
     {
-      "name": "private-bootstrap (ubuntu-latest, client)",
+      "name": "test (macos-14, client)",
       "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36794512234/job/110154748731"
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36807731508/job/110195772037"
     },
     {
-      "name": "public-bootstrap (macos-14, client)",
+      "name": "test (ubuntu-latest, client)",
       "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36794512234/job/110154748693"
-    },
-    {
-      "name": "private-bootstrap (ubuntu-latest, server)",
-      "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36794512234/job/110154748671"
-    },
-    {
-      "name": "public-bootstrap (ubuntu-latest, server)",
-      "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36794512234/job/110154748661"
-    },
-    {
-      "name": "validate",
-      "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36794512287/job/110154748640"
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36807731508/job/110195772015"
     },
     {
       "name": "public-bootstrap (ubuntu-latest, client)",
       "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36794512234/job/110154748610"
-    },
-    {
-      "name": "changes",
-      "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36794512268/job/110154748384"
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36807731507/job/110195728484"
     },
     {
       "name": "private-bootstrap (macos-14, client)",
       "conclusion": "success",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36794512234/job/110154748353"
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36807731507/job/110195728441"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-latest, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36807731507/job/110195728437"
+    },
+    {
+      "name": "public-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36807731507/job/110195728429"
+    },
+    {
+      "name": "changes",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36807731508/job/110195728412"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-latest, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36807731507/job/110195728404"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-latest, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36807731507/job/110195728306"
+    },
+    {
+      "name": "validate",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36807731492/job/110195728291"
     }
   ],
   "items": [
@@ -73,7 +73,7 @@
       "level": "comment",
       "path": null,
       "line": null,
-      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary>⚙️ Run configuration</summary>\n> \n> **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> \n> **Review profile**: CHILL\n> \n> **Plan**: Advanced\n> \n> **Run ID**: `504b4624-870f-462e-be7a-30928bc384b5`\n> \n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autopilot</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n\n> Autopilot is currently an internal CodeRabbit preview.\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n---\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=214)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary>❤️ Share</summary>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
+      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary>⚙️ Run configuration</summary>\n> \n> **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> \n> **Review profile**: CHILL\n> \n> **Plan**: Advanced\n> \n> **Run ID**: `cfcbe124-ecdd-4632-99e6-25f0442440ef`\n> \n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autopilot</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n\n> Autopilot is currently an internal CodeRabbit preview.\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n---\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=214)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary>❤️ Share</summary>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
       "url": "https://github.com/mryfmo/dotfiles/pull/214#issuecomment-5891154790",
       "disposition": "not-applicable:CodeRabbit \"review skipped\" status comment; no review content"
     },
@@ -135,6 +135,30 @@
       "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `c878b0d495`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
       "url": "https://github.com/mryfmo/dotfiles/pull/214#pullrequestreview-5373414416",
       "commit": "c878b0d495ee161d010239b20bd191f8007d7aff",
+      "disposition": "not-applicable:Codex Review container comment; each inline suggestion is dispositioned as its own review_comment item"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `c8cc4e455c`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/214#pullrequestreview-5373918152",
+      "commit": "c8cc4e455c9debccc3757c8c258050a9fe58bdf6",
+      "disposition": "not-applicable:Codex Review container comment; each inline suggestion is dispositioned as its own review_comment item"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `56f308c121`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/214#pullrequestreview-5373961006",
+      "commit": "56f308c1217888b9c3c67b0bd6c1821e36ed7119",
       "disposition": "not-applicable:Codex Review container comment; each inline suggestion is dispositioned as its own review_comment item"
     },
     {
@@ -208,7 +232,7 @@
       "bot": true,
       "level": "comment",
       "path": "home/dot_local/bin/common/executable_ua-symbol-coverage",
-      "line": 70,
+      "line": 91,
       "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Recognize uv-script Python executables**\n\nExtensionless Python executables launched through `uv run --script` are not recognized as Python because only a `.py` suffix or `python` in the first line is checked. This repository's `home/dot_local/bin/common/executable_permgate` has the `uv` shebang and 16 UA function/class nodes, so a legitimate source deletion in that file is always reported as `REGRESSION` rather than explained, forcing a manual exception for valid graph refreshes. Detect Python script metadata (such as `requires-python`) or otherwise recognize this supported executable form.\n\nUseful? React with 👍 / 👎.",
       "url": "https://github.com/mryfmo/dotfiles/pull/214#discussion_r4138345521",
       "resolved": false,
@@ -247,7 +271,7 @@
       "bot": true,
       "level": "comment",
       "path": "home/dot_local/bin/common/executable_ua-symbol-coverage",
-      "line": 111,
+      "line": 142,
       "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Preserve coverage across low-similarity moves**\n\nWhen a source file is moved and substantially rewritten, Git's default `-M` threshold emits a delete/add pair rather than a rename. The old path is then automatically marked `explained` as deleted while the new path has `old == 0`, so omitted symbols in the new file are never compared. Fresh evidence: moving `a.py` to `b.py`, retaining its two definitions while adding 80 rewritten lines, and emitting only a `b.py` file node makes this command return 0 with `a.py: explained` and `b.py: ok`. Match such moves before exempting disappeared paths, or fail closed when a source-backed added path has no historical coverage.\n\nUseful? React with 👍 / 👎.",
       "url": "https://github.com/mryfmo/dotfiles/pull/214#discussion_r4150384570",
       "resolved": false,
@@ -277,8 +301,8 @@
       "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Reject partially covered source-backed additions**\n\nWhen a graph refresh adds a source file (including a low-similarity move) with multiple definitions but emits only some of its symbols, `after` is nonzero and this condition is skipped, so the command exits 0. Fresh evidence: a new `b.py` containing two `def` lines with one function node produces `| b.py | 0 | 1 | 2 | ok |` and `regressions: 0`. This allows the new acceptance rule to approve an incomplete graph; compare source-backed new paths against their definition count even when they retain some nodes.\n\nUseful? React with 👍 / 👎.",
       "url": "https://github.com/mryfmo/dotfiles/pull/214#discussion_r4150527875",
       "resolved": false,
-      "outdated": false,
-      "disposition": "pending-revise:T43-r6 (def counts only flag: new path REGRESSION when new < defs)"
+      "outdated": true,
+      "disposition": "not-applicable:measured on the accepted graph: 138 of 185 grammar files already have fewer function/class nodes than def-like lines (UA emits no node for most methods and nested functions), so new < defs cannot gate; documented ceiling in the helper docstring (56f308c); only the zero-symbol case is flagged"
     },
     {
       "source": "review_comment",
@@ -290,8 +314,72 @@
       "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Recognize valid punctuation in shell function names**\n\nBash accepts names such as `function foo? { :; }`, but this pattern excludes `?` (and other valid shell word characters). If a revision changes an unrelated line in such a file and the refreshed graph loses that node, the old/new blobs differ, the counter sees only the remaining ordinary function, and the loss is labeled `explained`; a two-function `x.sh` with `foo?` and `bar` reproduced as `old=2, new=1, defs=1`, exiting 0. Broaden the shell-definition matcher or use a shell-aware parser so these losses remain regressions.\n\nUseful? React with 👍 / 👎.",
       "url": "https://github.com/mryfmo/dotfiles/pull/214#discussion_r4150527879",
       "resolved": false,
+      "outdated": true,
+      "disposition": "fixed:afb2c9d"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_ua-symbol-coverage",
+      "line": 182,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Detect definitions added during a rename**\n\nWhen a detected rename also adds definitions, `judged` excludes the successor from the new-file completeness check. Fresh evidence: renaming `a.py` to `b.py`, adding a second `def`, and retaining only the original function node exits 0 (`a.py` is `ok` and `b.py` is skipped), so an accepted refresh can omit the newly added symbol. Apply the `after < defs` check to renamed successors as well while retaining the predecessor-count comparison.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/214#discussion_r4150958867",
+      "resolved": false,
+      "outdated": true,
+      "disposition": "not-applicable:same class as the partially-covered finding — a successor that keeps at least the old count but gains definitions is partial under-extraction, which the def-line count cannot gate (138 of 185 measurement); the rename row still fails closed when the successor drops below the old count; documented ceiling (56f308c docstring)"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_ua-symbol-coverage",
+      "line": 182,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Fail closed for low-similarity moves in other languages**\n\nFor a low-similarity move in a source type without a def grammar, `def_pattern` returns `None`, so this type guard skips the only check on the added path while the old path is treated as an explained deletion. Fresh evidence: moving a two-function `a.js` to a heavily rewritten `b.js` and emitting only a `b.js` file node returns 0 with `a.js` explained and `b.js` `ok`, losing all symbols. Add coverage for graph-supported source languages or fail closed for unrecognized source-backed additions.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/214#discussion_r4150958871",
+      "resolved": false,
+      "outdated": true,
+      "disposition": "fixed:c878b0d"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_ua-symbol-coverage",
+      "line": 213,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Compare the source tree against graph paths**\n\nWhen a newly added supported source file is omitted entirely from the refreshed graph (so it has neither a file node nor a symbol node), it is absent from `set(old) | set(new)` and `def_lines` is never called for it. For example, adding a `b.py` with two functions while leaving the new graph unchanged produces `regressions: 0`; this lets the completeness gate approve precisely the extractor failure the new-file check is intended to catch. Enumerate relevant source paths at `--repo-ref` (subject to the graph's ignore rules) or otherwise fail when source-backed files are absent from the new graph.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/214#discussion_r4150992160",
+      "resolved": false,
       "outdated": false,
-      "disposition": "pending-revise:T43-r6 (def counts never explain; SHELL_DEF name characters broadened)"
+      "disposition": "fixed:72746d4"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_ua-symbol-coverage",
+      "line": 68,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Avoid counting docstring text as Python definitions**\n\nFor a newly added Python file that correctly has no function/class nodes but contains a multiline string whose line starts with `def`, this regex reports a definition and the zero-symbol check rejects the graph. A file containing only `DOC = \"\"\"\\ndef not_a_real_function():\\n\"\"\"` reproduces this as `REGRESSION | new file, no symbols`; use Python parsing or otherwise exclude string literals before applying this gate.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/214#discussion_r4150992168",
+      "resolved": false,
+      "outdated": false,
+      "disposition": "fixed:72746d4"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36807731508/job/110195772106",
+      "check": "test (ubuntu-latest, server)",
+      "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
     },
     {
       "source": "annotation",
@@ -301,7 +389,7 @@
       "path": ".github",
       "line": 1,
       "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36794512268/job/110154793141",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36807731508/job/110195772037",
       "check": "test (macos-14, client)",
       "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
     },
@@ -313,7 +401,7 @@
       "path": ".github",
       "line": 1,
       "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36794512268/job/110154793093",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36807731508/job/110195772015",
       "check": "test (ubuntu-latest, client)",
       "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
     },
@@ -325,8 +413,20 @@
       "path": ".github",
       "line": 1,
       "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36794512268/job/110154793049",
-      "check": "test (ubuntu-latest, server)",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36807731507/job/110195728484",
+      "check": "public-bootstrap (ubuntu-latest, client)",
+      "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36807731507/job/110195728441",
+      "check": "private-bootstrap (macos-14, client)",
       "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
     },
     {
@@ -337,8 +437,8 @@
       "path": ".github",
       "line": 1,
       "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36794512234/job/110154748731",
-      "check": "private-bootstrap (ubuntu-latest, client)",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36807731507/job/110195728437",
+      "check": "private-bootstrap (ubuntu-latest, server)",
       "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
     },
     {
@@ -347,9 +447,9 @@
       "bot": true,
       "level": "warning",
       "path": ".github",
-      "line": 176158,
+      "line": 176219,
       "body": "The following taps are not trusted:\n  aws/tap\n  azure/bicep\n  hashicorp/tap\n\nHomebrew is currently ignoring formulae, casks and commands from these taps because tap trust is required.\n\nPrefer trusting only the specific formulae, casks or commands you need.\nTrust installed formulae from these taps with:\n  brew trust --formula azure/bicep/bicep\n  brew trust --formula hashicorp/tap/packer\nTrust other specific casks and commands with:\n  brew trust --cask <user>/<tap>/<cask>\n  brew trust --command <user>/<tap>/<command>\nWhole-tap trust is broader and includes all current and future formulae,\ncasks and commands from the listed taps. Trust whole taps with:\n  brew trust aws/tap azure/bicep hashicorp/tap\nUntap them with:\n  brew untap aws/tap azure/bicep hashicorp/tap\nTo disable trust checks:\n  export HOMEBREW_NO_REQUIRE_TAP_TRUST=1\nThis is not recommended and will be removed in a later release.\nFor more information, see:\n  https://docs.brew.sh/Tap-Trust",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36794512234/job/110154748693",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36807731507/job/110195728429",
       "check": "public-bootstrap (macos-14, client)",
       "disposition": "not-applicable:Homebrew tap-trust warning from the macOS CI runner installing pre-existing Brewfile taps; this PR touches no install/ or Brewfile path"
     },
@@ -361,7 +461,7 @@
       "path": ".github",
       "line": 1,
       "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36794512234/job/110154748693",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36807731507/job/110195728429",
       "check": "public-bootstrap (macos-14, client)",
       "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
     },
@@ -373,8 +473,8 @@
       "path": ".github",
       "line": 1,
       "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36794512234/job/110154748671",
-      "check": "private-bootstrap (ubuntu-latest, server)",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36807731508/job/110195728412",
+      "check": "changes",
       "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
     },
     {
@@ -385,7 +485,19 @@
       "path": ".github",
       "line": 1,
       "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36794512234/job/110154748661",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36807731507/job/110195728404",
+      "check": "private-bootstrap (ubuntu-latest, client)",
+      "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36807731507/job/110195728306",
       "check": "public-bootstrap (ubuntu-latest, server)",
       "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
     },
@@ -397,44 +509,8 @@
       "path": ".github",
       "line": 1,
       "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36794512287/job/110154748640",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36807731492/job/110195728291",
       "check": "validate",
-      "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
-    },
-    {
-      "source": "annotation",
-      "author": "github-actions",
-      "bot": true,
-      "level": "notice",
-      "path": ".github",
-      "line": 1,
-      "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36794512234/job/110154748610",
-      "check": "public-bootstrap (ubuntu-latest, client)",
-      "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
-    },
-    {
-      "source": "annotation",
-      "author": "github-actions",
-      "bot": true,
-      "level": "notice",
-      "path": ".github",
-      "line": 1,
-      "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36794512268/job/110154748384",
-      "check": "changes",
-      "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
-    },
-    {
-      "source": "annotation",
-      "author": "github-actions",
-      "bot": true,
-      "level": "notice",
-      "path": ".github",
-      "line": 1,
-      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
-      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36794512234/job/110154748353",
-      "check": "private-bootstrap (macos-14, client)",
       "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
     },
     {

@@ -251,3 +251,94 @@ Validation as before, exits captured directly. Real data (`--old-ref 72b8901
 --repo-ref c3afc7a`): expect the same 8 regressions (no explained rows exist on
 that data). Self-compare 0. allowed_files unchanged. Keep PR #214; push
 without `-u`.
+
+## Orchestrator amendment r6-b (2026-10-01 01:3xZ, before the r6 RESULT; PONG msg 562)
+
+The worker measured that in the accepted graph 138 of 185 grammar files already
+have fewer function/class nodes than def-like lines, and that r6 item 2
+(`new < defs` ⇒ REGRESSION for new paths) fires on `scripts/pr-feedback.py` and
+`tests/unit/test_pr_feedback.py` in the real-data run (10 instead of 8). The
+def-line heuristic systematically overcounts relative to UA nodes, so
+`new < defs` is not a usable gate; my r6 item 2 was miscalibrated.
+
+- Revert item 2 to the r5 rule: a path new to the graph is `REGRESSION` only
+  when it exists at REF with ≥ 1 def-like line and **zero** symbols (`new
+  file, no symbols`). Keep items 1 (def counts never explain) and 3 (shell name
+  characters) exactly as implemented.
+- Docstring: state the measured ceiling — partial under-extraction of a
+  brand-new file is not detectable by the def-line count (138/185 files of the
+  accepted graph have symbols < def-like lines), so only the zero-symbol case
+  is flagged; the `def-like lines` column stays informational.
+- Tests: drop or invert the `:184` reproduction (2 defs, 1 node) so it pins the
+  documented behaviour (`ok`), keep the zero-symbol test.
+- Report: include the 138/185 measurement and the command that produced it.
+- Real data must be back to `regressions: 8`; self-compare 0.
+
+The Codex `:184` P1 is then dispositioned not-applicable on this measurement,
+not fixed; that is the orchestrator's call and goes in the acceptance record.
+
+## Orchestrator amendment r7 (2026-10-01; dispatched as AGMSG-ACCEPTANCE status=revise)
+
+r6/r6-b (afb2c9d, 56f308c) verified: real data 8 (all `source unchanged`),
+self-compare 0, 627 tests; audit of 56f308c correct. Three findings remain —
+one from the audit of afb2c9d, two from the Codex GitHub review of 56f308c —
+all about what the def-line count sees. Fix in one commit on
+`feat/orchestration-rules-T43`:
+
+1. **Comment lines are not definitions** (audit P2, `:53`). `def_lines` skips
+   lines whose first non-blank character is `#` for every grammar
+   (`#disabled() { :; }` must not count). Test: a new shell file with one real
+   function and one commented-out one → defs 1.
+2. **Python definitions come from `ast`, not a regex** (`:55`). For a path with
+   the Python grammar, count `FunctionDef`, `AsyncFunctionDef` and `ClassDef`
+   nodes with `ast.parse` (stdlib); fall back to `PYTHON_DEF` only on
+   `SyntaxError`. A `def` inside a string literal then counts nothing. Test: a
+   new file containing only `DOC = """\ndef not_a_real_function():\n"""` →
+   defs 0, `ok`; the uv-shebang test keeps passing.
+3. **A new grammar file missing from the graph fails closed** (`:159`). Paths
+   that exist at REF, have a def grammar and ≥ 1 def-like line, and appear in
+   neither graph are invisible today. Enumerate candidates with
+   `git ls-tree -r -z REF` (extension match, or mode 100755 with a recognised
+   shebang on line 1) and emit a `REGRESSION` row `| path | 0 | 0 | N | REGRESSION
+   | missing from graph |` for each — **restricted to directories the new graph
+   already covers** (some path in `new` shares the candidate's parent
+   directory), so the graph's own include scope is respected without reading
+   the plugin's ignore rules. Measure first on the accepted graph
+   (`.ua/knowledge-graph.json` vs `.ua/meta.json` `gitCommitHash`): paste the
+   list of such candidates; if it is non-empty, report it and apply the rule
+   anyway only if every listed path is a genuine omission (else PONG with the
+   list before committing). Test: new `b.py` with two functions, graph
+   unchanged, `b.py` in a covered directory → `REGRESSION`, exit 1; the same
+   file in an uncovered directory → no row.
+4. Docstring: one sentence per item; note that the `def-like lines` column
+   for Python is now the `ast` count.
+
+Validation as before, exits captured directly; real data must stay at 8,
+self-compare at 0 (if item 3 adds rows on real data, list and explain each).
+Negative check against 56f308c for the three new tests. allowed_files
+unchanged. Keep PR #214; push without `-u`. Re-anchored comments `:76`
+(uv shebang) and `:117` (low-similarity move) are already fixed; no action.
+
+## Orchestrator amendment r8 (2026-10-01; dispatched as AGMSG-ACCEPTANCE status=revise)
+
+r7 (72746d4) verified: comment skip, `ast` counting, missing-from-graph with
+the measurement (no candidates at the graph's own revision; the two PR files
+at HEAD are genuine omissions); real data 8, self-compare 0 with both refs at
+the graph's `gitCommitHash`. No new Codex GitHub comments. The audit of
+72746d4 (`…-audit-72746d4.md`) found two items; fix both in one commit:
+
+1. **P2 `:173` fail closed on an unreadable candidate.** In
+   `missing_from_graph`, the shebang probe reads `git show REF:path` and
+   ignores a non-zero return: an unreadable extensionless executable is
+   silently skipped and the run exits 0. Raise `CoverageError` (exit 2) when
+   that `git show` fails, as `def_lines` already does. Test: monkeypatch or a
+   fake `git` that fails for one 100755 path → exit 2, no table.
+2. **P3 `:159` `source unchanged` note after a chmod-only change.** `blobs()`
+   now returns `(mode, blob)` and the equality check compares the tuple, so a
+   mode-only change suppresses the informational note although the bytes are
+   identical. Compare blob ids only. Test: same blob, mode 100644 → 100755,
+   symbol decrease → `REGRESSION | source unchanged`.
+
+Validation as before; real data 8, self-compare 0 (both refs = graph
+`gitCommitHash`). Negative check against 72746d4 for the two tests. Keep PR
+#214; push without `-u`.

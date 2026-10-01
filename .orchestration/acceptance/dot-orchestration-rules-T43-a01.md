@@ -198,3 +198,96 @@ only flag (new path: REGRESSION when new < defs), shell name characters
 broadened (task_rev 95d26e4f096aed46…). Queued behind T48 in worker-c. Orchestrator
 note: this is the framing r3 should have carried; five review rounds were
 spent narrowing a heuristic that should not have been load-bearing.
+
+## Round 6 / 6-b review (2026-10-01, RESULT msg 564, head 56f308c = afb2c9d + merge c8cc4e4 + 56f308c)
+
+Orchestrator re-derivation from git objects at 56f308c: real data exit 1,
+`regressions: 8` (all `source unchanged`; both `pr-feedback` files back to
+`ok`); self-compare exit 0. Logic walk: a decrease is `explained` only when
+`defs is None and --old-ref and not renamed`; renamed → successor count only;
+new path REGRESSION only when defs ≥ 1 and new == 0 and not a judged successor.
+627 tests OK; CI all pass; CLEAN. The worker caught my r6 item 2 miscalibration
+with the 138/185 measurement (decision 4629b961… superseded by 635d9dd5…).
+Audits: afb2c9d **incorrect** (P2: `SHELL_DEF` now counts commented-out
+definitions such as `#disabled() { :; }` → r7); 56f308c **correct** (the
+138/185 measurement and the eight regressions independently re-verified).
+Orchestrator error: the audit loop enumerated `c878b0d..branch` and so also
+audited main's merged commits 0a34a68 (T48; recorded in its acceptance) and
+85919df (`.orchestration`; P3 on the learning note's
+`PYTHONDONTWRITEBYTECODE=1` advice — confirmed wrong, note corrected by the
+orchestrator in this round).
+
+PR #214 sweep on 56f308c (37 items): r6 targets fixed:afb2c9d; Codex `:184`
+(partially covered new file) **not-applicable** on the 138/185 measurement
+(def-line counts overcount UA nodes; documented ceiling); `:52` shell names
+fixed:afb2c9d; two new live comments, both confirmed by reading the helper:
+P1 `:159` a new grammar file absent from both graphs is invisible to the
+gate; P2 `:55` a `def` inside a Python string literal counts as a definition
+and trips the zero-symbol check. **Decision (round 6): REVISE r7** — skip
+comment lines, Python defs via `ast`, missing-from-graph check scoped to
+covered directories (task_rev fe4ce5714923a8ea…).
+
+Delivery note: until this round the orchestrator's Stop-hook delivery was
+silently skipping (actas lock held under the bare session id from sandboxed
+Bash while the hook computes the composite id) — RESULTs 546–564 were found by
+direct DB reads; fixed by re-claiming with the composite id (codified as T49).
+
+## Round 7 review (2026-10-01, RESULT msg 567 — delivered by the repaired Stop hook — head 72746d4)
+
+Branch-only diff since 56f308c: helper +72/−10, tests +27. Read in full:
+`count_defs` skips `#` lines and uses `ast.walk` for Python (regex only on
+`SyntaxError`/`ValueError`); `blobs()` keeps `(mode, blob)`;
+`missing_from_graph` enumerates grammar files at REF (suffix or 100755 +
+grammar shebang) absent from both graphs in directories the new graph covers,
+appended as `missing from graph` rows counted in `files:`/`regressions:`.
+Measurement first: no candidates at the graph's own revision 72b8901; at HEAD
+exactly the two files this PR added (genuine omissions). Orchestrator
+re-derivation from git objects: real data exit 1 / 8; self-compare exit 0;
+0 `missing from graph` rows on real data. 630 tests OK; CI all pass; CLEAN.
+Codex audit of 72746d4: **incorrect** — P2 the shebang probe ignores a
+`git show` failure (fail-open on an unreadable candidate), P3 the blob
+equality now compares `(mode, blob)` so a chmod-only change hides the
+informational `source unchanged` note. Both confirmed by reading the diff.
+PR #214 sweep on 72746d4 (37 items): `:159` and `:55` → fixed:72746d4; the
+rest unchanged; no new comments. **Decision (round 7): REVISE r8** (two
+small fixes, task_rev c5991cd247aa4d7e…).
+
+## Round 8 review and acceptance (2026-10-01, RESULT msg 569, head 1b6741b)
+
+Diff since 72746d4: `missing_from_graph` raises `CoverageError` on a failed
+`git show` for a 100755 candidate (exit 2, no table); the `source unchanged`
+check compares blob ids only; two tests with negative checks against 72746d4
+(r7 exits 0 / prints no note). Orchestrator re-derivation: real data exit 1 /
+8 (`source unchanged`), self-compare with both refs at the graph's
+`gitCommitHash` exit 0. 632 tests OK; CI all pass; CLEAN. Codex audit of
+1b6741b: **Verdict: correct** (six behavioural checks). PR #214 sweep on
+1b6741b: no new comments; 37 items = 13 fixed + 24 not-applicable (reasons in
+the JSON; the two not-fixed Codex P1s rest on the measured 138/185 ceiling).
+
+Final shape of the gate (`ua-symbol-coverage <old> <new> --old-ref <old graph
+rev> --repo-ref <new graph rev>`): only git-structural facts explain a
+decrease (deletion, or a rename whose successor keeps the count); every other
+decrease is REGRESSION to be cited; def-line counts (comment-free, Python via
+`ast`) only flag zero-symbol new files and grammar files missing from the
+graph in covered directories; unresolvable refs and unreadable candidates exit
+2. Residual, documented: partial under-extraction of a brand-new or
+heavily rewritten moved file is not detectable from the count.
+
+Audits across the PR (gpt-6-astra, read-only): 557502b incorrect→fixed r2;
+99c1174 correct; 1843dd1 incorrect→dispositioned (T44 task scope; exit
+evidence re-derived); 12d3f80 correct; 6b53337 correct; c878b0d correct;
+afb2c9d incorrect→fixed r7; 56f308c correct; 72746d4 incorrect→fixed r8;
+1b6741b correct. CompactionDB: r1 decision 992478eb… (names the removed
+`scripts/` path) and the pending-threshold clause 4629b961… are retracted at
+acceptance; c8d78aa6 (r3), 984c14d8 (r4), 18479d26 (r5), 635d9dd5 (r6-b),
+67792095 (r7), 4bac6923 (r8) stand.
+
+Orchestrator lessons (codified via T46/T49, recorded here): the heuristic
+should never have been load-bearing (r3 framing); audit loops must enumerate
+`origin/main..branch`, not `<prev>..branch`; order-dependent dispatches go one
+at a time; the seat lock must be composite for turn delivery to work.
+
+cost: worker ~136k+30k+32k+20k+45k+25k+15k context tokens across rounds (session counters; no per-task figure)
+
+**Decision: ACCEPTED.** Merge PR #214 (squash, no `--delete-branch`; worker-c
+holds the branch) after the integration gate; T44 r2 is dispatched next.

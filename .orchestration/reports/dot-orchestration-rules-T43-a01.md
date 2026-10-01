@@ -225,3 +225,185 @@ No row reports `new file, no symbols`.
 [memory:decision] T43 r5: ua-symbol-coverage never lets an undercounted or absent def count explain a loss: with --old-ref, a path whose blob is identical at OLD and REF is a REGRESSION on any symbol decrease (source unchanged); a path new to the graph with def-like lines at REF but zero symbols is a REGRESSION (new file, no symbols); Ruby private/protected/public def prefixes are counted (orchestrator r5 2026-10-01).
 
 cost (revision 5): 0 subagent dispatches; about 20k context tokens consumed this round (session budget counter; no per-task figure exposed).
+
+## Revision 6 (orchestrator status=revise after T48; amendment r6)
+
+### Real-data finding at c8cc4e4 (resolved by r6-b below): 10 regressions, not 8
+
+`--old-ref 72b8901 --repo-ref c3afc7a` now gives **`regressions: 10`**, exit 1. The amendment expected the same 8. I implemented item 2 literally (afb2c9d). The PONG at 01:26Z reported the finding, and the orchestrator answered with amendment r6-b. What I found:
+
+- **The two extra rows** come only from item 2, the new-file flag:
+  - `scripts/pr-feedback.py | 0 | 5 | 11 | REGRESSION | new file, 5 of 11 defs`
+  - `tests/unit/test_pr_feedback.py | 0 | 5 | 21 | REGRESSION | new file, 5 of 21 defs`
+
+  The other 8 are the known T41 losses, all noted `source unchanged`.
+- **Cause, from git facts (validation §9).** The 72b8901 graph's own `.ua/meta.json` `gitCommitHash` is `7b69b1e`. Neither file exists at `7b69b1e`, and neither appears in the 72b8901 graph, so both are genuinely new to the graph. Running with `--old-ref 7b69b1e` (the old graph's real revision) gives the same 10.
+  - Side note on parameters: the real-data runs use graph **commit** ids. The rule's definition is each graph's `gitCommitHash`, which here would be `--old-ref 7b69b1e --repo-ref 72b8901`. The source is identical between 72b8901 and c3afc7a, so the result does not change.
+- **These are not under-extractions.** The *accepted* graph at HEAD (gitCommitHash 72b8901) also gives both files exactly 5 nodes.
+- **Measured consequence.** In the accepted graph, **138 of 185** files that have a def grammar already have fewer symbols than def-like lines. The extractor does not emit a node per `def`: methods, nested functions and `modify_private_*.config.toml` bodies are not separate nodes. So item 2 as written flags about three quarters of new files in every refresh, and each one would need a citation. The measurement script and its full per-file list are in §9.
+- **Possible directions, for the orchestrator (none implemented):**
+  - keep only the r5 zero-symbol check, which does not catch the `:184` reproduction;
+  - a ratio threshold, which is a heuristic;
+  - treat `new < defs` on new files as a non-failing note.
+
+### Changes (afb2c9d, plus c8cc4e4 merging origin/main 85919df / T48 0a34a68)
+
+1. **Def-line counts never explain a loss.** A decrease on any path that exists at REF is now `REGRESSION`. The only `explained` outcome is a deletion under `--old-ref` (absent at REF and not renamed, shown `gone`).
+   - A renamed path whose successor keeps at least the old count shows `ok`. The amendment lists this among the "explained outcomes", but the r4 test the orchestrator accepted pins `ok`, so I kept `ok`.
+   - A rename whose successor has fewer symbols is `REGRESSION`.
+   - Without `--old-ref`, every decrease is `REGRESSION`.
+   - The `source unchanged` note stays, for information.
+   - The successor's def count is no longer computed, because it cannot affect the outcome.
+2. **Def-line counts only flag.** A path new to the graph that exists at REF with fewer symbols than def-like lines is `REGRESSION`, noted `new file, <new> of <defs> defs`. The r5 zero-symbol check is its special case. The `def-like lines` column stays as information on every row.
+3. **Shell names.** `SHELL_DEF = ^\s*(?:function\s+\S+|[^\s()=]+\s*\(\))(?:\s*[{(].*)?\s*$`.
+   - **Deviation:** the name class also excludes `=`. The amendment's literal `[^\s()]+` would count the array assignment `arr=()` as a function. `=` cannot appear in a bash function name defined with the `name()` form, so excluding it loses nothing.
+   - The new test pins `foo?() {`, `function bar@baz {` and `arr=()` together: 2 defs, not 3.
+4. **Docstring** rewritten around the two principles ("structural facts explain; counts only flag"). The obsolete ceilings (`min` rule, rename-similarity ceiling for kept nodes) are dropped. One remains: the new-file check is only as complete as the def grammar.
+   - Rule, SKILL, mirror and README are unchanged. "Or cites the source change behind each decrease" stays.
+   - **Wording gap to flag:** that phrase does not cover a new-file flag, which has no decrease to cite. If item 2 stays as written, the rule would need a clause for it. I did not add one, because the threshold is still open.
+5. **Tests** (14 in the module):
+   - Flipped expectations, same inputs:
+     - `test_partial_deletion_is_explained_only_up_to_the_source_loss` is renamed `…_in_changed_source_is_regression`. Its "fully accounted" case (2 → 1, 1 def) now expects `REGRESSION`, exit 1.
+     - `test_unchanged_source_cannot_explain_a_loss` is renamed `test_unchanged_source_loss_is_noted`. Its no-`--old-ref` case now expects `REGRESSION`.
+     - `test_ref_is_the_new_graph_revision_not_the_base` is renamed `test_def_column_reads_the_new_graph_revision`. Both refs now give `REGRESSION`; the def column shows 1 at HEAD and 2 at HEAD~1.
+     - `test_uv_run_script_shebang_is_python` now expects `| tool | 2 | 1 | 1 | REGRESSION |`; the def column `1`, not `-`, still proves the grammar.
+     - The low-similarity move's note becomes `new file, 0 of 2 defs`.
+   - New:
+     - `test_new_file_with_fewer_symbols_than_defs_is_regression`, the `:184` reproduction: new `b.py` with 2 defs and 1 node gives `REGRESSION`, `new file, 1 of 2 defs`, exit 1.
+     - `test_shell_names_with_punctuation_are_counted`.
+   - **Negative check against c878b0d** (§9): the 2 new tests and the 2 flipped ones fail. r5 gives `b.py … ok`, `s.sh … 0 … ok`, `a.py … explained`, and `a.py … explained`.
+
+### Checks (verbatim in §9, exits captured directly)
+
+- base-ok (after merging origin/main), exit 0.
+- `make render-check`: up to date, exit 0. The merged `agent-config.yaml` combines the T48 audit block with the T43 PATH line, and they are consistent.
+- `make unit-test`: 627 tests OK (1 skipped), exit 0.
+- `make validate-agent-assets`: ok, exit 0.
+- Self-compare with `--old-ref HEAD --repo-ref HEAD`: `regressions: 0`, exit 0.
+- Real data: 10 regressions, exit 1, as described above.
+- Bad `--old-ref`: exit 2.
+- `gh pr checks 214`: in §9.
+
+### Notes
+
+- **task_rev:** no dispatch carried an r6 task_rev. I worked against the task file as it stood when the T48 acceptance told me to switch (`95d26e4f096aed469004e6804096fc63fab8afab8126d8c1d89d6cb95937c35b`) and re-checked it, unchanged, before committing.
+- **Understand-Anything hook:** it fired after the commits. I did not act on it.
+- **Stray bytecode:** importing the helper for the measurement left `home/dot_local/bin/common/__pycache__`. It is git-ignored; I removed it.
+- **CompactionDB (main checkout):** **4629b961-4b39-4d7c-aeef-73801df1e2f0** records items 1 and 3 and says item 2's threshold was pending. r6-b's decision supersedes that clause.
+
+[memory:decision] T43 r6: in ua-symbol-coverage only structural git facts explain a loss (with --old-ref: a deletion, or a rename whose successor keeps the old count); every other decrease on a path present at REF is a REGRESSION to be cited, and def-like counts never explain; SHELL_DEF accepts any name without whitespace, parentheses or =. The r6 new-file flag (new < def-like lines) over-flags (138 of 185 grammar files in the accepted graph already have fewer symbols than def lines); its threshold is pending the orchestrator decision (2026-10-01).
+
+cost (revision 6): 0 subagent dispatches, 1 advisor consult; about 35k context tokens consumed this round (session budget counter; no per-task figure exposed).
+
+r6 commits: afb2c9d (fix) and c8cc4e4 (merge of origin/main). r6-b follows.
+
+## Revision 6-b (amendment r6-b, task_rev cb8b03b2…68b7 verified; PING 01:28:58Z)
+
+The orchestrator accepted the measurement: `new < defs` is not a usable gate. Commit **56f308c** sits on top of c8cc4e4, with no force push. PR #214 head: `56f308c1217888b9c3c67b0bd6c1821e36ed7119` (all CI checks pass, nix skipped; mergeStateStatus CLEAN).
+
+1. **Item 2 is back to the r5 rule.** A path new to the graph is a `REGRESSION` only when it exists at REF with at least one def-like line and **zero** symbols, noted `new file, no symbols`. Items 1 (def counts never explain) and 3 (shell name characters) are unchanged from afb2c9d.
+2. **Docstring.** It now states the measured ceiling: the def-like count overcounts graph nodes, because nested functions and methods often get no node. So partial under-extraction of a brand-new file cannot be detected from the count. In the accepted graph of 2026-10-01, 138 of 185 files with a def grammar have fewer symbols than def-like lines. Only the zero-symbol case is flagged, and the `def-like lines` column is informational.
+3. **Tests.**
+   - The `:184` reproduction is inverted to pin the documented behaviour. `test_new_file_with_fewer_symbols_than_defs_is_regression` became `test_partially_covered_new_file_is_not_flagged`: a new `b.py` with 2 defs and 1 node gives `| b.py | 0 | 1 | 2 | ok |  |`, exit 0.
+   - The zero-symbol test `test_low_similarity_move_with_no_symbols_is_regression` is kept, and its note is back to `new file, no symbols`. All 14 module tests pass.
+4. **The 138/185 measurement.** Command and verbatim output are in validation §9:
+
+   ```
+   python3 <scratchpad>/measure.py
+   ```
+
+   The script, verbatim in §9, loads the helper with `SourceFileLoader`. For every `filePath` in `.ua/knowledge-graph.json`, it compares `symbol_counts` against `def_lines(<.ua/meta.json gitCommitHash>, path)`. Output: `files with a def grammar 185, symbols < def-like lines 138`, then the per-file list. `scripts/pr-feedback.py` has 5 symbols for 11 def-like lines, and `tests/unit/test_pr_feedback.py` has 5 for 21.
+
+**Checks** (verbatim in §10, exits captured directly):
+- base-ok, exit 0.
+- `make render-check`: up to date, exit 0.
+- `make unit-test`: 627 tests OK (1 skipped), exit 0.
+- `make validate-agent-assets`: ok, exit 0.
+- Self-compare with `--old-ref HEAD --repo-ref HEAD`: `regressions: 0`, exit 0.
+- **Real data** (`--old-ref 72b8901 --repo-ref c3afc7a`): **`regressions: 8`**, exit 1. These are the 8 known rows, all `source unchanged`. Both `pr-feedback` files are back to `ok`.
+- Bad `--old-ref`: exit 2.
+- `gh pr checks 214`: in §10.
+
+**For the acceptance record:** this round flags the Codex `:184` P1 as not-applicable, with the measurement as the reason; it is not fixed. That disposition is the orchestrator's call.
+
+[memory:decision] T43 r6-b: ua-symbol-coverage flags a path new to the graph only when it has def-like lines at REF and zero symbols; partial under-extraction of a new file is a documented ceiling because 138 of 185 grammar files in the accepted graph already have fewer symbols than def-like lines. Supersedes the pending-threshold clause of 4629b961; items 1 (only deletions and symbol-keeping renames explain) and 3 (shell names) stand (2026-10-01).
+
+CompactionDB (main checkout): **635d9dd5-1058-4db9-aec8-6a10373ee1d3**.
+
+cost (revision 6 + 6-b): 0 subagent dispatches, 1 advisor consult; about 45k context tokens consumed (session budget counter; no per-task figure exposed).
+
+## Revision 7 (orchestrator status=revise 02:08:35Z; task_rev fe4ce571…15e9 verified)
+
+All three findings are fixed in one commit, **72746d4**, directly on 56f308c (base-ok holds, so there was no merge and no force push). PR #214 head: `72746d47ed6dca80ac61b6e1b53caf7fc606e68d` (all CI checks pass, nix skipped; mergeStateStatus CLEAN).
+
+1. **Comment lines are not definitions** (audit P2 on afb2c9d). `count_defs` skips lines whose first non-blank character is `#` in every grammar.
+   - Test `test_comment_lines_are_not_definitions`: a new `s.sh` with `real()`, `#disabled() { :; }` and `  # gone() {` gives `| s.sh | 0 | 1 | 1 | ok |`.
+   - The r6-b script gives `… | 2 | ok |`: `#disabled()` matched the r6 name class.
+2. **Python definitions come from `ast`.** For the Python grammar (`.py`, a `python` shebang or a `uv run` shebang), `count_defs` counts `FunctionDef`, `AsyncFunctionDef` and `ClassDef` nodes from `ast.walk(ast.parse(text))`. It falls back to the comment-skipping `PYTHON_DEF` regex only on `SyntaxError` or `ValueError` (for example, NUL bytes).
+   - Test `test_python_defs_inside_strings_do_not_count`: a new `doc.py` containing only `DOC = """\ndef not_a_real_function():\n"""` gives `| doc.py | 0 | 0 | 0 | ok |`, exit 0.
+   - The r6-b script counts 1 there and reports `new file, no symbols`, exit 1.
+   - The uv-shebang test still passes, with def column 1.
+3. **A new grammar file missing from the graph fails closed.**
+   - `blobs()` now keeps `(mode, blob)` for blob entries. It runs once for REF whenever `--repo-ref` is given, and for OLD with `--old-ref`.
+   - `missing_from_graph()` takes candidates from that single `git ls-tree -r -z REF`: any path with a grammar extension, or mode 100755 whose line 1 is a `#!` shebang that selects a grammar. A candidate becomes a row when it has at least one def-like line, appears in neither graph, and its parent directory is the parent of some path in the new graph.
+   - The row is `| path | 0 | 0 | N | REGRESSION | missing from graph |`, and it counts toward `files:` and `regressions:`.
+   - Test `test_grammar_file_missing_from_graph_fails_in_covered_directories`: with both graphs unchanged (`a.py` only), `b.py` with two functions in the covered root gives `| b.py | 0 | 0 | 2 | REGRESSION | missing from graph |` and exit 1. `sub/c.py`, in an uncovered directory, gives no row. The test also asserts `regressions: 1`.
+   - The r6-b script exits 0 on the same input.
+4. **Docstring:** one passage per item (the missing-from-graph sentence sits in the "counts only flag" bullet). It states that the def-like column for Python is now the `ast` count.
+   - The 138/185 ceiling was re-measured with the new counting and is unchanged (validation §11).
+
+**Measurement first (item 3), on the accepted graph** (`.ua/knowledge-graph.json`, `.ua/meta.json` gitCommitHash `72b890157078…`), run with the r7 working copy before committing:
+- With `--repo-ref 72b8901` (the graph's own revision): **no candidates**, `regressions: 0`, exit 0. The rule is consistent with the accepted graph, so I applied it as instructed.
+- With `--repo-ref HEAD`: two rows, `home/dot_local/bin/common/executable_ua-symbol-coverage` and `tests/unit/test_ua_symbol_coverage.py`. Both are **genuine omissions**: this PR added them (557502b, renamed in 12d3f80) after the graph's revision 72b8901, so the accepted graph cannot list them. No other path is listed.
+
+**Self-compare: which ref?** The r4–r6 form `--old-ref HEAD --repo-ref HEAD` now reports exactly those 2 rows (`regressions: 2`, exit 1), which is correct behaviour for a graph that is stale against HEAD. The rule-correct self-compare passes both refs as the graph's own `gitCommitHash`: `--old-ref 72b8901 --repo-ref 72b8901` gives **`regressions: 0`**, exit 0. Both outputs are in §11. After this PR merges, the next `.ua/` refresh will pick both files up.
+
+**Checks** (verbatim in §11, every exit captured directly):
+- base-ok, exit 0.
+- `make render-check`: up to date, exit 0.
+- `make unit-test`: 630 tests OK (1 skipped), exit 0, including the 3 new tests and the uv-shebang test.
+- `make validate-agent-assets`: ok, exit 0.
+- **Real data** (`--old-ref 72b8901 --repo-ref c3afc7a`): **`regressions: 8`**, exit 1. These are the same 8 rows, all `source unchanged`; item 3 adds no row on this data.
+- Bad `--old-ref`: exit 2.
+- `gh pr checks 214`: in §11.
+
+**Negative check** (§11): all 3 new tests fail against 56f308c, with the outputs quoted above.
+
+**Notes**
+- The Understand-Anything hook fired after the commit; I did not act on it.
+- Measurements ran with `PYTHONDONTWRITEBYTECODE=1`; no `__pycache__` was left in `bin/common`.
+- CompactionDB (main checkout): **67792095-e3fc-4f88-a6c1-3ede3a6f76ae**.
+
+[memory:decision] T43 r7: ua-symbol-coverage def-like counts skip # comment lines in every grammar and count Python definitions with ast (regex only on SyntaxError); a grammar file at REF with def-like lines that appears in neither graph is a REGRESSION (missing from graph) when the new graph already covers its directory. The self-compare uses both refs = the graph own gitCommitHash (2026-10-01).
+
+cost (revision 7): 0 subagent dispatches; about 25k context tokens consumed this round (session budget counter; no per-task figure exposed).
+
+## Revision 8 (orchestrator status=revise 02:37:57Z; task_rev c5991cd2…66e3 verified)
+
+Both items from the audit of 72746d4 are fixed in one commit, **1b6741b**, directly on 72746d4 (base-ok holds, no merge, no force push). PR #214 head: `1b6741b8fe4f58b4eaa24b360fffceec2c8cee56` (all CI checks pass, nix skipped; mergeStateStatus CLEAN).
+
+1. **P2: fail closed on an unreadable candidate.** In `missing_from_graph`, a mode-100755 extensionless candidate is now read with a checked `git show REF:path`. A non-zero return raises `CoverageError("cannot read <path> at <REF>: …")`, so the run exits 2 before printing a table, as `def_lines` already does. Non-executable extensionless paths are still skipped without being read.
+   - Test `test_unreadable_candidate_fails_closed`: a fake `git` earlier on `PATH` fails only `show HEAD:tool` for a committed 0755 `tool` with a `#!/bin/sh` shebang and delegates everything else to the real git. The run gives exit 2, `ua-symbol-coverage: cannot read tool at HEAD` on stderr, and no `regressions:` line.
+   - The r7 script exits 0 there (fail-open).
+   - `run_coverage` gained an optional `env` parameter for this test.
+2. **P3: compare blob ids only.** The `source unchanged` check compares `old_blobs[path][1]` with `new_blobs[source][1]`, the blob ids. A chmod-only change keeps the note.
+   - Test `test_chmod_only_change_keeps_the_source_unchanged_note`: `a.py` is committed at 0644 and then chmod-ed to 0755 with identical bytes, and the graph goes 2 → 1. With `--old-ref HEAD~1`, the row is `| a.py | 2 | 1 | 2 | REGRESSION | source unchanged |`.
+   - The r7 script prints the row without the note, which also proves that git recorded the mode change.
+
+**Checks** (verbatim in §12, every exit captured directly):
+- base-ok, exit 0.
+- `make render-check`: up to date, exit 0.
+- `make unit-test`: 632 tests OK (1 skipped), exit 0, including both new tests.
+- `make validate-agent-assets`: ok, exit 0.
+- Self-compare with both refs at the graph's gitCommitHash (`--old-ref 72b8901 --repo-ref 72b8901`): `regressions: 0`, exit 0.
+- **Real data** (`--old-ref 72b8901 --repo-ref c3afc7a`): **`regressions: 8`**, exit 1, all `source unchanged`.
+- Bad `--old-ref`: exit 2.
+- `gh pr checks 214`: in §12.
+
+**Negative check** (§12): both tests fail against 72746d4. The first exits 0 instead of 2; the second is missing the note.
+
+**Notes:** the Understand-Anything hook fired after the commit and was not acted on. No `__pycache__` was left. CompactionDB (main checkout): **4bac6923-9905-4348-aa1c-592b2a59fc18**.
+
+[memory:decision] T43 r8: ua-symbol-coverage fails closed (exit 2) when a missing-from-graph candidate cannot be read at REF, and its source unchanged note compares blob ids only, so a chmod-only change keeps the note (2026-10-01).
+
+cost (revision 8): 0 subagent dispatches; about 15k context tokens consumed this round (session budget counter; no per-task figure exposed).

@@ -45,3 +45,25 @@
 - For the negative check, the r4 script was swapped in temporarily with
   `git show 6b53337:<path> > <path>` and then restored from a copy (`cmp` exit 0) before
   the commit.
+
+## Revision 6
+
+- worker-c switched back from `fix/audit-profile-gpt6-sol` (T48, merged as 0a34a68) after the
+  T48 acceptance. afb2c9d is the fix; c8cc4e4 is `git merge origin/main` (85919df, which
+  includes T48). Pushed without `-u`.
+- The same unsandboxed classes as r3–r5 (make targets, `git push`, `gh`, main-checkout
+  CompactionDB and artifact writes).
+- For the negative check, the r5 script was temporarily swapped in (`git show c878b0d:<path>`)
+  and then restored from a copy (`cmp` exit 0).
+- The measurement script lives only in the session scratchpad. Importing the helper created
+  `home/dot_local/bin/common/__pycache__` (git-ignored), which I removed.
+
+- 6-b: c8cc4e4 → 56f308c (commit on top, no force push); the same unsandboxed classes.
+
+## Revision 7
+
+- 72746d4 sits directly on 56f308c, pushed without `-u`; the same unsandboxed classes. The negative check swapped in the r6-b script and restored it (`cmp` exit 0). Measurements ran with `PYTHONDONTWRITEBYTECODE=1`.
+
+## Revision 8
+
+- 1b6741b sits directly on 72746d4, pushed without `-u`; the same unsandboxed classes. The negative check swapped in the r7 script and restored it (`cmp` exit 0). The fake `git` for the fail-closed test lives only in the test's temporary repository.

@@ -580,6 +580,23 @@ Before any worker agent starts (full mode, attach repair, and
 
 It then splits the worker pane with `--cwd <worktree>`.
 
+A codex worker in a linked worktree also gets that worktree's git metadata as
+writable roots. Its index, `HEAD` and refs live under the main checkout's git
+common dir (`git rev-parse --git-common-dir`), outside the `workspace-write`
+root, so without them every `git add`, `commit`, `fetch` or `rebase` fails
+with `Read-only file system` and needs an escalation. `herdr-agents` passes
+`-c sandbox_workspace_write.writable_roots=[...]` to the pair worker and the
+same `--config` entry in the `--add-worker` spawn options file. The list starts
+with the roots configured in `~/.codex/config.toml` (the agmsg store), because
+`-c` replaces the array, followed by `<common>/objects`, `<common>/refs`,
+`<common>/logs` and `<common>/worktrees/<name>`. The common dir itself and its
+`config`, `hooks`, `info`, `HEAD` and `packed-refs` stay read-only (a rebase
+still succeeds; git only logs that it cannot lock `packed-refs`), and
+`approval_policy`, `sandbox_mode` and `network_access` are unchanged, so a
+`git fetch` or `git push` to GitHub still needs the network the sandbox denies.
+A worker never asks another agent to approve an escalation: Codex escalation
+prompts are answered only by the human operator.
+
 Delivery reaches the pair worker through its own Stop hook as turn delivery.
 Upstream `session-start.sh` skips sessions whose cwd is under
 `.claude/worktrees/` (#367), and the pair worker is started without an actas

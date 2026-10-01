@@ -135,7 +135,20 @@ def is_ignored(root: Path, path: str) -> bool:
     evidence_path = Path(evidence)
     if not evidence_path.is_absolute():
         evidence_path = root / evidence_path
-    return evidence_path.resolve() == (root / path).resolve()
+    return feedback_path_error(root, evidence_path) is None and Path(os.path.abspath(evidence_path)) == root / path
+
+
+def feedback_path_error(root: Path, path: Path) -> str | None:
+    try:
+        relatives = (
+            Path(os.path.abspath(path)).relative_to(root.resolve()),
+            path.resolve().relative_to(root.resolve()),
+        )
+    except ValueError:
+        return f"{PR_FEEDBACK_ENV} must point to a repo-local JSON file"
+    if any(relative.parts[:2] != (".orchestration", "validation") or not relative.name.endswith("-pr-feedback.json") for relative in relatives):
+        return "evidence must live under .orchestration/validation/ and end with -pr-feedback.json"
+    return None
 
 
 def changed_paths(root: Path, base: str | None = None) -> list[str]:
@@ -341,10 +354,9 @@ def pr_feedback_errors(
     path = Path(evidence)
     if not path.is_absolute():
         path = root / path
-    try:
-        path.resolve().relative_to(root.resolve())
-    except ValueError:
-        return [f"{PR_FEEDBACK_ENV} must point to a repo-local JSON file"]
+    path_error = feedback_path_error(root, path)
+    if path_error:
+        return [path_error]
     if not path.is_file():
         return [f"{PR_FEEDBACK_ENV} file does not exist: {path}"]
     try:
@@ -390,11 +402,57 @@ def feedback_key(item: dict) -> tuple:
     return tuple(item.get(field) for field in ("source", "url", "level", "path", "line", "body"))
 
 
+def pr_base_errors(root: Path, evidence: dict, pr: int, head: str, base: str) -> list[str]:
+    """Bind the base before executing a collector, independently of PR-owned JSON/code."""
+    env = {key: value for key, value in os.environ.items() if key not in {"CLICOLOR_FORCE", "GH_FORCE_TTY"}}
+    env["NO_COLOR"] = "1"
+    failure = f"could not verify PR #{pr} base on GitHub; fetch the base and rerun scripts/pr-feedback.py"
+    try:
+        result = subprocess.run(
+            ["gh", "pr", "view", str(pr), "--json", "headRefOid,baseRefName,baseRefOid"],
+            cwd=root, env=env, capture_output=True, text=True, check=False,
+        )
+        metadata = json.loads(result.stdout) if result.returncode == 0 else None
+    except (OSError, json.JSONDecodeError):
+        return [failure]
+    if not isinstance(metadata, dict):
+        return [failure]
+    github_base = metadata.get("baseRefOid")
+    github_ref = metadata.get("baseRefName")
+    if (
+        not isinstance(github_base, str) or not re.fullmatch(r"[0-9a-f]{40}", github_base)
+        or not isinstance(github_ref, str) or not github_ref.strip()
+        or run_git(["cat-file", "-e", f"{github_base}^{{commit}}"], root).returncode != 0
+    ):
+        return [failure]
+    if metadata.get("headRefOid") != head:
+        return [f"PR #{pr} head on GitHub is {metadata.get('headRefOid')}, not the local HEAD {head}; push first"]
+    if evidence.get("base_sha") != github_base or evidence.get("base_ref") != github_ref:
+        return [f"{PR_FEEDBACK_ENV} does not match the GitHub base {github_ref} ({github_base}); rerun scripts/pr-feedback.py"]
+
+    resolved = run_git(["rev-parse", "--verify", "--end-of-options", f"{base}^{{commit}}"], root)
+    base_sha = resolved.stdout.strip()
+    if resolved.returncode == 0:
+        if base_sha == github_base:
+            return []
+        if run_git(["merge-base", "--is-ancestor", base_sha, github_base], root).returncode == 0:
+            first_parents = run_git(["rev-list", "--first-parent", head], root)
+            if first_parents.returncode == 0 and base_sha not in first_parents.stdout.splitlines():
+                return []
+        # An advanced base must stay on the base side of the fork, not absorb PR commits.
+        if run_git(["merge-base", "--is-ancestor", github_base, base_sha], root).returncode == 0:
+            actual = run_git(["merge-base", base_sha, head], root)
+            expected = run_git(["merge-base", github_base, head], root)
+            if actual.returncode == expected.returncode == 0 and actual.stdout == expected.stdout:
+                return []
+    return [f"--base {base!r} is not bound to PR #{pr} base {github_ref} ({github_base}); use the PR base, not its branch or HEAD"]
+
+
 def collected_feedback_errors(root: Path, evidence: dict, head: str, base: str) -> list[str]:
     """Re-collect the PR's feedback and require every current item in the evidence.
 
-    A hand-written or stale document cannot pass: the guard runs the base
-    branch's scripts/pr-feedback.py (the PR under review cannot swap it) for the
+    A hand-written or stale document cannot pass: the guard runs the GitHub
+    base SHA's scripts/pr-feedback.py (the PR under review cannot swap it) for the
     evidence's PR, requires the PR head on GitHub to be this HEAD, and requires
     each collected item (as a multiset) to be present. A bot review is not
     required; when one exists it is collected and must be dispositioned like any
@@ -403,11 +461,15 @@ def collected_feedback_errors(root: Path, evidence: dict, head: str, base: str) 
     pr = evidence.get("pr")
     if not isinstance(pr, int) or isinstance(pr, bool) or pr <= 0:
         return [f"{PR_FEEDBACK_ENV} must name its pull request number in `pr`"]
+    errors = pr_base_errors(root, evidence, pr, head, base)
+    if errors:
+        return errors
     with tempfile.TemporaryDirectory() as temporary:
         collected_path = Path(temporary) / "collected.json"
-        # Prefer the base branch's collector; only a PR that introduces it has none.
+        # An advanced local base may contain untrusted code despite a safe merge-base.
+        # Execute only the GitHub-authenticated base's collector, including bootstrap.
         collector = root / "scripts/pr-feedback.py"
-        base_collector = run_git(["show", f"{base}:scripts/pr-feedback.py"], root)
+        base_collector = run_git(["show", f"{evidence['base_sha']}:scripts/pr-feedback.py"], root)
         if base_collector.returncode == 0:
             collector = Path(temporary) / "pr-feedback.py"
             collector.write_text(base_collector.stdout)

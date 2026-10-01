@@ -21,13 +21,14 @@ ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/pr-feedback.py"
 REPO = "mryfmo/dotfiles"
 SHA = "aa17407b680691a42f421721479d7cd14c4421fa"
+BASE_SHA = "b" * 40
 BOT = {"login": "coderabbitai[bot]", "type": "Bot"}
 HUMAN = {"login": "moriya-fumio-thd", "type": "User"}
 ACTIONS = {"slug": "github-actions"}
 
 # Shapes recorded from mryfmo/dotfiles #180 and #181, trimmed to the fields read.
 RESPONSES: dict[str, Any] = {
-    f"repos/{REPO}/pulls/180": {"head": {"sha": SHA}},
+    f"repos/{REPO}/pulls/180": {"head": {"sha": SHA}, "base": {"ref": "main", "sha": BASE_SHA}},
     f"repos/{REPO}/issues/180/comments": [
         [{"user": BOT, "body": "Summary by CodeRabbit", "html_url": "https://x/c1"}],
         [
@@ -253,6 +254,22 @@ class PrFeedbackTest(unittest.TestCase):
                 "status",
             ],
         )
+
+    def test_collects_the_github_base_with_the_head(self) -> None:
+        self.assertEqual(self.document["base_ref"], "main")
+        self.assertEqual(self.document["base_sha"], BASE_SHA)
+
+    def test_graphql_strings_are_raw_and_only_integers_are_typed(self) -> None:
+        with mock.patch.object(self.module, "gh", return_value="{}") as gh:
+            self.module.gh_graphql("query {}", {
+                "owner": "12345", "name": "67890", "number": 180,
+                "cursor": "@private-file", "first": 100, "unused": None,
+            })
+        self.assertEqual(gh.call_args.args[0], [
+            "api", "graphql", "-f", "query=query {}",
+            "-f", "owner=12345", "-f", "name=67890", "-F", "number=180",
+            "-f", "cursor=@private-file", "-F", "first=100",
+        ])
 
     def test_every_item_carries_the_disposition_schema(self) -> None:
         keys = {

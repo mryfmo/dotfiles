@@ -2990,6 +2990,19 @@ exit {exit_code}
         self.assertEqual("linkage=ok read_at=2026-10-01T00:00:00Z pong=no", result.stdout.splitlines()[-1])
         self.assertIn("HERDR_AGENTS_LINKAGE_PONG_WAIT must be a whole number of seconds", result.stderr)
 
+    def test_add_worker_linkage_reads_a_leading_zero_wait_as_decimal(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes(pong=True)
+
+        result = self.run_helper(
+            "--add-worker", ".claude/worktrees/b1", "--kind", "codex",
+            extra_env={"HERDR_AGENTS_LINKAGE_PONG_WAIT": "08"},
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual("linkage=ok read_at=2026-10-01T00:00:00Z pong=yes", result.stdout.splitlines()[-1])
+        self.assertNotIn("value too great for base", result.stderr)
+
     def test_add_worker_linkage_refuses_several_orchestrator_identities(self) -> None:
         # The worker seat already exists (so naming it needs no leader); two
         # non-worker claude-code identities make the PING's sender ambiguous.

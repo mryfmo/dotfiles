@@ -891,7 +891,8 @@ function check_worker_linkage() {
             printf 'herdr-agents: HERDR_AGENTS_LINKAGE_PONG_WAIT must be a whole number of seconds; got %q, using 30.\n' "${wait_seconds}" >&2
             wait_seconds=30
         fi
-        deadline=$((SECONDS + wait_seconds))
+        # 10#: a leading zero (08, 010) is decimal, not octal.
+        deadline=$((SECONDS + 10#${wait_seconds}))
         while :; do
             if [[ "$(sqlite3 -cmd '.timeout 5000' "${db}" "SELECT count(*) FROM messages WHERE team='${team}' AND from_agent='${worker}' AND to_agent='${orchestrator}' AND id > ${ping_id} AND body LIKE 'AGMSG-PONG v1 task_id=bringup%';" 2> /dev/null)" =~ ^[1-9] ]]; then
                 pong=yes

@@ -413,11 +413,13 @@ function claude_ancestor_pid() {
 #   then CLAUDE_PID. Whatever is still missing, and everything without
 #   `--self`, comes from `herdr agent list` and `herdr pane process-info`; the
 #   launcher-side claim does not rename the caller's pane. When the lock is
-#   held by our own bare session id (an earlier sandboxed claim), that lock is
-#   released through upstream's owner-exact actas_lock_release and the claim
-#   repeated. Prints `seat_claim=ok owner=<sid>.<pid>` (plus
-#   `replaced_bare_lock=yes`), `seat_claim=unresolved` (nothing claimed, never
-#   a bare-id lock), or `seat_claim=failed <status line>`.
+#   held by our own session id, bare (an earlier sandboxed claim) or composite
+#   with any pid (a predecessor process of this session, for example before a
+#   persisted-session restore), that exact owner token is released through
+#   upstream's owner-exact actas_lock_release and the claim repeated. Prints
+#   `seat_claim=ok owner=<sid>.<pid>` (plus `replaced_stale_lock=yes`),
+#   `seat_claim=unresolved` (nothing claimed, never a bare-id lock), or
+#   `seat_claim=failed <status line>`.
 # @arg $1 workdir Absolute repository path.
 # @arg $2 pane_id Orchestrator pane id.
 # @arg $3 string Optional `--self`.
@@ -453,20 +455,23 @@ function claim_orchestrator_seat() {
         return 0
     fi
     # actas-claim.sh stops at the first held team (rolling back earlier claims),
-    # so release one same-session bare lock per round: at most one per team.
+    # so release one same-session stale lock per round: at most one per team.
+    # A held owner is ours when it is our bare sid or `<our sid>.<digits>`: a
+    # process with our session id can only be this session's predecessor.
     for ((attempt = 0; attempt <= teams; attempt++)); do
         if result="$(AGMSG_SELF_NAME="${self_name}" AGMSG_RESOLVE_PROJECT=0 \
             "${scripts}/actas-claim.sh" "${workdir}" claude-code "${identity}" "${sid}.${pid}" 2> /dev/null)"; then
-            printf 'seat_claim=ok owner=%s.%s%s\n' "${sid}" "${pid}" "${replaced:+ replaced_bare_lock=yes}"
+            printf 'seat_claim=ok owner=%s.%s%s\n' "${sid}" "${pid}" "${replaced:+ replaced_stale_lock=yes}"
             return 0
         fi
         owner="$(sed -n 's/^status=held .*owner=\([^ ]*\).*/\1/p' <<< "${result}" | head -n 1)"
         team="$(sed -n 's/^status=held team=\([^ ]*\).*/\1/p' <<< "${result}" | head -n 1)"
-        [[ ${attempt} -lt ${teams} && ${owner} == "${sid}" && -n ${team} ]] || break
+        [[ ${attempt} -lt ${teams} && -n ${team} ]] || break
+        [[ ${owner} == "${sid}" || (${owner%.*} == "${sid}" && ${owner##*.} =~ ^[0-9]+$) ]] || break
         (
             export SKILL_DIR="${HOME}/.agents/skills/agmsg"
             # shellcheck source=/dev/null
-            source "${scripts}/lib/actas-lock.sh" && actas_lock_release "${team}" "${identity}" "${sid}"
+            source "${scripts}/lib/actas-lock.sh" && actas_lock_release "${team}" "${identity}" "${owner}"
         ) 2> /dev/null || break
         replaced=yes
     done

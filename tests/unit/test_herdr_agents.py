@@ -1713,7 +1713,7 @@ printf 'status=ok team=dotfiles\\n'
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn(
-            "seat_claim=ok owner=sid-stdin.4343 replaced_bare_lock=yes",
+            "seat_claim=ok owner=sid-stdin.4343 replaced_stale_lock=yes",
             result.stdout.splitlines(),
         )
         calls = self.calls_path.read_text().splitlines()
@@ -1739,7 +1739,7 @@ printf 'status=ok team=dotfiles\\n'
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn(
-            "seat_claim=ok owner=sid-stdin.4343 replaced_bare_lock=yes",
+            "seat_claim=ok owner=sid-stdin.4343 replaced_stale_lock=yes",
             result.stdout.splitlines(),
         )
         calls = self.calls_path.read_text().splitlines()
@@ -1775,6 +1775,27 @@ printf 'status=ok team=dotfiles\\n'
         self.assertEqual(
             ["actas_lock_release team-a claude-remediation-dot sid-stdin"],
             [call.split(" skill_dir=")[0] for call in calls if call.startswith("actas_lock_release ")],
+        )
+
+    def test_seat_claim_replaces_a_same_session_composite_lock_of_another_pid(self) -> None:
+        self.install_orchestrator_seat_fakes(held=(("dotfiles", "sid-stdin.111"),))
+
+        result = self.run_attach_helper(
+            in_herdr=True,
+            managed_layout=True,
+            extra_env={"AGMSG_AGENT_PID": "4343"},
+            stdin_text='{"session_id":"sid-stdin"}\n',
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            "seat_claim=ok owner=sid-stdin.4343 replaced_stale_lock=yes",
+            result.stdout.splitlines(),
+        )
+        self.assertIn(
+            "actas_lock_release dotfiles claude-remediation-dot sid-stdin.111 "
+            f"skill_dir={self.home_dir}/.agents/skills/agmsg",
+            self.calls_path.read_text().splitlines(),
         )
 
     def test_seat_claim_held_by_another_session_fails_without_release(self) -> None:

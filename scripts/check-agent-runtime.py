@@ -652,7 +652,7 @@ def orchestrator_seat_lock_warnings(
                 f"WARN: orchestrator seat lock {lock} holds the bare session id {owner} "
                 f"while a claude session runs in {project}; turn delivery skips silently. "
                 "Run `herdr-agents --attach` from the orchestrator pane outside the sandbox "
-                "(it replaces a same-session bare lock)"
+                "(it replaces a same-session stale lock)"
             )
     return warnings
 

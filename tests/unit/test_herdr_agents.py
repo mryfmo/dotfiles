@@ -2942,6 +2942,41 @@ exit {exit_code}
             any(call.startswith("agmsg-dispatch ") and " w-test:p7 " in call for call in self.calls_path.read_text().splitlines())
         )
 
+    def test_add_worker_linkage_refuses_a_placement_conflict(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes()
+        # Upstream refuses when both an id-keyed and a legacy record exist.
+        (self.home_dir / ".agents/skills/agmsg/scripts/lib/actas-lock.sh").write_text(
+            "agmsg_spawn_path() { printf 'agmsg: ERROR: both an id-keyed lock and a legacy lock exist -- "
+            "refusing to resolve a single path; remove the stale one\\n' >&2; return 1; }\n"
+        )
+        run = self.home_dir / ".agents/skills/agmsg/run"
+        run.mkdir(parents=True, exist_ok=True)
+        (run / "spawn.dotfiles__codex-standard-dot-a007").write_text("herdr:/tmp/herdr.sock:w-test:p5\t/project\tcodex\n")
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "codex")
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual("linkage=unreached rc=1 hint=placement-conflict", result.stdout.splitlines()[-1])
+        self.assertIn("refusing to resolve a single path", result.stderr)
+        self.assertFalse(any(call.startswith("agmsg-dispatch ") for call in self.calls_path.read_text().splitlines()))
+
+    def test_add_worker_linkage_falls_back_to_the_legacy_record_without_the_resolver(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes()
+        # The library exists but has no agmsg_spawn_path (an older agmsg).
+        (self.home_dir / ".agents/skills/agmsg/scripts/lib/actas-lock.sh").write_text("true\n")
+        run = self.home_dir / ".agents/skills/agmsg/run"
+        run.mkdir(parents=True, exist_ok=True)
+        (run / "spawn.dotfiles__codex-standard-dot-a007").write_text("herdr:/tmp/herdr.sock:w-test:p5\t/project\tcodex\n")
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "codex")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue(
+            any(call.startswith("agmsg-dispatch ") and " w-test:p5 " in call for call in self.calls_path.read_text().splitlines())
+        )
+
     def test_add_worker_linkage_ignores_a_pong_older_than_this_ping(self) -> None:
         self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
         self.write_seat_lifecycle_fakes()

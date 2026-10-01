@@ -810,7 +810,10 @@ function accept_claude_workspace_trust_dialog() {
 #   `linkage=unreached rc=<n> hint=<agmsg-dispatch|poke|attach-a-client>`.
 #   The worker pane comes from its spawn placement record (`herdr:<socket>:<pane>`;
 #   path from upstream agmsg_spawn_path, which knows the id-keyed and legacy
-#   forms, else the legacy run/spawn.<team>__<worker>), else the
+#   forms; the legacy run/spawn.<team>__<worker> only when that library or
+#   function is unavailable, and a resolver refusal such as both records
+#   existing is `linkage=unreached … hint=placement-conflict` with nothing
+#   dispatched), else the
 #   workspace's new pane; `team.sh --json` is not used because it observes
 #   Codex members by reading their pane. The hint names the next wake to try:
 #   agmsg-dispatch when it is not installed, poke when a placement record
@@ -826,12 +829,24 @@ function accept_claude_workspace_trust_dialog() {
 function check_worker_linkage() {
     local team="$1" orchestrator="$2" worker="$3" workspace_id="$4" known="$5"
     local scripts="${HOME}/.agents/skills/agmsg/scripts"
-    local placement="" pane="" rest rc=0 db read_at="" pong=no hint deadline ping_id="" record
+    local placement="" pane="" rest rc=0 db read_at="" pong=no hint deadline ping_id="" record err
+    local lib="${scripts}/lib/actas-lock.sh"
 
-    # shellcheck disable=SC2016 # the inner script expands its own positional args
-    record="$(env SKILL_DIR="${HOME}/.agents/skills/agmsg" bash -c \
-        'source "$1" && agmsg_spawn_path "$2" "$3"' _ "${scripts}/lib/actas-lock.sh" "${team}" "${worker}" 2> /dev/null)" ||
-        record="${HOME}/.agents/skills/agmsg/run/spawn.${team}__${worker}"
+    record="${HOME}/.agents/skills/agmsg/run/spawn.${team}__${worker}"
+    # shellcheck disable=SC2016 # the inner scripts expand their own positional args
+    if [[ -r ${lib} ]] && env SKILL_DIR="${HOME}/.agents/skills/agmsg" bash -c \
+        'source "$1" 2> /dev/null && declare -F agmsg_spawn_path > /dev/null' _ "${lib}"; then
+        err="$(mktemp)"
+        record="$(env SKILL_DIR="${HOME}/.agents/skills/agmsg" bash -c \
+            'source "$1" && agmsg_spawn_path "$2" "$3"' _ "${lib}" "${team}" "${worker}" 2> "${err}")" || rc=$?
+        if ((rc != 0)); then
+            head -n 1 "${err}" >&2
+            rm -f "${err}"
+            printf 'linkage=unreached rc=%s hint=placement-conflict\n' "${rc}"
+            return "${rc}"
+        fi
+        rm -f "${err}"
+    fi
 
     if [[ -r ${record} ]]; then
         placement="$(head -n 1 "${record}" | cut -f 1)"

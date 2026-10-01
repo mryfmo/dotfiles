@@ -49,3 +49,54 @@ mode). The next orchestrator (pane p1 of that workspace) resumes T45 by:
 - Wrote a lesson to Claude auto-memory instead of the repository (deleted).
 
 cost: n/a (worker report pending)
+
+## Resume review (2026-10-01, RESULT msg 606, head 9eb3e43 after merging main)
+
+Re-dispatched 09:12Z (msg 602, `note=resume-from-branch`, same task file plus
+its amendments). Worker merged origin/main (T47/T49 herdr-agents changes) and
+pushed 0a35010 (XDG isolation for socket tests, composite-id wording),
+dfdfbe8 (trust-dialog watcher `return 0` — the audit of e6f350b found the
+`set -e` exit before `wait`; orchestrator confirmed in the code and noted it
+matches the 2026-09-29 "did not signal ready" shape), 9eb3e43 (macOS AF_UNIX
+path-length test fix). Full PR read from git objects: `print_plain_start_summary`
+(one line, worker placement via `team.sh --json`), hook redirects only stderr
+so stdout reaches the SessionStart context, `--add-worker` derives
+`HERDR_SOCKET_PATH`, accepts the spawned worker's trust dialog during the
+readiness wait, takes `--ready-timeout`, and reports spawn.sh's exit code.
+Audits: e6f350b incorrect (stdout→log fixed by 89e95e4; watcher status fixed
+by dfdfbe8), 89e95e4, 0a35010, dfdfbe8, 9eb3e43 correct. 660 tests OK; CI
+green Linux+macOS; CLEAN. PR #216 sweep (16 items): one valid Codex P2 — the
+derived socket honours `XDG_CONFIG_HOME` while the sandbox allowlists only
+`~/.config/herdr/herdr.sock` → **REVISE** (allowlisted path only; test uses a
+short fake HOME). Remaining 15 items not-applicable.
+
+## Resume round 2 and acceptance (2026-10-01, RESULT msg 608, head 51f8bc7)
+
+51f8bc7 read from git objects: `--add-worker` derives only
+`${HOME}/.config/herdr/herdr.sock` (herdr's default and the one socket the
+managed Claude sandbox allowlists; `XDG_CONFIG_HOME` no longer honoured, with
+the reason in a comment), README/SKILL/usage name the allowlisted path, the
+macOS AF_UNIX test uses a short fake HOME. Audit of 51f8bc7: **correct**. CI
+green Linux+macOS; CLEAN. PR #216 sweep on 51f8bc7 (16 items): the Codex P2 →
+fixed:51f8bc7; 15 non-review items not-applicable.
+
+Audit ledger (6 non-merge commits): e6f350b incorrect (stdout→log fixed by
+89e95e4; trust-dialog watcher status fixed by dfdfbe8); 89e95e4, 0a35010,
+dfdfbe8, 9eb3e43, 51f8bc7 correct.
+
+Behaviour accepted: a plain-shell Claude start never exits the SessionStart
+hook silently (one-line state + on-demand commands + seated worker); the hook's
+stdout reaches the session context; `--add-worker` works from a pane-less
+caller (socket derivation, trust-dialog acceptance during the readiness wait,
+`--ready-timeout`, spawn.sh exit code reported). Residual, documented: a
+sandboxed pane-less session has no Monitor watch; RESULTs arrive by turn
+delivery (T49 composite-lock rule applies to the pane-less claim too).
+
+Orchestrator failures of the original 2026-09-29 session stay recorded above
+and are codified by T46 (next task). CompactionDB: the worker's T45 decision
+stands.
+
+cost: worker ~? (original session) + resume rounds (session counters; no per-task figure)
+
+**Decision: ACCEPTED.** Merge PR #216 (squash, no `--delete-branch`); T46 is
+dispatched next.

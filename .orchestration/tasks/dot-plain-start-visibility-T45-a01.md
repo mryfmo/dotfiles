@@ -147,3 +147,37 @@ max_turns=40. done_signal=AGMSG-RESULT v1.
   `tests/unit/test_claude_settings_merge.py`.
 - Orchestrator failure noted: allowed_files were not grounded by grep before
   dispatch (playbook step 3).
+
+## Orchestrator amendment, resume round (2026-10-01 09:3xZ; audits of e6f350b / 89e95e4 / 0a35010 — fold into one more commit before the RESULT)
+
+Audit of e6f350b (`…-audit-e6f350b.md`): P2 (the SessionStart hook redirected
+stdout to the log) is fixed by 89e95e4; P2 at `accept_spawned_claude_trust_dialog`
+is **still at the head**: when spawn.sh exits without a trust dialog, the
+`while kill -0 …` loop ends with the status of its last body command
+(`accept_claude_workspace_trust_dialog … && return 0` → 1), the function
+returns 1, and because it is the last command of the `[[ … ]] || …` list,
+`set -e` ends the launcher before `wait "${spawn_pid}"`: a successful spawn is
+reported as exit 1 and a real spawn failure loses its exit code and message
+(the orchestrator saw exactly this "did not signal ready" shape on 2026-09-29).
+Fix: `return 0` after the loop (the dialog is optional), keep `wait` and the
+`spawn_rc` reporting; tests: fake spawn exits 0 with no dialog → launcher exit
+0 and the "worker added" line; fake spawn exits 3 → launcher exit 3 and the
+"spawn.sh exited 3" message. 89e95e4 and 0a35010 audited correct. Then the
+RESULT when CI is green on both OSes.
+
+## Orchestrator amendment, resume round 2 (2026-10-01 10:1xZ; dispatched as AGMSG-ACCEPTANCE status=revise)
+
+Head 9eb3e43 reviewed from git objects (summary line, hook stdout → context,
+`--add-worker` socket derivation, trust-dialog watcher with `return 0`,
+`--ready-timeout`); audits: e6f350b incorrect (both P2s fixed by 89e95e4 and
+dfdfbe8), 89e95e4 / 0a35010 / dfdfbe8 / 9eb3e43 correct; 660 tests; CI green
+on both OSes. One Codex GitHub comment on 9eb3e43 is valid (P2 `:1638`): the
+derived socket honours `XDG_CONFIG_HOME`, but the managed Claude sandbox
+allowlists only `~/.config/herdr/herdr.sock` (`claude-settings-managed.json`
+`allowUnixSockets`), so on macOS with `XDG_CONFIG_HOME` set the existence
+check passes and the later herdr calls are denied. Fix in one commit: derive
+only the allowlisted path `${HOME}/.config/herdr/herdr.sock` (drop the XDG
+branch; herdr's own default is that path), and keep the macOS AF_UNIX test
+under the path limit with a short fake `HOME` (`/tmp/ha-*`) instead of
+`XDG_CONFIG_HOME`; state in the README/SKILL sentence that the derived socket
+is the allowlisted default path. Then the RESULT when CI is green on both OSes.

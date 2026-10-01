@@ -140,3 +140,27 @@ only in auto-memory (operator 2026-09-30).
   carries `cost:`, PR URL, head sha, the CompactionDB command.
 
 max_turns=40. done_signal=AGMSG-RESULT v1.
+
+## Orchestrator amendment before dispatch (2026-10-01; main is 119fdc3 after T47/T49/T45 merged)
+
+- Base: branch `fix/orchestrator-linkage-evidence` from `origin/main` (119fdc3);
+  `executable_herdr-agents` now carries T47 (profile args for p1), T49
+  (`claim_orchestrator_seat`, `seat_claim=` lines, `--attach` payload read)
+  and T45 (plain-start summary, `--add-worker` socket derivation, trust-dialog
+  watcher, `--ready-timeout`, spawn exit-code reporting). Build the linkage
+  check on that code; do not undo any of it.
+- Deliverable 1: the real wake form is `agmsg-dispatch <team> <from> <to>
+  <pane_id> "<message>"` (pane id like `wP:p2`, not `<socket>:<pane>`); the
+  final line stays `linkage=ok read_at=<ts> pong=<yes|no>` or
+  `linkage=unreached rc=<n> hint=<agmsg-dispatch|poke|attach-a-client>`.
+- Deliverable 8 (worktree cleanup): remove **only** `.claude/worktrees/worker-b`
+  and `.claude/worktrees/env-converge-T10`. **Keep
+  `.claude/worktrees/orchestrator-review`**: it is the orchestrator's live
+  review worktree (the integration gate runs there at each PR head).
+- Deliverable 2/3 wording must agree with the T49 bullets already in the SKILL
+  and rule (composite seat lock, `agmsg-dispatch` excluded from the sandbox
+  with the managed allow rule); add, do not duplicate or contradict.
+- Deliverable 7's `scripts/check-regime-boundary.sh` also WARNs on a bare-id
+  orchestrator lock by calling the T49 doctor check (import or reuse
+  `orchestrator_seat_lock_warnings` from `scripts/check-agent-runtime.py`);
+  one check, not two implementations.

@@ -1,0 +1,23 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t45_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Orchestrator adversarial review of PR #216 head 51f8bc7 (6 non-merge commits) from git objects: herdr-agents --attach outside a Herdr pane prints one SessionStart summary line (state, on-demand commands, seated worker placement via team.sh --json) and never exits silently; the managed SessionStart hook redirects only stderr so stdout reaches the context; --add-worker derives HERDR_SOCKET_PATH from the allowlisted default socket only, accepts a spawned claude worker's trust dialog during the readiness wait, takes --ready-timeout, and reports spawn.sh's exit code (the trust-dialog watcher returns 0 when no dialog appears); README/SKILL updated; macOS test fixes. 660+ tests OK, render-check, validate, shellcheck; CI green Linux+macOS; CLEAN. Independent Codex audits: e6f350b incorrect (both P2s fixed by 89e95e4 and dfdfbe8), 89e95e4, 0a35010, dfdfbe8, 9eb3e43, 51f8bc7 correct. PR feedback 16 items: the Codex P2 fixed by 51f8bc7, rest not-applicable.",
+    "author": "claude-code",
+    "created_at": "2026-10-01T10:22:20Z",
+    "updated_at": "2026-10-01T10:22:20Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_t45_01",
+        "body": "Approved; acceptance record .orchestration/acceptance/dot-plain-start-visibility-T45-a01.md.",
+        "author": "claude-code",
+        "created_at": "2026-10-01T10:22:20Z",
+        "review_round": 1
+      }
+    ]
+  }
+]

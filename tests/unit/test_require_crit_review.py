@@ -45,6 +45,7 @@ class ReviewGuardTest(unittest.TestCase):
         collector.parent.mkdir()
         collector.write_text(
             "import os, sys\n"
+            "assert sys.argv[sys.argv.index('--repo') + 1] == 'mryfmo/dotfiles'\n"
             "if not os.environ.get('FAKE_COLLECTED'):\n"
             "    sys.exit('gh is not authenticated')\n"
             "out = sys.argv[sys.argv.index('--json') + 1]\n"
@@ -59,9 +60,15 @@ class ReviewGuardTest(unittest.TestCase):
         fake_gh = self.collected_dir / "gh"
         fake_gh.write_text(
             f"#!{sys.executable}\n"
-            "import os, sys\n"
-            "assert sys.argv[1:] == ['pr', 'view', '1', '--json', 'headRefOid,baseRefName,baseRefOid']\n"
-            "print(open(os.environ['FAKE_PR_METADATA']).read())\n"
+            "import json, os, sys\n"
+            "if sys.argv[1:] == ['repo', 'view', '--json', 'nameWithOwner']:\n"
+            "    print(json.dumps({'nameWithOwner': os.environ.get('GH_REPO', 'mryfmo/dotfiles')}))\n"
+            "else:\n"
+            "    assert sys.argv[1:] in (['pr', 'view', '1', '--json', 'headRefOid,baseRefName,baseRefOid'], ['pr', 'view', '1', '--repo', 'mryfmo/dotfiles', '--json', 'headRefOid,baseRefName,baseRefOid'])\n"
+            "    if os.environ.get('GH_REPO') and '--repo' not in sys.argv:\n"
+            "        print(json.dumps({'headRefOid': 'f' * 40, 'baseRefName': 'main', 'baseRefOid': 'f' * 40}))\n"
+            "    else:\n"
+            "        print(open(os.environ['FAKE_PR_METADATA']).read())\n"
         )
         fake_gh.chmod(0o755)
 
@@ -373,7 +380,7 @@ class ReviewGuardTest(unittest.TestCase):
         relative_path: str = ".orchestration/validation/test-pr-feedback.json",
         head_sha: str | None = None,
     ) -> str:
-        document = {"pr": 1, "head_sha": head_sha or self.head_commit(),
+        document = {"repo": "mryfmo/dotfiles", "pr": 1, "head_sha": head_sha or self.head_commit(),
                     "base_ref": "main", "base_sha": self.base_sha, "items": items}
         self.write_review_file(relative_path, json.dumps(document))
         self.write_collected([{key: value for key, value in item.items() if key != "disposition"} for item in items])
@@ -383,7 +390,7 @@ class ReviewGuardTest(unittest.TestCase):
         return relative_path
 
     def write_collected(self, items: list[dict], head_sha: str | None = None) -> None:
-        document = {"pr": 1, "head_sha": head_sha or self.head_commit(), "items": items}
+        document = {"repo": "mryfmo/dotfiles", "pr": 1, "head_sha": head_sha or self.head_commit(), "items": items}
         self.collected.write_text(json.dumps(document))
 
     def guard_base(self, env: dict[str, str] | None = None, base: str = "main") -> subprocess.CompletedProcess[str]:
@@ -788,6 +795,53 @@ class ReviewGuardTest(unittest.TestCase):
                 self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
                 self.assertIn("could not verify PR #1 base on GitHub", result.stdout)
 
+    def test_fixed_commit_is_checked_against_github_base_not_an_older_side_parent(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        run(["git", "switch", "-c", "side"], self.temp_dir)
+        run(["git", "commit", "--allow-empty", "-m", "side change"], self.temp_dir)
+        side = self.head_commit()
+        run(["git", "switch", "main"], self.temp_dir)
+        run(["git", "merge", "--no-ff", "--no-edit", "side"], self.temp_dir)
+        self.base_sha = self.head_commit()
+        self.commit_on_branch("docs/fix.md")
+        feedback = self.write_feedback([{
+            "source": "review_comment", "level": "comment", "disposition": f"fixed:{self.base_sha}",
+        }])
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback}, base=side)
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("outside", result.stdout)
+        self.assertIn("cite the fix commit in this PR", result.stdout)
+
+    def test_github_lookup_ignores_environment_repository_override(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        self.commit_on_branch("docs/fix.md")
+        feedback = self.write_feedback([])
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "GH_REPO": "attacker/fork"})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_github_lookup_rejects_evidence_from_another_repository(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        self.commit_on_branch("docs/fix.md")
+        feedback = self.write_feedback([])
+        path = self.temp_dir / feedback
+        document = json.loads(path.read_text())
+        document["repo"] = "attacker/fork"
+        path.write_text(json.dumps(document))
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("does not match the local GitHub repository", result.stdout)
+
+    def test_recollection_must_match_the_authenticated_repository(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        self.commit_on_branch("docs/fix.md")
+        feedback = self.write_feedback([])
+        collected = json.loads(self.collected.read_text())
+        collected["repo"] = "attacker/fork"
+        self.collected.write_text(json.dumps(collected))
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("collected feedback does not match", result.stdout)
+
     def test_pr_feedback_fixed_commit_must_be_in_the_pr_range(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
         base_commit = self.head_commit()
@@ -805,7 +859,7 @@ class ReviewGuardTest(unittest.TestCase):
                 )
                 result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
                 self.assertEqual(result.returncode, 1, result.stdout)
-                self.assertIn(f"cites commit {commit[:7]} outside main..HEAD", result.stdout)
+                self.assertIn(f"cites commit {commit[:7]} outside GitHub base {base_commit}..HEAD", result.stdout)
 
     def test_explicit_disable_skips_guard(self) -> None:
         self.touch_lifecycle_script()

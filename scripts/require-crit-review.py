@@ -381,6 +381,10 @@ def pr_feedback_errors(
         errors.append(
             f"{PR_FEEDBACK_ENV} was collected for head {data.get('head_sha')!r}, not the current HEAD {head}; rerun scripts/pr-feedback.py"
         )
+    if head is not None and base is not None:
+        errors.extend(collected_feedback_errors(root, data, head, base))
+        if errors:
+            return errors
     for index, item in enumerate(items):
         label = f"{PR_FEEDBACK_ENV} item {index}"
         if not isinstance(item, dict):
@@ -395,15 +399,13 @@ def pr_feedback_errors(
         commit = match.group("commit")
         if commit and run_git(["cat-file", "-e", f"{commit}^{{commit}}"], root).returncode != 0:
             errors.append(f"{label} cites an unknown commit: {commit}")
-        elif commit and head is not None and base is not None and not commit_in_range(root, commit, base, head):
-            errors.append(f"{label} cites commit {commit} outside {base}..HEAD; cite the fix commit in this PR")
+        elif commit and head is not None and base is not None and not commit_in_range(root, commit, data["base_sha"], head):
+            errors.append(f"{label} cites commit {commit} outside GitHub base {data['base_sha']}..HEAD; cite the fix commit in this PR")
         reason = (match.group("reason") or "").strip()
         if item.get("level") in STRICT_REASON_LEVELS and not commit and len(reason) < FAILURE_REASON_MIN_CHARS:
             errors.append(
                 f"{label} is {item.get('level')}-level; not-applicable needs a reason of at least {FAILURE_REASON_MIN_CHARS} characters"
             )
-    if head is not None and base is not None:
-        errors.extend(collected_feedback_errors(root, data, head, base))
     return errors
 
 
@@ -413,12 +415,22 @@ def feedback_key(item: dict) -> tuple:
 
 def pr_base_errors(root: Path, evidence: dict, pr: int, head: str, base: str) -> list[str]:
     """Bind the base before executing a collector, independently of PR-owned JSON/code."""
-    env = {key: value for key, value in os.environ.items() if key not in {"CLICOLOR_FORCE", "GH_FORCE_TTY"}}
+    env = {key: value for key, value in os.environ.items() if key not in {"CLICOLOR_FORCE", "GH_FORCE_TTY", "GH_REPO"}}
     env["NO_COLOR"] = "1"
     failure = f"could not verify PR #{pr} base on GitHub; fetch the base and rerun scripts/pr-feedback.py"
     try:
+        repository = subprocess.run(
+            ["gh", "repo", "view", "--json", "nameWithOwner"],
+            cwd=root, env=env, capture_output=True, text=True, check=False,
+        )
+        repo_data = json.loads(repository.stdout) if repository.returncode == 0 else None
+        repo = repo_data.get("nameWithOwner") if isinstance(repo_data, dict) else None
+        if not isinstance(repo, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
+            return [failure]
+        if evidence.get("repo") != repo:
+            return [f"{PR_FEEDBACK_ENV} does not match the local GitHub repository {repo}; rerun scripts/pr-feedback.py"]
         result = subprocess.run(
-            ["gh", "pr", "view", str(pr), "--json", "headRefOid,baseRefName,baseRefOid"],
+            ["gh", "pr", "view", str(pr), "--repo", repo, "--json", "headRefOid,baseRefName,baseRefOid"],
             cwd=root, env=env, capture_output=True, text=True, check=False,
         )
         metadata = json.loads(result.stdout) if result.returncode == 0 else None
@@ -483,7 +495,7 @@ def collected_feedback_errors(root: Path, evidence: dict, head: str, base: str) 
             collector = Path(temporary) / "pr-feedback.py"
             collector.write_text(base_collector.stdout)
         result = subprocess.run(
-            [sys.executable, str(collector), str(pr), "--json", str(collected_path)],
+            [sys.executable, str(collector), str(pr), "--repo", evidence["repo"], "--json", str(collected_path)],
             cwd=root,
             check=False,
             text=True,
@@ -496,6 +508,8 @@ def collected_feedback_errors(root: Path, evidence: dict, head: str, base: str) 
         collected = json.loads(collected_path.read_text())
     if collected.get("head_sha") != head:
         return [f"PR #{pr} head on GitHub is {collected.get('head_sha')}, not the local HEAD {head}; push first"]
+    if collected.get("repo") != evidence["repo"]:
+        return [f"collected feedback does not match the local GitHub repository {evidence['repo']}"]
     missing = Counter(map(feedback_key, collected.get("items", []))) - Counter(
         feedback_key(item) for item in evidence.get("items", []) if isinstance(item, dict)
     )

@@ -89,3 +89,112 @@ Codex GitHub review on 1843dd1, six inline comments, none resolved:
 **Decision (round 2): REVISE r3** — queued in worker-c behind T47 (one task
 per worktree). Amendment appended to the task file; the ACCEPTANCE message
 goes out when the T47 RESULT arrives. The sweep re-runs on the r3 head.
+
+## r3 dispatch note (2026-10-01)
+
+Msg 548 (revise) was sent 6 s after msg 547 (T47 acceptance) whose
+`next_action` said "keep worker-c on fix/orchestrator-pane-profile-args until
+merged"; the worker correctly PONGed blocked (msg 549) on the contradiction.
+PR #217 merged as 262b492 at 07:29 JST; go sent (msg 550) with the merge as the
+release condition. Orchestrator error: two instructions with a sequencing
+dependency were dispatched together; send the dependent one only after its
+condition is observable.
+
+## Round 3 review (2026-10-01, RESULT msg 551, head 681957f = 12d3f80 + merge of c8fc05c)
+
+Orchestrator re-derivation from git objects (helper at 681957f): real data
+72b8901 → c3afc7a with `--repo-ref c3afc7a` exit 1, `regressions: 8`;
+self-compare `--repo-ref HEAD` exit 0; `no-such-ref` exit 2; permgate row
+`| 16 | 16 | 25 | ok |` (uv shebang recognised). No stale
+`scripts/ua-symbol-coverage` reference outside `.orchestration`; no `.pyc`
+in the tree; `dot_zshenv` puts `~/.local/bin/common` on PATH; the merge
+commit adds only main's c8fc05c content. CI all pass on 681957f, CLEAN. r3
+decision `c8d78aa6…` present in the main DB (worker wrote it in the main
+checkout). Codex audit of 12d3f80 (`…-audit-12d3f80.md`, gpt-6-astra,
+read-only): **Verdict: correct**, no findings.
+
+PR #214 sweep on 681957f (25 items): the five r3 targets are fixed:12d3f80 (the
+re-anchored uv-script comment included); two new Codex P1s:
+- renames fail open (reproduced by the reviewer; confirmed by reading
+  `def_lines`/`explained` logic: absent → `gone` → explained, successor
+  `old == 0` → ok) → **r4**;
+- Codex managed PATH lacks `~/.local/bin/common`: empirically the helper
+  resolves under `zsh -lc` (dot_zshenv), not under `sh -c`; the rendered
+  PATH is the managed contract, so it must carry the directory → **r4**.
+Remaining 18 items not-applicable (runner notices, brew tap warning,
+CodeRabbit skip/status, Codex container comments, repo-AGENTS.md scope).
+
+**Decision (round 3): REVISE r4** (task_rev 9ca1adc27c292118…); T44 r2 stays queued
+behind it in worker-c.
+
+## Round 4 review (2026-10-01, RESULT msg 553, head 6b53337)
+
+Diff since 681957f: helper (`--old-ref`, `renames()` via `git diff -z
+--name-status -M --diff-filter=R`, successor judged under `min(old, defs)`,
+absent path without `--old-ref` = REGRESSION), rule/mirror/SKILL/README name
+both refs, `agent-config.yaml:122` + rendered `codex-config-managed.toml`
+add `~/.local/bin/common` after `~/.local/bin` (collisions=0 on this host),
+5 new tests, 622 OK. Orchestrator re-derivation from git objects: real data
+`--old-ref 72b8901 --repo-ref c3afc7a` exit 1 / `regressions: 8`;
+self-compare exit 0; `--old-ref` without `--repo-ref` exit 2. Logic walk of
+the status branch: renamed → successor counts; gone + no `--old-ref` →
+REGRESSION; gone + `--old-ref` → explained; unchanged rule for present
+paths. Codex audit of 6b53337 (`…-audit-6b53337.md`): **Verdict: correct**.
+r4 decision `984c14d8…` present in the main DB. CI all pass, CLEAN.
+
+PR #214 sweep on 6b53337 (28 items): renames and Codex PATH → fixed:6b53337;
+two new Codex comments, both confirmed by reading the helper:
+- P1 low-similarity move (`-M` default threshold → delete/add pair → old
+  path explained, new path `old == 0`) — the ceiling r4 documented is a
+  fail-open in a gate;
+- P2 Ruby `private def` uncounted → undercounted defs explain a loss.
+Common root cause: an undercounted or absent def count can explain a loss.
+**Decision (round 4): REVISE r5** — unchanged-blob rule (source unchanged
+between OLD and REF ⇒ any decrease is a REGRESSION), Ruby visibility prefixes,
+and source-backed new paths with zero symbols fail closed (task_rev
+f0445f17e351c8d7…). Orchestrator note: r3/r4 fixed symptoms one review at a time;
+the root-cause framing should have been in r3.
+
+## Round 5 review (2026-10-01, RESULT msg 555, head c878b0d)
+
+Diff since 6b53337: helper +50/−12 and tests +42. Logic walk of the status
+branch at c878b0d: `blobs()` maps every path to its blob id at OLD and REF
+(one `ls-tree -r -z` each); a decrease on a path whose blob is identical at
+OLD and REF — or whose rename successor keeps the blob — is REGRESSION
+`source unchanged` before any def-count rule; a deleted path (absent at REF,
+not renamed) still falls to `explained`; without `--old-ref` the blob maps are
+empty and the r4 rules apply unchanged. New-only paths at REF with an integer
+def count ≥ 1 and zero symbols are REGRESSION `new file, no symbols` unless a
+rename predecessor already judges them. `RUBY_DEF` gains the visibility
+prefixes. The table gains a `note` column; CLI and rule wording unchanged.
+Orchestrator re-derivation from git objects: real data `--old-ref 72b8901
+--repo-ref c3afc7a` exit 1, `regressions: 8`, all eight rows `source
+unchanged` (the source is identical between those revisions, so every
+decrease is a real T41 under-extraction); self-compare exit 0. The worker's
+negative check shows all three new tests failing on the r4 script for the
+logic, not the CLI. 625 tests OK, render-check and validate ok, CI all pass,
+CLEAN. Codex audit of c878b0d (`…-audit-c878b0d.md`, gpt-6-astra, read-only):
+**Verdict: correct**, nine behavioural checks incl. the unchanged-blob guard
+across renames. r5 decision `18479d26…` present in the main DB.
+
+Residual ceilings, documented in the docstring: a move plus rewrite below
+git's rename threshold that keeps *some* nodes is judged only by the
+zero-symbol check; def-line counting remains a heuristic for *changed* files
+(unchanged files are now exempt from it).
+
+PR #214 sweep on c878b0d: see the JSON (dispositions below).
+
+PR #214 sweep on c878b0d (31 items): r5 targets fixed:c878b0d (the
+re-anchored low-similarity comment included); re-anchored uv-script comment
+fixed:12d3f80; two new Codex comments, both confirmed by reading the helper:
+- P1 `:184` a source-backed new path with 2 defs and 1 node passes (the r5
+  ceiling) — an incomplete graph can be approved;
+- P2 `:52` `SHELL_DEF` rejects valid name characters (`foo?`), so a changed
+  shell file can have a loss `explained` by an undercount.
+Both are the same remaining flaw: a regex def count may still *explain* a loss
+on changed files or *pass* a new file. **Decision (round 5): REVISE r6** —
+def counts never explain (only git-structural deletion/rename do), def counts
+only flag (new path: REGRESSION when new < defs), shell name characters
+broadened (task_rev 95d26e4f096aed46…). Queued behind T48 in worker-c. Orchestrator
+note: this is the framing r3 should have carried; five review rounds were
+spent narrowing a heuristic that should not have been load-bearing.

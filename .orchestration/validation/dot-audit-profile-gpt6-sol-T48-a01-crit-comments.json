@@ -1,0 +1,23 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t48_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Orchestrator review of PR #218 (81d720f + 8956c3d) from git objects: audit profile gpt-6.1-sol/xhigh/read-only in the manifest, regenerated modify_private_audit.config.toml byte-identical to the generator, validator pin updated with the API-key note, README and model-selection.md auditor clauses updated, tests pin the new values and reject gpt-6-astra/gpt-6-sol/high; remaining gpt-6-astra mentions are security/adh only; 612 tests OK, validate ok, generator --check up to date, CI green CLEAN. Independent Codex audits of 81d720f and 8956c3d: Verdict correct. Codex GitHub P1 (unsupported under ChatGPT login) dispositioned not-applicable as a deliberate operator decision with the API-key prerequisite documented.",
+    "author": "claude-code",
+    "created_at": "2026-10-01T01:03:56Z",
+    "updated_at": "2026-10-01T01:03:56Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_t48_01",
+        "body": "Approved; acceptance record .orchestration/acceptance/dot-audit-profile-gpt6-sol-T48-a01.md.",
+        "author": "claude-code",
+        "created_at": "2026-10-01T01:03:56Z",
+        "review_round": 1
+      }
+    ]
+  }
+]

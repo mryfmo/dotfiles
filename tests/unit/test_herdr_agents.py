@@ -1715,6 +1715,39 @@ printf 'status=ok team=dotfiles\\n'
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("seat_claim=ok owner=sid-self.777", result.stdout.splitlines())
 
+    def test_session_start_attach_bounds_a_trickling_hook_payload(self) -> None:
+        # One byte every 0.5 s for 6 s: the overall read deadline ends the
+        # read early with an incomplete payload, and the herdr lookup
+        # supplies the session id.
+        self.install_orchestrator_seat_fakes()
+        self.orchestrator_session_path.write_text("sid-herdr\n")
+        read_fd, write_fd = os.pipe()
+
+        def produce() -> None:
+            for byte in b'{"session_id":"sid-trickle"}'[:12]:
+                os.write(write_fd, bytes([byte]))
+                time.sleep(0.5)
+            os.close(write_fd)
+
+        producer = threading.Thread(target=produce)
+        producer.start()
+        started = time.monotonic()
+        try:
+            result = self.run_attach_helper(
+                in_herdr=True,
+                managed_layout=True,
+                extra_env={"AGMSG_AGENT_PID": "777"},
+                stdin_fd=read_fd,
+            )
+            elapsed = time.monotonic() - started
+        finally:
+            producer.join()
+            os.close(read_fd)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertLess(elapsed, 4.5, result.stdout + result.stderr)
+        self.assertIn("seat_claim=ok owner=sid-herdr.777", result.stdout.splitlines())
+
     def test_session_start_attach_skips_a_pane_that_is_not_the_orchestrator(self) -> None:
         self.install_orchestrator_seat_fakes()
         self.pane_list_path.write_text(

@@ -1436,12 +1436,14 @@ if [[ ${1:-} == "--attach" ]]; then
     # `timeout 2 cat`, but byte by byte with bash's own `read -t` so it works
     # without GNU timeout (macOS) and a timeout loses at most the byte in
     # flight (bash 3.2 discards a timed-out read's partial input); EOF ends it
-    # early. The herdr lookup (`herdr agent list` -> agent_session.value) stays
-    # the fallback.
+    # early. An overall deadline (about 2-3 s) stops a trickling producer from
+    # holding the hook past its budget. The herdr lookup (`herdr agent list` ->
+    # agent_session.value) stays the fallback.
     HOOK_SESSION_ID=""
     if [[ ! -t 0 ]]; then
         hook_payload=""
-        while IFS= read -r -t 2 -n 1 hook_byte; do
+        hook_deadline=$((SECONDS + 2))
+        while ((SECONDS < hook_deadline)) && IFS= read -r -t 1 -n 1 hook_byte; do
             hook_payload+="${hook_byte}"
         done
         HOOK_SESSION_ID="$(sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' <<< "${hook_payload}" | head -n 1)"

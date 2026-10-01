@@ -25,7 +25,18 @@ source lines at REF (information only), status and note. Two principles:
 - Def-line counts only flag. A path new to the graph that exists at REF with
   at least one def-like line but no symbols is a regression noted
   `new file, no symbols`; this also catches a move plus rewrite below git's
-  50% rename-similarity threshold.
+  50% rename-similarity threshold. Likewise, a grammar file that exists at
+  REF with at least one def-like line but appears in neither graph is a
+  regression noted `missing from graph`, but
+  only in a directory the new graph already covers (some listed path shares
+  its parent), so the graph's own include scope is respected. Candidates are
+  `.py`/`.rb`/`.sh`/`.bash`/`.zsh`/`.bats` files and mode-100755 files whose
+  shebang selects a grammar.
+
+Def-like lines skip comment lines (first non-blank character `#`) in every
+grammar. For Python they are the `ast` count of function, async function and
+class definitions, so a `def` inside a string literal counts nothing; the
+line regex is used only when the file does not parse.
 
 Ceiling (measured): the def-like count overcounts relative to graph nodes
 (nested functions and methods often get no node), so partial
@@ -45,7 +56,9 @@ a commit or a path cannot be read at REF (fail closed, no table-based pass).
 from __future__ import annotations
 
 import argparse
+import ast
 import json
+import posixpath
 import re
 import subprocess
 import sys
@@ -56,6 +69,8 @@ PYTHON_DEF = re.compile(r"^\s*(?:async\s+def|def|class)\s+\w+")
 RUBY_DEF = re.compile(r"^\s*(?:(?:private|protected|public)\s+)?(?:def|class|module)\s+\S+")
 # Any name without whitespace, parentheses or `=` (`arr=()` is an array assignment).
 SHELL_DEF = re.compile(r"^\s*(?:function\s+\S+|[^\s()=]+\s*\(\))(?:\s*[{(].*)?\s*$")
+GRAMMAR_SUFFIXES = (".py", ".rb", ".sh", ".bash", ".zsh", ".bats")
+PYTHON_NODES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
 
 
 def symbol_counts(graph_path: Path) -> dict[str, int]:
@@ -109,7 +124,17 @@ def def_lines(ref: str, path: str) -> int | str | None:
     pattern = def_pattern(path, shown.stdout)
     if pattern is None:
         return "-"
-    return sum(1 for line in shown.stdout.splitlines() if pattern.search(line))
+    return count_defs(pattern, shown.stdout)
+
+
+def count_defs(pattern: re.Pattern[str], text: str) -> int:
+    """Count definitions: Python via `ast` (regex only on a SyntaxError), else non-comment regex lines."""
+    if pattern is PYTHON_DEF:
+        try:
+            return sum(isinstance(node, PYTHON_NODES) for node in ast.walk(ast.parse(text)))
+        except (SyntaxError, ValueError):
+            pass
+    return sum(1 for line in text.splitlines() if not line.lstrip().startswith("#") and pattern.search(line))
 
 
 def renames(old_ref: str, ref: str) -> dict[str, str]:
@@ -121,16 +146,37 @@ def renames(old_ref: str, ref: str) -> dict[str, str]:
     return {fields[i + 1]: fields[i + 2] for i in range(0, len(fields) - 2, 3)}
 
 
-def blobs(ref: str) -> dict[str, str]:
-    """Map every path at REF to its blob id (REF is already verified)."""
+def blobs(ref: str) -> dict[str, tuple[str, str]]:
+    """Map every blob path at REF to its (mode, blob id) (REF is already verified)."""
     tree = git("ls-tree", "-r", "-z", ref)
     if tree.returncode != 0:
         raise CoverageError(f"cannot list {ref}: {tree.stderr.strip()}")
-    entries: dict[str, str] = {}
+    entries: dict[str, tuple[str, str]] = {}
     for entry in filter(None, tree.stdout.split("\0")):
         meta, _, path = entry.partition("\t")
-        entries[path] = meta.split()[2]
+        mode, kind, blob = meta.split()
+        if kind == "blob":
+            entries[path] = (mode, blob)
     return entries
+
+
+def missing_from_graph(
+    ref: str, entries: dict[str, tuple[str, str]], old: dict[str, int], new: dict[str, int]
+) -> list[tuple[str, int]]:
+    """Grammar files at REF with def-like lines that neither graph lists, in directories the new graph covers."""
+    covered = {posixpath.dirname(path) for path in new}
+    found = []
+    for path, (mode, _) in sorted(entries.items()):
+        if path in old or path in new or posixpath.dirname(path) not in covered:
+            continue
+        if not path.endswith(GRAMMAR_SUFFIXES):
+            first = git("show", f"{ref}:{path}").stdout.split("\n", 1)[0] if mode == "100755" else ""
+            if not first.startswith("#!") or def_pattern(path, first) is None:
+                continue
+        defs = def_lines(ref, path)
+        if isinstance(defs, int) and defs:
+            found.append((path, defs))
+    return found
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -145,15 +191,18 @@ def main(argv: list[str] | None = None) -> int:
 
     old, new = symbol_counts(args.old_graph), symbol_counts(args.new_graph)
     moved: dict[str, str] = {}
-    old_blobs: dict[str, str] = {}
-    new_blobs: dict[str, str] = {}
+    old_blobs: dict[str, tuple[str, str]] = {}
+    new_blobs: dict[str, tuple[str, str]] = {}
+    missing: list[tuple[str, int]] = []
     try:
         if args.repo_ref is not None:
             verify_ref(args.repo_ref)
+            new_blobs = blobs(args.repo_ref)
+            missing = missing_from_graph(args.repo_ref, new_blobs, old, new)
         if args.old_ref is not None:
             verify_ref(args.old_ref, "--old-ref")
             moved = renames(args.old_ref, args.repo_ref)
-            old_blobs, new_blobs = blobs(args.old_ref), blobs(args.repo_ref)
+            old_blobs = blobs(args.old_ref)
         rows = [
             (path, old.get(path, 0), new.get(path, 0), def_lines(args.repo_ref, path) if args.repo_ref else "-")
             for path in sorted(set(old) | set(new))
@@ -187,7 +236,10 @@ def main(argv: list[str] | None = None) -> int:
             status, note = "REGRESSION", "new file, no symbols"
         regressions += status == "REGRESSION"
         print(f"| {path} | {before} | {after} | {shown} | {status} | {note} |")
-    print(f"files: {len(rows)}, regressions: {regressions}")
+    for path, defs in missing:
+        print(f"| {path} | 0 | 0 | {defs} | REGRESSION | missing from graph |")
+    regressions += len(missing)
+    print(f"files: {len(rows) + len(missing)}, regressions: {regressions}")
     return 1 if regressions else 0
 
 

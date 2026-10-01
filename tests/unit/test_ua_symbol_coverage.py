@@ -233,6 +233,33 @@ class UaSymbolCoverageTest(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stdout)
         self.assertIn("| s.sh | 2 | 2 | 2 | ok |", result.stdout)
 
+    def test_comment_lines_are_not_definitions(self) -> None:
+        self.commit(s_sh="real() {\n  :\n}\n#disabled() { :; }\n  # gone() {\n")
+
+        result = self.run_coverage(graph(), graph(s_sh=("real",)))
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertIn("| s.sh | 0 | 1 | 1 | ok |", result.stdout)
+
+    def test_python_defs_inside_strings_do_not_count(self) -> None:
+        self.commit(doc_py='DOC = """\ndef not_a_real_function():\n"""\n')
+
+        result = self.run_coverage(graph(), graph(doc_py=()))
+        self.assertEqual(0, result.returncode, result.stdout)
+        self.assertIn("| doc.py | 0 | 0 | 0 | ok |", result.stdout)
+
+    def test_grammar_file_missing_from_graph_fails_in_covered_directories(self) -> None:
+        self.commit(a_py=defs("keep"), b_py=defs("one", "two"))
+        (self.repo / "sub").mkdir()
+        (self.repo / "sub/c.py").write_text(defs("three"))
+        self.commit()
+        unchanged = graph(a_py=("keep",))
+
+        result = self.run_coverage(unchanged, unchanged)
+        self.assertEqual(1, result.returncode, result.stdout)
+        self.assertIn("| b.py | 0 | 0 | 2 | REGRESSION | missing from graph |", result.stdout)
+        self.assertNotIn("sub/c.py", result.stdout)
+        self.assertIn("regressions: 1", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

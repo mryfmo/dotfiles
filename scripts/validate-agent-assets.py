@@ -345,6 +345,18 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str)
         fail(
             f"{label}.filesystem.allowWrite must include every Codex writable root: missing={sorted(missing)}"
         )
+    extra = [path for path in allow_write if path not in writable_roots]
+    invalid = [
+        path
+        for path in extra
+        if not isinstance(path, str)
+        or not path.startswith(("/", "~/"))
+        or any(char in path for char in "*?[]{}")
+    ]
+    if invalid:
+        fail(
+            f"{label}.filesystem.allowWrite extra entries must be absolute or ~/ paths without globs: {invalid}"
+        )
     domains = sandbox.get("network", {}).get("allowedDomains")
     if not isinstance(domains, list) or not domains:
         fail(f"{label}.network.allowedDomains must be a non-empty list")
@@ -369,6 +381,14 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str)
         fail(
             f"{label}.network.allowUnixSockets entries must be absolute or ~/ paths without globs: {invalid}"
         )
+
+
+def validate_claude_permissions_allow(permissions: Any, label: str) -> None:
+    allow = permissions.get("allow", []) if isinstance(permissions, dict) else []
+    if not isinstance(allow, list) or not all(
+        isinstance(rule, str) and rule.strip() for rule in allow
+    ):
+        fail(f"{label}.allow must be a list of non-empty permission rules")
 
 
 def validate_claude_settings(manifest: dict[str, Any]) -> None:
@@ -396,6 +416,7 @@ def validate_claude_settings(manifest: dict[str, Any]) -> None:
         fail(f"{settings_path} still references the legacy type checker")
     if "format-edited-files.py" not in commands:
         fail(f"{settings_path} must use the robust Python post-edit hook")
+    validate_claude_permissions_allow(settings.get("permissions"), f"{settings_path} permissions")
     validate_claude_sandbox(
         settings.get("sandbox"),
         manifest.get("codex", {}).get("sandbox_workspace_write", {}).get("writable_roots", []),
@@ -749,11 +770,13 @@ def validate_agent_manifest() -> dict[str, Any]:
                 f"{manifest_path} security profile must set codex.{key}: {expected} "
                 f"(operator decision 2026-09-29): {security_codex.get(key)!r}"
             )
-    # Operator pin (2026-09-27): the auditor is codex gpt-6-astra high, read-only.
+    # Operator pin (2026-10-01): the auditor is codex gpt-6.1-sol xhigh, read-only;
+    # this model needs API-key auth (rejected under ChatGPT login: 400 'not
+    # supported when using Codex with a ChatGPT account', probe 2026-10-01).
     audit_codex = profiles["audit"].get("codex", {})
     for key, expected in (
-        ("model", "gpt-6-astra"),
-        ("model_reasoning_effort", "high"),
+        ("model", "gpt-6.1-sol"),
+        ("model_reasoning_effort", "xhigh"),
         ("sandbox_mode", "read-only"),
     ):
         if audit_codex.get(key) != expected:

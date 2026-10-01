@@ -972,8 +972,49 @@ class CheckAgentRuntimeTest(unittest.TestCase):
     def test_check_includes_ua_core_warnings(self) -> None:
         with mock.patch.object(
             self.module, "understand_anything_core_warnings", return_value=["WARN: ua-core sentinel"]
-        ), mock.patch.object(self.module, "chezmoi_drift_warnings", return_value=[]):
+        ), mock.patch.object(self.module, "chezmoi_drift_warnings", return_value=[]), mock.patch.object(
+            self.module, "orchestrator_seat_lock_warnings", return_value=[]
+        ):
             self.assertIn("WARN: ua-core sentinel", self.module.check())
+
+    def seat_lock_fixture(self, owner: str, *, live: bool = True) -> tuple[Path, Path, Path]:
+        project = self.temp_dir / "project"
+        project.mkdir()
+        skill_dir = self.temp_dir / "agmsg"
+        (skill_dir / "scripts").mkdir(parents=True)
+        identities = skill_dir / "scripts/identities.sh"
+        identities.write_text(
+            "#!/bin/sh\nprintf 'dotfiles\\tclaude-remediation-dot\\ndotfiles\\tclaude-standard-dot-a005\\n'\n"
+        )
+        identities.chmod(0o755)
+        (skill_dir / "run").mkdir()
+        (skill_dir / "run/actas.dotfiles__claude-remediation-dot.session").write_text(owner + "\n")
+        (skill_dir / "run/actas.dotfiles__claude-standard-dot-a005.session").write_text("worker-bare\n")
+        proc = self.temp_dir / "proc"
+        (proc / "4242").mkdir(parents=True)
+        (proc / "4242/comm").write_text("claude\n" if live else "bash\n")
+        (proc / "4242/cwd").symlink_to(project)
+        return project, skill_dir, proc
+
+    def test_orchestrator_seat_lock_warns_on_a_bare_session_id(self) -> None:
+        project, skill_dir, proc = self.seat_lock_fixture("e7734322-bare")
+
+        warnings = self.module.orchestrator_seat_lock_warnings(project, skill_dir, proc)
+
+        self.assertEqual(1, len(warnings), warnings)
+        self.assertTrue(warnings[0].startswith("WARN: orchestrator seat lock "))
+        self.assertIn("actas.dotfiles__claude-remediation-dot.session", warnings[0])
+        self.assertIn("bare session id e7734322-bare", warnings[0])
+
+    def test_orchestrator_seat_lock_is_quiet_for_a_composite_id_or_no_live_session(self) -> None:
+        project, skill_dir, proc = self.seat_lock_fixture("e7734322-sid.15760")
+        self.assertEqual([], self.module.orchestrator_seat_lock_warnings(project, skill_dir, proc))
+
+        shutil.rmtree(self.temp_dir / "project")
+        shutil.rmtree(self.temp_dir / "agmsg")
+        shutil.rmtree(self.temp_dir / "proc")
+        project, skill_dir, proc = self.seat_lock_fixture("e7734322-bare", live=False)
+        self.assertEqual([], self.module.orchestrator_seat_lock_warnings(project, skill_dir, proc))
 
 
 if __name__ == "__main__":

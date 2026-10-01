@@ -1,0 +1,23 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t43_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Orchestrator adversarial review of PR #214 head 1b6741b (rounds 1-8) from git objects: ua-symbol-coverage on PATH, --old-ref/--repo-ref = graph gitCommitHash, only git-structural deletion/rename explain a loss, def counts only flag (zero-symbol new files, grammar files missing from the graph in covered directories), comment lines skipped, Python defs via ast, Ruby visibility prefixes, shell name characters, fail-closed on unresolvable refs and unreadable candidates; rule/SKILL/Codex mirror/README updated; Codex managed PATH gains ~/.local/bin/common; make render-check; UA hook scope rule. Re-derived every round: real data 72b8901\u2192c3afc7a exit 1 / 8 regressions (all source unchanged), self-compare exit 0, bad ref exit 2. 632 tests OK, validate ok, CI green CLEAN. Independent Codex audits: 99c1174, 12d3f80, 6b53337, c878b0d, 56f308c, 1b6741b correct; 557502b, 1843dd1, afb2c9d, 72746d4 incorrect with every finding fixed in the following round. PR feedback: 37 items dispositioned (13 fixed, 24 not-applicable incl. the measured 138/185 ceiling).",
+    "author": "claude-code",
+    "created_at": "2026-10-01T03:02:56Z",
+    "updated_at": "2026-10-01T03:02:56Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_t43_01",
+        "body": "Approved; acceptance record .orchestration/acceptance/dot-orchestration-rules-T43-a01.md.",
+        "author": "claude-code",
+        "created_at": "2026-10-01T03:02:56Z",
+        "review_round": 1
+      }
+    ]
+  }
+]

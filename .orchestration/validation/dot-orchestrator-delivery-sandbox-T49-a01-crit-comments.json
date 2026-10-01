@@ -1,0 +1,23 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t49_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Orchestrator adversarial review of PR #219 head 00268f1 (12 commits) from git objects: herdr-agents claims the orchestrator agmsg seat outside the sandbox under <sid>.<pid> at pane start and from the SessionStart --attach hook (payload session_id with a bounded byte-wise read, claude ancestor pid, herdr lookups with retry; only the orchestrator-labelled pane; stale same-session locks released only when bare or when the pid is dead / not a running claude; per-team loop), doctor WARN on a bare-id lock, agmsg-dispatch in sandbox.excludedCommands plus the managed permissions.allow rule Bash(agmsg-dispatch:*) (operator decision; user-visible impact documented), SKILL/rule/README updated. 652 tests OK, render-check, validate, shellcheck; CI green Linux+macOS; CLEAN. Independent Codex audits of every commit: 4452516, 50ebfdc, 99d734b, 63d4e03, 9b658a9 incorrect with each finding fixed by the following commit; 68ac54d, 1fa2a48, e4903a1, 9dc4e53, 229896a, 11d87f3, 00268f1 correct. PR feedback 27 items: 6 fixed, the 'allow rule authorises chains' comment refuted by the permissions docs, rest not-applicable. Live legs (fresh start, persisted restore) remain the acceptance condition after merge and the operator's make update.",
+    "author": "claude-code",
+    "created_at": "2026-10-01T07:55:29Z",
+    "updated_at": "2026-10-01T07:55:29Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_t49_01",
+        "body": "Approved for merge; acceptance final after the live legs (.orchestration/acceptance/dot-orchestrator-delivery-sandbox-T49-a01.md).",
+        "author": "claude-code",
+        "created_at": "2026-10-01T07:55:29Z",
+        "review_round": 1
+      }
+    ]
+  }
+]

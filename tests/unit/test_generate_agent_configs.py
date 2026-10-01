@@ -488,13 +488,34 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         )
         self.assertIn('MODEL_PROFILE_SECURITY_CODEX_ARGS="--profile security"', env)
 
+    def test_claude_sandbox_renders_optional_socket_and_extra_write_keys(self) -> None:
+        manifest = {
+            "claude": {
+                "sandbox": {
+                    "enabled": True,
+                    "failIfUnavailable": False,
+                    "autoAllowBashIfSandboxed": True,
+                    "allowUnsandboxedCommands": True,
+                    "excludedCommands": [],
+                    "network": {"allowedDomains": ["github.com"], "allowUnixSockets": []},
+                }
+            },
+            "codex": {"sandbox_workspace_write": {"writable_roots": ["/root-a"]}},
+        }
+        plain = self.module.render_claude_sandbox(manifest)
+        self.assertEqual(["/root-a"], plain["filesystem"]["allowWrite"])
+
+        manifest["claude"]["sandbox"]["filesystem"] = {"extra_allow_write": ["~/.cache/uv"]}
+        extended = self.module.render_claude_sandbox(manifest)
+        self.assertEqual(["/root-a", "~/.cache/uv"], extended["filesystem"]["allowWrite"])
+
     def test_audit_profile_renders_read_only_sandbox_override(self) -> None:
         manifest = sample_manifest()
         manifest["model_profiles"]["audit"] = {
             "claude": {"model": "claude-fable-5-1", "effort": "high"},
             "codex": {
-                "model": "gpt-6-astra",
-                "model_reasoning_effort": "high",
+                "model": "gpt-6.1-sol",
+                "model_reasoning_effort": "xhigh",
                 "sandbox_mode": "read-only",
             },
         }
@@ -757,6 +778,26 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
         self.assertIn("{{ .chezmoi.homeDir }}/.local/bin/common/permgate codex", codex)
         self.assertIn("~/.local/bin/common/permgate claude", claude)
+
+    def test_managed_claude_sandbox_excludes_agmsg_dispatch(self) -> None:
+        claude = json.loads(
+            (ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()
+        )
+
+        self.assertIn("agmsg-dispatch", claude["sandbox"]["excludedCommands"])
+        self.assertEqual(["Bash(agmsg-dispatch:*)"], claude["permissions"]["allow"])
+
+    def test_managed_codex_path_includes_installed_common_bin(self) -> None:
+        codex = tomllib.loads(
+            (ROOT / "home/.chezmoitemplates/codex-config-managed.toml").read_text()
+        )
+
+        path = codex["shell_environment_policy"]["set"]["PATH"].split(":")
+        self.assertIn("{{ .chezmoi.homeDir }}/.local/bin/common", path)
+        self.assertLess(
+            path.index("{{ .chezmoi.homeDir }}/.local/bin"),
+            path.index("{{ .chezmoi.homeDir }}/.local/bin/common"),
+        )
 
     def test_model_profiles_env_renders_worker_kind(self) -> None:
         manifest = sample_manifest()

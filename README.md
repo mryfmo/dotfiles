@@ -222,6 +222,12 @@ its `dist/index.js` is missing or older than any file under
 `packages/core/src` or the root `pnpm-lock.yaml` (in the release artifact, or
 in the Codex clone without one), so `.ua/` incremental updates work, and
 `make doctor` warns under the same rule, so `make update` repairs what it reports.
+A `.ua/` refresh is accepted only when `ua-symbol-coverage` (installed on PATH
+from `home/dot_local/bin/common/executable_ua-symbol-coverage`), run with
+`--repo-ref` and `--old-ref` set to the revisions the new and previous graphs
+were built from (so renames are told apart from deletions), shows no
+unexplained per-file function/class regressions against the previous graph
+(`home/dot_config/claude/rules/understand-anything.md`).
 Plugin 2.9.7 has two known coverage gaps: `merge-batch-graphs.py` drops
 `tested_by` edges from `.bats` tests and from non-`file:` production nodes, and
 `extract-structure.mjs` misses shell functions with a subshell body. A full
@@ -257,14 +263,18 @@ efforts live. The generator renders the interactive profile into the managed
 Claude settings and Codex config, one `~/.codex/<profile>.config.toml` file per
 profile for `codex --profile <name>`, `~/.agents/model-profiles.env` for the
 launchers, and the low-cost `express-explorer` Claude subagent.
+`make render-check` runs `uv run --with pyyaml scripts/generate-agent-configs.py
+--check` to confirm every rendered file matches the manifest; tasks and docs
+name that one command, since a bare `python3` run fails without PyYAML.
 
 Agent work runs as a three-role constellation. The orchestrator uses the
 `deep` profile (Claude `claude-fable-5-1`, high effort, advisor fable) to
 author tasks, review results, and own acceptance. The worker uses the
 `standard` profile (Claude `claude-opus-5-5`, high effort) to implement one
-task at a time. The auditor uses the `audit` profile (Codex `gpt-6-astra`,
-high reasoning effort, read-only sandbox) for independent
-`codex --profile audit review --commit <sha>` audits. The responsibility
+task at a time. The auditor uses the `audit` profile (Codex `gpt-6.1-sol`,
+xhigh reasoning effort, read-only sandbox; the audit lane requires Codex
+API-key authentication, because the ChatGPT-login account rejects the model)
+for independent `codex --profile audit review --commit <sha>` audits. The responsibility
 boundaries live in `home/dot_config/claude/rules/model-selection.md`,
 `home/dot_config/claude/rules/agmsg-orchestration.md`, and the `## Audit`
 section of `AGENTS.md`.
@@ -338,12 +348,30 @@ block of the managed Claude settings, the counterpart of the Codex
 Bash calls may write only the working directory, the session `$TMPDIR`, and
 `sandbox.filesystem.allowWrite`, which the generator renders from
 `codex.sandbox_workspace_write.writable_roots` so both agents share one list of
-agmsg store directories. Network access from sandboxed commands is limited to
+agmsg store directories, followed by `claude.sandbox.filesystem.extra_allow_write`
+(currently only `~/.cache/uv`, so `uv run` targets such as `make unit-test`
+work from sandboxed Bash). Network access from sandboxed commands is limited to
 the GitHub hosts in `sandbox.network.allowedDomains`; other hosts prompt.
 `sandbox.network.allowUnixSockets` lists the herdr socket
 (`~/.config/herdr/herdr.sock`). Claude Code honours that list only on macOS and
 ignores it on Linux and WSL2. The Claude messaging socket is a per-process path
 set at runtime (`CLAUDE_CODE_MESSAGING_SOCKET`), so it cannot be listed.
+Because Linux and WSL2 ignore that list (the seccomp filter cannot inspect
+socket paths), `herdr`, `herdr-agents` and `gh` (which reads its token from
+the keyring over D-Bus) run through the normal unsandboxed retry prompt on
+Linux. `sandbox.excludedCommands` lists only `agmsg-dispatch`, which inserts one
+agmsg row and sends a herdr wake: from sandboxed Bash the herdr socket is
+denied, and outside the sandbox it delivered the T49 messages within seconds, so
+a Claude worker wakes a herdr-paned orchestrator without a failed sandboxed run.
+Claude Code matches an excluded entry against the command's first word and still
+applies its permission rules to it, so the managed settings also allow
+`Bash(agmsg-dispatch:*)` and the dispatch runs without a prompt. That is the
+first and only managed `permissions.allow` entry: every Claude session using the
+managed settings can run `agmsg-dispatch` without confirmation. Codex workers
+run under Codex's own sandbox and are not affected. `sandbox.network.allowAllUnixSockets` is deliberately not
+used: on a workstation with a `docker`-group user or a reachable
+`systemd --user` bus it turns the auto-approved sandbox into an escape (see the
+upstream [security limitations](https://code.claude.com/docs/en/sandboxing#security-limitations)).
 `failIfUnavailable` is `false` for the first rollout stage: when the sandbox
 cannot start, Claude Code warns and runs commands unsandboxed. A later change
 flips it to `true` after live end-to-end verification.
@@ -361,10 +389,12 @@ needs nothing because the sandbox uses Seatbelt.
 
 Operator-visible effect: after the next `make update`, Claude Code Bash
 commands run confined to the working directory, the session `$TMPDIR`, and
-`allowWrite`. Network hosts other than the listed GitHub domains prompt. A
-command that fails inside the sandbox may be retried unsandboxed after a
-normal permission prompt. Missing `bwrap` or `socat` only warns while
-`failIfUnavailable` is `false`.
+`allowWrite` (the agmsg store directories and the uv cache). On Linux,
+commands that need a local Unix socket (herdr, the `gh` keyring) fail inside
+the sandbox and go through the unsandboxed retry prompt. Network hosts
+other than the listed GitHub domains prompt. A command that fails inside the
+sandbox may be retried unsandboxed after a normal permission prompt. Missing
+`bwrap` or `socat` only warns while `failIfUnavailable` is `false`.
 
 Nested worktrees under `.claude/worktrees/` stay writable. From the main
 checkout they are subdirectories of the working directory and are not among

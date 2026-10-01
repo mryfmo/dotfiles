@@ -192,7 +192,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         }
         profiles["security"]["codex"]["model"] = "gpt-6-astra"
         profiles["audit"]["codex"].update(
-            model="gpt-6-astra", sandbox_mode="read-only"
+            model="gpt-6.1-sol", model_reasoning_effort="xhigh", sandbox_mode="read-only"
         )
         profiles["standard"]["claude"]["advisor"] = "fable"
         manifest = {
@@ -552,7 +552,10 @@ class ValidateAgentAssetsTest(unittest.TestCase):
     def test_agent_manifest_pins_the_audit_codex_profile(self) -> None:
         for key, wrong in (
             ("model", "gpt-5.6-sol"),
+            ("model", "gpt-6-astra"),
+            ("model", "gpt-6-sol"),
             ("model_reasoning_effort", "medium"),
+            ("model_reasoning_effort", "high"),
             ("sandbox_mode", "workspace-write"),
             ("sandbox_mode", None),
         ):
@@ -687,6 +690,29 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     self.module.validate_claude_sandbox(
                         sandbox, self.required_agmsg_writable_roots, "sandbox"
                     )
+
+    def test_claude_permissions_allow_must_list_non_empty_rules(self) -> None:
+        for permissions in ({}, {"allow": []}, {"allow": ["Bash(agmsg-dispatch:*)"]}):
+            with self.subTest(accepts=permissions):
+                self.module.validate_claude_permissions_allow(permissions, "permissions")
+        for allow in ("Bash(agmsg-dispatch:*)", [""], [3]):
+            with self.subTest(rejects=allow), contextlib.redirect_stderr(
+                io.StringIO()
+            ) as stderr, self.assertRaises(SystemExit):
+                self.module.validate_claude_permissions_allow({"allow": allow}, "permissions")
+            self.assertIn("permissions.allow must be a list", stderr.getvalue())
+
+    def test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs(self) -> None:
+        sandbox = self.valid_claude_sandbox()
+        sandbox["filesystem"]["allowWrite"].append("~/.cache/uv")
+        self.module.validate_claude_sandbox(sandbox, self.required_agmsg_writable_roots, "sandbox")
+        for path in ("relative/cache", "~cache", "/tmp/*", 7):
+            with self.subTest(path=path):
+                sandbox = self.valid_claude_sandbox()
+                sandbox["filesystem"]["allowWrite"].append(path)
+                with contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit):
+                    self.module.validate_claude_sandbox(sandbox, self.required_agmsg_writable_roots, "sandbox")
+                self.assertIn("allowWrite extra entries must be absolute or ~/ paths", stderr.getvalue())
 
     def test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs(self) -> None:
         for socket in ("relative/herdr.sock", "./herdr.sock", "~herdr.sock", "/run/user/*/cc.sock", "~/.config/herdr/{a,b}.sock", 7):

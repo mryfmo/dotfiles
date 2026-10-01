@@ -58,8 +58,8 @@ model_profiles:
     # Auditor tier (監査役): cross-vendor read-only audit of worker changesets.
     claude: { model: claude-fable-5-1, effort: high }
     codex:
-      model: gpt-6-astra
-      model_reasoning_effort: high
+      model: gpt-6.1-sol
+      model_reasoning_effort: xhigh
       sandbox_mode: read-only
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
   # ADH V4 program profile; fallback and effort downgrade are forbidden.
@@ -119,7 +119,7 @@ codex:
   shell_environment_policy:
     inherit: core
     set:
-      PATH: '{{ .chezmoi.homeDir }}/.local/share/mise/installs/node/lts/bin:{{ .chezmoi.homeDir }}/.local/share/mise/shims:{{ .chezmoi.homeDir }}/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'
+      PATH: '{{ .chezmoi.homeDir }}/.local/share/mise/installs/node/lts/bin:{{ .chezmoi.homeDir }}/.local/share/mise/shims:{{ .chezmoi.homeDir }}/.local/bin:{{ .chezmoi.homeDir }}/.local/bin/common:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'
   features:
     plugins: true
     hooks: true
@@ -168,6 +168,16 @@ claude:
   includeGitInstructions: true
   permissions:
     defaultMode: plan
+    # The only managed allow rule: agmsg-dispatch inserts one agmsg row and
+    # sends a herdr wake, the sanctioned worker-to-orchestrator wake (T49).
+    # It does not authorise chains: "Claude Code is aware of shell operators,
+    # so a rule like `Bash(safe-cmd *)` won't give it permission to run the
+    # command `safe-cmd && other-cmd`. ... A rule must match each subcommand
+    # independently." (code.claude.com/docs/en/permissions) excludedCommands
+    # matches the first word only; the allow rule still requires every
+    # subcommand to match, so a chained command prompts.
+    allow:
+      - Bash(agmsg-dispatch:*)
     deny:
       - Bash(sudo:*)
       - Bash(rm -rf:*)
@@ -202,8 +212,24 @@ claude:
     failIfUnavailable: false
     autoAllowBashIfSandboxed: true
     allowUnsandboxedCommands: true
-    # Add entries only with E2E evidence, one comment per entry.
-    excludedCommands: []
+    # Add entries only with E2E evidence, one comment per entry. Claude Code
+    # matches an entry against the command's first word (a command name, no
+    # patterns; for compound commands and pipes only the first word is
+    # checked), and an excluded command still needs a permission allow rule or
+    # a normal permission prompt.
+    excludedCommands:
+      # agmsg-dispatch: inserts one agmsg row and sends a herdr wake. From
+      # sandboxed Bash the herdr socket is PermissionDenied (T39 leg 1);
+      # outside the sandbox it delivered msgs 545-577 with read_at within
+      # seconds (T49 E2E, 2026-10-01).
+      - agmsg-dispatch
+    filesystem:
+      # Rendered into sandbox.filesystem.allowWrite after the Codex writable
+      # roots. ~/.cache/uv: every `uv run` target (make unit-test,
+      # validate-agent-assets, render-check) needs the uv cache writable; a
+      # filesystem relaxation limited to that directory (T39 live E2E leg 1).
+      extra_allow_write:
+        - ~/.cache/uv
     network:
       allowedDomains:
         - github.com
@@ -217,6 +243,9 @@ claude:
       # be listed without a glob, so it is not.
       allowUnixSockets:
         - ~/.config/herdr/herdr.sock
+      # The allow-all Unix socket switch is deliberately not set: with a
+      # docker-group user or a reachable `systemd --user` bus it turns the
+      # auto-approved sandbox into an escape (T44 r2, operator 2026-10-01).
   hooks:
     enforce_uv_hook: ~/.claude/hooks/enforce-uv.sh
     format_edited_files_hook: ~/.claude/hooks/format-edited-files.py

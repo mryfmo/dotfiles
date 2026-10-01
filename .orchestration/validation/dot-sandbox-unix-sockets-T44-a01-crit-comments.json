@@ -1,0 +1,23 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t44_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Orchestrator review of PR #215 head dcb8839 (c2c1f62 + merge 663ddbd + dcb8839) from git objects: allowAllUnixSockets removed from the manifest, generator passthrough, validator check, rendered claude-settings-managed.json and both tests (git grep at head finds only the README sentence that says it is deliberately not used); allowUnixSockets herdr.sock kept (macOS-only); filesystem.extra_allow_write ~/.cache/uv kept with generator/validator/tests; README documents the Linux unsandboxed-retry behaviour and the docker-group/systemd --user escape rationale; operator-visible effect paragraph corrected. 634 tests OK, validate ok, render-check up to date, CI green CLEAN. Independent Codex audit of dcb8839: Verdict correct (upgrade path removes an existing allowAllUnixSockets: true). PR #215 feedback: 16 items, the Codex P1 fixed by dcb8839, rest not-applicable. Trust boundary narrows relative to main (no new relaxation besides ~/.cache/uv write).",
+    "author": "claude-code",
+    "created_at": "2026-10-01T03:23:59Z",
+    "updated_at": "2026-10-01T03:23:59Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_t44_01",
+        "body": "Approved; acceptance record .orchestration/acceptance/dot-sandbox-unix-sockets-T44-a01.md.",
+        "author": "claude-code",
+        "created_at": "2026-10-01T03:23:59Z",
+        "review_round": 1
+      }
+    ]
+  }
+]

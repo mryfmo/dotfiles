@@ -537,7 +537,8 @@ claims its seat outside the sandbox with the composite id
 from sandboxed Bash writes the bare session id and turn delivery then skips
 silently), seats the worker on demand with
 `herdr-agents --add-worker <worktree>` (which derives `HERDR_SOCKET_PATH` from
-the default Herdr server socket before creating anything, accepts a claude
+the default Herdr server socket `~/.config/herdr/herdr.sock`, the path the Claude
+sandbox allowlists, before creating anything, accepts a claude
 worker's workspace-trust dialog during spawn's readiness wait, and takes
 `--ready-timeout <seconds>`), confirms the worker's placement in
 `team.sh <team> --json`, sends `AGMSG-PING` with `poke.sh --body-file`, and

@@ -106,7 +106,7 @@ Add-worker mode seats an extra resident worker for <worktree> (a path under
 DIR/.claude/worktrees/, created from origin/main when missing) in its own
 workspace through upstream agmsg spawn.sh, with the profile's launch args;
 a pane-less caller gets HERDR_SOCKET_PATH derived from the default Herdr server
-socket, a claude worker's workspace-trust dialog is accepted while spawn.sh
+socket ~/.config/herdr/herdr.sock (the path the Claude sandbox allowlists), a claude worker's workspace-trust dialog is accepted while spawn.sh
 waits, and --ready-timeout bounds that wait (spawn.sh default 90 seconds);
 remove-worker mode despawns it, turns its delivery off, leaves its team, and
 closes that workspace, refusing a dirty worktree unless --force.
@@ -1634,8 +1634,11 @@ if [[ ${add_worker_mode} == true || ${remove_worker_mode} == true ]]; then
     if [[ ${add_worker_mode} == true && -z ${HERDR_SOCKET_PATH:-} ]]; then
         # A pane-less caller has no HERDR_SOCKET_PATH, and spawn.sh's herdr
         # driver refuses without it; derive the default server socket before
-        # anything is created so a failure leaves no partial workspace.
-        HERDR_SOCKET_PATH="${XDG_CONFIG_HOME:-${HOME}/.config}/herdr/herdr.sock"
+        # anything is created so a failure leaves no partial workspace. Only
+        # herdr's default path, which is also the one socket the managed Claude
+        # sandbox allowlists (allowUnixSockets); XDG_CONFIG_HOME is not honoured,
+        # since a socket elsewhere would pass this check and then be denied.
+        HERDR_SOCKET_PATH="${HOME}/.config/herdr/herdr.sock"
         if [[ ! -S ${HERDR_SOCKET_PATH} ]]; then
             printf 'herdr-agents: HERDR_SOCKET_PATH is unset and no Herdr server socket is at %s; start Herdr or export HERDR_SOCKET_PATH.\n' "${HERDR_SOCKET_PATH}" >&2
             exit 2

@@ -2725,14 +2725,14 @@ exit {despawn_exit}
         self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
         self.write_seat_lifecycle_fakes()
         # macOS caps AF_UNIX paths near 104 bytes and its temp dirs are long, so
-        # the socket lives under a short XDG_CONFIG_HOME, which the derivation
-        # honours ahead of $HOME/.config.
-        config_home = Path(
+        # HOME is a short symlink (/tmp/ha-* when writable) to the fake home.
+        short_root = Path(
             tempfile.mkdtemp(prefix="ha-", dir="/tmp" if os.access("/tmp", os.W_OK) else None)
         )
-        self.addCleanup(shutil.rmtree, config_home, True)
-        socket_path = config_home / "herdr/herdr.sock"
-        socket_path.parent.mkdir()
+        self.addCleanup(shutil.rmtree, short_root, True)
+        short_home = short_root / "h"
+        short_home.symlink_to(self.home_dir)
+        socket_path = short_home / ".config/herdr/herdr.sock"
         try:
             server = socket.socket(socket.AF_UNIX)
         except PermissionError:
@@ -2743,7 +2743,13 @@ exit {despawn_exit}
         result = self.run_helper(
             "--add-worker",
             ".claude/worktrees/b1",
-            extra_env={"HERDR_SOCKET_PATH": "", "XDG_CONFIG_HOME": str(config_home)},
+            # XDG_CONFIG_HOME is ignored: only the sandbox-allowlisted
+            # ~/.config/herdr/herdr.sock is derived.
+            extra_env={
+                "HERDR_SOCKET_PATH": "",
+                "HOME": str(short_home),
+                "XDG_CONFIG_HOME": str(short_root / "elsewhere"),
+            },
         )
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

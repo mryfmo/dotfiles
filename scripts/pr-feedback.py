@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Collect every piece of GitHub feedback on a pull request head into one JSON document.
 
-Usage: pr-feedback.py <pr-number> [--repo owner/name] [--json <out>]
+Usage: pr-feedback.py <pr-number> [--repo owner/name] [--json <out>] [--require-codex-review]
 
 Items cover issue comments, reviews, inline review comments (with their
 thread's resolution state), non-passing check runs, every check-run
@@ -9,7 +9,9 @@ annotation at any level, and every commit status on the PR head. Each item
 carries an empty `disposition` to fill with `fixed:<commit>` or
 `not-applicable:<reason>` before integration; scripts/require-crit-review.py
 checks the filled file through PR_FEEDBACK_EVIDENCE. Passing check runs are
-listed under `checks` only.
+listed under `checks` only. `codex_review` is the latest Codex review summary
+the connector posted (null when none); --require-codex-review exits 1 unless
+it is a completed review of the PR head.
 """
 
 from __future__ import annotations
@@ -18,6 +20,7 @@ import argparse
 import datetime
 import json
 import os
+import re
 import subprocess
 import sys
 from collections import Counter
@@ -26,6 +29,9 @@ from pathlib import Path
 from typing import Any
 
 PASSING_CONCLUSIONS = {"success", "neutral", "skipped"}
+CODEX_BOT = "chatgpt-codex-connector[bot]"
+CODEX_SUMMARY_MARKER = "<!-- codex-pull-request-review-summary -->"
+CODEX_REVIEW_META = re.compile(r"<!-- codex-security-review:v1 (\{.*?\}) -->", re.S)
 THREADS_QUERY = """
 query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
   repository(owner: $owner, name: $name) {
@@ -183,6 +189,44 @@ def thread_states(
         cursor = threads["pageInfo"]["endCursor"]
 
 
+def codex_review(comments: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Return the latest Codex review summary the connector posted, or None.
+
+    The connector keeps one summary comment per PR and edits it in place; its
+    `codex-security-review:v1` marker carries the reviewed head. Only the
+    connector's own comments count, so a pasted marker cannot fake a review.
+    """
+    for comment in reversed(comments):
+        body = comment.get("body") or ""
+        if (comment.get("user") or {}).get("login") != CODEX_BOT or CODEX_SUMMARY_MARKER not in body:
+            continue
+        match = CODEX_REVIEW_META.search(body)
+        try:
+            meta = json.loads(match.group(1)) if match else {}
+        except ValueError:
+            meta = {}
+        return {
+            "head_sha": meta.get("headSha"),
+            "summary_comment_id": comment["id"],
+            "blocking_threshold": meta.get("blockingSeverityThreshold"),
+            "status": meta.get("status"),
+        }
+    return None
+
+
+def codex_review_error(document: dict[str, Any]) -> str | None:
+    """Explain why the document has no completed Codex review of its head, if it has none."""
+    review = document.get("codex_review")
+    head = document.get("head_sha")
+    if not review:
+        return f"no Codex review summary on PR #{document.get('pr')}; comment `@codex review` and wait for it"
+    if review.get("head_sha") != head:
+        return f"the Codex review summary is for {review.get('head_sha')}, not the PR head {head}; comment `@codex review`"
+    if review.get("status") != "completed":
+        return f"the Codex review of {head} is {review.get('status')!r}, not completed; wait for it"
+    return None
+
+
 def collect(
     repo: str, number: int, fetch: Fetch = gh_fetch, graphql: GraphQL = gh_graphql
 ) -> dict[str, Any]:
@@ -190,7 +234,8 @@ def collect(
     sha = pull["head"]["sha"]
     items: list[dict[str, Any]] = []
 
-    for comment in flatten(fetch(f"repos/{repo}/issues/{number}/comments", True)):
+    issue_comments = flatten(fetch(f"repos/{repo}/issues/{number}/comments", True))
+    for comment in issue_comments:
         items.append(
             item(
                 "issue_comment",
@@ -295,6 +340,7 @@ def collect(
         "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(
             timespec="seconds"
         ),
+        "codex_review": codex_review(issue_comments),
         "checks": checks,
         "items": items,
     }
@@ -308,6 +354,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--repo", help="owner/name; defaults to the current repository")
     parser.add_argument(
         "--json", type=Path, help="write the document here instead of stdout"
+    )
+    parser.add_argument(
+        "--require-codex-review",
+        action="store_true",
+        help="exit 1 unless a completed Codex review summary exists for the PR head",
     )
     args = parser.parse_args(argv)
 
@@ -332,6 +383,11 @@ def main(argv: list[str] | None = None) -> int:
         f"pr-feedback: {repo}#{args.pr} head {document['head_sha'][:7]}: {len(document['items'])} items ({summary})",
         file=sys.stderr,
     )
+    if args.require_codex_review:
+        error = codex_review_error(document)
+        if error:
+            print(f"pr-feedback: {error}", file=sys.stderr)
+            return 1
     return 0
 
 

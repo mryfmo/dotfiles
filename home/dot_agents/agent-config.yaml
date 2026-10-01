@@ -170,6 +170,12 @@ claude:
     defaultMode: plan
     # The only managed allow rule: agmsg-dispatch inserts one agmsg row and
     # sends a herdr wake, the sanctioned worker-to-orchestrator wake (T49).
+    # It does not authorise chains: "Claude Code is aware of shell operators,
+    # so a rule like `Bash(safe-cmd *)` won't give it permission to run the
+    # command `safe-cmd && other-cmd`. ... A rule must match each subcommand
+    # independently." (code.claude.com/docs/en/permissions) excludedCommands
+    # matches the first word only; the allow rule still requires every
+    # subcommand to match, so a chained command prompts.
     allow:
       - Bash(agmsg-dispatch:*)
     deny:

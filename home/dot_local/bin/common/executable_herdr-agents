@@ -417,7 +417,11 @@ function claude_ancestor_pid() {
 #   owner token is released through upstream's owner-exact actas_lock_release
 #   and the claim repeated. A bare owner can only come from a sandboxed claim
 #   of this session; a same-session composite with a live pid is a parallel
-#   --resume/--continue sibling and is left alone (`seat_claim=failed`). Prints
+#   --resume/--continue sibling and is left alone (`seat_claim=failed`). With
+#   `--self` the claim also requires the pane to be the pair's orchestrator
+#   pane (label `claude-orchestrator` or `<team>:<identity>`); any other
+#   Claude pane in the main checkout gets `seat_claim=skipped
+#   reason=not-orchestrator-pane`. Prints
 #   `seat_claim=ok owner=<sid>.<pid>` (plus `replaced_stale_lock=yes`),
 #   `seat_claim=unresolved` (nothing claimed, never a bare-id lock), or
 #   `seat_claim=failed <status line>`.
@@ -429,7 +433,7 @@ function claim_orchestrator_seat() {
     local pane_id="$2"
     local self="${3:-}"
     local scripts="${HOME}/.agents/skills/agmsg/scripts"
-    local identity sid="" pid="" result owner team self_name=off teams attempt replaced=""
+    local identity sid="" pid="" result owner team self_name=off teams attempt replaced="" label lookup
 
     [[ -x ${scripts}/actas-claim.sh && -x ${scripts}/identities.sh ]] || return 0
     is_main_checkout "${workdir}" || return 0
@@ -439,14 +443,26 @@ function claim_orchestrator_seat() {
     teams="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${workdir}" claude-code 2> /dev/null |
         awk -F '\t' -v name="${identity}" '$2 == name { print $1 }' | sort -u | grep -c .)" || teams=1
     if [[ ${self} == --self ]]; then
+        # The managed SessionStart hook runs in every Claude pane: only the
+        # orchestrator pane may claim the orchestrator seat.
+        label="$(herdr pane list --workspace "${pane_id%%:*}" 2> /dev/null | jq -r --arg pane "${pane_id}" \
+            'first(.result.panes[]? | select(.pane_id == $pane) | .label // empty) // empty')" || label=""
+        if [[ ${label} != claude-orchestrator ]] &&
+            ! AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${workdir}" claude-code 2> /dev/null |
+            awk -F '\t' -v name="${identity}" -v label="${label}" '$2 == name && $1 ":" $2 == label { found = 1 } END { exit !found }'; then
+            printf 'seat_claim=skipped reason=not-orchestrator-pane\n'
+            return 0
+        fi
         sid="${HOOK_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
         pid="$(claude_ancestor_pid)" || pid="${CLAUDE_PID:-}"
         self_name=on
     fi
-    if [[ -z ${sid} ]]; then
+    # herdr may not list the session right after start: up to 3 lookups, 1 s apart.
+    for ((lookup = 0; lookup < 3 && ${#sid} == 0; lookup++)); do
+        ((lookup == 0)) || sleep 1
         sid="$(herdr agent list 2> /dev/null | jq -r --arg pane "${pane_id}" \
             'first(.result.agents[]? | select(.pane_id == $pane and .agent == "claude") | .agent_session.value // empty) // empty')" || sid=""
-    fi
+    done
     if [[ ! ${pid} =~ ^[0-9]+$ ]]; then
         pid="$(herdr pane process-info --pane "${pane_id}" 2> /dev/null | jq -r \
             'first(.result.process_info.foreground_processes[]? | select(.name == "claude") | .pid) // empty')" || pid=""
@@ -1415,22 +1431,27 @@ if [[ ${1:-} == "--attach" ]]; then
         exit 0
     fi
     # SessionStart runs outside the Bash sandbox: claim the orchestrator seat
-    # under this claude's composite id, also in a managed pane. The hook payload
-    # on stdin carries the session id. The read is bounded like upstream
-    # check-inbox.sh's `timeout 2 cat`, but with bash's own `read -t` so it also
-    # works where GNU timeout is absent (macOS); EOF ends it early. On a timeout
-    # bash 3.2 discards the partial payload (bash 4+ keeps it); the herdr lookup
-    # (`herdr agent list` -> agent_session.value) then supplies the session id,
-    # so the claim still lands, and it is `seat_claim=unresolved` only when that
-    # lookup fails too.
+    # under this claude's composite id. The hook payload on stdin carries the
+    # session id. The read is bounded like upstream check-inbox.sh's
+    # `timeout 2 cat`, but byte by byte with bash's own `read -t` so it works
+    # without GNU timeout (macOS) and a timeout loses at most the byte in
+    # flight (bash 3.2 discards a timed-out read's partial input); EOF ends it
+    # early. The herdr lookup (`herdr agent list` -> agent_session.value) stays
+    # the fallback.
     HOOK_SESSION_ID=""
     if [[ ! -t 0 ]]; then
         hook_payload=""
-        IFS= read -r -t 2 -d '' hook_payload || true
+        while IFS= read -r -t 2 -n 1 hook_byte; do
+            hook_payload+="${hook_byte}"
+        done
         HOOK_SESSION_ID="$(sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' <<< "${hook_payload}" | head -n 1)"
     fi
-    claim_orchestrator_seat "$(pwd -P)" "${HERDR_PANE_ID}" --self
-    [[ ${HERDR_AGENTS_LAYOUT:-} == managed ]] && exit 0
+    # A managed pane is labelled before its claude starts; an unmanaged one is
+    # claimed after the attach flow below labels it.
+    if [[ ${HERDR_AGENTS_LAYOUT:-} == managed ]]; then
+        claim_orchestrator_seat "$(pwd -P)" "${HERDR_PANE_ID}" --self
+        exit 0
+    fi
 elif [[ ${1:-} == "--bootstrap-agmsg" ]]; then
     bootstrap_mode=true
     shift
@@ -1814,6 +1835,7 @@ if [[ ${attach_mode} == true ]]; then
     if ! printf '%s\n' "${panes_json}" | jq -e --arg pane_id "${claude_pane_id}" '.result.panes[]? | select(.pane_id == $pane_id and .label == "claude-orchestrator")' > /dev/null; then
         rename_pane_unless_seat_named "${claude_pane_id}" claude-orchestrator
     fi
+    claim_orchestrator_seat "${workdir}" "${claude_pane_id}" --self
     if ! attach_panes_are_unambiguous "${panes_json}" "${claude_pane_id}" "${worker_pane_id}"; then
         printf 'Herdr attach panes are ambiguous or include unmanaged panes; refusing repair.\n' >&2
         exit 0

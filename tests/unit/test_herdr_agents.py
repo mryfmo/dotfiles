@@ -1578,6 +1578,20 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             )
         )
         counter = self.temp_dir / "claim-calls"
+        # The --attach pane is the pair's orchestrator pane (self-named seat label).
+        self.pane_list_path.write_text(
+            json.dumps(
+                {
+                    "id": "cli:pane:list",
+                    "result": {
+                        "panes": [
+                            {"pane_id": "w-attach:p1", "label": f"{teams[0]}:claude-remediation-dot"}
+                        ]
+                    },
+                }
+            )
+            + "\n"
+        )
         answers = "".join(
             f"    {index}) printf 'status=held team={team} owner={owner}\\n'; exit 1 ;;\n"
             for index, (team, owner) in enumerate(held)
@@ -1674,10 +1688,10 @@ printf 'status=ok team=dotfiles\\n'
 
     def test_session_start_attach_claims_when_the_hook_keeps_stdin_open(self) -> None:
         # The payload arrives without a newline and the pipe stays open past
-        # the 2 s read bound: bash 4+ keeps the partial payload, bash 3.2
-        # (macOS) discards it and the herdr lookup answers the same sid.
+        # the 2 s read bound; the byte-wise read keeps it on bash 3.2 (macOS)
+        # and 4+ alike. The fake herdr lookup returns nothing, so only the
+        # payload can supply the sid.
         self.install_orchestrator_seat_fakes()
-        self.orchestrator_session_path.write_text("sid-self\n")
         read_fd, write_fd = os.pipe()
 
         def produce() -> None:
@@ -1700,6 +1714,25 @@ printf 'status=ok team=dotfiles\\n'
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("seat_claim=ok owner=sid-self.777", result.stdout.splitlines())
+
+    def test_session_start_attach_skips_a_pane_that_is_not_the_orchestrator(self) -> None:
+        self.install_orchestrator_seat_fakes()
+        self.pane_list_path.write_text(
+            '{"id":"cli:pane:list","result":{"panes":[{"pane_id":"w-attach:p1","label":"claude-worker"}]}}\n'
+        )
+
+        result = self.run_attach_helper(
+            in_herdr=True,
+            managed_layout=True,
+            extra_env={"AGMSG_AGENT_PID": "4343"},
+            stdin_text='{"session_id":"sid-stdin"}\n',
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("seat_claim=skipped reason=not-orchestrator-pane", result.stdout.splitlines())
+        self.assertFalse(
+            any(call.startswith("actas-claim ") for call in self.calls_path.read_text().splitlines())
+        )
 
     def test_seat_claim_replaces_a_same_session_bare_lock(self) -> None:
         self.install_orchestrator_seat_fakes(held=(("dotfiles", "sid-stdin"),))

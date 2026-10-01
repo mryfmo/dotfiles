@@ -856,9 +856,15 @@ function check_worker_linkage() {
     if [[ -n ${placement} ]]; then
         rest="${placement%:*}"
         pane="${rest##*:}:${placement##*:}"
-        # A retained record may name a pane in an older workspace.
+        # A retained record may name a pane in an older workspace, or an
+        # exited pane in this one.
         if [[ ${rest##*:} != "${workspace_id}" ]]; then
             printf 'herdr-agents: placement record for %s names workspace %s, not %s; using the new pane.\n' "${worker}" "${rest##*:}" "${workspace_id}" >&2
+            placement=""
+            pane=""
+        elif ! herdr pane list --workspace "${workspace_id}" 2> /dev/null |
+            jq -e --arg pane "${pane}" '.result.panes[]? | select(.pane_id == $pane)' > /dev/null 2>&1; then
+            printf 'herdr-agents: placement record for %s names pane %s, which is not in workspace %s; using the new pane.\n' "${worker}" "${pane}" "${workspace_id}" >&2
             placement=""
             pane=""
         fi

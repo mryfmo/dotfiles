@@ -52,7 +52,37 @@ count_names() {
 }
 
 if [[ -x ${scripts}/identities.sh ]]; then
+    # The active seats are the main checkout (orchestrator) and the manifest
+    # worker_worktree (worker); each holds exactly one identity across both
+    # runtime types. Other worktrees are not seats: only a per-type surplus
+    # is flagged there.
+    seats=("${main}")
+    worker_worktree="$(
+        # shellcheck source=/dev/null
+        [[ ! -f ${HOME}/.agents/model-profiles.env ]] || source "${HOME}/.agents/model-profiles.env"
+        printf '%s' "${HERDR_AGENTS_WORKER_WORKTREE:-}"
+    )"
+    if [[ -n ${worker_worktree} && -d ${main}/${worker_worktree} ]]; then
+        seats+=("${main}/${worker_worktree}")
+    fi
+    resolved_seats=" "
+    for seat in "${seats[@]}"; do
+        resolved_seats+="$(cd -- "${seat}" && pwd -P) "
+    done
+    for seat in "${seats[@]}"; do
+        names="$({
+            AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${seat}" claude-code 2> /dev/null || true
+            AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${seat}" codex 2> /dev/null || true
+        } | cut -f 2 | sort -u | grep -c . || true)"
+        if ((names == 0)); then
+            violations+=("no agmsg identity at the active seat ${seat} (expected one)")
+        elif ((names > 1)); then
+            violations+=("stray identities at the active seat ${seat}: ${names} names across claude-code and codex (expected one)")
+        fi
+    done
     for checkout in "${checkouts[@]}"; do
+        resolved="$(cd -- "${checkout}" 2> /dev/null && pwd -P)" || resolved="${checkout}"
+        [[ ${resolved_seats} != *" ${resolved} "* ]] || continue
         for agent_type in claude-code codex; do
             names="$(count_names "${checkout}" "${agent_type}")"
             if ((names > 1)); then
@@ -60,20 +90,6 @@ if [[ -x ${scripts}/identities.sh ]]; then
             fi
         done
     done
-    # The active seats must not be empty: the main checkout's orchestrator and
-    # the manifest worker_worktree's worker. Other worktrees are not seats.
-    if (($(count_names "${main}" claude-code) == 0)); then
-        violations+=("no claude-code identity at the main checkout ${main} (expected one)")
-    fi
-    worker_worktree="$(
-        # shellcheck source=/dev/null
-        [[ ! -f ${HOME}/.agents/model-profiles.env ]] || source "${HOME}/.agents/model-profiles.env"
-        printf '%s' "${HERDR_AGENTS_WORKER_WORKTREE:-}"
-    )"
-    if [[ -n ${worker_worktree} && -d ${main}/${worker_worktree} ]] &&
-        (($(count_names "${main}/${worker_worktree}" claude-code) + $(count_names "${main}/${worker_worktree}" codex) == 0)); then
-        violations+=("no worker identity at the manifest worker_worktree ${main}/${worker_worktree} (expected one)")
-    fi
 fi
 
 if command -v pgrep > /dev/null 2>&1 && pgrep -f 'crit _serve' > /dev/null 2>&1; then
@@ -98,7 +114,7 @@ fi
 while IFS= read -r warning; do
     [[ -n ${warning} ]] && violations+=("${warning#WARN: }")
 done < <(
-    python3 - "${root}" << 'PY' 2> /dev/null
+    python3 - "${root}" "${main}" << 'PY' 2> /dev/null
 import importlib.util
 import sys
 from pathlib import Path
@@ -108,7 +124,8 @@ root = Path(sys.argv[1])
 spec = importlib.util.spec_from_file_location("check_agent_runtime", root / "scripts/check-agent-runtime.py")
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
-print("\n".join(module.orchestrator_seat_lock_warnings(root)))
+# The seat lock belongs to the main checkout, also when run from a worktree.
+print("\n".join(module.orchestrator_seat_lock_warnings(Path(sys.argv[2]))))
 PY
 )
 

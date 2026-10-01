@@ -135,13 +135,22 @@ def is_ignored(root: Path, path: str) -> bool:
     evidence_path = Path(evidence)
     if not evidence_path.is_absolute():
         evidence_path = root / evidence_path
-    return feedback_path_error(root, evidence_path) is None and Path(os.path.abspath(evidence_path)) == root / path
+    return feedback_path_error(root, evidence_path) is None and feedback_relative_path(root, evidence_path) == Path(path)
+
+
+def feedback_relative_path(root: Path, path: Path) -> Path:
+    """Normalize aliases above the repository (e.g. macOS /var), never inside it."""
+    absolute = Path(os.path.abspath(path))
+    for parent in reversed(absolute.parents):
+        if parent.resolve() == root.resolve():
+            return absolute.relative_to(parent)
+    raise ValueError("evidence is outside the repository")
 
 
 def feedback_path_error(root: Path, path: Path) -> str | None:
     try:
         relatives = (
-            Path(os.path.abspath(path)).relative_to(root.resolve()),
+            feedback_relative_path(root, path),
             path.resolve().relative_to(root.resolve()),
         )
     except ValueError:

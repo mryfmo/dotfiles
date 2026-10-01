@@ -632,6 +632,20 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn("evidence must live under", result.stdout)
 
+    def test_feedback_accepts_absolute_path_through_a_repository_parent_alias(self) -> None:
+        feedback = self.write_feedback([
+            {"source": "annotation", "level": "notice", "disposition": "not-applicable:runner notice"}
+            for _ in range(60)
+        ])
+        path = self.temp_dir / feedback
+        path.write_text(json.dumps(json.loads(path.read_text()), indent=2))
+        alias = self.collected_dir / "parent-alias"
+        alias.symlink_to(self.temp_dir.parent, target_is_directory=True)
+        evidence = alias / self.temp_dir.name / feedback
+        result = self.guard({"PR_FEEDBACK_EVIDENCE": str(evidence)})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("Review not required", result.stdout)
+
     def test_advanced_base_cannot_supply_an_untrusted_collector(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
         self.commit_on_branch("docs/fix.md")

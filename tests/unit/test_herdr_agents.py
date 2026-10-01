@@ -11,6 +11,7 @@ import pty
 import re
 import shutil
 import socket
+import sqlite3
 import subprocess
 import sys
 import tarfile
@@ -597,6 +598,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         env.pop("CLAUDE_PID", None)
         # The default socket path honours XDG_CONFIG_HOME, which CI runners set.
         env.pop("XDG_CONFIG_HOME", None)
+        env["HERDR_AGENTS_LINKAGE_PONG_WAIT"] = "0"
         if extra_env:
             env.update(extra_env)
         return subprocess.run(
@@ -2626,14 +2628,45 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
         despawn_exit: int = 0,
         despawn_output: str = "status=ok name=x team=dotfiles",
         force_exit: int = 0,
+        dispatch_exit: int = 0,
+        pong: bool = False,
     ) -> Path:
-        """Fake agmsg spawn/despawn/leave on top of the worktree-seat fakes."""
+        """Fake agmsg spawn/despawn/leave on top of the worktree-seat fakes.
+
+        spawn.sh places pane w-test:p9; a fake agmsg-dispatch on PATH records
+        the add-worker linkage PING (read, optionally answered by a PONG) in a
+        temporary messages.db that fake lib/storage.sh resolves.
+        """
         scripts = self.home_dir / ".agents/skills/agmsg/scripts"
         options_copy = self.temp_dir / "spawn-options.yaml"
+        db = self.temp_dir / "messages.db"
+        with sqlite3.connect(db) as connection:
+            connection.execute(
+                "CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, team TEXT, "
+                "from_agent TEXT, to_agent TEXT, body TEXT, read_at TEXT)"
+            )
+        (scripts / "lib").mkdir(exist_ok=True)
+        (scripts / "lib/validate.sh").write_text("agmsg_validate_team_name() { :; }\n")
+        (scripts / "lib/storage.sh").write_text(f"agmsg_db_path() {{ printf '%s\\n' {db}; }}\n")
+        pong_insert = (
+            f"""sqlite3 {db} "INSERT INTO messages (team, from_agent, to_agent, body) VALUES ('$1', '$3', '$2', 'AGMSG-PONG v1 task_id=bringup status=alive note=x');"\n"""
+            if pong
+            else ""
+        )
+        dispatch = self.bin_dir / "agmsg-dispatch"
+        dispatch.write_text(
+            f"""#!/usr/bin/env bash
+printf 'agmsg-dispatch %s\\n' "$*" >> {self.calls_path}
+[[ {dispatch_exit} -eq 0 ]] || exit {dispatch_exit}
+sqlite3 {db} "INSERT INTO messages (team, from_agent, to_agent, body, read_at) VALUES ('$1', '$2', '$3', '$5', '2026-10-01T00:00:00Z');"
+{pong_insert}"""
+        )
+        dispatch.chmod(0o755)
         for name, body in {
             "spawn.sh": f"""printf 'spawn %s ws=%s\\n' "$*" "${{HERDR_WORKSPACE_ID:-}}" >> {self.calls_path}
 printf 'spawn-socket %s\\n' "${{HERDR_SOCKET_PATH:-}}" >> {self.calls_path}
 cp "$AGMSG_SPAWN_OPTIONS_FILE" {options_copy}
+printf '%s\\n' '{{"result":{{"panes":[{{"pane_id":"w-test:p9"}}]}}}}' > {self.pane_list_path}
 """,
             "despawn.sh": f"""printf 'despawn %s\\n' "$*" >> {self.calls_path}
 if [[ " $* " == *" --force "* ]]; then
@@ -2782,10 +2815,10 @@ exit 3
         self.assertIn("pane send-keys w-test:p2 Down Enter", calls)
         self.assertTrue(any(c.startswith("spawn ") and c.endswith(" --window --ready-timeout 15") for c in calls), calls)
 
-    def write_dialogless_claude_spawn(self, exit_code: int) -> None:
+    def write_dialogless_claude_spawn(self, exit_code: int, dispatch_exit: int = 0) -> None:
         """spawn.sh places a pane, shows no trust dialog, then exits with exit_code."""
         self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
-        self.write_seat_lifecycle_fakes()
+        self.write_seat_lifecycle_fakes(dispatch_exit=dispatch_exit)
         self.pane_list_path.write_text(json.dumps({"result": {"panes": [{"pane_id": "w-test:p1"}]}}))
         spawn = self.home_dir / ".agents/skills/agmsg/scripts/spawn.sh"
         spawn.write_text(
@@ -2807,7 +2840,8 @@ exit {exit_code}
         self.assertNotIn("pane send-keys w-test:p2 Down Enter", self.calls_path.read_text().splitlines())
 
     def test_add_worker_reports_a_failed_claude_spawn_without_a_trust_dialog(self) -> None:
-        self.write_dialogless_claude_spawn(3)
+        # The worker is also unreachable, so spawn.sh's own exit code stands.
+        self.write_dialogless_claude_spawn(3, dispatch_exit=1)
 
         result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "claude")
 
@@ -2815,6 +2849,55 @@ exit {exit_code}
         self.assertIn("spawn.sh exited 3 for worker ", result.stderr)
         self.assertIn(" in workspace w-test; confirm linkage with AGMSG-PING", result.stderr)
         self.assertNotIn("Herdr agents worker added", result.stdout)
+
+    def test_add_worker_reports_linkage_ok_after_a_ready_spawn(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes(pong=True)
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "codex")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        lines = result.stdout.splitlines()
+        self.assertEqual("linkage=ok read_at=2026-10-01T00:00:00Z pong=yes", lines[-1])
+        self.assertIn("Herdr agents worker added", result.stdout)
+        self.assertIn(
+            "agmsg-dispatch dotfiles claude-remediation-dot codex-standard-dot-a007 w-test:p9 "
+            "AGMSG-PING v1 task_id=bringup reason=add-worker-linkage",
+            self.calls_path.read_text().splitlines(),
+        )
+
+    def test_add_worker_reports_linkage_unreached_after_a_failed_spawn(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes(dispatch_exit=1)
+        spawn = self.home_dir / ".agents/skills/agmsg/scripts/spawn.sh"
+        spawn.write_text(
+            "#!/usr/bin/env bash\n"
+            f"printf '%s\\n' '{{\"result\":{{\"panes\":[{{\"pane_id\":\"w-test:p9\"}}]}}}}' > {self.pane_list_path}\n"
+            "printf 'status=timeout\\n'\nexit 3\n"
+        )
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "codex")
+
+        self.assertEqual(result.returncode, 3, result.stdout + result.stderr)
+        self.assertEqual("linkage=unreached rc=1 hint=attach-a-client", result.stdout.splitlines()[-1])
+        self.assertIn("spawn.sh exited 3 for worker codex-standard-dot-a007", result.stderr)
+        self.assertNotIn("Herdr agents worker added", result.stdout)
+
+    def test_add_worker_exits_zero_when_a_timed_out_spawn_still_links(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes()
+        spawn = self.home_dir / ".agents/skills/agmsg/scripts/spawn.sh"
+        spawn.write_text(
+            "#!/usr/bin/env bash\n"
+            f"printf '%s\\n' '{{\"result\":{{\"panes\":[{{\"pane_id\":\"w-test:p9\"}}]}}}}' > {self.pane_list_path}\n"
+            "printf 'status=timeout\\n'\nexit 3\n"
+        )
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "codex")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual("linkage=ok read_at=2026-10-01T00:00:00Z pong=no", result.stdout.splitlines()[-1])
+        self.assertIn("spawn.sh exited 3", result.stderr)
 
     def test_add_worker_reports_a_failed_spawn(self) -> None:
         self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")

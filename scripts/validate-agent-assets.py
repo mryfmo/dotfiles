@@ -1448,6 +1448,18 @@ def validate_repo_claude_settings_portable() -> None:
                     )
 
 
+def report_regime_boundary() -> None:
+    """Print the regime Stop-checklist findings as warnings; never fail CI."""
+    result = subprocess.run(
+        ["bash", str(ROOT / "scripts/check-regime-boundary.sh"), "--report"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    for line in result.stdout.splitlines():
+        print(f"WARN: {line}", file=sys.stderr)
+
+
 def main() -> None:
     manifest = validate_agent_manifest()
     validate_adh_profile(manifest)
@@ -1472,6 +1484,7 @@ def main() -> None:
     validate_git_config()
     validate_no_removed_claude_skill()
     validate_no_obvious_secrets()
+    report_regime_boundary()
     print("agent asset validation ok")
 
 

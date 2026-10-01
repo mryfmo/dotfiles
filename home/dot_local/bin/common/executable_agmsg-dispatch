@@ -10,7 +10,9 @@
 #   worker seating writes agmsg placement records at launch: upstream poke.sh
 #   refuses a member without one ("no placement record"), and a hand-joined
 #   herdr-agents worker gets one only after it first acts from its own pane.
-#   Use poke.sh only for spawn-seated members.
+#   Use poke.sh only for spawn-seated members. It is also the wake path for
+#   an unviewed or headless Herdr workspace (no client attached, a small pane
+#   rect), where poke.sh exits 14/15 because it cannot locate the input box.
 # @arg $1 string Team identifier.
 # @arg $2 string Sender identifier.
 # @arg $3 string Recipient identifier.

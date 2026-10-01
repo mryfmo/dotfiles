@@ -426,13 +426,15 @@ function claim_orchestrator_seat() {
     local pane_id="$2"
     local self="${3:-}"
     local scripts="${HOME}/.agents/skills/agmsg/scripts"
-    local identity sid="" pid="" result owner team self_name=off
+    local identity sid="" pid="" result owner team self_name=off teams attempt replaced=""
 
     [[ -x ${scripts}/actas-claim.sh && -x ${scripts}/identities.sh ]] || return 0
     is_main_checkout "${workdir}" || return 0
     identity="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${workdir}" claude-code 2> /dev/null |
         awk -F '\t' '$2 !~ /-a[0-9][0-9][0-9]$/ { print $2 }' | sort -u)" || identity=""
     [[ -n ${identity} && ${identity} != *$'\n'* ]] || return 0
+    teams="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${workdir}" claude-code 2> /dev/null |
+        awk -F '\t' -v name="${identity}" '$2 == name { print $1 }' | sort -u | grep -c .)" || teams=1
     if [[ ${self} == --self ]]; then
         sid="${HOOK_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
         pid="$(claude_ancestor_pid)" || pid="${CLAUDE_PID:-}"
@@ -450,24 +452,24 @@ function claim_orchestrator_seat() {
         printf 'seat_claim=unresolved\n'
         return 0
     fi
-    if result="$(AGMSG_SELF_NAME="${self_name}" AGMSG_RESOLVE_PROJECT=0 \
-        "${scripts}/actas-claim.sh" "${workdir}" claude-code "${identity}" "${sid}.${pid}" 2> /dev/null)"; then
-        printf 'seat_claim=ok owner=%s.%s\n' "${sid}" "${pid}"
-        return 0
-    fi
-    owner="$(sed -n 's/^status=held .*owner=\([^ ]*\).*/\1/p' <<< "${result}" | head -n 1)"
-    team="$(sed -n 's/^status=held team=\([^ ]*\).*/\1/p' <<< "${result}" | head -n 1)"
-    if [[ ${owner} == "${sid}" && -n ${team} ]] &&
+    # actas-claim.sh stops at the first held team (rolling back earlier claims),
+    # so release one same-session bare lock per round: at most one per team.
+    for ((attempt = 0; attempt <= teams; attempt++)); do
+        if result="$(AGMSG_SELF_NAME="${self_name}" AGMSG_RESOLVE_PROJECT=0 \
+            "${scripts}/actas-claim.sh" "${workdir}" claude-code "${identity}" "${sid}.${pid}" 2> /dev/null)"; then
+            printf 'seat_claim=ok owner=%s.%s%s\n' "${sid}" "${pid}" "${replaced:+ replaced_bare_lock=yes}"
+            return 0
+        fi
+        owner="$(sed -n 's/^status=held .*owner=\([^ ]*\).*/\1/p' <<< "${result}" | head -n 1)"
+        team="$(sed -n 's/^status=held team=\([^ ]*\).*/\1/p' <<< "${result}" | head -n 1)"
+        [[ ${attempt} -lt ${teams} && ${owner} == "${sid}" && -n ${team} ]] || break
         (
             export SKILL_DIR="${HOME}/.agents/skills/agmsg"
             # shellcheck source=/dev/null
             source "${scripts}/lib/actas-lock.sh" && actas_lock_release "${team}" "${identity}" "${sid}"
-        ) 2> /dev/null &&
-        result="$(AGMSG_SELF_NAME="${self_name}" AGMSG_RESOLVE_PROJECT=0 \
-            "${scripts}/actas-claim.sh" "${workdir}" claude-code "${identity}" "${sid}.${pid}" 2> /dev/null)"; then
-        printf 'seat_claim=ok owner=%s.%s replaced_bare_lock=yes\n' "${sid}" "${pid}"
-        return 0
-    fi
+        ) 2> /dev/null || break
+        replaced=yes
+    done
     printf 'seat_claim=failed %s\n' "$(head -n 1 <<< "${result}")"
 }
 

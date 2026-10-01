@@ -1560,20 +1560,30 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             result.stdout.splitlines(),
         )
 
-    def install_orchestrator_seat_fakes(self, held_owner: str = "") -> None:
+    def install_orchestrator_seat_fakes(
+        self,
+        held: tuple[tuple[str, str], ...] = (),
+        teams: tuple[str, ...] = ("dotfiles",),
+    ) -> None:
+        """Fake agmsg: the n-th actas-claim call answers held[n] (team, owner), then ok."""
         scripts = self.install_agmsg_fakes(
-            claude_identities_output="dotfiles\tclaude-remediation-dot"
+            claude_identities_output="\n".join(
+                f"{team}\tclaude-remediation-dot" for team in teams
+            )
         )
-        held_marker = self.temp_dir / "claim-held-once"
+        counter = self.temp_dir / "claim-calls"
+        answers = "".join(
+            f"    {index}) printf 'status=held team={team} owner={owner}\\n'; exit 1 ;;\n"
+            for index, (team, owner) in enumerate(held)
+        )
         claim = scripts / "actas-claim.sh"
         claim.write_text(
             f"""#!/usr/bin/env bash
 printf 'actas-claim %s resolve=%s self_name=%s\\n' "$*" "${{AGMSG_RESOLVE_PROJECT:-}}" "${{AGMSG_SELF_NAME:-}}" >> {self.calls_path}
-if [[ -n "{held_owner}" && ! -e {held_marker} ]]; then
-    : > {held_marker}
-    printf 'status=held team=dotfiles owner={held_owner}\\n'
-    exit 1
-fi
+n="$(cat {counter} 2> /dev/null || printf 0)"
+printf '%s\\n' "$((n + 1))" > {counter}
+case "$n" in
+{answers}esac
 printf 'status=ok team=dotfiles\\n'
 """
         )
@@ -1657,7 +1667,7 @@ printf 'status=ok team=dotfiles\\n'
         )
 
     def test_seat_claim_replaces_a_same_session_bare_lock(self) -> None:
-        self.install_orchestrator_seat_fakes(held_owner="sid-stdin")
+        self.install_orchestrator_seat_fakes(held=(("dotfiles", "sid-stdin"),))
 
         result = self.run_attach_helper(
             in_herdr=True,
@@ -1679,8 +1689,61 @@ printf 'status=ok team=dotfiles\\n'
         )
         self.assertEqual(2, sum(call.startswith("actas-claim ") for call in calls))
 
+    def test_seat_claim_replaces_same_session_bare_locks_in_every_team(self) -> None:
+        self.install_orchestrator_seat_fakes(
+            held=(("team-a", "sid-stdin"), ("team-b", "sid-stdin")),
+            teams=("team-a", "team-b"),
+        )
+
+        result = self.run_attach_helper(
+            in_herdr=True,
+            managed_layout=True,
+            extra_env={"AGMSG_AGENT_PID": "4343"},
+            stdin_text='{"session_id":"sid-stdin"}\n',
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            "seat_claim=ok owner=sid-stdin.4343 replaced_bare_lock=yes",
+            result.stdout.splitlines(),
+        )
+        calls = self.calls_path.read_text().splitlines()
+        releases = [call.split(" skill_dir=")[0] for call in calls if call.startswith("actas_lock_release ")]
+        self.assertEqual(
+            [
+                "actas_lock_release team-a claude-remediation-dot sid-stdin",
+                "actas_lock_release team-b claude-remediation-dot sid-stdin",
+            ],
+            releases,
+        )
+        self.assertEqual(3, sum(call.startswith("actas-claim ") for call in calls))
+
+    def test_seat_claim_fails_when_a_later_team_is_held_by_another_session(self) -> None:
+        self.install_orchestrator_seat_fakes(
+            held=(("team-a", "sid-stdin"), ("team-b", "other-sid.999")),
+            teams=("team-a", "team-b"),
+        )
+
+        result = self.run_attach_helper(
+            in_herdr=True,
+            managed_layout=True,
+            extra_env={"AGMSG_AGENT_PID": "4343"},
+            stdin_text='{"session_id":"sid-stdin"}\n',
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            "seat_claim=failed status=held team=team-b owner=other-sid.999",
+            result.stdout.splitlines(),
+        )
+        calls = self.calls_path.read_text().splitlines()
+        self.assertEqual(
+            ["actas_lock_release team-a claude-remediation-dot sid-stdin"],
+            [call.split(" skill_dir=")[0] for call in calls if call.startswith("actas_lock_release ")],
+        )
+
     def test_seat_claim_held_by_another_session_fails_without_release(self) -> None:
-        self.install_orchestrator_seat_fakes(held_owner="other-sid.999")
+        self.install_orchestrator_seat_fakes(held=(("dotfiles", "other-sid.999"),))
 
         result = self.run_attach_helper(
             in_herdr=True,

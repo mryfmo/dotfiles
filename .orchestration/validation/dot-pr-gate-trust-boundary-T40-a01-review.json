@@ -1,0 +1,29 @@
+[
+  {
+    "id": "T40-review-collector",
+    "body": "Independent review /root/t40_independent_review found P1: arbitrary descendants with the same merge-base could supply an untrusted collector or delete it to trigger fallback. Addressed by retrieving the collector only from the GitHub-verified base SHA. Both attack regressions failed before the fix and pass afterward. Independent follow-up found no remaining finding.",
+    "scope": "file",
+    "path": "scripts/require-crit-review.py",
+    "resolved": true
+  },
+  {
+    "id": "T40-review-symlinks",
+    "body": "Independent review found P2: resolving aliases could hide a changed scripts/policy.json symlink or accept that alias as evidence. Addressed with lexical and resolved location checks plus exact lexical diff-entry comparison. Both directions have regression coverage; independent follow-up confirmed the fix.",
+    "scope": "file",
+    "path": "scripts/require-crit-review.py",
+    "resolved": true
+  },
+  {
+    "id": "T40-review-first-parent",
+    "body": "Independent review found P2: older bases did not enforce the task's first-parent restriction. Addressed with rev-list --first-parent membership validation and tests for shared ancestors, older base-side commits, and merged second-parent history.",
+    "scope": "file",
+    "path": "scripts/require-crit-review.py",
+    "resolved": true
+  },
+  {
+    "id": "T40-review-final",
+    "body": "Independent reviewer /root/t40_independent_review re-read the final five-file implementation diff: no remaining scoped findings. Collector provenance, evidence path boundaries, older-base first-parent checks, raw GraphQL strings, and regression coverage were inspected. Reviewer did not rerun tests. Verdict: correct. This record is local process evidence, not reviewer authentication or orchestrator acceptance.",
+    "scope": "review",
+    "resolved": true
+  }
+]

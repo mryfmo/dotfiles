@@ -1,0 +1,23 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t46_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Orchestrator adversarial review of PR #220 head a71e78d (12 non-merge commits, nine revise rounds) from git objects: herdr-agents --add-worker ends with a linkage line from a per-invocation agmsg-dispatch PING (pane from the spawn placement record via upstream agmsg_spawn_path, used only when in the same workspace, still present, and not pre-dating this spawn; legacy fallback only without the resolver; resolver refusal = placement-conflict; failed dispatch prints the exact invocation, exit code and read_at/PONG query to stderr; PONG matched on task_id and id > ping_id; decimal-validated wait; exactly one orchestrator identity); SKILL and rule: evidence-before-blocker invariant, headless-workspace agmsg-dispatch wake with the message argument, placement confirmed from the record not team.sh, codify-in-repo rule, Start/Stop checklists reconciled with the T45 pane-less bullet, teardown wording scoped (per type at non-seat worktrees, one name across types at an active seat); scripts/check-regime-boundary.sh + make check-regime-boundary (per-worktree untracked probe, active-seat identity rule, per-type surplus elsewhere, crit servers, leftover worker workspaces by label and pane cwd, seat-lock check against the main checkout), WARN-only in validate-agent-assets; agmsg-dispatch @description; worker-b and env-converge-T10 removed with the T10 WIP preserved on wip/pr-feedback-codex-review-T10; orchestrator-review kept. 681 tests OK, shfmt/shellcheck clean, render-check, validate; CI green Linux+macOS; CLEAN. Codex audits of all 12 commits: 7d0c585, b91f949, 91cc85f, 00573f3, 98ea49f incorrect with each finding fixed by the following commit; the other seven correct, a71e78d correct. PR feedback: 14 fixed, the resident-pair comment refuted (prefix is '<repo> worker '), rest not-applicable.",
+    "author": "claude-code",
+    "created_at": "2026-10-01T21:27:14Z",
+    "updated_at": "2026-10-01T21:27:14Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_t46_01",
+        "body": "Approved; acceptance record .orchestration/acceptance/dot-orchestrator-linkage-evidence-T46-a01.md.",
+        "author": "claude-code",
+        "created_at": "2026-10-01T21:27:14Z",
+        "review_round": 1
+      }
+    ]
+  }
+]

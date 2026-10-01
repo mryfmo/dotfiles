@@ -1,0 +1,516 @@
+{
+  "repo": "mryfmo/dotfiles",
+  "pr": 220,
+  "head_sha": "a71e78defb5f07c2977b3e2f39bb89003bbcec0d",
+  "generated_at": "2026-10-01T21:26:41+00:00",
+  "checks": [
+    {
+      "name": "nix",
+      "conclusion": "skipped",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36927459281/job/110588272157"
+    },
+    {
+      "name": "test (ubuntu-latest, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36927459281/job/110588269380"
+    },
+    {
+      "name": "test (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36927459281/job/110588269051"
+    },
+    {
+      "name": "test (ubuntu-latest, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36927459281/job/110588269029"
+    },
+    {
+      "name": "changes",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36927459281/job/110588198169"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-latest, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36927458321/job/110588193669"
+    },
+    {
+      "name": "private-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36927458321/job/110588193280"
+    },
+    {
+      "name": "public-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36927458321/job/110588193175"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-latest, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36927458321/job/110588193153"
+    },
+    {
+      "name": "validate",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36927458374/job/110588193108"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-latest, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36927458321/job/110588193089"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-latest, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36927458321/job/110588192738"
+    }
+  ],
+  "items": [
+    {
+      "source": "issue_comment",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary>⚙️ Run configuration</summary>\n> \n> **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> \n> **Review profile**: CHILL\n> \n> **Plan**: Advanced\n> \n> **Run ID**: `be0a2c8d-2be1-411f-ab35-d8185afba8d9`\n> \n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autopilot</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n\n> Autopilot is currently an internal CodeRabbit preview.\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n---\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=220)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary>❤️ Share</summary>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/220#issuecomment-5931504578",
+      "disposition": "not-applicable:CodeRabbit \"review skipped\" status comment; no review content"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `7d0c5859bc`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/220#pullrequestreview-5379276686",
+      "commit": "7d0c5859bc48f730a876817841ffd8f9b1413f15",
+      "disposition": "not-applicable:Codex Review container comment; each inline suggestion is dispositioned as its own review_comment item"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `91cc85ff2c`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/220#pullrequestreview-5380218010",
+      "commit": "91cc85ff2cbb08f5b4654371b7f32c16634201e8",
+      "disposition": "not-applicable:Codex Review container comment; each inline suggestion is dispositioned as its own review_comment item"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `00573f30f7`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/220#pullrequestreview-5381056891",
+      "commit": "00573f30f71aab50b7e2db1282c9176dfc73f68c",
+      "disposition": "not-applicable:Codex Review container comment; each inline suggestion is dispositioned as its own review_comment item"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `b29ef04f80`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/220#pullrequestreview-5381413374",
+      "commit": "b29ef04f80d9f2da085045a56ed8a1f9370079e9",
+      "disposition": "not-applicable:Codex Review container comment; each inline suggestion is dispositioned as its own review_comment item"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `9e36e63352`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/220#pullrequestreview-5381980347",
+      "commit": "9e36e63352938520e426aa5e112a1c68a9107770",
+      "disposition": "not-applicable:Codex Review container comment; each inline suggestion is dispositioned as its own review_comment item"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `2721f0c109`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/220#pullrequestreview-5382449806",
+      "commit": "2721f0c1091154b5c4d667886df6a197d2cb7e24",
+      "disposition": "not-applicable:Codex Review container comment; each inline suggestion is dispositioned as its own review_comment item"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `d806a3d2a6`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/220#pullrequestreview-5383059031",
+      "commit": "d806a3d2a697c82956e707ea7d36de25e2c26a8e",
+      "disposition": "not-applicable:Codex Review container comment; each inline suggestion is dispositioned as its own review_comment item"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/check-regime-boundary.sh",
+      "line": 54,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Exclude the resident pair from worker-workspace checks**\n\nThe filter matches every workspace whose label merely starts with the repository basename. Full mode creates the normal resident pair with the label `<repo> agents` (`executable_herdr-agents:2071`), which this selects even though the new Stop checklist says that pair stays resident. Thus `make check-regime-boundary` fails, and `make validate-agent-assets` emits a warning, in the normal healthy full-mode state; match the `<repo> worker ` label prefix instead.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/220#discussion_r4155396518",
+      "resolved": false,
+      "outdated": true,
+      "disposition": "not-applicable:the filter prefix is \"<main checkout basename> worker \" (scripts/check-regime-boundary.sh), so the resident \"<repo> agents\" workspace does not match; verified in the diff"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 865,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Correlate PONGs with the linkage PING**\n\nA PONG is considered successful solely by team, sender, recipient, and the fixed `task_id=bringup`, so a PONG left by an earlier worker instance satisfies this immediately. This occurs after a worker is removed and re-added with a reused `-aNNN` identity; message history is deliberately retained (`SKILL.md:35`). The command can therefore print `pong=yes` for a new worker that never answered this PING, allowing the documented PONG-before-task gate to be bypassed. Restrict the lookup to messages created after, or otherwise linked to, this invocation's PING.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/220#discussion_r4155396533",
+      "resolved": false,
+      "outdated": true,
+      "disposition": "fixed:b91f949"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 874,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Validate the linkage PONG wait before arithmetic**\n\nWhen `HERDR_AGENTS_LINKAGE_PONG_WAIT` is set to a nonnumeric value such as `foo` or an invalid arithmetic expression such as `1/0`, this expansion aborts the `set -u` shell after `agmsg-dispatch` has already read the PING. `--add-worker` then exits without printing its required final `linkage=` evidence line, making a configuration typo look like an unexplained worker-launch failure; reject invalid values before computing the deadline.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/220#discussion_r4156151557",
+      "resolved": false,
+      "outdated": true,
+      "disposition": "fixed:00573f3"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1805,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject ambiguous orchestrator identities before linkage**\n\nWhen the selected team has multiple non-`-aNNN` Claude identities and the worker identity already exists, `ensure_worker_identity` does not perform its normal uniqueness check and this pipeline silently selects the first sorted name. The PING and PONG can then be routed through a stale or different orchestrator identity while `--add-worker` reports `pong=yes`, even though the active orchestrator did not receive the response; reject multiple leaders here instead of using `head -n 1`.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/220#discussion_r4156151570",
+      "resolved": false,
+      "outdated": true,
+      "disposition": "fixed:00573f3"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 896,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Correlate linkage PONGs with the current PING**\n\nWhen an old worker's response to an earlier, identical `task_id=bringup` PING is delayed until after this invocation inserts its new PING (for example, around removal and re-addition of a reused `-aNNN` identity), this query reports `pong=yes` even if the new worker never received the new PING. Fresh evidence: the `id > ${ping_id}` filter now rejects PONGs already in history, but it still accepts a delayed response written after the new PING; include a per-invocation nonce or an explicit reply-to identifier in the PONG before reporting the documented gate as satisfied.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/220#discussion_r4156830430",
+      "resolved": false,
+      "outdated": true,
+      "disposition": "fixed:9e36e63"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/check-regime-boundary.sh",
+      "line": 45,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Flag missing identities for active worker seats**\n\nWhen an active pair or worker worktree has lost its only registration, `identities.sh` yields no rows, this assigns `names=0`, and the check reports no violation. The new Stop checklist requires exactly one identity for each active checkout, so `make check-regime-boundary` can pass while delivery has no identity to target; distinguish inactive agent types from active seats and flag zero names for the latter.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/220#discussion_r4156830444",
+      "resolved": false,
+      "outdated": true,
+      "disposition": "fixed:9e36e63"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/check-regime-boundary.sh",
+      "line": 37,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Scan all worktrees for untracked orchestration files**\n\nWhen the orchestrator runs this check from the main checkout while an additional worker worktree still contains an untracked `.orchestration/...` artifact, this command inspects only `root`, not the paths already enumerated by `git worktree list`. The new boundary check therefore exits successfully despite the required zero-untracked-tail condition being violated in the worker checkout; run the untracked-file probe for each registered worktree.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/220#discussion_r4157121685",
+      "resolved": false,
+      "outdated": true,
+      "disposition": "fixed:9e36e63"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 858,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Verify placement panes belong to the new workspace**\n\nAfter a failed or retried spawn, a retained placement record can name a live pane in an older workspace. This path always prefers that record without checking its `<workspace>:<pane>` value against `workspace_id`; `agmsg-dispatch` then resolves pane IDs globally, so the old worker can read the PING and make `--add-worker` report `linkage=ok` even though the newly created worker was never reached. Reject placement records for a different workspace and fall back to the new pane lookup.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/220#discussion_r4157121699",
+      "resolved": false,
+      "outdated": false,
+      "disposition": "fixed:9e36e63"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/check-regime-boundary.sh",
+      "line": 88,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Constrain worker-workspace checks to matching pane CWD**\n\nWhen two independent checkouts share a basename (for example, two separate `dotfiles` clones) and the other checkout has a `dotfiles worker <name>` workspace open, this label-prefix filter reports it as an additional worker for the current repository and makes its boundary check fail. `find_managed_workspaces` in `executable_herdr-agents` already resolves this ambiguity by checking the workspace panes' `cwd`; apply the same repository-path check here rather than relying on the non-unique label.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/220#discussion_r4157568459",
+      "resolved": false,
+      "outdated": true,
+      "disposition": "fixed:2721f0c"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/check-regime-boundary.sh",
+      "line": 75,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject mixed runtime identities on an active seat**\n\nWhen the configured worker worktree has one `claude-code` identity and one `codex` identity (or the main checkout has its required Claude identity plus a Codex identity), each per-type count is one and this check reports no violation. That leaves two physical identities registered at one active checkout despite the Stop checklist's exactly-one-seat requirement, allowing stale identities to survive the boundary check and later make worker routing ambiguous; count identities across both runtime types for active seats.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/220#discussion_r4157961184",
+      "resolved": false,
+      "outdated": true,
+      "disposition": "fixed:d806a3d"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 864,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Validate placement panes before using them for linkage**\n\nIf a failed or retried spawn leaves a placement record for an exited pane in the same workspace, the workspace-ID check accepts that record and dispatches to the old pane instead of the newly spawned pane. `agmsg-dispatch` rejects a pane that is no longer listed, so `--add-worker` reports `linkage=unreached` and exits even though the current worker pane is available. Fresh evidence: the new check excludes only records from a different workspace, not stale panes within the current workspace; verify the recorded pane is still present before preferring it.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/220#discussion_r4157961201",
+      "resolved": false,
+      "outdated": true,
+      "disposition": "fixed:d806a3d"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "scripts/check-regime-boundary.sh",
+      "line": 111,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Check the main checkout's orchestrator lock**\n\nWhen this target runs from a linked worktree, `root` is that worker checkout while `main` correctly resolves to the main checkout. Passing `root` here makes `orchestrator_seat_lock_warnings` look for a non-worker Claude identity and live Claude process in the worker checkout, so it returns no warning and misses a bare orchestrator lock at the main checkout; pass `main` to the helper while retaining `root` only to locate the module.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/220#discussion_r4157961207",
+      "resolved": false,
+      "outdated": true,
+      "disposition": "fixed:d806a3d"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 869,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject placement records from before this spawn**\n\nAfter a failed/retried spawn, a retained record can name an older pane that is still listed in the same workspace but has no live agent, while this invocation creates a new worker pane. This membership-only check accepts the old record, so `agmsg-dispatch` targets it and reports `linkage=unreached` even though the fresh worker is reachable. Fresh evidence: the code receives the pre-spawn pane set in `known` but never rejects a placement pane contained in it; treat such records as stale and fall back to the post-spawn pane lookup.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/220#discussion_r4158445747",
+      "resolved": false,
+      "outdated": false,
+      "disposition": "fixed:98ea49f"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_agents/skills/agmsg-orchestration/SKILL.md",
+      "line": 23,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Direct pane-less bring-up through agmsg-dispatch**\n\nFor the pane-less cases this new checklist explicitly incorporates (plain shell, mosh/SSH), “exactly as that bullet describes” still directs the operator to send the PING with `poke.sh` (line 22). In an unviewed/headless Herdr workspace, the newly added guidance says that command exits 14/15 rather than waking the worker, so the mandated PONG-before-task gate cannot complete. Update this checklist/bullet to use `agmsg-dispatch` and its receipt/PONG evidence in that case.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/220#discussion_r4158445756",
+      "resolved": false,
+      "outdated": false,
+      "disposition": "fixed:98ea49f"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 888,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Preserve linkage diagnostics when dispatch fails**\n\nWhen `agmsg-dispatch` cannot get a read receipt, this redirects away both its output and the exact PING invocation, then emits only `linkage=unreached rc=… hint=…`. The newly added blocker procedure requires the exact command and `read_at`/PONG query as attached evidence after trying this wake path; because the pane ID and per-invocation task ID are not printed, the operator cannot reconstruct or report that evidence from the required final line. Emit the invocation and the applicable receipt/PONG query (or its unavailability) to stderr before returning.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/220#discussion_r4158445768",
+      "resolved": false,
+      "outdated": true,
+      "disposition": "fixed:98ea49f"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36927459281/job/110588269380",
+      "check": "test (ubuntu-latest, client)",
+      "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36927459281/job/110588269051",
+      "check": "test (macos-14, client)",
+      "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36927459281/job/110588269029",
+      "check": "test (ubuntu-latest, server)",
+      "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36927459281/job/110588198169",
+      "check": "changes",
+      "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36927458321/job/110588193669",
+      "check": "public-bootstrap (ubuntu-latest, server)",
+      "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36927458321/job/110588193280",
+      "check": "private-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "warning",
+      "path": ".github",
+      "line": 176681,
+      "body": "The following taps are not trusted:\n  aws/tap\n  azure/bicep\n  hashicorp/tap\n\nHomebrew is currently ignoring formulae, casks and commands from these taps because tap trust is required.\n\nPrefer trusting only the specific formulae, casks or commands you need.\nTrust installed formulae from these taps with:\n  brew trust --formula azure/bicep/bicep\n  brew trust --formula hashicorp/tap/packer\nTrust other specific casks and commands with:\n  brew trust --cask <user>/<tap>/<cask>\n  brew trust --command <user>/<tap>/<command>\nWhole-tap trust is broader and includes all current and future formulae,\ncasks and commands from the listed taps. Trust whole taps with:\n  brew trust aws/tap azure/bicep hashicorp/tap\nUntap them with:\n  brew untap aws/tap azure/bicep hashicorp/tap\nTo disable trust checks:\n  export HOMEBREW_NO_REQUIRE_TAP_TRUST=1\nThis is not recommended and will be removed in a later release.\nFor more information, see:\n  https://docs.brew.sh/Tap-Trust",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36927458321/job/110588193175",
+      "check": "public-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:Homebrew tap-trust warning from the macOS CI runner installing pre-existing Brewfile taps; this PR touches no install/ or Brewfile path"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36927458321/job/110588193175",
+      "check": "public-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36927458321/job/110588193153",
+      "check": "public-bootstrap (ubuntu-latest, client)",
+      "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36927458374/job/110588193108",
+      "check": "validate",
+      "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36927458321/job/110588193089",
+      "check": "private-bootstrap (ubuntu-latest, server)",
+      "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36927458321/job/110588192738",
+      "check": "private-bootstrap (ubuntu-latest, client)",
+      "disposition": "not-applicable:GitHub runner-image migration / macOS capacity notice from the workflow environment; no file of this PR is involved"
+    },
+    {
+      "source": "status",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "success",
+      "path": null,
+      "line": null,
+      "body": "CodeRabbit: Review skipped: automatic reviews are disabled",
+      "url": null,
+      "check": "CodeRabbit",
+      "disposition": "not-applicable:passing CodeRabbit status (review skipped by repo config)"
+    }
+  ]
+}

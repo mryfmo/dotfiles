@@ -86,3 +86,41 @@ gh pr checks <pr-number>
 2. Artifacts at the exact expected paths with verbatim outputs, PR number and head SHA.
 3. CompactionDB from the main checkout: `memory add --kind decision --scope project` with the `[memory:decision]` text above — paste command and output.
 4. `AGMSG-RESULT v1` with all artifact paths; `cost:` line in the report.
+
+## Orchestrator amendment r3 (2026-10-02; resume after the Codex pause)
+
+The pause on Codex usage (2026-09-29) is lifted; the seat in
+`.claude/worktrees/worker-sec` is re-created with `herdr-agents --add-worker`
+(same identity `codex-security-dot-a006`, same worktree). Resume point, as
+verified by the orchestrator from the worktree (read-only):
+
+- Branch `fix/pr-gate-trust-boundary`, checked out at f45cf73 with zero
+  commits ahead of it; nothing was pushed, no PR exists.
+- Uncommitted WIP in exactly the five allowed files (212 insertions, 15
+  deletions): `feedback_path_error` (item 2) and `pr_base_errors` (item 1)
+  are drafted in `scripts/require-crit-review.py`, with tests started in
+  `tests/unit/test_require_crit_review.py` and `tests/unit/test_pr_feedback.py`,
+  a four-line change in `scripts/pr-feedback.py`, and one sentence in
+  `home/dot_config/claude/rules/pr-integration.md`. Keep this WIP; do not
+  reset the worktree.
+- `origin/main` has moved past f45cf73 (T43–T49) but
+  `git log f45cf73..origin/main -- <the five files>` is empty, so a rebase is
+  trivial: `git fetch origin && git rebase origin/main` (name the resulting
+  base sha in the report), then continue items 1–3 as specified above.
+- Shared `.git` writes (refs, config) from the Codex workspace-write sandbox
+  can fail and leave an empty `.git/config.lock` (the r2 failure). If a git
+  metadata write is denied, do not escalate: PONG `status=blocked` with the
+  exact command, and the orchestrator clears the lock.
+  **Ruling after PONG 651 (operator decision 2026-10-02):** the worktree's
+  git metadata (`.git/worktrees/worker-sec/*`, `.git/objects`, `.git/refs`)
+  lives outside the Codex writable root, so every `git add/commit/rebase/push`
+  needs an escalation; the operator answers those prompts in the wQ pane.
+  Request the escalation each time (or once per session if offered), never
+  self-approve, never retry sandboxed; record each escalation in the sandbox
+  file. The structural fix (writable roots for worktree git dirs) is T50.
+- The Understand-Anything auto-update hook stays ignored for this task.
+- The revision-2 scope stands: `README.md` and `home/dot_config/codex/AGENTS.md`
+  remain out of scope; the doc sentence goes into the PR description.
+
+Validation and completion are unchanged; include the verbatim rebase output
+and `git log --oneline origin/main..HEAD` in the validation file.

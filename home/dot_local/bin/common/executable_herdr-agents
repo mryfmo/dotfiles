@@ -829,7 +829,7 @@ function accept_claude_workspace_trust_dialog() {
 function check_worker_linkage() {
     local team="$1" orchestrator="$2" worker="$3" workspace_id="$4" known="$5"
     local scripts="${HOME}/.agents/skills/agmsg/scripts"
-    local placement="" pane="" rest rc=0 db read_at="" pong=no hint deadline ping_id="" record err
+    local placement="" pane="" rest rc=0 db read_at="" pong=no hint deadline ping_id="" record err wait_seconds
     local lib="${scripts}/lib/actas-lock.sh"
 
     record="${HOME}/.agents/skills/agmsg/run/spawn.${team}__${worker}"
@@ -886,7 +886,12 @@ function check_worker_linkage() {
         ping_id="$(sqlite3 -cmd '.timeout 5000' "${db}" "SELECT max(id) FROM messages WHERE team='${team}' AND from_agent='${orchestrator}' AND to_agent='${worker}';" 2> /dev/null)" || ping_id=""
         [[ ${ping_id} =~ ^[0-9]+$ ]] || ping_id=0
         read_at="$(sqlite3 -cmd '.timeout 5000' "${db}" "SELECT read_at FROM messages WHERE id = ${ping_id};" 2> /dev/null)" || read_at=""
-        deadline=$((SECONDS + ${HERDR_AGENTS_LINKAGE_PONG_WAIT:-30}))
+        wait_seconds="${HERDR_AGENTS_LINKAGE_PONG_WAIT:-30}"
+        if [[ ! ${wait_seconds} =~ ^[0-9]+$ ]]; then
+            printf 'herdr-agents: HERDR_AGENTS_LINKAGE_PONG_WAIT must be a whole number of seconds; got %q, using 30.\n' "${wait_seconds}" >&2
+            wait_seconds=30
+        fi
+        deadline=$((SECONDS + wait_seconds))
         while :; do
             if [[ "$(sqlite3 -cmd '.timeout 5000' "${db}" "SELECT count(*) FROM messages WHERE team='${team}' AND from_agent='${worker}' AND to_agent='${orchestrator}' AND id > ${ping_id} AND body LIKE 'AGMSG-PONG v1 task_id=bringup%';" 2> /dev/null)" =~ ^[1-9] ]]; then
                 pong=yes
@@ -1816,12 +1821,20 @@ if [[ ${add_worker_mode} == true ]]; then
     fi
     # The linkage line is the last word on both spawn outcomes: exit non-zero
     # only when the PING was not read (spawn's own code when it also failed).
+    # Exactly one orchestrator (the claim_orchestrator_seat rule): the PING
+    # must not be routed through whichever of several leaders sorts first.
     seat_leader="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${workdir}" claude-code 2> /dev/null |
-        awk -F '\t' -v team="${seat_team}" '$1 == team && $2 !~ /-a[0-9][0-9][0-9]$/ { print $2 }' | sort -u | head -n 1)" || seat_leader=""
+        awk -F '\t' -v team="${seat_team}" '$1 == team && $2 !~ /-a[0-9][0-9][0-9]$/ { print $2 }' | sort -u)" || seat_leader=""
     linkage_rc=0
-    if [[ -n ${seat_leader} ]]; then
+    if [[ -n ${seat_leader} && ${seat_leader} != *$'\n'* ]]; then
         check_worker_linkage "${seat_team}" "${seat_leader}" "${seat_name}" "${seat_workspace_id}" "${seat_panes}" || linkage_rc=$?
     else
+        if [[ -z ${seat_leader} ]]; then
+            printf 'herdr-agents: no orchestrator claude-code identity in team %s at %s; linkage PING not sent.\n' "${seat_team}" "${workdir}" >&2
+        else
+            printf 'herdr-agents: several orchestrator claude-code identities in team %s at %s (%s); linkage PING not sent.\n' \
+                "${seat_team}" "${workdir}" "$(tr '\n' ' ' <<< "${seat_leader}" | sed 's/ $//')" >&2
+        fi
         printf 'linkage=unreached rc=2 hint=agmsg-dispatch\n'
         linkage_rc=2
     fi

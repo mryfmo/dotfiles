@@ -2977,6 +2977,35 @@ exit {exit_code}
             any(call.startswith("agmsg-dispatch ") and " w-test:p5 " in call for call in self.calls_path.read_text().splitlines())
         )
 
+    def test_add_worker_linkage_survives_a_non_numeric_pong_wait(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes()
+
+        result = self.run_helper(
+            "--add-worker", ".claude/worktrees/b1", "--kind", "codex",
+            extra_env={"HERDR_AGENTS_LINKAGE_PONG_WAIT": "foo"},
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual("linkage=ok read_at=2026-10-01T00:00:00Z pong=no", result.stdout.splitlines()[-1])
+        self.assertIn("HERDR_AGENTS_LINKAGE_PONG_WAIT must be a whole number of seconds", result.stderr)
+
+    def test_add_worker_linkage_refuses_several_orchestrator_identities(self) -> None:
+        # The worker seat already exists (so naming it needs no leader); two
+        # non-worker claude-code identities make the PING's sender ambiguous.
+        self.write_worktree_seat(
+            worktree_identities="dotfiles\tclaude-standard-dot-a007",
+            main_identities="dotfiles\tclaude-remediation-dot\ndotfiles\tclaude-second-dot",
+        )
+        self.write_seat_lifecycle_fakes()
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "claude")
+
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertEqual("linkage=unreached rc=2 hint=agmsg-dispatch", result.stdout.splitlines()[-1])
+        self.assertIn("several orchestrator claude-code identities in team dotfiles", result.stderr)
+        self.assertFalse(any(call.startswith("agmsg-dispatch ") for call in self.calls_path.read_text().splitlines()))
+
     def test_add_worker_linkage_ignores_a_pong_older_than_this_ping(self) -> None:
         self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
         self.write_seat_lifecycle_fakes()

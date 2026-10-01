@@ -164,6 +164,10 @@ unit-test:
 validate-agent-assets:
 	uv run --with pyyaml scripts/validate-agent-assets.py
 
+.PHONY: render-check
+render-check:
+	uv run --with pyyaml scripts/generate-agent-configs.py --check
+
 .PHONY: require-crit-review
 # BASE=<ref> adds the committed <ref>...HEAD changes and requires
 # PR_FEEDBACK_EVIDENCE for PR integration (home/dot_config/claude/rules/pr-integration.md).

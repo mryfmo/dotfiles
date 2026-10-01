@@ -406,8 +406,6 @@ def render_claude_sandbox(manifest: dict[str, Any]) -> dict[str, Any]:
         "allowedDomains": sandbox["network"]["allowedDomains"],
         "allowUnixSockets": sandbox["network"]["allowUnixSockets"],
     }
-    if "allowAllUnixSockets" in sandbox["network"]:
-        network["allowAllUnixSockets"] = sandbox["network"]["allowAllUnixSockets"]
     return {
         "enabled": sandbox["enabled"],
         "failIfUnavailable": sandbox["failIfUnavailable"],

@@ -381,10 +381,6 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str)
         fail(
             f"{label}.network.allowUnixSockets entries must be absolute or ~/ paths without globs: {invalid}"
         )
-    if "allowAllUnixSockets" in sandbox.get("network", {}) and not isinstance(
-        sandbox["network"]["allowAllUnixSockets"], bool
-    ):
-        fail(f"{label}.network.allowAllUnixSockets must be a boolean")
 
 
 def validate_claude_settings(manifest: dict[str, Any]) -> None:

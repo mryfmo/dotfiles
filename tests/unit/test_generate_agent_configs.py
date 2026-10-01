@@ -503,13 +503,10 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             "codex": {"sandbox_workspace_write": {"writable_roots": ["/root-a"]}},
         }
         plain = self.module.render_claude_sandbox(manifest)
-        self.assertNotIn("allowAllUnixSockets", plain["network"])
         self.assertEqual(["/root-a"], plain["filesystem"]["allowWrite"])
 
-        manifest["claude"]["sandbox"]["network"]["allowAllUnixSockets"] = True
         manifest["claude"]["sandbox"]["filesystem"] = {"extra_allow_write": ["~/.cache/uv"]}
         extended = self.module.render_claude_sandbox(manifest)
-        self.assertIs(True, extended["network"]["allowAllUnixSockets"])
         self.assertEqual(["/root-a", "~/.cache/uv"], extended["filesystem"]["allowWrite"])
 
     def test_audit_profile_renders_read_only_sandbox_override(self) -> None:

@@ -55,8 +55,7 @@
       ],
       "allowUnixSockets": [
         "~/.config/herdr/herdr.sock"
-      ],
-      "allowAllUnixSockets": true
+      ]
     }
   },
   "hooks": {

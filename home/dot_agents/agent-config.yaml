@@ -224,12 +224,9 @@ claude:
       # be listed without a glob, so it is not.
       allowUnixSockets:
         - ~/.config/herdr/herdr.sock
-      # Linux/WSL2 ignore allowUnixSockets, and the seccomp filter otherwise
-      # blocks every Unix socket: the herdr control-plane socket (herdr,
-      # agmsg-dispatch, herdr-agents) and the keyring D-Bus socket gh reads its
-      # token through must be reachable from sandboxed Bash. File and network
-      # isolation are unchanged (T39 live E2E leg 1).
-      allowAllUnixSockets: true
+      # The allow-all Unix socket switch is deliberately not set: with a
+      # docker-group user or a reachable `systemd --user` bus it turns the
+      # auto-approved sandbox into an escape (T44 r2, operator 2026-10-01).
   hooks:
     enforce_uv_hook: ~/.claude/hooks/enforce-uv.sh
     format_edited_files_hook: ~/.claude/hooks/format-edited-files.py

@@ -808,12 +808,14 @@ function accept_claude_workspace_trust_dialog() {
 #   where poke.sh cannot locate the input box) and print one line,
 #   `linkage=ok read_at=<ts> pong=<yes|no>` or
 #   `linkage=unreached rc=<n> hint=<agmsg-dispatch|poke|attach-a-client>`.
-#   The worker pane comes from its spawn placement (`team.sh --json`), else
-#   the workspace's new pane. The hint names the next wake to try:
+#   The worker pane comes from its spawn placement record
+#   (run/spawn.<team>__<worker>: `herdr:<socket>:<pane>`), else the
+#   workspace's new pane; `team.sh --json` is not used because it observes
+#   Codex members by reading their pane. The hint names the next wake to try:
 #   agmsg-dispatch when it is not installed, poke when a placement record
 #   exists, attach-a-client (view the workspace) otherwise. A PONG is
-#   awaited for HERDR_AGENTS_LINKAGE_PONG_WAIT seconds (default 30). The
-#   worker pane is never read.
+#   awaited for HERDR_AGENTS_LINKAGE_PONG_WAIT seconds (default 30) and only a
+#   PONG newer than this PING counts. The worker pane is never read.
 # @arg $1 string Team.
 # @arg $2 string Orchestrator identity (sender).
 # @arg $3 string Worker identity.
@@ -823,11 +825,13 @@ function accept_claude_workspace_trust_dialog() {
 function check_worker_linkage() {
     local team="$1" orchestrator="$2" worker="$3" workspace_id="$4" known="$5"
     local scripts="${HOME}/.agents/skills/agmsg/scripts"
-    local placement="" pane="" rest rc=0 db read_at="" pong=no hint deadline
+    local placement="" pane="" rest rc=0 db read_at="" pong=no hint deadline ping_id=""
+    local record="${HOME}/.agents/skills/agmsg/run/spawn.${team}__${worker}"
 
-    placement="$("${scripts}/team.sh" "${team}" --json 2> /dev/null |
-        jq -r --arg member "${worker}" '.[]? | select(.member == $member) | .pane // empty' 2> /dev/null)" || placement=""
-    [[ ${placement} != unknown:* ]] || placement=""
+    if [[ -r ${record} ]]; then
+        placement="$(head -n 1 "${record}" | cut -f 1)"
+        [[ ${placement} == herdr:*:*:* ]] || placement=""
+    fi
     if [[ -n ${placement} ]]; then
         rest="${placement%:*}"
         pane="${rest##*:}:${placement##*:}"
@@ -857,10 +861,14 @@ function check_worker_linkage() {
         source "${scripts}/lib/validate.sh" && source "${scripts}/lib/storage.sh" && agmsg_db_path "${team}"
     )" 2> /dev/null || db=""
     if [[ -n ${db} ]]; then
-        read_at="$(sqlite3 -cmd '.timeout 5000' "${db}" "SELECT read_at FROM messages WHERE id = (SELECT max(id) FROM messages WHERE team='${team}' AND from_agent='${orchestrator}' AND to_agent='${worker}');" 2> /dev/null)" || read_at=""
+        # This PING is the newest orchestrator-to-worker row right after the
+        # dispatch; only a PONG after it answers this PING.
+        ping_id="$(sqlite3 -cmd '.timeout 5000' "${db}" "SELECT max(id) FROM messages WHERE team='${team}' AND from_agent='${orchestrator}' AND to_agent='${worker}';" 2> /dev/null)" || ping_id=""
+        [[ ${ping_id} =~ ^[0-9]+$ ]] || ping_id=0
+        read_at="$(sqlite3 -cmd '.timeout 5000' "${db}" "SELECT read_at FROM messages WHERE id = ${ping_id};" 2> /dev/null)" || read_at=""
         deadline=$((SECONDS + ${HERDR_AGENTS_LINKAGE_PONG_WAIT:-30}))
         while :; do
-            if [[ "$(sqlite3 -cmd '.timeout 5000' "${db}" "SELECT count(*) FROM messages WHERE team='${team}' AND from_agent='${worker}' AND to_agent='${orchestrator}' AND body LIKE 'AGMSG-PONG v1 task_id=bringup%';" 2> /dev/null)" =~ ^[1-9] ]]; then
+            if [[ "$(sqlite3 -cmd '.timeout 5000' "${db}" "SELECT count(*) FROM messages WHERE team='${team}' AND from_agent='${worker}' AND to_agent='${orchestrator}' AND id > ${ping_id} AND body LIKE 'AGMSG-PONG v1 task_id=bringup%';" 2> /dev/null)" =~ ^[1-9] ]]; then
                 pong=yes
                 break
             fi

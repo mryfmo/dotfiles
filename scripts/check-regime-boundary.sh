@@ -23,6 +23,12 @@ if [[ ${1:-} == --report ]]; then
     report=true
 fi
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+# Worker workspace labels are `<main checkout basename> worker <name>`, also
+# when this script runs from a linked worktree.
+main="${root}"
+if common="$(git -C "${root}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null)"; then
+    main="${common%/.git}"
+fi
 scripts="${HOME}/.agents/skills/agmsg/scripts"
 violations=()
 
@@ -50,7 +56,7 @@ if command -v herdr > /dev/null 2>&1 && command -v jq > /dev/null 2>&1 &&
     workspaces="$(herdr workspace list 2> /dev/null)"; then
     while IFS= read -r label; do
         [[ -n ${label} ]] && violations+=("additional worker workspace still open: ${label} (herdr-agents --remove-worker)")
-    done < <(jq -r --arg prefix "$(basename -- "${root}") worker " \
+    done < <(jq -r --arg prefix "$(basename -- "${main}") worker " \
         '.result.workspaces[]? | .label // empty | select(startswith($prefix))' <<< "${workspaces}" 2> /dev/null)
 fi
 

@@ -2899,6 +2899,72 @@ exit {exit_code}
         self.assertEqual("linkage=ok read_at=2026-10-01T00:00:00Z pong=no", result.stdout.splitlines()[-1])
         self.assertIn("spawn.sh exited 3", result.stderr)
 
+    def test_add_worker_linkage_uses_the_spawn_placement_record_not_team_sh(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes()
+        scripts = self.home_dir / ".agents/skills/agmsg/scripts"
+        team = scripts / "team.sh"
+        team.write_text(f"#!/usr/bin/env bash\nprintf 'team.sh %s\\n' \"$*\" >> {self.calls_path}\n" + team.read_text().split("\n", 1)[1])
+        run = self.home_dir / ".agents/skills/agmsg/run"
+        run.mkdir(parents=True, exist_ok=True)
+        (run / "spawn.dotfiles__codex-standard-dot-a007").write_text(
+            "herdr:/tmp/herdr.sock:w-test:p7\t/project\tcodex\n"
+        )
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "codex")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        spawn_at = next(index for index, call in enumerate(calls) if call.startswith("spawn "))
+        self.assertIn(
+            "agmsg-dispatch dotfiles claude-remediation-dot codex-standard-dot-a007 w-test:p7 "
+            "AGMSG-PING v1 task_id=bringup reason=add-worker-linkage",
+            calls,
+        )
+        self.assertFalse(any(call.startswith("team.sh ") for call in calls[spawn_at:]), calls[spawn_at:])
+
+    def test_add_worker_linkage_ignores_a_pong_older_than_this_ping(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes()
+        with sqlite3.connect(self.temp_dir / "messages.db") as connection:
+            connection.execute(
+                "INSERT INTO messages (team, from_agent, to_agent, body) VALUES "
+                "('dotfiles', 'codex-standard-dot-a007', 'claude-remediation-dot', "
+                "'AGMSG-PONG v1 task_id=bringup status=alive note=earlier-session')"
+            )
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "codex")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual("linkage=ok read_at=2026-10-01T00:00:00Z pong=no", result.stdout.splitlines()[-1])
+
+    def test_regime_boundary_check_finds_worker_workspaces_from_a_worktree(self) -> None:
+        main = self.temp_dir / "dotfiles"
+        main.mkdir()
+        git = ["git", "-c", "user.name=t", "-c", "user.email=t@t"]
+        subprocess.run([*git, "init", "-q", str(main)], check=True)
+        subprocess.run([*git, "-C", str(main), "commit", "-q", "--allow-empty", "-m", "c"], check=True)
+        worktree = main / ".claude/worktrees/wt"
+        subprocess.run([*git, "-C", str(main), "worktree", "add", "-q", "--detach", str(worktree)], check=True)
+        (worktree / "scripts").mkdir()
+        shutil.copy(ROOT / "scripts/check-regime-boundary.sh", worktree / "scripts")
+        self.workspace_list_path.write_text(
+            json.dumps({"result": {"workspaces": [{"label": "dotfiles worker x"}, {"label": "wt worker y"}]}}) + "\n"
+        )
+        env = {**os.environ, "HOME": str(self.home_dir), "PATH": f"{self.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"}
+
+        result = subprocess.run(
+            ["bash", str(worktree / "scripts/check-regime-boundary.sh"), "--report"],
+            cwd=worktree, env=env, check=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            "regime-boundary: additional worker workspace still open: dotfiles worker x (herdr-agents --remove-worker)",
+            result.stdout.splitlines(),
+        )
+        self.assertNotIn("wt worker y", result.stdout)
+
     def test_add_worker_reports_a_failed_spawn(self) -> None:
         self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
         self.write_seat_lifecycle_fakes()

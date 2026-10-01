@@ -19,6 +19,9 @@
 #   `unmasked`, when DIR is at the audited commit or the validator is missing
 #   though git tracks it, untracked, or changed, and a failed mask also fails.
 #   Masking is skipped only when git tracks no validator and none is on disk.
+#   Starting the orchestrator pane, and the SessionStart --attach hook inside
+#   it, claim the orchestrator's agmsg seat outside the sandbox under the
+#   composite `<session_id>.<claude pid>` instance id (`seat_claim=` line).
 #   The orchestrator pane starts Claude with the
 #   `MODEL_PROFILE_<NAME>_CLAUDE_ARGS` of the profile that
 #   MODEL_PROFILE_INTERACTIVE names in ~/.agents/model-profiles.env.
@@ -373,6 +376,55 @@ function is_main_checkout() {
         [[ ${git_dir} == "${common_dir}" ]]
 }
 
+# @description Claim the orchestrator's agmsg seat outside any sandbox under the
+#   composite `<session_id>.<claude pid>` instance id, the token the Stop-hook
+#   inbox check compares the actas lock against. A claim from sandboxed Bash
+#   cannot see the claude pid (pid namespace), writes the bare session id, and
+#   turn delivery then skips silently. Applies only in a git main checkout with
+#   exactly one non-worker (no -aNNN) claude-code identity; otherwise it returns
+#   without output. With `--self` the caller runs inside the pane's claude
+#   (the SessionStart hook), so CLAUDE_CODE_SESSION_ID and CLAUDE_PID name it;
+#   otherwise the session id comes from `herdr agent list` and the pid from
+#   `herdr pane process-info`, and the claim does not rename the caller's pane.
+#   Prints `seat_claim=ok owner=<sid>.<pid>`, `seat_claim=unresolved` (nothing
+#   claimed, never a bare-id lock), or `seat_claim=failed <status line>`.
+# @arg $1 workdir Absolute repository path.
+# @arg $2 pane_id Orchestrator pane id.
+# @arg $3 string Optional `--self`.
+function claim_orchestrator_seat() {
+    local workdir="$1"
+    local pane_id="$2"
+    local self="${3:-}"
+    local scripts="${HOME}/.agents/skills/agmsg/scripts"
+    local identity sid pid result self_name=off
+
+    [[ -x ${scripts}/actas-claim.sh && -x ${scripts}/identities.sh ]] || return 0
+    is_main_checkout "${workdir}" || return 0
+    identity="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${workdir}" claude-code 2> /dev/null |
+        awk -F '\t' '$2 !~ /-a[0-9][0-9][0-9]$/ { print $2 }' | sort -u)" || identity=""
+    [[ -n ${identity} && ${identity} != *$'\n'* ]] || return 0
+    if [[ ${self} == --self ]]; then
+        sid="${CLAUDE_CODE_SESSION_ID:-}"
+        pid="${CLAUDE_PID:-}"
+        self_name=on
+    else
+        sid="$(herdr agent list 2> /dev/null | jq -r --arg pane "${pane_id}" \
+            'first(.result.agents[]? | select(.pane_id == $pane and .agent == "claude") | .agent_session.value // empty) // empty')" || sid=""
+        pid="$(herdr pane process-info --pane "${pane_id}" 2> /dev/null | jq -r \
+            'first(.result.process_info.foreground_processes[]? | select(.name == "claude") | .pid) // empty')" || pid=""
+    fi
+    if [[ -z ${sid} || ! ${pid} =~ ^[0-9]+$ ]]; then
+        printf 'seat_claim=unresolved\n'
+        return 0
+    fi
+    if result="$(AGMSG_SELF_NAME="${self_name}" AGMSG_RESOLVE_PROJECT=0 \
+        "${scripts}/actas-claim.sh" "${workdir}" claude-code "${identity}" "${sid}.${pid}" 2> /dev/null)"; then
+        printf 'seat_claim=ok owner=%s.%s\n' "${sid}" "${pid}"
+    else
+        printf 'seat_claim=failed %s\n' "$(head -n 1 <<< "${result}")"
+    fi
+}
+
 # @description Succeed when the manifest's worker worktree seat applies to DIR.
 #   worker_worktree is host-global, so it applies only to a git main checkout
 #   whose worktree already exists, or that has origin/main and an orchestrator
@@ -646,6 +698,7 @@ function start_claude_in_pane() {
     rename_pane_unless_seat_named "${pane_id}" claude-orchestrator
     start_agent_in_pane claude "${agent_name}" "${pane_id}" "${newly_created}" ${claude_args[@]+"${claude_args[@]}"} > /dev/null
     printf 'orchestrator_profile=%s args=%s\n' "${profile:-none}" "${claude_args[*]:-none}"
+    claim_orchestrator_seat "${workdir}" "${pane_id}"
 }
 
 # @description Accept a claude workspace-trust dialog when one appears.
@@ -1303,6 +1356,9 @@ if [[ ${1:-} == "--attach" ]]; then
     if [[ -z ${HERDR_ENV:-} || -z ${HERDR_PANE_ID:-} || -z ${HERDR_WORKSPACE_ID:-} ]]; then
         exit 0
     fi
+    # SessionStart runs outside the Bash sandbox: claim the orchestrator seat
+    # under this claude's composite id, also in a managed pane.
+    claim_orchestrator_seat "$(pwd -P)" "${HERDR_PANE_ID}" --self
     [[ ${HERDR_AGENTS_LAYOUT:-} == managed ]] && exit 0
 elif [[ ${1:-} == "--bootstrap-agmsg" ]]; then
     bootstrap_mode=true

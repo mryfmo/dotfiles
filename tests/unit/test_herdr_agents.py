@@ -73,6 +73,7 @@ class HerdrAgentsTest(unittest.TestCase):
         # shell, shell-pid (a non-sh name that is the pane's shell_pid),
         # exit-dialog (claude foreground until an Enter), stuck, or unavailable.
         self.process_info_state_path = self.temp_dir / "process-info-state.txt"
+        self.orchestrator_session_path = self.temp_dir / "orchestrator-session.txt"
         # 1 makes the visible snapshot stale: it shows old transcript text and
         # a prompt wait on it times out, as for a background tab.
         self.visible_stale_path = self.temp_dir / "visible-stale.txt"
@@ -192,6 +193,11 @@ if [[ $1 == pane && $2 == wait-output ]]; then
     exit 0
 fi
 if [[ $1 == pane && $2 == process-info ]]; then
+    if [[ ${{4:-}} == w-test:p1 && -s {self.orchestrator_session_path} ]] &&
+        grep -q '^agent start claude-orchestrator' {self.calls_path}; then
+        printf '%s\\n' '{{"id":"cli:pane:process_info","result":{{"process_info":{{"foreground_processes":[{{"argv":["claude"],"cmdline":"claude","name":"claude","pid":4343}}],"pane_id":"w-test:p1"}}}}}}'
+        exit 0
+    fi
     state="$(cat {self.process_info_state_path})"
     if [[ $state == unavailable ]]; then
         exit 1
@@ -263,6 +269,10 @@ if [[ $1 == agent && $2 == list ]]; then
     if (( polls != 0 )); then
         (( polls > 0 )) && printf '%s\\n' "$(( polls - 1 ))" > {self.agent_list_taken_polls_path}
         printf '{{"id":"cli:agent:list","result":{{"agents":[{{"name":"%s","agent_status":"idle"}},{{"agent_status":"idle"}}]}}}}\\n' "$(cat {self.agent_taken_name_path})"
+        exit 0
+    fi
+    if [[ -s {self.orchestrator_session_path} ]]; then
+        printf '{{"id":"cli:agent:list","result":{{"agents":[{{"agent":"claude","pane_id":"w-test:p1","agent_session":{{"value":"%s"}},"agent_status":"idle"}}]}}}}\\n' "$(cat {self.orchestrator_session_path})"
         exit 0
     fi
     printf '%s\\n' '{{"id":"cli:agent:list","result":{{"agents":[{{"agent_status":"idle"}}]}}}}'
@@ -578,6 +588,8 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         env.pop("HERDR_AGENTS_NAME_RELEASE_POLLS", None)
         env.pop("HERDR_AGENTS_NAME_RELEASE_INTERVAL", None)
         env.pop("FPATH", None)
+        env.pop("CLAUDE_CODE_SESSION_ID", None)
+        env.pop("CLAUDE_PID", None)
         if extra_env:
             env.update(extra_env)
         return subprocess.run(
@@ -620,6 +632,8 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         env.pop("HERDR_AGENTS_WORKER_KIND", None)
         env.pop("HERDR_AGENTS_WORKER_PROFILE", None)
         env.pop("HERDR_AGENTS_CODEX_PROFILE", None)
+        env.pop("CLAUDE_CODE_SESSION_ID", None)
+        env.pop("CLAUDE_PID", None)
         if extra_env:
             env.update(extra_env)
         for key in (
@@ -1539,6 +1553,64 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             "orchestrator_profile=deep args=--model claude-fable-5-1 --effort high --advisor fable "
             "--model haiku --effort low",
             result.stdout.splitlines(),
+        )
+
+    def install_orchestrator_seat_fakes(self) -> None:
+        scripts = self.install_agmsg_fakes(
+            claude_identities_output="dotfiles\tclaude-remediation-dot"
+        )
+        claim = scripts / "actas-claim.sh"
+        claim.write_text(
+            f"""#!/usr/bin/env bash
+printf 'actas-claim %s resolve=%s self_name=%s\\n' "$*" "${{AGMSG_RESOLVE_PROJECT:-}}" "${{AGMSG_SELF_NAME:-}}" >> {self.calls_path}
+printf 'status=ok team=dotfiles\\n'
+"""
+        )
+        claim.chmod(0o755)
+        subprocess.run(["git", "init", "-q", str(self.workdir)], check=True)
+
+    def test_orchestrator_pane_start_claims_the_seat_with_the_composite_id(
+        self,
+    ) -> None:
+        self.install_orchestrator_seat_fakes()
+        self.orchestrator_session_path.write_text("sid-test\n")
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("seat_claim=ok owner=sid-test.4343", result.stdout.splitlines())
+        workdir = self.workdir.resolve()
+        self.assertIn(
+            f"actas-claim {workdir} claude-code claude-remediation-dot sid-test.4343 resolve=0 self_name=off",
+            self.calls_path.read_text().splitlines(),
+        )
+
+    def test_orchestrator_pane_start_without_a_session_claims_nothing(self) -> None:
+        self.install_orchestrator_seat_fakes()
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("seat_claim=unresolved", result.stdout.splitlines())
+        self.assertFalse(
+            any(call.startswith("actas-claim ") for call in self.calls_path.read_text().splitlines())
+        )
+
+    def test_session_start_attach_claims_the_seat_in_a_managed_pane(self) -> None:
+        self.install_orchestrator_seat_fakes()
+
+        result = self.run_attach_helper(
+            in_herdr=True,
+            managed_layout=True,
+            extra_env={"CLAUDE_CODE_SESSION_ID": "sid-self", "CLAUDE_PID": "777"},
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("seat_claim=ok owner=sid-self.777", result.stdout.splitlines())
+        workdir = self.workdir.resolve()
+        self.assertIn(
+            f"actas-claim {workdir} claude-code claude-remediation-dot sid-self.777 resolve=0 self_name=on",
+            self.calls_path.read_text().splitlines(),
         )
 
     def test_worker_kind_defaults_to_generated_env_fragment(self) -> None:

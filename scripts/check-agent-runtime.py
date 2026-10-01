@@ -597,6 +597,65 @@ def understand_anything_core_warnings(home: Path | None = None) -> list[str]:
     return []
 
 
+def live_claude_session(project: Path, proc: Path) -> bool:
+    """True when a process named `claude` runs with its cwd at PROJECT (Linux /proc)."""
+    for entry in proc.glob("[0-9]*"):
+        try:
+            if (entry / "comm").read_text().strip() == "claude" and (
+                entry / "cwd"
+            ).resolve() == project:
+                return True
+        except OSError:
+            continue
+    return False
+
+
+def orchestrator_seat_lock_warnings(
+    project: Path | None = None,
+    skill_dir: Path | None = None,
+    proc: Path = Path("/proc"),
+) -> list[str]:
+    """Warn when the orchestrator's actas lock holds a bare session id.
+
+    The Stop-hook inbox check compares the lock owner with the composite
+    `<sid>.<pid>`; a claim from sandboxed Bash cannot see the claude pid (pid
+    namespace) and writes the bare sid, so turn delivery skips silently. Only
+    the non-worker (no -aNNN) claude-code identities at PROJECT are checked,
+    only at the legacy lock path, and only while a claude session runs there.
+    The live-session scan reads /proc, so off Linux (where the pid-namespaced
+    sandbox does not exist) the check finds nothing.
+    """
+    project = (project or ROOT).resolve()
+    skill_dir = skill_dir or HOME / ".agents/skills/agmsg"
+    identities = skill_dir / "scripts/identities.sh"
+    if not identities.is_file() or not live_claude_session(project, proc):
+        return []
+    rows = subprocess.run(
+        [str(identities), str(project), "claude-code"],
+        env={**os.environ, "AGMSG_RESOLVE_PROJECT": "0"},
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout
+    warnings = []
+    for row in sorted(set(rows.splitlines())):
+        team, _, name = row.partition("\t")
+        if not name or re.search(r"-a\d{3}$", name):
+            continue
+        lock = skill_dir / "run" / f"actas.{team}__{name}.session"
+        try:
+            owner = lock.read_text().splitlines()[0].strip()
+        except (OSError, IndexError):
+            continue
+        if owner and not re.search(r"\.\d+$", owner):
+            warnings.append(
+                f"WARN: orchestrator seat lock {lock} holds the bare session id {owner} "
+                f"while a claude session runs in {project}; turn delivery skips silently. "
+                f"Re-claim outside the sandbox: actas-claim.sh {project} claude-code {name} <sid>.<pid>"
+            )
+    return warnings
+
+
 def deployed_target_path(value: str, home: Path) -> Path:
     if value == "~":
         return home
@@ -772,6 +831,7 @@ def check() -> list[str]:
         )
         failures.extend(orphaned_asset_warnings())
     failures.extend(understand_anything_core_warnings())
+    failures.extend(orchestrator_seat_lock_warnings())
     failures.extend(chezmoi_drift_warnings())
     return failures
 

@@ -2724,7 +2724,15 @@ exit {despawn_exit}
     def test_add_worker_derives_the_default_herdr_socket_for_spawn(self) -> None:
         self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
         self.write_seat_lifecycle_fakes()
-        socket_path = self.home_dir / ".config/herdr/herdr.sock"
+        # macOS caps AF_UNIX paths near 104 bytes and its temp dirs are long, so
+        # the socket lives under a short XDG_CONFIG_HOME, which the derivation
+        # honours ahead of $HOME/.config.
+        config_home = Path(
+            tempfile.mkdtemp(prefix="ha-", dir="/tmp" if os.access("/tmp", os.W_OK) else None)
+        )
+        self.addCleanup(shutil.rmtree, config_home, True)
+        socket_path = config_home / "herdr/herdr.sock"
+        socket_path.parent.mkdir()
         try:
             server = socket.socket(socket.AF_UNIX)
         except PermissionError:
@@ -2732,7 +2740,11 @@ exit {despawn_exit}
         self.addCleanup(server.close)
         server.bind(str(socket_path))
 
-        result = self.run_helper("--add-worker", ".claude/worktrees/b1", extra_env={"HERDR_SOCKET_PATH": ""})
+        result = self.run_helper(
+            "--add-worker",
+            ".claude/worktrees/b1",
+            extra_env={"HERDR_SOCKET_PATH": "", "XDG_CONFIG_HOME": str(config_home)},
+        )
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn(f"spawn-socket {socket_path}", self.calls_path.read_text().splitlines())

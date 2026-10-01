@@ -262,9 +262,10 @@ Agent work runs as a three-role constellation. The orchestrator uses the
 `deep` profile (Claude `claude-fable-5-1`, high effort, advisor fable) to
 author tasks, review results, and own acceptance. The worker uses the
 `standard` profile (Claude `claude-opus-5-5`, high effort) to implement one
-task at a time. The auditor uses the `audit` profile (Codex `gpt-6-astra`,
-high reasoning effort, read-only sandbox) for independent
-`codex --profile audit review --commit <sha>` audits. The responsibility
+task at a time. The auditor uses the `audit` profile (Codex `gpt-6.1-sol`,
+xhigh reasoning effort, read-only sandbox; the audit lane requires Codex
+API-key authentication, because the ChatGPT-login account rejects the model)
+for independent `codex --profile audit review --commit <sha>` audits. The responsibility
 boundaries live in `home/dot_config/claude/rules/model-selection.md`,
 `home/dot_config/claude/rules/agmsg-orchestration.md`, and the `## Audit`
 section of `AGENTS.md`.

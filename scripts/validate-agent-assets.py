@@ -749,11 +749,13 @@ def validate_agent_manifest() -> dict[str, Any]:
                 f"{manifest_path} security profile must set codex.{key}: {expected} "
                 f"(operator decision 2026-09-29): {security_codex.get(key)!r}"
             )
-    # Operator pin (2026-09-27): the auditor is codex gpt-6-astra high, read-only.
+    # Operator pin (2026-10-01): the auditor is codex gpt-6.1-sol xhigh, read-only;
+    # this model needs API-key auth (rejected under ChatGPT login: 400 'not
+    # supported when using Codex with a ChatGPT account', probe 2026-10-01).
     audit_codex = profiles["audit"].get("codex", {})
     for key, expected in (
-        ("model", "gpt-6-astra"),
-        ("model_reasoning_effort", "high"),
+        ("model", "gpt-6.1-sol"),
+        ("model_reasoning_effort", "xhigh"),
         ("sandbox_mode", "read-only"),
     ):
         if audit_codex.get(key) != expected:

@@ -94,7 +94,7 @@ def gh_graphql(query: str, variables: dict[str, Any]) -> Any:
     args = ["api", "graphql", "-f", f"query={query}"]
     for key, value in variables.items():
         if value is not None:
-            args.extend(["-F", f"{key}={value}"])
+            args.extend(["-F" if type(value) is int else "-f", f"{key}={value}"])
     return json.loads(gh(args))
 
 
@@ -292,6 +292,8 @@ def collect(
         "repo": repo,
         "pr": number,
         "head_sha": sha,
+        "base_ref": pull["base"]["ref"],
+        "base_sha": pull["base"]["sha"],
         "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(
             timespec="seconds"
         ),

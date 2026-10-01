@@ -45,6 +45,7 @@ class ReviewGuardTest(unittest.TestCase):
         collector.parent.mkdir()
         collector.write_text(
             "import os, sys\n"
+            "assert sys.argv[sys.argv.index('--repo') + 1] == 'mryfmo/dotfiles'\n"
             "if not os.environ.get('FAKE_COLLECTED'):\n"
             "    sys.exit('gh is not authenticated')\n"
             "out = sys.argv[sys.argv.index('--json') + 1]\n"
@@ -54,6 +55,22 @@ class ReviewGuardTest(unittest.TestCase):
         run(["git", "commit", "-m", "init"], self.temp_dir)
         self.collected_dir = Path(tempfile.mkdtemp(prefix="crit-guard-collected-"))
         self.collected = self.collected_dir / "collected.json"
+        self.base_sha = self.head_commit()
+        self.metadata = self.collected_dir / "metadata.json"
+        fake_gh = self.collected_dir / "gh"
+        fake_gh.write_text(
+            f"#!{sys.executable}\n"
+            "import json, os, sys\n"
+            "if sys.argv[1:] == ['repo', 'view', '--json', 'nameWithOwner']:\n"
+            "    print(json.dumps({'nameWithOwner': os.environ.get('GH_REPO', 'mryfmo/dotfiles')}))\n"
+            "else:\n"
+            "    assert sys.argv[1:] in (['pr', 'view', '1', '--json', 'headRefOid,baseRefName,baseRefOid'], ['pr', 'view', '1', '--repo', 'mryfmo/dotfiles', '--json', 'headRefOid,baseRefName,baseRefOid'])\n"
+            "    if os.environ.get('GH_REPO') and '--repo' not in sys.argv:\n"
+            "        print(json.dumps({'headRefOid': 'f' * 40, 'baseRefName': 'main', 'baseRefOid': 'f' * 40}))\n"
+            "    else:\n"
+            "        print(open(os.environ['FAKE_PR_METADATA']).read())\n"
+        )
+        fake_gh.chmod(0o755)
 
     def tearDown(self) -> None:
         shutil.rmtree(self.temp_dir)
@@ -360,21 +377,29 @@ class ReviewGuardTest(unittest.TestCase):
     def write_feedback(
         self,
         items: list[dict],
-        relative_path: str = ".orchestration/validation/pr-feedback.json",
+        relative_path: str = ".orchestration/validation/test-pr-feedback.json",
         head_sha: str | None = None,
     ) -> str:
-        document = {"pr": 1, "head_sha": head_sha or self.head_commit(), "items": items}
+        document = {"repo": "mryfmo/dotfiles", "pr": 1, "head_sha": head_sha or self.head_commit(),
+                    "base_ref": "main", "base_sha": self.base_sha, "items": items}
         self.write_review_file(relative_path, json.dumps(document))
         self.write_collected([{key: value for key, value in item.items() if key != "disposition"} for item in items])
+        self.metadata.write_text(json.dumps({
+            "headRefOid": self.head_commit(), "baseRefName": "main", "baseRefOid": self.base_sha,
+        }))
         return relative_path
 
     def write_collected(self, items: list[dict], head_sha: str | None = None) -> None:
-        document = {"pr": 1, "head_sha": head_sha or self.head_commit(), "items": items}
+        document = {"repo": "mryfmo/dotfiles", "pr": 1, "head_sha": head_sha or self.head_commit(), "items": items}
         self.collected.write_text(json.dumps(document))
 
-    def guard_base(self, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
-        defaults = {"CRIT_REVIEW": "", "FAKE_COLLECTED": str(self.collected)}
-        return run([sys.executable, str(GUARD), "--base", "main"], self.temp_dir, {**defaults, **(env or {})})
+    def guard_base(self, env: dict[str, str] | None = None, base: str = "main") -> subprocess.CompletedProcess[str]:
+        defaults = {
+            "CRIT_REVIEW": "", "FAKE_COLLECTED": str(self.collected),
+            "FAKE_PR_METADATA": str(self.metadata),
+            "PATH": f"{self.collected_dir}{os.pathsep}{os.environ['PATH']}",
+        }
+        return run([sys.executable, str(GUARD), "--base", base], self.temp_dir, {**defaults, **(env or {})})
 
     def test_base_reviews_committed_branch_changes(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
@@ -434,8 +459,8 @@ class ReviewGuardTest(unittest.TestCase):
         for name, (items, message) in cases.items():
             with self.subTest(case=name):
                 if message is None:
-                    self.write_review_file(".orchestration/validation/pr-feedback.json", json.dumps([]))
-                    feedback = ".orchestration/validation/pr-feedback.json"
+                    self.write_review_file(".orchestration/validation/test-pr-feedback.json", json.dumps([]))
+                    feedback = ".orchestration/validation/test-pr-feedback.json"
                     message = "must be a pr-feedback.py document with an items list"
                 else:
                     feedback = self.write_feedback(items)
@@ -580,6 +605,243 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertIn("PR feedback evidence format checked only", result.stdout)
         self.assertNotIn("PR feedback evidence accepted", result.stdout)
 
+    def test_feedback_cannot_hide_an_arbitrary_path_without_base(self) -> None:
+        for path in ("scripts/policy.json", "docs/test-pr-feedback.json",
+                     ".orchestration/validation/feedback.json",
+                     ".orchestration/validation/../test-pr-feedback.json"):
+            with self.subTest(path=path):
+                feedback = self.write_feedback([], relative_path=path)
+                result = self.guard({"PR_FEEDBACK_EVIDENCE": feedback})
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn("evidence must live under .orchestration/validation/ and end with -pr-feedback.json", result.stdout)
+
+    def test_feedback_symlink_cannot_hide_a_file_outside_validation(self) -> None:
+        target = self.write_feedback([], relative_path="docs/test-pr-feedback.json")
+        link = self.temp_dir / ".orchestration/validation/test-pr-feedback.json"
+        link.parent.mkdir(parents=True)
+        link.symlink_to(self.temp_dir / target)
+        result = self.guard({"PR_FEEDBACK_EVIDENCE": str(link)})
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("evidence must live under", result.stdout)
+
+    def test_feedback_does_not_exclude_symlink_aliases_outside_validation(self) -> None:
+        feedback = self.write_feedback([])
+        (self.temp_dir / "scripts/policy.json").symlink_to(self.temp_dir / feedback)
+        result = self.guard({"PR_FEEDBACK_EVIDENCE": feedback})
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("scripts/policy.json", result.stdout)
+
+    def test_feedback_path_itself_must_be_under_validation(self) -> None:
+        feedback = self.write_feedback([])
+        alias = self.temp_dir / "scripts/policy.json"
+        alias.symlink_to(self.temp_dir / feedback)
+        result = self.guard({"PR_FEEDBACK_EVIDENCE": str(alias)})
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("evidence must live under", result.stdout)
+
+    def test_feedback_accepts_absolute_path_through_a_repository_parent_alias(self) -> None:
+        feedback = self.write_feedback([
+            {"source": "annotation", "level": "notice", "disposition": "not-applicable:runner notice"}
+            for _ in range(60)
+        ])
+        path = self.temp_dir / feedback
+        path.write_text(json.dumps(json.loads(path.read_text()), indent=2))
+        alias = self.collected_dir / "parent-alias"
+        alias.symlink_to(self.temp_dir.parent, target_is_directory=True)
+        evidence = alias / self.temp_dir.name / feedback
+        result = self.guard({"PR_FEEDBACK_EVIDENCE": str(evidence)})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("Review not required", result.stdout)
+
+    def test_advanced_base_cannot_supply_an_untrusted_collector(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        self.commit_on_branch("docs/fix.md")
+        feedback = self.write_feedback([])
+        self.write_collected([{"source": "annotation", "level": "warning", "body": "must fix"}])
+        run(["git", "switch", "-c", "forged-base", "main"], self.temp_dir)
+        collector = self.temp_dir / "scripts/pr-feedback.py"
+        collector.write_text(
+            "import json, os, sys\n"
+            "open('executed', 'w').write('untrusted')\n"
+            "data = json.load(open(os.environ['FAKE_COLLECTED']))\n"
+            "data['items'] = []\n"
+            "open(sys.argv[-1], 'w').write(json.dumps(data))\n"
+        )
+        run(["git", "commit", "-am", "untrusted base collector"], self.temp_dir)
+        run(["git", "switch", "feature"], self.temp_dir)
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback}, base="forged-base")
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertFalse((self.temp_dir / "executed").exists())
+
+    def test_advanced_base_cannot_delete_collector_to_trigger_head_fallback(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        self.commit_on_branch("docs/fix.md")
+        collector = self.temp_dir / "scripts/pr-feedback.py"
+        collector.write_text(collector.read_text() + "open('executed', 'w').write('untrusted')\n")
+        run(["git", "commit", "-am", "head collector"], self.temp_dir)
+        feedback = self.write_feedback([])
+        self.write_collected([{"source": "annotation", "level": "warning", "body": "must fix"}])
+        run(["git", "switch", "-c", "forged-base", "main"], self.temp_dir)
+        run(["git", "rm", "scripts/pr-feedback.py"], self.temp_dir)
+        run(["git", "commit", "-m", "delete base collector"], self.temp_dir)
+        run(["git", "switch", "feature"], self.temp_dir)
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback}, base="forged-base")
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertFalse((self.temp_dir / "executed").exists())
+
+    def test_base_rejects_pr_commits_before_executing_their_collector(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        self.commit_on_branch("docs/fix.md")
+        first = self.head_commit()
+        collector = self.temp_dir / "scripts/pr-feedback.py"
+        collector.write_text(collector.read_text() + "open('executed', 'w').write('untrusted')\n")
+        run(["git", "commit", "-am", "replace collector"], self.temp_dir)
+        feedback = self.write_feedback([])
+        for base in ("HEAD", first, "feature"):
+            with self.subTest(base=base):
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback}, base=base)
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn("is not bound to PR #1 base", result.stdout)
+                self.assertFalse((self.temp_dir / "executed").exists())
+
+    def test_base_rejects_forged_evidence_metadata(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        self.commit_on_branch("docs/fix.md")
+        feedback = self.write_feedback([])
+        path = self.temp_dir / feedback
+        original = json.loads(path.read_text())
+        for field, value in (("base_sha", self.head_commit()), ("base_ref", "feature"), ("base_sha", None)):
+            with self.subTest(field=field, value=value):
+                path.write_text(json.dumps({**original, field: value}))
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback}, base="HEAD")
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn("does not match the GitHub base", result.stdout)
+
+    def test_base_accepts_exact_and_advanced_base_with_unchanged_merge_base(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        run(["git", "commit", "--allow-empty", "-m", "advance main"], self.temp_dir)
+        self.base_sha = self.head_commit()
+        self.commit_on_branch("docs/fix.md")
+        feedback = self.write_feedback([])
+        run(["git", "switch", "main"], self.temp_dir)
+        run(["git", "commit", "--allow-empty", "-m", "advance after collection"], self.temp_dir)
+        run(["git", "switch", "feature"], self.temp_dir)
+        for base in (self.base_sha, "main"):
+            with self.subTest(base=base):
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback}, base=base)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_older_base_must_not_be_on_the_head_first_parent_chain(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        shared = self.base_sha
+        self.commit_on_branch("docs/fix.md")
+        run(["git", "switch", "main"], self.temp_dir)
+        run(["git", "commit", "--allow-empty", "-m", "older main commit"], self.temp_dir)
+        older = self.head_commit()
+        run(["git", "commit", "--allow-empty", "-m", "current main commit"], self.temp_dir)
+        self.base_sha = self.head_commit()
+        run(["git", "switch", "feature"], self.temp_dir)
+        feedback = self.write_feedback([])
+        accepted = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback}, base=older)
+        self.assertEqual(accepted.returncode, 0, accepted.stdout + accepted.stderr)
+        rejected = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback}, base=shared)
+        self.assertEqual(rejected.returncode, 1, rejected.stdout)
+        self.assertIn("is not bound to PR #1 base", rejected.stdout)
+        run(["git", "merge", "--no-ff", "--no-edit", "main"], self.temp_dir)
+        feedback = self.write_feedback([])
+        merged = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback}, base=older)
+        self.assertEqual(merged.returncode, 0, merged.stdout + merged.stderr)
+
+    def test_base_rejects_side_branch_and_advanced_base_containing_pr_commits(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        self.commit_on_branch("docs/fix.md")
+        feedback = self.write_feedback([])
+        run(["git", "switch", "-c", "absorbed"], self.temp_dir)
+        run(["git", "commit", "--allow-empty", "-m", "contains PR head"], self.temp_dir)
+        run(["git", "switch", "--orphan", "unrelated"], self.temp_dir)
+        run(["git", "commit", "--allow-empty", "-m", "unrelated"], self.temp_dir)
+        run(["git", "switch", "feature"], self.temp_dir)
+        for base in ("absorbed", "unrelated"):
+            with self.subTest(base=base):
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback}, base=base)
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn("is not bound to PR #1 base", result.stdout)
+
+    def test_missing_base_collector_falls_back_only_after_binding(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        collector = self.temp_dir / "scripts/pr-feedback.py"
+        source = collector.read_text()
+        run(["git", "rm", "scripts/pr-feedback.py"], self.temp_dir)
+        run(["git", "commit", "-m", "base has no collector"], self.temp_dir)
+        self.base_sha = self.head_commit()
+        self.commit_on_branch("scripts/pr-feedback.py")
+        collector.write_text(source)
+        run(["git", "commit", "-am", "introduce collector"], self.temp_dir)
+        feedback = self.write_feedback([])
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+        self.assertIn("PR feedback evidence accepted", result.stdout)
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback}, base="HEAD")
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("is not bound to PR #1 base", result.stdout)
+
+    def test_base_fails_closed_when_github_metadata_is_unavailable(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        self.commit_on_branch("docs/fix.md")
+        feedback = self.write_feedback([])
+        for metadata in ("not JSON", "{}", json.dumps({"baseRefOid": "-HEAD"})):
+            with self.subTest(metadata=metadata):
+                self.metadata.write_text(metadata)
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn("could not verify PR #1 base on GitHub", result.stdout)
+
+    def test_fixed_commit_is_checked_against_github_base_not_an_older_side_parent(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        run(["git", "switch", "-c", "side"], self.temp_dir)
+        run(["git", "commit", "--allow-empty", "-m", "side change"], self.temp_dir)
+        side = self.head_commit()
+        run(["git", "switch", "main"], self.temp_dir)
+        run(["git", "merge", "--no-ff", "--no-edit", "side"], self.temp_dir)
+        self.base_sha = self.head_commit()
+        self.commit_on_branch("docs/fix.md")
+        feedback = self.write_feedback([{
+            "source": "review_comment", "level": "comment", "disposition": f"fixed:{self.base_sha}",
+        }])
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback}, base=side)
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("outside", result.stdout)
+        self.assertIn("cite the fix commit in this PR", result.stdout)
+
+    def test_github_lookup_ignores_environment_repository_override(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        self.commit_on_branch("docs/fix.md")
+        feedback = self.write_feedback([])
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "GH_REPO": "attacker/fork"})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_github_lookup_rejects_evidence_from_another_repository(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        self.commit_on_branch("docs/fix.md")
+        feedback = self.write_feedback([])
+        path = self.temp_dir / feedback
+        document = json.loads(path.read_text())
+        document["repo"] = "attacker/fork"
+        path.write_text(json.dumps(document))
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("does not match the local GitHub repository", result.stdout)
+
+    def test_recollection_must_match_the_authenticated_repository(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        self.commit_on_branch("docs/fix.md")
+        feedback = self.write_feedback([])
+        collected = json.loads(self.collected.read_text())
+        collected["repo"] = "attacker/fork"
+        self.collected.write_text(json.dumps(collected))
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("collected feedback does not match", result.stdout)
+
     def test_pr_feedback_fixed_commit_must_be_in_the_pr_range(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
         base_commit = self.head_commit()
@@ -597,7 +859,7 @@ class ReviewGuardTest(unittest.TestCase):
                 )
                 result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
                 self.assertEqual(result.returncode, 1, result.stdout)
-                self.assertIn(f"cites commit {commit[:7]} outside main..HEAD", result.stdout)
+                self.assertIn(f"cites commit {commit[:7]} outside GitHub base {base_commit}..HEAD", result.stdout)
 
     def test_explicit_disable_skips_guard(self) -> None:
         self.touch_lifecycle_script()

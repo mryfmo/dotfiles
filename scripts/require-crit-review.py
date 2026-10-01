@@ -135,7 +135,29 @@ def is_ignored(root: Path, path: str) -> bool:
     evidence_path = Path(evidence)
     if not evidence_path.is_absolute():
         evidence_path = root / evidence_path
-    return evidence_path.resolve() == (root / path).resolve()
+    return feedback_path_error(root, evidence_path) is None and feedback_relative_path(root, evidence_path) == Path(path)
+
+
+def feedback_relative_path(root: Path, path: Path) -> Path:
+    """Normalize aliases above the repository (e.g. macOS /var), never inside it."""
+    absolute = Path(os.path.abspath(path))
+    for parent in reversed(absolute.parents):
+        if parent.resolve() == root.resolve():
+            return absolute.relative_to(parent)
+    raise ValueError("evidence is outside the repository")
+
+
+def feedback_path_error(root: Path, path: Path) -> str | None:
+    try:
+        relatives = (
+            feedback_relative_path(root, path),
+            path.resolve().relative_to(root.resolve()),
+        )
+    except ValueError:
+        return f"{PR_FEEDBACK_ENV} must point to a repo-local JSON file"
+    if any(relative.parts[:2] != (".orchestration", "validation") or not relative.name.endswith("-pr-feedback.json") for relative in relatives):
+        return "evidence must live under .orchestration/validation/ and end with -pr-feedback.json"
+    return None
 
 
 def changed_paths(root: Path, base: str | None = None) -> list[str]:
@@ -341,10 +363,9 @@ def pr_feedback_errors(
     path = Path(evidence)
     if not path.is_absolute():
         path = root / path
-    try:
-        path.resolve().relative_to(root.resolve())
-    except ValueError:
-        return [f"{PR_FEEDBACK_ENV} must point to a repo-local JSON file"]
+    path_error = feedback_path_error(root, path)
+    if path_error:
+        return [path_error]
     if not path.is_file():
         return [f"{PR_FEEDBACK_ENV} file does not exist: {path}"]
     try:
@@ -360,6 +381,10 @@ def pr_feedback_errors(
         errors.append(
             f"{PR_FEEDBACK_ENV} was collected for head {data.get('head_sha')!r}, not the current HEAD {head}; rerun scripts/pr-feedback.py"
         )
+    if head is not None and base is not None:
+        errors.extend(collected_feedback_errors(root, data, head, base))
+        if errors:
+            return errors
     for index, item in enumerate(items):
         label = f"{PR_FEEDBACK_ENV} item {index}"
         if not isinstance(item, dict):
@@ -374,15 +399,13 @@ def pr_feedback_errors(
         commit = match.group("commit")
         if commit and run_git(["cat-file", "-e", f"{commit}^{{commit}}"], root).returncode != 0:
             errors.append(f"{label} cites an unknown commit: {commit}")
-        elif commit and head is not None and base is not None and not commit_in_range(root, commit, base, head):
-            errors.append(f"{label} cites commit {commit} outside {base}..HEAD; cite the fix commit in this PR")
+        elif commit and head is not None and base is not None and not commit_in_range(root, commit, data["base_sha"], head):
+            errors.append(f"{label} cites commit {commit} outside GitHub base {data['base_sha']}..HEAD; cite the fix commit in this PR")
         reason = (match.group("reason") or "").strip()
         if item.get("level") in STRICT_REASON_LEVELS and not commit and len(reason) < FAILURE_REASON_MIN_CHARS:
             errors.append(
                 f"{label} is {item.get('level')}-level; not-applicable needs a reason of at least {FAILURE_REASON_MIN_CHARS} characters"
             )
-    if head is not None and base is not None:
-        errors.extend(collected_feedback_errors(root, data, head, base))
     return errors
 
 
@@ -390,11 +413,67 @@ def feedback_key(item: dict) -> tuple:
     return tuple(item.get(field) for field in ("source", "url", "level", "path", "line", "body"))
 
 
+def pr_base_errors(root: Path, evidence: dict, pr: int, head: str, base: str) -> list[str]:
+    """Bind the base before executing a collector, independently of PR-owned JSON/code."""
+    env = {key: value for key, value in os.environ.items() if key not in {"CLICOLOR_FORCE", "GH_FORCE_TTY", "GH_REPO"}}
+    env["NO_COLOR"] = "1"
+    failure = f"could not verify PR #{pr} base on GitHub; fetch the base and rerun scripts/pr-feedback.py"
+    try:
+        repository = subprocess.run(
+            ["gh", "repo", "view", "--json", "nameWithOwner"],
+            cwd=root, env=env, capture_output=True, text=True, check=False,
+        )
+        repo_data = json.loads(repository.stdout) if repository.returncode == 0 else None
+        repo = repo_data.get("nameWithOwner") if isinstance(repo_data, dict) else None
+        if not isinstance(repo, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
+            return [failure]
+        if evidence.get("repo") != repo:
+            return [f"{PR_FEEDBACK_ENV} does not match the local GitHub repository {repo}; rerun scripts/pr-feedback.py"]
+        result = subprocess.run(
+            ["gh", "pr", "view", str(pr), "--repo", repo, "--json", "headRefOid,baseRefName,baseRefOid"],
+            cwd=root, env=env, capture_output=True, text=True, check=False,
+        )
+        metadata = json.loads(result.stdout) if result.returncode == 0 else None
+    except (OSError, json.JSONDecodeError):
+        return [failure]
+    if not isinstance(metadata, dict):
+        return [failure]
+    github_base = metadata.get("baseRefOid")
+    github_ref = metadata.get("baseRefName")
+    if (
+        not isinstance(github_base, str) or not re.fullmatch(r"[0-9a-f]{40}", github_base)
+        or not isinstance(github_ref, str) or not github_ref.strip()
+        or run_git(["cat-file", "-e", f"{github_base}^{{commit}}"], root).returncode != 0
+    ):
+        return [failure]
+    if metadata.get("headRefOid") != head:
+        return [f"PR #{pr} head on GitHub is {metadata.get('headRefOid')}, not the local HEAD {head}; push first"]
+    if evidence.get("base_sha") != github_base or evidence.get("base_ref") != github_ref:
+        return [f"{PR_FEEDBACK_ENV} does not match the GitHub base {github_ref} ({github_base}); rerun scripts/pr-feedback.py"]
+
+    resolved = run_git(["rev-parse", "--verify", "--end-of-options", f"{base}^{{commit}}"], root)
+    base_sha = resolved.stdout.strip()
+    if resolved.returncode == 0:
+        if base_sha == github_base:
+            return []
+        if run_git(["merge-base", "--is-ancestor", base_sha, github_base], root).returncode == 0:
+            first_parents = run_git(["rev-list", "--first-parent", head], root)
+            if first_parents.returncode == 0 and base_sha not in first_parents.stdout.splitlines():
+                return []
+        # An advanced base must stay on the base side of the fork, not absorb PR commits.
+        if run_git(["merge-base", "--is-ancestor", github_base, base_sha], root).returncode == 0:
+            actual = run_git(["merge-base", base_sha, head], root)
+            expected = run_git(["merge-base", github_base, head], root)
+            if actual.returncode == expected.returncode == 0 and actual.stdout == expected.stdout:
+                return []
+    return [f"--base {base!r} is not bound to PR #{pr} base {github_ref} ({github_base}); use the PR base, not its branch or HEAD"]
+
+
 def collected_feedback_errors(root: Path, evidence: dict, head: str, base: str) -> list[str]:
     """Re-collect the PR's feedback and require every current item in the evidence.
 
-    A hand-written or stale document cannot pass: the guard runs the base
-    branch's scripts/pr-feedback.py (the PR under review cannot swap it) for the
+    A hand-written or stale document cannot pass: the guard runs the GitHub
+    base SHA's scripts/pr-feedback.py (the PR under review cannot swap it) for the
     evidence's PR, requires the PR head on GitHub to be this HEAD, and requires
     each collected item (as a multiset) to be present. A bot review is not
     required; when one exists it is collected and must be dispositioned like any
@@ -403,16 +482,20 @@ def collected_feedback_errors(root: Path, evidence: dict, head: str, base: str) 
     pr = evidence.get("pr")
     if not isinstance(pr, int) or isinstance(pr, bool) or pr <= 0:
         return [f"{PR_FEEDBACK_ENV} must name its pull request number in `pr`"]
+    errors = pr_base_errors(root, evidence, pr, head, base)
+    if errors:
+        return errors
     with tempfile.TemporaryDirectory() as temporary:
         collected_path = Path(temporary) / "collected.json"
-        # Prefer the base branch's collector; only a PR that introduces it has none.
+        # An advanced local base may contain untrusted code despite a safe merge-base.
+        # Execute only the GitHub-authenticated base's collector, including bootstrap.
         collector = root / "scripts/pr-feedback.py"
-        base_collector = run_git(["show", f"{base}:scripts/pr-feedback.py"], root)
+        base_collector = run_git(["show", f"{evidence['base_sha']}:scripts/pr-feedback.py"], root)
         if base_collector.returncode == 0:
             collector = Path(temporary) / "pr-feedback.py"
             collector.write_text(base_collector.stdout)
         result = subprocess.run(
-            [sys.executable, str(collector), str(pr), "--json", str(collected_path)],
+            [sys.executable, str(collector), str(pr), "--repo", evidence["repo"], "--json", str(collected_path)],
             cwd=root,
             check=False,
             text=True,
@@ -425,6 +508,8 @@ def collected_feedback_errors(root: Path, evidence: dict, head: str, base: str) 
         collected = json.loads(collected_path.read_text())
     if collected.get("head_sha") != head:
         return [f"PR #{pr} head on GitHub is {collected.get('head_sha')}, not the local HEAD {head}; push first"]
+    if collected.get("repo") != evidence["repo"]:
+        return [f"collected feedback does not match the local GitHub repository {evidence['repo']}"]
     missing = Counter(map(feedback_key, collected.get("items", []))) - Counter(
         feedback_key(item) for item in evidence.get("items", []) if isinstance(item, dict)
     )

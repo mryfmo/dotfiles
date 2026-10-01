@@ -1,0 +1,23 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t40_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Orchestrator adversarial review of PR #221 head 10dfc10 (three commits) from git objects: the integration gate binds --base to the PR's GitHub base (gh pr view --repo <bound repo> headRefOid/baseRefName/baseRefOid, GH_REPO stripped, evidence.repo must equal gh repo view nameWithOwner), runs only the GitHub-base SHA's collector with --repo, checks the collected document's repo and head, computes the fixed:<sha> range from the authenticated base_sha (so a merged side-branch BASE cannot widen it), accepts an advanced local base only with an identical merge-base, restricts PR_FEEDBACK_EVIDENCE to .orchestration/validation/*-pr-feedback.json (lexical and resolved, macOS /var alias normalized above the repo only), and passes GraphQL string variables raw (-f) with -F for ints only; pr-feedback.py records base_ref/base_sha; rule sentence added. Codex audits: 0dfe823, c67ec77, 10dfc10 all correct. Sweep (20 items, orchestrator re-collection identical to the worker's): 6 fixed:10dfc10 (two distinct Codex P1s, four inline comments plus two containers), 14 not-applicable (runner notices, Homebrew tap warning, CodeRabbit skipped comment/status). 680 tests OK (1 skip); CI green Linux+macOS; CLEAN. Protocol: git metadata writes ran under operator-approved escalations in the wQ pane per the 2026-10-02 ruling; earlier network/CompactionDB escalations are disclosed in the sandbox file and dispositioned in the acceptance record.",
+    "author": "claude-code",
+    "created_at": "2026-10-01T21:57:46Z",
+    "updated_at": "2026-10-01T21:57:46Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_t40_01",
+        "body": "Approved; acceptance record .orchestration/acceptance/dot-pr-gate-trust-boundary-T40-a01.md.",
+        "author": "claude-code",
+        "created_at": "2026-10-01T21:57:46Z",
+        "review_round": 1
+      }
+    ]
+  }
+]

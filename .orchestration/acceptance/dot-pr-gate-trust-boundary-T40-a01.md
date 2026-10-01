@@ -75,6 +75,75 @@ system` (the Codex workspace-write root is the worktree; the worktree's
   fixed with a regression test (54 guard tests); 675 local tests on the
   prior head; CI restarted; final sweep and gates after the test jobs.
   Audit of 0dfe823 started (pre-screen); c67ec77 to be audited as well.
+- Audits (pre-screen, orchestrator-invoked): 0dfe823 **correct**, c67ec77
+  **correct** (both from git objects; CI unverified by the auditor).
+- 21:31:55Z PONG 661 alive: c67ec77 CI green after one transient
+  ccstatusline-timeout rerun; the Codex GitHub review left four inline
+  comments (two distinct valid P1s) → fixed in 10dfc10 ("fixed dispositions
+  use the authenticated GitHub base range; `GH_REPO` cannot redirect
+  collection"), three repros failing before the fix, 58 guard tests; PR
+  #221 updated, CI running; the worker will disposition all four as
+  `fixed:10dfc10` after its final sweep. Audit of 10dfc10: **correct**
+  (repo binding, authenticated base range, collector arguments and
+  regression tests consistent; CI unverified by the auditor). Orchestrator
+  check: the base collector at bb3370a already accepts `--repo`, so the
+  gate's base-collector call cannot fail on that flag.
+- 21:56:11Z **RESULT 662** (ready_for_review): PR #221 head 10dfc10, CI
+  green Linux+macOS, 680 tests (1 skip), positive gate exit 0 with
+  `--base origin/main`, negative gate exit 1 with `--base HEAD`, eight
+  artifacts synced to the main checkout, CompactionDB fdccdfbf.
+
+## Review (orchestrator, from git objects)
+
+- Three commits, each audited **correct** by the Codex auditor (0dfe823,
+  c67ec77, 10dfc10). Diff vs main: exactly the five allowed files (393/25).
+- `pr_base_errors`: repo bound through `gh repo view` with `GH_REPO`
+  stripped and compared with `evidence.repo`; `gh pr view --repo <repo>`
+  for head/base; `--base` accepted when equal to the GitHub base, an
+  ancestor outside HEAD's first-parent chain, or an advanced base with the
+  identical merge-base (the live case: GitHub base a5f33ee, local
+  origin/main 5a43c85 after the T46 merge). The collector is the GitHub-base
+  SHA's `scripts/pr-feedback.py` run with `--repo`, and the collected
+  document's `repo`/`head_sha` are checked. `fixed:<sha>` ranges use the
+  authenticated `base_sha`, not the user-selected base (Codex P1). Evidence
+  path: `.orchestration/validation/*-pr-feedback.json` only, lexical and
+  resolved, with repository-parent aliases (macOS `/var`) normalized above
+  the repo only. `gh_graphql`: `-F` for `int` only. Orchestrator check: the
+  base collector at bb3370a already takes `--repo`.
+- Sweep: orchestrator re-collection of #221 at 10dfc10 is item-identical to
+  the worker's evidence (20 = 20, no missing/extra). Dispositions verified:
+  6 `fixed:10dfc10` (four Codex inline comments = two distinct P1s, both
+  root-fixed in 10dfc10, plus their two review containers), 14
+  `not-applicable` (11 runner notices, 1 Homebrew tap warning with a grep
+  showing none of the taps in `home`/`install`, CodeRabbit skipped comment
+  and status).
+- Gate: `AGENT_REVIEWED=1 REVIEW_EVIDENCE=…-review-receipt.md BASE=origin/main
+PR_FEEDBACK_EVIDENCE=…-pr-feedback.json make require-crit-review` in
+  `.claude/worktrees/orchestrator-review` at 10dfc10 → exit 0 (the PR's own
+  new guard, with the live advanced-base case). Orchestrator evidence
+  `…-crit-comments.json` + `…-review-receipt.md`; the worker's own
+  `…-review.json` + `…-receipt.md` (reviewer: codex, addressed) stay as
+  process evidence.
+- Protocol dispositions: (a) git metadata writes after the ruling ran under
+  operator-approved escalations in the wQ pane — compliant. (b) Before the
+  ruling, the worker staged with an escalation it attributed to the r2 PING
+  527 ("use your normal escalation once") — a predecessor instruction that
+  the current rule forbids; no harm, recorded, superseded by the ruling and
+  by T50. (c) Network escalations for PyYAML (`uv run --with pyyaml` under
+  `network_access = false`), `gh` lookups, and the CompactionDB writer lock
+  were operator-approved per the sandbox file; the PyYAML fetch is a
+  structural gap (follow-up candidate: pre-seeded uv cache or vendored
+  dependency for `validate-agent-assets`), not a T40 defect.
+- Learning file: four `[memory:failure]` records (merge-base ≠ collector
+  authentication; validate lexical and resolved evidence paths; macOS parent
+  aliases; user-selected base must not define the fixed range) — adopted
+  into the consolidated decision.
+
+**Decision: ACCEPTED** — squash-merge PR #221 without `--delete-branch`
+(worker-sec holds the branch). The worker-sec seat stays for later security
+lane tasks; no task is queued for it now.
+
+cost: n/a (worker reported none)
 
 [memory:failure] T40: a Codex worker seated in a nested worktree cannot
 write the shared `.git` (refs, config) without escalation because the Codex

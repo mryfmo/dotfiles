@@ -25,5 +25,17 @@
     "body": "Independent reviewer /root/t40_independent_review re-read the final five-file implementation diff: no remaining scoped findings. Collector provenance, evidence path boundaries, older-base first-parent checks, raw GraphQL strings, and regression coverage were inspected. Reviewer did not rerun tests. Verdict: correct. This record is local process evidence, not reviewer authentication or orchestrator acceptance.",
     "scope": "review",
     "resolved": true
+  },
+  {
+    "id": "T40-review-macos-alias",
+    "body": "Independent follow-up reviewed c67ec77 path-alias fix: outermost-first ancestor traversal normalizes repository parent aliases while preserving internal symlink paths; resolved-target validation still rejects escapes. New regression covers acceptance and exclusion. No findings; tests inspected, not rerun. Verdict: correct.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "T40-review-github-feedback",
+    "body": "GitHub automated reviews identified two valid P1 defects: fixed dispositions could cite commits already on the actual base through an older selected base, and GH_REPO could redirect metadata/feedback to a fork. Three reproductions failed before the fix. Commit 10dfc10 authenticates collection first, uses verified base_sha for fixed ranges, discovers the local repository without GH_REPO, explicitly supplies --repo, and checks evidence/collected repo equality. Independent follow-up found no findings; tests inspected, not rerun. Verdict: correct.",
+    "scope": "review",
+    "resolved": true
   }
 ]

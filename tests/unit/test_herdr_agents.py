@@ -595,6 +595,8 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         env["HERDR_SOCKET_PATH"] = str(self.temp_dir / "herdr.sock")
         env.pop("CLAUDE_CODE_SESSION_ID", None)
         env.pop("CLAUDE_PID", None)
+        # The default socket path honours XDG_CONFIG_HOME, which CI runners set.
+        env.pop("XDG_CONFIG_HOME", None)
         if extra_env:
             env.update(extra_env)
         return subprocess.run(

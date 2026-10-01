@@ -532,7 +532,10 @@ over mosh or ssh, or `claude -p`) never seats a worker. Its SessionStart hook
 prints one line into the session context: not in a Herdr pane, the pair is not
 started, the on-demand commands, and the manifest worktree's worker with its
 `<socket>:<pane>` location when one is seated. Such a pane-less orchestrator
-claims its seat with `actas-claim.sh`, seats the worker on demand with
+claims its seat outside the sandbox with the composite id
+(`actas-claim.sh <repo> claude-code <name> <session_id>.<claude pid>`; a claim
+from sandboxed Bash writes the bare session id and turn delivery then skips
+silently), seats the worker on demand with
 `herdr-agents --add-worker <worktree>` (which derives `HERDR_SOCKET_PATH` from
 the default Herdr server socket before creating anything, accepts a claude
 worker's workspace-trust dialog during spawn's readiness wait, and takes

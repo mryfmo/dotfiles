@@ -825,6 +825,10 @@ function accept_spawned_claude_trust_dialog() {
         fi
         accept_claude_workspace_trust_dialog "${pane_id}" 2000 && return 0
     done
+    # The dialog is optional: without one the loop ends on a failed probe, and
+    # returning that status would let `set -e` end the launcher before it
+    # waits for spawn.sh and reports its exit code.
+    return 0
 }
 
 # @description Print the one-line SessionStart summary of a session outside a

@@ -2764,6 +2764,40 @@ exit 3
         self.assertIn("pane send-keys w-test:p2 Down Enter", calls)
         self.assertTrue(any(c.startswith("spawn ") and c.endswith(" --window --ready-timeout 15") for c in calls), calls)
 
+    def write_dialogless_claude_spawn(self, exit_code: int) -> None:
+        """spawn.sh places a pane, shows no trust dialog, then exits with exit_code."""
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes()
+        self.pane_list_path.write_text(json.dumps({"result": {"panes": [{"pane_id": "w-test:p1"}]}}))
+        spawn = self.home_dir / ".agents/skills/agmsg/scripts/spawn.sh"
+        spawn.write_text(
+            f"""#!/usr/bin/env bash
+printf 'spawn %s\\n' "$*" >> {self.calls_path}
+printf '%s\\n' '{json.dumps({"result": {"panes": [{"pane_id": "w-test:p1"}, {"pane_id": "w-test:p2"}]}})}' > {self.pane_list_path}
+sleep 1.5
+exit {exit_code}
+"""
+        )
+
+    def test_add_worker_succeeds_for_a_claude_worker_without_a_trust_dialog(self) -> None:
+        self.write_dialogless_claude_spawn(0)
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "claude")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("Herdr agents worker added", result.stdout)
+        self.assertNotIn("pane send-keys w-test:p2 Down Enter", self.calls_path.read_text().splitlines())
+
+    def test_add_worker_reports_a_failed_claude_spawn_without_a_trust_dialog(self) -> None:
+        self.write_dialogless_claude_spawn(3)
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "claude")
+
+        self.assertEqual(result.returncode, 3, result.stdout + result.stderr)
+        self.assertIn("spawn.sh exited 3 for worker ", result.stderr)
+        self.assertIn(" in workspace w-test; confirm linkage with AGMSG-PING", result.stderr)
+        self.assertNotIn("Herdr agents worker added", result.stdout)
+
     def test_add_worker_reports_a_failed_spawn(self) -> None:
         self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
         self.write_seat_lifecycle_fakes()

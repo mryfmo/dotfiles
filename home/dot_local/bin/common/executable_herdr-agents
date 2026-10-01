@@ -808,8 +808,9 @@ function accept_claude_workspace_trust_dialog() {
 #   where poke.sh cannot locate the input box) and print one line,
 #   `linkage=ok read_at=<ts> pong=<yes|no>` or
 #   `linkage=unreached rc=<n> hint=<agmsg-dispatch|poke|attach-a-client>`.
-#   The worker pane comes from its spawn placement record
-#   (run/spawn.<team>__<worker>: `herdr:<socket>:<pane>`), else the
+#   The worker pane comes from its spawn placement record (`herdr:<socket>:<pane>`;
+#   path from upstream agmsg_spawn_path, which knows the id-keyed and legacy
+#   forms, else the legacy run/spawn.<team>__<worker>), else the
 #   workspace's new pane; `team.sh --json` is not used because it observes
 #   Codex members by reading their pane. The hint names the next wake to try:
 #   agmsg-dispatch when it is not installed, poke when a placement record
@@ -825,8 +826,12 @@ function accept_claude_workspace_trust_dialog() {
 function check_worker_linkage() {
     local team="$1" orchestrator="$2" worker="$3" workspace_id="$4" known="$5"
     local scripts="${HOME}/.agents/skills/agmsg/scripts"
-    local placement="" pane="" rest rc=0 db read_at="" pong=no hint deadline ping_id=""
-    local record="${HOME}/.agents/skills/agmsg/run/spawn.${team}__${worker}"
+    local placement="" pane="" rest rc=0 db read_at="" pong=no hint deadline ping_id="" record
+
+    # shellcheck disable=SC2016 # the inner script expands its own positional args
+    record="$(env SKILL_DIR="${HOME}/.agents/skills/agmsg" bash -c \
+        'source "$1" && agmsg_spawn_path "$2" "$3"' _ "${scripts}/lib/actas-lock.sh" "${team}" "${worker}" 2> /dev/null)" ||
+        record="${HOME}/.agents/skills/agmsg/run/spawn.${team}__${worker}"
 
     if [[ -r ${record} ]]; then
         placement="$(head -n 1 "${record}" | cut -f 1)"

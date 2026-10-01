@@ -2923,6 +2923,25 @@ exit {exit_code}
         )
         self.assertFalse(any(call.startswith("team.sh ") for call in calls[spawn_at:]), calls[spawn_at:])
 
+    def test_add_worker_linkage_resolves_an_id_keyed_placement_record(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes(dispatch_exit=1)
+        skill = self.home_dir / ".agents/skills/agmsg"
+        # Upstream agmsg_spawn_path answers with the id-keyed record path.
+        (skill / "scripts/lib/actas-lock.sh").write_text(
+            'agmsg_spawn_path() { printf \'%s/run/spawn.k-team__k-member\\n\' "$SKILL_DIR"; }\n'
+        )
+        (skill / "run").mkdir(parents=True, exist_ok=True)
+        (skill / "run/spawn.k-team__k-member").write_text("herdr:/tmp/herdr.sock:w-test:p7\t/project\tcodex\n")
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "codex")
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual("linkage=unreached rc=1 hint=poke", result.stdout.splitlines()[-1])
+        self.assertTrue(
+            any(call.startswith("agmsg-dispatch ") and " w-test:p7 " in call for call in self.calls_path.read_text().splitlines())
+        )
+
     def test_add_worker_linkage_ignores_a_pong_older_than_this_ping(self) -> None:
         self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
         self.write_seat_lifecycle_fakes()

@@ -801,6 +801,141 @@ function accept_claude_workspace_trust_dialog() {
     herdr pane send-keys "${pane_id}" Down Enter > /dev/null
 }
 
+# @description Verify that a freshly seated worker is reachable, as the
+#   orchestrator would otherwise improvise: send `AGMSG-PING v1
+#   task_id=bringup-<nonce> reason=add-worker-linkage` (a per-invocation
+#   task id) through agmsg-dispatch (the
+#   wake path that also works for an unviewed or headless Herdr workspace,
+#   where poke.sh cannot locate the input box) and print one line,
+#   `linkage=ok read_at=<ts> pong=<yes|no>` or
+#   `linkage=unreached rc=<n> hint=<agmsg-dispatch|poke|attach-a-client>`.
+#   The worker pane comes from its spawn placement record (`herdr:<socket>:<pane>`;
+#   path from upstream agmsg_spawn_path, which knows the id-keyed and legacy
+#   forms; the legacy run/spawn.<team>__<worker> only when that library or
+#   function is unavailable, and a resolver refusal such as both records
+#   existing is `linkage=unreached … hint=placement-conflict` with nothing
+#   dispatched), else the
+#   workspace's new pane; `team.sh --json` is not used because it observes
+#   Codex members by reading their pane. The hint names the next wake to try:
+#   agmsg-dispatch when it is not installed, poke when a placement record
+#   exists, attach-a-client (view the workspace) otherwise. A PONG is
+#   awaited for HERDR_AGENTS_LINKAGE_PONG_WAIT seconds (default 30) and only a
+#   PONG newer than this PING counts. The worker pane is never read.
+# @arg $1 string Team.
+# @arg $2 string Orchestrator identity (sender).
+# @arg $3 string Worker identity.
+# @arg $4 string Worker workspace id.
+# @arg $5 string JSON array of the workspace's pane ids before spawn.
+# @exitcode 0 If the PING was read; the agmsg-dispatch exit code (or 2 when no pane is found) otherwise.
+function check_worker_linkage() {
+    local team="$1" orchestrator="$2" worker="$3" workspace_id="$4" known="$5"
+    local scripts="${HOME}/.agents/skills/agmsg/scripts"
+    local placement="" pane="" rest rc=0 db read_at="" pong=no hint deadline ping_id="" record err wait_seconds task_id
+    local lib="${scripts}/lib/actas-lock.sh"
+
+    record="${HOME}/.agents/skills/agmsg/run/spawn.${team}__${worker}"
+    # shellcheck disable=SC2016 # the inner scripts expand their own positional args
+    if [[ -r ${lib} ]] && env SKILL_DIR="${HOME}/.agents/skills/agmsg" bash -c \
+        'source "$1" 2> /dev/null && declare -F agmsg_spawn_path > /dev/null' _ "${lib}"; then
+        err="$(mktemp)"
+        record="$(env SKILL_DIR="${HOME}/.agents/skills/agmsg" bash -c \
+            'source "$1" && agmsg_spawn_path "$2" "$3"' _ "${lib}" "${team}" "${worker}" 2> "${err}")" || rc=$?
+        if ((rc != 0)); then
+            head -n 1 "${err}" >&2
+            rm -f "${err}"
+            printf 'linkage=unreached rc=%s hint=placement-conflict\n' "${rc}"
+            return "${rc}"
+        fi
+        rm -f "${err}"
+    fi
+
+    if [[ -r ${record} ]]; then
+        placement="$(head -n 1 "${record}" | cut -f 1)"
+        [[ ${placement} == herdr:*:*:* ]] || placement=""
+    fi
+    if [[ -n ${placement} ]]; then
+        rest="${placement%:*}"
+        pane="${rest##*:}:${placement##*:}"
+        # A retained record may name a pane in an older workspace, an exited
+        # pane in this one, or a pane that predates this spawn.
+        if [[ ${rest##*:} != "${workspace_id}" ]]; then
+            printf 'herdr-agents: placement record for %s names workspace %s, not %s; using the new pane.\n' "${worker}" "${rest##*:}" "${workspace_id}" >&2
+            placement=""
+            pane=""
+        elif ! herdr pane list --workspace "${workspace_id}" 2> /dev/null |
+            jq -e --arg pane "${pane}" '.result.panes[]? | select(.pane_id == $pane)' > /dev/null 2>&1; then
+            printf 'herdr-agents: placement record for %s names pane %s, which is not in workspace %s; using the new pane.\n' "${worker}" "${pane}" "${workspace_id}" >&2
+            placement=""
+            pane=""
+        elif jq -n -e --arg pane "${pane}" --argjson known "${known}" '$pane | IN($known[])' > /dev/null 2>&1; then
+            printf 'herdr-agents: placement record for %s names pane %s, which existed before this spawn; using the new pane.\n' "${worker}" "${pane}" >&2
+            placement=""
+            pane=""
+        fi
+    fi
+    if [[ -z ${placement} ]]; then
+        pane="$(herdr pane list --workspace "${workspace_id}" 2> /dev/null |
+            jq -r --argjson known "${known}" '[.result.panes[]?.pane_id | select(IN($known[]) | not)][0] // empty')" || pane=""
+    fi
+    if [[ -z ${pane} ]]; then
+        printf 'linkage=unreached rc=2 hint=attach-a-client\n'
+        return 2
+    fi
+    if ! command -v agmsg-dispatch > /dev/null 2>&1; then
+        printf 'linkage=unreached rc=127 hint=agmsg-dispatch\n'
+        return 127
+    fi
+    # Workers echo the PING's task_id, so a PONG from an earlier instance
+    # cannot answer this one.
+    task_id="bringup-$(date +%s)-$$"
+    ping="AGMSG-PING v1 task_id=${task_id} reason=add-worker-linkage"
+    # agmsg-dispatch's own stderr is blocker evidence; only stdout is noise.
+    agmsg-dispatch "${team}" "${orchestrator}" "${worker}" "${pane}" "${ping}" > /dev/null || rc=$?
+    # Identifiers passed agmsg-dispatch's ^[a-z0-9][a-z0-9_-]{0,63}$ check.
+    db="$(
+        # shellcheck source=/dev/null
+        source "${scripts}/lib/validate.sh" && source "${scripts}/lib/storage.sh" && agmsg_db_path "${team}"
+    )" 2> /dev/null || db=""
+    if [[ ${rc} -ne 0 ]]; then
+        # The evidence a blocker report needs: the exact command, its exit
+        # code, and the read_at/PONG query for this PING.
+        printf "herdr-agents: linkage PING failed: agmsg-dispatch %s %s %s %s '%s' exited %s.\n" "${team}" "${orchestrator}" "${worker}" "${pane}" "${ping}" "${rc}" >&2
+        if [[ -n ${db} ]]; then
+            printf "herdr-agents: read_at/PONG query: sqlite3 '%s' \"SELECT id, from_agent, read_at, body FROM messages WHERE team='%s' AND ((from_agent='%s' AND to_agent='%s' AND body LIKE 'AGMSG-PING v1 task_id=%s %%') OR (from_agent='%s' AND to_agent='%s' AND body LIKE 'AGMSG-PONG v1 task_id=%s%%'));\"\n" \
+                "${db}" "${team}" "${orchestrator}" "${worker}" "${task_id}" "${worker}" "${orchestrator}" "${task_id}" >&2
+        else
+            printf 'herdr-agents: read_at/PONG query: the agmsg db path for team %s could not be resolved.\n' "${team}" >&2
+        fi
+        hint=attach-a-client
+        [[ -z ${placement} ]] || hint=poke
+        printf 'linkage=unreached rc=%s hint=%s\n' "${rc}" "${hint}"
+        return "${rc}"
+    fi
+    if [[ -n ${db} ]]; then
+        # This PING is the newest orchestrator-to-worker row right after the
+        # dispatch; only a PONG after it answers this PING.
+        ping_id="$(sqlite3 -cmd '.timeout 5000' "${db}" "SELECT max(id) FROM messages WHERE team='${team}' AND from_agent='${orchestrator}' AND to_agent='${worker}';" 2> /dev/null)" || ping_id=""
+        [[ ${ping_id} =~ ^[0-9]+$ ]] || ping_id=0
+        read_at="$(sqlite3 -cmd '.timeout 5000' "${db}" "SELECT read_at FROM messages WHERE id = ${ping_id};" 2> /dev/null)" || read_at=""
+        wait_seconds="${HERDR_AGENTS_LINKAGE_PONG_WAIT:-30}"
+        if [[ ! ${wait_seconds} =~ ^[0-9]+$ ]]; then
+            printf 'herdr-agents: HERDR_AGENTS_LINKAGE_PONG_WAIT must be a whole number of seconds; got %q, using 30.\n' "${wait_seconds}" >&2
+            wait_seconds=30
+        fi
+        # 10#: a leading zero (08, 010) is decimal, not octal.
+        deadline=$((SECONDS + 10#${wait_seconds}))
+        while :; do
+            if [[ "$(sqlite3 -cmd '.timeout 5000' "${db}" "SELECT count(*) FROM messages WHERE team='${team}' AND from_agent='${worker}' AND to_agent='${orchestrator}' AND id > ${ping_id} AND (body = 'AGMSG-PONG v1 task_id=${task_id}' OR body LIKE 'AGMSG-PONG v1 task_id=${task_id} %');" 2> /dev/null)" =~ ^[1-9] ]]; then
+                pong=yes
+                break
+            fi
+            ((SECONDS < deadline)) || break
+            sleep 2
+        done
+    fi
+    printf 'linkage=ok read_at=%s pong=%s\n' "${read_at:-unknown}" "${pong}"
+}
+
 # @description Accept the workspace-trust dialog of a claude worker while
 #   spawn.sh seats it. spawn.sh places the pane before its readiness wait, and a
 #   first start in an untrusted worktree sits on the dialog until that wait
@@ -1713,9 +1848,31 @@ if [[ ${add_worker_mode} == true ]]; then
     wait "${spawn_pid}" || spawn_rc=$?
     if [[ ${spawn_rc} -ne 0 ]]; then
         printf 'herdr-agents: spawn.sh exited %s for worker %s in workspace %s; confirm linkage with AGMSG-PING before dispatching.\n' "${spawn_rc}" "${seat_name}" "${seat_workspace_id}" >&2
-        exit "${spawn_rc}"
+    else
+        printf 'Herdr agents worker added: %s in workspace %s (%s)\n' "${seat_name}" "${seat_workspace_id}" "${seat_dir}"
     fi
-    printf 'Herdr agents worker added: %s in workspace %s (%s)\n' "${seat_name}" "${seat_workspace_id}" "${seat_dir}"
+    # The linkage line is the last word on both spawn outcomes: exit non-zero
+    # only when the PING was not read (spawn's own code when it also failed).
+    # Exactly one orchestrator (the claim_orchestrator_seat rule): the PING
+    # must not be routed through whichever of several leaders sorts first.
+    seat_leader="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${workdir}" claude-code 2> /dev/null |
+        awk -F '\t' -v team="${seat_team}" '$1 == team && $2 !~ /-a[0-9][0-9][0-9]$/ { print $2 }' | sort -u)" || seat_leader=""
+    linkage_rc=0
+    if [[ -n ${seat_leader} && ${seat_leader} != *$'\n'* ]]; then
+        check_worker_linkage "${seat_team}" "${seat_leader}" "${seat_name}" "${seat_workspace_id}" "${seat_panes}" || linkage_rc=$?
+    else
+        if [[ -z ${seat_leader} ]]; then
+            printf 'herdr-agents: no orchestrator claude-code identity in team %s at %s; linkage PING not sent.\n' "${seat_team}" "${workdir}" >&2
+        else
+            printf 'herdr-agents: several orchestrator claude-code identities in team %s at %s (%s); linkage PING not sent.\n' \
+                "${seat_team}" "${workdir}" "$(tr '\n' ' ' <<< "${seat_leader}" | sed 's/ $//')" >&2
+        fi
+        printf 'linkage=unreached rc=2 hint=agmsg-dispatch\n'
+        linkage_rc=2
+    fi
+    if [[ ${linkage_rc} -ne 0 ]]; then
+        exit "$((spawn_rc != 0 ? spawn_rc : linkage_rc))"
+    fi
     exit 0
 fi
 

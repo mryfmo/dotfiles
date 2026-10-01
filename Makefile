@@ -164,6 +164,10 @@ unit-test:
 validate-agent-assets:
 	uv run --with pyyaml scripts/validate-agent-assets.py
 
+.PHONY: check-regime-boundary
+check-regime-boundary:
+	./scripts/check-regime-boundary.sh
+
 .PHONY: render-check
 render-check:
 	uv run --with pyyaml scripts/generate-agent-configs.py --check

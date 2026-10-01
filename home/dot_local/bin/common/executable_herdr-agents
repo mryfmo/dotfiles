@@ -856,8 +856,8 @@ function check_worker_linkage() {
     if [[ -n ${placement} ]]; then
         rest="${placement%:*}"
         pane="${rest##*:}:${placement##*:}"
-        # A retained record may name a pane in an older workspace, or an
-        # exited pane in this one.
+        # A retained record may name a pane in an older workspace, an exited
+        # pane in this one, or a pane that predates this spawn.
         if [[ ${rest##*:} != "${workspace_id}" ]]; then
             printf 'herdr-agents: placement record for %s names workspace %s, not %s; using the new pane.\n' "${worker}" "${rest##*:}" "${workspace_id}" >&2
             placement=""
@@ -865,6 +865,10 @@ function check_worker_linkage() {
         elif ! herdr pane list --workspace "${workspace_id}" 2> /dev/null |
             jq -e --arg pane "${pane}" '.result.panes[]? | select(.pane_id == $pane)' > /dev/null 2>&1; then
             printf 'herdr-agents: placement record for %s names pane %s, which is not in workspace %s; using the new pane.\n' "${worker}" "${pane}" "${workspace_id}" >&2
+            placement=""
+            pane=""
+        elif jq -n -e --arg pane "${pane}" --argjson known "${known}" '$pane | IN($known[])' > /dev/null 2>&1; then
+            printf 'herdr-agents: placement record for %s names pane %s, which existed before this spawn; using the new pane.\n' "${worker}" "${pane}" >&2
             placement=""
             pane=""
         fi
@@ -884,19 +888,29 @@ function check_worker_linkage() {
     # Workers echo the PING's task_id, so a PONG from an earlier instance
     # cannot answer this one.
     task_id="bringup-$(date +%s)-$$"
-    agmsg-dispatch "${team}" "${orchestrator}" "${worker}" "${pane}" \
-        "AGMSG-PING v1 task_id=${task_id} reason=add-worker-linkage" > /dev/null 2>&1 || rc=$?
-    if [[ ${rc} -ne 0 ]]; then
-        hint=attach-a-client
-        [[ -z ${placement} ]] || hint=poke
-        printf 'linkage=unreached rc=%s hint=%s\n' "${rc}" "${hint}"
-        return "${rc}"
-    fi
+    ping="AGMSG-PING v1 task_id=${task_id} reason=add-worker-linkage"
+    # agmsg-dispatch's own stderr is blocker evidence; only stdout is noise.
+    agmsg-dispatch "${team}" "${orchestrator}" "${worker}" "${pane}" "${ping}" > /dev/null || rc=$?
     # Identifiers passed agmsg-dispatch's ^[a-z0-9][a-z0-9_-]{0,63}$ check.
     db="$(
         # shellcheck source=/dev/null
         source "${scripts}/lib/validate.sh" && source "${scripts}/lib/storage.sh" && agmsg_db_path "${team}"
     )" 2> /dev/null || db=""
+    if [[ ${rc} -ne 0 ]]; then
+        # The evidence a blocker report needs: the exact command, its exit
+        # code, and the read_at/PONG query for this PING.
+        printf "herdr-agents: linkage PING failed: agmsg-dispatch %s %s %s %s '%s' exited %s.\n" "${team}" "${orchestrator}" "${worker}" "${pane}" "${ping}" "${rc}" >&2
+        if [[ -n ${db} ]]; then
+            printf "herdr-agents: read_at/PONG query: sqlite3 '%s' \"SELECT id, from_agent, read_at, body FROM messages WHERE team='%s' AND ((from_agent='%s' AND to_agent='%s' AND body LIKE 'AGMSG-PING v1 task_id=%s %%') OR (from_agent='%s' AND to_agent='%s' AND body LIKE 'AGMSG-PONG v1 task_id=%s%%'));\"\n" \
+                "${db}" "${team}" "${orchestrator}" "${worker}" "${task_id}" "${worker}" "${orchestrator}" "${task_id}" >&2
+        else
+            printf 'herdr-agents: read_at/PONG query: the agmsg db path for team %s could not be resolved.\n' "${team}" >&2
+        fi
+        hint=attach-a-client
+        [[ -z ${placement} ]] || hint=poke
+        printf 'linkage=unreached rc=%s hint=%s\n' "${rc}" "${hint}"
+        return "${rc}"
+    fi
     if [[ -n ${db} ]]; then
         # This PING is the newest orchestrator-to-worker row right after the
         # dispatch; only a PONG after it answers this PING.

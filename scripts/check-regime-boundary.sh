@@ -4,9 +4,11 @@
 # @description
 #   Verifies the Stop list of the agmsg-orchestration skill for this
 #   repository and prints one line per violation:
-#   untracked `.orchestration` files; more than one agmsg identity name per
-#   registered checkout (`git worktree list`, claude-code and codex); running
-#   `crit _serve` review servers; leftover `<repo> worker <name>` Herdr
+#   untracked `.orchestration` files in every registered checkout
+#   (`git worktree list`); exactly one agmsg identity name across claude-code
+#   and codex at each active seat (the main checkout and the manifest
+#   `worker_worktree`; an empty seat is reported too), and more than one name
+#   per type at any other checkout; running `crit _serve` review servers; leftover `<repo> worker <name>` Herdr
 #   workspaces (only when `herdr` is reachable); and a bare-id orchestrator
 #   seat lock, through the one implementation in
 #   scripts/check-agent-runtime.py (`orchestrator_seat_lock_warnings`).

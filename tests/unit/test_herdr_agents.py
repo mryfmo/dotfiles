@@ -2662,7 +2662,7 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
         dispatch.write_text(
             f"""#!/usr/bin/env bash
 printf 'agmsg-dispatch %s\\n' "$*" >> {self.calls_path}
-[[ {dispatch_exit} -eq 0 ]] || exit {dispatch_exit}
+[[ {dispatch_exit} -eq 0 ]] || {{ printf 'agmsg-dispatch: fake wake refused\\n' >&2; exit {dispatch_exit}; }}
 sqlite3 {db} "INSERT INTO messages (team, from_agent, to_agent, body, read_at) VALUES ('$1', '$2', '$3', '$5', '2026-10-01T00:00:00Z');"
 {pong_insert}"""
         )
@@ -3070,6 +3070,43 @@ exit {exit_code}
         calls = self.calls_path.read_text().splitlines()
         self.assertTrue(any(call.startswith("agmsg-dispatch ") and " w-test:p9 " in call for call in calls), calls)
         self.assertFalse(any(" w-test:p3 " in call for call in calls))
+
+    def test_add_worker_linkage_ignores_a_placement_record_for_a_pane_that_predates_this_spawn(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes(spawn_panes=("w-test:p1", "w-test:p9"))
+        # p1 was in the workspace before spawn.sh ran and is still listed.
+        self.pane_list_path.write_text(json.dumps({"result": {"panes": [{"pane_id": "w-test:p1"}]}}))
+        run = self.home_dir / ".agents/skills/agmsg/run"
+        run.mkdir(parents=True, exist_ok=True)
+        (run / "spawn.dotfiles__codex-standard-dot-a007").write_text("herdr:/tmp/herdr.sock:w-test:p1\t/project\tcodex\n")
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "codex")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("names pane w-test:p1, which existed before this spawn; using the new pane", result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertTrue(any(call.startswith("agmsg-dispatch ") and " w-test:p9 " in call for call in calls), calls)
+        self.assertFalse(any(call.startswith("agmsg-dispatch ") and " w-test:p1 " in call for call in calls), calls)
+
+    def test_add_worker_linkage_failure_prints_the_invocation_and_the_query(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes(dispatch_exit=4)
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "codex")
+
+        self.assertEqual(result.returncode, 4, result.stdout + result.stderr)
+        self.assertEqual("linkage=unreached rc=4 hint=attach-a-client", result.stdout.splitlines()[-1])
+        self.assertIn("agmsg-dispatch: fake wake refused", result.stderr)
+        invocation = re.search(
+            r"linkage PING failed: agmsg-dispatch dotfiles claude-remediation-dot codex-standard-dot-a007 w-test:p9 "
+            r"'AGMSG-PING v1 task_id=(bringup-\d+-\d+) reason=add-worker-linkage' exited 4\.",
+            result.stderr,
+        )
+        self.assertIsNotNone(invocation, result.stderr)
+        task_id = invocation.group(1)
+        self.assertIn(f"read_at/PONG query: sqlite3 '{self.temp_dir / 'messages.db'}' \"SELECT id, from_agent, read_at, body FROM messages WHERE team='dotfiles'", result.stderr)
+        self.assertIn(f"body LIKE 'AGMSG-PING v1 task_id={task_id} %'", result.stderr)
+        self.assertIn(f"body LIKE 'AGMSG-PONG v1 task_id={task_id}%'", result.stderr)
 
     def test_add_worker_linkage_ignores_a_pong_older_than_this_ping(self) -> None:
         self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")

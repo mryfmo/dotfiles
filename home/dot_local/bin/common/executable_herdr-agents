@@ -1404,11 +1404,14 @@ if [[ ${1:-} == "--attach" ]]; then
     fi
     # SessionStart runs outside the Bash sandbox: claim the orchestrator seat
     # under this claude's composite id, also in a managed pane. The hook payload
-    # on stdin carries the session id (bounded read, as upstream check-inbox.sh).
+    # on stdin carries the session id. The read is bounded like upstream
+    # check-inbox.sh's `timeout 2 cat`, but with bash's own `read -t` so it also
+    # works where GNU timeout is absent (macOS); EOF ends it early.
     HOOK_SESSION_ID=""
-    if [[ ! -t 0 ]] && command -v timeout > /dev/null 2>&1; then
-        HOOK_SESSION_ID="$({ timeout 2 cat 2> /dev/null || true; } |
-            sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)" || HOOK_SESSION_ID=""
+    if [[ ! -t 0 ]]; then
+        hook_payload=""
+        IFS= read -r -t 2 -d '' hook_payload || true
+        HOOK_SESSION_ID="$(sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' <<< "${hook_payload}" | head -n 1)"
     fi
     claim_orchestrator_seat "$(pwd -P)" "${HERDR_PANE_ID}" --self
     [[ ${HERDR_AGENTS_LAYOUT:-} == managed ]] && exit 0

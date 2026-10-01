@@ -517,8 +517,8 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         manifest["model_profiles"]["audit"] = {
             "claude": {"model": "claude-fable-5-1", "effort": "high"},
             "codex": {
-                "model": "gpt-6-astra",
-                "model_reasoning_effort": "high",
+                "model": "gpt-6.1-sol",
+                "model_reasoning_effort": "xhigh",
                 "sandbox_mode": "read-only",
             },
         }
@@ -781,6 +781,18 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
         self.assertIn("{{ .chezmoi.homeDir }}/.local/bin/common/permgate codex", codex)
         self.assertIn("~/.local/bin/common/permgate claude", claude)
+
+    def test_managed_codex_path_includes_installed_common_bin(self) -> None:
+        codex = tomllib.loads(
+            (ROOT / "home/.chezmoitemplates/codex-config-managed.toml").read_text()
+        )
+
+        path = codex["shell_environment_policy"]["set"]["PATH"].split(":")
+        self.assertIn("{{ .chezmoi.homeDir }}/.local/bin/common", path)
+        self.assertLess(
+            path.index("{{ .chezmoi.homeDir }}/.local/bin"),
+            path.index("{{ .chezmoi.homeDir }}/.local/bin/common"),
+        )
 
     def test_model_profiles_env_renders_worker_kind(self) -> None:
         manifest = sample_manifest()

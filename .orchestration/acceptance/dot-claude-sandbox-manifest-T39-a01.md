@@ -175,3 +175,109 @@ not restrict egress in the hot-reloaded session; to be re-tested in leg 2
 rather than a reload artefact.
 
 Leg 2 (fresh session) and the `failIfUnavailable: true` flip remain pending.
+
+### Leg 1 addenda (orchestrator + worker-c observations, 2026-09-29/30)
+
+- `uv run` targets (`make validate-agent-assets`, `make render-check`) fail
+  inside the sandbox: `Read-only file system` on `~/.cache/uv`. Workaround
+  `UV_CACHE_DIR=$TMPDIR/uv-cache`; T44 adds the cache dir to allowWrite.
+- `gh` returns HTTP 401 inside the sandbox (keyring D-Bus Unix socket
+  blocked) — intermittently for the orchestrator (REST once worked, GraphQL
+  failed), consistently for worker-c. T44's `allowAllUnixSockets` covers it.
+- `git status --porcelain` inside the sandbox lists phantom untracked entries
+  for the sandbox's protected-path stubs (`.bashrc`, `.zshrc`, `.gitconfig`,
+  `.gitmodules`, `.mcp.json`, `.idea`, `.vscode`, `.claude/{agents,commands,
+  skills,workflows,routines,output-styles,launch.json,loop.md}`); none exist
+  on disk. Hazard for "tree clean" checks and `git add -A`; boundary commits
+  keep using explicit `git add .orchestration/`.
+- agmsg `send.sh` pane rename fails inside the sandbox (herdr socket); the
+  message itself is delivered.
+- `$TMPDIR` differs between sandboxed and unsandboxed Bash calls; a body file
+  written in one is not visible in the other (caused one truncated agmsg
+  message, id 523, corrected by 524).
+- **Recurring `.git/config.lock` stub (2026-09-30 05:57 and 06:01 JST):** a
+  zero-byte, read-only `.git/config.lock` appears in the shared `.git` after
+  a sandboxed git command runs from a linked worktree (the sandbox protects
+  `.git/config`; the half-applied `git switch -c … origin/main` moved the ref,
+  index and tree but not HEAD or the tracking config). While present it
+  blocks every git config write for everyone, sandboxed or not (`push -u`,
+  `--set-upstream-to`, `git config`). Removed twice by the orchestrator
+  (hygiene exemption, after checking no git process held it). Workers now run
+  git outside the sandbox for config-writing commands and push without `-u`.
+  Root-cause follow-up (T45 candidate): reproduce with a minimal sandboxed
+  `git config` from a worktree; decide between `excludedCommands` for git,
+  an upstream Claude Code report, or accepting no config writes in the
+  sandbox.
+
+### Leg 2 (fresh session, 2026-09-30 07:40–08:30 JST, orchestrator session fc905758)
+
+Launch path: `mosh-server → zsh → claude` in the main checkout, outside any
+Herdr pane (`HERDR_ENV`/`HERDR_PANE_ID`/`HERDR_WORKSPACE_ID` unset; the Herdr
+pane wN:p1 carries them). Sandbox findings, all reproduced in this fresh
+session (not hot-reload artefacts):
+
+- `herdr` socket still unreachable from sandboxed Bash (`PermissionDenied`),
+  as is the tmux socket; every control-plane call needed an unsandboxed run.
+  T44 (#215) remains the fix.
+- **Monitor `watch.sh` dies immediately**: the sandbox has a pid namespace
+  (`/proc` lists 4 entries), so `kill -0 <session pid>` returns ESRCH and
+  `watch.sh` logs "session … is no longer alive; stopping" (exit 0). Real-time
+  agmsg delivery does not work from a sandboxed Monitor; the orchestrator
+  falls back to turn delivery (Stop hook, mode `both`). Not re-armed.
+- `gh` → HTTP 401 (keyring socket), `uv run --with pyyaml` → pypi timeout,
+  `mise outdated` → registry timeouts: network egress is filtered for every
+  package/registry host; `git fetch origin` works.
+- `make doctor` run from the workspace clone reports two false ERRORs
+  (`Claude MCP config differs`, `Codex config managed keys differ`): the
+  comparison renders `{{ .chezmoi.sourceDir }}` as the workspace clone while
+  the applied files were rendered from `~/.local/share/chezmoi`; both files
+  are byte-identical when compared against the canonical root. `chezmoi diff`
+  agrees (no drift except `.config/git/ignore`, which carries an extra local
+  line `**/.claude/.cc-writes/` absent from the source).
+- `codex --version` warns `could not create PATH aliases: Read-only file
+  system`; `codex login status` works (ChatGPT login).
+- Bring-up from a pane-less orchestrator via `herdr-agents --add-worker
+  .claude/worktrees/worker-c`: (1) fails at spawn with `HERDR_SOCKET_PATH is
+  unset` after already creating workspace wP (partial state); (2) with
+  `HERDR_SOCKET_PATH` exported it seats `claude-standard-dot-a005` at wP:p2
+  (placement record written, agent detected idle) but spawn's readiness wait
+  times out at 90 s and `poke.sh` exits 15 ("input box could not be
+  located"). Cause: no Herdr client views wP, so the pane is 18x41 and the
+  TUI input-box locator cannot find the composer. The worker itself was fine:
+  `agmsg-dispatch … wP:p2 'AGMSG-PING …'` (herdr agent prompt wake) was read
+  at 23:22:00Z and answered `AGMSG-PONG status=alive
+  note=actas-claimed-monitor-attached-inbox-empty`; the T45 task (id 538) was
+  read at 23:22:46Z. The orchestrator's first reading (a first-start trust
+  dialog) was an unverified inference and wrong: worker-c was already
+  trusted. Its manual `wait-output` + `send-keys Down Enter` attempt was
+  denied by the auto-mode classifier ("Create Unsafe Agents") and not
+  pursued. Gaps for T45: derive `HERDR_SOCKET_PATH` before creating the
+  workspace; `add-worker` still lacks the trust-dialog helper pair mode has
+  (matters for a never-trusted worktree). Upstream: `poke.sh` locator vs an
+  unviewed pane; use `agmsg-dispatch` for headless workspaces.
+
+`allowedDomains` enforcement could not be judged in this leg because every
+external host timed out (fetch of GitHub over git worked, so the filter is
+host-based, not a full outage). `failIfUnavailable: true` stays pending.
+
+Addendum (23:23Z): the worker's first sandboxed Bash in worker-c created the
+deny-mount stubs **on disk** this time — 19 zero-byte `-r--r--r--` entries
+(`.bashrc`, `.zshrc`, `.gitconfig`, `.gitmodules`, `.mcp.json`, `.profile`,
+`.idea`, `.vscode`, `.claude/{agents,skills,commands,…}`), ctime
+2026-09-30T08:21:59+09:00, visible to unsandboxed `git status` — whereas the
+orchestrator's sandboxed Bash in the main checkout left none. The worker
+stopped on the "worktree dirty" rule; orchestrator go (msg 540): stubs are
+sandbox artefacts, never added or removed, explicit-path `git add` only, paths
+and modes recorded in the T45 sandbox file. Root-cause follow-up joins the
+`.git/config.lock` candidate (why linked-worktree cwd gets real stubs).
+
+## Leg 3 note (2026-10-01, orchestrator session e7734322 in Herdr wN:p1)
+
+- Host-state reads inside sandboxed Bash are not reliable evidence: `id -nG`
+  omitted the `docker` group and `/var/run/docker.sock` appeared as
+  `nobody:nogroup`; the unsandboxed rerun showed `docker` membership and
+  `root:docker 660`. Verify host exposure outside the sandbox before any
+  trust-boundary judgement (T44 r2 decision).
+- The orchestrator Monitor (`watch.sh`) still exits at once with "session … is
+  no longer alive" inside the sandbox (pid namespace); turn delivery
+  (`delivery=both`) carried the T47 dispatch instead.

@@ -58,8 +58,8 @@ model_profiles:
     # Auditor tier (監査役): cross-vendor read-only audit of worker changesets.
     claude: { model: claude-fable-5-1, effort: high }
     codex:
-      model: gpt-6-astra
-      model_reasoning_effort: high
+      model: gpt-6.1-sol
+      model_reasoning_effort: xhigh
       sandbox_mode: read-only
       notify: ['{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify']
   # ADH V4 program profile; fallback and effort downgrade are forbidden.
@@ -119,7 +119,7 @@ codex:
   shell_environment_policy:
     inherit: core
     set:
-      PATH: '{{ .chezmoi.homeDir }}/.local/share/mise/installs/node/lts/bin:{{ .chezmoi.homeDir }}/.local/share/mise/shims:{{ .chezmoi.homeDir }}/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'
+      PATH: '{{ .chezmoi.homeDir }}/.local/share/mise/installs/node/lts/bin:{{ .chezmoi.homeDir }}/.local/share/mise/shims:{{ .chezmoi.homeDir }}/.local/bin:{{ .chezmoi.homeDir }}/.local/bin/common:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'
   features:
     plugins: true
     hooks: true

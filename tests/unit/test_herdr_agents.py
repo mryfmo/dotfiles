@@ -1867,8 +1867,38 @@ printf 'status=ok team=dotfiles\\n'
             self.calls_path.read_text().splitlines(),
         )
 
-    def test_seat_claim_keeps_a_same_session_composite_lock_of_a_live_pid(self) -> None:
-        live_owner = f"sid-stdin.{os.getpid()}"
+    def test_seat_claim_replaces_a_same_session_composite_lock_of_a_recycled_pid(self) -> None:
+        # The pid is alive but is not a claude process (this test's python).
+        recycled_owner = f"sid-stdin.{os.getpid()}"
+        self.install_orchestrator_seat_fakes(held=(("dotfiles", recycled_owner),))
+
+        result = self.run_attach_helper(
+            in_herdr=True,
+            managed_layout=True,
+            extra_env={"AGMSG_AGENT_PID": "4343"},
+            stdin_text='{"session_id":"sid-stdin"}\n',
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            "seat_claim=ok owner=sid-stdin.4343 replaced_stale_lock=yes",
+            result.stdout.splitlines(),
+        )
+        self.assertIn(
+            f"actas_lock_release dotfiles claude-remediation-dot {recycled_owner} "
+            f"skill_dir={self.home_dir}/.agents/skills/agmsg",
+            self.calls_path.read_text().splitlines(),
+        )
+
+    def test_seat_claim_keeps_a_same_session_composite_lock_of_a_live_claude(self) -> None:
+        # A sleeping binary named `claude` stands in for a parallel
+        # --resume/--continue sibling that shares our session id.
+        fake_claude = self.temp_dir / "claude"
+        shutil.copy2(shutil.which("sleep") or "/bin/sleep", fake_claude)
+        sibling = subprocess.Popen([str(fake_claude), "30"])
+        self.addCleanup(sibling.wait)
+        self.addCleanup(sibling.kill)
+        live_owner = f"sid-stdin.{sibling.pid}"
         self.install_orchestrator_seat_fakes(held=(("dotfiles", live_owner),))
 
         result = self.run_attach_helper(

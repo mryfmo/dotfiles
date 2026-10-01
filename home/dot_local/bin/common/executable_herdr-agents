@@ -413,7 +413,8 @@ function claude_ancestor_pid() {
 #   then CLAUDE_PID. Whatever is still missing, and everything without
 #   `--self`, comes from `herdr agent list` and `herdr pane process-info`; the
 #   launcher-side claim does not rename the caller's pane. When the lock is
-#   stale (bare, or same-session composite whose pid is dead), that exact
+#   stale (bare, or same-session composite whose pid is dead or not a claude
+#   process, for example a recycled pid), that exact
 #   owner token is released through upstream's owner-exact actas_lock_release
 #   and the claim repeated. A bare owner can only come from a sandboxed claim
 #   of this session; a same-session composite with a live pid is a parallel
@@ -433,7 +434,7 @@ function claim_orchestrator_seat() {
     local pane_id="$2"
     local self="${3:-}"
     local scripts="${HOME}/.agents/skills/agmsg/scripts"
-    local identity sid="" pid="" result owner team self_name=off teams attempt replaced="" label lookup
+    local identity sid="" pid="" result owner team self_name=off teams attempt replaced="" label lookup owner_comm
 
     [[ -x ${scripts}/actas-claim.sh && -x ${scripts}/identities.sh ]] || return 0
     is_main_checkout "${workdir}" || return 0
@@ -473,9 +474,11 @@ function claim_orchestrator_seat() {
     fi
     # actas-claim.sh stops at the first held team (rolling back earlier claims),
     # so release one same-session stale lock per round: at most one per team.
-    # A held owner is stale when it is our bare sid, or `<our sid>.<pid>` with
-    # a pid `ps -p` cannot see (dead; no locale-dependent kill -0 message, and
-    # a pid owned by another user still counts as alive).
+    # A held owner is stale when it is our bare sid, or `<our sid>.<pid>` whose
+    # pid is not a running claude: `ps -o comm=` (basename; macOS prints the
+    # path) is not `claude`, so a dead pid (no locale-dependent kill -0 text)
+    # and a recycled one both qualify, while a live claude with our sid is a
+    # parallel --resume/--continue sibling and is left alone.
     for ((attempt = 0; attempt <= teams; attempt++)); do
         if result="$(AGMSG_SELF_NAME="${self_name}" AGMSG_RESOLVE_PROJECT=0 \
             "${scripts}/actas-claim.sh" "${workdir}" claude-code "${identity}" "${sid}.${pid}" 2> /dev/null)"; then
@@ -487,7 +490,9 @@ function claim_orchestrator_seat() {
         [[ ${attempt} -lt ${teams} && -n ${team} ]] || break
         if [[ ${owner} != "${sid}" ]]; then
             [[ ${owner%.*} == "${sid}" && ${owner##*.} =~ ^[0-9]+$ ]] || break
-            ! ps -p "${owner##*.}" > /dev/null 2>&1 || break
+            owner_comm="$(ps -o comm= -p "${owner##*.}" 2> /dev/null)" || owner_comm=""
+            owner_comm="${owner_comm##*/}"
+            [[ ${owner_comm} != claude ]] || break
         fi
         (
             export SKILL_DIR="${HOME}/.agents/skills/agmsg"

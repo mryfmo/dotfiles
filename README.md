@@ -518,13 +518,33 @@ Ghostty starts at a normal zsh prompt. In Ghostty zsh sessions, bare `herdr`
 delegates to `herdr-session`, which simply execs the real `herdr` CLI: the
 terminal opens as one plain pane with no agent layout. Agent panes are added
 lazily — starting Claude Code inside a Herdr pane fires the Claude
-`SessionStart` hook, which runs `herdr-agents --attach` (logged to
-`~/.config/herdr/herdr-agents.log`). Exiting Herdr returns to the shell.
+`SessionStart` hook, which runs `herdr-agents --attach` (its stdout reaches
+the session context; stderr is logged to `~/.config/herdr/herdr-agents.log`).
+Exiting Herdr returns to the shell.
 Argumented Herdr calls such as `herdr --remote` and `herdr server
 reload-config` still run the real Herdr CLI, as does bare `herdr` outside
 Ghostty. Already-open Ghostty shells keep the zsh function they sourced at
 startup; run `exec zsh` or open a new window after updating these dotfiles
 when the wrapper changes.
+
+A Claude Code session started from a plain shell outside Herdr (for example
+over mosh or ssh, or `claude -p`) never seats a worker. Its SessionStart hook
+prints one line into the session context: not in a Herdr pane, the pair is not
+started, the on-demand commands, and the manifest worktree's worker with its
+`<socket>:<pane>` location when one is seated. Such a pane-less orchestrator
+claims its seat outside the sandbox with the composite id
+(`actas-claim.sh <repo> claude-code <name> <session_id>.<claude pid>`; a claim
+from sandboxed Bash writes the bare session id and turn delivery then skips
+silently), seats the worker on demand with
+`herdr-agents --add-worker <worktree>` (which derives `HERDR_SOCKET_PATH` from
+the default Herdr server socket `~/.config/herdr/herdr.sock`, the path the Claude
+sandbox allowlists, before creating anything, accepts a claude
+worker's workspace-trust dialog during spawn's readiness wait, and takes
+`--ready-timeout <seconds>`), confirms the worker's placement in
+`team.sh <team> --json`, sends `AGMSG-PING` with `poke.sh --body-file`, and
+dispatches no task before the `AGMSG-PONG`. The auditor runs headless
+(`codex --profile audit review --commit <sha>`), and a sandboxed pane-less
+session has no Monitor watch, so RESULTs arrive by turn delivery.
 
 The workspace layout stays centralized in `herdr-agents`, which is also bound
 inside Herdr at `prefix+alt+a`. The target layout is deliberately fixed at

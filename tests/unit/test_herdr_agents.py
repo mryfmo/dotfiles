@@ -10,6 +10,7 @@ import os
 import pty
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import tarfile
@@ -591,8 +592,11 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         env.pop("HERDR_AGENTS_NAME_RELEASE_POLLS", None)
         env.pop("HERDR_AGENTS_NAME_RELEASE_INTERVAL", None)
         env.pop("FPATH", None)
+        env["HERDR_SOCKET_PATH"] = str(self.temp_dir / "herdr.sock")
         env.pop("CLAUDE_CODE_SESSION_ID", None)
         env.pop("CLAUDE_PID", None)
+        # The default socket path honours XDG_CONFIG_HOME, which CI runners set.
+        env.pop("XDG_CONFIG_HOME", None)
         if extra_env:
             env.update(extra_env)
         return subprocess.run(
@@ -627,6 +631,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         workspace_id: str = "w-attach",
         pane_id: str = "w-attach:p1",
         extra_env: dict[str, str] | None = None,
+        cwd: Path | None = None,
         stdin_text: str | None = None,
         stdin_fd: int | None = None,
     ) -> subprocess.CompletedProcess[str]:
@@ -663,7 +668,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         )
         return subprocess.run(
             ["bash", str(SCRIPT), "--attach"],
-            cwd=self.workdir,
+            cwd=cwd or self.workdir,
             env=env,
             check=False,
             **stdin_args,
@@ -691,10 +696,46 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             stderr=subprocess.PIPE,
         )
 
-    def test_attach_noops_without_herdr_environment(self) -> None:
+    def test_attach_without_herdr_environment_prints_the_bring_up_summary(self) -> None:
         result = self.run_attach_helper(in_herdr=False)
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(
+            result.stdout,
+            "herdr-agents: not in a Herdr pane, so the agent pair is not started; start the worker on demand with "
+            '"herdr-agents --add-worker <worktree> [DIR]" and run the auditor headless with '
+            '"codex --profile audit review --commit <sha>"; no worker is seated at the manifest worker_worktree.\n',
+        )
+        self.assertFalse(self.calls_path.exists())
+
+    def test_attach_without_herdr_environment_names_the_seated_worker(self) -> None:
+        worktree = self.write_worktree_seat(worktree_identities="dotfiles\tclaude-standard-dot-a005")
+        worktree.mkdir(parents=True)
+        scripts = self.home_dir / ".agents/skills/agmsg/scripts"
+        members = [
+            {"member": "claude-remediation-dot", "pane": "unknown:no_placement_record"},
+            {"member": "claude-standard-dot-a005", "terminal": "herdr", "pane": "/run/herdr.sock:wP:p2"},
+        ]
+        (scripts / "team.sh").write_text("#!/usr/bin/env bash\nprintf '%s\\n' '" + json.dumps(members) + "'\n")
+
+        result = self.run_attach_helper(in_herdr=False)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(len(result.stdout.splitlines()), 1, result.stdout)
+        self.assertIn('"herdr-agents --add-worker .claude/worktrees/worker-c [DIR]"', result.stdout)
+        self.assertTrue(result.stdout.endswith("; worker claude-standard-dot-a005 is seated at /run/herdr.sock:wP:p2.\n"), result.stdout)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertTrue(all(c.startswith("identities ") for c in calls), calls)
+        self.assertIn(f"identities {worktree} claude-code resolve=0", calls)
+
+    def test_attach_without_herdr_environment_stays_quiet_in_the_worker_worktree(self) -> None:
+        worktree = self.write_worktree_seat(worktree_identities="dotfiles\tclaude-standard-dot-a005")
+        self.add_seat_worktree("worker-c")
+
+        result = self.run_attach_helper(in_herdr=False, cwd=worktree)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stdout, "")
         self.assertFalse(self.calls_path.exists())
 
     def test_attach_noops_for_full_mode_managed_layout(self) -> None:
@@ -1311,9 +1352,11 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         session_hooks = json.loads(result.stdout)["hooks"]["SessionStart"]
         command = session_hooks[-1]["hooks"][0]["command"]
-        self.assertIn("herdr-agents --attach", command)
-        self.assertIn("herdr-agents.log", command)
-        self.assertTrue(command.endswith("|| true"))
+        # stdout (the plain-start summary line) reaches the SessionStart context; stderr is logged.
+        self.assertTrue(
+            command.endswith('/herdr-agents --attach 2>> "$HOME/.config/herdr/herdr-agents.log" || true'),
+            command,
+        )
 
     def test_herdr_session_does_not_prebuild_agent_layout(self) -> None:
         self.assertNotIn("herdr-agents", HERDR_SESSION_SCRIPT.read_text())
@@ -2589,6 +2632,7 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
         options_copy = self.temp_dir / "spawn-options.yaml"
         for name, body in {
             "spawn.sh": f"""printf 'spawn %s ws=%s\\n' "$*" "${{HERDR_WORKSPACE_ID:-}}" >> {self.calls_path}
+printf 'spawn-socket %s\\n' "${{HERDR_SOCKET_PATH:-}}" >> {self.calls_path}
 cp "$AGMSG_SPAWN_OPTIONS_FILE" {options_copy}
 """,
             "despawn.sh": f"""printf 'despawn %s\\n' "$*" >> {self.calls_path}
@@ -2662,6 +2706,127 @@ exit {despawn_exit}
         calls = self.calls_path.read_text().splitlines()
         self.assertFalse(any(c.startswith(("spawn ", "workspace create")) for c in calls), calls)
         self.assertIn(f"Herdr agents worker claude-standard-dot-a007 is already seated in workspace w-b1 ({worktree})", result.stdout)
+
+    def test_add_worker_refuses_before_any_change_when_no_herdr_socket_is_found(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes()
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/b1", extra_env={"HERDR_SOCKET_PATH": ""})
+
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn(
+            f"HERDR_SOCKET_PATH is unset and no Herdr server socket is at {self.home_dir}/.config/herdr/herdr.sock",
+            result.stderr,
+        )
+        self.assertFalse((self.workdir / ".claude/worktrees/b1").exists())
+        self.assertFalse(self.calls_path.exists())
+
+    def test_add_worker_derives_the_default_herdr_socket_for_spawn(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes()
+        # macOS caps AF_UNIX paths near 104 bytes and its temp dirs are long, so
+        # HOME is a short symlink (/tmp/ha-* when writable) to the fake home.
+        short_root = Path(
+            tempfile.mkdtemp(prefix="ha-", dir="/tmp" if os.access("/tmp", os.W_OK) else None)
+        )
+        self.addCleanup(shutil.rmtree, short_root, True)
+        short_home = short_root / "h"
+        short_home.symlink_to(self.home_dir)
+        socket_path = short_home / ".config/herdr/herdr.sock"
+        try:
+            server = socket.socket(socket.AF_UNIX)
+        except PermissionError:
+            self.skipTest("Unix sockets are not permitted here")
+        self.addCleanup(server.close)
+        server.bind(str(socket_path))
+
+        result = self.run_helper(
+            "--add-worker",
+            ".claude/worktrees/b1",
+            # XDG_CONFIG_HOME is ignored: only the sandbox-allowlisted
+            # ~/.config/herdr/herdr.sock is derived.
+            extra_env={
+                "HERDR_SOCKET_PATH": "",
+                "HOME": str(short_home),
+                "XDG_CONFIG_HOME": str(short_root / "elsewhere"),
+            },
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(f"spawn-socket {socket_path}", self.calls_path.read_text().splitlines())
+
+    def test_add_worker_accepts_a_claude_trust_dialog_while_spawn_waits(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes()
+        self.pane_list_path.write_text(json.dumps({"result": {"panes": [{"pane_id": "w-test:p1"}]}}))
+        self.trust_dialog_match_path.write_text("1\n")
+        # spawn.sh places the pane, then blocks its readiness wait on the dialog.
+        spawn = self.home_dir / ".agents/skills/agmsg/scripts/spawn.sh"
+        spawn.write_text(
+            f"""#!/usr/bin/env bash
+printf 'spawn %s\\n' "$*" >> {self.calls_path}
+printf '%s\\n' '{json.dumps({"result": {"panes": [{"pane_id": "w-test:p1"}, {"pane_id": "w-test:p2"}]}})}' > {self.pane_list_path}
+for _ in $(seq 100); do
+    grep -qx 'pane send-keys w-test:p2 Down Enter' {self.calls_path} && exit 0
+    sleep 0.1
+done
+printf 'status=timeout\\n'
+exit 3
+"""
+        )
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--ready-timeout", "15")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn("pane send-keys w-test:p2 Down Enter", calls)
+        self.assertTrue(any(c.startswith("spawn ") and c.endswith(" --window --ready-timeout 15") for c in calls), calls)
+
+    def write_dialogless_claude_spawn(self, exit_code: int) -> None:
+        """spawn.sh places a pane, shows no trust dialog, then exits with exit_code."""
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes()
+        self.pane_list_path.write_text(json.dumps({"result": {"panes": [{"pane_id": "w-test:p1"}]}}))
+        spawn = self.home_dir / ".agents/skills/agmsg/scripts/spawn.sh"
+        spawn.write_text(
+            f"""#!/usr/bin/env bash
+printf 'spawn %s\\n' "$*" >> {self.calls_path}
+printf '%s\\n' '{json.dumps({"result": {"panes": [{"pane_id": "w-test:p1"}, {"pane_id": "w-test:p2"}]}})}' > {self.pane_list_path}
+sleep 1.5
+exit {exit_code}
+"""
+        )
+
+    def test_add_worker_succeeds_for_a_claude_worker_without_a_trust_dialog(self) -> None:
+        self.write_dialogless_claude_spawn(0)
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "claude")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("Herdr agents worker added", result.stdout)
+        self.assertNotIn("pane send-keys w-test:p2 Down Enter", self.calls_path.read_text().splitlines())
+
+    def test_add_worker_reports_a_failed_claude_spawn_without_a_trust_dialog(self) -> None:
+        self.write_dialogless_claude_spawn(3)
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "claude")
+
+        self.assertEqual(result.returncode, 3, result.stdout + result.stderr)
+        self.assertIn("spawn.sh exited 3 for worker ", result.stderr)
+        self.assertIn(" in workspace w-test; confirm linkage with AGMSG-PING", result.stderr)
+        self.assertNotIn("Herdr agents worker added", result.stdout)
+
+    def test_add_worker_reports_a_failed_spawn(self) -> None:
+        self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
+        self.write_seat_lifecycle_fakes()
+        spawn = self.home_dir / ".agents/skills/agmsg/scripts/spawn.sh"
+        spawn.write_text("#!/usr/bin/env bash\nprintf 'status=timeout\\n'\nexit 3\n")
+
+        result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "codex")
+
+        self.assertEqual(result.returncode, 3, result.stdout + result.stderr)
+        self.assertIn("spawn.sh exited 3 for worker codex-standard-dot-a007 in workspace w-test; confirm linkage with AGMSG-PING", result.stderr)
+        self.assertNotIn("Herdr agents worker added", result.stdout)
 
     def test_add_worker_rejects_a_worktree_outside_claude_worktrees(self) -> None:
         self.write_worktree_seat()

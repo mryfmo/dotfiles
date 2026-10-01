@@ -3218,6 +3218,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../../../scripts/check-regime-boundary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/check-regime-boundary.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../../../scripts/check-tools/" class="md-nav__link">
         
   
@@ -3422,10 +3450,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4_9" >
         
           
-          <label class="md-nav__link" for="__nav_4_4_8" id="__nav_4_4_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_4_9" id="__nav_4_4_9_label" tabindex="0">
             
   
   
@@ -3443,8 +3471,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_4_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_4_8">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_4_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4_9">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3747,7 +3775,7 @@
 
 
 <h1 id="homedot_localbincommonexecutable_agmsg-dispatch">home/dot_local/bin/common/executable_agmsg-dispatch<a class="headerlink" href="#homedot_localbincommonexecutable_agmsg-dispatch" title="Permanent link">&para;</a></h1>
-<p>lib/storage.sh from agmsg 1.5.0). Polls every five seconds for AGMSG_DISPATCH_TIMEOUT seconds (default 120), retrying an idle wake once. The retry shares the original deadline and rechecks the pane's current state. Only routing metadata, never the message body, is sent to the terminal. This is the orchestrator's wake path for herdr-agents worker panes until worker seating writes agmsg placement records at launch: upstream poke.sh refuses a member without one ("no placement record"), and a hand-joined herdr-agents worker gets one only after it first acts from its own pane. Use poke.sh only for spawn-seated members.</p>
+<p>lib/storage.sh from agmsg 1.5.0). Polls every five seconds for AGMSG_DISPATCH_TIMEOUT seconds (default 120), retrying an idle wake once. The retry shares the original deadline and rechecks the pane's current state. Only routing metadata, never the message body, is sent to the terminal. This is the orchestrator's wake path for herdr-agents worker panes until worker seating writes agmsg placement records at launch: upstream poke.sh refuses a member without one ("no placement record"), and a hand-joined herdr-agents worker gets one only after it first acts from its own pane. Use poke.sh only for spawn-seated members. It is also the wake path for an unviewed or headless Herdr workspace (no client attached, a small pane rect), where poke.sh exits 14/15 because it cannot locate the input box.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_agmsg-dispatch</code></li>
@@ -3774,7 +3802,9 @@
 <span class="c1">#   worker seating writes agmsg placement records at launch: upstream poke.sh</span>
 <span class="c1">#   refuses a member without one ("no placement record"), and a hand-joined</span>
 <span class="c1">#   herdr-agents worker gets one only after it first acts from its own pane.</span>
-<span class="c1">#   Use poke.sh only for spawn-seated members.</span>
+<span class="c1">#   Use poke.sh only for spawn-seated members. It is also the wake path for</span>
+<span class="c1">#   an unviewed or headless Herdr workspace (no client attached, a small pane</span>
+<span class="c1">#   rect), where poke.sh exits 14/15 because it cannot locate the input box.</span>
 <span class="c1"># @arg $1 string Team identifier.</span>
 <span class="c1"># @arg $2 string Sender identifier.</span>
 <span class="c1"># @arg $3 string Recipient identifier.</span>

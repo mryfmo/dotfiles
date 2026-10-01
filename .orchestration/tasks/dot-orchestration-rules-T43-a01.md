@@ -119,3 +119,135 @@ never after a pipe — the 1843dd1 audit rejected `| grep …; echo exit=$?` as
 evidence. Re-run the real-data check (72b8901 graph vs c3afc7a graph,
 `--repo-ref c3afc7a`) and paste the exit. allowed_files += the new executable
 path; everything else unchanged. Keep the PR; push without `-u`.
+
+## Orchestrator amendment r4 (2026-10-01; dispatched as AGMSG-ACCEPTANCE status=revise)
+
+r3 (12d3f80 → head 681957f) is correct on its three items (orchestrator
+re-derivation: real data exit 1 / 8 regressions, self-compare 0, bad ref 2,
+permgate row 25; audit of 12d3f80: Verdict correct). The Codex GitHub review
+of 681957f adds two items; fix both in one round on `feat/orchestration-rules-T43`:
+
+1. **Renames fail open (P1, `executable_ua-symbol-coverage:118`).** An old
+   path absent at REF is `explained` (`gone`), and its renamed successor has
+   `old == 0`, so a rename whose symbols the new graph drops exits 0. Reproduced
+   claim: rename `pkg/a.py` (2 defs) → `pkg/b.py`, new graph has only a file
+   node for `pkg/b.py` → `a.py explained`, `b.py ok`, `regressions: 0`.
+   Fix: detect renames before exempting a disappearance. Preferred shape: add
+   `--old-ref <previous-graph-rev>` (the previous graph's `.ua/meta.json`
+   `gitCommitHash`), run `git diff --name-status -M --diff-filter=R <old-ref>
+   <repo-ref>` once, and for each rename compare the old path's old count
+   against the new path's new count under the `min(old, defs at REF)` rule
+   (row shows `renamed → <new path>`); a genuine deletion stays `gone`/
+   `explained`. When `--repo-ref` is given without `--old-ref`, an absent old
+   path with symbols is a REGRESSION (fail closed), not `explained`. Update
+   docstring/usage/argparse help, the rule bullet, the Codex mirror, the SKILL
+   sentence and the README to name both refs. Tests: rename preserving symbols →
+   `ok`; rename dropping symbols → `REGRESSION`, exit 1; deletion with
+   `--old-ref` → `explained`; absent path without `--old-ref` → `REGRESSION`.
+2. **Codex managed PATH omits `~/.local/bin/common` (P1, codex/AGENTS.md:71).**
+   `[shell_environment_policy] set PATH` renders from
+   `home/dot_agents/agent-config.yaml:122` without that directory. On this
+   machine Codex runs commands through `zsh -lc`, and `home/dot_zshenv`
+   prepends the directory, so the helper resolves today (orchestrator test:
+   `env -i PATH=<rendered> zsh -lc 'command -v herdr-agents'` → found; `sh -c`
+   → not found). The managed PATH must not depend on that: append
+   `{{ .chezmoi.homeDir }}/.local/bin/common` after `.local/bin` in the
+   `shell_environment_policy.set.PATH` value, regenerate the rendered Codex
+   config(s) (`make render-check` green), and update any test pinning that
+   string. allowed_files += `home/dot_agents/agent-config.yaml` (that one
+   line), the generated Codex config template(s) the generator owns, and
+   `tests/unit/test_generate_agent_configs.py`.
+
+Already fixed, no action: the re-anchored "uv-script" comment at
+`executable_ua-symbol-coverage:55` is 12d3f80's fix (`"uv run" in first`).
+
+Validation: exit codes captured directly; paste the four new test names from
+`make unit-test`, `make render-check`, `make validate-agent-assets`, the real
+data run (72b8901 graph vs c3afc7a graph, `--old-ref 72b8901 --repo-ref
+c3afc7a`, expect `regressions: 8`, exit 1) and the self-compare. Keep PR #214;
+push without `-u`.
+
+## Orchestrator amendment r5 (2026-10-01; dispatched as AGMSG-ACCEPTANCE status=revise)
+
+r4 (6b53337) is correct on both items (orchestrator re-derivation: real data
+`--old-ref 72b8901 --repo-ref c3afc7a` exit 1 / 8, self-compare 0, `--old-ref`
+alone 2; audit of 6b53337: Verdict correct). The Codex GitHub review of
+6b53337 adds two findings whose common root cause is that the gate lets an
+**undercounted or absent def-line count explain a loss**. Fix the root cause,
+not the two symptoms, in one round on `feat/orchestration-rules-T43`:
+
+1. **Unchanged source cannot explain a loss.** With `--old-ref`, when a path's
+   blob is identical at OLD and REF (`git rev-parse OLD:path` ==
+   `git rev-parse REF:path`), any decrease in its symbol count is a
+   `REGRESSION` regardless of the def-like count (row note `source unchanged`).
+   This closes the whole class the reviewer's Ruby example belongs to
+   (`private def` uncounted → `defs == 2` explains `3 → 2`), and every other
+   grammar gap, because a source the graph refresh did not touch cannot have
+   lost a definition. Keep the `min(old, defs)` rule for changed files.
+2. **Ruby visibility prefixes** (P2, `:43`): extend `RUBY_DEF` to
+   `^\s*(?:(?:private|protected|public)\s+)?(?:def|class|module)\s+\S+`. One
+   regex change; one test (unchanged Ruby file with `private def`, graph drops
+   the private method → `REGRESSION`, exit 1; the pre-fix negative check must
+   show it was `explained`).
+3. **Source-backed new paths with zero symbols fail closed** (P1, `:103`, the
+   reviewer's second option). A path present in the new graph and absent from
+   the old graph, existing at REF with an integer def-like count ≥ 1 and a new
+   symbol count of 0, is a `REGRESSION` (row `| path | 0 | 0 | N | REGRESSION |`
+   with note `new file, no symbols`). This catches a move plus rewrite below
+   git's rename threshold (delete/add pair, successor has defs but no nodes),
+   which item 1 cannot see. Ceiling to document in the docstring: a moved and
+   rewritten file that keeps *some* nodes is judged only by this zero check.
+   Test: the reviewer's reproduction (`a.py` → `b.py` with 80 added lines and
+   only a file node for `b.py`) → exit 1.
+
+No CLI change; rule/SKILL/mirror/README wording unchanged unless the exit
+semantics text needs the two new REGRESSION reasons (one clause each).
+Validation as before, every exit captured directly. Real data
+(`--old-ref 72b8901 --repo-ref c3afc7a`): paste the full table; rows that turn
+from `explained` into `REGRESSION` under item 1 are expected (source is
+identical between those revisions, so every decrease is a real T41
+under-extraction) — list them in the report. Self-compare must stay 0.
+allowed_files unchanged from r4. Keep PR #214; push without `-u`.
+
+## Orchestrator amendment r6 (2026-10-01; dispatched as AGMSG-ACCEPTANCE status=revise after T48)
+
+r5 (c878b0d) is correct on its three items (re-derived; audit: correct). The
+Codex GitHub review of c878b0d adds a P1 (`:184`, a source-backed new path
+with 2 defs and 1 node is `ok`) and a P2 (`:52`, shell names with `?` etc. are
+not matched, so a changed shell file can have a loss `explained`). Both are
+instances of the same remaining design flaw: **a regex def-line count is still
+allowed to explain a loss (changed files) or to pass a new file**. Remove that
+role once and for all; one commit on `feat/orchestration-rules-T43`:
+
+1. **Def-line counts never explain.** A decrease on any path that exists at
+   REF is `REGRESSION`, full stop — including changed files where the count
+   dropped. The only `explained` outcomes are structural git facts under
+   `--old-ref`: the path is absent at REF and not renamed (`gone`, deletion),
+   or it is renamed and the successor's new count ≥ the old count (`renamed →`).
+   A renamed path whose successor has fewer symbols is `REGRESSION`. Without
+   `--old-ref`, every decrease is `REGRESSION` (as today). The rule text
+   already allows acceptance when the validation "cites the source change
+   behind each decrease", so a legitimate function deletion in a changed file
+   is flagged and cited, not silently explained.
+2. **Def-line counts only flag.** For a path new to the graph that exists at
+   REF with an integer def-like count, `REGRESSION` when `new < defs` (note
+   `new file, <new> of <defs> defs`); the r5 zero-symbol check is the special
+   case. Keep the `def-like lines` column as information on every row.
+3. **Shell names:** `SHELL_DEF` accepts any non-space, non-`()` characters in
+   the name (`function\s+\S+` and `^\s*[^\s()]+\s*\(\)`), so `foo?`, `foo@bar`
+   and friends count. One test.
+4. Docstring: rewrite the explanation paragraph around the two principles
+   above (structural facts explain; counts only flag) and drop the ceilings
+   that no longer apply. Rule/SKILL/mirror/README: the phrase "or cites the
+   source change behind each decrease" stays; add nothing else unless a
+   sentence now contradicts the semantics.
+5. Tests: the r2 cases `partial deletion fully accounted → explained` and
+   `unchanged source` keep their inputs but the first now expects
+   `REGRESSION` (state this in the report); add the `:184` reproduction (new
+   `b.py`, 2 defs, 1 node → `REGRESSION`, exit 1) and the shell-name test.
+   Negative check against c878b0d for the new tests.
+
+Validation as before, exits captured directly. Real data (`--old-ref 72b8901
+--repo-ref c3afc7a`): expect the same 8 regressions (no explained rows exist on
+that data). Self-compare 0. allowed_files unchanged. Keep PR #214; push
+without `-u`.

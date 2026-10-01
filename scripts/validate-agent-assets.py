@@ -383,6 +383,14 @@ def validate_claude_sandbox(sandbox: Any, writable_roots: list[str], label: str)
         )
 
 
+def validate_claude_permissions_allow(permissions: Any, label: str) -> None:
+    allow = permissions.get("allow", []) if isinstance(permissions, dict) else []
+    if not isinstance(allow, list) or not all(
+        isinstance(rule, str) and rule.strip() for rule in allow
+    ):
+        fail(f"{label}.allow must be a list of non-empty permission rules")
+
+
 def validate_claude_settings(manifest: dict[str, Any]) -> None:
     settings_path = ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
     settings = json.loads(render_template_text(settings_path))
@@ -408,6 +416,7 @@ def validate_claude_settings(manifest: dict[str, Any]) -> None:
         fail(f"{settings_path} still references the legacy type checker")
     if "format-edited-files.py" not in commands:
         fail(f"{settings_path} must use the robust Python post-edit hook")
+    validate_claude_permissions_allow(settings.get("permissions"), f"{settings_path} permissions")
     validate_claude_sandbox(
         settings.get("sandbox"),
         manifest.get("codex", {}).get("sandbox_workspace_write", {}).get("writable_roots", []),

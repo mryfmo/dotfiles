@@ -785,6 +785,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         )
 
         self.assertIn("agmsg-dispatch", claude["sandbox"]["excludedCommands"])
+        self.assertEqual(["Bash(agmsg-dispatch:*)"], claude["permissions"]["allow"])
 
     def test_managed_codex_path_includes_installed_common_bin(self) -> None:
         codex = tomllib.loads(

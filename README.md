@@ -364,8 +364,11 @@ agmsg row and sends a herdr wake: from sandboxed Bash the herdr socket is
 denied, and outside the sandbox it delivered the T49 messages within seconds, so
 a Claude worker wakes a herdr-paned orchestrator without a failed sandboxed run.
 Claude Code matches an excluded entry against the command's first word and still
-applies its permission rules to it; Codex workers run under Codex's own sandbox
-and are not affected. `sandbox.network.allowAllUnixSockets` is deliberately not
+applies its permission rules to it, so the managed settings also allow
+`Bash(agmsg-dispatch:*)` and the dispatch runs without a prompt. That is the
+first and only managed `permissions.allow` entry: every Claude session using the
+managed settings can run `agmsg-dispatch` without confirmation. Codex workers
+run under Codex's own sandbox and are not affected. `sandbox.network.allowAllUnixSockets` is deliberately not
 used: on a workstation with a `docker`-group user or a reachable
 `systemd --user` bus it turns the auto-approved sandbox into an escape (see the
 upstream [security limitations](https://code.claude.com/docs/en/sandboxing#security-limitations)).

@@ -168,6 +168,10 @@ claude:
   includeGitInstructions: true
   permissions:
     defaultMode: plan
+    # The only managed allow rule: agmsg-dispatch inserts one agmsg row and
+    # sends a herdr wake, the sanctioned worker-to-orchestrator wake (T49).
+    allow:
+      - Bash(agmsg-dispatch:*)
     deny:
       - Bash(sudo:*)
       - Bash(rm -rf:*)

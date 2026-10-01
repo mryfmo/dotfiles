@@ -779,6 +779,14 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertIn("{{ .chezmoi.homeDir }}/.local/bin/common/permgate codex", codex)
         self.assertIn("~/.local/bin/common/permgate claude", claude)
 
+    def test_managed_claude_sandbox_excludes_agmsg_dispatch(self) -> None:
+        claude = json.loads(
+            (ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()
+        )
+
+        self.assertIn("agmsg-dispatch", claude["sandbox"]["excludedCommands"])
+        self.assertEqual(["Bash(agmsg-dispatch:*)"], claude["permissions"]["allow"])
+
     def test_managed_codex_path_includes_installed_common_bin(self) -> None:
         codex = tomllib.loads(
             (ROOT / "home/.chezmoitemplates/codex-config-managed.toml").read_text()

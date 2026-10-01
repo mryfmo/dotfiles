@@ -168,6 +168,16 @@ claude:
   includeGitInstructions: true
   permissions:
     defaultMode: plan
+    # The only managed allow rule: agmsg-dispatch inserts one agmsg row and
+    # sends a herdr wake, the sanctioned worker-to-orchestrator wake (T49).
+    # It does not authorise chains: "Claude Code is aware of shell operators,
+    # so a rule like `Bash(safe-cmd *)` won't give it permission to run the
+    # command `safe-cmd && other-cmd`. ... A rule must match each subcommand
+    # independently." (code.claude.com/docs/en/permissions) excludedCommands
+    # matches the first word only; the allow rule still requires every
+    # subcommand to match, so a chained command prompts.
+    allow:
+      - Bash(agmsg-dispatch:*)
     deny:
       - Bash(sudo:*)
       - Bash(rm -rf:*)
@@ -202,8 +212,17 @@ claude:
     failIfUnavailable: false
     autoAllowBashIfSandboxed: true
     allowUnsandboxedCommands: true
-    # Add entries only with E2E evidence, one comment per entry.
-    excludedCommands: []
+    # Add entries only with E2E evidence, one comment per entry. Claude Code
+    # matches an entry against the command's first word (a command name, no
+    # patterns; for compound commands and pipes only the first word is
+    # checked), and an excluded command still needs a permission allow rule or
+    # a normal permission prompt.
+    excludedCommands:
+      # agmsg-dispatch: inserts one agmsg row and sends a herdr wake. From
+      # sandboxed Bash the herdr socket is PermissionDenied (T39 leg 1);
+      # outside the sandbox it delivered msgs 545-577 with read_at within
+      # seconds (T49 E2E, 2026-10-01).
+      - agmsg-dispatch
     filesystem:
       # Rendered into sandbox.filesystem.allowWrite after the Codex writable
       # roots. ~/.cache/uv: every `uv run` target (make unit-test,

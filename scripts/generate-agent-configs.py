@@ -449,6 +449,11 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
         "autoUpdatesChannel": claude["autoUpdatesChannel"],
         "plansDirectory": claude["plansDirectory"],
         "permissions": {
+            **(
+                {"allow": claude["permissions"]["allow"]}
+                if "allow" in claude["permissions"]
+                else {}
+            ),
             "deny": claude["permissions"]["deny"],
             "defaultMode": claude["permissions"]["defaultMode"],
             "ask": claude["permissions"]["ask"],

@@ -15,6 +15,8 @@ import sys
 import tarfile
 import tempfile
 import textwrap
+import threading
+import time
 import unittest
 from pathlib import Path
 
@@ -73,6 +75,7 @@ class HerdrAgentsTest(unittest.TestCase):
         # shell, shell-pid (a non-sh name that is the pane's shell_pid),
         # exit-dialog (claude foreground until an Enter), stuck, or unavailable.
         self.process_info_state_path = self.temp_dir / "process-info-state.txt"
+        self.orchestrator_session_path = self.temp_dir / "orchestrator-session.txt"
         # 1 makes the visible snapshot stale: it shows old transcript text and
         # a prompt wait on it times out, as for a background tab.
         self.visible_stale_path = self.temp_dir / "visible-stale.txt"
@@ -192,6 +195,11 @@ if [[ $1 == pane && $2 == wait-output ]]; then
     exit 0
 fi
 if [[ $1 == pane && $2 == process-info ]]; then
+    if [[ ${{4:-}} == w-test:p1 && -s {self.orchestrator_session_path} ]] &&
+        grep -q '^agent start claude-orchestrator' {self.calls_path}; then
+        printf '%s\\n' '{{"id":"cli:pane:process_info","result":{{"process_info":{{"foreground_processes":[{{"argv":["claude"],"cmdline":"claude","name":"claude","pid":4343}}],"pane_id":"w-test:p1"}}}}}}'
+        exit 0
+    fi
     state="$(cat {self.process_info_state_path})"
     if [[ $state == unavailable ]]; then
         exit 1
@@ -263,6 +271,11 @@ if [[ $1 == agent && $2 == list ]]; then
     if (( polls != 0 )); then
         (( polls > 0 )) && printf '%s\\n' "$(( polls - 1 ))" > {self.agent_list_taken_polls_path}
         printf '{{"id":"cli:agent:list","result":{{"agents":[{{"name":"%s","agent_status":"idle"}},{{"agent_status":"idle"}}]}}}}\\n' "$(cat {self.agent_taken_name_path})"
+        exit 0
+    fi
+    if [[ -s {self.orchestrator_session_path} ]]; then
+        sid="$(cat {self.orchestrator_session_path})"
+        printf '{{"id":"cli:agent:list","result":{{"agents":[{{"agent":"claude","pane_id":"w-test:p1","agent_session":{{"value":"%s"}},"agent_status":"idle"}},{{"agent":"claude","pane_id":"w-attach:p1","agent_session":{{"value":"%s"}},"agent_status":"idle"}}]}}}}\\n' "$sid" "$sid"
         exit 0
     fi
     printf '%s\\n' '{{"id":"cli:agent:list","result":{{"agents":[{{"agent_status":"idle"}}]}}}}'
@@ -578,6 +591,8 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         env.pop("HERDR_AGENTS_NAME_RELEASE_POLLS", None)
         env.pop("HERDR_AGENTS_NAME_RELEASE_INTERVAL", None)
         env.pop("FPATH", None)
+        env.pop("CLAUDE_CODE_SESSION_ID", None)
+        env.pop("CLAUDE_PID", None)
         if extra_env:
             env.update(extra_env)
         return subprocess.run(
@@ -612,6 +627,8 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         workspace_id: str = "w-attach",
         pane_id: str = "w-attach:p1",
         extra_env: dict[str, str] | None = None,
+        stdin_text: str | None = None,
+        stdin_fd: int | None = None,
     ) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env["HOME"] = str(self.home_dir)
@@ -620,6 +637,8 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         env.pop("HERDR_AGENTS_WORKER_KIND", None)
         env.pop("HERDR_AGENTS_WORKER_PROFILE", None)
         env.pop("HERDR_AGENTS_CODEX_PROFILE", None)
+        env.pop("CLAUDE_CODE_SESSION_ID", None)
+        env.pop("CLAUDE_PID", None)
         if extra_env:
             env.update(extra_env)
         for key in (
@@ -637,11 +656,17 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             )
         if managed_layout:
             env["HERDR_AGENTS_LAYOUT"] = "managed"
+        stdin_args: dict = (
+            {"input": stdin_text}
+            if stdin_text is not None
+            else {"stdin": stdin_fd if stdin_fd is not None else subprocess.DEVNULL}
+        )
         return subprocess.run(
             ["bash", str(SCRIPT), "--attach"],
             cwd=self.workdir,
             env=env,
             check=False,
+            **stdin_args,
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -1539,6 +1564,378 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             "orchestrator_profile=deep args=--model claude-fable-5-1 --effort high --advisor fable "
             "--model haiku --effort low",
             result.stdout.splitlines(),
+        )
+
+    def install_orchestrator_seat_fakes(
+        self,
+        held: tuple[tuple[str, str], ...] = (),
+        teams: tuple[str, ...] = ("dotfiles",),
+    ) -> None:
+        """Fake agmsg: the n-th actas-claim call answers held[n] (team, owner), then ok."""
+        scripts = self.install_agmsg_fakes(
+            claude_identities_output="\n".join(
+                f"{team}\tclaude-remediation-dot" for team in teams
+            )
+        )
+        counter = self.temp_dir / "claim-calls"
+        # The --attach pane is the pair's orchestrator pane (self-named seat label).
+        self.pane_list_path.write_text(
+            json.dumps(
+                {
+                    "id": "cli:pane:list",
+                    "result": {
+                        "panes": [
+                            {"pane_id": "w-attach:p1", "label": f"{teams[0]}:claude-remediation-dot"}
+                        ]
+                    },
+                }
+            )
+            + "\n"
+        )
+        answers = "".join(
+            f"    {index}) printf 'status=held team={team} owner={owner}\\n'; exit 1 ;;\n"
+            for index, (team, owner) in enumerate(held)
+        )
+        claim = scripts / "actas-claim.sh"
+        claim.write_text(
+            f"""#!/usr/bin/env bash
+printf 'actas-claim %s resolve=%s self_name=%s\\n' "$*" "${{AGMSG_RESOLVE_PROJECT:-}}" "${{AGMSG_SELF_NAME:-}}" >> {self.calls_path}
+n="$(cat {counter} 2> /dev/null || printf 0)"
+printf '%s\\n' "$((n + 1))" > {counter}
+case "$n" in
+{answers}esac
+printf 'status=ok team=dotfiles\\n'
+"""
+        )
+        claim.chmod(0o755)
+        (scripts / "lib").mkdir()
+        (scripts / "lib/actas-lock.sh").write_text(
+            f"""actas_lock_release() {{
+    printf 'actas_lock_release %s skill_dir=%s\\n' "$*" "$SKILL_DIR" >> {self.calls_path}
+}}
+"""
+        )
+        subprocess.run(["git", "init", "-q", str(self.workdir)], check=True)
+
+    def test_orchestrator_pane_start_claims_the_seat_with_the_composite_id(
+        self,
+    ) -> None:
+        self.install_orchestrator_seat_fakes()
+        self.orchestrator_session_path.write_text("sid-test\n")
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("seat_claim=ok owner=sid-test.4343", result.stdout.splitlines())
+        workdir = self.workdir.resolve()
+        self.assertIn(
+            f"actas-claim {workdir} claude-code claude-remediation-dot sid-test.4343 resolve=0 self_name=off",
+            self.calls_path.read_text().splitlines(),
+        )
+
+    def test_orchestrator_pane_start_without_a_session_claims_nothing(self) -> None:
+        self.install_orchestrator_seat_fakes()
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("seat_claim=unresolved", result.stdout.splitlines())
+        self.assertFalse(
+            any(call.startswith("actas-claim ") for call in self.calls_path.read_text().splitlines())
+        )
+
+    def test_session_start_attach_claims_the_seat_in_a_managed_pane(self) -> None:
+        self.install_orchestrator_seat_fakes()
+
+        result = self.run_attach_helper(
+            in_herdr=True,
+            managed_layout=True,
+            # AGMSG_AGENT_PID="" skips the claude ancestor walk, which would
+            # otherwise find the claude running this test suite.
+            extra_env={
+                "CLAUDE_CODE_SESSION_ID": "sid-self",
+                "CLAUDE_PID": "777",
+                "AGMSG_AGENT_PID": "",
+            },
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("seat_claim=ok owner=sid-self.777", result.stdout.splitlines())
+        workdir = self.workdir.resolve()
+        self.assertIn(
+            f"actas-claim {workdir} claude-code claude-remediation-dot sid-self.777 resolve=0 self_name=on",
+            self.calls_path.read_text().splitlines(),
+        )
+
+    def test_session_start_attach_reads_the_hook_payload_and_herdr_pid(self) -> None:
+        # The claude ancestor walk itself is not unit-testable here (the suite
+        # may run under a real claude); AGMSG_AGENT_PID="" skips it.
+        self.install_orchestrator_seat_fakes()
+        self.process_info_state_path.write_text("claude\n")
+
+        result = self.run_attach_helper(
+            in_herdr=True,
+            managed_layout=True,
+            extra_env={"AGMSG_AGENT_PID": ""},
+            stdin_text='{"session_id":"sid-stdin","hook_event_name":"SessionStart"}\n',
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("seat_claim=ok owner=sid-stdin.4343", result.stdout.splitlines())
+        self.assertIn(
+            "pane process-info --pane w-attach:p1", self.calls_path.read_text().splitlines()
+        )
+
+    def test_session_start_attach_claims_when_the_hook_keeps_stdin_open(self) -> None:
+        # The payload arrives without a newline and the pipe stays open past
+        # the 2 s read bound; the byte-wise read keeps it on bash 3.2 (macOS)
+        # and 4+ alike. The fake herdr lookup returns nothing, so only the
+        # payload can supply the sid.
+        self.install_orchestrator_seat_fakes()
+        read_fd, write_fd = os.pipe()
+
+        def produce() -> None:
+            os.write(write_fd, b'{"session_id":"sid-self"}')
+            time.sleep(3)
+            os.close(write_fd)
+
+        producer = threading.Thread(target=produce)
+        producer.start()
+        try:
+            result = self.run_attach_helper(
+                in_herdr=True,
+                managed_layout=True,
+                extra_env={"AGMSG_AGENT_PID": "777"},
+                stdin_fd=read_fd,
+            )
+        finally:
+            producer.join()
+            os.close(read_fd)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("seat_claim=ok owner=sid-self.777", result.stdout.splitlines())
+
+    def test_session_start_attach_bounds_a_trickling_hook_payload(self) -> None:
+        # One byte every 0.5 s for 6 s: the overall read deadline ends the
+        # read early with an incomplete payload, and the herdr lookup
+        # supplies the session id.
+        self.install_orchestrator_seat_fakes()
+        self.orchestrator_session_path.write_text("sid-herdr\n")
+        read_fd, write_fd = os.pipe()
+
+        def produce() -> None:
+            for byte in b'{"session_id":"sid-trickle"}'[:12]:
+                os.write(write_fd, bytes([byte]))
+                time.sleep(0.5)
+            os.close(write_fd)
+
+        producer = threading.Thread(target=produce)
+        producer.start()
+        started = time.monotonic()
+        try:
+            result = self.run_attach_helper(
+                in_herdr=True,
+                managed_layout=True,
+                extra_env={"AGMSG_AGENT_PID": "777"},
+                stdin_fd=read_fd,
+            )
+            elapsed = time.monotonic() - started
+        finally:
+            producer.join()
+            os.close(read_fd)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertLess(elapsed, 4.5, result.stdout + result.stderr)
+        self.assertIn("seat_claim=ok owner=sid-herdr.777", result.stdout.splitlines())
+
+    def test_session_start_attach_skips_a_pane_that_is_not_the_orchestrator(self) -> None:
+        self.install_orchestrator_seat_fakes()
+        self.pane_list_path.write_text(
+            '{"id":"cli:pane:list","result":{"panes":[{"pane_id":"w-attach:p1","label":"claude-worker"}]}}\n'
+        )
+
+        result = self.run_attach_helper(
+            in_herdr=True,
+            managed_layout=True,
+            extra_env={"AGMSG_AGENT_PID": "4343"},
+            stdin_text='{"session_id":"sid-stdin"}\n',
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("seat_claim=skipped reason=not-orchestrator-pane", result.stdout.splitlines())
+        self.assertFalse(
+            any(call.startswith("actas-claim ") for call in self.calls_path.read_text().splitlines())
+        )
+
+    def test_seat_claim_replaces_a_same_session_bare_lock(self) -> None:
+        self.install_orchestrator_seat_fakes(held=(("dotfiles", "sid-stdin"),))
+
+        result = self.run_attach_helper(
+            in_herdr=True,
+            managed_layout=True,
+            extra_env={"AGMSG_AGENT_PID": "4343"},
+            stdin_text='{"session_id":"sid-stdin"}\n',
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            "seat_claim=ok owner=sid-stdin.4343 replaced_stale_lock=yes",
+            result.stdout.splitlines(),
+        )
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn(
+            "actas_lock_release dotfiles claude-remediation-dot sid-stdin "
+            f"skill_dir={self.home_dir}/.agents/skills/agmsg",
+            calls,
+        )
+        self.assertEqual(2, sum(call.startswith("actas-claim ") for call in calls))
+
+    def test_seat_claim_replaces_same_session_bare_locks_in_every_team(self) -> None:
+        self.install_orchestrator_seat_fakes(
+            held=(("team-a", "sid-stdin"), ("team-b", "sid-stdin")),
+            teams=("team-a", "team-b"),
+        )
+
+        result = self.run_attach_helper(
+            in_herdr=True,
+            managed_layout=True,
+            extra_env={"AGMSG_AGENT_PID": "4343"},
+            stdin_text='{"session_id":"sid-stdin"}\n',
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            "seat_claim=ok owner=sid-stdin.4343 replaced_stale_lock=yes",
+            result.stdout.splitlines(),
+        )
+        calls = self.calls_path.read_text().splitlines()
+        releases = [call.split(" skill_dir=")[0] for call in calls if call.startswith("actas_lock_release ")]
+        self.assertEqual(
+            [
+                "actas_lock_release team-a claude-remediation-dot sid-stdin",
+                "actas_lock_release team-b claude-remediation-dot sid-stdin",
+            ],
+            releases,
+        )
+        self.assertEqual(3, sum(call.startswith("actas-claim ") for call in calls))
+
+    def test_seat_claim_fails_when_a_later_team_is_held_by_another_session(self) -> None:
+        self.install_orchestrator_seat_fakes(
+            held=(("team-a", "sid-stdin"), ("team-b", "other-sid.999")),
+            teams=("team-a", "team-b"),
+        )
+
+        result = self.run_attach_helper(
+            in_herdr=True,
+            managed_layout=True,
+            extra_env={"AGMSG_AGENT_PID": "4343"},
+            stdin_text='{"session_id":"sid-stdin"}\n',
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            "seat_claim=failed status=held team=team-b owner=other-sid.999",
+            result.stdout.splitlines(),
+        )
+        calls = self.calls_path.read_text().splitlines()
+        self.assertEqual(
+            ["actas_lock_release team-a claude-remediation-dot sid-stdin"],
+            [call.split(" skill_dir=")[0] for call in calls if call.startswith("actas_lock_release ")],
+        )
+
+    def test_seat_claim_replaces_a_same_session_composite_lock_of_a_dead_pid(self) -> None:
+        reaped = subprocess.Popen(["true"])
+        reaped.wait()
+        dead_owner = f"sid-stdin.{reaped.pid}"
+        self.install_orchestrator_seat_fakes(held=(("dotfiles", dead_owner),))
+
+        result = self.run_attach_helper(
+            in_herdr=True,
+            managed_layout=True,
+            extra_env={"AGMSG_AGENT_PID": "4343"},
+            stdin_text='{"session_id":"sid-stdin"}\n',
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            "seat_claim=ok owner=sid-stdin.4343 replaced_stale_lock=yes",
+            result.stdout.splitlines(),
+        )
+        self.assertIn(
+            f"actas_lock_release dotfiles claude-remediation-dot {dead_owner} "
+            f"skill_dir={self.home_dir}/.agents/skills/agmsg",
+            self.calls_path.read_text().splitlines(),
+        )
+
+    def test_seat_claim_replaces_a_same_session_composite_lock_of_a_recycled_pid(self) -> None:
+        # The pid is alive but is not a claude process (this test's python).
+        recycled_owner = f"sid-stdin.{os.getpid()}"
+        self.install_orchestrator_seat_fakes(held=(("dotfiles", recycled_owner),))
+
+        result = self.run_attach_helper(
+            in_herdr=True,
+            managed_layout=True,
+            extra_env={"AGMSG_AGENT_PID": "4343"},
+            stdin_text='{"session_id":"sid-stdin"}\n',
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            "seat_claim=ok owner=sid-stdin.4343 replaced_stale_lock=yes",
+            result.stdout.splitlines(),
+        )
+        self.assertIn(
+            f"actas_lock_release dotfiles claude-remediation-dot {recycled_owner} "
+            f"skill_dir={self.home_dir}/.agents/skills/agmsg",
+            self.calls_path.read_text().splitlines(),
+        )
+
+    def test_seat_claim_keeps_a_same_session_composite_lock_of_a_live_claude(self) -> None:
+        # A sleeping binary named `claude` stands in for a parallel
+        # --resume/--continue sibling that shares our session id.
+        fake_claude = self.temp_dir / "claude"
+        # Contents only: copying /bin/sleep's file flags is refused on macOS.
+        shutil.copyfile(shutil.which("sleep") or "/bin/sleep", fake_claude)
+        fake_claude.chmod(0o755)
+        sibling = subprocess.Popen([str(fake_claude), "30"])
+        self.addCleanup(sibling.wait)
+        self.addCleanup(sibling.kill)
+        live_owner = f"sid-stdin.{sibling.pid}"
+        self.install_orchestrator_seat_fakes(held=(("dotfiles", live_owner),))
+
+        result = self.run_attach_helper(
+            in_herdr=True,
+            managed_layout=True,
+            extra_env={"AGMSG_AGENT_PID": "4343"},
+            stdin_text='{"session_id":"sid-stdin"}\n',
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            f"seat_claim=failed status=held team=dotfiles owner={live_owner}",
+            result.stdout.splitlines(),
+        )
+        self.assertFalse(
+            any(call.startswith("actas_lock_release") for call in self.calls_path.read_text().splitlines())
+        )
+
+    def test_seat_claim_held_by_another_session_fails_without_release(self) -> None:
+        self.install_orchestrator_seat_fakes(held=(("dotfiles", "other-sid.999"),))
+
+        result = self.run_attach_helper(
+            in_herdr=True,
+            managed_layout=True,
+            extra_env={"AGMSG_AGENT_PID": "4343"},
+            stdin_text='{"session_id":"sid-stdin"}\n',
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            "seat_claim=failed status=held team=dotfiles owner=other-sid.999",
+            result.stdout.splitlines(),
+        )
+        self.assertFalse(
+            any(call.startswith("actas_lock_release") for call in self.calls_path.read_text().splitlines())
         )
 
     def test_worker_kind_defaults_to_generated_env_fragment(self) -> None:

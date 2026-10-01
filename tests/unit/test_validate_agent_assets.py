@@ -691,6 +691,17 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                         sandbox, self.required_agmsg_writable_roots, "sandbox"
                     )
 
+    def test_claude_permissions_allow_must_list_non_empty_rules(self) -> None:
+        for permissions in ({}, {"allow": []}, {"allow": ["Bash(agmsg-dispatch:*)"]}):
+            with self.subTest(accepts=permissions):
+                self.module.validate_claude_permissions_allow(permissions, "permissions")
+        for allow in ("Bash(agmsg-dispatch:*)", [""], [3]):
+            with self.subTest(rejects=allow), contextlib.redirect_stderr(
+                io.StringIO()
+            ) as stderr, self.assertRaises(SystemExit):
+                self.module.validate_claude_permissions_allow({"allow": allow}, "permissions")
+            self.assertIn("permissions.allow must be a list", stderr.getvalue())
+
     def test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs(self) -> None:
         sandbox = self.valid_claude_sandbox()
         sandbox["filesystem"]["allowWrite"].append("~/.cache/uv")

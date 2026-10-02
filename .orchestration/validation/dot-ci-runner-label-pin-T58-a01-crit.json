@@ -1,0 +1,12 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t58_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: dot-ci-runner-label-pin-T58-a01 at PR #229 head 88f79736 (9 files, +30/-23). Every `ubuntu-latest` runner label is now the explicit `ubuntu-24.04` in test.yaml (changes, test matrix, nix matrix), remote.yaml (public/private bootstrap), agent-assets.yml, docs.yml, ubuntu.yaml; shell OS checks in test.yaml and scripts/run_unit_test.sh match the `ubuntu-*` family so a canary can take the Ubuntu branch; Codecov steps pin `ubuntu-24.04`; a non-required `ubuntu-26.04` client canary is added via matrix include with job-level `continue-on-error` keyed on matrix.os; the README ruleset payload and the test_pr_feedback fixture carry the renamed contexts; test_supply_chain_policy asserts the explicit label (orchestrator-approved scope addition after the worker's blocked PONG). Orchestrator verified: `git grep ubuntu-latest` at the head returns only the GitHub annotation text fixture (decision 3); CI contexts now report as `test (ubuntu-24.04, …)` and `public-bootstrap (ubuntu-24.04, …)`, all required checks green; the canary `test (ubuntu-26.04, client)` fails on `scripts/check-statusline-tools.py` (ccstatusline --version timeout under sudo unshare --net on the 26.04 image, Python 3.14) and the workflow run still concludes success; the three remaining notice annotations are macOS arm64 capacity notices, so the ubuntu-latest migration notice is gone. Worker's 718 unit tests OK. No live ruleset exists yet, so no re-apply is needed now; the README payload is what the operator will apply. Follow-up candidate: fix the ccstatusline hang before adopting 26.04, so the canary does not stay red on every PR.",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [{"id": "r_t58_01_r1", "body": "Resolved: approval recorded after independent verification of labels, check names and the canary failure cause.", "author": "claude-code"}]
+  }
+]

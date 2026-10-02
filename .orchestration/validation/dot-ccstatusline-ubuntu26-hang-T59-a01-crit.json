@@ -1,0 +1,12 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t59_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: dot-ccstatusline-ubuntu26-hang-T59-a01 at PR #230 head cc19dd4c (2 files, +15/-3; three TEMPORARY diagnostics commits fully reverted by the head, `git diff origin/main..cc19dd4c` touches only test.yaml and test_runtime_health.py). Orchestrator re-derived from the diagnostics job logs: the smoke's `#!/usr/bin/env node` resolved through the mise shim to the image's SYSTEM node (`shim[node] SYSTEM /usr/local/bin/node`, strace execve chain), that 126 MB binary had 0 resident pages before the first run (fincore), the cold strace shows no connect/sendto/DNS syscall, and with mise's pinned node first on PATH the same cold no-network `--version` took 0.22 s; the diagnostics ran under the same `sudo unshare --net` + env as the smoke. The fix puts `$(mise where node)/bin` first on the smoke PATH and asserts `node` resolves from the pinned install, keeping the 5 s budget, the no-network sandbox and check-statusline-tools.py unchanged; this also corrects a latent defect (the smoke exercised the image's node, not the pinned toolchain). Residual: measured cold durations were 0.62 s plain and 2.80 s under strace, so the >5 s magnitude of the original failure (run 37064146970) was not reproduced; it is attributed to the same cold read varying by runner disk, and the new PATH assertion means any recurrence on the pinned node would be a different cause. Second failure (PONG decision 1): `Path.exists()` follows the 26.04 image's dangling `/usr/bin/grub-ntldr-img`, so the `/bin` pass re-linked it; guard is now `exists() or is_symlink()` with nothing caught or skipped. Canary `test (ubuntu-26.04, client)` and every required check pass on cc19dd4c; sweep has 5 items (3 macOS capacity notices, CodeRabbit skip comment/status), none a failure or warning.",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [{"id": "r_t59_01_r1", "body": "Resolved: approval recorded after independent re-derivation from the diagnostics logs, the head diff and the passing canary.", "author": "claude-code"}]
+  }
+]

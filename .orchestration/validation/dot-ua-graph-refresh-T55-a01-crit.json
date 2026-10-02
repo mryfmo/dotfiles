@@ -1,0 +1,26 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t55_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Round 0 (PR #226 head 98bdf43f): orchestrator review re-derived ua-symbol-coverage (368 files, 0 regressions), node/edge counts (984/1774) and tracked filePaths (368/368). Codex audit returned Verdict: incorrect with two P2 findings, both reproduced by the orchestrator: (1) prose in lineRange on file:home/dot_claude/hooks/executable_enforce-uv.sh and config:home/dot_claude/modify_private_settings.json; (2) outgoing calls edges lost versus the previous graph (attach_comment_files.py 28->0, contextdb util.py 17->0, semantic.py 1->0, eight more contextdb files decreased). Sent AGMSG-ACCEPTANCE status=revise (message 688).",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [
+      {"id": "r_t55_01_r1", "body": "Resolved by revise round 1 commit 8694200f (see r_t55_02).", "author": "claude-code"}
+    ]
+  },
+  {
+    "scope": "review",
+    "id": "r_t55_02",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Round 1 (PR #226 head 8694200f, .ua/ only, no force push): orchestrator re-derived independently against the previous graph (72b89015): per-file outgoing edge decreases of any type = 2, both `exports` edges to underscore-private helpers (paths.py _load_or_create_project_id, recover_hook.py _record_recovery_injected) with the worker's justification accepted; outgoing calls decreases = 0 (220 -> 629 total); nodes with non-numeric lineRange = 0; all 368 node filePaths tracked at the PR head; plugin validateGraph (packages/core/dist/schema.js) success with 0 issues; ua-symbol-coverage 368 files, 0 regressions; counts 984 nodes / 1985 edges match the report; meta.gitCommitHash 940a3a2b is the analyzed source HEAD and the diff from it lists only .ua/ paths. CI green on 8694200f. Worker corrected its own round-0 report (inline validator does not check field types) and recorded [memory:failure]. Commit message overstates 77 vs 48 restored non-calls edges; report states the correction; not worth a force push. Approved.",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [
+      {"id": "r_t55_02_r1", "body": "Resolved: approval recorded after independent re-derivation of edges, lineRange, validateGraph and coverage.", "author": "claude-code"}
+    ]
+  }
+]

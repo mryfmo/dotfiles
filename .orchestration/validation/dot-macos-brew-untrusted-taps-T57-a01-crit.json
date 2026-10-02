@@ -1,0 +1,22 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t57_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Round 0 (PR #228 head f314ab2a): whole-tap trust derived from `brew untrust --tap`; orchestrator verified 0 warning items and the job log `Trusted tap:` lines. Codex audit Verdict: incorrect, one P2: the rationale 'item-level trust is not derivable' is false because `brew list --formula --full-name` reads keg receipts (cmd/list.rb 104-120 at 7.0.7). Orchestrator reproduced it from source and sent revise (message 698).",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [{"id": "r_t57_01_r1", "body": "Resolved by revise round 1 (see r_t57_02).", "author": "claude-code"}]
+  },
+  {
+    "scope": "review",
+    "id": "r_t57_02",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Round 1 (PR #228 head f568eab6, same four files, two new commits, no force push): the comment and PR/report rationale are corrected (no 'not derivable' text remains in the PR files); the function now trusts only installed formulae/casks of the listed taps (`brew list --formula|--cask --full-name`) and gives whole-tap trust only to a listed tap with nothing installed. The choice was measured, not asserted: job 110914945531 (50c833b3, item-level only) cleared azure/bicep and hashicorp/tap but still warned for aws/tap (no installed item); job 110919109271 (f568eab6) shows `Trusted formula: azure/bicep/bicep`, `Trusted formula: hashicorp/tap/packer`, `Trusted tap: aws/tap` and no warning. Orchestrator re-derived both log excerpts. pr-feedback on f568eab6: 16 items, 0 warnings; Codex code review (Bot) posted one P2 on the intermediate commit 50c833b3 (aws/tap omitted) — dispositioned fixed:f568eab6, the thread answered and resolved on GitHub; its broader claim is contradicted by measurement 1. bats case updated to the exact call sequence; CI green. Recorded option, not required: an empty listed tap could be untapped instead of whole-tap trusted (Homebrew lists untap first); on an ephemeral runner the difference is negligible, so the measured implementation stands.",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [{"id": "r_t57_02_r1", "body": "Resolved: approval recorded after independent verification of both CI measurements and the warning count.", "author": "claude-code"}]
+  }
+]

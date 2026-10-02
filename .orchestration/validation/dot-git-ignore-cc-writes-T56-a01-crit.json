@@ -1,0 +1,12 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t56_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: dot-git-ignore-cc-writes-T56-a01 at PR #227 head bce7c64b. Diff is exactly two added lines at EOF of home/dot_config/git/ignore (blank line + `**/.claude/.cc-writes/`); the orchestrator confirmed the source is now byte-identical to the live ~/.config/git/ignore on this host (`cmp` exit 0), so `chezmoi status` is empty for this target and `make update` no longer prompts; the same live layout was observed on the MacBook Pro (chezmoi status MM on the same file). The worker raised the placement conflict in the task text as a blocked PONG instead of following it; the orchestrator corrected the task (option a, EOF). No source, template or test change; CI 12 checks pass, nix skipped by change detection. No correctness, regression, security or omission issue.",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [{"id": "r_t56_01_r1", "body": "Resolved: approval recorded.", "author": "claude-code"}]
+  }
+]

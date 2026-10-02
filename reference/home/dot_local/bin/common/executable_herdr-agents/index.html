@@ -3775,7 +3775,7 @@
 
 
 <h1 id="homedot_localbincommonexecutable_herdr-agents">home/dot_local/bin/common/executable_herdr-agents<a class="headerlink" href="#homedot_localbincommonexecutable_herdr-agents" title="Permanent link">&para;</a></h1>
-<p>Full mode creates or repairs an agents workspace and never creates a second workspace for a directory that already has a managed pair. Attach mode adds the worker beside Claude in the current Herdr pane without restarting Claude; outside a Herdr pane it only prints a one-line bring-up summary. Restart-worker mode relaunches the worker agent in its existing pane so new worker launch arguments take effect, confirming a claude exit dialog once and relabeling a legacy worker pane label. Audit mode runs the read-only Codex audit of one commit visibly in the pair workspace's dedicated <code>audit</code> tab, tees it to an evidence file, and waits (bounded) for its exit marker, then gates on the concluding <code>Verdict:</code> line of its <code>-o</code> last-message file; the auditor keeps no agmsg identity. Before the gate it masks the evidence with DIR/scripts/validate-agent-assets.py --mask-secrets. DIR must be the orchestrator's own checkout (the audited commit is only fetched): the masker is refused, and the audit fails as <code>unmasked</code>, when DIR is at the audited commit or the validator is missing though git tracks it, untracked, or changed, and a failed mask also fails. Masking is skipped only when git tracks no validator and none is on disk. Starting the orchestrator pane, and the SessionStart --attach hook inside it, claim the orchestrator's agmsg seat outside the sandbox under the composite <code>&lt;session_id&gt;.&lt;claude pid&gt;</code> instance id (<code>seat_claim=</code> line). The orchestrator pane starts Claude with the <code>MODEL_PROFILE_&lt;NAME&gt;_CLAUDE_ARGS</code> of the profile that MODEL_PROFILE_INTERACTIVE names in ~/.agents/model-profiles.env.</p>
+<p>Full mode creates or repairs an agents workspace and never creates a second workspace for a directory that already has a managed pair. Attach mode adds the worker beside Claude in the current Herdr pane without restarting Claude; outside a Herdr pane it only prints a bring-up summary line (and, in a regime repository, the directive line). Restart-worker mode relaunches the worker agent in its existing pane so new worker launch arguments take effect, confirming a claude exit dialog once and relabeling a legacy worker pane label. Audit mode runs the read-only Codex audit of one commit visibly in the pair workspace's dedicated <code>audit</code> tab, tees it to an evidence file, and waits (bounded) for its exit marker, then gates on the concluding <code>Verdict:</code> line of its <code>-o</code> last-message file; the auditor keeps no agmsg identity. Before the gate it masks the evidence with DIR/scripts/validate-agent-assets.py --mask-secrets. DIR must be the orchestrator's own checkout (the audited commit is only fetched): the masker is refused, and the audit fails as <code>unmasked</code>, when DIR is at the audited commit or the validator is missing though git tracks it, untracked, or changed, and a failed mask also fails. Masking is skipped only when git tracks no validator and none is on disk. Starting the orchestrator pane, and the SessionStart --attach hook inside it, claim the orchestrator's agmsg seat outside the sandbox under the composite <code>&lt;session_id&gt;.&lt;claude pid&gt;</code> instance id (<code>seat_claim=</code> line), followed in a regime repository by the <code>agmsg-orchestration:</code> directive line. agmsg bootstrap also installs the repository's pre-push stub, which runs main-push-guard mode to refuse a push to <code>main</code> without ORCH_PUSH_MAIN. The orchestrator pane starts Claude with the <code>MODEL_PROFILE_&lt;NAME&gt;_CLAUDE_ARGS</code> of the profile that MODEL_PROFILE_INTERACTIVE names in ~/.agents/model-profiles.env.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_herdr-agents</code></li>
@@ -3793,6 +3793,7 @@
 <li><code>bootstrap_agmsg</code></li>
 <li><code>check_worker_linkage</code></li>
 <li><code>claim_orchestrator_seat</code></li>
+<li><code>claim_seat_and_print_directive</code></li>
 <li><code>claude_ancestor_pid</code></li>
 <li><code>codex_worktree_writable_roots</code></li>
 <li><code>despawn_worker_seat</code></li>
@@ -3803,6 +3804,7 @@
 <li><code>ensure_worker_worktree</code></li>
 <li><code>find_managed_workspaces</code></li>
 <li><code>has_claude_pane</code></li>
+<li><code>install_main_push_guard</code></li>
 <li><code>is_main_checkout</code></li>
 <li><code>json_agent_pane_id</code></li>
 <li><code>json_root_pane_id</code></li>
@@ -3810,6 +3812,7 @@
 <li><code>labeled_worker_pane_id</code></li>
 <li><code>live_worker_pane_id</code></li>
 <li><code>load_seat_labels</code></li>
+<li><code>main_push_guard</code></li>
 <li><code>managed_pane_list</code></li>
 <li><code>normalize_seat_labels</code></li>
 <li><code>pane_has_agent</code></li>
@@ -3817,6 +3820,7 @@
 <li><code>panes_on_pane_tab</code></li>
 <li><code>prepare_worker_seat</code></li>
 <li><code>print_plain_start_summary</code></li>
+<li><code>print_regime_directive</code></li>
 <li><code>remove_shadowing_node_global</code></li>
 <li><code>rename_pane_unless_seat_named</code></li>
 <li><code>repair_attach_pane_order</code></li>
@@ -3852,8 +3856,8 @@
 <span class="c1">#   Full mode creates or repairs an agents workspace and never creates a</span>
 <span class="c1">#   second workspace for a directory that already has a managed pair. Attach</span>
 <span class="c1">#   mode adds the worker beside Claude in the current Herdr pane without</span>
-<span class="c1">#   restarting Claude; outside a Herdr pane it only prints a one-line bring-up</span>
-<span class="c1">#   summary. Restart-worker mode relaunches the worker agent in its</span>
+<span class="c1">#   restarting Claude; outside a Herdr pane it only prints a bring-up summary</span>
+<span class="c1">#   line (and, in a regime repository, the directive line). Restart-worker mode relaunches the worker agent in its</span>
 <span class="c1">#   existing pane so new worker launch arguments take effect, confirming a</span>
 <span class="c1">#   claude exit dialog once and relabeling a legacy worker pane label. Audit</span>
 <span class="c1">#   mode runs the read-only Codex audit of one commit visibly in the pair</span>
@@ -3868,7 +3872,10 @@
 <span class="c1">#   Masking is skipped only when git tracks no validator and none is on disk.</span>
 <span class="c1">#   Starting the orchestrator pane, and the SessionStart --attach hook inside</span>
 <span class="c1">#   it, claim the orchestrator's agmsg seat outside the sandbox under the</span>
-<span class="c1">#   composite `&lt;session_id&gt;.&lt;claude pid&gt;` instance id (`seat_claim=` line).</span>
+<span class="c1">#   composite `&lt;session_id&gt;.&lt;claude pid&gt;` instance id (`seat_claim=` line),</span>
+<span class="c1">#   followed in a regime repository by the `agmsg-orchestration:` directive</span>
+<span class="c1">#   line. agmsg bootstrap also installs the repository's pre-push stub, which</span>
+<span class="c1">#   runs main-push-guard mode to refuse a push to `main` without ORCH_PUSH_MAIN.</span>
 <span class="c1">#   The orchestrator pane starts Claude with the</span>
 <span class="c1">#   `MODEL_PROFILE_&lt;NAME&gt;_CLAUDE_ARGS` of the profile that</span>
 <span class="c1">#   MODEL_PROFILE_INTERACTIVE names in ~/.agents/model-profiles.env.</span>
@@ -3885,6 +3892,7 @@
 <span class="c1"># @option --profile &lt;name&gt; Add-worker model profile. Defaults to the manifest worker_profile.</span>
 <span class="c1"># @option --ready-timeout &lt;seconds&gt; Add-worker: spawn.sh readiness wait bound (spawn.sh default 90).</span>
 <span class="c1"># @option --force Remove-worker: tear down a dirty worktree's worker and despawn with --force.</span>
+<span class="c1"># @option --main-push-guard Pre-push hook entry: check git's ref lines on stdin (main_push_guard).</span>
 <span class="c1"># @arg DIR Optional directory for the Herdr workspace. Defaults to the current directory.</span>
 <span class="c1"># @arg HERDR_AGENTS_WORKER_KIND Worker agent kind, `codex` or `claude`. Defaults</span>
 <span class="c1">#   to `worker_kind` from the manifest via ~/.agents/model-profiles.env, then</span>
@@ -3925,6 +3933,7 @@
 <span class="s">       herdr-agents --audit &lt;sha&gt; [--out PATH] [--timeout SECONDS] [DIR]</span>
 <span class="s">       herdr-agents --add-worker &lt;worktree&gt; [--kind codex|claude] [--profile NAME] [--ready-timeout SECONDS] [DIR]</span>
 <span class="s">       herdr-agents --remove-worker &lt;worktree&gt; [--force] [DIR]</span>
+<span class="s">       herdr-agents --main-push-guard [REMOTE URL] &lt; pre-push-ref-lines</span>
 
 <span class="s">Create a Herdr workspace for DIR with equal-width Claude Code and worker</span>
 <span class="s">panes from left to right, and open DIR in Zed when available. Herdr, jq,</span>
@@ -3936,12 +3945,21 @@
 <span class="s">Full mode heals an existing managed workspace for DIR instead of creating a</span>
 <span class="s">second one, and exits 2 when more than one managed workspace exists.</span>
 <span class="s">Attach mode uses the current Herdr pane for Claude. Outside a Herdr pane it</span>
-<span class="s">changes nothing and prints one line: the pair is not started, the on-demand</span>
-<span class="s">worker and auditor commands, and the manifest worktree's seated worker, if any.</span>
+<span class="s">changes nothing and prints a summary line: the pair is not started, the</span>
+<span class="s">on-demand worker and auditor commands, and the manifest worktree's seated</span>
+<span class="s">worker, if any. In a regime repository (a main checkout with one orchestrator</span>
+<span class="s">agmsg identity and a manifest worker seat) an agmsg-orchestration directive</span>
+<span class="s">line follows, as it follows seat_claim= inside the orchestrator's Herdr pane.</span>
 <span class="s">Restart-worker mode exits the worker agent in the existing pair's worker pane</span>
 <span class="s">and starts it again in the same pane with the current worker_kind and</span>
 <span class="s">worker_profile launch arguments; it never creates panes or workspaces.</span>
-<span class="s">Bootstrap mode only configures missing repo-scoped agmsg hooks.</span>
+<span class="s">Bootstrap mode only configures missing repo-scoped agmsg hooks and, in a main</span>
+<span class="s">checkout with an orchestrator agmsg identity, the pre-push stub that runs</span>
+<span class="s">main-push-guard mode (installed once the herdr-agents on PATH has that mode;</span>
+<span class="s">with none, the stub refuses main updates and lets other refs pass; a stub</span>
+<span class="s">that lost its execute bit gets it back). That mode refuses a push updating main unless</span>
+<span class="s">ORCH_PUSH_MAIN=acceptance, or ORCH_PUSH_MAIN=boundary with a tree diff from the</span>
+<span class="s">remote main inside .orchestration/; deleting or rewinding main is refused.</span>
 <span class="s">Audit mode runs the read-only Codex audit of &lt;sha&gt; in the existing pair</span>
 <span class="s">workspace's audit tab (created once, then reused and left open), tees it to</span>
 <span class="s">PATH (default .orchestration/validation/audit-&lt;sha&gt;.md under DIR), and exits</span>
@@ -4421,6 +4439,41 @@
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'seat_claim=failed %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>head<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">result</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 <span class="o">}</span>
 
+<span class="c1"># @description Print the agmsg orchestration directive when the regime applies</span>
+<span class="c1">#   to DIR: a git main checkout with exactly one orchestrator (non -aNNN)</span>
+<span class="c1">#   claude-code agmsg identity and a manifest worker worktree seat. SessionStart</span>
+<span class="c1">#   hook output enters the session context, so the directive arrives the way</span>
+<span class="c1">#   the seat claim does instead of depending on a rule being read. Prints</span>
+<span class="c1">#   nothing anywhere else.</span>
+<span class="c1"># @arg $1 workdir Absolute repository path.</span>
+<span class="k">function</span><span class="w"> </span>print_regime_directive<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">workdir</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">identities</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/agmsg/scripts/identities.sh"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>seat<span class="w"> </span>identity
+
+<span class="w">    </span><span class="nv">seat</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>resolve_worker_worktree<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">seat</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">seat</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-x<span class="w"> </span><span class="si">${</span><span class="nv">identities</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>is_main_checkout<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="nv">identity</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nv">AGMSG_RESOLVE_PROJECT</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">identities</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>claude-code<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span>
+<span class="w">        </span>awk<span class="w"> </span>-F<span class="w"> </span><span class="s1">'\t'</span><span class="w"> </span><span class="s1">'$2 !~ /-a[0-9][0-9][0-9]$/ { print $2 }'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">identity</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">identity</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">identity</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>*<span class="s1">$'\n'</span>*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agmsg-orchestration: this session is the orchestrator seat %s for %s (worker seat %s). Before any other action, invoke the agmsg-orchestration skill. Delegate every repository-mutating change, make upgrade pin diffs included, to the seated worker as an AGMSG-TASK; when no worker is seated, seat one first (herdr-agents --restart-worker in the pair, herdr-agents --add-worker %s otherwise): no worker is never an implicit opt-out. Before acting directly under an exemption, declare which one in one line. Never push a repository change to main yourself: the pre-push guard passes only ORCH_PUSH_MAIN=boundary (.orchestration-only changes) and ORCH_PUSH_MAIN=acceptance.\n'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">identity</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Claim the orchestrator seat from the SessionStart hook, then</span>
+<span class="c1">#   print the regime directive unless the claim skipped a pane that is not the</span>
+<span class="c1">#   orchestrator's.</span>
+<span class="c1"># @arg $1 workdir Absolute repository path.</span>
+<span class="c1"># @arg $2 pane_id This Claude pane's id.</span>
+<span class="k">function</span><span class="w"> </span>claim_seat_and_print_directive<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>output
+
+<span class="w">    </span><span class="nv">output</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>claim_orchestrator_seat<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="w"> </span>--self<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">output</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">output</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">output</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nv">seat_claim</span><span class="o">=</span>skipped*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>print_regime_directive<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="o">}</span>
+
 <span class="c1"># @description Succeed when the manifest's worker worktree seat applies to DIR.</span>
 <span class="c1">#   worker_worktree is host-global, so it applies only to a git main checkout</span>
 <span class="c1">#   whose worktree already exists, or that has origin/main and an orchestrator</span>
@@ -4876,12 +4929,14 @@
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="o">}</span>
 
-<span class="c1"># @description Print the one-line SessionStart summary of a session outside a</span>
+<span class="c1"># @description Print the SessionStart summary line of a session outside a</span>
 <span class="c1">#   Herdr pane, which never seats a worker: the pair is not started, the</span>
 <span class="c1">#   on-demand worker and auditor commands, and, when the manifest worker</span>
 <span class="c1">#   worktree has an agmsg identity with a placement record, that worker's name</span>
-<span class="c1">#   and `&lt;socket&gt;:&lt;pane&gt;` location. Prints nothing for the worktree-seated</span>
-<span class="c1">#   worker's own session. Reads only; changes no Herdr or agmsg state.</span>
+<span class="c1">#   and `&lt;socket&gt;:&lt;pane&gt;` location, followed by the regime directive line</span>
+<span class="c1">#   where the regime applies (print_regime_directive). Prints nothing for the</span>
+<span class="c1">#   worktree-seated worker's own session. Reads only; changes no Herdr or</span>
+<span class="c1">#   agmsg state.</span>
 <span class="k">function</span><span class="w"> </span>print_plain_start_summary<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">scripts</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/agmsg/scripts"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>workdir<span class="w"> </span>worker_worktree<span class="w"> </span>common_dir<span class="w"> </span><span class="nv">seat_dir</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span>seat_type<span class="w"> </span><span class="nv">seat</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span><span class="nv">pane</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span>seated
@@ -4910,6 +4965,7 @@
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: not in a Herdr pane, so the agent pair is not started; start the worker on demand with "herdr-agents --add-worker %s [DIR]" and run the auditor headless with "codex --profile audit review --commit &lt;sha&gt;"; %s.\n'</span><span class="w"> </span><span class="se">\</span>
 <span class="w">        </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_worktree</span><span class="k">:-</span><span class="p">&lt;worktree&gt;</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seated</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span>print_regime_directive<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1"># @description Start a worker agent (codex or claude) in an existing pane and return its pane id.</span>
@@ -5354,7 +5410,141 @@
 <span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
-<span class="c1"># @description Skip $HOME or ensure Codex and Claude Code agmsg delivery hooks.</span>
+<span class="c1"># @description Run the main-push guard for git's pre-push hook: read git's</span>
+<span class="c1">#   `&lt;local ref&gt; &lt;local sha&gt; &lt;remote ref&gt; &lt;remote sha&gt;` lines on stdin and</span>
+<span class="c1">#   refuse a push that updates refs/heads/main unless ORCH_PUSH_MAIN is</span>
+<span class="c1">#   `acceptance` (an acceptance merge) or `boundary` (the tree diff from the</span>
+<span class="c1">#   remote main changes only `.orchestration/`, and a diff that cannot be</span>
+<span class="c1">#   listed refuses). Deleting main, and any update that is not a fast-forward</span>
+<span class="c1">#   of the remote main, are always refused; other refs pass. Each decision is</span>
+<span class="c1">#   printed and appended to `&lt;git-common-dir&gt;/orch-push-main.log`. A local hook</span>
+<span class="c1">#   is bypassable (`git push --no-verify`); GitHub branch protection is the</span>
+<span class="c1">#   server-side boundary.</span>
+<span class="c1"># @exitcode 1 If any pushed main update is refused.</span>
+<span class="k">function</span><span class="w"> </span>main_push_guard<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">zero</span><span class="o">=</span><span class="s1">'^0+$'</span><span class="w"> </span>log<span class="w"> </span><span class="nv">status</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>local_ref<span class="w"> </span>local_sha<span class="w"> </span>remote_ref<span class="w"> </span>remote_sha<span class="w"> </span>mode<span class="w"> </span>reason<span class="w"> </span>verdict<span class="w"> </span>line<span class="w"> </span>paths<span class="w"> </span>path<span class="w"> </span>outside
+
+<span class="w">    </span><span class="nv">log</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>rev-parse<span class="w"> </span>--path-format<span class="o">=</span>absolute<span class="w"> </span>--git-common-dir<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">/orch-push-main.log"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">log</span><span class="o">=</span>/dev/null
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>local_ref<span class="w"> </span>local_sha<span class="w"> </span>remote_ref<span class="w"> </span>remote_sha<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">remote_ref</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>refs/heads/main<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="nv">mode</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">ORCH_PUSH_MAIN</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">reason</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">mode</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>acceptance<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">mode</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>boundary<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">reason</span><span class="o">=</span><span class="s2">"route the change through a worker PR, or set ORCH_PUSH_MAIN=acceptance (an acceptance merge) or ORCH_PUSH_MAIN=boundary (.orchestration-only changes)"</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">local_sha</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span><span class="si">${</span><span class="nv">zero</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">reason</span><span class="o">=</span><span class="s2">"deleting main is never allowed"</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">remote_sha</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span><span class="si">${</span><span class="nv">zero</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">mode</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>acceptance<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">reason</span><span class="o">=</span><span class="s2">"a boundary push needs an existing remote main"</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span>!<span class="w"> </span>git<span class="w"> </span>merge-base<span class="w"> </span>--is-ancestor<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">remote_sha</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">local_sha</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">reason</span><span class="o">=</span><span class="s2">"not a fast-forward of the remote main; fetch and rebase, never force-push main"</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">mode</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>boundary<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="c1"># Tree to tree, so a merge's own resolution counts as well.</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">paths</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>diff<span class="w"> </span>--name-only<span class="w"> </span>--no-renames<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">remote_sha</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">local_sha</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">                </span><span class="nv">reason</span><span class="o">=</span><span class="s2">"cannot list the changes since the remote main, so the boundary check fails closed"</span>
+<span class="w">            </span><span class="k">else</span>
+<span class="w">                </span><span class="nv">outside</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">                </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>path<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">                    </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>.orchestration/*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">outside</span><span class="o">+=</span><span class="s2">"</span><span class="si">${</span><span class="nv">outside</span><span class="p">:+ </span><span class="si">}${</span><span class="nv">path</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">                </span><span class="k">done</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">paths</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">                </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">outside</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">reason</span><span class="o">=</span><span class="s2">"a boundary push may only change .orchestration/, not: </span><span class="si">${</span><span class="nv">outside</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="nv">verdict</span><span class="o">=</span>allowed
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">reason</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">verdict</span><span class="o">=</span>refused
+<span class="w">            </span><span class="nv">status</span><span class="o">=</span><span class="m">1</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="nv">line</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>date<span class="w"> </span>-u<span class="w"> </span>+%Y-%m-%dT%H:%M:%SZ<span class="k">)</span><span class="s2"> </span><span class="si">${</span><span class="nv">verdict</span><span class="si">}</span><span class="s2"> ORCH_PUSH_MAIN=</span><span class="si">${</span><span class="nv">mode</span><span class="k">:-</span><span class="nv">unset</span><span class="si">}</span><span class="s2"> </span><span class="si">${</span><span class="nv">local_ref</span><span class="si">}</span><span class="s2">:</span><span class="si">${</span><span class="nv">remote_ref</span><span class="si">}</span><span class="s2"> </span><span class="si">${</span><span class="nv">remote_sha</span><span class="p">:</span><span class="nv">0</span><span class="p">:</span><span class="nv">12</span><span class="si">}</span><span class="s2">..</span><span class="si">${</span><span class="nv">local_sha</span><span class="p">:</span><span class="nv">0</span><span class="p">:</span><span class="nv">12</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="o">{</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">log</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="o">}</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'pre-push: %s%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">line</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">reason</span><span class="p">:+ (</span><span class="si">${</span><span class="nv">reason</span><span class="si">}</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">status</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Install the repository-local pre-push guard that keeps the</span>
+<span class="c1">#   orchestrator off `main`: a fixed stub that runs `herdr-agents</span>
+<span class="c1">#   --main-push-guard` (main_push_guard), so the checks update with the</span>
+<span class="c1">#   launcher while the hook file itself never needs rewriting. The stub finds</span>
+<span class="c1">#   herdr-agents on PATH, then at ~/.local/bin/common/herdr-agents, and execs it</span>
+<span class="c1">#   only when its --help advertises the mode; with no such launcher (missing,</span>
+<span class="c1">#   or a build older than the guard) it refuses refs/heads/main updates itself</span>
+<span class="c1">#   and lets every other ref pass, so a stale launcher never breaks branch</span>
+<span class="c1">#   pushes or runs another mode. For the same reason the stub is installed only</span>
+<span class="c1">#   once the launcher it would exec advertises the mode (`make upgrade`</span>
+<span class="c1">#   bootstraps before `make update` applies the new launcher); until then a</span>
+<span class="c1">#   notice names the next `make update`. Applies only to a git main checkout</span>
+<span class="c1">#   with an orchestrator (non -aNNN) claude-code agmsg identity. The hook lives</span>
+<span class="c1">#   in the common git dir, so it also covers the repository's linked worktrees.</span>
+<span class="c1">#   An existing stub that lost its execute bit gets it back; any other existing</span>
+<span class="c1">#   pre-push hook, including an edited copy of the stub, and a core.hooksPath</span>
+<span class="c1">#   outside the repository's git dir are left alone with a warning.</span>
+<span class="c1"># @arg $1 workdir Absolute repository path.</span>
+<span class="k">function</span><span class="w"> </span>install_main_push_guard<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">workdir</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">identities</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/agmsg/scripts/identities.sh"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">marker</span><span class="o">=</span><span class="s2">"# herdr-agents main-push guard"</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>common_dir<span class="w"> </span>hooks_dir<span class="w"> </span>hook<span class="w"> </span>body<span class="w"> </span>guard
+
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-x<span class="w"> </span><span class="si">${</span><span class="nv">identities</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>is_main_checkout<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="nv">AGMSG_RESOLVE_PROJECT</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">identities</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>claude-code<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span>
+<span class="w">        </span>awk<span class="w"> </span>-F<span class="w"> </span><span class="s1">'\t'</span><span class="w"> </span><span class="s1">'$2 !~ /-a[0-9][0-9][0-9]$/ { found = 1 } END { exit !found }'</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="nv">common_dir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--path-format<span class="o">=</span>absolute<span class="w"> </span>--git-common-dir<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">hooks_dir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--path-format<span class="o">=</span>absolute<span class="w"> </span>--git-path<span class="w"> </span>hooks<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">hooks_dir</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">common_dir</span><span class="si">}</span><span class="s2">"</span>/*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: core.hooksPath points outside %s (%s); not installing the main-push guard.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">common_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hooks_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">hook</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">hooks_dir</span><span class="si">}</span><span class="s2">/pre-push"</span>
+<span class="w">    </span><span class="nv">body</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>
+<span class="w">        </span>cat<span class="w"> </span><span class="s">&lt;&lt; 'EOF'</span>
+<span class="s">#!/usr/bin/env bash</span>
+<span class="s"># herdr-agents main-push guard: written by herdr-agents --bootstrap-agmsg; the checks live in herdr-agents --main-push-guard.</span>
+<span class="s">guard="$(command -v herdr-agents)" || guard="${HOME}/.local/bin/common/herdr-agents"</span>
+<span class="s">if [[ -x ${guard} &amp;&amp; "$("${guard}" --help 2&gt; /dev/null)" == *--main-push-guard* ]]; then</span>
+<span class="s">    exec "${guard}" --main-push-guard "$@"</span>
+<span class="s">fi</span>
+<span class="s"># No launcher with the guard mode (missing, or older than the guard): refuse main updates only.</span>
+<span class="s">status=0</span>
+<span class="s">while read -r _ _ remote_ref _; do</span>
+<span class="s">    if [[ ${remote_ref} == refs/heads/main ]]; then</span>
+<span class="s">        printf 'pre-push: no herdr-agents with --main-push-guard is installed (run make update), so this push to main is refused\n' &gt;&amp;2</span>
+<span class="s">        status=1</span>
+<span class="s">    fi</span>
+<span class="s">done</span>
+<span class="s">exit "${status}"</span>
+<span class="s">EOF</span>
+<span class="w">    </span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>cat<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">body</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="c1"># git silently skips a hook without the execute bit.</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-x<span class="w"> </span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">                </span>chmod<span class="w"> </span><span class="m">755</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">                </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: restored the execute bit of the main-push guard at %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">            </span><span class="k">fi</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>grep<span class="w"> </span>-Fq<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">marker</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: %s differs from the main-push guard stub (edited?); leaving it unchanged. Remove it and rerun herdr-agents --bootstrap-agmsg to restore the stub.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">else</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: %s exists and is not the herdr-agents main-push guard; leaving it unchanged.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nv">guard</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>herdr-agents<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">guard</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.local/bin/common/herdr-agents"</span>
+<span class="w">    </span><span class="c1"># Captured, not piped: a pipefail grep -q could SIGPIPE the launcher.</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-x<span class="w"> </span><span class="si">${</span><span class="nv">guard</span><span class="si">}</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="s2">"</span><span class="si">${</span><span class="nv">guard</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--help<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>*--main-push-guard*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: the installed launcher (%s) has no --main-push-guard mode yet; not installing the main-push guard until the next make update applies it.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">guard</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hooks_dir</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">body</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">.tmp.</span><span class="nv">$$</span><span class="s2">"</span>
+<span class="w">    </span>chmod<span class="w"> </span><span class="m">755</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">.tmp.</span><span class="nv">$$</span><span class="s2">"</span>
+<span class="w">    </span>mv<span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">.tmp.</span><span class="nv">$$</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: installed the main-push guard at %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">hook</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Skip $HOME or ensure Codex and Claude Code agmsg delivery hooks</span>
+<span class="c1">#   and the orchestrator's main-push guard (install_main_push_guard).</span>
 <span class="c1"># @arg $1 workdir Repository path used for repo-scoped agmsg registration.</span>
 <span class="k">function</span><span class="w"> </span>bootstrap_agmsg<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">workdir</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
@@ -5363,6 +5553,7 @@
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"Skipping agmsg bootstrap for \$HOME; use a repository directory instead.\n"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>install_main_push_guard<span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span>
 
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">scripts</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/agmsg/scripts"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">delivery</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">/delivery.sh"</span>
@@ -5539,6 +5730,13 @@
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="k">fi</span>
 
+<span class="c1"># The pre-push hook stub execs this mode; it needs no Herdr, jq, or agmsg.</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"--main-push-guard"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nv">guard_status</span><span class="o">=</span><span class="m">0</span>
+<span class="w">    </span>main_push_guard<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">guard_status</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">guard_status</span><span class="si">}</span><span class="s2">"</span>
+<span class="k">fi</span>
+
 <span class="nv">attach_mode</span><span class="o">=</span><span class="nb">false</span>
 <span class="nv">bootstrap_mode</span><span class="o">=</span><span class="nb">false</span>
 <span class="nv">restart_mode</span><span class="o">=</span><span class="nb">false</span>
@@ -5582,7 +5780,7 @@
 <span class="w">    </span><span class="c1"># A managed pane is labelled before its claude starts; an unmanaged one is</span>
 <span class="w">    </span><span class="c1"># claimed after the attach flow below labels it.</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">HERDR_AGENTS_LAYOUT</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>managed<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span>claim_orchestrator_seat<span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HERDR_PANE_ID</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--self
+<span class="w">        </span>claim_seat_and_print_directive<span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HERDR_PANE_ID</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"--bootstrap-agmsg"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
@@ -6019,7 +6217,7 @@ worker_seat_applies<span class="w"> </span><span class="s2">"</span><span class=
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-e<span class="w"> </span>--arg<span class="w"> </span>pane_id<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'.result.panes[]? | select(.pane_id == $pane_id and .label == "claude-orchestrator")'</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span>rename_pane_unless_seat_named<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>claude-orchestrator
 <span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span>claim_orchestrator_seat<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--self
+<span class="w">    </span>claim_seat_and_print_directive<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>attach_panes_are_unambiguous<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">claude_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Herdr attach panes are ambiguous or include unmanaged panes; refusing repair.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>

@@ -208,28 +208,6 @@ jobs:
             npm:ccstatusline@2.2.30 \
             npm:ccusage@20.0.24
 
-      # TEMPORARY T59 diagnostics round 3 (canary only, page-cache evidence); removed before the final head.
-      - name: T59 diagnose cold node page cache on ubuntu-26.04
-        if: ${{ needs.changes.outputs.should_test == 'true' && matrix.os == 'ubuntu-26.04' }}
-        continue-on-error: true
-        run: |
-          set -u
-          statusline_mise_dir="${RUNNER_TEMP}/statusline-mise"
-          bin="$(mise -C "${statusline_mise_dir}" which ccstatusline)"
-          pinned_node="$(mise -C "${statusline_mise_dir}" where node)/bin/node"
-          bundle="$(readlink -f "${bin}")"
-          h="$(mktemp -d "${RUNNER_TEMP}/t59-home-XXXX")"
-          envv=(/usr/bin/env "HOME=${h}" "HTTP_PROXY=http://127.0.0.1:1" "HTTPS_PROXY=http://127.0.0.1:1" NO_PROXY=)
-          fc() { echo "T59 fincore $1:"; fincore --bytes /usr/local/bin/node "${pinned_node}" "${bundle}" | sed 's/^/T59   /'; }
-          t() { local label="$1"; shift; local s e rc; s=$(date +%s.%N); "$@" > "${RUNNER_TEMP}/t59.out" 2>&1; rc=$?; e=$(date +%s.%N); echo "T59 ${label}: rc=${rc} secs=$(echo "${e} - ${s}" | bc) out=$(head -c 120 "${RUNNER_TEMP}/t59.out" | tr '\n' ' ')"; }
-          echo "T59 system node=$(ls -l /usr/local/bin/node) pinned=${pinned_node}"
-          fc "before any run"
-          t "cold nonet ccstatusline --version, pinned node first on PATH" sudo unshare --net -- "${envv[@]}" "PATH=$(dirname "${pinned_node}"):${PATH}" timeout 60 "${bin}" --version
-          fc "after pinned-node run"
-          t "cold nonet ccstatusline --version, PATH as in the smoke (system node)" sudo unshare --net -- "${envv[@]}" "PATH=${PATH}" timeout 60 "${bin}" --version
-          fc "after system-node run"
-          t "warm nonet ccstatusline --version, PATH as in the smoke" sudo unshare --net -- "${envv[@]}" "PATH=${PATH}" timeout 60 "${bin}" --version
-
       - name: Smoke-test statusline tools without network
         if: ${{ needs.changes.outputs.should_test == 'true' }}
         run: |
@@ -240,6 +218,17 @@ jobs:
           ccusage_bin="$(mise -C "${statusline_mise_dir}" which ccusage)"
           ccstatusline_root="$(mise -C "${statusline_mise_dir}" where npm:ccstatusline@2.2.30)"
           ccusage_root="$(mise -C "${statusline_mise_dir}" where npm:ccusage@20.0.24)"
+          # Run both tools on the node pinned in mise.lock. Without this, their
+          # `#!/usr/bin/env node` falls through the mise shim to the image's
+          # system node, which nothing has read yet: on the ubuntu-26.04 image
+          # that cold first read of /usr/local/bin/node alone took 0.6 s to over
+          # 5 s (fincore: 0 resident pages before the run), which tripped the
+          # 5-second limit (T59).
+          node_bin_dir="$(mise -C "${statusline_mise_dir}" where node)/bin"
+          case "$(PATH="${node_bin_dir}:${PATH}" command -v node)" in
+            "${node_bin_dir}/node") ;;
+            *) echo "node did not resolve from mise's pinned install" >&2; exit 1 ;;
+          esac
 
           case "${ccstatusline_bin}" in
             "${ccstatusline_root}"/*) ;;
@@ -255,7 +244,7 @@ jobs:
           smoke=(
             /usr/bin/env
             "HOME=${smoke_home}"
-            "PATH=${PATH}"
+            "PATH=${node_bin_dir}:${PATH}"
             "HTTP_PROXY=http://127.0.0.1:1"
             "HTTPS_PROXY=http://127.0.0.1:1"
             NO_PROXY=

@@ -1028,8 +1028,9 @@ EOF
         no_tar.mkdir()
         for directory in ("/usr/bin", "/bin"):
             for tool in Path(directory).iterdir():
-                if tool.name != "tar" and not (no_tar / tool.name).exists():
-                    (no_tar / tool.name).symlink_to(tool)
+                link = no_tar / tool.name
+                if tool.name != "tar" and not (link.exists() or link.is_symlink()):
+                    link.symlink_to(tool)
         env["PATH"] = f"{repo / 'bin'}:{no_tar}"
 
         result = self.run_test_command(

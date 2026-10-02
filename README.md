@@ -220,8 +220,19 @@ linked skill); Codex runtime files are provisioned from the version-matched Clau
 `npm:pnpm` (run through `mise exec`, which installs the pin on demand) when
 its `dist/index.js` is missing or older than any file under
 `packages/core/src` or the root `pnpm-lock.yaml` (in the release artifact, or
-in the Codex clone without one), so `.ua/` incremental updates work, and
+in the Codex clone without one), so the plugin's graph helpers run, and
 `make doctor` warns under the same rule, so `make update` repairs what it reports.
+This repository refreshes `.ua/` only by a full rebuild (`/understand --full`),
+run by a worker task when the operator asks for it at a regime boundary.
+Incremental updates cannot publish here: plugin 2.9.7's symbol gate
+(`validate-incremental-symbols.mjs`) marks every unowned function `unknown` in
+files without a deterministic parser, namely the extension-less shell scripts
+`executable_herdr-agents` and `executable_agmsg-dispatch` and the Python
+chezmoi script `modify_private_settings.json`. The plugin has no per-path
+language override, and `herdr-agents` changes in nearly every task.
+`.ua/config.json` therefore sets `autoUpdate: false`, which stops the plugin's
+SessionStart and PostToolUse update prompts. Between rebuilds the graph is
+stale by design, and agents fall back to grep under the freshness check.
 A `.ua/` refresh is accepted only when `ua-symbol-coverage` (installed on PATH
 from `home/dot_local/bin/common/executable_ua-symbol-coverage`), run with
 `--repo-ref` and `--old-ref` set to the revisions the new and previous graphs

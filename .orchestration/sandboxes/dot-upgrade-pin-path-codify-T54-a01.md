@@ -1,0 +1,10 @@
+# Sandbox: dot-upgrade-pin-path-codify-T54-a01
+
+- worker-c, branch chore/upgrade-pin-path from origin/main 00ce4f6 (T53 merged). Created with `git switch -c … --no-track`, so the `.git/config.lock` stub was not hit. One commit, 2360aea, pushed with plain `git push origin <branch>`.
+- Sandboxed: git fetch, switch, commit and push; the Python edits; shfmt and shellcheck; `make render-check`, `make unit-test`, `make validate-agent-assets` and `make check-regime-boundary`; the guard demonstration (scratch HOME, repo and bare remote under `$TMPDIR`, removed afterwards).
+- Unsandboxed: `gh pr create`, `gh pr checks` and `gh pr view` (gh auth returns 401 in the sandbox), the CompactionDB memory add in the main checkout, and `agmsg-dispatch`.
+- The permission gate denied an inline scratch-repo probe (a compound command with `cd` and `rm -rf`). The same check is now a unit test plus a scratch-dir script, and both are pasted in the validation file.
+- **Not run against the live checkout:** `herdr-agents --bootstrap-agmsg` and `make update`. The guard reaches the canonical clone's `.git/hooks` only at the operator's next `make update`.
+- **Formatter hook:** a PostToolUse formatter reflowed all of `tests/unit/test_herdr_agents.py` (+1429/−286) after one Edit. I restored the file with `git checkout` and made every later test or doc edit through Bash Python, which that hook does not touch.
+- **Revise round 1:** commit c636452 on the same branch, pushed fast-forward. Same split: git, edits, lint, make targets and the demo were sandboxed; gh (PR body edit, checks), the main-checkout artifact appends and `agmsg-dispatch` were unsandboxed. The demo now also puts the branch's launcher on PATH through a scratch `bin/herdr-agents` wrapper for the stub. `herdr-agents --bootstrap-agmsg` and `make update` were still not run against the live checkout.
+- **Revise round 2:** commit 1128abb, pushed fast-forward. Same sandbox split as round 1. Probing the installed `~/.local/bin/common/herdr-agents --help` is read-only (usage is printed before any mode runs). `herdr-agents --bootstrap-agmsg` and `make update` were still not run against the live checkout.

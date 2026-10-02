@@ -1,0 +1,4 @@
+# Learning: dot-mise-pin-test-sync-T53-a01
+
+1. **Sweep from the bump commit's own diff, not only from a supplied list.** `git show <bump>` gives every removed version and SHA256. Grepping tests for all of them, and checking whether each hit reads a repository file (live) or builds its own temp-dir fixture, finds every assertion a bump breaks. Here the supplied list matched the diff, and no removed SHA256 appears in tests. Status: validated.
+2. **A sandboxed `git switch -c <b> origin/main` can stop partway.** The branch ref and the checkout land, but HEAD and the upstream config do not, because of the `.git/config.lock` stub. The symptom is `git status` showing the whole base diff as staged. `git symbolic-ref HEAD refs/heads/<b>` finishes the switch without touching the tree. Prefer `git switch -c <b> --no-track origin/main` inside the sandbox. Status: validated once; a candidate for the sandbox side-effects doc (T39 lineage). Not promoted.

@@ -1,0 +1,184 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t54_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Orchestrator review of PR #225 head 1128abb (three commits 2360aea, c636452, 1128abb; 9 files) from git objects. Rule, SKILL and README: make upgrade pin flow rewritten (operator runs it in the canonical clone; whole pin diff + tests/** expected-version sync travel in one worker PR through make require-crit-review; orchestrator never pushes a repository change to main; boundary/acceptance overrides named), no-worker-is-not-opt-out activation case, pane-less SessionStart contract updated to summary line + directive line, grep proves no stale 'prints one line' carrier; test_agmsg_orchestration_docs parity extended. Launcher: print_regime_directive / claim_seat_and_print_directive inject the agmsg-orchestration: directive after seat_claim= and in the pane-less summary; main_push_guard (ORCH_PUSH_MAIN=acceptance|boundary, fast-forward only, delete refused, tree diff git diff --name-only --no-renames <remote> <local>, fail-closed when the diff cannot be listed, logged to <git-common-dir>/orch-push-main.log); install_main_push_guard writes a constant stub that execs herdr-agents --main-push-guard only when the launcher's --help advertises it, otherwise refuses main updates only; stub installed only once the deployed launcher has the mode; identical stub without the execute bit gets chmod 755; differing hooks (edited or foreign) left alone with a warning. Pin tests: v2026.9.12 floor (#160) with exactness held by generate-agent-configs.py --check. 718 unit tests OK, render-check, validate-agent-assets exit 0, shfmt/shellcheck clean, scratch-remote demos pasted (evil merge refused, unlistable diff refused, stale launcher passes branch and refuses main, bootstrap skip notice, execute bit restored). CI green on macOS 14 and both Ubuntu matrices incl. bats; mergeStateStatus CLEAN.",
+    "author": "claude-code",
+    "created_at": "2026-10-02T05:55:00Z",
+    "updated_at": "2026-10-02T05:55:00Z",
+    "resolved": true,
+    "resolved_round": 3,
+    "replies": [
+      {
+        "id": "rp_t54_01",
+        "body": "Addressed over two revise rounds; acceptance record .orchestration/acceptance/dot-upgrade-pin-path-codify-T54-a01.md.",
+        "author": "claude-code",
+        "created_at": "2026-10-02T05:55:00Z",
+        "review_round": 3
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "id": "r_t54_02",
+    "file": "home/dot_local/bin/common/executable_herdr-agents",
+    "path": "home/dot_local/bin/common/executable_herdr-agents",
+    "start_line": 1610,
+    "end_line": 1610,
+    "body": "Round 1 (2360aea): boundary check used git log --name-only, which lists no files for a merge commit, so a merge-only change escaped ORCH_PUSH_MAIN=boundary; a failed enumeration produced an empty list and logged allowed (orchestrator finding; Codex audit P1 + P2).",
+    "author": "claude-code",
+    "created_at": "2026-10-02T04:35:00Z",
+    "updated_at": "2026-10-02T05:06:00Z",
+    "resolved": true,
+    "resolved_round": 2,
+    "replies": [
+      {
+        "id": "rp_t54_02",
+        "body": "fixed:c636452 — tree-to-tree git diff --name-only --no-renames with a pure-bash path loop; unlistable diff refuses with a logged reason; tests test_main_push_guard_checks_a_merge_by_its_tree_diff and test_main_push_guard_fails_closed_when_the_changes_cannot_be_listed.",
+        "author": "claude-code",
+        "created_at": "2026-10-02T05:06:00Z",
+        "review_round": 2
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "id": "r_t54_03",
+    "file": "home/dot_local/bin/common/executable_herdr-agents",
+    "path": "home/dot_local/bin/common/executable_herdr-agents",
+    "start_line": 1582,
+    "end_line": 1582,
+    "body": "Round 1 (2360aea): a hook containing the marker but differing from the generated body was overwritten, discarding user-added checks (Codex GitHub review P2; Codex audit P2).",
+    "author": "claude-code",
+    "created_at": "2026-10-02T04:35:00Z",
+    "updated_at": "2026-10-02T05:06:00Z",
+    "resolved": true,
+    "resolved_round": 2,
+    "replies": [
+      {
+        "id": "rp_t54_03",
+        "body": "fixed:c636452 — constant stub execs herdr-agents --main-push-guard; any differing hook is left in place with a warning; test test_bootstrap_keeps_an_edited_main_push_guard_stub.",
+        "author": "claude-code",
+        "created_at": "2026-10-02T05:06:00Z",
+        "review_round": 2
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "id": "r_t54_04",
+    "file": "home/dot_local/bin/common/executable_herdr-agents",
+    "path": "home/dot_local/bin/common/executable_herdr-agents",
+    "start_line": 1107,
+    "end_line": 1107,
+    "body": "Round 1 (2360aea): pane-less SessionStart path printed a second line while SKILL, rule, usage text and README still promised one line (orchestrator finding; Codex GitHub review P2).",
+    "author": "claude-code",
+    "created_at": "2026-10-02T04:35:00Z",
+    "updated_at": "2026-10-02T05:06:00Z",
+    "resolved": true,
+    "resolved_round": 2,
+    "replies": [
+      {
+        "id": "rp_t54_04",
+        "body": "fixed:c636452 — every carrier updated; git grep for the stale phrases leaves only check-regime-boundary.sh (unrelated).",
+        "author": "claude-code",
+        "created_at": "2026-10-02T05:06:00Z",
+        "review_round": 2
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "id": "r_t54_05",
+    "file": "home/dot_local/bin/common/executable_herdr-agents",
+    "path": "home/dot_local/bin/common/executable_herdr-agents",
+    "start_line": 1644,
+    "end_line": 1644,
+    "body": "Round 2 (c636452): make upgrade runs agmsg-bootstrap from source before the launcher is applied, so the stub exec'd an installed launcher without --main-push-guard; that launcher took the flag as DIR, ran remove_shadowing_node_global (npm uninstall -g) and failed, breaking every push of every branch (Codex GitHub review P1; Codex audit P1; orchestrator confirmed against the installed launcher and the Makefile).",
+    "author": "claude-code",
+    "created_at": "2026-10-02T05:06:00Z",
+    "updated_at": "2026-10-02T05:50:00Z",
+    "resolved": true,
+    "resolved_round": 3,
+    "replies": [
+      {
+        "id": "rp_t54_05",
+        "body": "fixed:1128abb — bootstrap installs the stub only when the deployed launcher's --help advertises the mode (notice otherwise); the stub probes the same way and, lacking the mode, refuses refs/heads/main only and never execs another mode; tests with an old-launcher fake.",
+        "author": "claude-code",
+        "created_at": "2026-10-02T05:50:00Z",
+        "review_round": 3
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "id": "r_t54_06",
+    "file": "home/dot_local/bin/common/executable_herdr-agents",
+    "path": "home/dot_local/bin/common/executable_herdr-agents",
+    "start_line": 1653,
+    "end_line": 1653,
+    "body": "Round 2 (c636452): an identical stub without the execute bit returned early before chmod, and git silently skips a non-executable hook (Codex GitHub review P2; Codex audit P2).",
+    "author": "claude-code",
+    "created_at": "2026-10-02T05:06:00Z",
+    "updated_at": "2026-10-02T05:50:00Z",
+    "resolved": true,
+    "resolved_round": 3,
+    "replies": [
+      {
+        "id": "rp_t54_06",
+        "body": "fixed:1128abb — chmod 755 restored with a notice when the text matches; test test_bootstrap_restores_the_execute_bit_of_the_stub.",
+        "author": "claude-code",
+        "created_at": "2026-10-02T05:50:00Z",
+        "review_round": 3
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "id": "r_t54_07",
+    "file": "home/dot_local/bin/common/executable_herdr-agents",
+    "path": "home/dot_local/bin/common/executable_herdr-agents",
+    "start_line": 1647,
+    "end_line": 1647,
+    "body": "Codex GitHub review P1: a local pre-push hook is bypassable with --no-verify, so it is not a hard boundary.",
+    "author": "claude-code",
+    "created_at": "2026-10-02T04:35:00Z",
+    "updated_at": "2026-10-02T05:50:00Z",
+    "resolved": true,
+    "resolved_round": 3,
+    "replies": [
+      {
+        "id": "rp_t54_07",
+        "body": "not-applicable — inherent to any client hook; the task forbade branch-protection changes (operator-side). The text nowhere claims a hard boundary, and GitHub branch protection for main is recorded as the operator recommendation in the report and acceptance record.",
+        "author": "claude-code",
+        "created_at": "2026-10-02T05:50:00Z",
+        "review_round": 3
+      }
+    ]
+  },
+  {
+    "scope": "line",
+    "id": "r_t54_08",
+    "file": "home/dot_local/bin/common/executable_herdr-agents",
+    "path": "home/dot_local/bin/common/executable_herdr-agents",
+    "start_line": 1668,
+    "end_line": 1668,
+    "body": "Codex audit of 1128abb [P2]: a stub installed by the predecessor body (c636452) is classified as edited and left unchanged, so such installations would keep the unsafe launcher delegation and miss the execute-bit repair.",
+    "author": "claude-code",
+    "created_at": "2026-10-02T06:05:00Z",
+    "updated_at": "2026-10-02T06:05:00Z",
+    "resolved": true,
+    "resolved_round": 3,
+    "replies": [
+      {
+        "id": "rp_t54_08",
+        "body": "not-applicable — the predecessor body was never deployed: c636452 is an intermediate commit of this unmerged PR (squash-merged as one commit), the installed launcher (~/.local/bin/common/herdr-agents) has no --main-push-guard mode, and both the main checkout and the canonical clone have no .git/hooks/pre-push and no orch-push-main.log (checked 2026-10-02 06:05Z). The general ceiling — a future change to the stub text needs the operator to remove the hook and rerun bootstrap — is documented in the report and the warning text.",
+        "author": "claude-code",
+        "created_at": "2026-10-02T06:05:00Z",
+        "review_round": 3
+      }
+    ]
+  }
+]

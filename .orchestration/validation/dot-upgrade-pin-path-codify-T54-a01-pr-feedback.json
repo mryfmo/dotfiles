@@ -1,0 +1,379 @@
+{
+  "repo": "mryfmo/dotfiles",
+  "pr": 225,
+  "head_sha": "1128abb326d4a1fb0f50d5b505adbbb9f85de270",
+  "base_ref": "main",
+  "base_sha": "00ce4f6e918829a9d1c6d32140027dd182c4708b",
+  "generated_at": "2026-10-02T05:56:14+00:00",
+  "checks": [
+    {
+      "name": "nix",
+      "conclusion": "skipped",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581717/job/110720575703"
+    },
+    {
+      "name": "test (ubuntu-latest, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581717/job/110720574579"
+    },
+    {
+      "name": "test (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581717/job/110720574544"
+    },
+    {
+      "name": "test (ubuntu-latest, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581717/job/110720574524"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-latest, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581839/job/110720540599"
+    },
+    {
+      "name": "public-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581839/job/110720540557"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-latest, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581839/job/110720540418"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-latest, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581839/job/110720540393"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-latest, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581839/job/110720540358"
+    },
+    {
+      "name": "private-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581839/job/110720540264"
+    },
+    {
+      "name": "build (server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581737/job/110720540177"
+    },
+    {
+      "name": "build",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581736/job/110720540095"
+    },
+    {
+      "name": "build (client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581737/job/110720540089"
+    },
+    {
+      "name": "validate",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581724/job/110720539703"
+    },
+    {
+      "name": "changes",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581717/job/110720539596"
+    }
+  ],
+  "items": [
+    {
+      "source": "issue_comment",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary>⚙️ Run configuration</summary>\n> \n> **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> \n> **Review profile**: CHILL\n> \n> **Plan**: Advanced\n> \n> **Run ID**: `e61ab2d3-4dc7-4e1a-bda6-87a7553f5e6a`\n> \n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autopilot</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n\n> Autopilot is currently an internal CodeRabbit preview.\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n---\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=225)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary>❤️ Share</summary>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/225#issuecomment-5945487591",
+      "disposition": "not-applicable:CodeRabbit auto-summary comment states automatic reviews are disabled; no findings"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `2360aea839`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/225#pullrequestreview-5388274142",
+      "commit": "2360aea83973a3e989c54b126fd34ab7cbef52e8",
+      "disposition": "not-applicable:Codex review summary container; each inline finding is dispositioned on its own review_comment item"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `c636452407`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/225#pullrequestreview-5388437069",
+      "commit": "c63645240780fa71cbac165feeae6b4f3348e54d",
+      "disposition": "not-applicable:Codex review summary container; each inline finding is dispositioned on its own review_comment item"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1647,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Enforce main pushes at a non-bypassable boundary**\n\nThis guard is installed solely as a local `pre-push` hook, so an orchestrator can bypass every refusal and its audit log with `git push --no-verify origin main`; `git push -h` explicitly documents `--no-verify` as “bypass pre-push hook,” and that command updates the remote without invoking this script. This reintroduces the direct-push path the change is meant to prevent, including force/deletion cases, so enforce the rule through GitHub branch protection or another server-side receive boundary rather than treating the client hook as the guard.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/225#discussion_r4162828361",
+      "resolved": false,
+      "outdated": false,
+      "disposition": "not-applicable:a client-side pre-push hook cannot be made non-bypassable (--no-verify); the task forbade GitHub branch-protection changes, which are the operator-side server boundary recommended in the report and acceptance record"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1582,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Preserve hooks that merely contain the marker**\n\nIf an existing `pre-push` hook contains this marker but is not byte-identical to the generated body—for example, a user adds an unrelated check to a previously generated hook—the marker-only test treats it as managed. The later equality check then falls through to the `mv`, silently replacing that hook and discarding its checks despite the documented foreign-hook preservation behavior. Require an exact managed body (or a dedicated managed section) before rewriting it.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/225#discussion_r4162828363",
+      "resolved": false,
+      "outdated": true,
+      "disposition": "fixed:c636452"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1118,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Document the added pane-less SessionStart directive**\n\nFor a regime session outside Herdr, this new call emits a second stdout line after the advertised summary, but the CLI usage, README, and the agmsg skill still say `herdr-agents --attach` prints one line in that case. This leaves the documented hook contract false and does not describe the newly injected delegation and main-push instructions to users of that startup path.\n\nAGENTS.md reference: [AGENTS.md:L78-L78](https://github.com/mryfmo/dotfiles/blob/2360aea83973a3e989c54b126fd34ab7cbef52e8/AGENTS.md#L78-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/225#discussion_r4162828366",
+      "resolved": false,
+      "outdated": false,
+      "disposition": "fixed:c636452"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1653,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Restore execute permission on the managed hook**\n\nAfter the generated hook is copied or restored with mode 0644 (or its execute bit is removed), its text still matches `body`, so this returns before the installation path's `chmod 755`. Git ignores a non-executable `pre-push` hook (reporting that it “was ignored because it's not set as executable”), and later `--bootstrap-agmsg` calls leave it disabled, allowing main pushes with no guard. Require `-x` here or re-chmod the exact managed stub.\n\nAGENTS.md reference: [AGENTS.md:L78-L78](https://github.com/mryfmo/dotfiles/blob/c63645240780fa71cbac165feeae6b4f3348e54d/AGENTS.md#L78-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/225#discussion_r4162977325",
+      "resolved": false,
+      "outdated": true,
+      "disposition": "fixed:1128abb"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1652,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Avoid installing a hook that invokes an older launcher**\n\n`make upgrade` calls `agmsg-bootstrap` from the checked-out source (Makefile:124-138) without running `chezmoi apply`. Thus, on the first upgrade after this change, a canonical clone can install this stub while `command -v herdr-agents` still resolves to the prior managed helper, which does not recognize `--main-push-guard`; every subsequent push, including a feature branch carrying the upgrade's pin diff, exits after the old helper prints usage. Run a guard guaranteed to be deployed at the same version, or defer installing the stub until the helper has been applied.\n\nAGENTS.md reference: [AGENTS.md:L78-L78](https://github.com/mryfmo/dotfiles/blob/c63645240780fa71cbac165feeae6b4f3348e54d/AGENTS.md#L78-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/225#discussion_r4162977329",
+      "resolved": false,
+      "outdated": false,
+      "disposition": "fixed:1128abb"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581717/job/110720574579",
+      "check": "test (ubuntu-latest, server)",
+      "disposition": "not-applicable:GitHub Actions runner platform notice (ubuntu-latest migration / macOS arm64 queue), not about this change"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581717/job/110720574544",
+      "check": "test (macos-14, client)",
+      "disposition": "not-applicable:GitHub Actions runner platform notice (ubuntu-latest migration / macOS arm64 queue), not about this change"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581717/job/110720574524",
+      "check": "test (ubuntu-latest, client)",
+      "disposition": "not-applicable:GitHub Actions runner platform notice (ubuntu-latest migration / macOS arm64 queue), not about this change"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581839/job/110720540599",
+      "check": "private-bootstrap (ubuntu-latest, client)",
+      "disposition": "not-applicable:GitHub Actions runner platform notice (ubuntu-latest migration / macOS arm64 queue), not about this change"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "warning",
+      "path": ".github",
+      "line": 176944,
+      "body": "The following taps are not trusted:\n  aws/tap\n  azure/bicep\n  hashicorp/tap\n\nHomebrew is currently ignoring formulae, casks and commands from these taps because tap trust is required.\n\nPrefer trusting only the specific formulae, casks or commands you need.\nTrust installed formulae from these taps with:\n  brew trust --formula azure/bicep/bicep\n  brew trust --formula hashicorp/tap/packer\nTrust other specific casks and commands with:\n  brew trust --cask <user>/<tap>/<cask>\n  brew trust --command <user>/<tap>/<command>\nWhole-tap trust is broader and includes all current and future formulae,\ncasks and commands from the listed taps. Trust whole taps with:\n  brew trust aws/tap azure/bicep hashicorp/tap\nUntap them with:\n  brew untap aws/tap azure/bicep hashicorp/tap\nTo disable trust checks:\n  export HOMEBREW_NO_REQUIRE_TAP_TRUST=1\nThis is not recommended and will be removed in a later release.\nFor more information, see:\n  https://docs.brew.sh/Tap-Trust",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581839/job/110720540557",
+      "check": "public-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:Homebrew untrusted-tap warning from the public-bootstrap macOS runner environment; pre-existing on main and unrelated to this diff"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581839/job/110720540557",
+      "check": "public-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub Actions runner platform notice (ubuntu-latest migration / macOS arm64 queue), not about this change"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581839/job/110720540418",
+      "check": "public-bootstrap (ubuntu-latest, server)",
+      "disposition": "not-applicable:GitHub Actions runner platform notice (ubuntu-latest migration / macOS arm64 queue), not about this change"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581839/job/110720540393",
+      "check": "private-bootstrap (ubuntu-latest, server)",
+      "disposition": "not-applicable:GitHub Actions runner platform notice (ubuntu-latest migration / macOS arm64 queue), not about this change"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581839/job/110720540358",
+      "check": "public-bootstrap (ubuntu-latest, client)",
+      "disposition": "not-applicable:GitHub Actions runner platform notice (ubuntu-latest migration / macOS arm64 queue), not about this change"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581839/job/110720540264",
+      "check": "private-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub Actions runner platform notice (ubuntu-latest migration / macOS arm64 queue), not about this change"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581737/job/110720540177",
+      "check": "build (server)",
+      "disposition": "not-applicable:GitHub Actions runner platform notice (ubuntu-latest migration / macOS arm64 queue), not about this change"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581736/job/110720540095",
+      "check": "build",
+      "disposition": "not-applicable:GitHub Actions runner platform notice (ubuntu-latest migration / macOS arm64 queue), not about this change"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581737/job/110720540089",
+      "check": "build (client)",
+      "disposition": "not-applicable:GitHub Actions runner platform notice (ubuntu-latest migration / macOS arm64 queue), not about this change"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581724/job/110720539703",
+      "check": "validate",
+      "disposition": "not-applicable:GitHub Actions runner platform notice (ubuntu-latest migration / macOS arm64 queue), not about this change"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/36969581717/job/110720539596",
+      "check": "changes",
+      "disposition": "not-applicable:GitHub Actions runner platform notice (ubuntu-latest migration / macOS arm64 queue), not about this change"
+    },
+    {
+      "source": "status",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "success",
+      "path": null,
+      "line": null,
+      "body": "CodeRabbit: Review skipped: automatic reviews are disabled",
+      "url": null,
+      "check": "CodeRabbit",
+      "disposition": "not-applicable:CodeRabbit success status with review skipped; nothing to disposition"
+    }
+  ]
+}

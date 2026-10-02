@@ -1,0 +1,23 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t52_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Orchestrator review of PR #223 head f700b14 (one commit, docs + config) from git objects: .ua/config.json autoUpdate false (verified against plugin 2.9.7: the SessionStart hook gates on grep '\"autoUpdate\".*true' and the PostToolUse hook on config.autoUpdate === true, both pasted); rule, Codex AGENTS.md (ja) and README state the dotfiles policy \u2014 refresh only by /understand --full run by a worker task on operator request at a regime boundary; incremental updates cannot publish because validate-incremental-symbols.mjs marks unowned functions unknown in parser-less files (executable_herdr-agents, executable_agmsg-dispatch, modify_private_settings.json), no per-path language override; stale by design with the grep fallback; --old-ref = previous meta.gitCommitHash for a full rebuild. SKILL and manifest unchanged (no such wording; verified). 705 tests OK; render-check, validate; CI green Linux+macOS; CLEAN. Codex audit f700b14 correct. PR feedback (14): all not-applicable (runner notices, Homebrew tap warning, CodeRabbit skipped comment/status).",
+    "author": "claude-code",
+    "created_at": "2026-10-02T01:21:13Z",
+    "updated_at": "2026-10-02T01:21:13Z",
+    "resolved": true,
+    "resolved_round": 1,
+    "replies": [
+      {
+        "id": "rp_t52_01",
+        "body": "Approved; acceptance record .orchestration/acceptance/dot-ua-refresh-policy-T52-a01.md.",
+        "author": "claude-code",
+        "created_at": "2026-10-02T01:21:13Z",
+        "review_round": 1
+      }
+    ]
+  }
+]

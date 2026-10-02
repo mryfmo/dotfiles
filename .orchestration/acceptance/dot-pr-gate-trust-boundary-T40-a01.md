@@ -140,8 +140,16 @@ PR_FEEDBACK_EVIDENCE=…-pr-feedback.json make require-crit-review` in
   into the consolidated decision.
 
 **Decision: ACCEPTED** — squash-merge PR #221 without `--delete-branch`
-(worker-sec holds the branch). The worker-sec seat stays for later security
-lane tasks; no task is queued for it now.
+(worker-sec holds the branch).
+
+Post-acceptance (2026-10-02T01:3xZ, operator decision at the session
+boundary): `make check-regime-boundary` reported the open `dotfiles worker
+worker-sec` workspace and eight untracked artifact copies in worker-sec; the
+seat was removed with `herdr-agents --remove-worker
+.claude/worktrees/worker-sec --force` (`status=forced`, placement record
+and identity gone, wQ closed) and the eight copies, byte-identical to the
+committed files, were deleted under the hygiene exemption. The worktree and
+its merged branch remain for a future `--add-worker` reseat.
 
 cost: n/a (worker reported none)
 

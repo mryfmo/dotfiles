@@ -208,49 +208,51 @@ jobs:
             npm:ccstatusline@2.2.30 \
             npm:ccusage@20.0.24
 
-      # TEMPORARY T59 diagnostics (canary only); removed before the final head.
-      - name: T59 diagnose ccstatusline --version on ubuntu-26.04
+      # TEMPORARY T59 diagnostics round 2 (canary only, cold order); removed before the final head.
+      - name: T59 diagnose cold ccstatusline --version on ubuntu-26.04
         if: ${{ needs.changes.outputs.should_test == 'true' && matrix.os == 'ubuntu-26.04' }}
         continue-on-error: true
         run: |
           set -u
           statusline_mise_dir="${RUNNER_TEMP}/statusline-mise"
           bin="$(mise -C "${statusline_mise_dir}" which ccstatusline)"
-          smoke_home="${RUNNER_TEMP}/statusline-smoke-home"
-          mkdir -p "${smoke_home}"
-          echo "T59 bin=${bin} real=$(readlink -f "${bin}")"
-          echo "T59 shebang=$(head -1 "$(readlink -f "${bin}")")"
-          echo "T59 node=$(command -v node) $(node --version)"
-          echo "T59 PATH=${PATH}"
           sudo apt-get install -y strace > /dev/null 2>&1 || true
-          envv=(/usr/bin/env "HOME=${smoke_home}" "PATH=${PATH}" "HTTP_PROXY=http://127.0.0.1:1" "HTTPS_PROXY=http://127.0.0.1:1" NO_PROXY=)
-          t() { local label="$1"; shift; local s e; s=$(date +%s.%N); "$@" > "${RUNNER_TEMP}/t59.out" 2>&1; local rc=$?; e=$(date +%s.%N); echo "T59 ${label}: rc=${rc} secs=$(echo "${e} - ${s}" | bc) out=$(head -c 300 "${RUNNER_TEMP}/t59.out" | tr '\n' ' ')"; }
-          t "net node --version" "${envv[@]}" timeout 30 node --version
-          t "net ccstatusline --version" "${envv[@]}" timeout 30 "${bin}" --version
-          t "nonet node --version" sudo unshare --net -- "${envv[@]}" timeout 30 node --version
-          t "nonet ccstatusline --version" sudo unshare --net -- "${envv[@]}" timeout 30 "${bin}" --version
-          t "nonet+lo ccstatusline --version" sudo unshare --net -- sh -c 'ip link set lo up && exec "$@"' sh "${envv[@]}" timeout 30 "${bin}" --version
-          t "nonet noproxy ccstatusline --version" sudo unshare --net -- /usr/bin/env "HOME=${smoke_home}" "PATH=${PATH}" timeout 30 "${bin}" --version
-          t "nonet node bundle direct" sudo unshare --net -- "${envv[@]}" timeout 30 node "$(readlink -f "${bin}")" --version
-          sudo unshare --net -- "${envv[@]}" NODE_DEBUG=net,dns,http,module timeout 30 "${bin}" --version > "${RUNNER_TEMP}/t59-nodedebug.txt" 2>&1; echo "T59 NODE_DEBUG rc=$?"; tail -40 "${RUNNER_TEMP}/t59-nodedebug.txt" | sed 's/^/T59 nd: /'
-          sudo unshare --net -- "${envv[@]}" strace -f -tt -o "${RUNNER_TEMP}/t59-strace.txt" timeout 30 "${bin}" --version > /dev/null 2>&1; echo "T59 strace rc=$? lines=$(wc -l < "${RUNNER_TEMP}/t59-strace.txt")"
-          grep -E 'connect\(|socket\(|sendto|recvfrom|getaddrinfo|resolv|nsswitch|execve|openat\(.*(\.so|resolv|hosts)' "${RUNNER_TEMP}/t59-strace.txt" | head -80 | sed 's/^/T59 st: /'
-          python3 - "${RUNNER_TEMP}/t59-strace.txt" <<'PY'
+          echo "T59 mise=$(command -v mise) $(mise --version 2>/dev/null)"
+          echo "T59 PATH=${PATH}"
+          echo "T59 resolv=$(grep -v '^#' /etc/resolv.conf | tr '\n' ' ')"
+          echo "T59 nsswitch-hosts=$(grep '^hosts' /etc/nsswitch.conf)"
+          fresh() { local d; d="$(mktemp -d "${RUNNER_TEMP}/t59-home-XXXX")"; echo "${d}"; }
+          envv() { echo /usr/bin/env "HOME=$1" "PATH=${PATH}" "HTTP_PROXY=http://127.0.0.1:1" "HTTPS_PROXY=http://127.0.0.1:1" NO_PROXY=; }
+          t() { local label="$1"; shift; local s e rc; s=$(date +%s.%N); "$@" > "${RUNNER_TEMP}/t59.out" 2>&1; rc=$?; e=$(date +%s.%N); echo "T59 ${label}: rc=${rc} secs=$(echo "${e} - ${s}" | bc)"; tail -c 1500 "${RUNNER_TEMP}/t59.out" | sed "s/^/T59   | /"; }
+          h=$(fresh)
+          sudo unshare --net -- $(envv "${h}") strace -f -tt -o "${RUNNER_TEMP}/t59-strace-cold.txt" timeout 30 "${bin}" --version > "${RUNNER_TEMP}/t59.out" 2>&1; echo "T59 cold strace ccstatusline rc=$? lines=$(wc -l < "${RUNNER_TEMP}/t59-strace-cold.txt")"
+          python3 - "${RUNNER_TEMP}/t59-strace-cold.txt" <<'PY'
           import re, sys
           def secs(line):
               m = re.match(r"\d+\s+(\d+):(\d+):(\d+\.\d+)", line)
               return int(m[1]) * 3600 + int(m[2]) * 60 + float(m[3]) if m else None
           lines = open(sys.argv[1]).read().splitlines()
+          stamps = [secs(l) for l in lines]
+          known = [x for x in stamps if x is not None]
+          print(f"T59 cold total {known[-1] - known[0]:.2f}s over {len(lines)} lines" if known else "T59 cold none")
           gaps = []
-          for prev, cur in zip(lines, lines[1:]):
-              a, b = secs(prev), secs(cur)
+          for i in range(1, len(lines)):
+              a, b = stamps[i - 1], stamps[i]
               if a is not None and b is not None and b - a > 0.3:
-                  gaps.append((b - a, prev, cur))
-          for gap, prev, cur in sorted(gaps, reverse=True)[:12]:
-              print(f"T59 gap {gap:.2f}s\n  T59 before: {prev[:220]}\n  T59 after:  {cur[:220]}")
-          print("T59 first:", lines[0][:160] if lines else "none")
-          print("T59 last:", lines[-1][:160] if lines else "none")
+                  gaps.append((b - a, i))
+          for gap, i in sorted(gaps, reverse=True)[:8]:
+              print(f"T59 gap {gap:.2f}s at line {i}")
+              for l in lines[max(0, i - 6):i + 2]:
+                  print("T59   ", l[:230])
+          for l in lines:
+              if re.search(r"execve\(|connect\(|getaddrinfo|resolv\.conf|:53|sendto|poll\(|epoll_wait|futex.*<unfinished|nanosleep|clock_nanosleep", l):
+                  print("T59 key", l[:230])
           PY
+          h=$(fresh); t "cold nonet node shim trace" sudo unshare --net -- $(envv "${h}") MISE_LOG_LEVEL=trace timeout 30 node --version
+          h=$(fresh); t "cold nonet ccstatusline no-shims PATH" sudo unshare --net -- /usr/bin/env "HOME=${h}" "PATH=$(echo "${PATH}" | tr ':' '\n' | grep -v '/mise/shims' | paste -sd:)" "HTTP_PROXY=http://127.0.0.1:1" "HTTPS_PROXY=http://127.0.0.1:1" NO_PROXY= timeout 30 "${bin}" --version
+          h=$(fresh); t "cold nonet ccstatusline MISE_OFFLINE=1" sudo unshare --net -- $(envv "${h}") MISE_OFFLINE=1 timeout 30 "${bin}" --version
+          h=$(fresh); t "cold nonet ccstatusline again (2nd fresh home)" sudo unshare --net -- $(envv "${h}") timeout 30 "${bin}" --version
+          t "warm-home nonet ccstatusline (reuse last home)" sudo unshare --net -- $(envv "${h}") timeout 30 "${bin}" --version
 
       - name: Smoke-test statusline tools without network
         if: ${{ needs.changes.outputs.should_test == 'true' }}

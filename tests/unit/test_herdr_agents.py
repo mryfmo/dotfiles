@@ -1325,18 +1325,28 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             any(call.startswith(("delivery ", "identities ")) for call in calls)
         )
 
-    def guard_git(self, cwd: Path, *args: str, push_main: str | None = None) -> subprocess.CompletedProcess[str]:
+    def guard_env(self, push_main: str | None = None, *, launcher: bool = True) -> dict[str, str]:
+        """Git identity, HOME, and a PATH whose herdr-agents is this branch's launcher (or none at all)."""
         env = os.environ.copy()
         env.update(
+            HOME=str(self.home_dir),
             GIT_AUTHOR_NAME="t",
             GIT_AUTHOR_EMAIL="t@example.invalid",
             GIT_COMMITTER_NAME="t",
             GIT_COMMITTER_EMAIL="t@example.invalid",
         )
+        env["PATH"] = f"{self.temp_dir / 'guard-bin'}{os.pathsep}{env['PATH']}" if launcher else f"/usr/bin{os.pathsep}/bin"
         env.pop("ORCH_PUSH_MAIN", None)
         if push_main is not None:
             env["ORCH_PUSH_MAIN"] = push_main
-        return subprocess.run(["git", "-C", str(cwd), *args], env=env, check=False, text=True, capture_output=True)
+        return env
+
+    def guard_git(
+        self, cwd: Path, *args: str, push_main: str | None = None, launcher: bool = True
+    ) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["git", "-C", str(cwd), *args], env=self.guard_env(push_main, launcher=launcher), check=False, text=True, capture_output=True
+        )
 
     def commit_file(self, relative: str) -> None:
         path = self.workdir / relative
@@ -1346,8 +1356,12 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(self.guard_git(self.workdir, "commit", "-q", "-m", relative).returncode, 0)
 
     def write_guard_repo(self, **fakes: str) -> Path:
-        """A git main checkout pushed to a scratch bare remote, then agmsg-bootstrapped; returns the hook path."""
+        """A git main checkout pushed to a scratch bare remote, with this branch's launcher on the guard PATH; returns the hook path."""
         self.install_agmsg_fakes(**fakes)
+        launcher = self.temp_dir / "guard-bin/herdr-agents"
+        launcher.parent.mkdir()
+        launcher.write_text(f'#!/usr/bin/env bash\nexec bash {SCRIPT} "$@"\n')
+        launcher.chmod(0o755)
         remote = self.temp_dir / "remote.git"
         for cwd, args in (
             (self.temp_dir, ("init", "-q", "--bare", str(remote))),
@@ -1375,11 +1389,12 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertNotIn("installed the main-push guard", again.stderr)
         self.assertTrue(os.access(hook, os.X_OK))
         self.assertIn("# herdr-agents main-push guard", hook.read_text())
+        self.assertIn('exec "${guard}" --main-push-guard "$@"', hook.read_text())
         self.assertNotEqual(plain.returncode, 0)
         self.assertIn("refused ORCH_PUSH_MAIN=unset refs/heads/main:refs/heads/main", plain.stderr)
         self.assertIn("route the change through a worker PR", plain.stderr)
         self.assertNotEqual(boundary.returncode, 0)
-        self.assertIn("boundary commits may only touch .orchestration/, not: README.md", boundary.stderr)
+        self.assertIn("a boundary push may only change .orchestration/, not: README.md", boundary.stderr)
         self.assertEqual(branch.returncode, 0, branch.stderr)
         self.assertNotIn("pre-push:", branch.stderr)
         self.assertEqual(acceptance.returncode, 0, acceptance.stderr)
@@ -1411,6 +1426,72 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertNotEqual(delete.returncode, 0)
         self.assertIn("deleting main is never allowed", delete.stderr)
         self.assertEqual(self.guard_git(self.temp_dir / "remote.git", "log", "-1", "--format=%s", "main").stdout, ".orchestration/acceptance/T1.md\n")
+
+    def test_main_push_guard_checks_a_merge_by_its_tree_diff(self) -> None:
+        self.write_guard_repo()
+        self.run_agmsg_bootstrap_helper()
+        self.guard_git(self.workdir, "switch", "-q", "-c", "side")
+        self.commit_file(".orchestration/side.md")
+        self.guard_git(self.workdir, "switch", "-q", "main")
+        self.commit_file(".orchestration/main.md")
+        # An evil merge: both parents touch only .orchestration/, the resolution adds code.
+        self.guard_git(self.workdir, "merge", "-q", "--no-ff", "--no-commit", "side")
+        (self.workdir / "README.md").write_text("code\n")
+        self.guard_git(self.workdir, "add", "README.md")
+        self.assertEqual(self.guard_git(self.workdir, "commit", "-q", "-m", "merge side").returncode, 0)
+
+        per_commit = self.guard_git(self.workdir, "log", "--format=", "--name-only", "origin/main..HEAD").stdout
+        boundary = self.guard_git(self.workdir, "push", "origin", "main", push_main="boundary")
+
+        self.assertNotIn("README.md", per_commit)
+        self.assertNotEqual(boundary.returncode, 0)
+        self.assertIn("a boundary push may only change .orchestration/, not: README.md", boundary.stderr)
+
+    def test_main_push_guard_fails_closed_when_the_changes_cannot_be_listed(self) -> None:
+        self.write_guard_repo()
+        self.commit_file(".orchestration/a.md")
+        base = self.guard_git(self.workdir, "rev-parse", "HEAD").stdout.strip()
+        self.commit_file(".orchestration/b.md")
+        head = self.guard_git(self.workdir, "rev-parse", "HEAD").stdout.strip()
+        # The base commit stays readable (so the fast-forward check passes) but its tree does not.
+        tree = self.guard_git(self.workdir, "rev-parse", f"{base}^{{tree}}").stdout.strip()
+        (self.workdir / ".git/objects" / tree[:2] / tree[2:]).unlink()
+
+        result = subprocess.run(
+            ["bash", str(SCRIPT), "--main-push-guard", "origin", "scratch"],
+            cwd=self.workdir,
+            env=self.guard_env("boundary"),
+            input=f"refs/heads/main {head} refs/heads/main {base}\n",
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("cannot list the changes since the remote main, so the boundary check fails closed", result.stderr)
+        log = (self.workdir / ".git/orch-push-main.log").read_text()
+        self.assertIn("refused ORCH_PUSH_MAIN=boundary", log)
+
+    def test_bootstrap_keeps_an_edited_main_push_guard_stub(self) -> None:
+        hook = self.write_guard_repo()
+        self.run_agmsg_bootstrap_helper()
+        edited = hook.read_text().replace("exec ", "./my-extra-check || exit 1\nexec ", 1)
+        hook.write_text(edited)
+
+        result = self.run_agmsg_bootstrap_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(hook.read_text(), edited)
+        self.assertIn("differs from the main-push guard stub (edited?); leaving it unchanged", result.stderr)
+
+    def test_main_push_guard_stub_refuses_every_push_without_the_launcher(self) -> None:
+        self.write_guard_repo()
+        self.run_agmsg_bootstrap_helper()
+
+        result = self.guard_git(self.workdir, "push", "--dry-run", "origin", "main:refs/heads/feature", launcher=False)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("herdr-agents is not installed, so the main-push guard refuses this push", result.stderr)
 
     def test_bootstrap_leaves_a_foreign_pre_push_hook_alone(self) -> None:
         hook = self.write_guard_repo()
@@ -1948,7 +2029,7 @@ printf 'status=ok team=dotfiles\\n'
             "AGMSG-TASK; when no worker is seated, seat one first (herdr-agents --restart-worker in the pair, "
             "herdr-agents --add-worker .claude/worktrees/worker-c otherwise): no worker is never an implicit opt-out. "
             "Before acting directly under an exemption, declare which one in one line. Never push a repository change "
-            "to main yourself: the pre-push guard passes only ORCH_PUSH_MAIN=boundary (.orchestration-only commits) "
+            "to main yourself: the pre-push guard passes only ORCH_PUSH_MAIN=boundary (.orchestration-only changes) "
             "and ORCH_PUSH_MAIN=acceptance.",
         )
 

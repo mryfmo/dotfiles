@@ -3,8 +3,8 @@
 # @file install/macos/common/brew.sh
 # @brief Install Homebrew and apply repository defaults.
 # @description
-#   Ensures Homebrew is installed on macOS and disables analytics for the local
-#   user.
+#   Ensures Homebrew is installed on macOS, trusts untrusted runner-image taps
+#   on CI, and disables analytics for the local user.
 
 set -Eeuo pipefail
 
@@ -51,10 +51,37 @@ function opt_out_of_analytics() {
 }
 
 #
+# @description On a CI runner, trust the third-party taps that the runner image
+#   ships tapped but untrusted, so `brew install` stops warning about them
+#   (https://docs.brew.sh/Tap-Trust). The taps come from Homebrew's own
+#   `brew untrust --tap` listing. Whole-tap trust is the only remediation in
+#   Homebrew's warning that works unattended for every listed tap: Homebrew
+#   cannot list installed formulae from an untrusted tap, so item-level trust
+#   is not derivable, and `brew untap` refuses a tap with installed kegs.
+#   Does nothing unless `CI` is exactly `true`.
+#
+function handle_ci_untrusted_taps() {
+    [ "${CI:-}" = "true" ] || return 0
+
+    local listing taps
+    if ! listing="$(brew untrust --tap 2> /dev/null)"; then
+        printf 'brew has no tap trust (no brew untrust command); skipping untrusted tap handling\n' >&2
+        return 0
+    fi
+    # The listing is a header line followed by one indented tap name per line.
+    taps="$(sed -n 's/^  //p' <<< "${listing}")"
+    [ -n "${taps}" ] || return 0
+
+    # shellcheck disable=SC2086 # One tap name per word, word splitting intended.
+    brew trust ${taps}
+}
+
+#
 # @description Install Homebrew and apply repository defaults.
 #
 function main() {
     install_homebrew
+    handle_ci_untrusted_taps
     opt_out_of_analytics
 }
 

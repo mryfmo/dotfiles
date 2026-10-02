@@ -41,6 +41,8 @@ bash -c "$(curl -fsLS https://raw.githubusercontent.com/mryfmo/dotfiles/main/set
 
 ![Screenshot of setup on MacOS Client machine](.github/screenshot-macos-client.png)
 
+On CI runners (`CI=true`), the Homebrew installer (`install/macos/common/brew.sh`) also handles the third-party taps that the runner image ships untrusted, so that `brew install` does not warn about them; outside CI it leaves your taps alone.
+
 ### 🖥️ `Ubuntu` [![Ubuntu](https://github.com/mryfmo/dotfiles/actions/workflows/ubuntu.yaml/badge.svg)](https://github.com/mryfmo/dotfiles/actions/workflows/ubuntu.yaml)
 
 - Configuration snippet of the Ubuntu environment for both client and server machine:

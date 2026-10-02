@@ -27,7 +27,7 @@ function run_os_specific_test() {
         # macOS-only install tests.
         bats -r "tests/install/macos/common/"
 
-    elif [ "${OS}" == "ubuntu-latest" ]; then
+    elif [[ "${OS}" == ubuntu-* ]]; then
         # Ubuntu install tests shared by client and server targets.
         bats -r "tests/install/ubuntu/common/"
 
@@ -53,7 +53,7 @@ function run_files_test() {
 
     if [ "${OS}" == "macos-14" ] && [ "${SYSTEM}" == "client" ]; then
         bats_args=(tests/files/macos.bats)
-    elif [ "${OS}" == "ubuntu-latest" ] && { [ "${SYSTEM}" == "client" ] || [ "${SYSTEM}" == "server" ]; }; then
+    elif [[ "${OS}" == ubuntu-* ]] && { [ "${SYSTEM}" == "client" ] || [ "${SYSTEM}" == "server" ]; }; then
         bats_args=(--filter-tags "common,ubuntu:${SYSTEM}" tests/files/ubuntu.bats)
     else
         echo "${OS} and ${SYSTEM} are not supported" >&2

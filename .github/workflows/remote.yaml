@@ -17,9 +17,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             system: client
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             system: server
           - os: macos-14
             system: client
@@ -77,9 +77,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             system: client
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             system: server
           - os: macos-14
             system: client

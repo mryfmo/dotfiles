@@ -64,11 +64,12 @@
 ## Understand-Anything
 
 - Understand-Anything (`understand-anything@understand-anything`) を利用できる場合は、リポジトリのナレッジグラフ生成・参照に使ってください。Codex では `$understand` で起動します(`/understand` ではありません)。
-- 初回のフル解析はトークン消費が大きい処理です。増分解析(2 回目以降)は軽量です。
+- 初回のフル解析はトークン消費が大きい処理です。
+- dotfiles リポジトリでは、graph の更新は operator が regime boundary で依頼したときだけ、worker task が `$understand --full` で行います。増分更新はこのリポジトリでは公開できません。Understand-Anything 2.9.7 の `validate-incremental-symbols.mjs` は、決定的な parser がないファイル(拡張子のない shell script `executable_herdr-agents` と `executable_agmsg-dispatch`、Python の chezmoi script `modify_private_settings.json`)の class に属さない関数をすべて `unknown` と判定し、path ごとの言語指定もなく、`herdr-agents` はほぼ毎回の task で変更されるためです(T51)。`.ua/config.json` は `autoUpdate: false` で、plugin の SessionStart と PostToolUse の更新指示を止めます。更新と更新の間 graph は意図的に stale であり、下の鮮度確認によって検索は grep にフォールバックします。
 - 出力は `.ua/` に生成されます。`.ua/intermediate/` と `.ua/diff-overlay.json` は commit せず、対象リポジトリの `.gitignore` に追加してください。それ以外の `.ua/` は commit 対象です。
 - リポジトリ全体の探索やシンボル検索の前に、`.ua/knowledge-graph.json` があればまず node の `summary` と `filePath` を照会し、`.ua/meta.json` の `gitCommitHash` が `git rev-parse HEAD` と一致するか、異なる場合も `git diff --name-only <hash>..HEAD` が `.ua/` または `.orchestration/` 内の path だけなら current と扱い、graph が存在しないか別の path が含まれる場合だけ grep にフォールバックしてください。
 - インストーラは skills を `~/.agents/skills` に symlink します。導入・更新後は CLI を再起動してください。
-- `.ua/` graph の RESULT は、`ua-symbol-coverage <前回 graph> <新 graph> --old-ref <前回 graph の rev> --repo-ref <新 graph の rev>`(`~/.local/bin/common` から PATH 上にあります。各 rev はその graph の `.ua/meta.json` の `gitCommitHash` で、新 graph 側は通常 `HEAD`、変更前の base ではありません。`--old-ref` で rename と削除を区別します) の表を validation file に貼り、regression が 0 件(または減少ごとに原因となるソース変更を明記)の場合だけ accept します。`validateGraph` の成功は抽出の完全性を保証しません。
+- `.ua/` graph の RESULT は、`ua-symbol-coverage <前回 graph> <新 graph> --old-ref <前回 graph の rev> --repo-ref <新 graph の rev>`(`~/.local/bin/common` から PATH 上にあります。各 rev はその graph の `.ua/meta.json` の `gitCommitHash` で、フル再構築では `--old-ref` が前回の `meta.gitCommitHash` です。新 graph 側は通常 `HEAD`、変更前の base ではありません。`--old-ref` で rename と削除を区別します) の表を validation file に貼り、regression が 0 件(または減少ごとに原因となるソース変更を明記)の場合だけ accept します。`validateGraph` の成功は抽出の完全性を保証しません。
 - AGMSG-TASK を実行する worker は、`allowed_files` に `.ua/**` が含まれない限り、Understand-Anything の auto-update hook の指示(「knowledge graph is stale, you MUST update it」)を対象外として扱い、report に「hook fired; not acted on」と記録して作業を続けてください。orchestrator は自身のセッションで graph を更新せず、graph の更新は別の worker task にします。
 
 ## CompactionDB

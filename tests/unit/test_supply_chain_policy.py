@@ -309,9 +309,12 @@ install_starship
         self.assertNotIn("channels/rapid", (ROOT / "home/dot_mise/config.toml").read_text())
         self.assertNotIn("channels/rapid", (ROOT / "home/dot_mise/mise.lock").read_text())
         bootstrap = (ROOT / "install/common/mise.sh").read_text()
-        pinned_mise = re.search(r'readonly MISE_VERSION="(v[^"]+)"', bootstrap)
+        pinned_mise = re.search(r'readonly MISE_VERSION="v(\d+)\.(\d+)\.(\d+)"', bootstrap)
         self.assertIsNotNone(pinned_mise)
-        self.assertEqual("v2026.9.13", pinned_mise.group(1))
+        # A floor, not a copy of the pin: v2026.9.12 is the first release with the
+        # Linux arm64 aqua bin-path fix (#160), and the generator's --check keeps
+        # MISE_VERSION byte-identical to the agent-config.yaml pin.
+        self.assertGreaterEqual(tuple(map(int, pinned_mise.groups())), (2026, 9, 12))
         lock_text = (ROOT / "home/dot_mise/mise.lock").read_text()
         for name in ("http:bats", "http:gcloud"):
             entry = lock["tools"][name][0]

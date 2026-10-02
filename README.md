@@ -261,7 +261,7 @@ version and installer checksum under `assets:` (rendered into
 `make update` converges both tools to the pinned versions; `make upgrade`
 writes the latest upstream release into `assets:` (re-rendering the pin file)
 and installs it in the same run — like the rest of `make upgrade`, that is trust-now-and-record, and
-the pin diff is then reviewed and committed like a mise config/lock bump.
+the pin diff then reaches `main` with the mise config/lock bump in one reviewed PR (see Tool versions below).
 terminal-browser links its bundled agent skills into `~/.agents/skills`
 (expected unmanaged-skill WARNs in `make doctor`, tracked by its
 `~/.local/state/terminal-browser/skills.links` receipt), and its editor setup
@@ -540,9 +540,12 @@ when the wrapper changes.
 
 A Claude Code session started from a plain shell outside Herdr (for example
 over mosh or ssh, or `claude -p`) never seats a worker. Its SessionStart hook
-prints one line into the session context: not in a Herdr pane, the pair is not
+prints a summary line into the session context: not in a Herdr pane, the pair is not
 started, the on-demand commands, and the manifest worktree's worker with its
-`<socket>:<pane>` location when one is seated. Such a pane-less orchestrator
+`<socket>:<pane>` location when one is seated. In a regime repository (a main
+checkout with one orchestrator agmsg identity and a manifest worker seat) the
+`agmsg-orchestration:` directive line follows, as it follows `seat_claim=` in the
+orchestrator's Herdr pane. Such a pane-less orchestrator
 claims its seat outside the sandbox with the composite id
 (`actas-claim.sh <repo> claude-code <name> <session_id>.<claude pid>`; a claim
 from sandboxed Bash writes the bare session id and turn delivery then skips
@@ -990,6 +993,8 @@ content hash, including when a newly committed script first reaches an existing
 machine through `make update`.
 Do not use `make reset` as the normal update path; it clears chezmoi's script state so one-time installers can run again intentionally.
 Tool versions in `home/dot_mise/config.toml` are exact and backed by `mise.lock`. Updates occur only through `make upgrade` with a reviewed config and lock diff.
+The operator runs `make upgrade` in the canonical clone; every file it changed then reaches `main` in one PR that also syncs the expected-version assertions in `tests/**` and passes `make require-crit-review`.
+Under the agmsg regime a worker task carries that PR, and the pre-push guard from `herdr-agents --bootstrap-agmsg` refuses a direct orchestrator push to `main` (`ORCH_PUSH_MAIN=acceptance|boundary` is the logged override). The hook is bypassable with `git push --no-verify`; GitHub branch protection on `main` is the server-side boundary.
 `make upgrade` edits the current checkout's `home/dot_mise`; `~/.config/mise` is an applied copy, not a live symlink into the source tree.
 For `npm:` tools, mise owns the version, lock entry, and isolated install
 prefix, while the npm CLI performs installation through

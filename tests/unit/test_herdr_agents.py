@@ -724,9 +724,17 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         result = self.run_attach_helper(in_herdr=False)
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(len(result.stdout.splitlines()), 1, result.stdout)
-        self.assertIn('"herdr-agents --add-worker .claude/worktrees/worker-c [DIR]"', result.stdout)
-        self.assertTrue(result.stdout.endswith("; worker claude-standard-dot-a005 is seated at /run/herdr.sock:wP:p2.\n"), result.stdout)
+        summary, directive = result.stdout.splitlines()
+        self.assertIn('"herdr-agents --add-worker .claude/worktrees/worker-c [DIR]"', summary)
+        self.assertTrue(summary.endswith("; worker claude-standard-dot-a005 is seated at /run/herdr.sock:wP:p2."), summary)
+        # The pane-less orchestrator of a regime repository gets the directive too.
+        self.assertTrue(
+            directive.startswith("agmsg-orchestration: this session is the orchestrator seat claude-remediation-dot for "),
+            directive,
+        )
+        self.assertIn("invoke the agmsg-orchestration skill", directive)
+        self.assertIn("herdr-agents --add-worker .claude/worktrees/worker-c otherwise", directive)
+        self.assertIn("ORCH_PUSH_MAIN=boundary", directive)
         calls = self.calls_path.read_text().splitlines()
         self.assertTrue(all(c.startswith("identities ") for c in calls), calls)
         self.assertIn(f"identities {worktree} claude-code resolve=0", calls)
@@ -1317,6 +1325,251 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             any(call.startswith(("delivery ", "identities ")) for call in calls)
         )
 
+    def guard_env(self, push_main: str | None = None, *, launcher: bool = True) -> dict[str, str]:
+        """Git identity, HOME, and a PATH whose herdr-agents is this branch's launcher (or none at all)."""
+        env = os.environ.copy()
+        env.update(
+            HOME=str(self.home_dir),
+            GIT_AUTHOR_NAME="t",
+            GIT_AUTHOR_EMAIL="t@example.invalid",
+            GIT_COMMITTER_NAME="t",
+            GIT_COMMITTER_EMAIL="t@example.invalid",
+        )
+        env["PATH"] = f"{self.temp_dir / 'guard-bin'}{os.pathsep}{env['PATH']}" if launcher else f"/usr/bin{os.pathsep}/bin"
+        env.pop("ORCH_PUSH_MAIN", None)
+        if push_main is not None:
+            env["ORCH_PUSH_MAIN"] = push_main
+        return env
+
+    def guard_git(
+        self, cwd: Path, *args: str, push_main: str | None = None, launcher: bool = True
+    ) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["git", "-C", str(cwd), *args], env=self.guard_env(push_main, launcher=launcher), check=False, text=True, capture_output=True
+        )
+
+    def bootstrap_guard(self) -> subprocess.CompletedProcess[str]:
+        """Bootstrap with the guard PATH first, so the stub's launcher probe sees this branch's herdr-agents."""
+        return self.run_agmsg_bootstrap_helper(
+            extra_env={"PATH": f"{self.temp_dir / 'guard-bin'}{os.pathsep}{self.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"}
+        )
+
+    def write_old_launcher(self) -> Path:
+        """Replace the guard PATH's herdr-agents with a build that predates --main-push-guard; returns its run log."""
+        ran = self.temp_dir / "old-launcher-ran.txt"
+        (self.temp_dir / "guard-bin/herdr-agents").write_text(
+            "#!/usr/bin/env bash\n"
+            'if [[ $1 == --help ]]; then printf \'Usage: herdr-agents [DIR]\\n       herdr-agents --attach\\n\'; exit 0; fi\n'
+            f'printf \'%s\\n\' "$*" >> {ran}\n'
+            "exit 1\n"
+        )
+        return ran
+
+    def commit_file(self, relative: str) -> None:
+        path = self.workdir / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(relative + "\n")
+        self.assertEqual(self.guard_git(self.workdir, "add", relative).returncode, 0)
+        self.assertEqual(self.guard_git(self.workdir, "commit", "-q", "-m", relative).returncode, 0)
+
+    def write_guard_repo(self, **fakes: str) -> Path:
+        """A git main checkout pushed to a scratch bare remote, with this branch's launcher on the guard PATH; returns the hook path."""
+        self.install_agmsg_fakes(**fakes)
+        launcher = self.temp_dir / "guard-bin/herdr-agents"
+        launcher.parent.mkdir()
+        launcher.write_text(f'#!/usr/bin/env bash\nexec bash {SCRIPT} "$@"\n')
+        launcher.chmod(0o755)
+        remote = self.temp_dir / "remote.git"
+        for cwd, args in (
+            (self.temp_dir, ("init", "-q", "--bare", str(remote))),
+            (self.workdir, ("init", "-q", "-b", "main")),
+            (self.workdir, ("commit", "-q", "--allow-empty", "-m", "init")),
+            (self.workdir, ("remote", "add", "origin", str(remote))),
+            (self.workdir, ("push", "-q", "origin", "main")),
+        ):
+            self.assertEqual(self.guard_git(cwd, *args).returncode, 0, args)
+        return self.workdir / ".git/hooks/pre-push"
+
+    def test_bootstrap_installs_a_main_push_guard_that_needs_an_override(self) -> None:
+        hook = self.write_guard_repo()
+
+        first = self.bootstrap_guard()
+        again = self.bootstrap_guard()
+        self.commit_file("README.md")
+        plain = self.guard_git(self.workdir, "push", "--dry-run", "origin", "main")
+        boundary = self.guard_git(self.workdir, "push", "origin", "main", push_main="boundary")
+        branch = self.guard_git(self.workdir, "push", "origin", "main:refs/heads/feature")
+        acceptance = self.guard_git(self.workdir, "push", "origin", "main", push_main="acceptance")
+
+        self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+        self.assertIn(f"installed the main-push guard at {hook.resolve()}", first.stderr)
+        self.assertNotIn("installed the main-push guard", again.stderr)
+        self.assertTrue(os.access(hook, os.X_OK))
+        self.assertIn("# herdr-agents main-push guard", hook.read_text())
+        self.assertIn('exec "${guard}" --main-push-guard "$@"', hook.read_text())
+        self.assertNotEqual(plain.returncode, 0)
+        self.assertIn("refused ORCH_PUSH_MAIN=unset refs/heads/main:refs/heads/main", plain.stderr)
+        self.assertIn("route the change through a worker PR", plain.stderr)
+        self.assertNotEqual(boundary.returncode, 0)
+        self.assertIn("a boundary push may only change .orchestration/, not: README.md", boundary.stderr)
+        self.assertEqual(branch.returncode, 0, branch.stderr)
+        self.assertNotIn("pre-push:", branch.stderr)
+        self.assertEqual(acceptance.returncode, 0, acceptance.stderr)
+        self.assertIn("allowed ORCH_PUSH_MAIN=acceptance", acceptance.stderr)
+        head = self.guard_git(self.workdir, "rev-parse", "HEAD").stdout
+        self.assertEqual(self.guard_git(self.temp_dir / "remote.git", "rev-parse", "main").stdout, head)
+        log = (self.workdir / ".git/orch-push-main.log").read_text().splitlines()
+        self.assertEqual([line.split()[1:3] for line in log], [
+            ["refused", "ORCH_PUSH_MAIN=unset"],
+            ["refused", "ORCH_PUSH_MAIN=boundary"],
+            ["allowed", "ORCH_PUSH_MAIN=acceptance"],
+        ])
+
+    def test_main_push_guard_allows_boundary_commits_and_refuses_rewinds_and_deletes(self) -> None:
+        self.write_guard_repo()
+        self.bootstrap_guard()
+
+        self.commit_file(".orchestration/acceptance/T1.md")
+        boundary = self.guard_git(self.workdir, "push", "origin", "main", push_main="boundary")
+        self.assertEqual(self.guard_git(self.workdir, "reset", "-q", "--hard", "HEAD~1").returncode, 0)
+        self.commit_file(".orchestration/acceptance/T2.md")
+        rewind = self.guard_git(self.workdir, "push", "--force", "origin", "main", push_main="boundary")
+        delete = self.guard_git(self.workdir, "push", "origin", ":main", push_main="acceptance")
+
+        self.assertEqual(boundary.returncode, 0, boundary.stderr)
+        self.assertIn("allowed ORCH_PUSH_MAIN=boundary", boundary.stderr)
+        self.assertNotEqual(rewind.returncode, 0)
+        self.assertIn("not a fast-forward of the remote main", rewind.stderr)
+        self.assertNotEqual(delete.returncode, 0)
+        self.assertIn("deleting main is never allowed", delete.stderr)
+        self.assertEqual(self.guard_git(self.temp_dir / "remote.git", "log", "-1", "--format=%s", "main").stdout, ".orchestration/acceptance/T1.md\n")
+
+    def test_main_push_guard_checks_a_merge_by_its_tree_diff(self) -> None:
+        self.write_guard_repo()
+        self.bootstrap_guard()
+        self.guard_git(self.workdir, "switch", "-q", "-c", "side")
+        self.commit_file(".orchestration/side.md")
+        self.guard_git(self.workdir, "switch", "-q", "main")
+        self.commit_file(".orchestration/main.md")
+        # An evil merge: both parents touch only .orchestration/, the resolution adds code.
+        self.guard_git(self.workdir, "merge", "-q", "--no-ff", "--no-commit", "side")
+        (self.workdir / "README.md").write_text("code\n")
+        self.guard_git(self.workdir, "add", "README.md")
+        self.assertEqual(self.guard_git(self.workdir, "commit", "-q", "-m", "merge side").returncode, 0)
+
+        per_commit = self.guard_git(self.workdir, "log", "--format=", "--name-only", "origin/main..HEAD").stdout
+        boundary = self.guard_git(self.workdir, "push", "origin", "main", push_main="boundary")
+
+        self.assertNotIn("README.md", per_commit)
+        self.assertNotEqual(boundary.returncode, 0)
+        self.assertIn("a boundary push may only change .orchestration/, not: README.md", boundary.stderr)
+
+    def test_main_push_guard_fails_closed_when_the_changes_cannot_be_listed(self) -> None:
+        self.write_guard_repo()
+        self.commit_file(".orchestration/a.md")
+        base = self.guard_git(self.workdir, "rev-parse", "HEAD").stdout.strip()
+        self.commit_file(".orchestration/b.md")
+        head = self.guard_git(self.workdir, "rev-parse", "HEAD").stdout.strip()
+        # The base commit stays readable (so the fast-forward check passes) but its tree does not.
+        tree = self.guard_git(self.workdir, "rev-parse", f"{base}^{{tree}}").stdout.strip()
+        (self.workdir / ".git/objects" / tree[:2] / tree[2:]).unlink()
+
+        result = subprocess.run(
+            ["bash", str(SCRIPT), "--main-push-guard", "origin", "scratch"],
+            cwd=self.workdir,
+            env=self.guard_env("boundary"),
+            input=f"refs/heads/main {head} refs/heads/main {base}\n",
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("cannot list the changes since the remote main, so the boundary check fails closed", result.stderr)
+        log = (self.workdir / ".git/orch-push-main.log").read_text()
+        self.assertIn("refused ORCH_PUSH_MAIN=boundary", log)
+
+    def test_bootstrap_keeps_an_edited_main_push_guard_stub(self) -> None:
+        hook = self.write_guard_repo()
+        self.bootstrap_guard()
+        edited = hook.read_text().replace("exec ", "./my-extra-check || exit 1\nexec ", 1)
+        hook.write_text(edited)
+
+        result = self.bootstrap_guard()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(hook.read_text(), edited)
+        self.assertIn("differs from the main-push guard stub (edited?); leaving it unchanged", result.stderr)
+
+    def test_main_push_guard_stub_without_a_launcher_refuses_only_main(self) -> None:
+        self.write_guard_repo()
+        self.bootstrap_guard()
+        self.commit_file(".orchestration/a.md")
+
+        branch = self.guard_git(self.workdir, "push", "--dry-run", "origin", "main:refs/heads/feature", launcher=False)
+        main = self.guard_git(self.workdir, "push", "--dry-run", "origin", "main", push_main="boundary", launcher=False)
+
+        self.assertEqual(branch.returncode, 0, branch.stderr)
+        self.assertNotEqual(main.returncode, 0)
+        self.assertIn("no herdr-agents with --main-push-guard is installed (run make update), so this push to main is refused", main.stderr)
+
+    def test_main_push_guard_stub_with_an_old_launcher_refuses_only_main(self) -> None:
+        self.write_guard_repo()
+        self.bootstrap_guard()
+        ran = self.write_old_launcher()
+        self.commit_file(".orchestration/a.md")
+
+        branch = self.guard_git(self.workdir, "push", "--dry-run", "origin", "main:refs/heads/feature")
+        main = self.guard_git(self.workdir, "push", "--dry-run", "origin", "main", push_main="boundary")
+
+        self.assertEqual(branch.returncode, 0, branch.stderr)
+        self.assertNotEqual(main.returncode, 0)
+        self.assertIn("so this push to main is refused", main.stderr)
+        # Only --help was probed: the old launcher's full mode never ran.
+        self.assertFalse(ran.exists(), ran.read_text() if ran.exists() else "")
+
+    def test_bootstrap_skips_the_guard_while_the_launcher_predates_it(self) -> None:
+        hook = self.write_guard_repo()
+        ran = self.write_old_launcher()
+
+        result = self.bootstrap_guard()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(hook.exists())
+        self.assertIn("has no --main-push-guard mode yet; not installing the main-push guard until the next make update applies it", result.stderr)
+        self.assertFalse(ran.exists())
+
+    def test_bootstrap_restores_the_execute_bit_of_the_stub(self) -> None:
+        hook = self.write_guard_repo()
+        self.bootstrap_guard()
+        stub = hook.read_text()
+        hook.chmod(0o644)
+
+        result = self.bootstrap_guard()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(hook.read_text(), stub)
+        self.assertTrue(os.access(hook, os.X_OK))
+        self.assertIn(f"restored the execute bit of the main-push guard at {hook.resolve()}", result.stderr)
+
+    def test_bootstrap_leaves_a_foreign_pre_push_hook_alone(self) -> None:
+        hook = self.write_guard_repo()
+        hook.write_text("#!/bin/sh\nexit 0\n")
+
+        result = self.bootstrap_guard()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(hook.read_text(), "#!/bin/sh\nexit 0\n")
+        self.assertIn("is not the herdr-agents main-push guard; leaving it unchanged", result.stderr)
+
+    def test_bootstrap_installs_no_guard_without_an_orchestrator_identity(self) -> None:
+        hook = self.write_guard_repo(claude_identities_output="dotfiles\tclaude-standard-dot-a001")
+
+        result = self.bootstrap_guard()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(hook.exists())
+
     def test_make_update_and_upgrade_include_agmsg_bootstrap(self) -> None:
         for target in ("update", "upgrade"):
             with self.subTest(target=target):
@@ -1812,6 +2065,48 @@ printf 'status=ok team=dotfiles\\n'
         self.assertFalse(
             any(call.startswith("actas-claim ") for call in self.calls_path.read_text().splitlines())
         )
+
+    def test_session_start_attach_prints_the_regime_directive_with_a_worker_seat(self) -> None:
+        self.install_orchestrator_seat_fakes()
+        env = {"CLAUDE_CODE_SESSION_ID": "sid-self", "CLAUDE_PID": "777", "AGMSG_AGENT_PID": ""}
+
+        without_seat = self.run_attach_helper(in_herdr=True, managed_layout=True, extra_env=env)
+        (self.home_dir / ".agents/model-profiles.env").write_text(
+            'HERDR_AGENTS_WORKER_WORKTREE=".claude/worktrees/worker-c"\n'
+        )
+        with_seat = self.run_attach_helper(in_herdr=True, managed_layout=True, extra_env=env)
+
+        self.assertEqual(without_seat.stdout.splitlines(), ["seat_claim=ok owner=sid-self.777"])
+        self.assertEqual(with_seat.returncode, 0, with_seat.stdout + with_seat.stderr)
+        claim, directive = with_seat.stdout.splitlines()
+        self.assertEqual(claim, "seat_claim=ok owner=sid-self.777")
+        self.assertEqual(
+            directive,
+            f"agmsg-orchestration: this session is the orchestrator seat claude-remediation-dot for {self.workdir.resolve()} "
+            "(worker seat .claude/worktrees/worker-c). Before any other action, invoke the agmsg-orchestration skill. "
+            "Delegate every repository-mutating change, make upgrade pin diffs included, to the seated worker as an "
+            "AGMSG-TASK; when no worker is seated, seat one first (herdr-agents --restart-worker in the pair, "
+            "herdr-agents --add-worker .claude/worktrees/worker-c otherwise): no worker is never an implicit opt-out. "
+            "Before acting directly under an exemption, declare which one in one line. Never push a repository change "
+            "to main yourself: the pre-push guard passes only ORCH_PUSH_MAIN=boundary (.orchestration-only changes) "
+            "and ORCH_PUSH_MAIN=acceptance.",
+        )
+
+    def test_session_start_attach_prints_no_directive_for_a_pane_that_is_not_the_orchestrator(self) -> None:
+        self.install_orchestrator_seat_fakes()
+        (self.home_dir / ".agents/model-profiles.env").write_text(
+            'HERDR_AGENTS_WORKER_WORKTREE=".claude/worktrees/worker-c"\n'
+        )
+        self.pane_list_path.write_text(
+            '{"id":"cli:pane:list","result":{"panes":[{"pane_id":"w-attach:p1","label":"claude-worker"}]}}\n'
+        )
+
+        result = self.run_attach_helper(
+            in_herdr=True, managed_layout=True, extra_env={"AGMSG_AGENT_PID": "4343"}, stdin_text='{"session_id":"sid-stdin"}\n'
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stdout.splitlines(), ["seat_claim=skipped reason=not-orchestrator-pane"])
 
     def test_seat_claim_replaces_a_same_session_bare_lock(self) -> None:
         self.install_orchestrator_seat_fakes(held=(("dotfiles", "sid-stdin"),))

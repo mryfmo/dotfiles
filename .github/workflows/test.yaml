@@ -119,14 +119,12 @@ jobs:
         if: ${{ needs.changes.outputs.should_test == 'true' }}
         run: |
           if [ "${OS}" == "macos-14" ]; then
-            # The macos-14 runner image ships with aws/tap and azure/bicep
-            # pre-tapped but untrusted; Homebrew warns on any `brew install`
-            # while an untrusted tap is present, even though this job's
-            # installs below (bash, bats-core, chezmoi, gawk, parallel,
-            # shellcheck) come from homebrew/core, not either tap. Trust them
-            # so this step fails loudly instead of relying on `|| true` to
-            # hide the warning.
-            brew trust aws/tap azure/bicep
+            # The macos-14 runner image ships third-party taps tapped but
+            # untrusted, and Homebrew warns on every `brew install` while one
+            # is present. The installs below come from homebrew/core, so
+            # resolve those taps with the brew installer's own CI handling
+            # rather than a second hard-coded copy of the tap list.
+            bash -c 'source install/macos/common/brew.sh; handle_ci_untrusted_taps'
 
             # `bashcov` on macOS must use Homebrew Bash (>=5) to avoid the
             # system Bash 3.2 parser limitations that produced empty coverage.

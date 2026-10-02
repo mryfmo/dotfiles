@@ -12,12 +12,14 @@ function setup() {
     [ -x "$(command -v brew)" ]
 }
 
-@test "[macos] brew trusts untrusted runner taps only when CI is exactly true" {
+@test "[macos] brew trusts items from untrusted runner taps only when CI is exactly true" {
     function brew() {
         printf '%s\n' "$*" >> "${BATS_TEST_TMPDIR}/brew-calls"
-        if [ "$*" = "untrust --tap" ]; then
-            printf 'Untrusted taps:\n  aws/tap\n  azure/bicep\n  hashicorp/tap\n'
-        fi
+        case "$*" in
+            "untrust --tap") printf 'Untrusted taps:\n  aws/tap\n  azure/bicep\n  hashicorp/tap\n' ;;
+            "list --formula --full-name") printf 'bash\nazure/bicep/bicep\nhashicorp/tap/packer\n' ;;
+            "list --cask --full-name") printf 'hashicorp/tap/vagrant\n' ;;
+        esac
     }
 
     local ci_value
@@ -35,5 +37,8 @@ function setup() {
     run cat "${BATS_TEST_TMPDIR}/brew-calls"
     [ "${status}" -eq 0 ]
     [ "${output}" = "untrust --tap
-trust aws/tap azure/bicep hashicorp/tap" ]
+list --formula --full-name
+list --cask --full-name
+trust --formula azure/bicep/bicep hashicorp/tap/packer
+trust --cask hashicorp/tap/vagrant" ]
 }

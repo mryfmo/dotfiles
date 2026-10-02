@@ -3,8 +3,8 @@
 # @file install/macos/common/brew.sh
 # @brief Install Homebrew and apply repository defaults.
 # @description
-#   Ensures Homebrew is installed on macOS, trusts untrusted runner-image taps
-#   on CI, and disables analytics for the local user.
+#   Ensures Homebrew is installed on macOS, trusts the installed items from
+#   untrusted runner-image taps on CI, and disables analytics for the local user.
 
 set -Eeuo pipefail
 
@@ -51,19 +51,19 @@ function opt_out_of_analytics() {
 }
 
 #
-# @description On a CI runner, trust the third-party taps that the runner image
-#   ships tapped but untrusted, so `brew install` stops warning about them
-#   (https://docs.brew.sh/Tap-Trust). The taps come from Homebrew's own
-#   `brew untrust --tap` listing. Whole-tap trust is the only remediation in
-#   Homebrew's warning that works unattended for every listed tap: Homebrew
-#   cannot list installed formulae from an untrusted tap, so item-level trust
-#   is not derivable, and `brew untap` refuses a tap with installed kegs.
+# @description On a CI runner, trust the formulae and casks installed from the
+#   third-party taps that the runner image ships tapped but untrusted, so
+#   `brew install` stops warning about those taps
+#   (https://docs.brew.sh/Tap-Trust prefers trusting only the items needed).
+#   The untrusted taps come from Homebrew's own `brew untrust --tap` listing,
+#   and the installed items from `brew list --full-name`, which reads each
+#   keg's install receipt and so also lists items from untrusted taps.
 #   Does nothing unless `CI` is exactly `true`.
 #
 function handle_ci_untrusted_taps() {
     [ "${CI:-}" = "true" ] || return 0
 
-    local listing taps
+    local listing taps installed tap name formulae="" casks=""
     if ! listing="$(brew untrust --tap 2> /dev/null)"; then
         printf 'brew has no tap trust (no brew untrust command); skipping untrusted tap handling\n' >&2
         return 0
@@ -72,8 +72,31 @@ function handle_ci_untrusted_taps() {
     taps="$(sed -n 's/^  //p' <<< "${listing}")"
     [ -n "${taps}" ] || return 0
 
-    # shellcheck disable=SC2086 # One tap name per word, word splitting intended.
-    brew trust ${taps}
+    installed="$(brew list --formula --full-name)"
+    for name in ${installed}; do
+        for tap in ${taps}; do
+            if [[ "${name}" == "${tap}/"* ]]; then
+                formulae+=" ${name}"
+            fi
+        done
+    done
+    installed="$(brew list --cask --full-name)"
+    for name in ${installed}; do
+        for tap in ${taps}; do
+            if [[ "${name}" == "${tap}/"* ]]; then
+                casks+=" ${name}"
+            fi
+        done
+    done
+
+    # shellcheck disable=SC2086 # Space-separated names, word splitting intended.
+    if [ -n "${formulae}" ]; then
+        brew trust --formula ${formulae}
+    fi
+    # shellcheck disable=SC2086 # Space-separated names, word splitting intended.
+    if [ -n "${casks}" ]; then
+        brew trust --cask ${casks}
+    fi
 }
 
 #

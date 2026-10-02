@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "gitCommitHash": "72b890157078c583f45d71a61ee6eba0df86afb5",
-  "generatedAt": "2026-09-29T11:42:45.192Z",
+  "gitCommitHash": "940a3a2b07adfd14140a0acff96784ef53a0a509",
+  "generatedAt": "2026-10-02T14:12:51.032Z",
   "files": {
     ".chezmoiroot": {
       "filePath": ".chezmoiroot",
@@ -2308,7 +2308,7 @@
     },
     ".ua/config.json": {
       "filePath": ".ua/config.json",
-      "contentHash": "1ddaecd170c1fde52ef5f272f15c1660d744ed57e3d05dd3c616aef2da140a59",
+      "contentHash": "c264b94cf95f5e02d566aa805d3b735432d368c7ee7951ba3f455dd7eb8c7419",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -2318,27 +2318,27 @@
     },
     ".ua/fingerprints.json": {
       "filePath": ".ua/fingerprints.json",
-      "contentHash": "c6e3bb91175fa72c82061ae410f4f14a040562953646cb457b57a03df7e4bde4",
+      "contentHash": "3c82c180d0a8b8bdc45a84f34a6e5e235c2ef0316d0e999167a924a8d59e2990",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 10698,
+      "totalLines": 11035,
       "hasStructuralAnalysis": false
     },
     ".ua/knowledge-graph.json": {
       "filePath": ".ua/knowledge-graph.json",
-      "contentHash": "f9322ade02750d2ad986953b85c6c7b7fdb2fddb0a3a130a96cf596e93aadb72",
+      "contentHash": "7a74ed8ea46bbf18066b5e524ac8eef56003bd69debbe8c9e031dddaaf62f50b",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 24183,
+      "totalLines": 30723,
       "hasStructuralAnalysis": false
     },
     ".ua/meta.json": {
       "filePath": ".ua/meta.json",
-      "contentHash": "575f8afe67b9b34f434c8a944796fe5a05fe9795fa8bb6c7dada96046e444134",
+      "contentHash": "b36cec2294297482b45219cc1e637535fa1bfa5009e7e5c5027c71f4d3404d4b",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -2378,22 +2378,22 @@
     },
     "Makefile": {
       "filePath": "Makefile",
-      "contentHash": "560895a14a5ca7f9228ac37c895f0fd7ceec5699f4554990d083df08748bde1a",
+      "contentHash": "f41a584ba24e65e93e71b296bc87f4e4491408d000561c7a09968aaaf762c515",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 201,
+      "totalLines": 209,
       "hasStructuralAnalysis": false
     },
     "README.md": {
       "filePath": "README.md",
-      "contentHash": "75cef155b61725610209130745d8ea624ac1641178667feac32307b0d2f7a738",
+      "contentHash": "ea7f7a20aa164b5606ecbe9349872dc3b395abc842bd0c4e9c127179ffd67256",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 1026,
+      "totalLines": 1115,
       "hasStructuralAnalysis": false
     },
     "codecov.yml": {
@@ -2878,17 +2878,17 @@
     },
     "home/.chezmoitemplates/claude-settings-managed.json": {
       "filePath": "home/.chezmoitemplates/claude-settings-managed.json",
-      "contentHash": "d515426481a75f4cd8b01daf8a3b2a77b031a08c4b732a85da8874199421e244",
+      "contentHash": "ca53ee5044d3bbc193b86cf0a143f96ac108b01b2d7504a7dee746b2b1d293e0",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 128,
+      "totalLines": 134,
       "hasStructuralAnalysis": false
     },
     "home/.chezmoitemplates/codex-config-managed.toml": {
       "filePath": "home/.chezmoitemplates/codex-config-managed.toml",
-      "contentHash": "8feee60ef27a4d594a858b8ae03b7183d24a13b61b62c101bd22c0a6ec5c1e00",
+      "contentHash": "30e0dcdd975fa771ad6752e840b8bdd7b44d62758ba3686a20fa861913bc357e",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -2928,12 +2928,12 @@
     },
     "home/dot_agents/agent-config.yaml": {
       "filePath": "home/dot_agents/agent-config.yaml",
-      "contentHash": "80c653d6ec8e94cc3ffb784285bb3d6418dd08b0da0e2ce7da66fb169c504afe",
+      "contentHash": "ec75191d60d3a4be123c7d4f464653f389599ad5e48dd9a1f7ac30c65fd7b663",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 626,
+      "totalLines": 656,
       "hasStructuralAnalysis": false
     },
     "home/dot_agents/model-profiles.env": {
@@ -2978,12 +2978,12 @@
     },
     "home/dot_agents/skills/agmsg-orchestration/SKILL.md": {
       "filePath": "home/dot_agents/skills/agmsg-orchestration/SKILL.md",
-      "contentHash": "a30dfc0f0a67265c8f74429bd69e49356b12484f3048a2d1820f1ed4df41add6",
+      "contentHash": "77f4fc2595afeac646c9cd9196bc3f8482380b5a5293cc8478f1774edf6bbebf",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 193,
+      "totalLines": 202,
       "hasStructuralAnalysis": false
     },
     "home/dot_agents/skills/convert-to-transformers/SKILL.md": {
@@ -3637,7 +3637,7 @@
     },
     "home/dot_claude/modify_private_settings.json": {
       "filePath": "home/dot_claude/modify_private_settings.json",
-      "contentHash": "e0610d766248328ef58b4ba6f5394e915b552743e6d59eff30f06e9ac6704f04",
+      "contentHash": "0f2fbcbbe96af2db24033cc7e9a1011eaee97830ab7bc17f06a731afbe4a8b28",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -3967,7 +3967,7 @@
     },
     "home/dot_codex/modify_private_audit.config.toml": {
       "filePath": "home/dot_codex/modify_private_audit.config.toml",
-      "contentHash": "2a3c81747eb37ac7ed3b368c0a0a646da2036c62e84fc26884be32fecb63940e",
+      "contentHash": "aaaa5cd8f4b0b9cedf5cf24398eb25da6357ac5df52b8178246d02c2367a112b",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -4017,7 +4017,7 @@
     },
     "home/dot_codex/modify_private_security.config.toml": {
       "filePath": "home/dot_codex/modify_private_security.config.toml",
-      "contentHash": "a582326aa2824dfe52ce7787fe0aa860a3692beda85a18658efb80854b814854",
+      "contentHash": "eef0e15484302bbec662276bb6faaa40b57aa18b7c4ce0ec1cb3d74238569fc6",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -4087,12 +4087,12 @@
     },
     "home/dot_config/claude/rules/agmsg-orchestration.md": {
       "filePath": "home/dot_config/claude/rules/agmsg-orchestration.md",
-      "contentHash": "fd17891de31a20d48bc87d4c46e946d92b1f130b3f1d5c03aaf5232f3955c57c",
+      "contentHash": "33978d5e9f1e95f910208d559756348988135871b63ba9ebadc044dbc29b2e50",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 16,
+      "totalLines": 23,
       "hasStructuralAnalysis": false
     },
     "home/dot_config/claude/rules/ask-user-question.md": {
@@ -4147,7 +4147,7 @@
     },
     "home/dot_config/claude/rules/model-selection.md": {
       "filePath": "home/dot_config/claude/rules/model-selection.md",
-      "contentHash": "928099b31f5ec184998eb70859d0c5e75fd11c3c0ee0f99fdecdda3feaf4caa2",
+      "contentHash": "7b317ab2ade73cd7558b0e4c9ae02ac0eb600afa7a38295af9ca232b26dae13f",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -4167,12 +4167,12 @@
     },
     "home/dot_config/claude/rules/pr-integration.md": {
       "filePath": "home/dot_config/claude/rules/pr-integration.md",
-      "contentHash": "6fb33103812b5acb55bfcdbc8b23abe4ddb41a35b513942e5a3c776388b1fd46",
+      "contentHash": "8403676aa7e1488b507668bfd502244aa4879556099fb2e80c0b0f2b2992574c",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 8,
+      "totalLines": 10,
       "hasStructuralAnalysis": false
     },
     "home/dot_config/claude/rules/python.md": {
@@ -4187,22 +4187,22 @@
     },
     "home/dot_config/claude/rules/understand-anything.md": {
       "filePath": "home/dot_config/claude/rules/understand-anything.md",
-      "contentHash": "2318440bea16b72d9f0bf05982e17d673c93b2736b63d7007bfc3a81378dc898",
+      "contentHash": "b5aaee4fe5b82294f8700fe2536d1d2d2eb534ddff042342de58392d70af828a",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 9,
+      "totalLines": 12,
       "hasStructuralAnalysis": false
     },
     "home/dot_config/codex/AGENTS.md": {
       "filePath": "home/dot_config/codex/AGENTS.md",
-      "contentHash": "d2c1546a50b1b609b56cb5a84732a035c5d40e23ce3e214fd25c0833d9ee5b80",
+      "contentHash": "038145b488f088d274dcaf06e54eb97e50c484b687fce7391acc6036f64e3bf4",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 76,
+      "totalLines": 79,
       "hasStructuralAnalysis": false
     },
     "home/dot_config/ghostty/config": {
@@ -4467,12 +4467,12 @@
     },
     "home/dot_local/bin/common/executable_agmsg-dispatch": {
       "filePath": "home/dot_local/bin/common/executable_agmsg-dispatch",
-      "contentHash": "dbf3f826fb274e045205d12cfdd63ca9499b90249368440bb6f1d90348aa68a2",
+      "contentHash": "ab6328df1a33b2b63628500765187287b4d9b6191d08212beb583eda2c3a2a5a",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 117,
+      "totalLines": 119,
       "hasStructuralAnalysis": false
     },
     "home/dot_local/bin/common/executable_cdgwq": {
@@ -4557,12 +4557,12 @@
     },
     "home/dot_local/bin/common/executable_herdr-agents": {
       "filePath": "home/dot_local/bin/common/executable_herdr-agents",
-      "contentHash": "5b761c811a27e38d83b02e47d993ac6c8a0ab9c20a375e142ba4fe7fbeca47f7",
+      "contentHash": "2161465d3ed2c56d8a2901267c926cfe3739342f03e9587d914b53c2e966df20",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 1837,
+      "totalLines": 2540,
       "hasStructuralAnalysis": false
     },
     "home/dot_local/bin/common/executable_herdr-session": {
@@ -4635,6 +4635,16 @@
       "totalLines": 31,
       "hasStructuralAnalysis": false
     },
+    "home/dot_local/bin/common/executable_ua-symbol-coverage": {
+      "filePath": "home/dot_local/bin/common/executable_ua-symbol-coverage",
+      "contentHash": "c54a068572f055206fab5cba69371aca7af9f833b90de5bcdefd4ae0608327d2",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 254,
+      "hasStructuralAnalysis": false
+    },
     "home/dot_local/bin/common/executable_uv-format": {
       "filePath": "home/dot_local/bin/common/executable_uv-format",
       "contentHash": "15e99af8230be6af3087ea6037d0c27ef16c37a467cb0ebfc9d5096631dd1d24",
@@ -4697,7 +4707,7 @@
     },
     "home/dot_mise/config.toml": {
       "filePath": "home/dot_mise/config.toml",
-      "contentHash": "a38f30768963f0ad7934cb6fdf9079688592c506aa2b47cb6a56a383d0ad654b",
+      "contentHash": "6fdcf54ed44d603e2c858b2dffd288ad946b733b4719cf7c675614a3849e8d24",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -4817,7 +4827,7 @@
     },
     "install/common/mise.sh": {
       "filePath": "install/common/mise.sh",
-      "contentHash": "32928d6bc78921e7e4c8d7527e35c869b773a79ed3c96c51228785df638d74a8",
+      "contentHash": "9f82e45eb07bc8cd4de2c0fd7657e50821741f9dcf9a31e868a1e13cedf65790",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -5017,7 +5027,7 @@
     },
     "install/ubuntu/common/aws_cli.sh": {
       "filePath": "install/ubuntu/common/aws_cli.sh",
-      "contentHash": "e2e4a3b171bbfa74ae2fa1a7333ea823c094168b188cf078a2ec40815d782328",
+      "contentHash": "fdcac31cf9fe4fb39c7d319575a01952a72c86ef86a046ae0ccc90f36a162fee",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -5217,7 +5227,7 @@
     },
     "scripts/check-agent-runtime.py": {
       "filePath": "scripts/check-agent-runtime.py",
-      "contentHash": "72c26d27a01d05bc22387c73e67dfbd4f7b33445753d3e5a0e26541652d557b5",
+      "contentHash": "e4c16ce2b3d3ebc4195422ec0e9ba317b859b6c75b76e578fa0d15a71484a6f6",
       "functions": [
         {
           "name": "render_template",
@@ -5476,6 +5486,27 @@
           "lineCount": 26
         },
         {
+          "name": "live_claude_session",
+          "params": [
+            "project",
+            "proc"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "orchestrator_seat_lock_warnings",
+          "params": [
+            "project",
+            "skill_dir",
+            "proc"
+          ],
+          "returnType": "list[str]",
+          "exported": true,
+          "lineCount": 45
+        },
+        {
           "name": "deployed_target_path",
           "params": [
             "value",
@@ -5518,7 +5549,7 @@
           "params": [],
           "returnType": "list[str]",
           "exported": true,
-          "lineCount": 80
+          "lineCount": 81
         },
         {
           "name": "run_session_staleness",
@@ -5656,6 +5687,8 @@
         "direct_asset_directories",
         "orphaned_asset_warnings",
         "understand_anything_core_warnings",
+        "live_claude_session",
+        "orchestrator_seat_lock_warnings",
         "deployed_target_path",
         "repair_actions",
         "execute_repair",
@@ -5664,8 +5697,18 @@
         "run_session_staleness",
         "main"
       ],
-      "totalLines": 821,
+      "totalLines": 882,
       "hasStructuralAnalysis": true
+    },
+    "scripts/check-regime-boundary.sh": {
+      "filePath": "scripts/check-regime-boundary.sh",
+      "contentHash": "98d70b9a9d9183d5f564cd04ea6ff6036431606e8974d8741de32064c195c3db",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 141,
+      "hasStructuralAnalysis": false
     },
     "scripts/check-statusline-tools.py": {
       "filePath": "scripts/check-statusline-tools.py",
@@ -5758,7 +5801,7 @@
     },
     "scripts/generate-agent-configs.py": {
       "filePath": "scripts/generate-agent-configs.py",
-      "contentHash": "5a301cdbb76a4618d69beb05aaa8c8aa50e90c291071fb012939be26ba9bacde",
+      "contentHash": "7b5b8a339bcef5e819adde36f96914e95e7573e95bc9870b3919b0e9238169bd",
       "functions": [
         {
           "name": "fail",
@@ -5942,7 +5985,7 @@
           ],
           "returnType": "dict[str, Any]",
           "exported": true,
-          "lineCount": 17
+          "lineCount": 21
         },
         {
           "name": "render_claude_settings",
@@ -5951,7 +5994,7 @@
           ],
           "returnType": "str",
           "exported": true,
-          "lineCount": 79
+          "lineCount": 84
         },
         {
           "name": "claude_mcp_entry",
@@ -6181,7 +6224,7 @@
         "stale_profile_outputs",
         "main"
       ],
-      "totalLines": 975,
+      "totalLines": 984,
       "hasStructuralAnalysis": true
     },
     "scripts/generate-docs.sh": {
@@ -6206,7 +6249,7 @@
     },
     "scripts/lib/installer-pins.sh": {
       "filePath": "scripts/lib/installer-pins.sh",
-      "contentHash": "3757a55f3416d15beae2bd1e5717f2ac0d55b67ae45ad7210ef99e166cbbc835",
+      "contentHash": "243e96f5bb1fbb836514ce689d2ab44b4fa47f2694ec55fbcb79bf3cd1c21f24",
       "functions": [],
       "classes": [],
       "imports": [],
@@ -6216,7 +6259,7 @@
     },
     "scripts/pr-feedback.py": {
       "filePath": "scripts/pr-feedback.py",
-      "contentHash": "d7e82510ccbf0d2a9eec5fd36f94d94f0833e41e7a4607869fb515bb60d0a716",
+      "contentHash": "692c7a005d90a995891c4aad0ef56f7c838652b445766d10388a5cf86a613271",
       "functions": [
         {
           "name": "gh_env",
@@ -6316,7 +6359,7 @@
           ],
           "returnType": "dict[str, Any]",
           "exported": true,
-          "lineCount": 115
+          "lineCount": 117
         },
         {
           "name": "main",
@@ -6404,7 +6447,7 @@
         "collect",
         "main"
       ],
-      "totalLines": 340,
+      "totalLines": 342,
       "hasStructuralAnalysis": true
     },
     "scripts/refresh-mkdocs-toc.py": {
@@ -6442,7 +6485,7 @@
     },
     "scripts/require-crit-review.py": {
       "filePath": "scripts/require-crit-review.py",
-      "contentHash": "0b59432b4857d809d505177ff5ce4967c83bb4dc49b97494da216b96cd9c1b90",
+      "contentHash": "4c964a8e1a81324e8a7c663ab52aaf0fc880ee134b30621b81a56e5051224e92",
       "functions": [
         {
           "name": "run_git",
@@ -6468,6 +6511,26 @@
             "path"
           ],
           "returnType": "bool",
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "feedback_relative_path",
+          "params": [
+            "root",
+            "path"
+          ],
+          "returnType": "Path",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "feedback_path_error",
+          "params": [
+            "root",
+            "path"
+          ],
+          "returnType": "str | None",
           "exported": true,
           "lineCount": 11
         },
@@ -6592,7 +6655,7 @@
           ],
           "returnType": "list[str]",
           "exported": true,
-          "lineCount": 55
+          "lineCount": 56
         },
         {
           "name": "feedback_key",
@@ -6604,6 +6667,19 @@
           "lineCount": 2
         },
         {
+          "name": "pr_base_errors",
+          "params": [
+            "root",
+            "evidence",
+            "pr",
+            "head",
+            "base"
+          ],
+          "returnType": "list[str]",
+          "exported": true,
+          "lineCount": 54
+        },
+        {
           "name": "collected_feedback_errors",
           "params": [
             "root",
@@ -6613,7 +6689,7 @@
           ],
           "returnType": "list[str]",
           "exported": true,
-          "lineCount": 44
+          "lineCount": 50
         },
         {
           "name": "evidence_field",
@@ -6711,6 +6787,8 @@
         "run_git",
         "git_root",
         "is_ignored",
+        "feedback_relative_path",
+        "feedback_path_error",
         "changed_paths",
         "numstat_line_count",
         "is_low_risk_docs_only",
@@ -6724,13 +6802,14 @@
         "commit_in_range",
         "pr_feedback_errors",
         "feedback_key",
+        "pr_base_errors",
         "collected_feedback_errors",
         "evidence_field",
         "review_marker",
         "base_ref_error",
         "main"
       ],
-      "totalLines": 533,
+      "totalLines": 618,
       "hasStructuralAnalysis": true
     },
     "scripts/run_bashcov_unit_test.rb": {
@@ -7065,7 +7144,7 @@
     },
     "scripts/validate-agent-assets.py": {
       "filePath": "scripts/validate-agent-assets.py",
-      "contentHash": "adca38e8631272e9ab808a8fe1f230d3d8cfeb77d2724e677ad72e94326f2e09",
+      "contentHash": "b3662bc108ff2e06e9df8a2c13043374a33fbda37fcf523c4c4f5d6d5a59600f",
       "functions": [
         {
           "name": "fail",
@@ -7191,7 +7270,17 @@
           ],
           "returnType": "None",
           "exported": true,
-          "lineCount": 42
+          "lineCount": 54
+        },
+        {
+          "name": "validate_claude_permissions_allow",
+          "params": [
+            "permissions",
+            "label"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 6
         },
         {
           "name": "validate_claude_settings",
@@ -7200,7 +7289,7 @@
           ],
           "returnType": "None",
           "exported": true,
-          "lineCount": 38
+          "lineCount": 39
         },
         {
           "name": "validate_codex_config",
@@ -7258,7 +7347,7 @@
           "params": [],
           "returnType": "dict[str, Any]",
           "exported": true,
-          "lineCount": 113
+          "lineCount": 120
         },
         {
           "name": "validate_adh_profile",
@@ -7410,11 +7499,18 @@
           "lineCount": 14
         },
         {
+          "name": "report_regime_boundary",
+          "params": [],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
           "name": "main",
           "params": [],
           "returnType": "None",
           "exported": true,
-          "lineCount": 25
+          "lineCount": 26
         }
       ],
       "classes": [],
@@ -7496,6 +7592,7 @@
         "validate_exact_keys",
         "validate_codex_agmsg_writable_roots",
         "validate_claude_sandbox",
+        "validate_claude_permissions_allow",
         "validate_claude_settings",
         "validate_codex_config",
         "validate_claude_mcp_config",
@@ -7522,9 +7619,10 @@
         "mask_secrets",
         "validate_no_obvious_secrets",
         "validate_repo_claude_settings_portable",
+        "report_regime_boundary",
         "main"
       ],
-      "totalLines": 1454,
+      "totalLines": 1495,
       "hasStructuralAnalysis": true
     },
     "setup.sh": {
@@ -7629,12 +7727,12 @@
     },
     "tests/install/common/mise.bats": {
       "filePath": "tests/install/common/mise.bats",
-      "contentHash": "ffbd23034f3acf2282baf24044d8c3ee50f828d7eba31743033ecaf2e329d2f3",
+      "contentHash": "88dff9e00dafa26522a650669f07b59a75bd8273e5b226ec06012e81b9c9e82a",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 148,
+      "totalLines": 150,
       "hasStructuralAnalysis": false
     },
     "tests/install/common/private_layer.bats": {
@@ -8081,7 +8179,7 @@
     },
     "tests/unit/test_agmsg_orchestration_docs.py": {
       "filePath": "tests/unit/test_agmsg_orchestration_docs.py",
-      "contentHash": "150b1df319e5ec3af31cec9da9055fa731ff463d5e29b769bb11891ebc9559a2",
+      "contentHash": "fe9e95eec47320141ea1b2155110426cfeb513b6c3cb4bc45c83b7705ebc3524",
       "functions": [],
       "classes": [
         {
@@ -8092,7 +8190,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 27
+          "lineCount": 30
         }
       ],
       "imports": [
@@ -8112,7 +8210,7 @@
       "exports": [
         "AgmsgOrchestrationDocsParityTest"
       ],
-      "totalLines": 40,
+      "totalLines": 43,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_apparmor_userns.py": {
@@ -8374,7 +8472,7 @@
     },
     "tests/unit/test_check_agent_runtime.py": {
       "filePath": "tests/unit/test_check_agent_runtime.py",
-      "contentHash": "2625e307c824db2c9c06f6017e5cce6f87ece10cb34a7c180fa850d734ea6333",
+      "contentHash": "dc153f0505e73a3b35a05235db14f9231887bfbcb12c5c5de11b935672b22492",
       "functions": [],
       "classes": [
         {
@@ -8427,11 +8525,14 @@
             "test_ua_core_warns_when_dist_is_older_than_src",
             "test_ua_core_warns_when_dist_is_older_than_the_root_lockfile",
             "test_ua_core_is_quiet_when_dist_is_fresh_or_no_clone_exists",
-            "test_check_includes_ua_core_warnings"
+            "test_check_includes_ua_core_warnings",
+            "seat_lock_fixture",
+            "test_orchestrator_seat_lock_warns_on_a_bare_session_id",
+            "test_orchestrator_seat_lock_is_quiet_for_a_composite_id_or_no_live_session"
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 956
+          "lineCount": 997
         }
       ],
       "imports": [
@@ -8499,7 +8600,7 @@
       "exports": [
         "CheckAgentRuntimeTest"
       ],
-      "totalLines": 981,
+      "totalLines": 1022,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_chezmoiremove_agmsg.py": {
@@ -8557,7 +8658,7 @@
     },
     "tests/unit/test_claude_settings_merge.py": {
       "filePath": "tests/unit/test_claude_settings_merge.py",
-      "contentHash": "b04ce2d14d4782fb5db52da419e381647e9e74a92669aac29a61c1695eca8acb",
+      "contentHash": "4afbeadadc11a0cc608e7169bcc1076bfbf7702717222d4ce819d6786bf485fc",
       "functions": [],
       "classes": [
         {
@@ -8828,7 +8929,7 @@
     },
     "tests/unit/test_generate_agent_configs.py": {
       "filePath": "tests/unit/test_generate_agent_configs.py",
-      "contentHash": "b68faa8ead618b64c5f29ab9c918e0cc6f7f9b5bd5be29dbf4375fe9528a56b9",
+      "contentHash": "f77e7f29f2cd97401ad7a09c97a70f3be52d3e2d84129716a24441b1abe408c3",
       "functions": [
         {
           "name": "load_generator",
@@ -8869,6 +8970,7 @@
             "test_expected_outputs_uses_codex_baseline_path",
             "test_profile_modify_scripts_preserve_runtime_state",
             "test_security_profile_renders_launcher_and_expanded_notify",
+            "test_claude_sandbox_renders_optional_socket_and_extra_write_keys",
             "test_audit_profile_renders_read_only_sandbox_override",
             "test_model_profiles_reject_invalid_sandbox_mode",
             "test_profile_modify_scripts_are_byte_idempotent_with_runtime_state",
@@ -8880,6 +8982,8 @@
             "test_codex_config_renders_permgate_permission_request",
             "test_codex_config_renders_working_tree_project_key",
             "test_managed_hooks_use_installed_permgate_paths",
+            "test_managed_claude_sandbox_excludes_agmsg_dispatch",
+            "test_managed_codex_path_includes_installed_common_bin",
             "test_model_profiles_env_renders_worker_kind",
             "test_worker_kind_defaults_to_codex",
             "test_unknown_worker_kind_fails",
@@ -8900,7 +9004,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 824
+          "lineCount": 865
         }
       ],
       "imports": [
@@ -8988,12 +9092,12 @@
         "sample_manifest",
         "GenerateAgentConfigsTest"
       ],
-      "totalLines": 933,
+      "totalLines": 974,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_herdr_agents.py": {
       "filePath": "tests/unit/test_herdr_agents.py",
-      "contentHash": "dc089fc904661a6ba2fd9523846296311aef0c673d10137936e12cf9fbc57d4f",
+      "contentHash": "96f9bfb5deee099a9acf2cba4c3ffb352c2602bfe4e3ee80b14c29b343577d23",
       "functions": [],
       "classes": [
         {
@@ -9015,7 +9119,9 @@
             "run_session_helper",
             "run_attach_helper",
             "run_agmsg_bootstrap_helper",
-            "test_attach_noops_without_herdr_environment",
+            "test_attach_without_herdr_environment_prints_the_bring_up_summary",
+            "test_attach_without_herdr_environment_names_the_seated_worker",
+            "test_attach_without_herdr_environment_stays_quiet_in_the_worker_worktree",
             "test_attach_noops_for_full_mode_managed_layout",
             "test_attach_builds_codex_right_of_current_claude_pane",
             "test_attach_lowercases_and_validates_derived_agent_name",
@@ -9046,6 +9152,23 @@
             "test_bootstrap_only_warns_for_multiple_claude_identities",
             "test_bootstrap_only_does_not_call_herdr_or_agents",
             "test_bootstrap_only_skips_home_without_agmsg_calls",
+            "guard_env",
+            "guard_git",
+            "bootstrap_guard",
+            "write_old_launcher",
+            "commit_file",
+            "write_guard_repo",
+            "test_bootstrap_installs_a_main_push_guard_that_needs_an_override",
+            "test_main_push_guard_allows_boundary_commits_and_refuses_rewinds_and_deletes",
+            "test_main_push_guard_checks_a_merge_by_its_tree_diff",
+            "test_main_push_guard_fails_closed_when_the_changes_cannot_be_listed",
+            "test_bootstrap_keeps_an_edited_main_push_guard_stub",
+            "test_main_push_guard_stub_without_a_launcher_refuses_only_main",
+            "test_main_push_guard_stub_with_an_old_launcher_refuses_only_main",
+            "test_bootstrap_skips_the_guard_while_the_launcher_predates_it",
+            "test_bootstrap_restores_the_execute_bit_of_the_stub",
+            "test_bootstrap_leaves_a_foreign_pre_push_hook_alone",
+            "test_bootstrap_installs_no_guard_without_an_orchestrator_identity",
             "test_make_update_and_upgrade_include_agmsg_bootstrap",
             "test_claude_settings_add_herdr_attach_session_hook",
             "test_herdr_session_does_not_prebuild_agent_layout",
@@ -9059,6 +9182,26 @@
             "test_worker_profile_defaults_to_generated_worker_profile",
             "test_worker_profile_env_override_wins_over_generated_worker_profile",
             "test_claude_agent_accepts_manifest_profile_arguments_for_e2e",
+            "write_deep_interactive_profile",
+            "test_orchestrator_pane_uses_interactive_profile_args",
+            "test_orchestrator_pane_appends_claude_args_after_profile_args",
+            "install_orchestrator_seat_fakes",
+            "test_orchestrator_pane_start_claims_the_seat_with_the_composite_id",
+            "test_orchestrator_pane_start_without_a_session_claims_nothing",
+            "test_session_start_attach_claims_the_seat_in_a_managed_pane",
+            "test_session_start_attach_reads_the_hook_payload_and_herdr_pid",
+            "test_session_start_attach_claims_when_the_hook_keeps_stdin_open",
+            "test_session_start_attach_bounds_a_trickling_hook_payload",
+            "test_session_start_attach_skips_a_pane_that_is_not_the_orchestrator",
+            "test_session_start_attach_prints_the_regime_directive_with_a_worker_seat",
+            "test_session_start_attach_prints_no_directive_for_a_pane_that_is_not_the_orchestrator",
+            "test_seat_claim_replaces_a_same_session_bare_lock",
+            "test_seat_claim_replaces_same_session_bare_locks_in_every_team",
+            "test_seat_claim_fails_when_a_later_team_is_held_by_another_session",
+            "test_seat_claim_replaces_a_same_session_composite_lock_of_a_dead_pid",
+            "test_seat_claim_replaces_a_same_session_composite_lock_of_a_recycled_pid",
+            "test_seat_claim_keeps_a_same_session_composite_lock_of_a_live_claude",
+            "test_seat_claim_held_by_another_session_fails_without_release",
             "test_worker_kind_defaults_to_generated_env_fragment",
             "test_worker_kind_env_override_wins_over_generated_env_fragment",
             "test_worker_kind_rejects_an_unknown_value",
@@ -9086,6 +9229,7 @@
             "test_restart_worker_reseats_a_main_path_worker_into_its_worktree",
             "test_worker_seat_reuses_the_identity_and_hook_already_at_the_worktree",
             "test_full_mode_splits_the_worker_pane_in_its_worktree",
+            "test_full_mode_gives_a_codex_worker_its_worktree_git_metadata_roots",
             "test_worker_seat_refuses_a_path_that_is_not_a_worktree",
             "test_worker_seat_refuses_an_ambiguous_orchestrator_identity",
             "test_attach_from_the_worker_worktree_exits_quietly",
@@ -9100,8 +9244,44 @@
             "write_seat_lifecycle_fakes",
             "add_seat_worktree",
             "test_add_worker_spawns_the_seat_in_its_own_workspace_with_profile_args",
+            "write_codex_config_roots",
+            "run_codex_add_worker",
+            "test_add_worker_keeps_the_configured_roots_from_an_indented_multi_line_array",
+            "test_add_worker_emits_no_override_for_an_unparseable_codex_config",
+            "test_add_worker_reports_shallow_metadata_as_not_granted",
+            "git_metadata_roots",
             "test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options",
             "test_add_worker_reuses_a_seated_workspace",
+            "test_add_worker_refuses_before_any_change_when_no_herdr_socket_is_found",
+            "test_add_worker_derives_the_default_herdr_socket_for_spawn",
+            "test_add_worker_accepts_a_claude_trust_dialog_while_spawn_waits",
+            "write_dialogless_claude_spawn",
+            "test_add_worker_succeeds_for_a_claude_worker_without_a_trust_dialog",
+            "test_add_worker_reports_a_failed_claude_spawn_without_a_trust_dialog",
+            "test_add_worker_reports_linkage_ok_after_a_ready_spawn",
+            "test_add_worker_reports_linkage_unreached_after_a_failed_spawn",
+            "test_add_worker_exits_zero_when_a_timed_out_spawn_still_links",
+            "test_add_worker_linkage_uses_the_spawn_placement_record_not_team_sh",
+            "test_add_worker_linkage_resolves_an_id_keyed_placement_record",
+            "test_add_worker_linkage_refuses_a_placement_conflict",
+            "test_add_worker_linkage_falls_back_to_the_legacy_record_without_the_resolver",
+            "test_add_worker_linkage_survives_a_non_numeric_pong_wait",
+            "test_add_worker_linkage_reads_a_leading_zero_wait_as_decimal",
+            "test_add_worker_linkage_refuses_several_orchestrator_identities",
+            "test_add_worker_linkage_ignores_a_delayed_pong_for_another_ping",
+            "test_add_worker_linkage_ignores_a_placement_record_from_another_workspace",
+            "test_add_worker_linkage_ignores_a_placement_record_for_a_pane_gone_from_the_workspace",
+            "test_add_worker_linkage_ignores_a_placement_record_for_a_pane_that_predates_this_spawn",
+            "test_add_worker_linkage_failure_prints_the_invocation_and_the_query",
+            "test_add_worker_linkage_ignores_a_pong_older_than_this_ping",
+            "boundary_repo",
+            "run_boundary_check",
+            "test_regime_boundary_check_scans_every_worktree_for_untracked_evidence",
+            "test_regime_boundary_check_flags_empty_seats_only",
+            "test_regime_boundary_check_counts_names_across_runtime_types_at_an_active_seat",
+            "test_regime_boundary_check_gives_the_seat_lock_check_the_main_checkout",
+            "test_regime_boundary_check_finds_worker_workspaces_from_a_worktree",
+            "test_add_worker_reports_a_failed_spawn",
             "test_add_worker_rejects_a_worktree_outside_claude_worktrees",
             "test_remove_worker_despawns_then_turns_delivery_off_leaves_and_closes",
             "test_remove_worker_refuses_a_dirty_worktree_without_force",
@@ -9208,7 +9388,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 4238
+          "lineCount": 5664
         }
       ],
       "imports": [
@@ -9255,6 +9435,18 @@
           ]
         },
         {
+          "source": "socket",
+          "specifiers": [
+            "socket"
+          ]
+        },
+        {
+          "source": "sqlite3",
+          "specifiers": [
+            "sqlite3"
+          ]
+        },
+        {
           "source": "subprocess",
           "specifiers": [
             "subprocess"
@@ -9285,6 +9477,18 @@
           ]
         },
         {
+          "source": "threading",
+          "specifiers": [
+            "threading"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
           "source": "unittest",
           "specifiers": [
             "unittest"
@@ -9306,7 +9510,7 @@
       "exports": [
         "HerdrAgentsTest"
       ],
-      "totalLines": 4293,
+      "totalLines": 5723,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_permgate.py": {
@@ -9449,7 +9653,7 @@
     },
     "tests/unit/test_pr_feedback.py": {
       "filePath": "tests/unit/test_pr_feedback.py",
-      "contentHash": "b7ee4158c61cd6a1a36e63b8959d741c797c4a0f1df5f7220fa4d731f91d001b",
+      "contentHash": "d5a025ac2c01a798f8b888272a1a2c3424b9273f02f922353931824befa097c7",
       "functions": [
         {
           "name": "load_script",
@@ -9485,6 +9689,8 @@
             "setUp",
             "by_source",
             "test_collects_every_feedback_source_for_the_head",
+            "test_collects_the_github_base_with_the_head",
+            "test_graphql_strings_are_raw_and_only_integers_are_typed",
             "test_every_item_carries_the_disposition_schema",
             "test_bots_are_detected_from_type_login_or_app",
             "test_review_comments_carry_thread_resolution_across_pages",
@@ -9498,7 +9704,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 141
+          "lineCount": 157
         },
         {
           "name": "PrIntegrationRuleParityTest",
@@ -9586,7 +9792,7 @@
         "PrFeedbackTest",
         "PrIntegrationRuleParityTest"
       ],
-      "totalLines": 405,
+      "totalLines": 422,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_release_asset_pins.py": {
@@ -9790,7 +9996,7 @@
     },
     "tests/unit/test_require_crit_review.py": {
       "filePath": "tests/unit/test_require_crit_review.py",
-      "contentHash": "41c7955d38b1aa7397c371caf5838612756671166977fa686629b095ac4ff957",
+      "contentHash": "e5fd9a43be53a56923a2faba007cd553ba1eba5d4f33704306be95dc439fcd7d",
       "functions": [
         {
           "name": "run",
@@ -9858,12 +10064,30 @@
             "test_pr_feedback_uses_the_base_collector_not_the_prs_own",
             "test_pr_feedback_fails_when_the_collector_cannot_run",
             "test_pr_feedback_without_base_is_only_format_checked",
+            "test_feedback_cannot_hide_an_arbitrary_path_without_base",
+            "test_feedback_symlink_cannot_hide_a_file_outside_validation",
+            "test_feedback_does_not_exclude_symlink_aliases_outside_validation",
+            "test_feedback_path_itself_must_be_under_validation",
+            "test_feedback_accepts_absolute_path_through_a_repository_parent_alias",
+            "test_advanced_base_cannot_supply_an_untrusted_collector",
+            "test_advanced_base_cannot_delete_collector_to_trigger_head_fallback",
+            "test_base_rejects_pr_commits_before_executing_their_collector",
+            "test_base_rejects_forged_evidence_metadata",
+            "test_base_accepts_exact_and_advanced_base_with_unchanged_merge_base",
+            "test_older_base_must_not_be_on_the_head_first_parent_chain",
+            "test_base_rejects_side_branch_and_advanced_base_containing_pr_commits",
+            "test_missing_base_collector_falls_back_only_after_binding",
+            "test_base_fails_closed_when_github_metadata_is_unavailable",
+            "test_fixed_commit_is_checked_against_github_base_not_an_older_side_parent",
+            "test_github_lookup_ignores_environment_repository_override",
+            "test_github_lookup_rejects_evidence_from_another_repository",
+            "test_recollection_must_match_the_authenticated_repository",
             "test_pr_feedback_fixed_commit_must_be_in_the_pr_range",
             "test_explicit_disable_skips_guard"
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 572
+          "lineCount": 834
         }
       ],
       "imports": [
@@ -9920,7 +10144,7 @@
         "run",
         "ReviewGuardTest"
       ],
-      "totalLines": 611,
+      "totalLines": 873,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_runtime_health.py": {
@@ -10140,7 +10364,7 @@
     },
     "tests/unit/test_supply_chain_policy.py": {
       "filePath": "tests/unit/test_supply_chain_policy.py",
-      "contentHash": "58160488ff977a31f0dc9b75a11228e65fe0569cdf6b15c5b9121ef618cedb62",
+      "contentHash": "fd2c3494ec4b1f5f8329af862152a752bddd6e35dcbb8565e2c8fde4876a26da",
       "functions": [],
       "classes": [
         {
@@ -10167,7 +10391,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 497
+          "lineCount": 500
         }
       ],
       "imports": [
@@ -10229,7 +10453,118 @@
       "exports": [
         "SupplyChainPolicyTest"
       ],
-      "totalLines": 516,
+      "totalLines": 519,
+      "hasStructuralAnalysis": true
+    },
+    "tests/unit/test_ua_symbol_coverage.py": {
+      "filePath": "tests/unit/test_ua_symbol_coverage.py",
+      "contentHash": "91649ed9c0c63a9ac935c2e96836610a5ff5b61225ca8fe470436d8aa5f68be6",
+      "functions": [
+        {
+          "name": "graph",
+          "params": [],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "defs",
+          "params": [],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 2
+        }
+      ],
+      "classes": [
+        {
+          "name": "UaSymbolCoverageTest",
+          "methods": [
+            "setUp",
+            "tearDown",
+            "commit",
+            "run_coverage",
+            "test_flags_unexplained_symbol_loss_only",
+            "test_unresolvable_ref_fails_closed",
+            "test_deleted_path_with_old_ref_is_explained",
+            "test_absent_path_without_old_ref_is_regression",
+            "rename_a_to_b",
+            "test_rename_preserving_symbols_is_ok",
+            "test_rename_dropping_symbols_is_regression",
+            "test_partial_deletion_in_changed_source_is_regression",
+            "test_def_column_reads_the_new_graph_revision",
+            "test_uv_run_script_shebang_is_python",
+            "test_unchanged_source_loss_is_noted",
+            "test_ruby_visibility_prefixed_defs_are_counted",
+            "test_low_similarity_move_with_no_symbols_is_regression",
+            "test_partially_covered_new_file_is_not_flagged",
+            "test_shell_names_with_punctuation_are_counted",
+            "test_comment_lines_are_not_definitions",
+            "test_python_defs_inside_strings_do_not_count",
+            "test_grammar_file_missing_from_graph_fails_in_covered_directories",
+            "test_unreadable_candidate_fails_closed",
+            "test_chmod_only_change_keeps_the_source_unchanged_note"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 265
+        }
+      ],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "shutil",
+          "specifiers": [
+            "shutil"
+          ]
+        },
+        {
+          "source": "subprocess",
+          "specifiers": [
+            "subprocess"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "tempfile",
+          "specifiers": [
+            "tempfile"
+          ]
+        },
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        }
+      ],
+      "exports": [
+        "graph",
+        "defs",
+        "UaSymbolCoverageTest"
+      ],
+      "totalLines": 303,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_update_agent_assets_ua_core.py": {
@@ -10441,7 +10776,7 @@
     },
     "tests/unit/test_validate_agent_assets.py": {
       "filePath": "tests/unit/test_validate_agent_assets.py",
-      "contentHash": "40cfbd89724105083b2dd74e656a643d6938c684bcee8f11a4077cdd3c66eb62",
+      "contentHash": "1242f94d731a5db8b69a9bf7c82d8de0e0bb1a267308d14d710ffdb7037e75a4",
       "functions": [
         {
           "name": "load_validator",
@@ -10502,6 +10837,8 @@
             "valid_claude_sandbox",
             "test_claude_sandbox_accepts_manifest_symmetric_settings",
             "test_claude_sandbox_rejects_each_broken_rule",
+            "test_claude_permissions_allow_must_list_non_empty_rules",
+            "test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs",
             "test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs",
             "test_claude_sandbox_requires_extra_codex_writable_roots",
             "test_codex_sandbox_workspace_write_must_match_manifest",
@@ -10528,7 +10865,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 938
+          "lineCount": 972
         },
         {
           "name": "MaskSecretsModeTest",
@@ -10612,7 +10949,7 @@
         "ValidateAgentAssetsTest",
         "MaskSecretsModeTest"
       ],
-      "totalLines": 1046,
+      "totalLines": 1080,
       "hasStructuralAnalysis": true
     },
     "tests/unit/test_workflow_security.py": {

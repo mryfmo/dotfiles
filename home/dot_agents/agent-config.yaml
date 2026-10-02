@@ -460,7 +460,7 @@ assets:
   mise:
     source: github-release
     upstream: jdx/mise
-    pin: v2026.9.12
+    pin: v2026.9.13
     verify: release-shasums
     install_path: ~/.local/bin/mise
     installer: install/common/mise.sh
@@ -490,7 +490,7 @@ assets:
   aws-cli:
     source: https-download
     upstream: https://awscli.amazonaws.com
-    pin: 2.36.50
+    pin: 2.37.3
     verify: gpg
     gpg_fingerprint: FB5DB77FD5C118B80511ADA8A6310ACC4672475C
     install_path: ~/.local/share/aws-cli
@@ -512,9 +512,9 @@ assets:
   tode:
     source: installer-script
     upstream: https://tode.sh/install
-    pin: v0.3.4
+    pin: v0.4.2
     verify: installer-sha256
-    sha256: 026192e9f377af44f48c1c1e9f008c081369013d96901e5bff898f210272813c
+    sha256: de7c1540305d516ded9734f7dca4ed2d7d308fcc9cdb27a52717c4d26054e933
     note: payload-not-pinned-yet
     install_path: ~/.local/bin/tode
     installer: scripts/update-agent-assets.sh#update_terminal_code
@@ -524,9 +524,9 @@ assets:
   terminal-browser:
     source: installer-script
     upstream: https://terminal-browser.sh/install
-    pin: v0.11.1
+    pin: v0.13.4
     verify: installer-sha256
-    sha256: accb57252d6e7dde513db2a473c008d71897cf72feaaecd58c5042821d1d63f9
+    sha256: 11b3f157debcf9bb8e5d8c6a5efc16fb9385ccb97478ae8bdb0fb0ea9e1f23bc
     note: payload-not-pinned-yet
     install_path: ~/.local/bin/terminal-browser
     installer: scripts/update-agent-assets.sh#update_terminal_browser
@@ -556,11 +556,11 @@ assets:
   zed:
     source: github-release
     upstream: zed-industries/zed
-    pin: v1.21.0
+    pin: v1.22.0
     verify: sha256
     sha256:
-      linux-amd64: b79a992e960ed4067cb2b50d66789ed8618eeb1780ed6a0f8f1e71dd80f74200
-      linux-arm64: 69eff51b22203be7a4d0fd9df0864a8abd4d5183e8fb9aafa2af57f3cd42b9a3
+      linux-amd64: 5ce3991b34a8fad0a23625f5821cda601c7150a6cc69683c097b8d1b083abc50
+      linux-arm64: 8b3c5d6e506056a9456ed33072081fd64db84ce47cdf34d4936442cc4f08394a
     install_path: ~/.local/bin/zed
     installer: install/ubuntu/client/zed.sh
     render:

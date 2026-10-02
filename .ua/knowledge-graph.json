@@ -22,7 +22,7 @@
       "GitHub Actions"
     ],
     "description": "Personal dotfiles for mryfmo, managed with chezmoi, providing a zsh/sheldon/starship/mise shell environment, Claude Code and Codex agent configuration, herdr/agmsg orchestration tooling, install scripts, and bats tests. Note: this project has over 100 source files; consider scoping analysis to a subdirectory for faster results.",
-    "analyzedAt": "2026-10-02T13:33:56Z",
+    "analyzedAt": "2026-10-02T14:12:42Z",
     "gitCommitHash": "940a3a2b07adfd14140a0acff96784ef53a0a509"
   },
   "nodes": [
@@ -8935,7 +8935,11 @@
         "validation"
       ],
       "complexity": "complex",
-      "lineRange": "shdoc-annotated bash using jq for JSON parsing and nested case dispatch on command prefixes."
+      "lineRange": [
+        1,
+        281
+      ],
+      "languageNotes": "shdoc-annotated bash using jq for JSON parsing and nested case dispatch on command prefixes."
     },
     {
       "id": "function:home/dot_claude/hooks/executable_enforce-uv.sh:handle_pip_install",
@@ -9143,7 +9147,11 @@
         "python"
       ],
       "complexity": "moderate",
-      "lineRange": "chezmoi modify_ scripts read the current target from stdin and print the new contents; the file name keeps the target's .json name."
+      "lineRange": [
+        1,
+        197
+      ],
+      "languageNotes": "chezmoi modify_ scripts read the current target from stdin and print the new contents; the file name keeps the target's .json name."
     },
     {
       "id": "function:home/dot_claude/modify_private_settings.json:load_json_object",
@@ -16604,6 +16612,83 @@
       "weight": 0.8
     },
     {
+      "source": "function:.claude/contextdb/contextdb/cli.py:_resolve_session",
+      "target": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/cli.py:_run_memory",
+      "target": "function:.claude/contextdb/contextdb/cli.py:_print_json_or_lines",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/cli.py:_run_memory",
+      "target": "function:.claude/contextdb/contextdb/cli.py:_rows_json",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/cli.py:build_parser",
+      "target": "function:.claude/contextdb/contextdb/cli.py:_add_scope",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/cli.py:main",
+      "target": "function:.claude/contextdb/contextdb/cli.py:build_parser",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/cli.py:main",
+      "target": "function:.claude/contextdb/contextdb/cli.py:run",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/cli.py:run",
+      "target": "function:.claude/contextdb/contextdb/cli.py:_format_event",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/cli.py:run",
+      "target": "function:.claude/contextdb/contextdb/cli.py:_print_json_or_lines",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/cli.py:run",
+      "target": "function:.claude/contextdb/contextdb/cli.py:_resolve_session",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/cli.py:run",
+      "target": "function:.claude/contextdb/contextdb/cli.py:_rows_json",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/cli.py:run",
+      "target": "function:.claude/contextdb/contextdb/cli.py:_run_memory",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
       "source": "file:.claude/contextdb/contextdb/recall.py",
       "target": "function:.claude/contextdb/contextdb/recall.py:normalize_scores",
       "type": "contains",
@@ -16828,6 +16913,125 @@
       "weight": 0.8
     },
     {
+      "source": "function:.claude/contextdb/contextdb/recall.py:_closure",
+      "target": "function:.claude/contextdb/contextdb/recall.py:_event",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/recall.py:_closure",
+      "target": "function:.claude/contextdb/contextdb/recall.py:_key",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/recall.py:_lexical",
+      "target": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/recall.py:_lexical",
+      "target": "function:.claude/contextdb/contextdb/recall.py:_event",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/recall.py:_lexical",
+      "target": "function:.claude/contextdb/contextdb/recall.py:_key",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/recall.py:_lexical",
+      "target": "function:.claude/contextdb/contextdb/recall.py:_memory",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/recall.py:_semantic",
+      "target": "function:.claude/contextdb/contextdb/recall.py:_key",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/recall.py:_semantic",
+      "target": "function:.claude/contextdb/contextdb/recall.py:_memory",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/recall.py:recall",
+      "target": "function:.claude/contextdb/contextdb/recall.py:_closure",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/recall.py:recall",
+      "target": "function:.claude/contextdb/contextdb/recall.py:_key",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/recall.py:recall",
+      "target": "function:.claude/contextdb/contextdb/recall.py:_lexical",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/recall.py:recall",
+      "target": "function:.claude/contextdb/contextdb/recall.py:_semantic",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/recall.py:recall",
+      "target": "function:.claude/contextdb/contextdb/recall.py:normalize_scores",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/recovery.py:build_recovery_context",
+      "target": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/recovery.py:build_recovery_context",
+      "target": "function:.claude/contextdb/contextdb/recovery.py:_detail",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/recovery.py:build_recovery_context",
+      "target": "function:.claude/contextdb/contextdb/recovery.py:_modified_files",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/recovery.py:build_recovery_context",
+      "target": "function:.claude/contextdb/contextdb/recovery.py:_render_packet",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
       "source": "file:.claude/contextdb/contextdb/semantic.py",
       "target": "class:.claude/contextdb/contextdb/semantic.py:SemanticConfig",
       "type": "contains",
@@ -16880,6 +17084,20 @@
       "source": "file:.claude/contextdb/contextdb/semantic.py",
       "target": "function:.claude/contextdb/contextdb/semantic.py:cosine_similarity",
       "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/semantic.py:embed_texts",
+      "target": "function:.claude/contextdb/contextdb/semantic.py:semantic_config",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/semantic.py:semantic_config",
+      "target": "class:.claude/contextdb/contextdb/semantic.py:SemanticConfig",
+      "type": "calls",
       "direction": "forward",
       "weight": 0.8
     },
@@ -17430,6 +17648,265 @@
       "weight": 0.8
     },
     {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/paths.py:ensure",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/storage.py:_ensure_fts",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:_fts_insert_event",
+      "target": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:_fts_insert_memory",
+      "target": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:_insert_candidates",
+      "target": "function:.claude/contextdb/contextdb/storage.py:add_memory",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:add_memory",
+      "target": "function:.claude/contextdb/contextdb/storage.py:_fts_insert_memory",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:connect",
+      "target": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:connect",
+      "target": "function:.claude/contextdb/contextdb/storage.py:secure_storage_files",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:health",
+      "target": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:hierarchical_memory_context",
+      "target": "function:.claude/contextdb/contextdb/storage.py:current_memories",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:index_memory_embeddings",
+      "target": "function:.claude/contextdb/contextdb/storage.py:current_memories",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:insert_event",
+      "target": "function:.claude/contextdb/contextdb/storage.py:_fts_insert_event",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:insert_event",
+      "target": "function:.claude/contextdb/contextdb/storage.py:_insert_candidates",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:insert_event",
+      "target": "function:.claude/contextdb/contextdb/storage.py:_upsert_session",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:insert_event",
+      "target": "function:.claude/contextdb/contextdb/storage.py:rebuild_memory_blocks",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:promote_candidate",
+      "target": "function:.claude/contextdb/contextdb/storage.py:add_memory",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:promote_candidate",
+      "target": "function:.claude/contextdb/contextdb/storage.py:rebuild_memory_blocks",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:prune_expired",
+      "target": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:rebuild_memory_blocks",
+      "target": "function:.claude/contextdb/contextdb/storage.py:_insert_block",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:rebuild_memory_blocks",
+      "target": "function:.claude/contextdb/contextdb/storage.py:current_memories",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:retract_memory",
+      "target": "function:.claude/contextdb/contextdb/storage.py:add_memory",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:retract_memory",
+      "target": "function:.claude/contextdb/contextdb/storage.py:rebuild_memory_blocks",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:search_events",
+      "target": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:search_memories",
+      "target": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:search_memories",
+      "target": "function:.claude/contextdb/contextdb/storage.py:current_memories",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/storage.py:semantic_search_memories",
+      "target": "function:.claude/contextdb/contextdb/storage.py:current_memories",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/semantic.py:embed_texts",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/semantic.py:semantic_config",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/semantic.py:cosine_similarity",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/memory.py:compress_lines",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/util.py:sha256_text",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/util.py:canonical_json",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/util.py:utc_iso",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/util.py:safe_chmod",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/util.py:stable_id",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "function:.claude/contextdb/contextdb/util.py:normalize_for_fingerprint",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "target": "class:.claude/contextdb/contextdb/memory.py:MemoryCandidate",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
       "source": "file:.claude/contextdb/contextdb/config.py",
       "target": "function:.claude/contextdb/contextdb/config.py:_merge",
       "type": "contains",
@@ -17754,6 +18231,83 @@
     {
       "source": "function:.claude/contextdb/contextdb/paths.py:_load_or_create_project_id",
       "target": "function:.claude/contextdb/contextdb/util.py:write_text_exclusive",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/config.py:load_config",
+      "target": "function:.claude/contextdb/contextdb/config.py:_merge",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/config.py:load_config",
+      "target": "function:.claude/contextdb/contextdb/config.py:validate_config",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/config.py:validate_config",
+      "target": "function:.claude/contextdb/contextdb/config.py:_require_int",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/config.py:validate_config",
+      "target": "function:.claude/contextdb/contextdb/config.py:_require_number",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/hook.py:main",
+      "target": "function:.claude/contextdb/contextdb/hook.py:process_payload",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/hook.py:process_payload",
+      "target": "function:.claude/contextdb/contextdb/storage.py:connect",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/hook.py:process_payload",
+      "target": "function:.claude/contextdb/contextdb/storage.py:prune_expired",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/paths.py:project_paths",
+      "target": "class:.claude/contextdb/contextdb/paths.py:ProjectPaths",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/paths.py:project_paths",
+      "target": "function:.claude/contextdb/contextdb/paths.py:_load_or_create_project_id",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/paths.py:project_paths",
+      "target": "function:.claude/contextdb/contextdb/paths.py:ensure",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/paths.py:project_paths",
+      "target": "function:.claude/contextdb/contextdb/paths.py:resolve_project_root",
       "type": "calls",
       "direction": "forward",
       "weight": 0.8
@@ -18109,6 +18663,146 @@
       "weight": 0.8
     },
     {
+      "source": "class:.claude/contextdb/contextdb/spool.py:WriterLock",
+      "target": "function:.claude/contextdb/contextdb/spool.py:acquire",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/spool.py:WriterLock",
+      "target": "function:.claude/contextdb/contextdb/spool.py:release",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/recover_hook.py:main",
+      "target": "function:.claude/contextdb/contextdb/recover_hook.py:recovery_output",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/recover_hook.py:recovery_output",
+      "target": "function:.claude/contextdb/contextdb/recover_hook.py:_record_recovery_injected",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/recover_hook.py:recovery_output",
+      "target": "function:.claude/contextdb/contextdb/storage.py:connect",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/spool.py:_quarantine",
+      "target": "function:.claude/contextdb/contextdb/spool.py:record_error",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/spool.py:drain_spool",
+      "target": "class:.claude/contextdb/contextdb/spool.py:DrainResult",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/spool.py:drain_spool",
+      "target": "class:.claude/contextdb/contextdb/spool.py:WriterLock",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/spool.py:drain_spool",
+      "target": "function:.claude/contextdb/contextdb/spool.py:_quarantine",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/spool.py:drain_spool",
+      "target": "function:.claude/contextdb/contextdb/spool.py:acquire",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/spool.py:drain_spool",
+      "target": "function:.claude/contextdb/contextdb/spool.py:record_error",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/spool.py:drain_spool",
+      "target": "function:.claude/contextdb/contextdb/spool.py:release",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/spool.py:drain_spool",
+      "target": "function:.claude/contextdb/contextdb/spool.py:validate_ingestion_source",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/spool.py:drain_spool",
+      "target": "function:.claude/contextdb/contextdb/storage.py:connect",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/spool.py:drain_spool",
+      "target": "function:.claude/contextdb/contextdb/storage.py:insert_event",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/spool.py:drain_spool",
+      "target": "function:.claude/contextdb/contextdb/storage.py:secure_storage_files",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/spool.py:spool_event",
+      "target": "function:.claude/contextdb/contextdb/paths.py:ensure",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/spool.py:spool_event",
+      "target": "function:.claude/contextdb/contextdb/spool.py:validate_ingestion_source",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/spool.py:drain_spool",
+      "target": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/recover_hook.py:recovery_output",
+      "target": "class:.claude/contextdb/contextdb/storage.py:ContextStore",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
       "source": "file:.claude/contextdb/contextdb/memory.py",
       "target": "class:.claude/contextdb/contextdb/memory.py:MemoryCandidate",
       "type": "contains",
@@ -18387,6 +19081,90 @@
       "type": "calls",
       "direction": "forward",
       "weight": 0.8
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/memory.py:MemoryCandidate",
+      "target": "function:.claude/contextdb/contextdb/util.py:normalize_for_fingerprint",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "class:.claude/contextdb/contextdb/memory.py:MemoryCandidate",
+      "target": "function:.claude/contextdb/contextdb/util.py:sha256_text",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/memory.py:extract_candidates",
+      "target": "class:.claude/contextdb/contextdb/memory.py:MemoryCandidate",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/memory.py:extract_candidates",
+      "target": "function:.claude/contextdb/contextdb/memory.py:_sentences",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/normalize.py:_extract_file_refs",
+      "target": "function:.claude/contextdb/contextdb/normalize.py:_relative_path",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/normalize.py:_tool_summary",
+      "target": "function:.claude/contextdb/contextdb/normalize.py:_stringify",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/normalize.py:encode_detail",
+      "target": "function:.claude/contextdb/contextdb/normalize.py:_stringify",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/normalize.py:normalize_hook_payload",
+      "target": "function:.claude/contextdb/contextdb/normalize.py:_extract_file_refs",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/normalize.py:normalize_hook_payload",
+      "target": "function:.claude/contextdb/contextdb/normalize.py:_stringify",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/normalize.py:normalize_hook_payload",
+      "target": "function:.claude/contextdb/contextdb/normalize.py:_tool_summary",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/normalize.py:normalize_hook_payload",
+      "target": "function:.claude/contextdb/contextdb/normalize.py:encode_detail",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/normalize.py:normalize_hook_payload",
+      "target": "class:.claude/contextdb/contextdb/paths.py:ProjectPaths",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
     },
     {
       "source": "file:.claude/contextdb/contextdb/redaction.py",
@@ -18777,6 +19555,216 @@
       "source": "file:.claude/contextdb/contextdb/util.py",
       "target": "function:.claude/contextdb/contextdb/util.py:chunks",
       "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/redaction.py:redact_text",
+      "target": "class:.claude/contextdb/contextdb/redaction.py:RedactionReport",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/redaction.py:redact_text",
+      "target": "function:.claude/contextdb/contextdb/redaction.py:_replacement",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/redaction.py:redact_value",
+      "target": "class:.claude/contextdb/contextdb/redaction.py:RedactionReport",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/redaction.py:redact_value",
+      "target": "function:.claude/contextdb/contextdb/redaction.py:_key_is_sensitive",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/redaction.py:redact_value",
+      "target": "function:.claude/contextdb/contextdb/redaction.py:_replacement",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/redaction.py:redact_value",
+      "target": "function:.claude/contextdb/contextdb/redaction.py:redact_text",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/redaction.py:sanitize_payload",
+      "target": "class:.claude/contextdb/contextdb/redaction.py:RedactionReport",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/redaction.py:sanitize_payload",
+      "target": "function:.claude/contextdb/contextdb/redaction.py:find_paths",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/redaction.py:sanitize_payload",
+      "target": "function:.claude/contextdb/contextdb/redaction.py:is_sensitive_path",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/redaction.py:sanitize_payload",
+      "target": "function:.claude/contextdb/contextdb/redaction.py:redact_value",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/util.py:append_jsonl",
+      "target": "function:.claude/contextdb/contextdb/util.py:_write_all",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/util.py:append_jsonl",
+      "target": "function:.claude/contextdb/contextdb/util.py:canonical_json",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/util.py:append_jsonl",
+      "target": "function:.claude/contextdb/contextdb/util.py:ensure_dir",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/util.py:append_jsonl",
+      "target": "function:.claude/contextdb/contextdb/util.py:safe_chmod",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/util.py:atomic_write_text",
+      "target": "function:.claude/contextdb/contextdb/util.py:_fsync_directory",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/util.py:atomic_write_text",
+      "target": "function:.claude/contextdb/contextdb/util.py:_write_all",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/util.py:atomic_write_text",
+      "target": "function:.claude/contextdb/contextdb/util.py:ensure_dir",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/util.py:atomic_write_text",
+      "target": "function:.claude/contextdb/contextdb/util.py:safe_chmod",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/util.py:ensure_dir",
+      "target": "function:.claude/contextdb/contextdb/util.py:safe_chmod",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/util.py:epoch_ms",
+      "target": "function:.claude/contextdb/contextdb/util.py:utc_now",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/util.py:one_line",
+      "target": "function:.claude/contextdb/contextdb/util.py:canonical_json",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/util.py:stable_id",
+      "target": "function:.claude/contextdb/contextdb/util.py:sha256_text",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/util.py:truncate_middle",
+      "target": "function:.claude/contextdb/contextdb/util.py:pretty_json",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/util.py:utc_iso",
+      "target": "function:.claude/contextdb/contextdb/util.py:utc_now",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/util.py:write_json_exclusive",
+      "target": "function:.claude/contextdb/contextdb/util.py:canonical_json",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/util.py:write_json_exclusive",
+      "target": "function:.claude/contextdb/contextdb/util.py:write_text_exclusive",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/util.py:write_text_exclusive",
+      "target": "function:.claude/contextdb/contextdb/util.py:_fsync_directory",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/util.py:write_text_exclusive",
+      "target": "function:.claude/contextdb/contextdb/util.py:_write_all",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/util.py:write_text_exclusive",
+      "target": "function:.claude/contextdb/contextdb/util.py:ensure_dir",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:.claude/contextdb/contextdb/util.py:write_text_exclusive",
+      "target": "function:.claude/contextdb/contextdb/util.py:safe_chmod",
+      "type": "calls",
       "direction": "forward",
       "weight": 0.8
     },
@@ -19432,6 +20420,22 @@
       "weight": 0.5
     },
     {
+      "source": "config:.ua/config.json",
+      "target": "config:.ua/knowledge-graph.json",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6,
+      "description": "Sets outputLanguage (en) and autoUpdate=false, controlling the language and refresh policy of the generated graph."
+    },
+    {
+      "source": "config:.ua/fingerprints.json",
+      "target": "config:.ua/meta.json",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5,
+      "description": "Both record the same analyzed gitCommitHash; fingerprints holds per-file hashes for the run that meta.json stamps."
+    },
+    {
       "source": "document:home/dot_agents/README.md",
       "target": "config:home/dot_agents/agent-config.yaml",
       "type": "documents",
@@ -19698,6 +20702,62 @@
       "weight": 0.6
     },
     {
+      "source": "config:home/dot_codex/modify_private_adh.config.toml",
+      "target": "config:home/dot_codex/modify_private_config.toml",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6,
+      "description": "Reads the base ~/.codex/config.toml (rendered by modify_private_config.toml) at apply time to harvest operator-granted hooks.state trust."
+    },
+    {
+      "source": "config:home/dot_codex/modify_private_audit.config.toml",
+      "target": "config:home/dot_codex/modify_private_config.toml",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6,
+      "description": "Reads the base ~/.codex/config.toml (rendered by modify_private_config.toml) at apply time to harvest operator-granted hooks.state trust."
+    },
+    {
+      "source": "config:home/dot_codex/modify_private_deep.config.toml",
+      "target": "config:home/dot_codex/modify_private_config.toml",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6,
+      "description": "Reads the base ~/.codex/config.toml (rendered by modify_private_config.toml) at apply time to harvest operator-granted hooks.state trust."
+    },
+    {
+      "source": "config:home/dot_codex/modify_private_express.config.toml",
+      "target": "config:home/dot_codex/modify_private_config.toml",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6,
+      "description": "Reads the base ~/.codex/config.toml (rendered by modify_private_config.toml) at apply time to harvest operator-granted hooks.state trust."
+    },
+    {
+      "source": "config:home/dot_codex/modify_private_review.config.toml",
+      "target": "config:home/dot_codex/modify_private_config.toml",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6,
+      "description": "Reads the base ~/.codex/config.toml (rendered by modify_private_config.toml) at apply time to harvest operator-granted hooks.state trust."
+    },
+    {
+      "source": "config:home/dot_codex/modify_private_security.config.toml",
+      "target": "config:home/dot_codex/modify_private_config.toml",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6,
+      "description": "Reads the base ~/.codex/config.toml (rendered by modify_private_config.toml) at apply time to harvest operator-granted hooks.state trust."
+    },
+    {
+      "source": "config:home/dot_codex/modify_private_standard.config.toml",
+      "target": "config:home/dot_codex/modify_private_config.toml",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6,
+      "description": "Reads the base ~/.codex/config.toml (rendered by modify_private_config.toml) at apply time to harvest operator-granted hooks.state trust."
+    },
+    {
       "source": "file:home/dot_config/alias/client.sh",
       "target": "file:home/dot_config/alias/common.sh",
       "type": "related",
@@ -19866,6 +20926,46 @@
       "weight": 0.5
     },
     {
+      "source": "document:home/dot_config/claude/rules/pr-integration.md",
+      "target": "pipeline:Makefile",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5,
+      "description": "Directs passing PR feedback evidence to the `make require-crit-review` integration guard."
+    },
+    {
+      "source": "document:home/dot_config/claude/rules/crit-review.md",
+      "target": "pipeline:Makefile",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5,
+      "description": "Documents running `make require-crit-review` (with AGENT_REVIEWED/CRIT_REVIEWED receipts) before reporting completion."
+    },
+    {
+      "source": "document:home/dot_config/claude/rules/agmsg-orchestration.md",
+      "target": "document:home/dot_config/claude/rules/crit-review.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5,
+      "description": "Keeps `make require-crit-review` as the orchestrator-side final integration step defined by the Crit review rule."
+    },
+    {
+      "source": "document:home/dot_config/claude/rules/agmsg-orchestration.md",
+      "target": "document:home/dot_config/claude/rules/model-selection.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5,
+      "description": "Relies on the audit/review profiles and model-profiles.env launch args defined by the model-selection rule."
+    },
+    {
+      "source": "document:home/dot_config/claude/rules/agmsg-orchestration.md",
+      "target": "document:home/dot_config/claude/rules/compactiondb.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5,
+      "description": "Requires consolidated CompactionDB decisions at regime boundaries for opted-in projects."
+    },
+    {
       "source": "config:home/dot_config/sheldon/plugin_sources/client/common.toml",
       "target": "file:home/dot_config/alias/client.sh",
       "type": "configures",
@@ -19899,6 +20999,46 @@
       "type": "related",
       "direction": "forward",
       "weight": 0.5
+    },
+    {
+      "source": "config:home/dot_config/sheldon/plugin_sources/client/common.toml",
+      "target": "file:home/dot_config/sheldon/plugins.toml.tmpl",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6,
+      "description": "Included by plugins.toml.tmpl for client systems to form the rendered sheldon plugin config."
+    },
+    {
+      "source": "config:home/dot_config/sheldon/plugin_sources/client/macos.toml",
+      "target": "file:home/dot_config/sheldon/plugins.toml.tmpl",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6,
+      "description": "Included by plugins.toml.tmpl for darwin client systems."
+    },
+    {
+      "source": "config:home/dot_config/sheldon/plugin_sources/client/ubuntu.toml",
+      "target": "file:home/dot_config/sheldon/plugins.toml.tmpl",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6,
+      "description": "Included (currently empty) by plugins.toml.tmpl for linux client systems."
+    },
+    {
+      "source": "config:home/dot_config/sheldon/plugin_sources/client/common.toml",
+      "target": "file:home/dot_config/powerlevel10k/p10k.zsh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6,
+      "description": "The p10k plugin sources ~/.config/powerlevel10k/p10k.zsh, so the client config needs that file present."
+    },
+    {
+      "source": "config:home/dot_config/sheldon/plugin_sources/client/common.toml",
+      "target": "file:home/dot_config/alias/client.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6,
+      "description": "The alias plugin sources ~/.config/alias/client.sh, so the client config needs that file present."
     },
     {
       "source": "file:home/dot_local/bin/server/history.sh",
@@ -20764,6 +21904,48 @@
     {
       "source": "document:plans/README.md",
       "target": "file:setup.sh",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:plans/003-make-bootstrap-safe-and-publicly-testable.md",
+      "target": "document:plans/001-contain-starship-cleanup.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:plans/003-make-bootstrap-safe-and-publicly-testable.md",
+      "target": "document:plans/002-make-review-evidence-non-vacuous.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:plans/004-harden-and-lock-the-supply-chain.md",
+      "target": "document:plans/003-make-bootstrap-safe-and-publicly-testable.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:plans/005-make-runtime-health-and-verification-truthful.md",
+      "target": "document:plans/004-harden-and-lock-the-supply-chain.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:plans/005-make-runtime-health-and-verification-truthful.md",
+      "target": "file:tests/unit/test_herdr_agents.py",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:plans/005-make-runtime-health-and-verification-truthful.md",
+      "target": "pipeline:Makefile",
       "type": "documents",
       "direction": "forward",
       "weight": 0.5
@@ -22631,6 +23813,27 @@
       "weight": 0.8
     },
     {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "file:scripts/lib/asset-manifest.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "file:scripts/lib/installer-pins.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/update-agent-assets.sh",
+      "target": "file:install/common/gh_extensions.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
       "source": "file:scripts/upgrade-tools.sh",
       "target": "function:scripts/upgrade-tools.sh:section",
       "type": "contains",
@@ -23261,6 +24464,34 @@
       "weight": 0.6
     },
     {
+      "source": "file:scripts/upgrade-tools.sh",
+      "target": "file:scripts/update-agent-assets.sh",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:scripts/upgrade-tools.sh",
+      "target": "file:scripts/generate-agent-configs.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "function:scripts/upgrade-tools.sh:bump_terminal_tool_pins",
+      "target": "file:scripts/generate-agent-configs.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "function:scripts/upgrade-tools.sh:bump_release_asset_pins",
+      "target": "file:scripts/generate-agent-configs.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
       "source": "file:.claude/hooks/contextdb_cli.py",
       "target": "file:.claude/contextdb/contextdb/cli.py",
       "type": "depends_on",
@@ -23458,6 +24689,69 @@
     },
     {
       "source": "file:home/.chezmoiscripts/common/run_once_after_01-setup-chezmoi-private.sh.tmpl",
+      "target": "file:home/.chezmoi.yaml.tmpl",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:.claude/hooks/contextdb_cli.py",
+      "target": "file:.claude/contextdb/contextdb/__init__.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:.claude/hooks/contextdb_hook.py",
+      "target": "file:.claude/contextdb/contextdb/__init__.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:.claude/hooks/contextdb_recover.py",
+      "target": "file:.claude/contextdb/contextdb/__init__.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:.claude/hooks/query_log.py",
+      "target": "file:.claude/contextdb/contextdb/__init__.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "config:.claude/contextdb/config.json",
+      "target": "file:.claude/hooks/contextdb_hook.py",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "config:.claude/contextdb/config.json",
+      "target": "file:.claude/hooks/contextdb_recover.py",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "config:.claude/contextdb/config.json",
+      "target": "file:.claude/hooks/contextdb_cli.py",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:docs/plans/nix-migration.md",
+      "target": "document:docs/plans/nix-first-architecture.md",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:home/.chezmoiignore",
       "target": "file:home/.chezmoi.yaml.tmpl",
       "type": "depends_on",
       "direction": "forward",
@@ -24307,6 +25601,209 @@
       "source": "file:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py",
       "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run",
       "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:build_staged_name",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:sanitize_component",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:capture_snapshot",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:close_browser",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:find_attachment_url",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:extract_attachment_links",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:get_composer_markdown",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright_value",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:main",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:close_browser",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:main",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:ensure_command",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:main",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:open_browser",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:main",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:parse_args",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:main",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:resolve_profile_dir",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:main",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:resolve_target_url",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:main",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:stage_files",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:main",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:upload_files",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:main",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:validate_source_files",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:main",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:wait_for_comment_composer",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:open_browser",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:perform_upload",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright_json",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:prepare_comment_composer",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright_json",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:resolve_target_url",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright_json",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright_value",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright_value",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:run_playwright",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:stage_files",
+      "target": "class:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:StagedFile",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:stage_files",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:build_staged_name",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:upload_files",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:capture_snapshot",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:upload_files",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:find_attachment_url",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:upload_files",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:get_composer_markdown",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:upload_files",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:perform_upload",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:wait_for_comment_composer",
+      "target": "function:home/dot_agents/skills/gh-comment-attach-files/scripts/attach_comment_files.py:prepare_comment_composer",
+      "type": "calls",
       "direction": "forward",
       "weight": 0.8
     },
@@ -27200,6 +28697,13 @@
       "type": "tested_by",
       "direction": "forward",
       "weight": 0.5
+    },
+    {
+      "source": "file:scripts/run_bashcov_unit_test.rb",
+      "target": "class:scripts/run_bashcov_unit_test.rb:DotfilesBashcovRunnerFilter",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
     },
     {
       "source": "file:scripts/validate-agent-assets.py",

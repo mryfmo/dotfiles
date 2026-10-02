@@ -84,7 +84,7 @@ RESPONSES: dict[str, Any] = {
             "check_runs": [
                 {
                     "id": 1,
-                    "name": "test (ubuntu-latest, server)",
+                    "name": "test (ubuntu-24.04, server)",
                     "status": "completed",
                     "conclusion": "success",
                     "html_url": "https://x/j1",

@@ -935,11 +935,11 @@ gh api -X POST repos/mryfmo/dotfiles/rulesets --input - <<'JSON'
       "strict_required_status_checks_policy": true,
       "required_status_checks": [
         {"context": "validate"},
-        {"context": "test (ubuntu-latest, server)"},
-        {"context": "test (ubuntu-latest, client)"},
+        {"context": "test (ubuntu-24.04, server)"},
+        {"context": "test (ubuntu-24.04, client)"},
         {"context": "test (macos-14, client)"},
-        {"context": "public-bootstrap (ubuntu-latest, server)"},
-        {"context": "public-bootstrap (ubuntu-latest, client)"},
+        {"context": "public-bootstrap (ubuntu-24.04, server)"},
+        {"context": "public-bootstrap (ubuntu-24.04, client)"},
         {"context": "public-bootstrap (macos-14, client)"}]}}
   ]
 }

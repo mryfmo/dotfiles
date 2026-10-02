@@ -34,7 +34,7 @@ jobs:
       matrix:
         system: [server, client]
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       DOTFILES_DEBUG: 1
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

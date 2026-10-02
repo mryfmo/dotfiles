@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       should_test: ${{ steps.filter.outputs.should_test }}
       should_nix: ${{ steps.filter.outputs.should_nix }}
@@ -82,13 +82,20 @@ jobs:
     # does not define a macOS `server` test target.
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-14]
+        os: [ubuntu-24.04, macos-14]
         system: [client, server]
         exclude:
           - os: macos-14
             system: server
+        # Non-required canary for the next Ubuntu image: it shows how the suite
+        # fares there without blocking merges. Adopt it by changing the
+        # explicit label above once it is green.
+        include:
+          - os: ubuntu-26.04
+            system: client
 
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.os == 'ubuntu-26.04' }}
     env:
       # Export matrix values to shell scripts so existing test helpers can use
       # simple `OS`/`SYSTEM` checks without depending on GitHub expression syntax.
@@ -133,7 +140,7 @@ jobs:
             # behaviorally instead of grepping template syntax.
             brew install bash bats-core chezmoi gawk parallel shellcheck
 
-          elif [ "${OS}" == "ubuntu-latest" ]; then
+          elif [[ "${OS}" == ubuntu-* ]]; then
             # Ruby is required for bashcov/simplecov formatters. Install chezmoi
             # explicitly so template tests can verify rendered behavior.
             sudo apt-get update && sudo apt-get install -y bats curl iproute2 parallel ruby shellcheck
@@ -235,7 +242,7 @@ jobs:
             --ccusage "${ccusage_bin}"
           )
 
-          if [ "${OS}" = "ubuntu-latest" ]; then
+          if [[ "${OS}" == ubuntu-* ]]; then
             sudo unshare --net -- sh -c 'test -z "$(ip route show)"'
             sudo unshare --net -- "${smoke[@]}"
           elif [ "${OS}" = "macos-14" ]; then
@@ -272,7 +279,7 @@ jobs:
       - name: Run Python unit tests
         if: ${{ needs.changes.outputs.should_test == 'true' }}
         run: |
-          if [ "${OS}" == "ubuntu-latest" ]; then
+          if [[ "${OS}" == ubuntu-* ]]; then
             sudo apt-get update && sudo apt-get install -y jq zsh
           elif [ "${OS}" == "macos-14" ]; then
             command -v jq > /dev/null 2>&1 || brew install jq
@@ -345,14 +352,14 @@ jobs:
             ruby ./scripts/run_bashcov_unit_test.rb "${bashcov_args[@]}" -- ./scripts/run_unit_test.sh
 
       - name: Setup for Codecov
-        if: ${{ needs.changes.outputs.should_test == 'true' && matrix.os == 'ubuntu-latest' && !endsWith(github.actor, '[bot]') }}
+        if: ${{ needs.changes.outputs.should_test == 'true' && matrix.os == 'ubuntu-24.04' && !endsWith(github.actor, '[bot]') }}
         run: |
           # codecov-action uses these tools while preparing and uploading the
           # explicit Cobertura report in this repository setup.
           sudo apt-get install -y jq curl
 
       - name: Upload coverage to Codecov
-        if: ${{ needs.changes.outputs.should_test == 'true' && matrix.os == 'ubuntu-latest' && !endsWith(github.actor, '[bot]') }}
+        if: ${{ needs.changes.outputs.should_test == 'true' && matrix.os == 'ubuntu-24.04' && !endsWith(github.actor, '[bot]') }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -379,7 +386,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-14]
+        os: [ubuntu-24.04, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository

@@ -20,6 +20,9 @@ class AgmsgOrchestrationDocsParityTest(unittest.TestCase):
                 "agmsg-dispatch",
                 "exit 13" if path == RULE else "13 =",
                 "inbox.sh",
+                "ORCH_PUSH_MAIN=boundary",
+                "never pushes a repository change to `main` directly",
+                "is never an implicit opt-out",
             ):
                 with self.subTest(path=path.name, invariant=invariant):
                     self.assertIn(invariant, text)

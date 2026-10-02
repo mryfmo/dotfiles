@@ -30,7 +30,9 @@ function teardown() {
 }
 
 @test "[common] mise pin includes the Linux arm64 aqua bin-path fix" {
-    [ "${MISE_VERSION}" = "v2026.9.13" ]
+    # A floor, not a copy of the pin: v2026.9.12 is the first release with the fix (#160).
+    IFS=. read -r year month patch <<< "${MISE_VERSION#v}"
+    ((year > 2026 || (year == 2026 && (month > 9 || (month == 9 && patch >= 12)))))
 }
 
 @test "[common] run_mise_install vets exact npm tools before the seven-day batch" {

@@ -3773,7 +3773,7 @@
 
 
 <h1 id="installmacoscommonbrewsh">install/macos/common/brew.sh<a class="headerlink" href="#installmacoscommonbrewsh" title="Permanent link">&para;</a></h1>
-<p>Ensures Homebrew is installed on macOS and disables analytics for the local user.</p>
+<p>Ensures Homebrew is installed on macOS, resolves untrusted runner-image taps on CI, and disables analytics for the local user.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>install/macos/common/brew.sh</code></li>
@@ -3782,6 +3782,7 @@
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
+<li><code>handle_ci_untrusted_taps</code></li>
 <li><code>install_homebrew</code></li>
 <li><code>is_homebrew_exists</code></li>
 <li><code>main</code></li>
@@ -3793,8 +3794,8 @@
 <span class="c1"># @file install/macos/common/brew.sh</span>
 <span class="c1"># @brief Install Homebrew and apply repository defaults.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Ensures Homebrew is installed on macOS and disables analytics for the local</span>
-<span class="c1">#   user.</span>
+<span class="c1">#   Ensures Homebrew is installed on macOS, resolves untrusted runner-image taps</span>
+<span class="c1">#   on CI, and disables analytics for the local user.</span>
 
 <span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail
 
@@ -3841,10 +3842,75 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
+<span class="c1"># @description On a CI runner, resolve the third-party taps that the runner</span>
+<span class="c1">#   image ships tapped but untrusted, so `brew install` stops warning about</span>
+<span class="c1">#   them (https://docs.brew.sh/Tap-Trust). The untrusted taps come from</span>
+<span class="c1">#   Homebrew's own `brew untrust --tap` listing, and the installed items from</span>
+<span class="c1">#   `brew list --full-name`, which reads each keg's install receipt and so also</span>
+<span class="c1">#   lists items from untrusted taps. Least privilege first: trust only the</span>
+<span class="c1">#   installed formulae and casks of each untrusted tap. A tap with nothing</span>
+<span class="c1">#   installed has no item to trust; measured on macos-14 (job</span>
+<span class="c1">#   https://github.com/mryfmo/dotfiles/actions/runs/37030239884/job/110914945531),</span>
+<span class="c1">#   item-level trust alone cleared azure/bicep and hashicorp/tap but the</span>
+<span class="c1">#   warning persisted for aws/tap, so only such taps get whole-tap trust.</span>
+<span class="c1">#   Does nothing unless `CI` is exactly `true`.</span>
+<span class="c1">#</span>
+<span class="k">function</span><span class="w"> </span>handle_ci_untrusted_taps<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">CI</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"true"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>listing<span class="w"> </span>taps<span class="w"> </span>installed<span class="w"> </span>tap<span class="w"> </span>name<span class="w"> </span><span class="nv">formulae</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span><span class="nv">casks</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span><span class="nv">with_items</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span><span class="nv">whole_taps</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">listing</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>brew<span class="w"> </span>untrust<span class="w"> </span>--tap<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'brew has no tap trust (no brew untrust command); skipping untrusted tap handling\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="c1"># The listing is a header line followed by one indented tap name per line.</span>
+<span class="w">    </span><span class="nv">taps</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'s/^  //p'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">listing</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">taps</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+
+<span class="w">    </span><span class="nv">installed</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>brew<span class="w"> </span>list<span class="w"> </span>--formula<span class="w"> </span>--full-name<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span>tap<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="si">${</span><span class="nv">taps</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tap</span><span class="si">}</span><span class="s2">/"</span>*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">                </span><span class="nv">formulae</span><span class="o">+=</span><span class="s2">" </span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">                </span><span class="nv">with_items</span><span class="o">+=</span><span class="s2">" </span><span class="si">${</span><span class="nv">tap</span><span class="si">}</span><span class="s2"> "</span>
+<span class="w">            </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">done</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="nv">installed</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>brew<span class="w"> </span>list<span class="w"> </span>--cask<span class="w"> </span>--full-name<span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>name<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="si">${</span><span class="nv">installed</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span>tap<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="si">${</span><span class="nv">taps</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tap</span><span class="si">}</span><span class="s2">/"</span>*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">                </span><span class="nv">casks</span><span class="o">+=</span><span class="s2">" </span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">                </span><span class="nv">with_items</span><span class="o">+=</span><span class="s2">" </span><span class="si">${</span><span class="nv">tap</span><span class="si">}</span><span class="s2"> "</span>
+<span class="w">            </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">done</span>
+<span class="w">    </span><span class="k">done</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>tap<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="si">${</span><span class="nv">taps</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">with_items</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>*<span class="s2">" </span><span class="si">${</span><span class="nv">tap</span><span class="si">}</span><span class="s2"> "</span>*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">whole_taps</span><span class="o">+=</span><span class="s2">" </span><span class="si">${</span><span class="nv">tap</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span>
+
+<span class="w">    </span><span class="c1"># shellcheck disable=SC2086 # Space-separated names, word splitting intended.</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">formulae</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>brew<span class="w"> </span>trust<span class="w"> </span>--formula<span class="w"> </span><span class="si">${</span><span class="nv">formulae</span><span class="si">}</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="c1"># shellcheck disable=SC2086 # Space-separated names, word splitting intended.</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">casks</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>brew<span class="w"> </span>trust<span class="w"> </span>--cask<span class="w"> </span><span class="si">${</span><span class="nv">casks</span><span class="si">}</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="c1"># shellcheck disable=SC2086 # Space-separated names, word splitting intended.</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">whole_taps</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>brew<span class="w"> </span>trust<span class="w"> </span><span class="si">${</span><span class="nv">whole_taps</span><span class="si">}</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="o">}</span>
+
+<span class="c1">#</span>
 <span class="c1"># @description Install Homebrew and apply repository defaults.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>main<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span>install_homebrew
+<span class="w">    </span>handle_ci_untrusted_taps
 <span class="w">    </span>opt_out_of_analytics
 <span class="o">}</span>
 

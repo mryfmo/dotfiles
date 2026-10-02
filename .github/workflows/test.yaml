@@ -218,6 +218,17 @@ jobs:
           ccusage_bin="$(mise -C "${statusline_mise_dir}" which ccusage)"
           ccstatusline_root="$(mise -C "${statusline_mise_dir}" where npm:ccstatusline@2.2.30)"
           ccusage_root="$(mise -C "${statusline_mise_dir}" where npm:ccusage@20.0.24)"
+          # Run both tools on the node pinned in mise.lock. Without this, their
+          # `#!/usr/bin/env node` falls through the mise shim to the image's
+          # system node, which nothing has read yet: on the ubuntu-26.04 image
+          # that cold first read of /usr/local/bin/node alone took 0.6 s to over
+          # 5 s (fincore: 0 resident pages before the run), which tripped the
+          # 5-second limit (T59).
+          node_bin_dir="$(mise -C "${statusline_mise_dir}" where node)/bin"
+          case "$(PATH="${node_bin_dir}:${PATH}" command -v node)" in
+            "${node_bin_dir}/node") ;;
+            *) echo "node did not resolve from mise's pinned install" >&2; exit 1 ;;
+          esac
 
           case "${ccstatusline_bin}" in
             "${ccstatusline_root}"/*) ;;
@@ -233,7 +244,7 @@ jobs:
           smoke=(
             /usr/bin/env
             "HOME=${smoke_home}"
-            "PATH=${PATH}"
+            "PATH=${node_bin_dir}:${PATH}"
             "HTTP_PROXY=http://127.0.0.1:1"
             "HTTPS_PROXY=http://127.0.0.1:1"
             NO_PROXY=

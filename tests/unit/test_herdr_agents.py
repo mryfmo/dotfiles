@@ -1348,6 +1348,23 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             ["git", "-C", str(cwd), *args], env=self.guard_env(push_main, launcher=launcher), check=False, text=True, capture_output=True
         )
 
+    def bootstrap_guard(self) -> subprocess.CompletedProcess[str]:
+        """Bootstrap with the guard PATH first, so the stub's launcher probe sees this branch's herdr-agents."""
+        return self.run_agmsg_bootstrap_helper(
+            extra_env={"PATH": f"{self.temp_dir / 'guard-bin'}{os.pathsep}{self.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"}
+        )
+
+    def write_old_launcher(self) -> Path:
+        """Replace the guard PATH's herdr-agents with a build that predates --main-push-guard; returns its run log."""
+        ran = self.temp_dir / "old-launcher-ran.txt"
+        (self.temp_dir / "guard-bin/herdr-agents").write_text(
+            "#!/usr/bin/env bash\n"
+            'if [[ $1 == --help ]]; then printf \'Usage: herdr-agents [DIR]\\n       herdr-agents --attach\\n\'; exit 0; fi\n'
+            f'printf \'%s\\n\' "$*" >> {ran}\n'
+            "exit 1\n"
+        )
+        return ran
+
     def commit_file(self, relative: str) -> None:
         path = self.workdir / relative
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -1376,8 +1393,8 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
     def test_bootstrap_installs_a_main_push_guard_that_needs_an_override(self) -> None:
         hook = self.write_guard_repo()
 
-        first = self.run_agmsg_bootstrap_helper()
-        again = self.run_agmsg_bootstrap_helper()
+        first = self.bootstrap_guard()
+        again = self.bootstrap_guard()
         self.commit_file("README.md")
         plain = self.guard_git(self.workdir, "push", "--dry-run", "origin", "main")
         boundary = self.guard_git(self.workdir, "push", "origin", "main", push_main="boundary")
@@ -1410,7 +1427,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
     def test_main_push_guard_allows_boundary_commits_and_refuses_rewinds_and_deletes(self) -> None:
         self.write_guard_repo()
-        self.run_agmsg_bootstrap_helper()
+        self.bootstrap_guard()
 
         self.commit_file(".orchestration/acceptance/T1.md")
         boundary = self.guard_git(self.workdir, "push", "origin", "main", push_main="boundary")
@@ -1429,7 +1446,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
     def test_main_push_guard_checks_a_merge_by_its_tree_diff(self) -> None:
         self.write_guard_repo()
-        self.run_agmsg_bootstrap_helper()
+        self.bootstrap_guard()
         self.guard_git(self.workdir, "switch", "-q", "-c", "side")
         self.commit_file(".orchestration/side.md")
         self.guard_git(self.workdir, "switch", "-q", "main")
@@ -1474,30 +1491,72 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
     def test_bootstrap_keeps_an_edited_main_push_guard_stub(self) -> None:
         hook = self.write_guard_repo()
-        self.run_agmsg_bootstrap_helper()
+        self.bootstrap_guard()
         edited = hook.read_text().replace("exec ", "./my-extra-check || exit 1\nexec ", 1)
         hook.write_text(edited)
 
-        result = self.run_agmsg_bootstrap_helper()
+        result = self.bootstrap_guard()
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(hook.read_text(), edited)
         self.assertIn("differs from the main-push guard stub (edited?); leaving it unchanged", result.stderr)
 
-    def test_main_push_guard_stub_refuses_every_push_without_the_launcher(self) -> None:
+    def test_main_push_guard_stub_without_a_launcher_refuses_only_main(self) -> None:
         self.write_guard_repo()
-        self.run_agmsg_bootstrap_helper()
+        self.bootstrap_guard()
+        self.commit_file(".orchestration/a.md")
 
-        result = self.guard_git(self.workdir, "push", "--dry-run", "origin", "main:refs/heads/feature", launcher=False)
+        branch = self.guard_git(self.workdir, "push", "--dry-run", "origin", "main:refs/heads/feature", launcher=False)
+        main = self.guard_git(self.workdir, "push", "--dry-run", "origin", "main", push_main="boundary", launcher=False)
 
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("herdr-agents is not installed, so the main-push guard refuses this push", result.stderr)
+        self.assertEqual(branch.returncode, 0, branch.stderr)
+        self.assertNotEqual(main.returncode, 0)
+        self.assertIn("no herdr-agents with --main-push-guard is installed (run make update), so this push to main is refused", main.stderr)
+
+    def test_main_push_guard_stub_with_an_old_launcher_refuses_only_main(self) -> None:
+        self.write_guard_repo()
+        self.bootstrap_guard()
+        ran = self.write_old_launcher()
+        self.commit_file(".orchestration/a.md")
+
+        branch = self.guard_git(self.workdir, "push", "--dry-run", "origin", "main:refs/heads/feature")
+        main = self.guard_git(self.workdir, "push", "--dry-run", "origin", "main", push_main="boundary")
+
+        self.assertEqual(branch.returncode, 0, branch.stderr)
+        self.assertNotEqual(main.returncode, 0)
+        self.assertIn("so this push to main is refused", main.stderr)
+        # Only --help was probed: the old launcher's full mode never ran.
+        self.assertFalse(ran.exists(), ran.read_text() if ran.exists() else "")
+
+    def test_bootstrap_skips_the_guard_while_the_launcher_predates_it(self) -> None:
+        hook = self.write_guard_repo()
+        ran = self.write_old_launcher()
+
+        result = self.bootstrap_guard()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(hook.exists())
+        self.assertIn("has no --main-push-guard mode yet; not installing the main-push guard until the next make update applies it", result.stderr)
+        self.assertFalse(ran.exists())
+
+    def test_bootstrap_restores_the_execute_bit_of_the_stub(self) -> None:
+        hook = self.write_guard_repo()
+        self.bootstrap_guard()
+        stub = hook.read_text()
+        hook.chmod(0o644)
+
+        result = self.bootstrap_guard()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(hook.read_text(), stub)
+        self.assertTrue(os.access(hook, os.X_OK))
+        self.assertIn(f"restored the execute bit of the main-push guard at {hook.resolve()}", result.stderr)
 
     def test_bootstrap_leaves_a_foreign_pre_push_hook_alone(self) -> None:
         hook = self.write_guard_repo()
         hook.write_text("#!/bin/sh\nexit 0\n")
 
-        result = self.run_agmsg_bootstrap_helper()
+        result = self.bootstrap_guard()
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(hook.read_text(), "#!/bin/sh\nexit 0\n")
@@ -1506,7 +1565,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
     def test_bootstrap_installs_no_guard_without_an_orchestrator_identity(self) -> None:
         hook = self.write_guard_repo(claude_identities_output="dotfiles\tclaude-standard-dot-a001")
 
-        result = self.run_agmsg_bootstrap_helper()
+        result = self.bootstrap_guard()
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertFalse(hook.exists())

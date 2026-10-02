@@ -105,7 +105,9 @@ and starts it again in the same pane with the current worker_kind and
 worker_profile launch arguments; it never creates panes or workspaces.
 Bootstrap mode only configures missing repo-scoped agmsg hooks and, in a main
 checkout with an orchestrator agmsg identity, the pre-push stub that runs
-main-push-guard mode. That mode refuses a push updating main unless
+main-push-guard mode (installed once the herdr-agents on PATH has that mode;
+with none, the stub refuses main updates and lets other refs pass; a stub
+that lost its execute bit gets it back). That mode refuses a push updating main unless
 ORCH_PUSH_MAIN=acceptance, or ORCH_PUSH_MAIN=boundary with a tree diff from the
 remote main inside .orchestration/; deleting or rewinding main is refused.
 Audit mode runs the read-only Codex audit of <sha> in the existing pair
@@ -1613,19 +1615,25 @@ function main_push_guard() {
 #   orchestrator off `main`: a fixed stub that runs `herdr-agents
 #   --main-push-guard` (main_push_guard), so the checks update with the
 #   launcher while the hook file itself never needs rewriting. The stub finds
-#   herdr-agents on PATH, then at ~/.local/bin/common/herdr-agents, and refuses
-#   every push when neither exists. Applies only to a git main checkout with an
-#   orchestrator (non -aNNN) claude-code agmsg identity. The hook lives in the
-#   common git dir, so it also covers the repository's linked worktrees. Any
-#   other existing pre-push hook, including an edited copy of the stub, and a
-#   core.hooksPath outside the repository's git dir are left alone with a
-#   warning.
+#   herdr-agents on PATH, then at ~/.local/bin/common/herdr-agents, and execs it
+#   only when its --help advertises the mode; with no such launcher (missing,
+#   or a build older than the guard) it refuses refs/heads/main updates itself
+#   and lets every other ref pass, so a stale launcher never breaks branch
+#   pushes or runs another mode. For the same reason the stub is installed only
+#   once the launcher it would exec advertises the mode (`make upgrade`
+#   bootstraps before `make update` applies the new launcher); until then a
+#   notice names the next `make update`. Applies only to a git main checkout
+#   with an orchestrator (non -aNNN) claude-code agmsg identity. The hook lives
+#   in the common git dir, so it also covers the repository's linked worktrees.
+#   An existing stub that lost its execute bit gets it back; any other existing
+#   pre-push hook, including an edited copy of the stub, and a core.hooksPath
+#   outside the repository's git dir are left alone with a warning.
 # @arg $1 workdir Absolute repository path.
 function install_main_push_guard() {
     local workdir="$1"
     local identities="${HOME}/.agents/skills/agmsg/scripts/identities.sh"
     local marker="# herdr-agents main-push guard"
-    local common_dir hooks_dir hook body
+    local common_dir hooks_dir hook body guard
 
     [[ -x ${identities} ]] && is_main_checkout "${workdir}" || return 0
     AGMSG_RESOLVE_PROJECT=0 "${identities}" "${workdir}" claude-code 2> /dev/null |
@@ -1642,20 +1650,40 @@ function install_main_push_guard() {
 #!/usr/bin/env bash
 # herdr-agents main-push guard: written by herdr-agents --bootstrap-agmsg; the checks live in herdr-agents --main-push-guard.
 guard="$(command -v herdr-agents)" || guard="${HOME}/.local/bin/common/herdr-agents"
-if [[ ! -x ${guard} ]]; then
-    printf 'pre-push: herdr-agents is not installed, so the main-push guard refuses this push\n' >&2
-    exit 1
+if [[ -x ${guard} && "$("${guard}" --help 2> /dev/null)" == *--main-push-guard* ]]; then
+    exec "${guard}" --main-push-guard "$@"
 fi
-exec "${guard}" --main-push-guard "$@"
+# No launcher with the guard mode (missing, or older than the guard): refuse main updates only.
+status=0
+while read -r _ _ remote_ref _; do
+    if [[ ${remote_ref} == refs/heads/main ]]; then
+        printf 'pre-push: no herdr-agents with --main-push-guard is installed (run make update), so this push to main is refused\n' >&2
+        status=1
+    fi
+done
+exit "${status}"
 EOF
     )"
     if [[ -e ${hook} ]]; then
-        [[ "$(cat -- "${hook}")" != "${body}" ]] || return 0
+        if [[ "$(cat -- "${hook}")" == "${body}" ]]; then
+            # git silently skips a hook without the execute bit.
+            if [[ ! -x ${hook} ]]; then
+                chmod 755 "${hook}"
+                printf 'herdr-agents: restored the execute bit of the main-push guard at %s.\n' "${hook}" >&2
+            fi
+            return 0
+        fi
         if grep -Fq -- "${marker}" "${hook}"; then
             printf 'herdr-agents: %s differs from the main-push guard stub (edited?); leaving it unchanged. Remove it and rerun herdr-agents --bootstrap-agmsg to restore the stub.\n' "${hook}" >&2
         else
             printf 'herdr-agents: %s exists and is not the herdr-agents main-push guard; leaving it unchanged.\n' "${hook}" >&2
         fi
+        return 0
+    fi
+    guard="$(command -v herdr-agents)" || guard="${HOME}/.local/bin/common/herdr-agents"
+    # Captured, not piped: a pipefail grep -q could SIGPIPE the launcher.
+    if [[ ! -x ${guard} || "$("${guard}" --help 2> /dev/null)" != *--main-push-guard* ]]; then
+        printf 'herdr-agents: the installed launcher (%s) has no --main-push-guard mode yet; not installing the main-push guard until the next make update applies it.\n' "${guard}" >&2
         return 0
     fi
     mkdir -p "${hooks_dir}"

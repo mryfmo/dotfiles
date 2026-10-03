@@ -1,0 +1,361 @@
+{
+  "repo": "mryfmo/dotfiles",
+  "pr": 231,
+  "head_sha": "65f54c4629a500a6f1a8a0ba94d2992e3c055b1c",
+  "base_ref": "main",
+  "base_sha": "0a812d30ab76de97ea41ed2678ff57d9fde81585",
+  "generated_at": "2026-10-03T02:06:16+00:00",
+  "checks": [
+    {
+      "name": "nix",
+      "conclusion": "skipped",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37087943521/job/111102019233"
+    },
+    {
+      "name": "test (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37087943521/job/111102018703"
+    },
+    {
+      "name": "test (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37087943521/job/111102018680"
+    },
+    {
+      "name": "test (ubuntu-26.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37087943521/job/111102018655"
+    },
+    {
+      "name": "test (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37087943521/job/111102018641"
+    },
+    {
+      "name": "private-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37087943519/job/111101993981"
+    },
+    {
+      "name": "public-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37087943519/job/111101993957"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37087943519/job/111101993945"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37087943519/job/111101993942"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37087943519/job/111101993920"
+    },
+    {
+      "name": "changes",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37087943521/job/111101993805"
+    },
+    {
+      "name": "validate",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37087943555/job/111101993781"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37087943519/job/111101993776"
+    }
+  ],
+  "items": [
+    {
+      "source": "issue_comment",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary>⚙️ Run configuration</summary>\n> \n> - **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> - **Review profile**: CHILL\n> - **Plan**: Advanced\n> - **Run ID**: `febf1820-523f-4a0a-acdf-246376b6ce68`\n> \n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autopilot</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n---\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=231)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary>❤️ Share</summary>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/231#issuecomment-5963515504",
+      "disposition": "not-applicable:CodeRabbit auto-generated \"review skipped\" notice; automatic reviews are disabled by operator decision"
+    },
+    {
+      "source": "issue_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-security-review:v1 {\"blockingSeverityThreshold\":\"P0\",\"headSha\":\"560df81b3060a2d888fa4a102e7990536a008856\",\"mergeGateEnabled\":false,\"pullRequestNumber\":231,\"repository\":\"mryfmo/dotfiles\",\"status\":\"completed\"} -->\n## Codex Review Summary\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| 📝 **Code Review** | ✅ **Completed** <relative-time datetime=\"2026-10-03T00:25:33.509164Z\">2026-10-03T00:25:33.509164Z</relative-time> | `560df81` | PR opened |\n| 🔒 **Security Review** | ✅ **Completed** <relative-time datetime=\"2026-10-03T00:20:45.077806Z\">2026-10-03T00:20:45.077806Z</relative-time> | `560df81` | PR opened |\n\n\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.\n\n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/231#issuecomment-5963516312",
+      "disposition": "not-applicable:Codex review-activity summary comment (code review and security review completed, no blocking finding); findings are the inline threads"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `560df81b30`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nCodex can also answer questions or update the PR. Try commenting \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/231#pullrequestreview-5398107210",
+      "commit": "560df81b3060a2d888fa4a102e7990536a008856",
+      "disposition": "not-applicable:Codex review summary container; each inline finding is dispositioned on its own thread item"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `4445917b9a`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/231#pullrequestreview-5398153638",
+      "commit": "4445917b9a54f417963497b0149e44ccc124908e",
+      "disposition": "not-applicable:Codex review summary container; each inline finding is dispositioned on its own thread item"
+    },
+    {
+      "source": "review",
+      "author": "mryfmo",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/231#pullrequestreview-5398235243",
+      "commit": "8259cf5c6870d95a7dbb6719640c0485a15ccc6e",
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance through the local gh session; it carries no new finding"
+    },
+    {
+      "source": "review",
+      "author": "mryfmo",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/231#pullrequestreview-5398235355",
+      "commit": "8259cf5c6870d95a7dbb6719640c0485a15ccc6e",
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance through the local gh session; it carries no new finding"
+    },
+    {
+      "source": "review",
+      "author": "mryfmo",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/231#pullrequestreview-5398235467",
+      "commit": "8259cf5c6870d95a7dbb6719640c0485a15ccc6e",
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance through the local gh session; it carries no new finding"
+    },
+    {
+      "source": "review",
+      "author": "mryfmo",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/231#pullrequestreview-5398235565",
+      "commit": "8259cf5c6870d95a7dbb6719640c0485a15ccc6e",
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance through the local gh session; it carries no new finding"
+    },
+    {
+      "source": "review",
+      "author": "mryfmo",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/231#pullrequestreview-5398235679",
+      "commit": "8259cf5c6870d95a7dbb6719640c0485a15ccc6e",
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance through the local gh session; it carries no new finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1572,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Preserve customized copies of the retired hook**\n\nWhen a user has augmented the previously generated hook while retaining its marker on line 2, this condition treats it as the untouched stub and permanently deletes the user's additional pre-push checks. The former installer explicitly detected such edited copies and left them unchanged, so cleanup should remove only an exact known stub (or otherwise preserve/migrate customized content), rather than identifying ownership from one line.\n\nAGENTS.md reference: [AGENTS.md:L78-L78](https://github.com/mryfmo/dotfiles/blob/560df81b3060a2d888fa4a102e7990536a008856/AGENTS.md#L78-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/231#discussion_r4170898640",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:4445917b"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1570,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Resolve the configured hooks directory before cleanup**\n\nIn a checkout whose repository-local `core.hooksPath` points inside the common Git directory, the former installer placed the stub in that configured directory by using `git rev-parse --git-path hooks`, but this cleanup hard-codes `<git-common-dir>/hooks` and therefore leaves the retired stub active. Git documents that [`core.hooksPath` changes where hooks are found](https://git-scm.com/docs/git-config#Documentation/git-config.txt-corehooksPath); resolve the hook path the same way the installer did so these supported checkouts do not retain a hook whose removed launcher mode makes main pushes fail.\n\nAGENTS.md reference: [AGENTS.md:L78-L78](https://github.com/mryfmo/dotfiles/blob/560df81b3060a2d888fa4a102e7990536a008856/AGENTS.md#L78-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/231#discussion_r4170898642",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:4445917b"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1579,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Preserve hooks outside Git's common directory**\n\nWhen `core.hooksPath` points outside the repository's common Git directory, this resolves that external path and deletes an exact-match hook. The former installer explicitly refused to install there, so such a hook was never owned by `herdr-agents` and may be a centrally managed/shared hook that happens to use the retired body. Limit cleanup to locations the old installer could have written, while retaining configured paths that are inside the common directory.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/231#discussion_r4170939094",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "fixed:8259cf5c"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_agents/skills/agmsg-orchestration/SKILL.md",
+      "line": 60,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Use a fresh branch for every boundary**\n\nAfter the first same-day boundary PR is squash-merged, the retained `orchestration/boundary-<YYYY-MM-DD>` branch no longer contains the squash commit on `main`; creating it again fails, while reusing it leaves it out of date under the newly strict status-check policy. `gh pr merge --auto` only waits for requirements and does not update the head branch, so the next boundary PR will remain blocked unless the operator manually resets/rebases it. Use a unique branch name per boundary or prescribe refreshing the retained branch before creating the PR. [GitHub CLI manual](https://cli.github.com/manual/gh_pr_merge), [GitHub strict-check guidance](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks).\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/231#discussion_r4170939099",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:8259cf5c"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1596,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Scope guard retirement to repositories with the ruleset**\n\nWhen `--bootstrap-agmsg` runs in any other main checkout that previously received this stub, it performs the removal without verifying that repository has equivalent server-side protection. The ruleset documented here is explicitly for `mryfmo/dotfiles` (`README.md:919`), while this helper supports arbitrary `DIR` values; such a checkout therefore loses its only automatic check against agent pushes to `main` but receives the same PR-only directive. Restrict this retirement and directive to dotfiles, or retain the guard until target-specific server protection is verified.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/231#discussion_r4170939105",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the operator retired the guard mode itself (ruleset is the sole boundary for main); a per-repository retention is impossible and a leftover stub without the mode would refuse every push to main; other repositories are a separate operator policy"
+    },
+    {
+      "source": "review_comment",
+      "author": "mryfmo",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1572,
+      "body": "Disposition (orchestrator acceptance): fixed in 4445917b. The cleanup removes a hook only when its content is exactly the retired stub (git blob af94a0b5); an edited copy that kept the header is left unchanged with a notice.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/231#discussion_r4171014135",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance through the local gh session; it carries no new finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "mryfmo",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1570,
+      "body": "Disposition (orchestrator acceptance): fixed in 4445917b. The hook path is resolved with `git rev-parse --git-path hooks`, as the installer did, so a repository-local core.hooksPath inside the common git dir is honoured.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/231#discussion_r4171014240",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance through the local gh session; it carries no new finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "mryfmo",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1579,
+      "body": "Disposition (orchestrator acceptance): fixed in 8259cf5c. Removal is bounded to hooks inside the common git dir, the only place the installer ever wrote; a hook under an external core.hooksPath is left alone (subtest added).",
+      "url": "https://github.com/mryfmo/dotfiles/pull/231#discussion_r4171014354",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance through the local gh session; it carries no new finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "mryfmo",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_agents/skills/agmsg-orchestration/SKILL.md",
+      "line": 60,
+      "body": "Disposition (orchestrator acceptance): fixed in 8259cf5c. The rule and SKILL now prescribe a fresh branch from origin/main per boundary (date-suffixed, -2/-3 for the same day) merged with `gh pr merge --squash --auto`.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/231#discussion_r4171014452",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance through the local gh session; it carries no new finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "mryfmo",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_local/bin/common/executable_herdr-agents",
+      "line": 1596,
+      "body": "Disposition (orchestrator acceptance): not applicable. The operator retired the guard mode itself (target-state decision 2026-10-03: the GitHub ruleset is the sole boundary for main), so it cannot be retained per repository; a leftover stub without the mode would refuse every push to main, which is worse than no client hook. Server-side protection for any other regime repository is a separate per-repository operator decision, not a launcher feature.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/231#discussion_r4171014609",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance through the local gh session; it carries no new finding"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37087943521/job/111102018680",
+      "check": "test (macos-14, client)",
+      "disposition": "not-applicable:GitHub-hosted macOS arm64 capacity notice emitted by the runner service; informational, not caused by or fixable in this repository"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37087943519/job/111101993981",
+      "check": "private-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub-hosted macOS arm64 capacity notice emitted by the runner service; informational, not caused by or fixable in this repository"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37087943519/job/111101993957",
+      "check": "public-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub-hosted macOS arm64 capacity notice emitted by the runner service; informational, not caused by or fixable in this repository"
+    },
+    {
+      "source": "status",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "success",
+      "path": null,
+      "line": null,
+      "body": "CodeRabbit: Review skipped: automatic reviews are disabled",
+      "url": null,
+      "check": "CodeRabbit",
+      "disposition": "not-applicable:CodeRabbit commit status \"review skipped\" reflects the operator decision to keep automatic reviews disabled; status is success"
+    }
+  ]
+}

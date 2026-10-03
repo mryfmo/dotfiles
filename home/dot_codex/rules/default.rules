@@ -59,6 +59,40 @@ prefix_rule(
     not_match=["rm -f build"],
 )
 
+# Separate -v before or between the recursive and force flags; a trailing -v
+# already matches the two-flag rules above.
+prefix_rule(
+    pattern=["rm", ["-v", "--verbose"], ["-r", "-R", "--recursive"], ["-f", "--force"]],
+    decision="forbidden",
+    justification="Recursive force removal is never delegated; remove specific paths instead.",
+    match=["rm -v -r -f build"],
+    not_match=["rm -v -r build"],
+)
+
+prefix_rule(
+    pattern=["rm", ["-v", "--verbose"], ["-f", "--force"], ["-r", "-R", "--recursive"]],
+    decision="forbidden",
+    justification="Recursive force removal is never delegated; remove specific paths instead.",
+    match=["rm -v -f -r build"],
+    not_match=["rm -v -r build"],
+)
+
+prefix_rule(
+    pattern=["rm", ["-r", "-R", "--recursive"], ["-v", "--verbose"], ["-f", "--force"]],
+    decision="forbidden",
+    justification="Recursive force removal is never delegated; remove specific paths instead.",
+    match=["rm -r -v -f build"],
+    not_match=["rm -v -r build"],
+)
+
+prefix_rule(
+    pattern=["rm", ["-f", "--force"], ["-v", "--verbose"], ["-r", "-R", "--recursive"]],
+    decision="forbidden",
+    justification="Recursive force removal is never delegated; remove specific paths instead.",
+    match=["rm -f -v -r build"],
+    not_match=["rm -v -r build"],
+)
+
 prefix_rule(
     pattern=["gh", "pr", "merge"],
     decision="forbidden",
@@ -100,10 +134,10 @@ prefix_rule(
 )
 
 prefix_rule(
-    pattern=["chezmoi", "init", ["--apply", "--apply=true", "-a"]],
+    pattern=["chezmoi", "init", ["--apply", "--apply=true", "-a", "--one-shot"]],
     decision="forbidden",
     justification="chezmoi init --apply applies the source state (operator lifecycle); use chezmoi diff to preview.",
-    match=["chezmoi init --apply --verbose", "chezmoi init --apply=true", "chezmoi init -a"],
+    match=["chezmoi init --apply --verbose", "chezmoi init --apply=true", "chezmoi init -a", "chezmoi init --one-shot mryfmo"],
     not_match=["chezmoi init --data=false"],
 )
 

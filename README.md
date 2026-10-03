@@ -626,7 +626,7 @@ path), `rm -rf` and
 `rm -fr` (also split as `rm -r -f`), `gh pr merge` (merging is the
 orchestrator's acceptance step), `gh release`, `npm publish`, `uv publish`,
 `terraform apply`, `kubectl apply`, `chezmoi apply`, `chezmoi init --apply`
-(also `-a` and `--apply=true`),
+(also `-a`, `--apply=true` and `--one-shot`),
 and the make targets that
 run it or reset chezmoi state (`make setup`, `init`, `update`, `apply`, `upgrade`, `watch`,
 `reset`, `reset-config`). A forbidden match is a refusal under every approval

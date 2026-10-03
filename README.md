@@ -600,7 +600,7 @@ A codex worker in a linked worktree also gets that worktree's git metadata as
 writable roots. Its index, `HEAD` and refs live under the main checkout's git
 common dir (`git rev-parse --git-common-dir`), outside the `workspace-write`
 root, so without them every `git add`, `commit`, `fetch` or `rebase` fails
-with `Read-only file system` and needs an escalation. `herdr-agents` passes
+with `Read-only file system`. `herdr-agents` passes
 `-c sandbox_workspace_write.writable_roots=[...]` to the pair worker and the
 same `--config` entry in the `--add-worker` spawn options file. The list starts
 with the roots configured in `~/.codex/config.toml` (the agmsg store), because
@@ -612,12 +612,25 @@ prints a stderr line and passes no override, so the worker keeps its configured
 roots. The common dir itself and its `config`, `hooks`, `info`, `HEAD` and
 `packed-refs` stay read-only (a rebase still succeeds; git only logs that it
 cannot lock `packed-refs`). In a shallow clone, `<common>/shallow` is not
-granted either, so `git fetch --deepen` or `--unshallow` still needs an
-operator-approved escalation; `herdr-agents` says so on stderr. Finally,
-`approval_policy`, `sandbox_mode` and `network_access` are unchanged, so a
-`git fetch` or `git push` to GitHub still needs the network the sandbox denies.
-A worker never asks another agent to approve an escalation: Codex escalation
-prompts are answered only by the human operator.
+granted either, so `git fetch --deepen` or `--unshallow` still fails;
+`herdr-agents` says so on stderr.
+
+The codex worker seat (the pair pane and the `--add-worker` spawn options
+alike) runs with `--ask-for-approval never` and
+`-c sandbox_workspace_write.network_access=true`, so it never prompts and
+reaches the network, GitHub included, inside the sandbox: `git fetch`,
+`git push` and `gh` work without an escalation. There is no escalation prompt
+for a worker. A write outside the writable roots, or a command that the
+execpolicy below forbids, fails back to the model, and the worker reports
+`AGMSG-PONG v1 status=blocked` with the exact command. The trade-off: the
+`sandbox_workspace_write.network_access` switch is a boolean, so the worker
+reaches any host; unlike Claude Code's `sandbox.network.allowedDomains`, no
+domain allowlist is configured (Codex's network proxy domain policy is not used
+here). Under `never`
+Codex raises no approval request, so the `permgate` PermissionRequest hook
+never fires for the worker seat; it stays live for interactive Codex sessions,
+which keep the base config (`approval_policy = "on-request"`,
+`network_access = false`).
 
 The Codex execpolicy forbidden set is managed by this repository:
 `home/dot_codex/rules/default.rules` becomes `~/.codex/rules/default.rules`

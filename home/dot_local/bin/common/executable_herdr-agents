@@ -27,6 +27,9 @@
 #   line. agmsg bootstrap also removes the pre-push stub that earlier versions
 #   wrote for the retired main-push guard; the GitHub ruleset on `main` is the
 #   boundary.
+#   A codex worker (pair pane or --add-worker seat) is launched with
+#   `--ask-for-approval never` and `sandbox_workspace_write.network_access=true`,
+#   so it never prompts and out-of-sandbox actions fail instead of escalating.
 #   The orchestrator pane starts Claude with the
 #   `MODEL_PROFILE_<NAME>_CLAUDE_ARGS` of the profile that
 #   MODEL_PROFILE_INTERACTIVE names in ~/.agents/model-profiles.env.
@@ -90,7 +93,12 @@ Claude Code, and the worker's own CLI (codex, or claude when
 HERDR_AGENTS_WORKER_KIND=claude) are required. DIR defaults to the current
 directory. HERDR_AGENTS_WORKER_KIND selects the worker pane's agent kind
 (codex or claude); it defaults to worker_kind from ~/.agents/model-profiles.env,
-then codex.
+then codex. A codex worker runs with --sandbox workspace-write,
+--ask-for-approval never and sandbox_workspace_write.network_access=true: it
+never prompts, it reaches the network (GitHub included) inside the sandbox, and
+a write outside its writable roots or a command the execpolicy forbids fails
+and is reported as a blocked PONG. Interactive codex sessions keep the base
+config (on-request approvals, no sandbox network).
 Full mode heals an existing managed workspace for DIR instead of creating a
 second one, and exits 2 when more than one managed workspace exists.
 Attach mode uses the current Herdr pane for Claude. Outside a Herdr pane it
@@ -307,12 +315,13 @@ function ensure_worker_delivery() {
 # @description Print the Codex `-c` override that makes a linked worktree's git
 #   metadata writable for a codex worker. A worktree's index, HEAD and objects
 #   live under the main checkout's git common dir, outside the workspace-write
-#   root, so every git add/commit/fetch/rebase would otherwise need an
-#   operator-approved escalation. Granted: <common>/objects, <common>/refs,
-#   <common>/logs and the worktree's own <common>/worktrees/<name>; the common
+#   root, so every git add/commit/fetch/rebase would otherwise fail (the worker
+#   runs with --ask-for-approval never, so nothing escalates). Granted:
+#   <common>/objects, <common>/refs, <common>/logs and the worktree's own
+#   <common>/worktrees/<name>; the common
 #   dir itself, config, hooks, info, HEAD, packed-refs and, in a shallow
-#   clone, shallow (so git fetch --deepen/--unshallow still needs an
-#   escalation, reported on stderr) stay read-only.
+#   clone, shallow (so git fetch --deepen/--unshallow still fails, reported on
+#   stderr) stay read-only.
 #   `-c` replaces the array, so the roots configured in
 #   ${CODEX_HOME:-~/.codex}/config.toml (the agmsg store) are kept in front.
 #   The file is parsed with python3's tomllib (3.11+). The grant fails closed:
@@ -357,15 +366,16 @@ PY
         return 0
     fi
     if [[ "$(git -C "${worktree}" rev-parse --is-shallow-repository 2> /dev/null)" == true ]]; then
-        printf 'herdr-agents: %s is a shallow clone; its shallow metadata (%s/shallow) is not granted, so git fetch --deepen or --unshallow in the codex worker needs an operator-approved escalation.\n' "${worktree}" "${common}" >&2
+        printf 'herdr-agents: %s is a shallow clone; its shallow metadata (%s/shallow) is not granted, so git fetch --deepen or --unshallow in the codex worker fails.\n' "${worktree}" "${common}" >&2
     fi
 }
 
 # @description Print the agmsg spawn options YAML that carries a worker
 #   profile's launch arguments (spawn.sh splices the type section into the boot
 #   command): MODEL_PROFILE_<NAME>_CLAUDE_ARGS for claude, and `--profile <name>
-#   --sandbox workspace-write` for codex, as start_worker_agent passes the
-#   profile, plus the worktree's git metadata roots (`--config`, see
+#   --sandbox workspace-write --ask-for-approval never --config
+#   sandbox_workspace_write.network_access=true` for codex, as start_worker_agent
+#   passes them, plus the worktree's git metadata roots (`--config`, see
 #   codex_worktree_writable_roots) for a codex worker when a worktree is given.
 #   HERDR_AGENTS_CLAUDE_WORKER_ARGS (free-form pair-worker extras) is not
 #   carried.
@@ -388,7 +398,7 @@ function write_spawn_options() {
         printf 'herdr-agents: model profile %q is not defined (%s is unset in ~/.agents/model-profiles.env).\n' "${HERDR_AGENTS_WORKER_PROFILE}" "${profile_env_key}" >&2
         exit 2
     fi
-    [[ ${kind} == claude ]] || args="--profile ${HERDR_AGENTS_WORKER_PROFILE} --sandbox workspace-write"
+    [[ ${kind} == claude ]] || args="--profile ${HERDR_AGENTS_WORKER_PROFILE} --sandbox workspace-write --ask-for-approval never --config sandbox_workspace_write.network_access=true"
     [[ -z ${args} ]] || read -r -a words <<< "${args}"
     if ((${#words[@]} % 2)); then
         printf 'herdr-agents: worker profile args are not --flag value pairs: %s\n' "${args}" >&2
@@ -1150,7 +1160,7 @@ function start_worker_agent() {
         start_agent_in_pane claude "${agent_name}" "${pane_id}" "${newly_created}" ${worker_args[@]+"${worker_args[@]}"} > /dev/null
         accept_claude_workspace_trust_dialog "${pane_id}" || true
     else
-        worker_args=(--sandbox workspace-write --profile "${HERDR_AGENTS_WORKER_PROFILE:-standard}")
+        worker_args=(--sandbox workspace-write --profile "${HERDR_AGENTS_WORKER_PROFILE:-standard}" --ask-for-approval never -c sandbox_workspace_write.network_access=true)
         roots="$(codex_worktree_writable_roots "${worker_seat_dir:-}")"
         [[ -z ${roots} ]] || worker_args+=(-c "${roots}")
         start_agent_in_pane codex "${agent_name}" "${pane_id}" "${newly_created}" "${worker_args[@]}" > /dev/null

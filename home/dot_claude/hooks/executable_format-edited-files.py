@@ -45,7 +45,14 @@ def run_commands(commands: list[list[str]], files: list[Path]) -> int:
         return status
     file_args = [str(path) for path in files]
     for command in commands:
-        result = subprocess.run(command + file_args, check=False)
+        try:
+            result = subprocess.run(command + file_args, check=False)
+        except FileNotFoundError:
+            # make update installs only some mise tools; a full install provides
+            # the pinned formatters (ruff, npm:prettier in the mise config).
+            print(f"{command[0]} is not installed; run `mise install --locked`", file=sys.stderr)
+            status = max(status, 1)
+            continue
         status = max(status, result.returncode)
     return status
 

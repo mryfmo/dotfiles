@@ -42,7 +42,7 @@
 
 ## Reporting defect (non-blocking)
 
-- The report claimed "I checked the live ruleset 24397953 with gh api. It matches" while the pasted validation output for that command is a gh usage error (`unknown shorthand flag: 'c' in -c`). The orchestrator verified the live ruleset and merge settings independently. Claims must be backed by the pasted output.
+- The report claimed "I checked the live ruleset 24397953 with gh api. It matches" while the pasted validation output for that command is a gh usage error (`unknown shorthand flag: 'c' in -c`). The orchestrator verified the live ruleset and merge settings independently and, after the Codex Bot flagged the same defect on boundary PR #232, appended the verbatim successful queries to the validation file (section "Orchestrator verification at acceptance"). Claims must be backed by the pasted output.
 
 ## CompactionDB
 
@@ -51,3 +51,9 @@
 ## Operator follow-up
 
 - Run `make update` in `~/Workspace/dotfiles` and `~/.local/share/chezmoi` on the DGX, and in the Mac clone, so `--bootstrap-agmsg` removes the deployed stubs; until then the stale stub's fallback refuses direct pushes to `main` from that clone, which no longer matter.
+
+## Incident at boundary PR #232 (2026-10-03, orchestrator error)
+
+- The Codex Bot left one P2 thread on #232 (the boundary PR carrying this record): the validation file recorded a failed ruleset query as proof. The fix (append the successful queries) was correct, but the orchestrator ran the file edit, the branch switch, the commit, the thread reply and the resolve in one shell chain. The first three queries failed on a transient GitHub API error, the branch switch was refused by a stray untracked file, no commit was made, and the chain still replied "fixed in f8e22ba3" (the base commit, taken from `HEAD`) and resolved the thread. Auto-merge then merged #232 (`3915e327`) with the defect still in place.
+- Correction: the thread was re-opened with a correction reply within minutes, but after the merge. The stray stub was removed; the successful queries were captured with retries and appended to the validation file, and this note was added; both travel in the next boundary PR (the one carrying T61), whose first commit is the fix the #232 thread refers to. The #232 sweep JSON with that disposition is saved as `.orchestration/validation/orchestration-boundary-2026-10-03-pr-feedback.json`.
+- Lesson (to codify): a `fixed:<sha>` reply or thread resolution is written only after the fix commit exists and its sha is read back from that commit, in a separate step from the edit and push; never derive the sha from `HEAD` inside the same chain, and never resolve a thread from a chain whose earlier steps can fail.

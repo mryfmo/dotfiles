@@ -1575,7 +1575,7 @@ function remove_retired_pre_push_stub() {
     # The installer never wrote outside the common git dir (a core.hooksPath
     # elsewhere was left alone), so a hook there is not ours to remove.
     [[ ${hook} == "${common_dir}"/* && -f ${hook} ]] || return 0
-    if [[ "$(git -C "${workdir}" hash-object -- "${hook}")" == "${stub_blob}" ]]; then
+    if [[ "$(git -C "${workdir}" hash-object --no-filters -- "${hook}")" == "${stub_blob}" ]]; then
         rm -f -- "${hook}" "${common_dir}/orch-push-main.log"
         printf 'herdr-agents: removed the retired main-push guard stub at %s; the GitHub ruleset on main is the boundary.\n' "${hook}" >&2
     elif [[ "$(sed -n 2p "${hook}")" == "# herdr-agents main-push guard:"* ]]; then

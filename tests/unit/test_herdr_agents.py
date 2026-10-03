@@ -1383,18 +1383,23 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             ("foreign", "#!/bin/sh\nexit 0\n", False, None),
             ("edited stub", edited, True, None),
             ("exact stub outside the common git dir", self.RETIRED_STUB, False, "shared-hooks"),
+            # Under `* text` the clean filter normalizes CRLF, so only a raw-byte
+            # hash (--no-filters) tells this copy from the stub.
+            ("CRLF stub under a text .gitattributes", self.RETIRED_STUB.replace("\n", "\r\n"), True, None),
         ):
             with self.subTest(hook=name):
                 shutil.rmtree(self.workdir / ".git", ignore_errors=True)
+                if "gitattributes" in name:
+                    (self.workdir / ".gitattributes").write_text("* text\n")
                 hook = self.init_git_workdir(hooks_path)
-                hook.write_text(content)
+                hook.write_bytes(content.encode())
                 log = self.workdir / ".git/orch-push-main.log"
                 log.write_text("kept\n")
 
                 result = self.run_agmsg_bootstrap_helper()
 
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                self.assertEqual(hook.read_text(), content)
+                self.assertEqual(hook.read_bytes(), content.encode())
                 self.assertEqual(log.read_text(), "kept\n")
                 self.assertNotIn("removed the retired main-push guard stub", result.stderr)
                 self.assertEqual(

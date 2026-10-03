@@ -284,8 +284,10 @@ jobs:
           # ruff and prettier are pinned in home/dot_mise/config.toml and mise.lock.
           # mise -C resolves those pins and changes directory, so each check
           # returns to the repository, where ruff.toml and .prettierignore apply.
+          # --config makes the root ruff.toml govern every file, so its
+          # exclusions also cover vendor/compactiondb, which has its own pyproject.
           mise -C "${RUNNER_TEMP}/statusline-mise" x ruff -- \
-            sh -c 'cd "${GITHUB_WORKSPACE}" && git ls-files -z "*.py" | xargs -0 ruff format --check'
+            sh -c 'cd "${GITHUB_WORKSPACE}" && git ls-files -z "*.py" | xargs -0 ruff format --config ruff.toml --check'
           mise -C "${RUNNER_TEMP}/statusline-mise" x node npm:prettier -- \
             sh -c 'cd "${GITHUB_WORKSPACE}" && git ls-files -z "*.md" | xargs -0 prettier --check'
 

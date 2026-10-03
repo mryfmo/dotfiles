@@ -1,0 +1,8 @@
+# Vendored and agent-record paths stay byte-identical (task files are hashed into task_rev).
+vendor/
+.ua/
+.orchestration/
+reviews/
+.agents/
+.claude/
+references/

@@ -916,6 +916,23 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         with self.assertRaises(SystemExit):
             self.module.model_profiles(missing_express)
 
+    def test_claude_settings_render_the_format_hook_from_its_path(self) -> None:
+        settings = self.module.json.loads(self.module.render_claude_settings(sample_manifest()))
+        self.assertEqual(
+            settings["hooks"]["PostToolUse"],
+            [
+                {
+                    "matcher": "Write|Edit|MultiEdit",
+                    "hooks": [{"type": "command", "command": "~/.claude/hooks/format-edited-files.py"}],
+                }
+            ],
+        )
+
+        manifest = sample_manifest()
+        del manifest["claude"]["hooks"]["format_edited_files_hook"]
+        settings = self.module.json.loads(self.module.render_claude_settings(manifest))
+        self.assertEqual(settings["hooks"]["PostToolUse"], [{"matcher": "Write|Edit|MultiEdit", "hooks": []}])
+
     def test_claude_settings_renders_session_start_hooks(self) -> None:
         manifest = sample_manifest()
         manifest["claude"]["hooks"]["session_start"] = [

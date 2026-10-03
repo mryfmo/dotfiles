@@ -426,7 +426,7 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
     claude = manifest["claude"]
     hooks = claude.get("hooks", {})
     post_hooks: list[dict[str, str]] = []
-    if hooks.get("python_post_edit") or hooks.get("markdown_post_edit"):
+    if hooks.get("format_edited_files_hook"):
         post_hooks.append(
             {
                 "type": "command",

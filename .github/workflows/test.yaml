@@ -207,6 +207,8 @@ jobs:
           mise -C "${RUNNER_TEMP}/statusline-mise" install --locked \
             npm:ccstatusline@2.2.30 \
             npm:ccusage@20.0.24
+          # The formatter versions come from the same exact config (no literal here).
+          mise -C "${RUNNER_TEMP}/statusline-mise" install --locked ruff npm:prettier
 
       - name: Smoke-test statusline tools without network
         if: ${{ needs.changes.outputs.should_test == 'true' }}
@@ -275,6 +277,17 @@ jobs:
           # shfmt is version-pinned via mise: brew/apt ship divergent versions
           # (3.14 changed heredoc-in-if formatting) and unpinned runners disagree.
           git ls-files -- ':(glob)install/**/*.sh' ':(glob)scripts/**/*.sh' | xargs mise x shfmt@3.14.1 -- shfmt -i 4 -sr -d
+
+      - name: Check Python and Markdown formatting
+        if: ${{ needs.changes.outputs.should_test == 'true' }}
+        run: |
+          # ruff and prettier are pinned in home/dot_mise/config.toml and mise.lock.
+          # mise -C resolves those pins and changes directory, so each check
+          # returns to the repository, where ruff.toml and .prettierignore apply.
+          mise -C "${RUNNER_TEMP}/statusline-mise" x ruff -- \
+            sh -c 'cd "${GITHUB_WORKSPACE}" && git ls-files -z "*.py" | xargs -0 ruff format --check'
+          mise -C "${RUNNER_TEMP}/statusline-mise" x node npm:prettier -- \
+            sh -c 'cd "${GITHUB_WORKSPACE}" && git ls-files -z "*.md" | xargs -0 prettier --check'
 
       - name: Run `ShellCheck`
         if: ${{ needs.changes.outputs.should_test == 'true' }}

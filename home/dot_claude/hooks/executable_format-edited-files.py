@@ -2,8 +2,10 @@
 """Format files reported by Claude Code hook JSON input.
 
 The hook reads the complete JSON event from stdin, extracts every edited file path
-from common Write/Edit/MultiEdit payload shapes, filters by suffix, and invokes
-configured format/check commands without going through a shell.
+from common Write/Edit/MultiEdit payload shapes, filters by suffix, and runs the
+formatter for that suffix without going through a shell. ruff and prettier come
+from PATH: their versions are pinned in the mise config, and ruff.toml and
+.prettierignore keep vendored and record paths untouched.
 """
 
 from __future__ import annotations
@@ -16,12 +18,10 @@ from pathlib import Path
 from typing import Any
 
 PYTHON_COMMANDS = [
-    ["uvx", "ruff", "format"],
-    ["uvx", "ruff", "check", "--fix"],
-    ["uvx", "ty", "check"],
+    ["ruff", "format"],
 ]
 MARKDOWN_COMMANDS = [
-    ["npx", "prettier@2", "--write"],
+    ["prettier", "--write"],
 ]
 
 

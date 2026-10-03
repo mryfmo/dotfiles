@@ -8,6 +8,11 @@ ROOT = Path(__file__).resolve().parents[2]
 RULES = ROOT / "home/dot_codex/rules/default.rules"
 REQUIRED_PREFIXES = {
     ("sudo",),
+    ("/usr/bin/sudo",),
+    ("rm", "-rfv"),
+    ("rm", "-vrf"),
+    ("chezmoi", "init", "--apply"),
+    ("make", "init"),
     ("rm", "-rf"),
     ("rm", "-fr"),
     ("rm", "-r", "-f"),

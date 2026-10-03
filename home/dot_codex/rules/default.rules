@@ -18,18 +18,19 @@
 # pipelines.
 
 prefix_rule(
-    pattern=["sudo"],
+    pattern=[["sudo", "/usr/bin/sudo", "/bin/sudo", "/usr/local/bin/sudo", "/run/wrappers/bin/sudo"]],
     decision="forbidden",
     justification="Agents never escalate privileges; ask the operator to run it.",
-    match=["sudo apt-get install jq"],
+    match=["sudo apt-get install jq", "/usr/bin/sudo -v", "/run/wrappers/bin/sudo true"],
     not_match=["sudoku"],
 )
 
 prefix_rule(
-    pattern=["rm", ["-rf", "-fr", "-Rf", "-fR"]],
+    # Every ordering of the recursive and force flags, alone or with -v.
+    pattern=["rm", ["-rf", "-fr", "-rfv", "-rvf", "-frv", "-fvr", "-vrf", "-vfr", "-Rf", "-fR", "-Rfv", "-Rvf", "-fRv", "-fvR", "-vRf", "-vfR"]],
     decision="forbidden",
     justification="Recursive force removal is never delegated; remove specific paths instead.",
-    match=["rm -rf build", "rm -fr build", "rm -Rf build", "rm -fR build"],
+    match=["rm -rf build", "rm -fr build", "rm -Rf build", "rm -fR build", "rm -rfv build", "rm -vrf build"],
     not_match=["rm build/file.txt", "rm -r build"],
 )
 
@@ -90,9 +91,17 @@ prefix_rule(
 )
 
 prefix_rule(
-    pattern=["make", ["update", "apply", "upgrade", "watch", "reset", "reset-config"]],
+    pattern=["chezmoi", "init", "--apply"],
+    decision="forbidden",
+    justification="chezmoi init --apply applies the source state (operator lifecycle); use chezmoi diff to preview.",
+    match=["chezmoi init --apply --verbose"],
+    not_match=["chezmoi init --data=false"],
+)
+
+prefix_rule(
+    pattern=["make", ["init", "update", "apply", "upgrade", "watch", "reset", "reset-config"]],
     decision="forbidden",
     justification="These make targets run chezmoi apply or reset chezmoi state (operator lifecycle); ask the operator.",
-    match=["make update", "make apply", "make upgrade", "make watch", "make reset"],
+    match=["make init", "make update", "make apply", "make upgrade", "make watch", "make reset"],
     not_match=["make unit-test", "make format", "make render-check"],
 )

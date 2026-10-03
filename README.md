@@ -621,11 +621,13 @@ prompts are answered only by the human operator.
 
 The Codex execpolicy forbidden set is managed by this repository:
 `home/dot_codex/rules/default.rules` becomes `~/.codex/rules/default.rules`
-and replaces it on every `chezmoi apply`. It forbids `sudo`, `rm -rf` and
+and replaces it on every `chezmoi apply`. It forbids `sudo` (also by absolute
+path), `rm -rf` and
 `rm -fr` (also split as `rm -r -f`), `gh pr merge` (merging is the
 orchestrator's acceptance step), `gh release`, `npm publish`, `uv publish`,
-`terraform apply`, `kubectl apply`, `chezmoi apply`, and the make targets that
-run it or reset chezmoi state (`make update`, `apply`, `upgrade`, `watch`,
+`terraform apply`, `kubectl apply`, `chezmoi apply`, `chezmoi init --apply`,
+and the make targets that
+run it or reset chezmoi state (`make init`, `update`, `apply`, `upgrade`, `watch`,
 `reset`, `reset-config`). A forbidden match is a refusal under every approval
 policy and overrides any allow rule for the same prefix. The file holds no
 allow rules, so an "always allow" that an interactive session adds there does

@@ -1560,7 +1560,8 @@ function require_distinct_worker_identity() {
 #   ruleset on `main` is the boundary now, and with the guard mode gone the
 #   stub would refuse every push to `main`. The hook is resolved the way the
 #   installer placed it (`git rev-parse --git-path hooks`, which honours
-#   core.hooksPath). Only a hook whose content is exactly that stub (git blob
+#   core.hooksPath) and only inside the common git dir, where alone the
+#   installer wrote. Only a hook whose content is exactly that stub (git blob
 #   af94a0b5…, the one fixed body every install wrote) is removed. An edited
 #   copy that kept the stub's header is left unchanged with a notice, and any
 #   other pre-push hook is left alone.
@@ -1571,7 +1572,9 @@ function remove_retired_pre_push_stub() {
 
     common_dir="$(git -C "${workdir}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null)" || return 0
     hook="$(git -C "${workdir}" rev-parse --path-format=absolute --git-path hooks 2> /dev/null)/pre-push" || return 0
-    [[ -f ${hook} ]] || return 0
+    # The installer never wrote outside the common git dir (a core.hooksPath
+    # elsewhere was left alone), so a hook there is not ours to remove.
+    [[ ${hook} == "${common_dir}"/* && -f ${hook} ]] || return 0
     if [[ "$(git -C "${workdir}" hash-object -- "${hook}")" == "${stub_blob}" ]]; then
         rm -f -- "${hook}" "${common_dir}/orch-push-main.log"
         printf 'herdr-agents: removed the retired main-push guard stub at %s; the GitHub ruleset on main is the boundary.\n' "${hook}" >&2

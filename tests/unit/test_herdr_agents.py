@@ -1379,13 +1379,14 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.install_agmsg_fakes()
         edited = self.RETIRED_STUB.replace("exit \"${status}\"\n", "./scripts/local-checks.sh\nexit \"${status}\"\n")
         self.assertNotEqual(edited, self.RETIRED_STUB)
-        for name, content, notice in (
-            ("foreign", "#!/bin/sh\nexit 0\n", False),
-            ("edited stub", edited, True),
+        for name, content, notice, hooks_path in (
+            ("foreign", "#!/bin/sh\nexit 0\n", False, None),
+            ("edited stub", edited, True, None),
+            ("exact stub outside the common git dir", self.RETIRED_STUB, False, "shared-hooks"),
         ):
             with self.subTest(hook=name):
                 shutil.rmtree(self.workdir / ".git", ignore_errors=True)
-                hook = self.init_git_workdir()
+                hook = self.init_git_workdir(hooks_path)
                 hook.write_text(content)
                 log = self.workdir / ".git/orch-push-main.log"
                 log.write_text("kept\n")

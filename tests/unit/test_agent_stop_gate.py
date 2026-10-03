@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/agent-stop-gate.sh"
 # identities.sh answers from per-seat files and insists on resolution off.
 IDENTITIES_SH = """#!/usr/bin/env bash
-[[ ${AGMSG_RESOLVE_PROJECT:-} == 0 ]] || exit 9
+[[ ${AGMSG_RESOLVE_PROJECT:-} == 0 && ! -e $HOME/ids-fail ]] || exit 9
 case "$1" in
 */.claude/worktrees/*) cat "$HOME/ids-worker" ;;
 *) cat "$HOME/ids-main" ;;
@@ -45,7 +45,8 @@ class AgentStopGateTest(unittest.TestCase):
         (scripts / "identities.sh").chmod(0o755)
         (self.home / "ids-main").write_text("dotfiles\tworker-a001\ndotfiles\torch\n")
         (self.home / "ids-worker").write_text("dotfiles\tworker-a001\n")
-        self.main = Path(temp.name) / "repo"
+        # A quote and a backslash in the path exercise JSON-escaped cwd values.
+        self.main = Path(temp.name) / 're"po\\x'
         self.main.mkdir()
         self.git("init", "-q", "-b", "main")
         (self.main / ".gitignore").write_text(".claude/worktrees/\n")
@@ -173,6 +174,23 @@ class AgentStopGateTest(unittest.TestCase):
         (self.home / "store-down").write_text("")
         self.assertIn("unreadable", self.assert_gate(self.main, 2))
         self.assert_gate(self.main, 0, active=True)
+
+    def test_failing_identity_lookup_blocks_once(self):
+        self.history(row("worker-a001", "orch", "AGMSG-RESULT v1 task_id=T1 status=ready_for_review"))
+        (self.home / "ids-fail").write_text("")
+        self.assertIn("identity lookup failed", self.assert_gate(self.main, 2))
+        self.assert_gate(self.main, 0, active=True)
+
+    def test_missing_agmsg_install_passes(self):
+        (self.main / "junk.txt").write_text("x")
+        (self.home / ".agents/skills/agmsg/scripts/identities.sh").unlink()
+        self.assert_gate(self.main, 0)
+
+    def test_json_escaped_cwd_resolves(self):
+        self.assertIn('"', str(self.main))
+        self.assertIn("\\", str(self.main))
+        self.history(row("worker-a001", "orch", "AGMSG-RESULT v1 task_id=T1 status=ready_for_review"))
+        self.assertIn("task_id=T1", self.assert_gate(self.main, 2))
 
     def test_checkout_outside_any_seat_passes(self):
         self.assert_gate(self.home, 0)

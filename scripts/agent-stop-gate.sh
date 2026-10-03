@@ -19,14 +19,16 @@
 #   Every team the identity belongs to is checked. Messages come from the
 #   whole team history through agmsg's own storage facade, the one
 #   `history.sh` reads (the agmsg skill forbids reading its database
-#   directly). The hook never writes and needs no network.
+#   directly). The hook never writes and needs no network. Without an agmsg
+#   install it passes; a failing identity lookup or an unreadable store blocks
+#   unless `stop_hook_active` is true.
 # @exitcode 0 Nothing is pending, or the checkout is not an agmsg seat.
 # @exitcode 2 Work is pending; one reason line per violation on stderr.
 # @example
 #   echo '{"stop_hook_active":false,"cwd":"'"$PWD"'"}' | scripts/agent-stop-gate.sh
 set -uo pipefail
 
-# Same bounded stdin read and grep/sed field extraction as agmsg check-inbox.sh.
+# Same bounded stdin read as agmsg check-inbox.sh; jq decodes JSON escapes.
 input=""
 if [[ ! -t 0 ]]; then
     if command -v timeout > /dev/null 2>&1; then
@@ -35,11 +37,9 @@ if [[ ! -t 0 ]]; then
         input="$(cat 2> /dev/null || true)"
     fi
 fi
-active=false
-if grep -q '"stop_hook_active"[[:space:]]*:[[:space:]]*true' <<< "${input}"; then
-    active=true
-fi
-cwd="$(sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' <<< "${input}" | head -1)"
+active="$(jq -r '.stop_hook_active // false' <<< "${input}" 2> /dev/null)"
+[[ ${active} == true ]] || active=false
+cwd="$(jq -r '.cwd // empty' <<< "${input}" 2> /dev/null)"
 cwd="${cwd:-${PWD}}"
 
 # Main checkout as in check-regime-boundary.sh.
@@ -55,6 +55,8 @@ else
 fi
 
 scripts="${HOME}/.agents/skills/agmsg/scripts"
+# Without an agmsg install this is not a regime machine.
+[[ -e ${scripts}/identities.sh ]] || exit 0
 reasons=()
 
 if [[ ${seat} == orchestrator && ${active} == false ]]; then
@@ -77,6 +79,13 @@ read_history() {
     storage_store_exists "$1" || return 0
     storage_history "$1" | jq -r '[.from, .to, .body] | @tsv'
 }
+
+# A lookup that runs but fails must not read as "no seat here"; it blocks once,
+# like an unreadable store.
+if ! identities="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${top}" claude-code 2> /dev/null)"; then
+    identities=""
+    [[ ${active} == true ]] || reasons+=("agmsg identity lookup failed for ${top}; check ${scripts}/identities.sh")
+fi
 
 # The orchestrator is the unsuffixed identity at the main checkout; any
 # identity registered at a worker worktree (solo or -aNNN) is its worker.
@@ -117,7 +126,7 @@ while IFS=$'\t' read -r -u 3 team name; do
             if (seat == "orchestrator") { for (id in pending) print id }
             else if (open != "") print open
         }' <<< "${history}")
-done 3< <(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${top}" claude-code 2> /dev/null)
+done 3<<< "${identities}"
 
 if [[ ${#reasons[@]} -gt 0 ]]; then
     printf 'agent-stop-gate: %s\n' "${reasons[@]}" >&2

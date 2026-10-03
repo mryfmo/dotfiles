@@ -290,7 +290,7 @@ class UnderstandAnythingCoreBuildTest(unittest.TestCase):
         )
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("mise install --locked npm:ccstatusline npm:ccusage npm:pnpm\n", result.stdout)
+        self.assertIn("mise install --locked npm:ccstatusline npm:ccusage npm:pnpm ruff npm:prettier\n", result.stdout)
 
     def test_warns_and_continues_when_no_pnpm_is_resolvable(self) -> None:
         self.make_plugin_tree(self.release)

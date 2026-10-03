@@ -47,7 +47,7 @@ def repository_root(path: Path) -> Path:
         )
     except FileNotFoundError:
         return path.parent
-    root = result.stdout.strip()
+    root = result.stdout.rstrip("\n")
     return Path(root) if result.returncode == 0 and root else path.parent
 
 

@@ -48,7 +48,7 @@ function teardown() {
     [ "${status}" -eq 0 ]
     [ "${output}" = "trust --yes
 install --locked node
-install --locked npm:ccstatusline npm:ccusage
+install --locked npm:ccstatusline npm:ccusage ruff npm:prettier
 install --locked npm:@anthropic-ai/claude-code npm:@openai/codex
 install --locked --before ${DEFAULT_NPM_MIN_RELEASE_AGE_DAYS}d" ]
 }

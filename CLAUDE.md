@@ -1,7 +1,6 @@
 @AGENTS.md
 
 <!-- compactiondb:begin -->
-
 ## CompactionDB context recovery
 
 This project records redacted Claude Code lifecycle events in a local, session-scoped event ledger and keeps separately curated durable memories.
@@ -34,5 +33,4 @@ Never store secrets deliberately. Inspect health and integrity with:
 python3 .claude/hooks/contextdb_cli.py health
 python3 .claude/hooks/contextdb_cli.py verify
 ```
-
 <!-- compactiondb:end -->

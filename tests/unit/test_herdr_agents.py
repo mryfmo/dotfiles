@@ -1325,51 +1325,80 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             any(call.startswith(("delivery ", "identities ")) for call in calls)
         )
 
-    RETIRED_STUB_MARKER = (
-        "# herdr-agents main-push guard: written by herdr-agents --bootstrap-agmsg; "
-        "the checks live in herdr-agents --main-push-guard."
+    RETIRED_STUB = (
+        '#!/usr/bin/env bash\n'
+        '# herdr-agents main-push guard: written by herdr-agents --bootstrap-agmsg; the checks live in herdr-agents --main-push-guard.\n'
+        'guard="$(command -v herdr-agents)" || guard="${HOME}/.local/bin/common/herdr-agents"\n'
+        'if [[ -x ${guard} && "$("${guard}" --help 2> /dev/null)" == *--main-push-guard* ]]; then\n'
+        '    exec "${guard}" --main-push-guard "$@"\n'
+        'fi\n'
+        '# No launcher with the guard mode (missing, or older than the guard): refuse main updates only.\n'
+        'status=0\n'
+        'while read -r _ _ remote_ref _; do\n'
+        '    if [[ ${remote_ref} == refs/heads/main ]]; then\n'
+        "        printf 'pre-push: no herdr-agents with --main-push-guard is installed (run make update), so this push to main is refused\\n' >&2\n"
+        '        status=1\n'
+        '    fi\n'
+        'done\n'
+        'exit "${status}"\n'
     )
 
-    def init_git_workdir(self) -> Path:
+    def init_git_workdir(self, hooks_path: str | None = None) -> Path:
         """Make the bootstrap workdir a git main checkout; returns its pre-push hook path."""
         result = subprocess.run(
             ["git", "init", "-q", "-b", "main", str(self.workdir)], check=False, text=True, capture_output=True
         )
         self.assertEqual(result.returncode, 0, result.stderr)
-        hook = self.workdir / ".git/hooks/pre-push"
-        hook.parent.mkdir(exist_ok=True)
-        return hook
+        hooks = self.workdir / ".git/hooks"
+        if hooks_path is not None:
+            config = ["git", "-C", str(self.workdir), "config", "core.hooksPath", hooks_path]
+            self.assertEqual(subprocess.run(config, check=False).returncode, 0)
+            hooks = self.workdir / hooks_path
+        hooks.mkdir(parents=True, exist_ok=True)
+        return hooks / "pre-push"
 
     def test_bootstrap_removes_its_retired_pre_push_stub(self) -> None:
         self.install_agmsg_fakes()
-        hook = self.init_git_workdir()
-        hook.write_text(f"#!/usr/bin/env bash\n{self.RETIRED_STUB_MARKER}\nexit 0\n")
-        hook.chmod(0o755)
-        log = self.workdir / ".git/orch-push-main.log"
-        log.write_text("2026-10-02T00:00:00Z refused refs/heads/main:refs/heads/main\n")
+        for hooks_path in (None, ".git/custom-hooks"):
+            with self.subTest(hooks_path=hooks_path):
+                shutil.rmtree(self.workdir / ".git", ignore_errors=True)
+                hook = self.init_git_workdir(hooks_path)
+                hook.write_text(self.RETIRED_STUB)
+                hook.chmod(0o755)
+                log = self.workdir / ".git/orch-push-main.log"
+                log.write_text("2026-10-02T00:00:00Z refused refs/heads/main:refs/heads/main\n")
 
-        result = self.run_agmsg_bootstrap_helper()
+                result = self.run_agmsg_bootstrap_helper()
 
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertFalse(hook.exists())
-        self.assertFalse(log.exists())
-        self.assertIn(f"removed the retired main-push guard stub at {hook.resolve()}", result.stderr)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertFalse(hook.exists())
+                self.assertFalse(log.exists())
+                self.assertIn(f"removed the retired main-push guard stub at {hook.resolve()}", result.stderr)
 
     def test_bootstrap_leaves_a_foreign_pre_push_hook_alone(self) -> None:
         self.install_agmsg_fakes()
-        hook = self.init_git_workdir()
-        # The marker anywhere but on line 2 does not make a hook the retired stub.
-        foreign = f"#!/bin/sh\n# local checks\n{self.RETIRED_STUB_MARKER}\nexit 0\n"
-        hook.write_text(foreign)
-        log = self.workdir / ".git/orch-push-main.log"
-        log.write_text("kept\n")
+        edited = self.RETIRED_STUB.replace("exit \"${status}\"\n", "./scripts/local-checks.sh\nexit \"${status}\"\n")
+        self.assertNotEqual(edited, self.RETIRED_STUB)
+        for name, content, notice in (
+            ("foreign", "#!/bin/sh\nexit 0\n", False),
+            ("edited stub", edited, True),
+        ):
+            with self.subTest(hook=name):
+                shutil.rmtree(self.workdir / ".git", ignore_errors=True)
+                hook = self.init_git_workdir()
+                hook.write_text(content)
+                log = self.workdir / ".git/orch-push-main.log"
+                log.write_text("kept\n")
 
-        result = self.run_agmsg_bootstrap_helper()
+                result = self.run_agmsg_bootstrap_helper()
 
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(hook.read_text(), foreign)
-        self.assertEqual(log.read_text(), "kept\n")
-        self.assertNotIn("removed the retired main-push guard stub", result.stderr)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(hook.read_text(), content)
+                self.assertEqual(log.read_text(), "kept\n")
+                self.assertNotIn("removed the retired main-push guard stub", result.stderr)
+                self.assertEqual(
+                    f"{hook.resolve()} is an edited copy of the retired main-push guard stub" in result.stderr, notice
+                )
 
     def test_make_update_and_upgrade_include_agmsg_bootstrap(self) -> None:
         for target in ("update", "upgrade"):

@@ -2876,14 +2876,18 @@ exit {despawn_exit}
         )
 
     def write_pair_workspace(self, *panes: dict[str, str]) -> None:
-        """A managed pair workspace w-pair (`project agents`) holding the orchestrator pane and extra panes."""
+        """A pair workspace w-pair holding the self-named orchestrator pane and extra panes.
+
+        Like an attach-mode pair it keeps its own label (`project`), so it is
+        found through the orchestrator's `<team>:<name>` seat label.
+        """
         self.workspace_list_path.write_text(
-            json.dumps({"result": {"workspaces": [{"workspace_id": "w-pair", "label": "project agents"}]}})
+            json.dumps({"result": {"workspaces": [{"workspace_id": "w-pair", "label": "project"}]}})
         )
         orchestrator = {
             "pane_id": "w-pair:p1",
             "agent": "claude",
-            "label": "claude-orchestrator",
+            "label": "dotfiles:claude-remediation-dot",
             "cwd": str(self.workdir.resolve()),
             "tab_id": "w-pair:t1",
             "workspace_id": "w-pair",
@@ -2919,7 +2923,10 @@ exit {despawn_exit}
         )
 
     def test_add_worker_reuses_a_seat_tab_in_the_pair_workspace(self) -> None:
-        self.write_worktree_seat(worktree_identities="dotfiles\tclaude-standard-dot-a007")
+        self.write_worktree_seat(
+            main_identities="dotfiles\tclaude-remediation-dot",
+            worktree_identities="dotfiles\tclaude-standard-dot-a007",
+        )
         self.write_seat_lifecycle_fakes()
         worktree = self.add_seat_worktree("b1")
         self.write_pair_workspace(
@@ -4999,6 +5006,54 @@ exit {exit_code}
             calls,
         )
         self.assertFalse(any("w-old:p9" in call for call in calls), calls)
+
+    def added_worker_pane(self, agent: str | None) -> str:
+        """An --add-worker seat's pane in its own tab: self-named label, cwd in a linked worktree."""
+        return json.dumps(
+            {
+                "agent": agent,
+                "cwd": f"{self.workdir.resolve()}/.claude/worktrees/b1",
+                "label": "dotfiles:claude-standard-dot-a007",
+                "pane_id": "w-old:p5",
+                "tab_id": "w-old:t3",
+                "workspace_id": "w-old",
+            }
+        )
+
+    def test_full_mode_heal_never_starts_the_worker_in_an_exited_added_worker_pane(self) -> None:
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":"claude","cwd":"{self.workdir}","label":"claude-orchestrator","pane_id":"w-old:p1","workspace_id":"w-old"}},'
+            + self.added_worker_pane(None),
+        )
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn(
+            "agent start codex-worker-w-old --kind codex --pane w-old:p3 --timeout 30000 -- --sandbox workspace-write --profile standard --ask-for-approval never -c sandbox_workspace_write.network_access=true",
+            calls,
+        )
+        self.assertFalse(any("w-old:p5" in call for call in calls), calls)
+
+    def test_full_mode_heals_the_orchestrator_beside_a_live_added_claude_worker(self) -> None:
+        self.write_workspace_state(
+            "w-old",
+            f'{{"agent":"codex","cwd":"{self.workdir}","pane_id":"w-old:p2","workspace_id":"w-old"}},'
+            + self.added_worker_pane("claude"),
+            agent_pane_id="w-old:p2",
+        )
+
+        result = self.run_helper()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertIn(
+            "agent start claude-orchestrator-w-old --kind claude --pane w-old:p3 --timeout 30000 --",
+            calls,
+        )
+        self.assertFalse(any("w-old:p5" in call for call in calls), calls)
 
     def test_restart_worker_never_treats_the_audit_pane_as_the_worker(self) -> None:
         self.write_workspace_state(

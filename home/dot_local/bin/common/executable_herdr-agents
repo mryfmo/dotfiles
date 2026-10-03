@@ -1294,14 +1294,25 @@ function single_managed_workspace() {
     printf '%s\n' "${workspace_ids}"
 }
 
+# @description jq predicate for a pane of an --add-worker seat: it keeps its
+#   self-named `<team>:<name>` label (only the pair seats are normalized) and
+#   runs in a linked worktree under $workdir. Such a pane lives in its own tab
+#   of the pair workspace and is never one of the pair's panes.
+function added_worker_pane_filter() {
+    # shellcheck disable=SC2016 # jq variables are intentional literal input.
+    printf '%s' '((.label // "") | test("^[^:[:space:]]+:[^:[:space:]]+$")) and ((.cwd // "") | startswith($worktrees))'
+}
+
 # @description Return success when a Claude orchestrator pane is present.
+#   An added claude worker's pane (added_worker_pane_filter) does not count.
 # @arg $1 json Herdr pane list JSON.
 # @arg $2 pane_id Worker pane id to exclude, so a claude worker does not count.
 function has_claude_pane() {
     local panes_json="$1"
     local worker_pane_id="${2:-}"
 
-    printf '%s\n' "${panes_json}" | jq -e --arg worker "${worker_pane_id}" '.result.panes[]? | select(.agent == "claude" and .pane_id != $worker)' > /dev/null
+    printf '%s\n' "${panes_json}" | jq -e --arg worker "${worker_pane_id}" --arg worktrees "${workdir}/.claude/worktrees/" \
+        ".result.panes[]? | select(.agent == \"claude\" and .pane_id != \$worker and ($(added_worker_pane_filter) | not))" > /dev/null
 }
 
 # @description Return the worker pane id when the registered agent points to a live pane.
@@ -1703,8 +1714,10 @@ function empty_pane_id() {
     local panes_json="$1"
     local exclude_pane_id="${2:-}"
 
-    # Preserve legacy files panes and the audit pane as non-agent panes.
-    printf '%s\n' "${panes_json}" | jq -r --arg exclude "${exclude_pane_id}" '.result.panes[]? | select((.agent? // "") == "" and .label? != "files" and .label? != "audit" and .pane_id != $exclude) | .pane_id // empty' | head -n 1
+    # Preserve legacy files panes, the audit pane and an exited added worker's
+    # pane (added_worker_pane_filter) as non-agent panes.
+    printf '%s\n' "${panes_json}" | jq -r --arg exclude "${exclude_pane_id}" --arg worktrees "${workdir:-}/.claude/worktrees/" \
+        ".result.panes[]? | select((.agent? // \"\") == \"\" and .label? != \"files\" and .label? != \"audit\" and .pane_id != \$exclude and ($(added_worker_pane_filter) | not)) | .pane_id // empty" | head -n 1
 }
 
 # @description Remove a node-global npm copy that shadows the dedicated mise tool install.

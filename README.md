@@ -815,8 +815,8 @@ carries `advisor: fable` on its claude side, rendered into those launch args as
 `herdr-agents --restart-worker`. The orchestrator side
 follows `interactive_profile` in `home/dot_agents/agent-config.yaml`,
 escalating with `/model` and `/effort` only at task boundaries. Parallelism
-never adds panes to this workspace: one git worktree equals one resident worker
-in its own workspace. `herdr-agents --add-worker <worktree> [--kind
+never adds panes to the pair tab: one git worktree equals one resident worker,
+seated in its own tab of this workspace. `herdr-agents --add-worker <worktree> [--kind
 codex|claude] [--profile NAME] [DIR]` and `herdr-agents --remove-worker
 <worktree> [--force] [DIR]` are the only sanctioned way to add or remove one.
 `<worktree>` is a path under `DIR/.claude/worktrees/`.
@@ -826,7 +826,10 @@ Add-worker:
 - creates the worktree from `origin/main` when missing and names the identity
   as for the pair worker;
 - points delivery at the worktree;
-- creates or reuses the workspace `<repo> worker <name>`;
+- seats the worker in its own tab of the pair workspace for `DIR`, labeled
+  `<team>:<name>`, and leaves the pair tab untouched; only without a pair
+  workspace (the pane-less bring-up) does it create or reuse the workspace
+  `<repo> worker <name>` instead;
 - seats the worker through upstream `spawn.sh <type> <name> --project
 <worktree> --team <team> --terminal-driver herdr --window`, which pre-joins
   the identity with project resolution off, opens the tab, boots the CLI with
@@ -838,9 +841,12 @@ The profile's launch arguments reach the CLI through a generated
 
 - a claude worker gets `MODEL_PROFILE_<NAME>_CLAUDE_ARGS`, so model, effort
   and advisor are all carried;
-- a codex worker gets `--profile <name> --sandbox workspace-write`.
+- a codex worker gets `--profile <name>`, `--sandbox workspace-write`,
+  `--ask-for-approval never` and the
+  `sandbox_workspace_write.network_access=true` `--config` line.
 
-Re-running for a workspace that already has an agent is a no-op.
+Re-running when the worker's tab (or workspace) already has its agent is a
+no-op.
 
 Remove-worker refuses a worktree with uncommitted changes unless `--force`.
 Otherwise it despawns graceful-first, following upstream `despawn.sh`.
@@ -849,8 +855,9 @@ and that includes a member with no placement record, for example after a
 failed spawn, where `--force` would fail. It retries with `--force` only when
 the graceful call reports `status=needs-force` (a record but no live actas
 lock, as for a codex seat) or when you passed `--force`. After a completed
-despawn it always runs `delivery.sh set off`, `leave.sh`, and `herdr workspace
-close`; a despawn that cannot complete stops removal with a hint. Add-worker refuses a profile that
+despawn it always runs `delivery.sh set off` and `leave.sh`, then closes the
+worker's tab in the pair workspace (only a tab whose panes all carry that
+worker's `<team>:<name>` label) or its own workspace; a despawn that cannot complete stops removal with a hint. Add-worker refuses a profile that
 `~/.agents/model-profiles.env` does not define. The worktree itself is kept. Raw herdr topology commands (`tab
 create`, `pane split`, `workspace create`) stay forbidden to the orchestrator
 (T21 G7). Completion is detected only through agmsg RESULT messages, and about

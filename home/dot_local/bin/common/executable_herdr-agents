@@ -41,7 +41,7 @@
 #   `.orchestration/validation/audit-<sha>.md`.
 # @option --timeout <seconds> Audit exit-marker wait bound. Defaults to 1800.
 # @option --add-worker <worktree> Seat an extra resident worker for DIR/<worktree> via agmsg spawn.sh.
-# @option --remove-worker <worktree> Despawn that worker and close its workspace.
+# @option --remove-worker <worktree> Despawn that worker and close its tab (or its own workspace).
 # @option --kind <codex|claude> Add-worker agent kind. Defaults to the manifest worker_kind.
 # @option --profile <name> Add-worker model profile. Defaults to the manifest worker_profile.
 # @option --ready-timeout <seconds> Add-worker: spawn.sh readiness wait bound (spawn.sh default 90).
@@ -120,13 +120,15 @@ nonzero when the audit does or when the concluding line of PATH.last.md (the
 codex exec -o last message) is not `Verdict: correct` (a missing, blocked, or
 incorrect verdict); it exits 2 without a managed workspace.
 Add-worker mode seats an extra resident worker for <worktree> (a path under
-DIR/.claude/worktrees/, created from origin/main when missing) in its own
-workspace through upstream agmsg spawn.sh, with the profile's launch args;
+DIR/.claude/worktrees/, created from origin/main when missing) in its own tab
+of the pair workspace for DIR (labeled <team>:<name>; the pair tab is left
+untouched), or in its own workspace when DIR has no pair workspace, through
+upstream agmsg spawn.sh, with the profile's launch args;
 a pane-less caller gets HERDR_SOCKET_PATH derived from the default Herdr server
 socket ~/.config/herdr/herdr.sock (the path the Claude sandbox allowlists), a claude worker's workspace-trust dialog is accepted while spawn.sh
 waits, and --ready-timeout bounds that wait (spawn.sh default 90 seconds);
 remove-worker mode despawns it, turns its delivery off, leaves its team, and
-closes that workspace, refusing a dirty worktree unless --force.
+closes that tab (or that workspace), refusing a dirty worktree unless --force.
 USAGE
 }
 
@@ -1764,6 +1766,25 @@ function audit_pane_id() {
     printf '%s\n' "${pane_id}"
 }
 
+# @description Close the tab an added worker was seated in inside the pair
+#   workspace. despawn.sh usually closes the worker's pane, and with it the
+#   tab; this closes what is left. Only a tab whose every pane carries the
+#   worker's `<team>:<name>` label (or none, an empty shell) is closed, so the
+#   pair tab and the audit tab are never touched.
+# @arg $1 string Pair workspace id.
+# @arg $2 string Worker seat label `<team>:<name>`.
+function close_worker_tab() {
+    local tab_id
+
+    while IFS= read -r tab_id; do
+        [[ -n ${tab_id} ]] || continue
+        herdr tab close "${tab_id}" > /dev/null || printf 'herdr-agents: unable to close tab %s of worker %s.\n' "${tab_id}" "$2" >&2
+    done < <(herdr pane list --workspace "$1" | jq -r --arg label "$2" \
+        '[.result.panes[]? | select(.tab_id | type == "string")] | group_by(.tab_id)[]
+         | select(any(.[]; .label == $label) and all(.[]; .label == $label or (.label // "") == ""))
+         | .[0].tab_id')
+}
+
 # @description Require a command before starting a partial layout.
 # @arg $1 string Command name.
 function require_command() {
@@ -1941,6 +1962,10 @@ if [[ ${add_worker_mode} == true || ${remove_worker_mode} == true ]]; then
         printf 'herdr-agents: several Herdr workspaces are labeled %q; refusing.\n' "${seat_label}" >&2
         exit 2
     fi
+    # The pair workspace hosts each added worker in its own tab; only a
+    # pane-less caller without one gets the worker's own workspace.
+    load_seat_labels "${workdir}"
+    pair_workspace_id="$(single_managed_workspace "$(basename "${workdir}") agents" "${workdir}")"
 fi
 
 if [[ ${add_worker_mode} == true ]]; then
@@ -1974,7 +1999,15 @@ if [[ ${add_worker_mode} == true ]]; then
         printf 'Herdr agents worker %s is already seated in workspace %s (%s)\n' "${seat_name}" "${seat_workspace_id}" "${seat_dir}"
         exit 0
     fi
-    if [[ -z ${seat_workspace_id} ]]; then
+    if [[ -n ${pair_workspace_id} ]]; then
+        # spawn.sh labels the worker's tab and pane <team>:<name>.
+        if herdr pane list --workspace "${pair_workspace_id}" | jq -e --arg label "${seat_team}:${seat_name}" \
+            '.result.panes[]? | select(.label == $label and (.agent? // "") != "")' > /dev/null; then
+            printf 'Herdr agents worker %s is already seated in workspace %s (%s)\n' "${seat_name}" "${pair_workspace_id}" "${seat_dir}"
+            exit 0
+        fi
+        seat_workspace_id="${pair_workspace_id}"
+    elif [[ -z ${seat_workspace_id} ]]; then
         seat_env=(--env HERDR_AGENTS_LAYOUT=managed --env AGMSG_RESOLVE_PROJECT=0)
         # A spawn-seated claude worker runs a Monitor watch (its actas boot starts one).
         [[ ${seat_kind} != claude ]] || seat_env+=(--env AGMSG_CC_MONITOR_KEEP_ALIVE=1)
@@ -1989,7 +2022,8 @@ if [[ ${add_worker_mode} == true ]]; then
     write_spawn_options "${seat_kind}" "${seat_dir}" > "${seat_options}"
     seat_panes="$(herdr pane list --workspace "${seat_workspace_id}" | jq -c '[.result.panes[]?.pane_id]')"
     # spawn.sh seats the member (placement record, actas boot, readiness wait);
-    # --window opens a tab in HERDR_WORKSPACE_ID, and --project opts the join
+    # --window opens a tab in HERDR_WORKSPACE_ID (the pair workspace when one
+    # exists, the pair tab untouched), and --project opts the join
     # out of project resolution. It runs in the background so a claude worker's
     # trust dialog is accepted during the readiness wait, not after it.
     HERDR_WORKSPACE_ID="${seat_workspace_id}" AGMSG_SPAWN_OPTIONS_FILE="${seat_options}" \
@@ -2051,6 +2085,7 @@ if [[ ${remove_worker_mode} == true ]]; then
             fi
             "${scripts}/delivery.sh" set off "${seat_type}" "${seat_dir}" > /dev/null 2>&1 || true
             "${scripts}/leave.sh" "${seat_team}" "${seat_name}" > /dev/null 2>&1 || true
+            [[ -z ${pair_workspace_id} ]] || close_worker_tab "${pair_workspace_id}" "${seat_team}:${seat_name}"
             printf 'Herdr agents worker removed: %s (%s)\n' "${seat_name}" "${seat_dir}"
         done < <(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${seat_dir}" "${seat_type}" 2> /dev/null | sort -u)
     done

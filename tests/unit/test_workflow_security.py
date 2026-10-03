@@ -61,10 +61,7 @@ def checkout_steps(text: str) -> list[tuple[str, str, str]]:
         end = index + 1
         while end < len(lines):
             candidate = lines[end]
-            if (
-                candidate.strip()
-                and len(candidate) - len(candidate.lstrip()) <= step_indent
-            ):
+            if candidate.strip() and len(candidate) - len(candidate.lstrip()) <= step_indent:
                 break
             end += 1
         name_match = re.match(r"\s*-\s+name:\s*(.+)", lines[start])
@@ -116,10 +113,7 @@ class WorkflowSecurityTest(unittest.TestCase):
         self.assertEqual([], mutable)
 
     def test_workflows_have_exact_top_level_permissions(self):
-        actual = {
-            path.name: top_level_permissions(path.read_text())
-            for path in sorted(WORKFLOWS.glob("*.y*ml"))
-        }
+        actual = {path.name: top_level_permissions(path.read_text()) for path in sorted(WORKFLOWS.glob("*.y*ml"))}
         self.assertEqual(EXPECTED_PERMISSIONS, actual)
 
     def test_workflows_have_no_job_level_permission_overrides(self):
@@ -145,12 +139,8 @@ class WorkflowSecurityTest(unittest.TestCase):
                     insecure.append(f"{path.name}: {job_name}: {step_name}")
         self.assertEqual([], insecure)
         self.assertEqual([], stale_exemptions)
-        self.assertEqual(
-            dict.fromkeys(CHECKOUT_CREDENTIAL_EXEMPTIONS, 1), exemption_hits
-        )
-        self.assertTrue(
-            all(reason.strip() for reason in CHECKOUT_CREDENTIAL_EXEMPTIONS.values())
-        )
+        self.assertEqual(dict.fromkeys(CHECKOUT_CREDENTIAL_EXEMPTIONS, 1), exemption_hits)
+        self.assertTrue(all(reason.strip() for reason in CHECKOUT_CREDENTIAL_EXEMPTIONS.values()))
 
     def test_checkout_setting_does_not_leak_from_the_next_step(self):
         workflow = """jobs:

@@ -215,9 +215,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
         self.assertEqual(
             text,
-            self.MANIFEST_TEXT.replace("pin: v0.0.1", "pin: v0.20.3").replace(
-                "linux-amd64: old", "linux-amd64: d3a3"
-            ),
+            self.MANIFEST_TEXT.replace("pin: v0.0.1", "pin: v0.20.3").replace("linux-amd64: old", "linux-amd64: d3a3"),
         )
         self.assertIn("  # Pins live here.\n", text)
         self.assertIn("    pin: v0.0.2\n", text)
@@ -232,9 +230,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         )
         for name, path, value in cases:
             with self.subTest(target=f"{name}.{path}", value=value):
-                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(
-                    SystemExit
-                ):
+                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                     self.module.set_asset_field(self.MANIFEST_TEXT, name, path, value)
 
     @staticmethod
@@ -289,9 +285,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
         self.assertIn("asset pins updated: crit.pin, crit.sha256.linux-amd64", stdout.getvalue())
         self.assertIn("    pin: v0.20.3\n", manifest_path.read_text())
-        self.assertEqual(
-            pins.read_text(), 'CRIT_PIN_VERSION="v0.20.3"\nCRIT_LINUX_AMD64_SHA256="d3a3"\n'
-        )
+        self.assertEqual(pins.read_text(), 'CRIT_PIN_VERSION="v0.20.3"\nCRIT_LINUX_AMD64_SHA256="d3a3"\n')
 
     def test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid(self) -> None:
         manifest_path = self.temp_dir / "home/dot_agents/agent-config.yaml"
@@ -376,24 +370,19 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertIn(".agents/plugins/marketplace.json", ignore)
 
     def test_claude_skill_symlink_outputs_strip_executable_target_prefix(self) -> None:
-        source = (
-            self.temp_dir / "home/dot_agents/skills/agmsg/scripts/executable_send.sh"
-        )
+        source = self.temp_dir / "home/dot_agents/skills/agmsg/scripts/executable_send.sh"
         source.parent.mkdir(parents=True)
         source.write_text("#!/bin/sh\n")
 
         outputs = self.module.claude_skill_symlink_outputs()
 
-        target = (
-            self.temp_dir / "home/dot_claude/skills/agmsg/scripts/symlink_send.sh.tmpl"
-        )
+        target = self.temp_dir / "home/dot_claude/skills/agmsg/scripts/symlink_send.sh.tmpl"
         self.assertEqual(
             outputs[target],
             "{{ .chezmoi.sourceDir }}/dot_agents/skills/agmsg/scripts/executable_send.sh\n",
         )
         self.assertNotIn(
-            self.temp_dir
-            / "home/dot_claude/skills/agmsg/scripts/symlink_executable_send.sh.tmpl",
+            self.temp_dir / "home/dot_claude/skills/agmsg/scripts/symlink_executable_send.sh.tmpl",
             outputs,
         )
 
@@ -408,16 +397,12 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertIn('model_verbosity = "low"', outputs[codex_path])
         self.assertIn('personality = "pragmatic"', outputs[codex_path])
         self.assertIn("check_for_update_on_startup = false", outputs[codex_path])
-        self.assertNotIn(
-            self.temp_dir / "home/dot_codex/private_config.toml.tmpl", outputs
-        )
+        self.assertNotIn(self.temp_dir / "home/dot_codex/private_config.toml.tmpl", outputs)
 
     def test_profile_modify_scripts_preserve_runtime_state(self) -> None:
         outputs = self.module.expected_outputs(sample_manifest())
 
-        standard_profile = (
-            self.temp_dir / "home/dot_codex/modify_private_standard.config.toml"
-        )
+        standard_profile = self.temp_dir / "home/dot_codex/modify_private_standard.config.toml"
         self.assertIn(standard_profile, outputs)
         self.module.write_outputs(outputs)
         self.assertTrue(standard_profile.stat().st_mode & 0o111)
@@ -451,15 +436,11 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             "codex": {
                 "model": "gpt-6-astra",
                 "model_reasoning_effort": "high",
-                "notify": [
-                    "{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify"
-                ],
+                "notify": ["{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify"],
             },
         }
         outputs = self.module.expected_outputs(manifest)
-        security_profile = (
-            self.temp_dir / "home/dot_codex/modify_private_security.config.toml"
-        )
+        security_profile = self.temp_dir / "home/dot_codex/modify_private_security.config.toml"
         self.module.write_outputs(outputs)
 
         home = self.temp_dir / "target-home"
@@ -557,9 +538,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self,
     ) -> None:
         outputs = self.module.expected_outputs(sample_manifest())
-        standard_profile = (
-            self.temp_dir / "home/dot_codex/modify_private_standard.config.toml"
-        )
+        standard_profile = self.temp_dir / "home/dot_codex/modify_private_standard.config.toml"
         self.module.write_outputs(outputs)
         current = (
             '# Codex model profile "standard"; launch with: codex --profile standard\n'
@@ -589,9 +568,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
     def test_profile_modify_scripts_preserve_repeated_runtime_tables(self) -> None:
         outputs = self.module.expected_outputs(sample_manifest())
-        standard_profile = (
-            self.temp_dir / "home/dot_codex/modify_private_standard.config.toml"
-        )
+        standard_profile = self.temp_dir / "home/dot_codex/modify_private_standard.config.toml"
         self.module.write_outputs(outputs)
         current = (
             '# Codex model profile "standard"; launch with: codex --profile standard\n'
@@ -626,9 +603,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
         env_path = self.temp_dir / "home/dot_agents/model-profiles.env"
         self.assertIn('MODEL_PROFILE_INTERACTIVE="standard"', outputs[env_path])
-        self.assertIn(
-            'MODEL_PROFILE_STANDARD_CODEX_ARGS="--profile standard"', outputs[env_path]
-        )
+        self.assertIn('MODEL_PROFILE_STANDARD_CODEX_ARGS="--profile standard"', outputs[env_path])
         self.assertIn(
             'MODEL_PROFILE_EXPRESS_CLAUDE_ARGS="--model haiku --effort low"',
             outputs[env_path],
@@ -642,17 +617,13 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
     def test_profile_modify_scripts_seed_base_hook_trust(self) -> None:
         outputs = self.module.expected_outputs(sample_manifest())
-        standard_profile = (
-            self.temp_dir / "home/dot_codex/modify_private_standard.config.toml"
-        )
+        standard_profile = self.temp_dir / "home/dot_codex/modify_private_standard.config.toml"
         self.module.write_outputs(outputs)
         home = self.temp_dir / "target-home"
         base = home / ".codex/config.toml"
         base.parent.mkdir(parents=True)
         base.write_text(
-            "[hooks.state]\n\n"
-            '[hooks.state."/workspace/.codex/hooks.json:stop:0:0"]\n'
-            'trusted_hash = "sha256:base"\n'
+            '[hooks.state]\n\n[hooks.state."/workspace/.codex/hooks.json:stop:0:0"]\ntrusted_hash = "sha256:base"\n'
         )
 
         result = subprocess.run(
@@ -727,9 +698,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
     def test_claude_settings_use_interactive_profile_with_permgate(
         self,
     ) -> None:
-        settings = self.module.json.loads(
-            self.module.render_claude_settings(sample_manifest())
-        )
+        settings = self.module.json.loads(self.module.render_claude_settings(sample_manifest()))
 
         self.assertEqual("sonnet", settings["model"])
         self.assertEqual("high", settings["effortLevel"])
@@ -761,9 +730,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
     def test_codex_config_renders_working_tree_project_key(self) -> None:
         manifest = sample_manifest()
-        manifest["codex"]["projects"] = {
-            "{{ .chezmoi.workingTree }}": {"trust_level": "trusted"}
-        }
+        manifest["codex"]["projects"] = {"{{ .chezmoi.workingTree }}": {"trust_level": "trusted"}}
 
         config = self.module.render_codex(manifest)
 
@@ -772,25 +739,19 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
     def test_managed_hooks_use_installed_permgate_paths(self) -> None:
         codex = (ROOT / "home/.chezmoitemplates/codex-config-managed.toml").read_text()
-        claude = (
-            ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
-        ).read_text()
+        claude = (ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()
 
         self.assertIn("{{ .chezmoi.homeDir }}/.local/bin/common/permgate codex", codex)
         self.assertIn("~/.local/bin/common/permgate claude", claude)
 
     def test_managed_claude_sandbox_excludes_agmsg_dispatch(self) -> None:
-        claude = json.loads(
-            (ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()
-        )
+        claude = json.loads((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text())
 
         self.assertIn("agmsg-dispatch", claude["sandbox"]["excludedCommands"])
         self.assertEqual(["Bash(agmsg-dispatch:*)"], claude["permissions"]["allow"])
 
     def test_managed_codex_path_includes_installed_common_bin(self) -> None:
-        codex = tomllib.loads(
-            (ROOT / "home/.chezmoitemplates/codex-config-managed.toml").read_text()
-        )
+        codex = tomllib.loads((ROOT / "home/.chezmoitemplates/codex-config-managed.toml").read_text())
 
         path = codex["shell_environment_policy"]["set"]["PATH"].split(":")
         self.assertIn("{{ .chezmoi.homeDir }}/.local/bin/common", path)
@@ -846,7 +807,13 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertNotIn("HERDR_AGENTS_WORKER_WORKTREE", env)
 
     def test_worker_worktree_outside_claude_worktrees_fails(self) -> None:
-        for path in ("worker-c", "/abs/.claude/worktrees/x", ".claude/worktrees/..", ".claude/worktrees/a/b", ".claude/worktrees/$(x)"):
+        for path in (
+            "worker-c",
+            "/abs/.claude/worktrees/x",
+            ".claude/worktrees/..",
+            ".claude/worktrees/a/b",
+            ".claude/worktrees/$(x)",
+        ):
             with self.subTest(path=path):
                 manifest = sample_manifest()
                 manifest["worker_worktree"] = path
@@ -889,9 +856,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
     def test_claude_settings_render_interactive_advisor_only_when_set(self) -> None:
         manifest = sample_manifest()
-        self.assertNotIn(
-            "advisorModel", json.loads(self.module.render_claude_settings(manifest))
-        )
+        self.assertNotIn("advisorModel", json.loads(self.module.render_claude_settings(manifest)))
 
         manifest["model_profiles"]["standard"]["claude"]["advisor"] = "fable"
         settings = json.loads(self.module.render_claude_settings(manifest))
@@ -905,9 +870,7 @@ class GenerateAgentConfigsTest(unittest.TestCase):
             self.module.model_profiles(missing_agent)
 
         unsafe_value = sample_manifest()
-        unsafe_value["model_profiles"]["standard"]["claude"]["model"] = (
-            "sonnet 5; rm -rf"
-        )
+        unsafe_value["model_profiles"]["standard"]["claude"]["model"] = "sonnet 5; rm -rf"
         with self.assertRaises(SystemExit):
             self.module.model_profiles(unsafe_value)
 
@@ -978,12 +941,8 @@ class GenerateAgentConfigsTest(unittest.TestCase):
 
         self.assertIn("interactive_profile:", profiles_block)
         for line in manifest.splitlines():
-            if line.startswith(
-                ("  model:", "  effortLevel:", "  model_reasoning_effort:")
-            ):
-                self.fail(
-                    f"model settings must live in model_profiles only: {line.strip()}"
-                )
+            if line.startswith(("  model:", "  effortLevel:", "  model_reasoning_effort:")):
+                self.fail(f"model settings must live in model_profiles only: {line.strip()}")
 
 
 if __name__ == "__main__":

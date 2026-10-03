@@ -1,20 +1,20 @@
 # Commit changes to Git
 
-* Step 1: Review all the uncommited changes in the current session.
-* Step 2: Notify the user if there are:
-  * Files with security concerns
-  * Files with temporary changes
-* Step 3: If there are files detected in Step 2, stop and let the user decise what to do next. Else, process to step 4.
-* Step 4: Add all changed files to staging. Respect .gitignore and similar files.
-* Step 5: Write a commit message following Conventional Commits guideline below
-* Step 6: Ask if user approves the message. Give 3 options:
-  * Approve
-  * Regenerate
-  * I will write the commit message myself
-* Step 7:
-  * If user chose Approve on step 6, commit the changes with the generated message.
-  * If user chose Regenerate, re-run from step 5.
-  * If user chose to write commit message themselves, run `git commit`. It should open a text editor so that the user can write their commit message.
+- Step 1: Review all the uncommited changes in the current session.
+- Step 2: Notify the user if there are:
+  - Files with security concerns
+  - Files with temporary changes
+- Step 3: If there are files detected in Step 2, stop and let the user decise what to do next. Else, process to step 4.
+- Step 4: Add all changed files to staging. Respect .gitignore and similar files.
+- Step 5: Write a commit message following Conventional Commits guideline below
+- Step 6: Ask if user approves the message. Give 3 options:
+  - Approve
+  - Regenerate
+  - I will write the commit message myself
+- Step 7:
+  - If user chose Approve on step 6, commit the changes with the generated message.
+  - If user chose Regenerate, re-run from step 5.
+  - If user chose to write commit message themselves, run `git commit`. It should open a text editor so that the user can write their commit message.
 
 # Conventional Commits 1.0.0
 
@@ -37,8 +37,8 @@ The commit contains the following structural elements, to communicate intent to 
 1. **fix**: a commit of the type fix patches a bug in your codebase (this correlates with PATCH in Semantic Versioning).
 2. **feat**: a commit of the type feat introduces a new feature to the codebase (this correlates with MINOR in Semantic Versioning).
 3. **BREAKING CHANGE**: a commit that has a footer BREAKING CHANGE:, or appends a ! after the type/scope, introduces a breaking API change (correlating with MAJOR in Semantic Versioning). A BREAKING CHANGE can be part of commits of any type.
-4. __types__ other than fix: and feat: are allowed, for example @commitlint/config-conventional (based on the Angular convention) recommends build:, chore:, ci:, docs:, style:, refactor:, perf:, test:, and others.
-5. __footers__ other than BREAKING CHANGE: <description> may be provided and follow a convention similar to git trailer format.
+4. **types** other than fix: and feat: are allowed, for example @commitlint/config-conventional (based on the Angular convention) recommends build:, chore:, ci:, docs:, style:, refactor:, perf:, test:, and others.
+5. **footers** other than BREAKING CHANGE: <description> may be provided and follow a convention similar to git trailer format.
 
 ## Examples
 

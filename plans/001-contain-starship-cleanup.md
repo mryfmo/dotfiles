@@ -49,13 +49,13 @@ is strict: this repository may remove only the Starship file it installed.
 
 ## Commands you will need
 
-| Purpose | Command | Expected |
-|---|---|---|
-| Python regression suite | `make unit-test` | exit 0 |
-| Shell syntax | `bash -n install/ubuntu/server/starship.sh tests/install/ubuntu/server/starship.bats` | exit 0 |
-| Format check | `shfmt -i 4 -sr -d install/ubuntu/server/starship.sh tests/install/ubuntu/server/starship.bats` | exit 0, no diff |
-| Removal scan | `rg -n 'rm -rf .*BIN_DIR|rm -rf .*\.local/bin' install tests` | no matches |
-| CI-only Bats | `OS=ubuntu-latest SYSTEM=server ./scripts/run_unit_test.sh` | GitHub Actions only; exit 0 |
+| Purpose                 | Command                                                                                         | Expected                             |
+| ----------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------ |
+| Python regression suite | `make unit-test`                                                                                | exit 0                               |
+| Shell syntax            | `bash -n install/ubuntu/server/starship.sh tests/install/ubuntu/server/starship.bats`           | exit 0                               |
+| Format check            | `shfmt -i 4 -sr -d install/ubuntu/server/starship.sh tests/install/ubuntu/server/starship.bats` | exit 0, no diff                      |
+| Removal scan            | `rg -n 'rm -rf .*BIN_DIR                                                                        | rm -rf .*\.local/bin' install tests` | no matches |
+| CI-only Bats            | `OS=ubuntu-latest SYSTEM=server ./scripts/run_unit_test.sh`                                     | GitHub Actions only; exit 0          |
 
 ## Scope
 

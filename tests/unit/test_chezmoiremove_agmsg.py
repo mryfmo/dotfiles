@@ -37,10 +37,14 @@ class ChezmoiRemoveAgmsgTest(unittest.TestCase):
             result = subprocess.run(
                 [
                     CHEZMOI,
-                    "--source", str(source),
-                    "--destination", str(home),
-                    "--config", str(config / "chezmoi.yaml"),
-                    "--persistent-state", str(config / "state.boltdb"),
+                    "--source",
+                    str(source),
+                    "--destination",
+                    str(home),
+                    "--config",
+                    str(config / "chezmoi.yaml"),
+                    "--persistent-state",
+                    str(config / "state.boltdb"),
                     "--no-tty",
                     "apply",
                     "--force",

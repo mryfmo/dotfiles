@@ -64,9 +64,7 @@ class UsageReviewTests(unittest.TestCase):
         usage_dir.mkdir(parents=True)
         bin_dir.mkdir()
         shutil.copy2(SNAPSHOT_PATH, scripts / SNAPSHOT_PATH.name)
-        today = subprocess.run(
-            ["date", "+%Y%m%d"], text=True, capture_output=True, check=True
-        ).stdout.strip()
+        today = subprocess.run(["date", "+%Y%m%d"], text=True, capture_output=True, check=True).stdout.strip()
         existing = usage_dir / f"{today}.json"
         existing.write_text('{"keep":"unchanged"}\n')
         marker = repo / "ccusage-called"
@@ -123,9 +121,7 @@ class UsageReviewTests(unittest.TestCase):
             },
         )
 
-        lines = report.generate_report(
-            self.temp_dir, baseline_path=baseline, today=date(2026, 7, 8)
-        )
+        lines = report.generate_report(self.temp_dir, baseline_path=baseline, today=date(2026, 7, 8))
         text = "\n".join(lines)
 
         self.assertIn(
@@ -135,14 +131,10 @@ class UsageReviewTests(unittest.TestCase):
             text,
         )
         self.assertIn(
-            "interactive-downgrade-candidate: yes "
-            "(claude-fable non-cache=100, share=71.4%; "
-            "largest=claude-fable 100)",
+            "interactive-downgrade-candidate: yes (claude-fable non-cache=100, share=71.4%; largest=claude-fable 100)",
             text,
         )
-        self.assertIn(
-            "REVIEW DUE (+7d): review-2026-07-08.md is missing", text
-        )
+        self.assertIn("REVIEW DUE (+7d): review-2026-07-08.md is missing", text)
         self.assertIn("quality side (rework/review misses) is manual", text)
 
     def test_report_emits_due_windows_and_matching_notes_suppress_them(self) -> None:
@@ -173,15 +165,11 @@ class UsageReviewTests(unittest.TestCase):
         )
         (self.temp_dir / "review-2026-07-08.md").write_text("# +7d review\n")
 
-        lines = report.generate_report(
-            self.temp_dir, baseline_path=baseline, today=date(2026, 7, 15)
-        )
+        lines = report.generate_report(self.temp_dir, baseline_path=baseline, today=date(2026, 7, 15))
         text = "\n".join(lines)
 
         self.assertNotIn("REVIEW DUE (+7d)", text)
-        self.assertIn(
-            "REVIEW DUE (+14d): review-2026-07-15.md is missing", text
-        )
+        self.assertIn("REVIEW DUE (+14d): review-2026-07-15.md is missing", text)
 
     def test_candidate_is_no_when_another_claude_family_is_larger(self) -> None:
         report = load_report_module()
@@ -216,14 +204,10 @@ class UsageReviewTests(unittest.TestCase):
             ],
         )
 
-        lines = report.generate_report(
-            self.temp_dir, baseline_path=baseline, today=date(2026, 7, 2)
-        )
+        lines = report.generate_report(self.temp_dir, baseline_path=baseline, today=date(2026, 7, 2))
 
         self.assertIn(
-            "interactive-downgrade-candidate: no "
-            "(claude-fable non-cache=20, share=16.7%; "
-            "largest=claude-sonnet 100)",
+            "interactive-downgrade-candidate: no (claude-fable non-cache=20, share=16.7%; largest=claude-sonnet 100)",
             lines,
         )
 
@@ -243,14 +227,11 @@ class UsageReviewTests(unittest.TestCase):
         )
         (self.temp_dir / "20260702.json").write_text("{not-json")
 
-        lines = report.generate_report(
-            self.temp_dir, baseline_path=baseline, today=date(2026, 7, 2)
-        )
+        lines = report.generate_report(self.temp_dir, baseline_path=baseline, today=date(2026, 7, 2))
 
         self.assertTrue(any(line.startswith("WARN:") for line in lines))
         self.assertIn(
-            "quality side (rework/review misses) is manual — "
-            "decide via PR, never automatically",
+            "quality side (rework/review misses) is manual — decide via PR, never automatically",
             lines,
         )
 

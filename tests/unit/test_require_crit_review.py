@@ -96,16 +96,15 @@ class ReviewGuardTest(unittest.TestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("#!/usr/bin/env bash\n")
 
-    def agent_review(self, data: object, *, outcome: str = "approved", reviewer: str = "codex") -> subprocess.CompletedProcess[str]:
+    def agent_review(
+        self, data: object, *, outcome: str = "approved", reviewer: str = "codex"
+    ) -> subprocess.CompletedProcess[str]:
         self.touch_lifecycle_script()
         source = ".agents/worklog/review/crit-comments.json"
         self.write_review_file(source, json.dumps(data))
         evidence = self.write_review_file(
             ".agents/worklog/review/agent-crit-data.md",
-            "review_surface: crit-data\n"
-            f"reviewer: {reviewer}\n"
-            f"review_source: {source}\n"
-            f"review_outcome: {outcome}\n",
+            f"review_surface: crit-data\nreviewer: {reviewer}\nreview_source: {source}\nreview_outcome: {outcome}\n",
         )
         return self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
 
@@ -230,9 +229,7 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertIn("review_surface: crit-data", result.stdout)
 
     def test_agent_reviewer_with_crit_data_satisfies_required_review(self) -> None:
-        result = self.agent_review(
-            [{"id": "c_1", "body": "Approved", "scope": "review", "resolved": True}]
-        )
+        result = self.agent_review([{"id": "c_1", "body": "Approved", "scope": "review", "resolved": True}])
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("AGENT_REVIEWED=1", result.stdout)
 
@@ -330,10 +327,7 @@ class ReviewGuardTest(unittest.TestCase):
         external.write_text("null\n")
         evidence = self.write_review_file(
             ".agents/worklog/review/agent-external.md",
-            "review_surface: crit-data\n"
-            "reviewer: codex\n"
-            f"review_source: {external}\n"
-            "review_outcome: approved\n",
+            f"review_surface: crit-data\nreviewer: codex\nreview_source: {external}\nreview_outcome: approved\n",
         )
         result = self.guard({"AGENT_REVIEWED": "1", "REVIEW_EVIDENCE": str(evidence)})
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
@@ -380,13 +374,25 @@ class ReviewGuardTest(unittest.TestCase):
         relative_path: str = ".orchestration/validation/test-pr-feedback.json",
         head_sha: str | None = None,
     ) -> str:
-        document = {"repo": "mryfmo/dotfiles", "pr": 1, "head_sha": head_sha or self.head_commit(),
-                    "base_ref": "main", "base_sha": self.base_sha, "items": items}
+        document = {
+            "repo": "mryfmo/dotfiles",
+            "pr": 1,
+            "head_sha": head_sha or self.head_commit(),
+            "base_ref": "main",
+            "base_sha": self.base_sha,
+            "items": items,
+        }
         self.write_review_file(relative_path, json.dumps(document))
         self.write_collected([{key: value for key, value in item.items() if key != "disposition"} for item in items])
-        self.metadata.write_text(json.dumps({
-            "headRefOid": self.head_commit(), "baseRefName": "main", "baseRefOid": self.base_sha,
-        }))
+        self.metadata.write_text(
+            json.dumps(
+                {
+                    "headRefOid": self.head_commit(),
+                    "baseRefName": "main",
+                    "baseRefOid": self.base_sha,
+                }
+            )
+        )
         return relative_path
 
     def write_collected(self, items: list[dict], head_sha: str | None = None) -> None:
@@ -395,7 +401,8 @@ class ReviewGuardTest(unittest.TestCase):
 
     def guard_base(self, env: dict[str, str] | None = None, base: str = "main") -> subprocess.CompletedProcess[str]:
         defaults = {
-            "CRIT_REVIEW": "", "FAKE_COLLECTED": str(self.collected),
+            "CRIT_REVIEW": "",
+            "FAKE_COLLECTED": str(self.collected),
             "FAKE_PR_METADATA": str(self.metadata),
             "PATH": f"{self.collected_dir}{os.pathsep}{os.environ['PATH']}",
         }
@@ -442,18 +449,30 @@ class ReviewGuardTest(unittest.TestCase):
         run(["git", "branch", "-M", "main"], self.temp_dir)
         commit = self.head_commit()
         cases = {
-            "missing disposition": ([{"source": "annotation", "level": "notice", "disposition": ""}],
-                                    "needs a disposition"),
-            "stopgap wording": ([{"source": "review_comment", "level": "comment", "disposition": "later"}],
-                                "needs a disposition"),
-            "unknown commit": ([{"source": "annotation", "level": "warning", "disposition": "fixed:deadbee"}],
-                               "cites an unknown commit: deadbee"),
-            "short failure reason": ([{"source": "annotation", "level": "failure", "disposition": "not-applicable:flaky"}],
-                                     "failure-level; not-applicable needs a reason of at least 20 characters"),
-            "short in-progress reason": ([{"source": "check_run", "level": "in_progress", "disposition": "not-applicable:wip"}],
-                                         "in_progress-level; not-applicable needs a reason of at least 20 characters"),
-            "short cancelled reason": ([{"source": "check_run", "level": "cancelled", "disposition": "not-applicable:rerun"}],
-                                       "cancelled-level; not-applicable needs a reason of at least 20 characters"),
+            "missing disposition": (
+                [{"source": "annotation", "level": "notice", "disposition": ""}],
+                "needs a disposition",
+            ),
+            "stopgap wording": (
+                [{"source": "review_comment", "level": "comment", "disposition": "later"}],
+                "needs a disposition",
+            ),
+            "unknown commit": (
+                [{"source": "annotation", "level": "warning", "disposition": "fixed:deadbee"}],
+                "cites an unknown commit: deadbee",
+            ),
+            "short failure reason": (
+                [{"source": "annotation", "level": "failure", "disposition": "not-applicable:flaky"}],
+                "failure-level; not-applicable needs a reason of at least 20 characters",
+            ),
+            "short in-progress reason": (
+                [{"source": "check_run", "level": "in_progress", "disposition": "not-applicable:wip"}],
+                "in_progress-level; not-applicable needs a reason of at least 20 characters",
+            ),
+            "short cancelled reason": (
+                [{"source": "check_run", "level": "cancelled", "disposition": "not-applicable:rerun"}],
+                "cancelled-level; not-applicable needs a reason of at least 20 characters",
+            ),
             "not an items document": ([], None),
         }
         for name, (items, message) in cases.items():
@@ -606,14 +625,19 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertNotIn("PR feedback evidence accepted", result.stdout)
 
     def test_feedback_cannot_hide_an_arbitrary_path_without_base(self) -> None:
-        for path in ("scripts/policy.json", "docs/test-pr-feedback.json",
-                     ".orchestration/validation/feedback.json",
-                     ".orchestration/validation/../test-pr-feedback.json"):
+        for path in (
+            "scripts/policy.json",
+            "docs/test-pr-feedback.json",
+            ".orchestration/validation/feedback.json",
+            ".orchestration/validation/../test-pr-feedback.json",
+        ):
             with self.subTest(path=path):
                 feedback = self.write_feedback([], relative_path=path)
                 result = self.guard({"PR_FEEDBACK_EVIDENCE": feedback})
                 self.assertEqual(result.returncode, 1, result.stdout)
-                self.assertIn("evidence must live under .orchestration/validation/ and end with -pr-feedback.json", result.stdout)
+                self.assertIn(
+                    "evidence must live under .orchestration/validation/ and end with -pr-feedback.json", result.stdout
+                )
 
     def test_feedback_symlink_cannot_hide_a_file_outside_validation(self) -> None:
         target = self.write_feedback([], relative_path="docs/test-pr-feedback.json")
@@ -640,10 +664,12 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertIn("evidence must live under", result.stdout)
 
     def test_feedback_accepts_absolute_path_through_a_repository_parent_alias(self) -> None:
-        feedback = self.write_feedback([
-            {"source": "annotation", "level": "notice", "disposition": "not-applicable:runner notice"}
-            for _ in range(60)
-        ])
+        feedback = self.write_feedback(
+            [
+                {"source": "annotation", "level": "notice", "disposition": "not-applicable:runner notice"}
+                for _ in range(60)
+            ]
+        )
         path = self.temp_dir / feedback
         path.write_text(json.dumps(json.loads(path.read_text()), indent=2))
         alias = self.collected_dir / "parent-alias"
@@ -804,9 +830,15 @@ class ReviewGuardTest(unittest.TestCase):
         run(["git", "merge", "--no-ff", "--no-edit", "side"], self.temp_dir)
         self.base_sha = self.head_commit()
         self.commit_on_branch("docs/fix.md")
-        feedback = self.write_feedback([{
-            "source": "review_comment", "level": "comment", "disposition": f"fixed:{self.base_sha}",
-        }])
+        feedback = self.write_feedback(
+            [
+                {
+                    "source": "review_comment",
+                    "level": "comment",
+                    "disposition": f"fixed:{self.base_sha}",
+                }
+            ]
+        )
         result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback}, base=side)
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn("outside", result.stdout)

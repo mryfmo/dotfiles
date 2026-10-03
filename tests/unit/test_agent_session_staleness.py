@@ -34,9 +34,7 @@ def load_script():
 
 
 def load_checker():
-    spec = importlib.util.spec_from_file_location(
-        "check_agent_runtime_staleness", CHECKER
-    )
+    spec = importlib.util.spec_from_file_location("check_agent_runtime_staleness", CHECKER)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -64,9 +62,7 @@ class AgentSessionStalenessTest(unittest.TestCase):
         os.utime(path, (mtime, mtime))
         return path
 
-    def run_script(
-        self, *args: str, stdin: str | None = None
-    ) -> subprocess.CompletedProcess[str]:
+    def run_script(self, *args: str, stdin: str | None = None) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env["HOME"] = str(self.home)
         return subprocess.run(
@@ -82,9 +78,7 @@ class AgentSessionStalenessTest(unittest.TestCase):
     def test_hook_first_call_writes_private_baseline_and_is_silent(self) -> None:
         result = self.run_script(
             "hook",
-            stdin=json.dumps(
-                {"session_id": "session/../../escape", "source": "startup"}
-            ),
+            stdin=json.dumps({"session_id": "session/../../escape", "source": "startup"}),
         )
 
         state_dir = self.home / ".local/state/agent-staleness"
@@ -129,9 +123,7 @@ class AgentSessionStalenessTest(unittest.TestCase):
         old = time.time() - 8 * 24 * 60 * 60
         os.utime(stale, (old, old))
 
-        result = self.run_script(
-            "hook", stdin=json.dumps({"session_id": "new-session", "source": "resume"})
-        )
+        result = self.run_script("hook", stdin=json.dumps({"session_id": "new-session", "source": "resume"}))
 
         self.assertEqual(result.stdout, "")
         self.assertEqual(result.stderr, "")
@@ -180,15 +172,11 @@ class AgentSessionStalenessTest(unittest.TestCase):
 
     def test_internal_failure_is_silent_success_with_one_stderr_line(self) -> None:
         module = load_script()
-        with mock.patch.object(
-            module, "collect_updates", side_effect=OSError("fixture failure")
-        ):
+        with mock.patch.object(module, "collect_updates", side_effect=OSError("fixture failure")):
             stdout = io.StringIO()
             stderr = io.StringIO()
             with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-                result = module.guarded_main(
-                    ["check", "--since", "1700000000"], home=self.home
-                )
+                result = module.guarded_main(["check", "--since", "1700000000"], home=self.home)
 
         self.assertEqual(result, 0)
         self.assertEqual(stdout.getvalue(), "")

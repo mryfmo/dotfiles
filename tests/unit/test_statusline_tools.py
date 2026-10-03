@@ -58,9 +58,7 @@ class StatuslineToolsTest(unittest.TestCase):
             log = bin_path / "calls"
             for name in ("ccusage", "ccstatusline"):
                 executable = bin_path / name
-                executable.write_text(
-                    f'#!/bin/sh\nprintf "{name}%s\\n" "${{*:+ $*}}" >> "{log}"\n'
-                )
+                executable.write_text(f'#!/bin/sh\nprintf "{name}%s\\n" "${{*:+ $*}}" >> "{log}"\n')
                 executable.chmod(0o755)
 
             env = os.environ | {
@@ -110,9 +108,7 @@ class StatuslineToolsTest(unittest.TestCase):
             "scripts/check-statusline-tools.py",
         ):
             self.assertIn(token, workflow)
-        self.assertLess(
-            workflow.index(node_install), workflow.index("npm:ccstatusline@2.2.30")
-        )
+        self.assertLess(workflow.index(node_install), workflow.index("npm:ccstatusline@2.2.30"))
         for token in (
             '"display_name": "Claude"',
             '"session_id": "offline-test"',

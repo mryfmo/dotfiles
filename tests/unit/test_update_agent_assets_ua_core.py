@@ -29,11 +29,7 @@ class UnderstandAnythingCoreBuildTest(unittest.TestCase):
         self.bin.mkdir()
         self.log = self.temp / "calls.log"
         self.clone = self.home / ".understand-anything/repo/understand-anything-plugin"
-        self.release = (
-            self.home
-            / ".claude/plugins/cache/understand-anything/understand-anything"
-            / VERSION
-        )
+        self.release = self.home / ".claude/plugins/cache/understand-anything/understand-anything" / VERSION
         self.make_plugin_tree(self.clone)
         (self.bin / "python3").symlink_to(sys.executable)
         for tool in ("bash", "cat", "cp", "dirname", "find", "mkdir", "rm"):
@@ -46,17 +42,13 @@ class UnderstandAnythingCoreBuildTest(unittest.TestCase):
 
     def make_plugin_tree(self, root: Path) -> None:
         (root / ".claude-plugin").mkdir(parents=True)
-        (root / ".claude-plugin/plugin.json").write_text(
-            json.dumps({"version": VERSION})
-        )
+        (root / ".claude-plugin/plugin.json").write_text(json.dumps({"version": VERSION}))
         (root / "packages/core/src").mkdir(parents=True)
         (root / "packages/core/src/index.ts").write_text("export {};\n")
 
     def write_fake(self, name: str, body: str) -> None:
         path = self.bin / name
-        path.write_text(
-            f'#!/bin/sh\nprintf \'%s|%s\\n\' "$PWD" "{name} $*" >> {self.log}\n{body}\n'
-        )
+        path.write_text(f'#!/bin/sh\nprintf \'%s|%s\\n\' "$PWD" "{name} $*" >> {self.log}\n{body}\n')
         path.chmod(0o755)
 
     def write_fake_pnpm(self, *, frozen_exit: int = 0, build_exit: int = 0) -> None:
@@ -106,9 +98,7 @@ class UnderstandAnythingCoreBuildTest(unittest.TestCase):
                 f"{self.release}|pnpm --filter @understand-anything/core build",
             ],
         )
-        self.assertEqual(
-            (self.clone / "packages/core/dist/index.js").read_text(), "built\n"
-        )
+        self.assertEqual((self.clone / "packages/core/dist/index.js").read_text(), "built\n")
 
     def test_frozen_install_failure_falls_back_to_plain_install(self) -> None:
         self.make_plugin_tree(self.release)
@@ -140,9 +130,7 @@ class UnderstandAnythingCoreBuildTest(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.calls(), [])
-        self.assertEqual(
-            (self.clone / "packages/core/dist/index.js").read_text(), "prebuilt\n"
-        )
+        self.assertEqual((self.clone / "packages/core/dist/index.js").read_text(), "prebuilt\n")
 
     @staticmethod
     def set_mtime(path: Path, seconds: int) -> None:
@@ -179,9 +167,7 @@ class UnderstandAnythingCoreBuildTest(unittest.TestCase):
                         "pnpm --filter @understand-anything/core build",
                     ],
                 )
-                self.assertEqual(
-                    (self.clone / "packages/core/dist/index.js").read_text(), "built\n"
-                )
+                self.assertEqual((self.clone / "packages/core/dist/index.js").read_text(), "built\n")
 
     def test_doctor_stale_warning_is_cleared_by_the_update_build(self) -> None:
         spec = importlib.util.spec_from_file_location("check_agent_runtime", CHECKER)
@@ -304,9 +290,7 @@ class UnderstandAnythingCoreBuildTest(unittest.TestCase):
         )
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn(
-            "mise install --locked npm:ccstatusline npm:ccusage npm:pnpm\n", result.stdout
-        )
+        self.assertIn("mise install --locked npm:ccstatusline npm:ccusage npm:pnpm\n", result.stdout)
 
     def test_warns_and_continues_when_no_pnpm_is_resolvable(self) -> None:
         self.make_plugin_tree(self.release)
@@ -314,9 +298,7 @@ class UnderstandAnythingCoreBuildTest(unittest.TestCase):
         result = self.provision()
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn(
-            "WARN: Understand-Anything core not built: pnpm not found", result.stderr
-        )
+        self.assertIn("WARN: Understand-Anything core not built: pnpm not found", result.stderr)
         self.assertIn("pnpm --filter @understand-anything/core build", result.stderr)
         self.assertFalse((self.clone / "packages/core/dist").exists())
 

@@ -31,7 +31,7 @@ class AgmsgOrchestrationDocsParityTest(unittest.TestCase):
         text = SKILL.read_text()
         for stale in (
             "isn't already `working`",
-            'wake or prompt a worker with `herdr pane run',
+            "wake or prompt a worker with `herdr pane run",
             "upstream's own default) and Claude Code",
         ):
             with self.subTest(stale=stale):

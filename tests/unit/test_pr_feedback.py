@@ -261,15 +261,36 @@ class PrFeedbackTest(unittest.TestCase):
 
     def test_graphql_strings_are_raw_and_only_integers_are_typed(self) -> None:
         with mock.patch.object(self.module, "gh", return_value="{}") as gh:
-            self.module.gh_graphql("query {}", {
-                "owner": "12345", "name": "67890", "number": 180,
-                "cursor": "@private-file", "first": 100, "unused": None,
-            })
-        self.assertEqual(gh.call_args.args[0], [
-            "api", "graphql", "-f", "query=query {}",
-            "-f", "owner=12345", "-f", "name=67890", "-F", "number=180",
-            "-f", "cursor=@private-file", "-F", "first=100",
-        ])
+            self.module.gh_graphql(
+                "query {}",
+                {
+                    "owner": "12345",
+                    "name": "67890",
+                    "number": 180,
+                    "cursor": "@private-file",
+                    "first": 100,
+                    "unused": None,
+                },
+            )
+        self.assertEqual(
+            gh.call_args.args[0],
+            [
+                "api",
+                "graphql",
+                "-f",
+                "query=query {}",
+                "-f",
+                "owner=12345",
+                "-f",
+                "name=67890",
+                "-F",
+                "number=180",
+                "-f",
+                "cursor=@private-file",
+                "-F",
+                "first=100",
+            ],
+        )
 
     def test_every_item_carries_the_disposition_schema(self) -> None:
         keys = {
@@ -289,9 +310,7 @@ class PrFeedbackTest(unittest.TestCase):
         json.dumps(self.document)
 
     def test_bots_are_detected_from_type_login_or_app(self) -> None:
-        authors = {
-            (entry["source"], entry["author"], entry["bot"]) for entry in self.items
-        }
+        authors = {(entry["source"], entry["author"], entry["bot"]) for entry in self.items}
         self.assertIn(("issue_comment", "coderabbitai[bot]", True), authors)
         self.assertIn(("issue_comment", "moriya-fumio-thd", False), authors)
         self.assertIn(("annotation", "github-actions", True), authors)
@@ -326,14 +345,8 @@ class PrFeedbackTest(unittest.TestCase):
     def test_annotations_keep_every_level_even_on_passing_checks(self) -> None:
         levels = sorted(entry["level"] for entry in self.by_source("annotation"))
         self.assertEqual(levels, ["failure", "notice", "warning"])
-        warning = next(
-            entry
-            for entry in self.by_source("annotation")
-            if entry["level"] == "warning"
-        )
-        self.assertEqual(
-            warning["body"], "Untrusted taps The following taps are not trusted"
-        )
+        warning = next(entry for entry in self.by_source("annotation") if entry["level"] == "warning")
+        self.assertEqual(warning["body"], "Untrusted taps The following taps are not trusted")
         self.assertEqual(warning["check"], "public-bootstrap (macos-14, client)")
 
     def test_only_non_passing_check_runs_become_items(self) -> None:
@@ -379,12 +392,9 @@ class PrFeedbackTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             out = Path(temporary) / "feedback.json"
             with redirect_stderr(io.StringIO()) as stderr:
-                self.assertEqual(
-                    self.module.main(["180", "--repo", REPO, "--json", str(out)]), 0
-                )
+                self.assertEqual(self.module.main(["180", "--repo", REPO, "--json", str(out)]), 0)
             self.assertEqual(json.loads(out.read_text())["items"], self.items)
         self.assertIn("11 items", stderr.getvalue())
-
 
 
 class PrIntegrationRuleParityTest(unittest.TestCase):
@@ -416,6 +426,7 @@ class PrIntegrationRuleParityTest(unittest.TestCase):
             for token in self.TOKENS:
                 with self.subTest(source=name, token=token):
                     self.assertIn(token, text)
+
 
 if __name__ == "__main__":
     unittest.main()

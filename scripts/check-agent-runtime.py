@@ -71,9 +71,7 @@ MISE_STEP_IDENTITIES = {
     "claude": "npm:@anthropic-ai/claude-code",
     "codex": "npm:@openai/codex",
 }
-UPDATER_SOURCE_COMMAND = (
-    'source "$1"; export PATH="$HOME/.local/share/mise/shims:$PATH"; shift; "$@"'
-)
+UPDATER_SOURCE_COMMAND = 'source "$1"; export PATH="$HOME/.local/share/mise/shims:$PATH"; shift; "$@"'
 CHEZMOI_APPLY_COMMAND = ("chezmoi", "apply", "--force")
 MODE_ONLY_DIFF = re.compile(r"\Adiff --git .+\nold mode [0-7]+\nnew mode [0-7]+\n?\Z")
 ADH_PROFILE_BLOCK = """  adh:
@@ -140,9 +138,7 @@ def same_modified(source: Path, target: Path, json_target: bool = False) -> bool
 
 def is_ignored_runtime_path(rel: Path) -> bool:
     return rel in AGMSG_LEGACY_RUNTIME_FILES or any(
-        rel == ignored
-        or ignored in rel.parents
-        or (ignored == Path("agmsg/db") and str(rel).startswith("agmsg/db-"))
+        rel == ignored or ignored in rel.parents or (ignored == Path("agmsg/db") and str(rel).startswith("agmsg/db-"))
         for ignored in AGMSG_RUNTIME_IGNORES
     )
 
@@ -159,8 +155,7 @@ def source_files(root: Path) -> dict[Path, Path]:
     return {
         deployed_relative_path(path.relative_to(root)): path
         for path in sorted(root.rglob("*"))
-        if path.is_file()
-        and not is_ignored_runtime_path(deployed_relative_path(path.relative_to(root)))
+        if path.is_file() and not is_ignored_runtime_path(deployed_relative_path(path.relative_to(root)))
     }
 
 
@@ -170,8 +165,7 @@ def applied_files(root: Path) -> set[Path]:
     return {
         path.relative_to(root)
         for path in sorted(root.rglob("*"))
-        if (path.is_file() or path.is_symlink())
-        and not is_ignored_runtime_path(path.relative_to(root))
+        if (path.is_file() or path.is_symlink()) and not is_ignored_runtime_path(path.relative_to(root))
     }
 
 
@@ -266,37 +260,23 @@ def compare_tree_contents(
     actual = applied_files(target_root)
     if ignored_paths:
         actual = {
-            rel
-            for rel in actual
-            if not any(
-                paths_overlap(target_root / rel, ignored) for ignored in ignored_paths
-            )
+            rel for rel in actual if not any(paths_overlap(target_root / rel, ignored) for ignored in ignored_paths)
         }
     expected_rels = set(expected)
     if warn_unmanaged_top_level:
         managed_top_levels = {rel.parts[0] for rel in expected_rels if rel.parts}
         unmanaged_top_levels = sorted(
-            {
-                rel.parts[0]
-                for rel in actual
-                if rel.parts and rel.parts[0] not in managed_top_levels
-            }
+            {rel.parts[0] for rel in actual if rel.parts and rel.parts[0] not in managed_top_levels}
         )
         for top_level in unmanaged_top_levels:
             failures.append(f"WARN: unmanaged skill dir: {target_root / top_level}")
-        actual = {
-            rel for rel in actual if rel.parts and rel.parts[0] in managed_top_levels
-        }
+        actual = {rel for rel in actual if rel.parts and rel.parts[0] in managed_top_levels}
     missing = sorted(expected_rels - actual)
     extra = sorted(actual - expected_rels)
     if missing:
-        failures.append(
-            f"{label} is missing files: {', '.join(str(path) for path in missing[:20])}"
-        )
+        failures.append(f"{label} is missing files: {', '.join(str(path) for path in missing[:20])}")
     if extra:
-        failures.append(
-            f"{label} has unexpected files: {', '.join(str(path) for path in extra[:20])}"
-        )
+        failures.append(f"{label} has unexpected files: {', '.join(str(path) for path in extra[:20])}")
     for rel in sorted(expected_rels & actual):
         target = target_root / rel
         try:
@@ -307,11 +287,7 @@ def compare_tree_contents(
         if actual_text != expected[rel]:
             failures.append(f"{label} differs: {target}")
         source = expected_sources.get(rel) if expected_sources is not None else None
-        if (
-            source is not None
-            and expects_executable(source)
-            and not target.stat().st_mode & stat.S_IXUSR
-        ):
+        if source is not None and expects_executable(source) and not target.stat().st_mode & stat.S_IXUSR:
             failures.append(f"{label} is not executable: {target}")
     return failures
 
@@ -341,8 +317,7 @@ def compare_claude_skills() -> list[str]:
         expected_claude_skill_targets(),
         target_root,
         # Cowork syncs its own skills into this subtree; chezmoi does not own it.
-        ignored_paths=terminal_browser_receipt_paths()
-        | {HOME / ".claude/skills/synced"},
+        ignored_paths=terminal_browser_receipt_paths() | {HOME / ".claude/skills/synced"},
     )
 
 
@@ -413,9 +388,7 @@ def manifest_path_owners(manifest_path: Path) -> dict[str, list[Path]]:
         if not isinstance(step, str) or not isinstance(entry, dict):
             continue
         paths = entry.get("paths")
-        if not isinstance(paths, list) or not all(
-            isinstance(path, str) for path in paths
-        ):
+        if not isinstance(paths, list) or not all(isinstance(path, str) for path in paths):
             continue
         owners[step] = [normalized_path(Path(path).expanduser()) for path in paths]
     return owners
@@ -435,9 +408,7 @@ def manifest_asset_findings(home: Path | None = None) -> list[AssetFinding]:
         if not isinstance(step, str) or not isinstance(entry, dict):
             continue
         paths = entry.get("paths")
-        if not isinstance(paths, list) or not all(
-            isinstance(path, str) for path in paths
-        ):
+        if not isinstance(paths, list) or not all(isinstance(path, str) for path in paths):
             continue
         missing = tuple(
             normalized_path(Path(recorded).expanduser())
@@ -455,9 +426,7 @@ def asset_failure_message(finding: AssetFinding) -> str:
     )
 
 
-def asset_repair_action(
-    finding: AssetFinding, updater: Path | None = None
-) -> RepairAction | None:
+def asset_repair_action(finding: AssetFinding, updater: Path | None = None) -> RepairAction | None:
     step, separator, identity = finding.step.partition(":")
     if step not in ASSET_STEP_FUNCTIONS:
         return None
@@ -515,9 +484,7 @@ def direct_asset_directories(root: Path) -> list[Path]:
     return sorted(path for path in root.iterdir() if path.is_dir() or path.is_symlink())
 
 
-def orphaned_asset_warnings(
-    home: Path | None = None, source_root: Path | None = None
-) -> list[str]:
+def orphaned_asset_warnings(home: Path | None = None, source_root: Path | None = None) -> list[str]:
     home = HOME if home is None else home
     source_root = SOURCE_ROOT if source_root is None else source_root
     agents_root = home / ".agents"
@@ -529,9 +496,7 @@ def orphaned_asset_warnings(
     # Skill links installed by terminal-browser are receipt-tracked, not
     # source-managed; treat them like the understand-anything allowlist.
     receipt_skill_names = {
-        path.name
-        for path in terminal_browser_receipt_paths(home)
-        if path.parent == normalized_path(skills_root)
+        path.name for path in terminal_browser_receipt_paths(home) if path.parent == normalized_path(skills_root)
     }
     skill_allowlist = (
         UNDERSTAND_SKILL_ALLOWLIST
@@ -540,12 +505,8 @@ def orphaned_asset_warnings(
         # agmsg is owned by its upstream installer (update_agmsg), not chezmoi.
         | {"agmsg", "db", "run", "teams"}
     )
-    candidates = [
-        (path, source_root_names, AGENT_ROOT_ALLOWLIST)
-        for path in direct_asset_directories(agents_root)
-    ] + [
-        (path, source_skill_names, skill_allowlist)
-        for path in direct_asset_directories(skills_root)
+    candidates = [(path, source_root_names, AGENT_ROOT_ALLOWLIST) for path in direct_asset_directories(agents_root)] + [
+        (path, source_skill_names, skill_allowlist) for path in direct_asset_directories(skills_root)
     ]
     for path, source_names, allowlist in candidates:
         if path.name in source_names or path.name in allowlist:
@@ -553,19 +514,13 @@ def orphaned_asset_warnings(
         matching_steps = sorted(
             step
             for step, recorded_paths in owners.items()
-            if any(
-                paths_overlap(path, recorded_path) for recorded_path in recorded_paths
-            )
+            if any(paths_overlap(path, recorded_path) for recorded_path in recorded_paths)
         )
         if matching_steps:
             for step in matching_steps:
-                warnings.append(
-                    f"WARN: stale agent asset: {path}; suggested: remove-agent-asset {shlex.quote(step)}"
-                )
+                warnings.append(f"WARN: stale agent asset: {path}; suggested: remove-agent-asset {shlex.quote(step)}")
         else:
-            warnings.append(
-                f"WARN: orphaned agent asset: {path}; manual review required"
-            )
+            warnings.append(f"WARN: orphaned agent asset: {path}; manual review required")
     return warnings
 
 
@@ -601,9 +556,7 @@ def live_claude_session(project: Path, proc: Path) -> bool:
     """True when a process named `claude` runs with its cwd at PROJECT (Linux /proc)."""
     for entry in proc.glob("[0-9]*"):
         try:
-            if (entry / "comm").read_text().strip() == "claude" and (
-                entry / "cwd"
-            ).resolve() == project:
+            if (entry / "comm").read_text().strip() == "claude" and (entry / "cwd").resolve() == project:
                 return True
         except OSError:
             continue
@@ -703,11 +656,7 @@ def repair_actions(failures: list[str], home: Path | None = None) -> list[Repair
             if marker in failure:
                 _, _, target_value = failure.partition(marker)
                 target = deployed_target_path(target_value, home)
-                category = (
-                    "content differs"
-                    if target.exists() or target.is_symlink()
-                    else "missing file"
-                )
+                category = "content differs" if target.exists() or target.is_symlink() else "missing file"
                 break
         if not target_value and " differs: " in failure:
             _, _, target_value = failure.partition(" differs: ")
@@ -718,11 +667,7 @@ def repair_actions(failures: list[str], home: Path | None = None) -> list[Repair
             command_name = "chmod"
         if target_value:
             target = deployed_target_path(target_value, home)
-            command = (
-                ("chmod", "+x", str(target))
-                if command_name == "chmod"
-                else (*CHEZMOI_APPLY_COMMAND, str(target))
-            )
+            command = ("chmod", "+x", str(target)) if command_name == "chmod" else (*CHEZMOI_APPLY_COMMAND, str(target))
             actions.append(RepairAction(category, target, command))
 
     failure_set = set(failures)
@@ -780,9 +725,7 @@ def check() -> list[str]:
         if not same_text(source, target, template=template):
             failures.append(f"{label} differs or is missing: {target}")
     for profile_source in sorted(SOURCE_ROOT.glob("dot_codex/modify_*.config.toml")):
-        target_name = deployed_relative_path(
-            Path(profile_source.name.removeprefix("modify_"))
-        ).name
+        target_name = deployed_relative_path(Path(profile_source.name.removeprefix("modify_"))).name
         target = HOME / ".codex" / target_name
         if not same_modified(profile_source, target):
             failures.append(
@@ -792,9 +735,7 @@ def check() -> list[str]:
         SOURCE_ROOT / "dot_codex/modify_private_config.toml",
         HOME / ".codex/config.toml",
     ):
-        failures.append(
-            f"Codex config managed keys differ or config is missing: {HOME / '.codex/config.toml'}"
-        )
+        failures.append(f"Codex config managed keys differ or config is missing: {HOME / '.codex/config.toml'}")
     if not same_modified(
         SOURCE_ROOT / "dot_claude/modify_private_settings.json",
         HOME / ".claude/settings.json",
@@ -823,13 +764,9 @@ def check() -> list[str]:
     manifest_path = HOME / ".agents/.installed-manifest.json"
     manifest_error = installed_manifest_error(manifest_path)
     if manifest_error is not None:
-        failures.append(
-            f"installed manifest unreadable or invalid: {manifest_path} ({manifest_error})"
-        )
+        failures.append(f"installed manifest unreadable or invalid: {manifest_path} ({manifest_error})")
     else:
-        failures.extend(
-            asset_failure_message(finding) for finding in manifest_asset_findings()
-        )
+        failures.extend(asset_failure_message(finding) for finding in manifest_asset_findings())
         failures.extend(orphaned_asset_warnings())
     failures.extend(understand_anything_core_warnings())
     failures.extend(orchestrator_seat_lock_warnings())
@@ -861,10 +798,7 @@ def main(argv: list[str] | None = None) -> int:
     if os.environ.get("REPAIR") == "1":
         for action in repair_actions(failures):
             if execute_repair(action):
-                print(
-                    f"repaired: {action.category} {action.target} "
-                    f"({shlex.join(action.command)})"
-                )
+                print(f"repaired: {action.category} {action.target} ({shlex.join(action.command)})")
         remaining = check()
         if repair_actions(remaining):
             print("non-convergent after repair", file=sys.stderr)

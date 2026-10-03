@@ -30,9 +30,7 @@ MAKEFILE = ROOT / "Makefile"
 HERDR_SESSION_SCRIPT = ROOT / "home/dot_local/bin/common/executable_herdr-session"
 CLAUDE_SETTINGS_MODIFIER = ROOT / "home/dot_claude/modify_private_settings.json"
 HERDR_CONFIG = ROOT / "home/dot_config/herdr/config.toml"
-FILE_VIEWER_CONFIG = (
-    ROOT / "home/dot_config/herdr/plugins/config/herdr-file-viewer/config.toml"
-)
+FILE_VIEWER_CONFIG = ROOT / "home/dot_config/herdr/plugins/config/herdr-file-viewer/config.toml"
 YAZI_CONFIG = ROOT / "home/dot_config/yazi/yazi.toml"
 GHOSTTY_CONFIG = ROOT / "home/dot_config/ghostty/config"
 ZPROFILE = ROOT / "home/dot_zprofile"
@@ -61,9 +59,7 @@ class HerdrAgentsTest(unittest.TestCase):
         self.workspace_list_path = self.temp_dir / "workspace-list.json"
         self.pane_list_path = self.temp_dir / "pane-list.json"
         self.pane_layout_path = self.temp_dir / "pane-layout.json"
-        self.pane_layout_after_resize_path = (
-            self.temp_dir / "pane-layout-after-resize.json"
-        )
+        self.pane_layout_after_resize_path = self.temp_dir / "pane-layout-after-resize.json"
         self.pane_layout_exit_path = self.temp_dir / "pane-layout-exit.txt"
         self.agent_get_path = self.temp_dir / "agent-get.json"
         self.agent_start_failures_path = self.temp_dir / "agent-start-failures.txt"
@@ -95,9 +91,7 @@ class HerdrAgentsTest(unittest.TestCase):
             '{"id":"cli:workspace:list","result":{"type":"workspace_list","workspaces":[]}}\n'
         )
         self.pane_list_path.write_text('{"id":"cli:pane:list","result":{"panes":[]}}\n')
-        self.pane_layout_path.write_text(
-            '{"id":"cli:pane:layout","result":{"layout":{"panes":[]}}}\n'
-        )
+        self.pane_layout_path.write_text('{"id":"cli:pane:layout","result":{"layout":{"panes":[]}}}\n')
         self.pane_layout_after_resize_path.write_text("")
         self.pane_layout_exit_path.write_text("0\n")
         self.agent_get_path.write_text("")
@@ -374,10 +368,7 @@ fi
     def register_claude_worker_identity(self) -> Path:
         """Register the second claude-code identity a claude worker needs."""
         return self.install_agmsg_fakes(
-            claude_identities_output=(
-                "dotfiles-conformance\tclaude-orchestrator\n"
-                "dotfiles-conformance\tclaude-worker"
-            )
+            claude_identities_output=("dotfiles-conformance\tclaude-orchestrator\ndotfiles-conformance\tclaude-worker")
         )
 
     def write_agmsg_turn_hook(self, scripts: Path) -> None:
@@ -416,10 +407,7 @@ fi
                                 "hooks": [
                                     {
                                         "type": "command",
-                                        "command": (
-                                            f"'{scripts}/session-start.sh' "
-                                            f"'claude-code' '{self.workdir}'"
-                                        ),
+                                        "command": (f"'{scripts}/session-start.sh' 'claude-code' '{self.workdir}'"),
                                     }
                                 ],
                             }
@@ -440,12 +428,8 @@ fi
         delivery between two fake agent processes, which a fake can't do).
         """
         updater_text = (ROOT / "scripts/update-agent-assets.sh").read_text()
-        commit = re.search(
-            r'^AGMSG_PIN_COMMIT="([0-9a-f]+)"$', updater_text, re.MULTILINE
-        ).group(1)
-        expected_sha256 = re.search(
-            r'^AGMSG_PIN_SHA256="([0-9a-f]+)"$', updater_text, re.MULTILINE
-        ).group(1)
+        commit = re.search(r'^AGMSG_PIN_COMMIT="([0-9a-f]+)"$', updater_text, re.MULTILINE).group(1)
+        expected_sha256 = re.search(r'^AGMSG_PIN_SHA256="([0-9a-f]+)"$', updater_text, re.MULTILINE).group(1)
 
         cache_dir = Path(tempfile.gettempdir()) / f"agmsg-fixture-cache-{commit}"
         tarball = cache_dir / "agmsg.tar.gz"
@@ -499,10 +483,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         label: str = "project agents",
         extra_workspace_ids: tuple[str, ...] = (),
     ) -> None:
-        workspaces = [
-            {"label": label, "workspace_id": ws_id}
-            for ws_id in (workspace_id, *extra_workspace_ids)
-        ]
+        workspaces = [{"label": label, "workspace_id": ws_id} for ws_id in (workspace_id, *extra_workspace_ids)]
         self.workspace_list_path.write_text(
             json.dumps(
                 {
@@ -512,9 +493,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             )
             + "\n"
         )
-        pane_list = json.loads(
-            f'{{"id":"cli:pane:list","result":{{"panes":[{panes}]}}}}'
-        )
+        pane_list = json.loads(f'{{"id":"cli:pane:list","result":{{"panes":[{panes}]}}}}')
         for pane in pane_list["result"]["panes"]:
             if pane.get("cwd") == str(self.workdir):
                 pane["cwd"] = str(self.workdir.resolve())
@@ -529,14 +508,10 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
     def write_pane_layout(self, panes: list[tuple[str, int]]) -> None:
         layout_panes = [
-            {"pane_id": pane_id, "rect": {"height": 40, "width": 40, "x": x, "y": 0}}
-            for pane_id, x in panes
+            {"pane_id": pane_id, "rect": {"height": 40, "width": 40, "x": x, "y": 0}} for pane_id, x in panes
         ]
         self.pane_layout_path.write_text(
-            json.dumps(
-                {"id": "cli:pane:layout", "result": {"layout": {"panes": layout_panes}}}
-            )
-            + "\n"
+            json.dumps({"id": "cli:pane:layout", "result": {"layout": {"panes": layout_panes}}}) + "\n"
         )
 
     def write_ratio_layout(
@@ -572,16 +547,10 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
                 }
             },
         }
-        path = (
-            self.pane_layout_after_resize_path
-            if after_resize
-            else self.pane_layout_path
-        )
+        path = self.pane_layout_after_resize_path if after_resize else self.pane_layout_path
         path.write_text(json.dumps(layout) + "\n")
 
-    def run_helper(
-        self, *mode: str, extra_env: dict[str, str] | None = None
-    ) -> subprocess.CompletedProcess[str]:
+    def run_helper(self, *mode: str, extra_env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env["HOME"] = str(self.home_dir)
         env["PATH"] = f"{self.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"
@@ -726,10 +695,14 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         summary, directive = result.stdout.splitlines()
         self.assertIn('"herdr-agents --add-worker .claude/worktrees/worker-c [DIR]"', summary)
-        self.assertTrue(summary.endswith("; worker claude-standard-dot-a005 is seated at /run/herdr.sock:wP:p2."), summary)
+        self.assertTrue(
+            summary.endswith("; worker claude-standard-dot-a005 is seated at /run/herdr.sock:wP:p2."), summary
+        )
         # The pane-less orchestrator of a regime repository gets the directive too.
         self.assertTrue(
-            directive.startswith("agmsg-orchestration: this session is the orchestrator seat claude-remediation-dot for "),
+            directive.startswith(
+                "agmsg-orchestration: this session is the orchestrator seat claude-remediation-dot for "
+            ),
             directive,
         )
         self.assertIn("invoke the agmsg-orchestration skill", directive)
@@ -769,17 +742,11 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             f"pane split w-attach:p1 --direction right --cwd {self.workdir.resolve()} --env CLICOLOR_FORCE=1 --env FORCE_COLOR=1 --env AGMSG_RESOLVE_PROJECT=0 --no-focus",
             calls,
         )
-        codex_start = next(
-            call
-            for call in calls
-            if call.startswith("agent start codex-worker-w-attach ")
-        )
+        codex_start = next(call for call in calls if call.startswith("agent start codex-worker-w-attach "))
         self.assertIn("--kind codex --pane w-attach:p3", codex_start)
         self.assertNotIn("--cwd", codex_start)
         self.assertIn("pane rename w-attach:p1 claude-orchestrator", calls)
-        self.assertFalse(
-            any(call.startswith("pane run w-attach:p1 ") for call in calls)
-        )
+        self.assertFalse(any(call.startswith("pane run w-attach:p1 ") for call in calls))
         self.assertFalse(any(call.startswith("workspace create ") for call in calls))
 
     def test_attach_lowercases_and_validates_derived_agent_name(self) -> None:
@@ -788,15 +755,11 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             f'{{"agent":"claude","cwd":"{self.workdir}","pane_id":"w1F:p1","workspace_id":"w1F"}}',
         )
 
-        result = self.run_attach_helper(
-            in_herdr=True, workspace_id="w1F", pane_id="w1F:p1"
-        )
+        result = self.run_attach_helper(in_herdr=True, workspace_id="w1F", pane_id="w1F:p1")
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
-        self.assertTrue(
-            any(call.startswith("agent start codex-worker-w1f ") for call in calls)
-        )
+        self.assertTrue(any(call.startswith("agent start codex-worker-w1f ") for call in calls))
 
     def test_attach_rejects_invalid_derived_agent_name(self) -> None:
         self.write_workspace_state(
@@ -804,18 +767,12 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             f'{{"agent":"claude","cwd":"{self.workdir}","pane_id":"w.bad:p1","workspace_id":"w.bad"}}',
         )
 
-        result = self.run_attach_helper(
-            in_herdr=True, workspace_id="w.bad", pane_id="w.bad:p1"
-        )
+        result = self.run_attach_helper(in_herdr=True, workspace_id="w.bad", pane_id="w.bad:p1")
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Invalid Herdr agent name", result.stderr)
-        calls = (
-            self.calls_path.read_text().splitlines() if self.calls_path.exists() else []
-        )
-        self.assertFalse(
-            any(call.startswith("agent start codex-worker-") for call in calls)
-        )
+        calls = self.calls_path.read_text().splitlines() if self.calls_path.exists() else []
+        self.assertFalse(any(call.startswith("agent start codex-worker-") for call in calls))
 
     def test_attach_complete_workspace_is_idempotent(self) -> None:
         self.write_workspace_state(
@@ -831,12 +788,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
         self.assertFalse(
-            any(
-                call.startswith(
-                    ("agent start ", "pane rename ", "pane run ", "pane split ")
-                )
-                for call in calls
-            )
+            any(call.startswith(("agent start ", "pane rename ", "pane run ", "pane split ")) for call in calls)
         )
 
     def test_attach_repairs_codex_claude_order_with_one_swap(self) -> None:
@@ -851,11 +803,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         result = self.run_attach_helper(in_herdr=True)
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        swaps = [
-            call
-            for call in self.calls_path.read_text().splitlines()
-            if call.startswith("pane swap ")
-        ]
+        swaps = [call for call in self.calls_path.read_text().splitlines() if call.startswith("pane swap ")]
         self.assertEqual(
             swaps,
             ["pane swap --source-pane w-attach:p2 --target-pane w-attach:p1"],
@@ -873,12 +821,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         result = self.run_attach_helper(in_herdr=True)
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertFalse(
-            any(
-                call.startswith("pane swap ")
-                for call in self.calls_path.read_text().splitlines()
-            )
-        )
+        self.assertFalse(any(call.startswith("pane swap ") for call in self.calls_path.read_text().splitlines()))
 
     def test_attach_equal_halves_does_not_resize(self) -> None:
         self.write_workspace_state(
@@ -892,12 +835,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         result = self.run_attach_helper(in_herdr=True)
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertFalse(
-            any(
-                call.startswith("pane resize ")
-                for call in self.calls_path.read_text().splitlines()
-            )
-        )
+        self.assertFalse(any(call.startswith("pane resize ") for call in self.calls_path.read_text().splitlines()))
 
     def test_attach_repairs_skewed_widths_to_equal_halves(self) -> None:
         self.write_workspace_state(
@@ -912,21 +850,14 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         result = self.run_attach_helper(in_herdr=True)
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        resize_calls = [
-            call
-            for call in self.calls_path.read_text().splitlines()
-            if call.startswith("pane resize ")
-        ]
+        resize_calls = [call for call in self.calls_path.read_text().splitlines() if call.startswith("pane resize ")]
         self.assertEqual(len(resize_calls), 1)
         self.assertRegex(
             resize_calls[0],
             r"^pane resize --pane w-attach:p1 --direction left --amount 0\.25",
         )
         widths = [
-            pane["rect"]["width"]
-            for pane in json.loads(self.pane_layout_path.read_text())["result"][
-                "layout"
-            ]["panes"]
+            pane["rect"]["width"] for pane in json.loads(self.pane_layout_path.read_text())["result"]["layout"]["panes"]
         ]
         self.assertLessEqual(max(widths) - min(widths), 2)
 
@@ -944,13 +875,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("did not converge", result.stderr)
         self.assertEqual(
-            len(
-                [
-                    call
-                    for call in self.calls_path.read_text().splitlines()
-                    if call.startswith("pane resize ")
-                ]
-            ),
+            len([call for call in self.calls_path.read_text().splitlines() if call.startswith("pane resize ")]),
             1,
         )
 
@@ -989,10 +914,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertIn("refusing ratio repair", result.stderr.lower())
                 self.assertFalse(
-                    any(
-                        call.startswith("pane resize ")
-                        for call in self.calls_path.read_text().splitlines()
-                    )
+                    any(call.startswith("pane resize ") for call in self.calls_path.read_text().splitlines())
                 )
 
     def test_attach_legacy_files_pane_refuses_repair_without_layout_mutation(
@@ -1056,12 +978,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("another Herdr tab", result.stderr)
-        self.assertFalse(
-            any(
-                call.startswith("agent start ")
-                for call in self.calls_path.read_text().splitlines()
-            )
-        )
+        self.assertFalse(any(call.startswith("agent start ") for call in self.calls_path.read_text().splitlines()))
 
     def test_attach_bootstraps_agmsg_after_codex_reuse(self) -> None:
         self.install_agmsg_fakes()
@@ -1118,10 +1035,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
     def test_attach_warns_when_multiple_agmsg_identities_exist(self) -> None:
         scripts = self.install_agmsg_fakes(
-            identities_output=(
-                "dotfiles-conformance\tcodex-worker-a\n"
-                "dotfiles-conformance\tcodex-worker-b"
-            )
+            identities_output=("dotfiles-conformance\tcodex-worker-a\ndotfiles-conformance\tcodex-worker-b")
         )
         self.write_agmsg_turn_hook(scripts)
         self.write_agmsg_claude_hooks(scripts)
@@ -1137,12 +1051,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("Multiple agmsg Codex identities", result.stderr)
-        self.assertFalse(
-            any(
-                call.startswith("delivery ")
-                for call in self.calls_path.read_text().splitlines()
-            )
-        )
+        self.assertFalse(any(call.startswith("delivery ") for call in self.calls_path.read_text().splitlines()))
 
     def test_full_mode_skips_agmsg_bootstrap_for_home(self) -> None:
         self.install_agmsg_fakes()
@@ -1152,12 +1061,8 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("Skipping agmsg bootstrap for $HOME", result.stderr)
-        calls = (
-            self.calls_path.read_text().splitlines() if self.calls_path.exists() else []
-        )
-        self.assertFalse(
-            any(call.startswith(("delivery ", "identities ")) for call in calls)
-        )
+        calls = self.calls_path.read_text().splitlines() if self.calls_path.exists() else []
+        self.assertFalse(any(call.startswith(("delivery ", "identities ")) for call in calls))
 
     def test_attach_reports_agmsg_skip_when_not_installed(self) -> None:
         self.write_workspace_state(
@@ -1168,9 +1073,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         result = self.run_attach_helper(in_herdr=True)
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn(
-            "agmsg delivery script not found; skipping bootstrap", result.stderr
-        )
+        self.assertIn("agmsg delivery script not found; skipping bootstrap", result.stderr)
 
     def test_attach_ignores_agmsg_bootstrap_failure(self) -> None:
         self.install_agmsg_fakes(delivery_exit=42, identities_output="")
@@ -1256,12 +1159,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             f"run: AGMSG_RESOLVE_PROJECT=0 {scripts}/join.sh <team> <agent-name> claude-code",
             result.stderr,
         )
-        self.assertFalse(
-            any(
-                call.startswith("join ")
-                for call in self.calls_path.read_text().splitlines()
-            )
-        )
+        self.assertFalse(any(call.startswith("join ") for call in self.calls_path.read_text().splitlines()))
 
     def test_bootstrap_accepts_same_identity_in_multiple_teams(self) -> None:
         scripts = self.install_agmsg_fakes(
@@ -1279,9 +1177,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
     def test_bootstrap_only_warns_for_multiple_claude_identities(self) -> None:
         scripts = self.install_agmsg_fakes(
-            claude_identities_output=(
-                "dotfiles-conformance\tclaude-a\ndotfiles-conformance\tclaude-b"
-            )
+            claude_identities_output=("dotfiles-conformance\tclaude-a\ndotfiles-conformance\tclaude-b")
         )
         self.write_agmsg_turn_hook(scripts)
         self.write_agmsg_claude_hooks(scripts)
@@ -1290,12 +1186,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("Multiple agmsg Claude Code identities", result.stderr)
-        self.assertFalse(
-            any(
-                call.startswith("join ")
-                for call in self.calls_path.read_text().splitlines()
-            )
-        )
+        self.assertFalse(any(call.startswith("join ") for call in self.calls_path.read_text().splitlines()))
 
     def test_bootstrap_only_does_not_call_herdr_or_agents(self) -> None:
         scripts = self.install_agmsg_fakes()
@@ -1306,9 +1197,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
-        self.assertFalse(
-            any(call.startswith(("workspace ", "pane ", "agent ")) for call in calls)
-        )
+        self.assertFalse(any(call.startswith(("workspace ", "pane ", "agent ")) for call in calls))
 
     def test_bootstrap_only_skips_home_without_agmsg_calls(self) -> None:
         self.install_agmsg_fakes()
@@ -1318,28 +1207,24 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("Skipping agmsg bootstrap for $HOME", result.stderr)
-        calls = (
-            self.calls_path.read_text().splitlines() if self.calls_path.exists() else []
-        )
-        self.assertFalse(
-            any(call.startswith(("delivery ", "identities ")) for call in calls)
-        )
+        calls = self.calls_path.read_text().splitlines() if self.calls_path.exists() else []
+        self.assertFalse(any(call.startswith(("delivery ", "identities ")) for call in calls))
 
     RETIRED_STUB = (
-        '#!/usr/bin/env bash\n'
-        '# herdr-agents main-push guard: written by herdr-agents --bootstrap-agmsg; the checks live in herdr-agents --main-push-guard.\n'
+        "#!/usr/bin/env bash\n"
+        "# herdr-agents main-push guard: written by herdr-agents --bootstrap-agmsg; the checks live in herdr-agents --main-push-guard.\n"
         'guard="$(command -v herdr-agents)" || guard="${HOME}/.local/bin/common/herdr-agents"\n'
         'if [[ -x ${guard} && "$("${guard}" --help 2> /dev/null)" == *--main-push-guard* ]]; then\n'
         '    exec "${guard}" --main-push-guard "$@"\n'
-        'fi\n'
-        '# No launcher with the guard mode (missing, or older than the guard): refuse main updates only.\n'
-        'status=0\n'
-        'while read -r _ _ remote_ref _; do\n'
-        '    if [[ ${remote_ref} == refs/heads/main ]]; then\n'
+        "fi\n"
+        "# No launcher with the guard mode (missing, or older than the guard): refuse main updates only.\n"
+        "status=0\n"
+        "while read -r _ _ remote_ref _; do\n"
+        "    if [[ ${remote_ref} == refs/heads/main ]]; then\n"
         "        printf 'pre-push: no herdr-agents with --main-push-guard is installed (run make update), so this push to main is refused\\n' >&2\n"
-        '        status=1\n'
-        '    fi\n'
-        'done\n'
+        "        status=1\n"
+        "    fi\n"
+        "done\n"
         'exit "${status}"\n'
     )
 
@@ -1377,7 +1262,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
     def test_bootstrap_leaves_a_foreign_pre_push_hook_alone(self) -> None:
         self.install_agmsg_fakes()
-        edited = self.RETIRED_STUB.replace("exit \"${status}\"\n", "./scripts/local-checks.sh\nexit \"${status}\"\n")
+        edited = self.RETIRED_STUB.replace('exit "${status}"\n', './scripts/local-checks.sh\nexit "${status}"\n')
         self.assertNotEqual(edited, self.RETIRED_STUB)
         for name, content, notice, hooks_path in (
             ("foreign", "#!/bin/sh\nexit 0\n", False, None),
@@ -1501,15 +1386,11 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         calls = self.calls_path.read_text().splitlines()
         starts = [call for call in calls if call.startswith("agent start ")]
         self.assertEqual(
-            starts.count(
-                "agent start claude-orchestrator-w-test --kind claude --pane w-test:p1 --timeout 30000 --"
-            ),
+            starts.count("agent start claude-orchestrator-w-test --kind claude --pane w-test:p1 --timeout 30000 --"),
             2,
         )
         self.assertGreaterEqual(
-            len(
-                [call for call in calls if call == "pane process-info --pane w-test:p1"]
-            ),
+            len([call for call in calls if call == "pane process-info --pane w-test:p1"]),
             2,
         )
 
@@ -1523,13 +1404,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
         self.assertEqual(
-            len(
-                [
-                    call
-                    for call in calls
-                    if call.startswith("agent start claude-orchestrator-w-test ")
-                ]
-            ),
+            len([call for call in calls if call.startswith("agent start claude-orchestrator-w-test ")]),
             1,
         )
         self.assertIn(
@@ -1552,13 +1427,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         calls = self.calls_path.read_text().splitlines()
         self.assertEqual(calls.count("agent list"), 3, calls)
         self.assertEqual(
-            len(
-                [
-                    call
-                    for call in calls
-                    if call.startswith("agent start claude-orchestrator-w-test ")
-                ]
-            ),
+            len([call for call in calls if call.startswith("agent start claude-orchestrator-w-test ")]),
             1,
         )
         self.assertIn(
@@ -1610,10 +1479,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
     def test_worker_profile_defaults_to_generated_worker_profile(self) -> None:
         profiles = self.home_dir / ".agents/model-profiles.env"
         profiles.parent.mkdir(parents=True)
-        profiles.write_text(
-            'MODEL_PROFILE_INTERACTIVE="review"\n'
-            'HERDR_AGENTS_WORKER_PROFILE="express"\n'
-        )
+        profiles.write_text('MODEL_PROFILE_INTERACTIVE="review"\nHERDR_AGENTS_WORKER_PROFILE="express"\n')
 
         result = self.run_helper()
 
@@ -1631,10 +1497,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
     ) -> None:
         profiles = self.home_dir / ".agents/model-profiles.env"
         profiles.parent.mkdir(parents=True)
-        profiles.write_text(
-            'MODEL_PROFILE_INTERACTIVE="review"\n'
-            'HERDR_AGENTS_WORKER_PROFILE="express"\n'
-        )
+        profiles.write_text('MODEL_PROFILE_INTERACTIVE="review"\nHERDR_AGENTS_WORKER_PROFILE="express"\n')
 
         result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_PROFILE": "deep"})
 
@@ -1648,9 +1511,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         )
 
     def test_claude_agent_accepts_manifest_profile_arguments_for_e2e(self) -> None:
-        result = self.run_helper(
-            extra_env={"HERDR_AGENTS_CLAUDE_ARGS": "--model haiku --effort low"}
-        )
+        result = self.run_helper(extra_env={"HERDR_AGENTS_CLAUDE_ARGS": "--model haiku --effort low"})
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn(
@@ -1685,9 +1546,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
     def test_orchestrator_pane_appends_claude_args_after_profile_args(self) -> None:
         self.write_deep_interactive_profile()
 
-        result = self.run_helper(
-            extra_env={"HERDR_AGENTS_CLAUDE_ARGS": "--model haiku --effort low"}
-        )
+        result = self.run_helper(extra_env={"HERDR_AGENTS_CLAUDE_ARGS": "--model haiku --effort low"})
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn(
@@ -1708,9 +1567,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
     ) -> None:
         """Fake agmsg: the n-th actas-claim call answers held[n] (team, owner), then ok."""
         scripts = self.install_agmsg_fakes(
-            claude_identities_output="\n".join(
-                f"{team}\tclaude-remediation-dot" for team in teams
-            )
+            claude_identities_output="\n".join(f"{team}\tclaude-remediation-dot" for team in teams)
         )
         counter = self.temp_dir / "claim-calls"
         # The --attach pane is the pair's orchestrator pane (self-named seat label).
@@ -1718,11 +1575,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             json.dumps(
                 {
                     "id": "cli:pane:list",
-                    "result": {
-                        "panes": [
-                            {"pane_id": "w-attach:p1", "label": f"{teams[0]}:claude-remediation-dot"}
-                        ]
-                    },
+                    "result": {"panes": [{"pane_id": "w-attach:p1", "label": f"{teams[0]}:claude-remediation-dot"}]},
                 }
             )
             + "\n"
@@ -1775,9 +1628,7 @@ printf 'status=ok team=dotfiles\\n'
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("seat_claim=unresolved", result.stdout.splitlines())
-        self.assertFalse(
-            any(call.startswith("actas-claim ") for call in self.calls_path.read_text().splitlines())
-        )
+        self.assertFalse(any(call.startswith("actas-claim ") for call in self.calls_path.read_text().splitlines()))
 
     def test_session_start_attach_claims_the_seat_in_a_managed_pane(self) -> None:
         self.install_orchestrator_seat_fakes()
@@ -1817,9 +1668,7 @@ printf 'status=ok team=dotfiles\\n'
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("seat_claim=ok owner=sid-stdin.4343", result.stdout.splitlines())
-        self.assertIn(
-            "pane process-info --pane w-attach:p1", self.calls_path.read_text().splitlines()
-        )
+        self.assertIn("pane process-info --pane w-attach:p1", self.calls_path.read_text().splitlines())
 
     def test_session_start_attach_claims_when_the_hook_keeps_stdin_open(self) -> None:
         # The payload arrives without a newline and the pipe stays open past
@@ -1898,9 +1747,7 @@ printf 'status=ok team=dotfiles\\n'
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("seat_claim=skipped reason=not-orchestrator-pane", result.stdout.splitlines())
-        self.assertFalse(
-            any(call.startswith("actas-claim ") for call in self.calls_path.read_text().splitlines())
-        )
+        self.assertFalse(any(call.startswith("actas-claim ") for call in self.calls_path.read_text().splitlines()))
 
     def test_session_start_attach_prints_the_regime_directive_with_a_worker_seat(self) -> None:
         self.install_orchestrator_seat_fakes()
@@ -1938,7 +1785,10 @@ printf 'status=ok team=dotfiles\\n'
         )
 
         result = self.run_attach_helper(
-            in_herdr=True, managed_layout=True, extra_env={"AGMSG_AGENT_PID": "4343"}, stdin_text='{"session_id":"sid-stdin"}\n'
+            in_herdr=True,
+            managed_layout=True,
+            extra_env={"AGMSG_AGENT_PID": "4343"},
+            stdin_text='{"session_id":"sid-stdin"}\n',
         )
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -2139,20 +1989,14 @@ printf 'status=ok team=dotfiles\\n'
     def test_worker_kind_env_override_wins_over_generated_env_fragment(self) -> None:
         profiles = self.home_dir / ".agents/model-profiles.env"
         profiles.parent.mkdir(parents=True)
-        profiles.write_text(
-            'MODEL_PROFILE_INTERACTIVE="standard"\nHERDR_AGENTS_WORKER_KIND="claude"\n'
-        )
+        profiles.write_text('MODEL_PROFILE_INTERACTIVE="standard"\nHERDR_AGENTS_WORKER_KIND="claude"\n')
 
         result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "codex"})
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
-        self.assertTrue(
-            any(call.startswith("agent start codex-worker-") for call in calls)
-        )
-        self.assertFalse(
-            any(call.startswith("agent start claude-worker-") for call in calls)
-        )
+        self.assertTrue(any(call.startswith("agent start codex-worker-") for call in calls))
+        self.assertFalse(any(call.startswith("agent start claude-worker-") for call in calls))
 
     def test_worker_kind_rejects_an_unknown_value(self) -> None:
         result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "banana"})
@@ -2171,8 +2015,7 @@ printf 'status=ok team=dotfiles\\n'
         profiles = self.home_dir / ".agents/model-profiles.env"
         profiles.parent.mkdir(parents=True, exist_ok=True)
         profiles.write_text(
-            'MODEL_PROFILE_INTERACTIVE="standard"\n'
-            'MODEL_PROFILE_STANDARD_CLAUDE_ARGS="--model sonnet --effort high"\n'
+            'MODEL_PROFILE_INTERACTIVE="standard"\nMODEL_PROFILE_STANDARD_CLAUDE_ARGS="--model sonnet --effort high"\n'
         )
 
         result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"})
@@ -2262,12 +2105,8 @@ printf 'status=ok team=dotfiles\\n'
     def test_claude_worker_sharing_the_orchestrator_identity_is_refused(self) -> None:
         self.install_agmsg_fakes()
         runs = {
-            "full": lambda: self.run_helper(
-                extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"}
-            ),
-            "attach": lambda: self.run_attach_helper(
-                in_herdr=True, extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"}
-            ),
+            "full": lambda: self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"}),
+            "attach": lambda: self.run_attach_helper(in_herdr=True, extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"}),
         }
         for mode, run in runs.items():
             with self.subTest(mode=mode):
@@ -2290,12 +2129,7 @@ printf 'status=ok team=dotfiles\\n'
                 )
                 calls = self.calls_path.read_text().splitlines()
                 self.assertFalse(
-                    any(
-                        call.startswith(
-                            ("pane split", "agent start", "workspace create")
-                        )
-                        for call in calls
-                    ),
+                    any(call.startswith(("pane split", "agent start", "workspace create")) for call in calls),
                     calls,
                 )
 
@@ -2306,10 +2140,7 @@ printf 'status=ok team=dotfiles\\n'
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue(
-            any(
-                call.startswith("agent start claude-worker-")
-                for call in self.calls_path.read_text().splitlines()
-            )
+            any(call.startswith("agent start claude-worker-") for call in self.calls_path.read_text().splitlines())
         )
 
     def test_codex_worker_is_not_subject_to_the_identity_guard(self) -> None:
@@ -2320,10 +2151,7 @@ printf 'status=ok team=dotfiles\\n'
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertNotIn("would share the orchestrator", result.stderr)
         self.assertTrue(
-            any(
-                call.startswith("agent start codex-worker-")
-                for call in self.calls_path.read_text().splitlines()
-            )
+            any(call.startswith("agent start codex-worker-") for call in self.calls_path.read_text().splitlines())
         )
 
     def test_bootstrap_with_claude_worker_accepts_two_claude_identities(self) -> None:
@@ -2335,15 +2163,11 @@ printf 'status=ok team=dotfiles\\n'
             with self.subTest(names=names):
                 shutil.rmtree(self.home_dir / ".agents", ignore_errors=True)
                 scripts = self.install_agmsg_fakes(
-                    claude_identities_output="\n".join(
-                        f"dotfiles-conformance\t{name}" for name in names.split("\n")
-                    )
+                    claude_identities_output="\n".join(f"dotfiles-conformance\t{name}" for name in names.split("\n"))
                 )
                 self.write_agmsg_claude_hooks(scripts)
 
-                result = self.run_agmsg_bootstrap_helper(
-                    extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"}
-                )
+                result = self.run_agmsg_bootstrap_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"})
 
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertEqual(
@@ -2358,12 +2182,8 @@ printf 'status=ok team=dotfiles\\n'
         scripts = self.install_agmsg_fakes()
         self.write_agmsg_claude_hooks(scripts)
 
-        claude = self.run_agmsg_bootstrap_helper(
-            extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"}
-        )
-        codex = self.run_agmsg_bootstrap_helper(
-            extra_env={"HERDR_AGENTS_WORKER_KIND": "codex"}
-        )
+        claude = self.run_agmsg_bootstrap_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"})
+        codex = self.run_agmsg_bootstrap_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "codex"})
 
         self.assertEqual(claude.returncode, 0, claude.stdout + claude.stderr)
         self.assertIn(
@@ -2378,9 +2198,7 @@ printf 'status=ok team=dotfiles\\n'
         scripts = self.install_agmsg_fakes(identities_output="")
         self.write_agmsg_claude_hooks(scripts)
 
-        result = self.run_agmsg_bootstrap_helper(
-            extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"}
-        )
+        result = self.run_agmsg_bootstrap_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"})
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertFalse((self.workdir / ".codex/hooks.json").exists())
@@ -2406,12 +2224,7 @@ printf 'status=ok team=dotfiles\\n'
         result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"})
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertFalse(
-            any(
-                call.startswith("pane send-keys ")
-                for call in self.calls_path.read_text().splitlines()
-            )
-        )
+        self.assertFalse(any(call.startswith("pane send-keys ") for call in self.calls_path.read_text().splitlines()))
 
     def test_pane_creation_propagates_explicit_fpath(self) -> None:
         result = self.run_helper(extra_env={"FPATH": "/safe/zsh/functions"})
@@ -2475,9 +2288,7 @@ fi
         calls = self.calls_path.read_text().splitlines()
         self.assertFalse(any(call.startswith("npm uninstall") for call in calls))
 
-    def write_claude_pair_state(
-        self, worker_pane: str, *, label: str = "project"
-    ) -> None:
+    def write_claude_pair_state(self, worker_pane: str, *, label: str = "project") -> None:
         """Write an attach-labeled claude pair: orchestrator p1, worker p2."""
         self.register_claude_worker_identity()
         profiles = self.home_dir / ".agents/model-profiles.env"
@@ -2500,7 +2311,11 @@ fi
         *,
         worktree_identities: str = "",
         main_identities: str = "dotfiles\tclaude-remediation-dot\ndotfiles\tclaude-standard-dot-a006",
-        team_members: tuple[str, ...] = ("claude-remediation-dot", "claude-standard-dot-a005", "claude-standard-dot-a006"),
+        team_members: tuple[str, ...] = (
+            "claude-remediation-dot",
+            "claude-standard-dot-a005",
+            "claude-standard-dot-a006",
+        ),
     ) -> Path:
         """A git repo with origin/main, a manifest worker_worktree, and path-aware agmsg fakes."""
         for args in (
@@ -2563,7 +2378,9 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
         calls = self.calls_path.read_text().splitlines()
         listed = subprocess.run(
             ["git", "-C", str(self.workdir), "worktree", "list", "--porcelain"],
-            check=True, capture_output=True, text=True,
+            check=True,
+            capture_output=True,
+            text=True,
         ).stdout
         self.assertIn(f"worktree {worktree}\n", listed)
         self.assertIn(f"join dotfiles claude-standard-dot-a007 claude-code {worktree} resolve=0", calls)
@@ -2583,11 +2400,22 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
         worktree = self.write_worktree_seat(worktree_identities="dotfiles\tclaude-standard-dot-a005")
         subprocess.run(
             ["git", "-C", str(self.workdir), "worktree", "add", "-q", "--detach", str(worktree), "origin/main"],
-            check=True, capture_output=True,
+            check=True,
+            capture_output=True,
         )
         hooks = worktree / ".claude/settings.local.json"
         hooks.parent.mkdir(parents=True)
-        hooks.write_text(json.dumps({"hooks": {"Stop": [{"hooks": [{"command": "bash ~/.agents/skills/agmsg/scripts/check-inbox.sh claude-code x"}]}]}}))
+        hooks.write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "Stop": [
+                            {"hooks": [{"command": "bash ~/.agents/skills/agmsg/scripts/check-inbox.sh claude-code x"}]}
+                        ]
+                    }
+                }
+            )
+        )
         self.write_legacy_seated_pair()
 
         result = self.run_helper("--restart-worker")
@@ -2617,17 +2445,23 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
     def test_full_mode_gives_a_codex_worker_its_worktree_git_metadata_roots(self) -> None:
         worktree = self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
         profiles = self.home_dir / ".agents/model-profiles.env"
-        profiles.write_text(profiles.read_text().replace('HERDR_AGENTS_WORKER_KIND="claude"', 'HERDR_AGENTS_WORKER_KIND="codex"'))
+        profiles.write_text(
+            profiles.read_text().replace('HERDR_AGENTS_WORKER_KIND="claude"', 'HERDR_AGENTS_WORKER_KIND="codex"')
+        )
         configured = self.write_codex_config_roots()
 
         result = self.run_helper()
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         roots = json.dumps(configured + self.git_metadata_roots(worktree.name), separators=(",", ":"))
-        starts = [call for call in self.calls_path.read_text().splitlines() if call.startswith("agent start codex-worker-")]
+        starts = [
+            call for call in self.calls_path.read_text().splitlines() if call.startswith("agent start codex-worker-")
+        ]
         self.assertEqual(len(starts), 1, starts)
         self.assertTrue(
-            starts[0].endswith(f" -- --sandbox workspace-write --profile standard -c sandbox_workspace_write.writable_roots={roots}"),
+            starts[0].endswith(
+                f" -- --sandbox workspace-write --profile standard -c sandbox_workspace_write.writable_roots={roots}"
+            ),
             starts[0],
         )
 
@@ -2651,14 +2485,20 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
 
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
         self.assertIn("need exactly one orchestrator claude-code identity", result.stderr)
-        self.assertIn(f"AGMSG_RESOLVE_PROJECT=0 {self.home_dir}/.agents/skills/agmsg/scripts/join.sh <team> <name> claude-code {worktree}", result.stderr)
-        self.assertFalse(any(call.startswith(("join ", "agent start")) for call in self.calls_path.read_text().splitlines()))
+        self.assertIn(
+            f"AGMSG_RESOLVE_PROJECT=0 {self.home_dir}/.agents/skills/agmsg/scripts/join.sh <team> <name> claude-code {worktree}",
+            result.stderr,
+        )
+        self.assertFalse(
+            any(call.startswith(("join ", "agent start")) for call in self.calls_path.read_text().splitlines())
+        )
 
     def test_attach_from_the_worker_worktree_exits_quietly(self) -> None:
         worktree = self.write_worktree_seat()
         subprocess.run(
             ["git", "-C", str(self.workdir), "worktree", "add", "-q", "--detach", str(worktree), "origin/main"],
-            check=True, capture_output=True,
+            check=True,
+            capture_output=True,
         )
         self.workdir = worktree
 
@@ -2682,7 +2522,11 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
         cd_call = calls.index(f"pane run w-old:p2 cd -- {worktree}")
-        start_call = next(i for i, c in enumerate(calls) if c.startswith("agent start claude-worker-w-old --kind claude --pane w-old:p2"))
+        start_call = next(
+            i
+            for i, c in enumerate(calls)
+            if c.startswith("agent start claude-worker-w-old --kind claude --pane w-old:p2")
+        )
         self.assertLess(cd_call, start_call)
 
     def test_worker_seat_is_skipped_in_an_unregistered_repository(self) -> None:
@@ -2693,14 +2537,17 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
         self.assertIn("would share the orchestrator's claude-code agmsg identity", result.stderr)
         self.assertFalse(worktree.exists())
-        self.assertFalse(any(c.startswith(("workspace create", "join ")) for c in self.calls_path.read_text().splitlines()))
+        self.assertFalse(
+            any(c.startswith(("workspace create", "join ")) for c in self.calls_path.read_text().splitlines())
+        )
 
     def test_worker_seat_is_skipped_outside_a_git_main_checkout(self) -> None:
         worktree = self.write_worktree_seat()
         linked = self.workdir.resolve() / ".claude/worktrees/bg"
         subprocess.run(
             ["git", "-C", str(self.workdir), "worktree", "add", "-q", "--detach", str(linked), "origin/main"],
-            check=True, capture_output=True,
+            check=True,
+            capture_output=True,
         )
         self.workdir = linked
 
@@ -2708,7 +2555,11 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
 
         self.assertFalse((linked / ".claude/worktrees/worker-c").exists(), result.stdout + result.stderr)
         self.assertFalse(worktree.exists())
-        self.assertFalse(any(c.startswith("join ") for c in self.calls_path.read_text().splitlines()) if self.calls_path.exists() else False)
+        self.assertFalse(
+            any(c.startswith("join ") for c in self.calls_path.read_text().splitlines())
+            if self.calls_path.exists()
+            else False
+        )
 
     def test_worker_seat_is_skipped_in_a_non_git_directory(self) -> None:
         profiles = self.home_dir / ".agents/model-profiles.env"
@@ -2719,7 +2570,11 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertFalse((self.workdir / ".claude/worktrees").exists())
-        worker_split = [c for c in self.calls_path.read_text().splitlines() if c.startswith("pane split") and "AGMSG_RESOLVE_PROJECT=0" in c]
+        worker_split = [
+            c
+            for c in self.calls_path.read_text().splitlines()
+            if c.startswith("pane split") and "AGMSG_RESOLVE_PROJECT=0" in c
+        ]
         self.assertEqual(len(worker_split), 1)
         self.assertIn(f"--cwd {self.workdir.resolve()} ", worker_split[0])
 
@@ -2769,7 +2624,12 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
         self.assertIn("model profile missing is not defined (MODEL_PROFILE_MISSING_CLAUDE_ARGS", result.stderr)
         self.assertFalse((self.workdir / ".claude/worktrees/b3").exists())
-        self.assertFalse(any(c.startswith(("workspace create", "spawn ", "delivery")) for c in self.calls_path.read_text().splitlines()))
+        self.assertFalse(
+            any(
+                c.startswith(("workspace create", "spawn ", "delivery"))
+                for c in self.calls_path.read_text().splitlines()
+            )
+        )
 
     def write_seat_lifecycle_fakes(
         self,
@@ -2840,7 +2700,8 @@ exit {despawn_exit}
         path = self.workdir.resolve() / ".claude/worktrees" / name
         subprocess.run(
             ["git", "-C", str(self.workdir), "worktree", "add", "-q", "--detach", str(path), "origin/main"],
-            check=True, capture_output=True,
+            check=True,
+            capture_output=True,
         )
         return path
 
@@ -2864,9 +2725,14 @@ exit {despawn_exit}
             calls,
         )
         self.assertFalse(any(call.startswith("join ") for call in calls), calls)
-        self.assertLess(calls.index(f"delivery set both claude-code {worktree}"), next(i for i, c in enumerate(calls) if c.startswith("spawn ")))
+        self.assertLess(
+            calls.index(f"delivery set both claude-code {worktree}"),
+            next(i for i, c in enumerate(calls) if c.startswith("spawn ")),
+        )
         self.assertEqual(options.read_text(), "claude-code:\n  --model: opus\n  --effort: high\n")
-        self.assertIn(f"Herdr agents worker added: claude-standard-dot-a007 in workspace w-test ({worktree})", result.stdout)
+        self.assertIn(
+            f"Herdr agents worker added: claude-standard-dot-a007 in workspace w-test ({worktree})", result.stdout
+        )
 
     def write_codex_config_roots(self, body: str | None = None) -> list[str]:
         """A ~/.codex/config.toml whose writable_roots are the agmsg store (generated layout by default).
@@ -2881,7 +2747,7 @@ exit {despawn_exit}
         if body is None:
             body = (
                 'sandbox_mode = "workspace-write"\n\n[sandbox_workspace_write]\nnetwork_access = false\n'
-                f"writable_roots = {json.dumps(roots)}\n\n[shell_environment_policy]\ninherit = \"core\"\n"
+                f'writable_roots = {json.dumps(roots)}\n\n[shell_environment_policy]\ninherit = "core"\n'
             )
         config.write_text(body.replace("@ROOTS@", ",\n".join(f"    {json.dumps(root)}" for root in roots)))
         python = self.bin_dir / "python3"
@@ -2908,7 +2774,7 @@ exit {despawn_exit}
         self.assertIn(f"  --config: sandbox_workspace_write.writable_roots={roots}\n", options)
 
     def test_add_worker_emits_no_override_for_an_unparseable_codex_config(self) -> None:
-        self.write_codex_config_roots("[sandbox_workspace_write\nwritable_roots = [\"/a\"]\n")
+        self.write_codex_config_roots('[sandbox_workspace_write\nwritable_roots = ["/a"]\n')
 
         result, options = self.run_codex_add_worker()
 
@@ -2937,7 +2803,9 @@ exit {despawn_exit}
     def git_metadata_roots(self, name: str) -> list[str]:
         common = subprocess.run(
             ["git", "-C", str(self.workdir), "rev-parse", "--path-format=absolute", "--git-common-dir"],
-            check=True, capture_output=True, text=True,
+            check=True,
+            capture_output=True,
+            text=True,
         ).stdout.strip()
         return [f"{common}/objects", f"{common}/refs", f"{common}/logs", f"{common}/worktrees/{name}"]
 
@@ -2966,15 +2834,30 @@ exit {despawn_exit}
         self.write_worktree_seat(worktree_identities="dotfiles\tclaude-standard-dot-a007")
         self.write_seat_lifecycle_fakes()
         worktree = self.add_seat_worktree("b1")
-        self.workspace_list_path.write_text(json.dumps({"result": {"workspaces": [{"workspace_id": "w-b1", "label": "project worker b1"}]}}))
-        self.pane_list_path.write_text(json.dumps({"result": {"panes": [{"pane_id": "w-b1:p2", "agent": "claude", "cwd": str(worktree), "workspace_id": "w-b1"}]}}))
+        self.workspace_list_path.write_text(
+            json.dumps({"result": {"workspaces": [{"workspace_id": "w-b1", "label": "project worker b1"}]}})
+        )
+        self.pane_list_path.write_text(
+            json.dumps(
+                {
+                    "result": {
+                        "panes": [
+                            {"pane_id": "w-b1:p2", "agent": "claude", "cwd": str(worktree), "workspace_id": "w-b1"}
+                        ]
+                    }
+                }
+            )
+        )
 
         result = self.run_helper("--add-worker", ".claude/worktrees/b1")
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
         self.assertFalse(any(c.startswith(("spawn ", "workspace create")) for c in calls), calls)
-        self.assertIn(f"Herdr agents worker claude-standard-dot-a007 is already seated in workspace w-b1 ({worktree})", result.stdout)
+        self.assertIn(
+            f"Herdr agents worker claude-standard-dot-a007 is already seated in workspace w-b1 ({worktree})",
+            result.stdout,
+        )
 
     def test_add_worker_refuses_before_any_change_when_no_herdr_socket_is_found(self) -> None:
         self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
@@ -2995,9 +2878,7 @@ exit {despawn_exit}
         self.write_seat_lifecycle_fakes()
         # macOS caps AF_UNIX paths near 104 bytes and its temp dirs are long, so
         # HOME is a short symlink (/tmp/ha-* when writable) to the fake home.
-        short_root = Path(
-            tempfile.mkdtemp(prefix="ha-", dir="/tmp" if os.access("/tmp", os.W_OK) else None)
-        )
+        short_root = Path(tempfile.mkdtemp(prefix="ha-", dir="/tmp" if os.access("/tmp", os.W_OK) else None))
         self.addCleanup(shutil.rmtree, short_root, True)
         short_home = short_root / "h"
         short_home.symlink_to(self.home_dir)
@@ -3049,7 +2930,9 @@ exit 3
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
         self.assertIn("pane send-keys w-test:p2 Down Enter", calls)
-        self.assertTrue(any(c.startswith("spawn ") and c.endswith(" --window --ready-timeout 15") for c in calls), calls)
+        self.assertTrue(
+            any(c.startswith("spawn ") and c.endswith(" --window --ready-timeout 15") for c in calls), calls
+        )
 
     def write_dialogless_claude_spawn(self, exit_code: int, dispatch_exit: int = 0) -> None:
         """spawn.sh places a pane, shows no trust dialog, then exits with exit_code."""
@@ -3113,7 +2996,7 @@ exit {exit_code}
         spawn = self.home_dir / ".agents/skills/agmsg/scripts/spawn.sh"
         spawn.write_text(
             "#!/usr/bin/env bash\n"
-            f"printf '%s\\n' '{{\"result\":{{\"panes\":[{{\"pane_id\":\"w-test:p9\"}}]}}}}' > {self.pane_list_path}\n"
+            f'printf \'%s\\n\' \'{{"result":{{"panes":[{{"pane_id":"w-test:p9"}}]}}}}\' > {self.pane_list_path}\n'
             "printf 'status=timeout\\n'\nexit 3\n"
         )
 
@@ -3130,7 +3013,7 @@ exit {exit_code}
         spawn = self.home_dir / ".agents/skills/agmsg/scripts/spawn.sh"
         spawn.write_text(
             "#!/usr/bin/env bash\n"
-            f"printf '%s\\n' '{{\"result\":{{\"panes\":[{{\"pane_id\":\"w-test:p9\"}}]}}}}' > {self.pane_list_path}\n"
+            f'printf \'%s\\n\' \'{{"result":{{"panes":[{{"pane_id":"w-test:p9"}}]}}}}\' > {self.pane_list_path}\n'
             "printf 'status=timeout\\n'\nexit 3\n"
         )
 
@@ -3145,7 +3028,10 @@ exit {exit_code}
         self.write_seat_lifecycle_fakes(spawn_panes=("w-test:p7", "w-test:p9"))
         scripts = self.home_dir / ".agents/skills/agmsg/scripts"
         team = scripts / "team.sh"
-        team.write_text(f"#!/usr/bin/env bash\nprintf 'team.sh %s\\n' \"$*\" >> {self.calls_path}\n" + team.read_text().split("\n", 1)[1])
+        team.write_text(
+            f"#!/usr/bin/env bash\nprintf 'team.sh %s\\n' \"$*\" >> {self.calls_path}\n"
+            + team.read_text().split("\n", 1)[1]
+        )
         run = self.home_dir / ".agents/skills/agmsg/run"
         run.mkdir(parents=True, exist_ok=True)
         (run / "spawn.dotfiles__codex-standard-dot-a007").write_text(
@@ -3159,7 +3045,9 @@ exit {exit_code}
         spawn_at = next(index for index, call in enumerate(calls) if call.startswith("spawn "))
         self.assertTrue(
             any(
-                call.startswith("agmsg-dispatch dotfiles claude-remediation-dot codex-standard-dot-a007 w-test:p7 AGMSG-PING v1 task_id=bringup-")
+                call.startswith(
+                    "agmsg-dispatch dotfiles claude-remediation-dot codex-standard-dot-a007 w-test:p7 AGMSG-PING v1 task_id=bringup-"
+                )
                 for call in calls
             )
         )
@@ -3171,7 +3059,7 @@ exit {exit_code}
         skill = self.home_dir / ".agents/skills/agmsg"
         # Upstream agmsg_spawn_path answers with the id-keyed record path.
         (skill / "scripts/lib/actas-lock.sh").write_text(
-            'agmsg_spawn_path() { printf \'%s/run/spawn.k-team__k-member\\n\' "$SKILL_DIR"; }\n'
+            "agmsg_spawn_path() { printf '%s/run/spawn.k-team__k-member\\n' \"$SKILL_DIR\"; }\n"
         )
         (skill / "run").mkdir(parents=True, exist_ok=True)
         (skill / "run/spawn.k-team__k-member").write_text("herdr:/tmp/herdr.sock:w-test:p7\t/project\tcodex\n")
@@ -3181,7 +3069,10 @@ exit {exit_code}
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertEqual("linkage=unreached rc=1 hint=poke", result.stdout.splitlines()[-1])
         self.assertTrue(
-            any(call.startswith("agmsg-dispatch ") and " w-test:p7 " in call for call in self.calls_path.read_text().splitlines())
+            any(
+                call.startswith("agmsg-dispatch ") and " w-test:p7 " in call
+                for call in self.calls_path.read_text().splitlines()
+            )
         )
 
     def test_add_worker_linkage_refuses_a_placement_conflict(self) -> None:
@@ -3194,7 +3085,9 @@ exit {exit_code}
         )
         run = self.home_dir / ".agents/skills/agmsg/run"
         run.mkdir(parents=True, exist_ok=True)
-        (run / "spawn.dotfiles__codex-standard-dot-a007").write_text("herdr:/tmp/herdr.sock:w-test:p5\t/project\tcodex\n")
+        (run / "spawn.dotfiles__codex-standard-dot-a007").write_text(
+            "herdr:/tmp/herdr.sock:w-test:p5\t/project\tcodex\n"
+        )
 
         result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "codex")
 
@@ -3210,13 +3103,18 @@ exit {exit_code}
         (self.home_dir / ".agents/skills/agmsg/scripts/lib/actas-lock.sh").write_text("true\n")
         run = self.home_dir / ".agents/skills/agmsg/run"
         run.mkdir(parents=True, exist_ok=True)
-        (run / "spawn.dotfiles__codex-standard-dot-a007").write_text("herdr:/tmp/herdr.sock:w-test:p5\t/project\tcodex\n")
+        (run / "spawn.dotfiles__codex-standard-dot-a007").write_text(
+            "herdr:/tmp/herdr.sock:w-test:p5\t/project\tcodex\n"
+        )
 
         result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "codex")
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue(
-            any(call.startswith("agmsg-dispatch ") and " w-test:p5 " in call for call in self.calls_path.read_text().splitlines())
+            any(
+                call.startswith("agmsg-dispatch ") and " w-test:p5 " in call
+                for call in self.calls_path.read_text().splitlines()
+            )
         )
 
     def test_add_worker_linkage_survives_a_non_numeric_pong_wait(self) -> None:
@@ -3224,7 +3122,10 @@ exit {exit_code}
         self.write_seat_lifecycle_fakes()
 
         result = self.run_helper(
-            "--add-worker", ".claude/worktrees/b1", "--kind", "codex",
+            "--add-worker",
+            ".claude/worktrees/b1",
+            "--kind",
+            "codex",
             extra_env={"HERDR_AGENTS_LINKAGE_PONG_WAIT": "foo"},
         )
 
@@ -3237,7 +3138,10 @@ exit {exit_code}
         self.write_seat_lifecycle_fakes(pong=True)
 
         result = self.run_helper(
-            "--add-worker", ".claude/worktrees/b1", "--kind", "codex",
+            "--add-worker",
+            ".claude/worktrees/b1",
+            "--kind",
+            "codex",
             extra_env={"HERDR_AGENTS_LINKAGE_PONG_WAIT": "08"},
         )
 
@@ -3276,7 +3180,9 @@ exit {exit_code}
         self.write_seat_lifecycle_fakes()
         run = self.home_dir / ".agents/skills/agmsg/run"
         run.mkdir(parents=True, exist_ok=True)
-        (run / "spawn.dotfiles__codex-standard-dot-a007").write_text("herdr:/tmp/herdr.sock:w-old:p3\t/project\tcodex\n")
+        (run / "spawn.dotfiles__codex-standard-dot-a007").write_text(
+            "herdr:/tmp/herdr.sock:w-old:p3\t/project\tcodex\n"
+        )
 
         result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "codex")
 
@@ -3292,7 +3198,9 @@ exit {exit_code}
         run = self.home_dir / ".agents/skills/agmsg/run"
         run.mkdir(parents=True, exist_ok=True)
         # Same workspace, but pane p3 has exited: the workspace lists only p9.
-        (run / "spawn.dotfiles__codex-standard-dot-a007").write_text("herdr:/tmp/herdr.sock:w-test:p3\t/project\tcodex\n")
+        (run / "spawn.dotfiles__codex-standard-dot-a007").write_text(
+            "herdr:/tmp/herdr.sock:w-test:p3\t/project\tcodex\n"
+        )
 
         result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "codex")
 
@@ -3309,7 +3217,9 @@ exit {exit_code}
         self.pane_list_path.write_text(json.dumps({"result": {"panes": [{"pane_id": "w-test:p1"}]}}))
         run = self.home_dir / ".agents/skills/agmsg/run"
         run.mkdir(parents=True, exist_ok=True)
-        (run / "spawn.dotfiles__codex-standard-dot-a007").write_text("herdr:/tmp/herdr.sock:w-test:p1\t/project\tcodex\n")
+        (run / "spawn.dotfiles__codex-standard-dot-a007").write_text(
+            "herdr:/tmp/herdr.sock:w-test:p1\t/project\tcodex\n"
+        )
 
         result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "codex")
 
@@ -3335,7 +3245,10 @@ exit {exit_code}
         )
         self.assertIsNotNone(invocation, result.stderr)
         task_id = invocation.group(1)
-        self.assertIn(f"read_at/PONG query: sqlite3 '{self.temp_dir / 'messages.db'}' \"SELECT id, from_agent, read_at, body FROM messages WHERE team='dotfiles'", result.stderr)
+        self.assertIn(
+            f"read_at/PONG query: sqlite3 '{self.temp_dir / 'messages.db'}' \"SELECT id, from_agent, read_at, body FROM messages WHERE team='dotfiles'",
+            result.stderr,
+        )
         self.assertIn(f"body LIKE 'AGMSG-PING v1 task_id={task_id} %'", result.stderr)
         self.assertIn(f"body LIKE 'AGMSG-PONG v1 task_id={task_id}%'", result.stderr)
 
@@ -3373,7 +3286,12 @@ exit {exit_code}
         env = {**os.environ, "HOME": str(self.home_dir), "PATH": f"{self.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"}
         return subprocess.run(
             ["bash", str(worktree / "scripts/check-regime-boundary.sh"), "--report"],
-            cwd=worktree, env=env, check=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            cwd=worktree,
+            env=env,
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
 
     def test_regime_boundary_check_scans_every_worktree_for_untracked_evidence(self) -> None:
@@ -3416,7 +3334,7 @@ exit {exit_code}
         # One name per type everywhere: a seat holds two, `review` holds one per type.
         (scripts / "identities.sh").write_text(
             "#!/usr/bin/env bash\n"
-            'case "$2" in claude-code) printf \'dotfiles\\tclaude-x\\n\' ;; codex) printf \'dotfiles\\tcodex-x\\n\' ;; esac\n'
+            "case \"$2\" in claude-code) printf 'dotfiles\\tclaude-x\\n' ;; codex) printf 'dotfiles\\tcodex-x\\n' ;; esac\n"
         )
         (scripts / "identities.sh").chmod(0o755)
 
@@ -3453,17 +3371,29 @@ exit {exit_code}
         # does not match the main checkout's label prefix.
         (self.bin_dir / "herdr").write_text(
             "#!/usr/bin/env bash\n"
-            'if [[ $1 == workspace && $2 == list ]]; then\n'
+            "if [[ $1 == workspace && $2 == list ]]; then\n"
             "    printf '%s\\n' '"
-            + json.dumps({"result": {"workspaces": [
-                {"workspace_id": "w1", "label": "dotfiles worker x"},
-                {"workspace_id": "w2", "label": "dotfiles worker x"},
-                {"workspace_id": "w3", "label": "wt worker y"},
-            ]}})
+            + json.dumps(
+                {
+                    "result": {
+                        "workspaces": [
+                            {"workspace_id": "w1", "label": "dotfiles worker x"},
+                            {"workspace_id": "w2", "label": "dotfiles worker x"},
+                            {"workspace_id": "w3", "label": "wt worker y"},
+                        ]
+                    }
+                }
+            )
             + "'\n    exit 0\nfi\n"
             'case "$4" in\n'
-            "    w1) printf '%s\\n' '" + json.dumps({"result": {"panes": [{"pane_id": "w1:p1", "cwd": f"{main.resolve()}/.claude/worktrees/x"}]}}) + "' ;;\n"
-            "    w2) printf '%s\\n' '" + json.dumps({"result": {"panes": [{"pane_id": "w2:p1", "cwd": "/elsewhere/dotfiles/.claude/worktrees/x"}]}}) + "' ;;\n"
+            "    w1) printf '%s\\n' '"
+            + json.dumps({"result": {"panes": [{"pane_id": "w1:p1", "cwd": f"{main.resolve()}/.claude/worktrees/x"}]}})
+            + "' ;;\n"
+            "    w2) printf '%s\\n' '"
+            + json.dumps(
+                {"result": {"panes": [{"pane_id": "w2:p1", "cwd": "/elsewhere/dotfiles/.claude/worktrees/x"}]}}
+            )
+            + "' ;;\n"
             "    *) printf '%s\\n' '{\"result\":{\"panes\":[]}}' ;;\n"
             "esac\n"
         )
@@ -3473,7 +3403,9 @@ exit {exit_code}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         reported = [line for line in result.stdout.splitlines() if "worker workspace still open" in line]
         self.assertEqual(
-            ["regime-boundary: additional worker workspace still open: dotfiles worker x (herdr-agents --remove-worker)"],
+            [
+                "regime-boundary: additional worker workspace still open: dotfiles worker x (herdr-agents --remove-worker)"
+            ],
             reported,
         )
 
@@ -3486,7 +3418,10 @@ exit {exit_code}
         result = self.run_helper("--add-worker", ".claude/worktrees/b1", "--kind", "codex")
 
         self.assertEqual(result.returncode, 3, result.stdout + result.stderr)
-        self.assertIn("spawn.sh exited 3 for worker codex-standard-dot-a007 in workspace w-test; confirm linkage with AGMSG-PING", result.stderr)
+        self.assertIn(
+            "spawn.sh exited 3 for worker codex-standard-dot-a007 in workspace w-test; confirm linkage with AGMSG-PING",
+            result.stderr,
+        )
         self.assertNotIn("Herdr agents worker added", result.stdout)
 
     def test_add_worker_rejects_a_worktree_outside_claude_worktrees(self) -> None:
@@ -3507,7 +3442,9 @@ exit {exit_code}
         )
         self.write_seat_lifecycle_fakes()
         worktree = self.add_seat_worktree("b1")
-        self.workspace_list_path.write_text(json.dumps({"result": {"workspaces": [{"workspace_id": "w-b1", "label": "project worker b1"}]}}))
+        self.workspace_list_path.write_text(
+            json.dumps({"result": {"workspaces": [{"workspace_id": "w-b1", "label": "project worker b1"}]}})
+        )
 
         result = self.run_helper("--remove-worker", ".claude/worktrees/b1")
 
@@ -3533,7 +3470,9 @@ exit {exit_code}
 
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
         self.assertIn("has uncommitted changes; commit them or pass --force", result.stderr)
-        self.assertFalse(any(c.startswith(("despawn", "leave", "workspace close")) for c in self.calls_path.read_text().splitlines()))
+        self.assertFalse(
+            any(c.startswith(("despawn", "leave", "workspace close")) for c in self.calls_path.read_text().splitlines())
+        )
 
     def seat_remove_fixture(self, **fakes: object) -> Path:
         self.write_worktree_seat(
@@ -3542,7 +3481,9 @@ exit {exit_code}
         )
         self.write_seat_lifecycle_fakes(**fakes)
         worktree = self.add_seat_worktree("b1")
-        self.workspace_list_path.write_text(json.dumps({"result": {"workspaces": [{"workspace_id": "w-b1", "label": "project worker b1"}]}}))
+        self.workspace_list_path.write_text(
+            json.dumps({"result": {"workspaces": [{"workspace_id": "w-b1", "label": "project worker b1"}]}})
+        )
         return worktree
 
     def assert_full_seat_cleanup(self, worktree: Path, seat_type: str, name: str) -> None:
@@ -3551,7 +3492,9 @@ exit {exit_code}
             self.assertIn(call, calls)
 
     def test_remove_worker_force_retries_a_failed_graceful_despawn(self) -> None:
-        worktree = self.seat_remove_fixture(despawn_exit=3, despawn_output="status=timeout name=x team=dotfiles after=30s")
+        worktree = self.seat_remove_fixture(
+            despawn_exit=3, despawn_output="status=timeout name=x team=dotfiles after=30s"
+        )
         (worktree / "uncommitted.txt").write_text("work\n")
 
         result = self.run_helper("--remove-worker", ".claude/worktrees/b1", "--force")
@@ -3569,16 +3512,23 @@ exit {exit_code}
         result = self.run_helper("--remove-worker", ".claude/worktrees/b1", "--force")
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertFalse(any(c.endswith(" --force") and c.startswith("despawn") for c in self.calls_path.read_text().splitlines()))
+        self.assertFalse(
+            any(c.endswith(" --force") and c.startswith("despawn") for c in self.calls_path.read_text().splitlines())
+        )
         self.assert_full_seat_cleanup(worktree, "claude-code", "claude-standard-dot-a007")
 
     def test_remove_worker_forces_despawn_when_graceful_reports_needs_force(self) -> None:
-        worktree = self.seat_remove_fixture(despawn_exit=1, despawn_output="status=needs-force name=x team=dotfiles note=no-live-lock-recorded")
+        worktree = self.seat_remove_fixture(
+            despawn_exit=1, despawn_output="status=needs-force name=x team=dotfiles note=no-live-lock-recorded"
+        )
 
         result = self.run_helper("--remove-worker", ".claude/worktrees/b1")
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("despawn dotfiles claude-remediation-dot claude-standard-dot-a007 --force", self.calls_path.read_text().splitlines())
+        self.assertIn(
+            "despawn dotfiles claude-remediation-dot claude-standard-dot-a007 --force",
+            self.calls_path.read_text().splitlines(),
+        )
         self.assert_full_seat_cleanup(worktree, "claude-code", "claude-standard-dot-a007")
 
     def test_remove_worker_stops_when_the_forced_retry_also_fails(self) -> None:
@@ -3588,15 +3538,24 @@ exit {exit_code}
 
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn("did not complete; re-run with --force", result.stderr)
-        self.assertFalse(any(c.startswith(("leave", "workspace close", "delivery set off")) for c in self.calls_path.read_text().splitlines()))
+        self.assertFalse(
+            any(
+                c.startswith(("leave", "workspace close", "delivery set off"))
+                for c in self.calls_path.read_text().splitlines()
+            )
+        )
 
     def test_remove_worker_cleans_up_a_codex_seat_without_a_placement_record(self) -> None:
         # After a failed spawn the identity exists but no placement record: upstream
         # graceful despawn reports ok and --force would fail, so it must not be forced.
         self.write_worktree_seat(main_identities="dotfiles\tclaude-remediation-dot")
-        self.write_seat_lifecycle_fakes(despawn_output="status=ok name=codex-standard-dot-a008 team=dotfiles note=no-live-lock", force_exit=1)
+        self.write_seat_lifecycle_fakes(
+            despawn_output="status=ok name=codex-standard-dot-a008 team=dotfiles note=no-live-lock", force_exit=1
+        )
         worktree = self.add_seat_worktree("b1")
-        self.workspace_list_path.write_text(json.dumps({"result": {"workspaces": [{"workspace_id": "w-b1", "label": "project worker b1"}]}}))
+        self.workspace_list_path.write_text(
+            json.dumps({"result": {"workspaces": [{"workspace_id": "w-b1", "label": "project worker b1"}]}})
+        )
         scripts = self.home_dir / ".agents/skills/agmsg/scripts"
         (scripts / "identities.sh").write_text(
             "#!/usr/bin/env bash\n"
@@ -3623,7 +3582,12 @@ exit {exit_code}
 
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn("despawn of claude-standard-dot-a007 did not complete; re-run with --force", result.stderr)
-        self.assertFalse(any(c.startswith(("leave", "workspace close", "delivery set off")) for c in self.calls_path.read_text().splitlines()))
+        self.assertFalse(
+            any(
+                c.startswith(("leave", "workspace close", "delivery set off"))
+                for c in self.calls_path.read_text().splitlines()
+            )
+        )
 
     def test_restart_worker_relaunches_the_worker_in_its_existing_pane(self) -> None:
         self.write_claude_pair_state(
@@ -3723,11 +3687,7 @@ exit {exit_code}
         calls = self.calls_path.read_text().splitlines()
         exit_call = calls.index("agent prompt w-old:p2 /exit")
         enter_call = calls.index("agent send-keys w-old:p2 Enter")
-        start_call = next(
-            i
-            for i, call in enumerate(calls)
-            if call.startswith("agent start claude-worker-w-old")
-        )
+        start_call = next(i for i, call in enumerate(calls) if call.startswith("agent start claude-worker-w-old"))
         self.assertLess(exit_call, enter_call)
         self.assertLess(enter_call, start_call)
         self.assertEqual(calls.count("agent send-keys w-old:p2 Enter"), 1)
@@ -3772,9 +3732,7 @@ exit {exit_code}
     def test_restart_worker_exits_2_without_a_managed_workspace(self) -> None:
         self.register_claude_worker_identity()
 
-        result = self.run_helper(
-            "--restart-worker", extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"}
-        )
+        result = self.run_helper("--restart-worker", extra_env={"HERDR_AGENTS_WORKER_KIND": "claude"})
 
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
         self.assertIn(
@@ -3784,10 +3742,7 @@ exit {exit_code}
         )
         calls = self.calls_path.read_text().splitlines()
         self.assertFalse(
-            any(
-                call.startswith(("pane split", "workspace create", "agent "))
-                for call in calls
-            ),
+            any(call.startswith(("pane split", "workspace create", "agent ")) for call in calls),
             calls,
         )
 
@@ -3800,14 +3755,9 @@ exit {exit_code}
         result = self.run_helper("--restart-worker")
 
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
-        self.assertIn(
-            "ambiguous or include unmanaged panes; refusing restart", result.stderr
-        )
+        self.assertIn("ambiguous or include unmanaged panes; refusing restart", result.stderr)
         self.assertFalse(
-            any(
-                call.startswith(("agent start", "agent prompt"))
-                for call in self.calls_path.read_text().splitlines()
-            )
+            any(call.startswith(("agent start", "agent prompt")) for call in self.calls_path.read_text().splitlines())
         )
 
     def test_full_mode_reuses_agentless_worker_pane_in_attach_labeled_workspace(
@@ -3853,16 +3803,12 @@ exit {exit_code}
 
                 self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
                 self.assertIn(
-                    "multiple managed Herdr workspaces for "
-                    f"{self.workdir.resolve()} (w-old w-dup)",
+                    f"multiple managed Herdr workspaces for {self.workdir.resolve()} (w-old w-dup)",
                     result.stderr,
                 )
                 calls = self.calls_path.read_text().splitlines()
                 self.assertFalse(
-                    any(
-                        call.startswith(("pane split", "workspace create", "agent "))
-                        for call in calls
-                    ),
+                    any(call.startswith(("pane split", "workspace create", "agent ")) for call in calls),
                     calls,
                 )
 
@@ -3912,9 +3858,7 @@ exit {exit_code}
 
     def write_audit_evidence(self, text: str, out: Path | None = None) -> Path:
         """Pre-create the evidence file the real pane would tee."""
-        path = out or (
-            self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"
-        )
+        path = out or (self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text)
         return path
@@ -3931,31 +3875,22 @@ exit {exit_code}
         tab_creates = [call for call in calls if call.startswith("tab create ")]
         self.assertEqual(
             tab_creates,
-            [
-                f"tab create --workspace w-old --cwd {self.workdir.resolve()} "
-                "--label audit --no-focus"
-            ],
+            [f"tab create --workspace w-old --cwd {self.workdir.resolve()} --label audit --no-focus"],
         )
         pane_runs = [call for call in calls if call.startswith("pane run ")]
         self.assertEqual(len(pane_runs), 2, calls)
-        self.assertTrue(
-            all(call.startswith("pane run w-old:p9 ") for call in pane_runs)
-        )
+        self.assertTrue(all(call.startswith("pane run w-old:p9 ") for call in pane_runs))
         self.assertIn("pane rename w-old:p9 audit", calls)
         self.assertFalse(
             any(
-                call.startswith(
-                    ("pane split", "workspace create", "agent ", "tab close")
-                )
+                call.startswith(("pane split", "workspace create", "agent ", "tab close"))
                 or "w-old:p1" in call
                 or "w-old:p2" in call
                 for call in calls
             ),
             calls,
         )
-        evidence = (
-            self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"
-        )
+        evidence = self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"
         self.assertTrue(evidence.parent.is_dir())
         self.assertIn(f"Audit exit: 0\nAudit evidence: {evidence}\n", result.stdout)
 
@@ -3975,11 +3910,7 @@ exit {exit_code}
     def audit_inner_command(self) -> str:
         """Return the single bash -c argument sent to the audit pane."""
         prefix = "pane run w-old:p9 "
-        pane_run = next(
-            call
-            for call in self.calls_path.read_text().splitlines()
-            if call.startswith(prefix)
-        )
+        pane_run = next(call for call in self.calls_path.read_text().splitlines() if call.startswith(prefix))
         words = self.shell_words(pane_run.removeprefix(prefix))
         self.assertEqual(words[:2], ["bash", "-c"], pane_run)
         self.assertEqual(len(words), 3, words)
@@ -4013,18 +3944,10 @@ exit {exit_code}
             r"^cd -- \S+ && set -o pipefail && rm -f -- .+ && "
             r"codex --profile audit exec --sandbox read-only -C \S+ -o .+ 2>&1 \| tee -- ",
         )
-        self.assertEqual(
-            self.quoted_token(inner, "| tee -- ", "; printf "), str(evidence)
-        )
-        marker = re.search(
-            r"; printf '(AUDIT-EXIT-[0-9]+-[0-9]+):%s\\n' \"\$\?\"$", inner
-        )
+        self.assertEqual(self.quoted_token(inner, "| tee -- ", "; printf "), str(evidence))
+        marker = re.search(r"; printf '(AUDIT-EXIT-[0-9]+-[0-9]+):%s\\n' \"\$\?\"$", inner)
         self.assertIsNotNone(marker, inner)
-        wait_call = next(
-            call
-            for call in calls
-            if call.startswith("pane wait-output w-old:p9 --regex AUDIT-")
-        )
+        wait_call = next(call for call in calls if call.startswith("pane wait-output w-old:p9 --regex AUDIT-"))
         # Digits after the colon: the echoed command line (":%s") cannot self-match.
         self.assertIn(f"--regex {marker.group(1)}:[0-9]+ ", wait_call)
         self.assertIn("--timeout 1800000", wait_call)
@@ -4038,11 +3961,7 @@ exit {exit_code}
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
-        wait_call = next(
-            call
-            for call in calls
-            if call.startswith("pane wait-output w-old:p9 --regex AUDIT-")
-        )
+        wait_call = next(call for call in calls if call.startswith("pane wait-output w-old:p9 --regex AUDIT-"))
         # A pane narrower than the marker line must not hide completion.
         self.assertIn(" --source recent-unwrapped ", wait_call)
         self.assertIn("pane read w-old:p9 --source recent-unwrapped --lines 200", calls)
@@ -4078,10 +3997,7 @@ exit {exit_code}
         )
         self.assertEqual(
             self.quoted_token(inner, "| tee -- ", "; printf "),
-            str(
-                self.workdir.resolve()
-                / f".orchestration/validation/audit-{AUDIT_SHA}.md"
-            ),
+            str(self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"),
         )
 
     def test_audit_quotes_a_non_ascii_out_path_under_the_c_locale(self) -> None:
@@ -4129,9 +4045,7 @@ exit {exit_code}
             ("a", self.transcript("No findings.\nVerdict: correct"), 0, "correct"),
             (
                 "h",
-                self.transcript(
-                    "Review blocked: `0000000` does not resolve to a commit"
-                ),
+                self.transcript("Review blocked: `0000000` does not resolve to a commit"),
                 1,
                 "blocked",
             ),
@@ -4204,9 +4118,7 @@ exit {exit_code}
 
                 result = self.run_helper("--audit", AUDIT_SHA)
 
-                self.assertEqual(
-                    result.returncode, returncode, result.stdout + result.stderr
-                )
+                self.assertEqual(result.returncode, returncode, result.stdout + result.stderr)
                 self.assertIn("Audit exit: 0\n", result.stdout)
                 self.assertIn(f"Audit verdict: {verdict}\n", result.stdout)
                 # No last-message file here, so the transcript fallback decides.
@@ -4214,15 +4126,11 @@ exit {exit_code}
 
     def audit_codex_words(self, inner: str) -> list[str]:
         """Decode the codex command words between `&& ` and ` 2>&1 | tee`."""
-        return self.shell_words(
-            inner.split(" 2>&1 | tee -- ", 1)[0].rsplit(" && ", 1)[1]
-        )
+        return self.shell_words(inner.split(" 2>&1 | tee -- ", 1)[0].rsplit(" && ", 1)[1])
 
     def test_audit_runs_codex_exec_with_the_prompt_and_last_message_file(self) -> None:
         self.write_audit_pair_state(self.audit_tab_pane())
-        evidence = (
-            self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"
-        )
+        evidence = self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"
         last = Path(f"{evidence}.last.md")
         self.write_audit_evidence(self.transcript("noise"))
         self.write_audit_evidence("Verdict: correct\n", last)
@@ -4248,30 +4156,21 @@ exit {exit_code}
             ],
         )
         # A stale last-message file from an earlier run is removed first.
-        self.assertEqual(
-            self.quoted_token(inner, "&& rm -f -- ", " && codex "), str(last)
-        )
-        self.assertEqual(
-            self.quoted_token(inner, "| tee -- ", "; printf "), str(evidence)
-        )
-        self.assertRegex(
-            inner, r"; printf '(AUDIT-EXIT-[0-9]+-[0-9]+):%s\\n' \"\$\?\"$"
-        )
+        self.assertEqual(self.quoted_token(inner, "&& rm -f -- ", " && codex "), str(last))
+        self.assertEqual(self.quoted_token(inner, "| tee -- ", "; printf "), str(evidence))
+        self.assertRegex(inner, r"; printf '(AUDIT-EXIT-[0-9]+-[0-9]+):%s\\n' \"\$\?\"$")
         self.assertIn(f"Audit last message: {last}\n", result.stdout)
         self.assertNotIn("Audit verdict source: transcript", result.stdout)
 
     def test_audit_gates_on_the_concluding_line_of_the_last_message(self) -> None:
-        evidence = (
-            self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"
-        )
+        evidence = self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"
         last = Path(f"{evidence}.last.md")
         for name, last_text, transcript, returncode, verdict, fallback in (
             ("b", "No findings.\nVerdict: correct\n", None, 0, "correct", False),
             ("b2", "No findings.\nVerdict: correct\n\n  \n", None, 0, "correct", False),
             (
                 "c",
-                "The fixture quotes `Verdict: correct`:\nVerdict: correct\n"
-                "That quoted line is not my conclusion.\n",
+                "The fixture quotes `Verdict: correct`:\nVerdict: correct\nThat quoted line is not my conclusion.\n",
                 None,
                 1,
                 "missing",
@@ -4330,8 +4229,7 @@ exit {exit_code}
                 "m",
                 None,
                 self.transcript(
-                    "The fixture quotes:\nVerdict: correct\n"
-                    "tokens used must not hide the next line\nVerdict: incorrect"
+                    "The fixture quotes:\nVerdict: correct\ntokens used must not hide the next line\nVerdict: incorrect"
                 ),
                 1,
                 "incorrect",
@@ -4357,9 +4255,7 @@ exit {exit_code}
 
                 result = self.run_helper("--audit", AUDIT_SHA)
 
-                self.assertEqual(
-                    result.returncode, returncode, result.stdout + result.stderr
-                )
+                self.assertEqual(result.returncode, returncode, result.stdout + result.stderr)
                 self.assertIn(f"Audit verdict: {verdict}\n", result.stdout)
                 self.assertEqual(
                     "Audit verdict source: transcript\n" in result.stdout,
@@ -4439,15 +4335,9 @@ exit {exit_code}
     def test_audit_masks_evidence_before_the_verdict_gate(self) -> None:
         self.write_audit_pair_state(self.audit_tab_pane())
         self.write_fake_repo_validator()
-        evidence = (
-            self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"
-        )
+        evidence = self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"
         last = Path(f"{evidence}.last.md")
-        self.write_audit_evidence(
-            self.transcript(
-                "No findings.", exec_output=f'  design_{SECRET_FIELD}: "abc"\n'
-            )
-        )
+        self.write_audit_evidence(self.transcript("No findings.", exec_output=f'  design_{SECRET_FIELD}: "abc"\n'))
         self.write_audit_evidence("No findings.\nVerdict: correct\n", last)
 
         result = self.run_helper("--audit", AUDIT_SHA)
@@ -4466,12 +4356,8 @@ exit {exit_code}
         self.write_audit_pair_state(self.audit_tab_pane())
         self.write_fake_repo_validator()
         self.audit_exit_path.write_text("1\n")
-        evidence = (
-            self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"
-        )
-        self.write_audit_evidence(
-            self.transcript("partial", exec_output=f'{SECRET_FIELD}: "abc"\n')
-        )
+        evidence = self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"
+        self.write_audit_evidence(self.transcript("partial", exec_output=f'{SECRET_FIELD}: "abc"\n'))
 
         result = self.run_helper("--audit", AUDIT_SHA)
 
@@ -4497,9 +4383,7 @@ exit {exit_code}
             "-qam",
             "failing masker",
         )
-        evidence = (
-            self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"
-        )
+        evidence = self.workdir.resolve() / f".orchestration/validation/audit-{AUDIT_SHA}.md"
         self.write_audit_evidence(self.transcript("No findings.\nVerdict: correct"))
         self.write_audit_evidence("Verdict: correct\n", Path(f"{evidence}.last.md"))
 
@@ -4514,9 +4398,7 @@ exit {exit_code}
         self.write_fake_repo_validator()
         head = self.git("rev-parse", "HEAD")
         evidence = self.workdir.resolve() / f".orchestration/validation/audit-{head}.md"
-        self.write_audit_evidence(
-            self.transcript("No findings.\nVerdict: correct"), evidence
-        )
+        self.write_audit_evidence(self.transcript("No findings.\nVerdict: correct"), evidence)
         self.write_audit_evidence("Verdict: correct\n", Path(f"{evidence}.last.md"))
 
         result = self.run_helper("--audit", head)
@@ -4524,12 +4406,7 @@ exit {exit_code}
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn("Audit verdict: unmasked\n", result.stdout)
         self.assertIn("refusing to run the masker", result.stderr)
-        self.assertFalse(
-            any(
-                call.startswith("validate ")
-                for call in self.calls_path.read_text().splitlines()
-            )
-        )
+        self.assertFalse(any(call.startswith("validate ") for call in self.calls_path.read_text().splitlines()))
 
     def test_audit_refuses_an_uncommitted_or_untracked_masker(self) -> None:
         for state in ("modified", "untracked"):
@@ -4552,20 +4429,13 @@ exit {exit_code}
                         "-qm",
                         "untrack",
                     )
-                self.write_audit_evidence(
-                    self.transcript("No findings.\nVerdict: correct")
-                )
+                self.write_audit_evidence(self.transcript("No findings.\nVerdict: correct"))
 
                 result = self.run_helper("--audit", AUDIT_SHA)
 
                 self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
                 self.assertIn("Audit verdict: unmasked\n", result.stdout)
-                self.assertFalse(
-                    any(
-                        call.startswith("validate ")
-                        for call in self.calls_path.read_text().splitlines()
-                    )
-                )
+                self.assertFalse(any(call.startswith("validate ") for call in self.calls_path.read_text().splitlines()))
 
     def test_audit_refuses_a_tracked_masker_missing_from_the_tree(self) -> None:
         for state in ("deleted", "removed-from-index"):
@@ -4578,9 +4448,7 @@ exit {exit_code}
                     (self.workdir / "scripts/validate-agent-assets.py").unlink()
                 else:
                     self.git("rm", "-q", "scripts/validate-agent-assets.py")
-                self.write_audit_evidence(
-                    self.transcript("No findings.\nVerdict: correct")
-                )
+                self.write_audit_evidence(self.transcript("No findings.\nVerdict: correct"))
 
                 result = self.run_helper("--audit", AUDIT_SHA)
 
@@ -4596,12 +4464,7 @@ exit {exit_code}
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertNotIn("masked", result.stdout)
-        self.assertFalse(
-            any(
-                call.startswith("validate ")
-                for call in self.calls_path.read_text().splitlines()
-            )
-        )
+        self.assertFalse(any(call.startswith("validate ") for call in self.calls_path.read_text().splitlines()))
 
     def test_audit_nonzero_exit_marker_fails_the_helper(self) -> None:
         self.write_audit_pair_state(self.audit_tab_pane())
@@ -4620,12 +4483,7 @@ exit {exit_code}
 
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
         self.assertIn("audit pane w-old:p9 is busy", result.stderr)
-        self.assertFalse(
-            any(
-                call.startswith("pane run ")
-                for call in self.calls_path.read_text().splitlines()
-            )
-        )
+        self.assertFalse(any(call.startswith("pane run ") for call in self.calls_path.read_text().splitlines()))
 
     def write_self_named_pair(self, *extra_panes: str, extra_workspace_ids: tuple[str, ...] = ()) -> None:
         """A pair relabeled by upstream agmsg self-naming: workspace label `dotfiles`,
@@ -4638,11 +4496,13 @@ exit {exit_code}
             "#!/usr/bin/env bash\n"
             f"printf 'team %s\\n' \"$*\" >> {self.calls_path}\n"
             "printf '%s\\n' '"
-            + json.dumps([
-                {"member": "claude-remediation-dot", "type": "claude-code"},
-                {"member": "claude-standard-dot-a005", "type": "claude-code"},
-                {"member": "claude-standard-dot-a006", "type": "claude-code"},
-            ])
+            + json.dumps(
+                [
+                    {"member": "claude-remediation-dot", "type": "claude-code"},
+                    {"member": "claude-standard-dot-a005", "type": "claude-code"},
+                    {"member": "claude-standard-dot-a006", "type": "claude-code"},
+                ]
+            )
             + "'\n"
         )
         team.chmod(0o755)
@@ -4687,7 +4547,9 @@ exit {exit_code}
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls()
-        self.assertFalse(any(c.startswith(("pane rename", "pane swap", "pane split", "agent start")) for c in calls), calls)
+        self.assertFalse(
+            any(c.startswith(("pane rename", "pane swap", "pane split", "agent start")) for c in calls), calls
+        )
 
     def test_attach_from_the_self_named_worker_pane_exits_quietly(self) -> None:
         self.write_self_named_pair()
@@ -4695,7 +4557,9 @@ exit {exit_code}
         result = self.run_attach_helper(in_herdr=True, workspace_id="w-old", pane_id="w-old:p2")
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertFalse(any(c.startswith(("pane rename", "pane split", "agent start")) for c in self.calls()), self.calls())
+        self.assertFalse(
+            any(c.startswith(("pane rename", "pane split", "agent start")) for c in self.calls()), self.calls()
+        )
 
     def test_restart_worker_finds_the_worker_by_its_seat_label(self) -> None:
         self.write_self_named_pair()
@@ -4719,7 +4583,13 @@ exit {exit_code}
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls()
-        self.assertFalse(any(c.startswith(("workspace create", "pane split", "agent start", "pane rename", "agent prompt")) for c in calls), calls)
+        self.assertFalse(
+            any(
+                c.startswith(("workspace create", "pane split", "agent start", "pane rename", "agent prompt"))
+                for c in calls
+            ),
+            calls,
+        )
         self.assertIn("workspace focus w-old", calls)
 
     def test_another_team_members_pane_is_not_a_second_worker(self) -> None:
@@ -4776,7 +4646,9 @@ exit {exit_code}
         result = self.run_attach_helper(in_herdr=True, workspace_id="w-old", pane_id="w-old:p2")
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertFalse(any(c.startswith(("pane rename", "pane split", "agent start")) for c in self.calls()), self.calls())
+        self.assertFalse(
+            any(c.startswith(("pane rename", "pane split", "agent start")) for c in self.calls()), self.calls()
+        )
         self.assertIn(f"identities {worktree} claude-code", self.calls())
 
     def write_self_named_codex_pair(self) -> None:
@@ -4804,7 +4676,9 @@ exit {exit_code}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls()
         self.assertIn("agent prompt w-old:p2 /exit", calls)
-        self.assertTrue(any(c.startswith("agent start codex-worker-w-old --kind codex --pane w-old:p2") for c in calls), calls)
+        self.assertTrue(
+            any(c.startswith("agent start codex-worker-w-old --kind codex --pane w-old:p2") for c in calls), calls
+        )
 
     def test_full_mode_does_not_duplicate_a_solo_codex_worker_seat(self) -> None:
         self.write_self_named_codex_pair()
@@ -4820,12 +4694,17 @@ exit {exit_code}
         profiles.parent.mkdir(parents=True, exist_ok=True)
         profiles.write_text('HERDR_AGENTS_WORKER_KIND="claude"\nHERDR_AGENTS_WORKER_PROFILE="standard"\n')
 
-        result = self.run_helper(extra_env={"HERDR_AGENTS_WORKER_KIND": "codex", "HERDR_AGENTS_WORKER_PROFILE": "express"})
+        result = self.run_helper(
+            extra_env={"HERDR_AGENTS_WORKER_KIND": "codex", "HERDR_AGENTS_WORKER_PROFILE": "express"}
+        )
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls()
         self.assertTrue(
-            any(c.startswith("agent start codex-worker-") and c.endswith("--sandbox workspace-write --profile express") for c in calls),
+            any(
+                c.startswith("agent start codex-worker-") and c.endswith("--sandbox workspace-write --profile express")
+                for c in calls
+            ),
             calls,
         )
         self.assertIn(f"delivery set turn codex {self.workdir.resolve()}", calls)
@@ -4903,9 +4782,7 @@ exit {exit_code}
         result = self.run_helper("--audit", AUDIT_SHA)
 
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
-        self.assertIn(
-            f"no managed Herdr workspace for {self.workdir.resolve()}", result.stderr
-        )
+        self.assertIn(f"no managed Herdr workspace for {self.workdir.resolve()}", result.stderr)
         self.assertIn("codex --profile audit review headless", result.stderr)
         calls = self.calls_path.read_text().splitlines()
         self.assertFalse(
@@ -4985,9 +4862,7 @@ exit {exit_code}
 
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
         self.assertIn("no codex worker pane in Herdr workspace w-old", result.stderr)
-        self.assertFalse(
-            any("w-old:p9" in call for call in self.calls_path.read_text().splitlines())
-        )
+        self.assertFalse(any("w-old:p9" in call for call in self.calls_path.read_text().splitlines()))
 
     def test_attach_from_the_worker_pane_does_not_relabel_it(self) -> None:
         self.register_claude_worker_identity()
@@ -5007,10 +4882,7 @@ exit {exit_code}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
         self.assertFalse(
-            any(
-                call.startswith(("pane rename", "pane split", "agent start"))
-                for call in calls
-            ),
+            any(call.startswith(("pane rename", "pane split", "agent start")) for call in calls),
             calls,
         )
 
@@ -5022,9 +4894,7 @@ exit {exit_code}
             agent_pane_id="w-old:p2",
         )
         self.write_ratio_layout((90, 30), pane_ids=("w-old:p1", "w-old:p2"))
-        self.write_ratio_layout(
-            (60, 60), after_resize=True, pane_ids=("w-old:p1", "w-old:p2")
-        )
+        self.write_ratio_layout((60, 60), after_resize=True, pane_ids=("w-old:p1", "w-old:p2"))
 
         result = self.run_helper()
 
@@ -5098,9 +4968,7 @@ exit {exit_code}
             calls,
         )
         self.assertFalse(any("--ratio" in call for call in calls))
-        self.assertFalse(
-            any(call.startswith("pane rename w-old:p9 ") for call in calls)
-        )
+        self.assertFalse(any(call.startswith("pane rename w-old:p9 ") for call in calls))
         self.assertFalse(any(call.startswith("pane run w-old:p9 ") for call in calls))
 
     def test_existing_workspace_restarts_missing_codex_agent(self) -> None:
@@ -5171,9 +5039,7 @@ exit {exit_code}
             "agent start claude-orchestrator-w-old --kind claude --pane w-old:p1 --timeout 30000 --",
             calls,
         )
-        self.assertFalse(
-            any(call.startswith("agent start codex-worker-") for call in calls)
-        )
+        self.assertFalse(any(call.startswith("agent start codex-worker-") for call in calls))
         self.assertIn("workspace focus w-old", calls)
 
     def test_existing_workspace_splits_when_missing_claude_has_no_empty_pane(
@@ -5318,9 +5184,7 @@ printf 'codex cwd=%s\\n' "$PWD" >> {e2e_log}
             ],
         )
         e2e_lines = e2e_log.read_text()
-        self.assertIn(
-            f"attached workspace from cwd={self.workdir.resolve()}", e2e_lines
-        )
+        self.assertIn(f"attached workspace from cwd={self.workdir.resolve()}", e2e_lines)
         self.assertNotIn("claude cwd=", e2e_lines)
         self.assertNotIn("codex cwd=", e2e_lines)
 
@@ -5359,20 +5223,14 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
 
     def test_herdr_prefix_alt_a_runs_helper_from_active_pane(self) -> None:
         config = tomllib.loads(HERDR_CONFIG.read_text())
-        command = next(
-            item for item in config["keys"]["command"] if item["key"] == "prefix+alt+a"
-        )
+        command = next(item for item in config["keys"]["command"] if item["key"] == "prefix+alt+a")
 
         self.assertEqual(command["type"], "shell")
-        self.assertEqual(
-            command["command"], 'herdr-agents "${HERDR_ACTIVE_PANE_CWD:-$PWD}"'
-        )
+        self.assertEqual(command["command"], 'herdr-agents "${HERDR_ACTIVE_PANE_CWD:-$PWD}"')
 
     def test_herdr_prefix_f_opens_file_viewer_popup(self) -> None:
         config = tomllib.loads(HERDR_CONFIG.read_text())
-        command = next(
-            item for item in config["keys"]["command"] if item["key"] == "prefix+f"
-        )
+        command = next(item for item in config["keys"]["command"] if item["key"] == "prefix+f")
 
         self.assertEqual(command["type"], "popup")
         self.assertEqual(command["width"], "90%")
@@ -5400,9 +5258,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         )
 
         editor_calls = self.temp_dir / "editor-calls.txt"
-        self.write_executable(
-            "editor", f'#!/usr/bin/env bash\nprintf "%s\\n" "$*" > {editor_calls}\n'
-        )
+        self.write_executable("editor", f'#!/usr/bin/env bash\nprintf "%s\\n" "$*" > {editor_calls}\n')
         env = {"PATH": f"{self.bin_dir}:/usr/bin:/bin", "EDITOR": "editor"}
         result = subprocess.run(
             [
@@ -5421,9 +5277,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(editor_calls.read_text(), "example.txt\n")
 
         zed_calls = self.temp_dir / "zed-calls.txt"
-        self.write_executable(
-            "zed", f'#!/usr/bin/env bash\nprintf "%s\\n" "$*" > {zed_calls}\n'
-        )
+        self.write_executable("zed", f'#!/usr/bin/env bash\nprintf "%s\\n" "$*" > {zed_calls}\n')
         editor_calls.unlink()
         result = subprocess.run(
             [

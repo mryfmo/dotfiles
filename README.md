@@ -913,9 +913,13 @@ counted toward the diff that decides whether review is required.
 review runs only when explicitly requested, and lets CodeRabbit request
 changes. No workflow posts review requests automatically.
 
-`main` has no branch protection yet. A repository admin can require the
-integration checks and resolved review threads with this ruleset (not applied
-by any script here):
+`main` is protected by this ruleset, applied on 2026-10-03. It is the only
+boundary for `main`; no client-side push hook duplicates it. The payload below
+is the applied form. Change the ruleset with
+`gh api -X PUT repos/mryfmo/dotfiles/rulesets/<id>` (`gh api
+repos/mryfmo/dotfiles/rulesets` lists the id), never by disabling enforcement.
+The repository merge settings are squash-only with auto-merge enabled, and
+`delete_branch_on_merge` stays off.
 
 ```bash
 gh api -X POST repos/mryfmo/dotfiles/rulesets --input - <<'JSON'
@@ -925,6 +929,8 @@ gh api -X POST repos/mryfmo/dotfiles/rulesets --input - <<'JSON'
   "enforcement": "active",
   "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}},
   "rules": [
+    {"type": "deletion"},
+    {"type": "non_fast_forward"},
     {"type": "pull_request", "parameters": {
       "required_approving_review_count": 0,
       "dismiss_stale_reviews_on_push": true,
@@ -996,7 +1002,7 @@ machine through `make update`.
 Do not use `make reset` as the normal update path; it clears chezmoi's script state so one-time installers can run again intentionally.
 Tool versions in `home/dot_mise/config.toml` are exact and backed by `mise.lock`. Updates occur only through `make upgrade` with a reviewed config and lock diff.
 The operator runs `make upgrade` in the canonical clone; every file it changed then reaches `main` in one PR that also syncs the expected-version assertions in `tests/**` and passes `make require-crit-review`.
-Under the agmsg regime a worker task carries that PR, and the pre-push guard from `herdr-agents --bootstrap-agmsg` refuses a direct orchestrator push to `main` (`ORCH_PUSH_MAIN=acceptance|boundary` is the logged override). The hook is bypassable with `git push --no-verify`; GitHub branch protection on `main` is the server-side boundary.
+Under the agmsg regime a worker task carries that PR. The GitHub ruleset on `main` (see the ruleset payload above) is the boundary: `main` accepts only pull requests that pass the required checks, so no change, the `.orchestration` boundary commit included, is pushed to `main` directly.
 `make upgrade` edits the current checkout's `home/dot_mise`; `~/.config/mise` is an applied copy, not a live symlink into the source tree.
 For `npm:` tools, mise owns the version, lock entry, and isolated install
 prefix, while the npm CLI performs installation through

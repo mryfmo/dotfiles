@@ -24,8 +24,9 @@
 #   it, claim the orchestrator's agmsg seat outside the sandbox under the
 #   composite `<session_id>.<claude pid>` instance id (`seat_claim=` line),
 #   followed in a regime repository by the `agmsg-orchestration:` directive
-#   line. agmsg bootstrap also installs the repository's pre-push stub, which
-#   runs main-push-guard mode to refuse a push to `main` without ORCH_PUSH_MAIN.
+#   line. agmsg bootstrap also removes the pre-push stub that earlier versions
+#   wrote for the retired main-push guard; the GitHub ruleset on `main` is the
+#   boundary.
 #   The orchestrator pane starts Claude with the
 #   `MODEL_PROFILE_<NAME>_CLAUDE_ARGS` of the profile that
 #   MODEL_PROFILE_INTERACTIVE names in ~/.agents/model-profiles.env.
@@ -42,7 +43,6 @@
 # @option --profile <name> Add-worker model profile. Defaults to the manifest worker_profile.
 # @option --ready-timeout <seconds> Add-worker: spawn.sh readiness wait bound (spawn.sh default 90).
 # @option --force Remove-worker: tear down a dirty worktree's worker and despawn with --force.
-# @option --main-push-guard Pre-push hook entry: check git's ref lines on stdin (main_push_guard).
 # @arg DIR Optional directory for the Herdr workspace. Defaults to the current directory.
 # @arg HERDR_AGENTS_WORKER_KIND Worker agent kind, `codex` or `claude`. Defaults
 #   to `worker_kind` from the manifest via ~/.agents/model-profiles.env, then
@@ -83,7 +83,6 @@ Usage: herdr-agents [DIR]
        herdr-agents --audit <sha> [--out PATH] [--timeout SECONDS] [DIR]
        herdr-agents --add-worker <worktree> [--kind codex|claude] [--profile NAME] [--ready-timeout SECONDS] [DIR]
        herdr-agents --remove-worker <worktree> [--force] [DIR]
-       herdr-agents --main-push-guard [REMOTE URL] < pre-push-ref-lines
 
 Create a Herdr workspace for DIR with equal-width Claude Code and worker
 panes from left to right, and open DIR in Zed when available. Herdr, jq,
@@ -103,13 +102,9 @@ line follows, as it follows seat_claim= inside the orchestrator's Herdr pane.
 Restart-worker mode exits the worker agent in the existing pair's worker pane
 and starts it again in the same pane with the current worker_kind and
 worker_profile launch arguments; it never creates panes or workspaces.
-Bootstrap mode only configures missing repo-scoped agmsg hooks and, in a main
-checkout with an orchestrator agmsg identity, the pre-push stub that runs
-main-push-guard mode (installed once the herdr-agents on PATH has that mode;
-with none, the stub refuses main updates and lets other refs pass; a stub
-that lost its execute bit gets it back). That mode refuses a push updating main unless
-ORCH_PUSH_MAIN=acceptance, or ORCH_PUSH_MAIN=boundary with a tree diff from the
-remote main inside .orchestration/; deleting or rewinding main is refused.
+Bootstrap mode only configures missing repo-scoped agmsg hooks and removes the
+pre-push stub that earlier versions wrote for the retired main-push guard (any
+other pre-push hook is left alone); the GitHub ruleset on main is the boundary.
 Audit mode runs the read-only Codex audit of <sha> in the existing pair
 workspace's audit tab (created once, then reused and left open), tees it to
 PATH (default .orchestration/validation/audit-<sha>.md under DIR), and exits
@@ -606,7 +601,7 @@ function print_regime_directive() {
     identity="$(AGMSG_RESOLVE_PROJECT=0 "${identities}" "${workdir}" claude-code 2> /dev/null |
         awk -F '\t' '$2 !~ /-a[0-9][0-9][0-9]$/ { print $2 }' | sort -u)" || identity=""
     [[ -n ${identity} && ${identity} != *$'\n'* ]] || return 0
-    printf 'agmsg-orchestration: this session is the orchestrator seat %s for %s (worker seat %s). Before any other action, invoke the agmsg-orchestration skill. Delegate every repository-mutating change, make upgrade pin diffs included, to the seated worker as an AGMSG-TASK; when no worker is seated, seat one first (herdr-agents --restart-worker in the pair, herdr-agents --add-worker %s otherwise): no worker is never an implicit opt-out. Before acting directly under an exemption, declare which one in one line. Never push a repository change to main yourself: the pre-push guard passes only ORCH_PUSH_MAIN=boundary (.orchestration-only changes) and ORCH_PUSH_MAIN=acceptance.\n' \
+    printf 'agmsg-orchestration: this session is the orchestrator seat %s for %s (worker seat %s). Before any other action, invoke the agmsg-orchestration skill. Delegate every repository-mutating change, make upgrade pin diffs included, to the seated worker as an AGMSG-TASK; when no worker is seated, seat one first (herdr-agents --restart-worker in the pair, herdr-agents --add-worker %s otherwise): no worker is never an implicit opt-out. Before acting directly under an exemption, declare which one in one line. Never push to main yourself: main accepts only pull requests (GitHub ruleset), so every change, the .orchestration boundary commit included, travels as a PR merged with gh pr merge --squash.\n' \
         "${identity}" "${workdir}" "${seat}" "${seat}"
 }
 
@@ -1560,141 +1555,26 @@ function require_distinct_worker_identity() {
     fi
 }
 
-# @description Run the main-push guard for git's pre-push hook: read git's
-#   `<local ref> <local sha> <remote ref> <remote sha>` lines on stdin and
-#   refuse a push that updates refs/heads/main unless ORCH_PUSH_MAIN is
-#   `acceptance` (an acceptance merge) or `boundary` (the tree diff from the
-#   remote main changes only `.orchestration/`, and a diff that cannot be
-#   listed refuses). Deleting main, and any update that is not a fast-forward
-#   of the remote main, are always refused; other refs pass. Each decision is
-#   printed and appended to `<git-common-dir>/orch-push-main.log`. A local hook
-#   is bypassable (`git push --no-verify`); GitHub branch protection is the
-#   server-side boundary.
-# @exitcode 1 If any pushed main update is refused.
-function main_push_guard() {
-    local zero='^0+$' log status=0 local_ref local_sha remote_ref remote_sha mode reason verdict line paths path outside
+# @description Remove the pre-push stub that earlier `--bootstrap-agmsg` runs
+#   wrote for the retired main-push guard, and its decision log. The GitHub
+#   ruleset on `main` is the boundary now, and with the guard mode gone the
+#   stub would refuse every push to `main`. Only a `<git-common-dir>/hooks/pre-push`
+#   whose second line is the stub's marker is removed; any other pre-push hook
+#   is left alone.
+# @arg $1 workdir Repository path.
+function remove_retired_pre_push_stub() {
+    local workdir="$1" common_dir hook
+    local marker='# herdr-agents main-push guard: written by herdr-agents --bootstrap-agmsg; the checks live in herdr-agents --main-push-guard.'
 
-    log="$(git rev-parse --path-format=absolute --git-common-dir 2> /dev/null)/orch-push-main.log" || log=/dev/null
-    while read -r local_ref local_sha remote_ref remote_sha; do
-        [[ ${remote_ref} == refs/heads/main ]] || continue
-        mode="${ORCH_PUSH_MAIN:-}"
-        reason=""
-        if [[ ${mode} != acceptance && ${mode} != boundary ]]; then
-            reason="route the change through a worker PR, or set ORCH_PUSH_MAIN=acceptance (an acceptance merge) or ORCH_PUSH_MAIN=boundary (.orchestration-only changes)"
-        elif [[ ${local_sha} =~ ${zero} ]]; then
-            reason="deleting main is never allowed"
-        elif [[ ${remote_sha} =~ ${zero} ]]; then
-            [[ ${mode} == acceptance ]] || reason="a boundary push needs an existing remote main"
-        elif ! git merge-base --is-ancestor "${remote_sha}" "${local_sha}" 2> /dev/null; then
-            reason="not a fast-forward of the remote main; fetch and rebase, never force-push main"
-        elif [[ ${mode} == boundary ]]; then
-            # Tree to tree, so a merge's own resolution counts as well.
-            if ! paths="$(git diff --name-only --no-renames "${remote_sha}" "${local_sha}" 2> /dev/null)"; then
-                reason="cannot list the changes since the remote main, so the boundary check fails closed"
-            else
-                outside=""
-                while IFS= read -r path; do
-                    [[ -z ${path} || ${path} == .orchestration/* ]] || outside+="${outside:+ }${path}"
-                done <<< "${paths}"
-                [[ -z ${outside} ]] || reason="a boundary push may only change .orchestration/, not: ${outside}"
-            fi
-        fi
-        verdict=allowed
-        if [[ -n ${reason} ]]; then
-            verdict=refused
-            status=1
-        fi
-        line="$(date -u +%Y-%m-%dT%H:%M:%SZ) ${verdict} ORCH_PUSH_MAIN=${mode:-unset} ${local_ref}:${remote_ref} ${remote_sha:0:12}..${local_sha:0:12}"
-        { printf '%s\n' "${line}" >> "${log}"; } 2> /dev/null || true
-        printf 'pre-push: %s%s\n' "${line}" "${reason:+ (${reason})}" >&2
-    done
-    return "${status}"
+    common_dir="$(git -C "${workdir}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null)" || return 0
+    hook="${common_dir}/hooks/pre-push"
+    [[ -f ${hook} && "$(sed -n 2p "${hook}")" == "${marker}" ]] || return 0
+    rm -f -- "${hook}" "${common_dir}/orch-push-main.log"
+    printf 'herdr-agents: removed the retired main-push guard stub at %s; the GitHub ruleset on main is the boundary.\n' "${hook}" >&2
 }
 
-# @description Install the repository-local pre-push guard that keeps the
-#   orchestrator off `main`: a fixed stub that runs `herdr-agents
-#   --main-push-guard` (main_push_guard), so the checks update with the
-#   launcher while the hook file itself never needs rewriting. The stub finds
-#   herdr-agents on PATH, then at ~/.local/bin/common/herdr-agents, and execs it
-#   only when its --help advertises the mode; with no such launcher (missing,
-#   or a build older than the guard) it refuses refs/heads/main updates itself
-#   and lets every other ref pass, so a stale launcher never breaks branch
-#   pushes or runs another mode. For the same reason the stub is installed only
-#   once the launcher it would exec advertises the mode (`make upgrade`
-#   bootstraps before `make update` applies the new launcher); until then a
-#   notice names the next `make update`. Applies only to a git main checkout
-#   with an orchestrator (non -aNNN) claude-code agmsg identity. The hook lives
-#   in the common git dir, so it also covers the repository's linked worktrees.
-#   An existing stub that lost its execute bit gets it back; any other existing
-#   pre-push hook, including an edited copy of the stub, and a core.hooksPath
-#   outside the repository's git dir are left alone with a warning.
-# @arg $1 workdir Absolute repository path.
-function install_main_push_guard() {
-    local workdir="$1"
-    local identities="${HOME}/.agents/skills/agmsg/scripts/identities.sh"
-    local marker="# herdr-agents main-push guard"
-    local common_dir hooks_dir hook body guard
-
-    [[ -x ${identities} ]] && is_main_checkout "${workdir}" || return 0
-    AGMSG_RESOLVE_PROJECT=0 "${identities}" "${workdir}" claude-code 2> /dev/null |
-        awk -F '\t' '$2 !~ /-a[0-9][0-9][0-9]$/ { found = 1 } END { exit !found }' || return 0
-    common_dir="$(git -C "${workdir}" rev-parse --path-format=absolute --git-common-dir)"
-    hooks_dir="$(git -C "${workdir}" rev-parse --path-format=absolute --git-path hooks)"
-    if [[ ${hooks_dir} != "${common_dir}"/* ]]; then
-        printf 'herdr-agents: core.hooksPath points outside %s (%s); not installing the main-push guard.\n' "${common_dir}" "${hooks_dir}" >&2
-        return 0
-    fi
-    hook="${hooks_dir}/pre-push"
-    body="$(
-        cat << 'EOF'
-#!/usr/bin/env bash
-# herdr-agents main-push guard: written by herdr-agents --bootstrap-agmsg; the checks live in herdr-agents --main-push-guard.
-guard="$(command -v herdr-agents)" || guard="${HOME}/.local/bin/common/herdr-agents"
-if [[ -x ${guard} && "$("${guard}" --help 2> /dev/null)" == *--main-push-guard* ]]; then
-    exec "${guard}" --main-push-guard "$@"
-fi
-# No launcher with the guard mode (missing, or older than the guard): refuse main updates only.
-status=0
-while read -r _ _ remote_ref _; do
-    if [[ ${remote_ref} == refs/heads/main ]]; then
-        printf 'pre-push: no herdr-agents with --main-push-guard is installed (run make update), so this push to main is refused\n' >&2
-        status=1
-    fi
-done
-exit "${status}"
-EOF
-    )"
-    if [[ -e ${hook} ]]; then
-        if [[ "$(cat -- "${hook}")" == "${body}" ]]; then
-            # git silently skips a hook without the execute bit.
-            if [[ ! -x ${hook} ]]; then
-                chmod 755 "${hook}"
-                printf 'herdr-agents: restored the execute bit of the main-push guard at %s.\n' "${hook}" >&2
-            fi
-            return 0
-        fi
-        if grep -Fq -- "${marker}" "${hook}"; then
-            printf 'herdr-agents: %s differs from the main-push guard stub (edited?); leaving it unchanged. Remove it and rerun herdr-agents --bootstrap-agmsg to restore the stub.\n' "${hook}" >&2
-        else
-            printf 'herdr-agents: %s exists and is not the herdr-agents main-push guard; leaving it unchanged.\n' "${hook}" >&2
-        fi
-        return 0
-    fi
-    guard="$(command -v herdr-agents)" || guard="${HOME}/.local/bin/common/herdr-agents"
-    # Captured, not piped: a pipefail grep -q could SIGPIPE the launcher.
-    if [[ ! -x ${guard} || "$("${guard}" --help 2> /dev/null)" != *--main-push-guard* ]]; then
-        printf 'herdr-agents: the installed launcher (%s) has no --main-push-guard mode yet; not installing the main-push guard until the next make update applies it.\n' "${guard}" >&2
-        return 0
-    fi
-    mkdir -p "${hooks_dir}"
-    printf '%s\n' "${body}" > "${hook}.tmp.$$"
-    chmod 755 "${hook}.tmp.$$"
-    mv -f "${hook}.tmp.$$" "${hook}"
-    printf 'herdr-agents: installed the main-push guard at %s.\n' "${hook}" >&2
-}
-
-# @description Skip $HOME or ensure Codex and Claude Code agmsg delivery hooks
-#   and the orchestrator's main-push guard (install_main_push_guard).
+# @description Skip $HOME or ensure Codex and Claude Code agmsg delivery hooks,
+#   after removing the retired main-push guard stub (remove_retired_pre_push_stub).
 # @arg $1 workdir Repository path used for repo-scoped agmsg registration.
 function bootstrap_agmsg() {
     local workdir="$1"
@@ -1703,7 +1583,7 @@ function bootstrap_agmsg() {
         printf "Skipping agmsg bootstrap for \$HOME; use a repository directory instead.\n" >&2
         return 0
     fi
-    install_main_push_guard "$(cd -- "${workdir}" && pwd -P)"
+    remove_retired_pre_push_stub "$(cd -- "${workdir}" && pwd -P)"
 
     local scripts="${HOME}/.agents/skills/agmsg/scripts"
     local delivery="${scripts}/delivery.sh"
@@ -1878,13 +1758,6 @@ function require_command() {
 if [[ ${1:-} == "--help" || ${1:-} == "-h" ]]; then
     usage
     exit 0
-fi
-
-# The pre-push hook stub execs this mode; it needs no Herdr, jq, or agmsg.
-if [[ ${1:-} == "--main-push-guard" ]]; then
-    guard_status=0
-    main_push_guard || guard_status=$?
-    exit "${guard_status}"
 fi
 
 attach_mode=false

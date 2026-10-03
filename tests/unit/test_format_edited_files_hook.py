@@ -21,6 +21,7 @@ class FormatEditedFilesHookTest(unittest.TestCase):
             record.write_text("# note\n")
             script = repo / "tool.py"
             script.write_text("x = 1\n")
+            (repo / "ruff.toml").write_text("line-length = 120\n")
             bin_dir = temp_dir / "bin"
             bin_dir.mkdir()
             log = temp_dir / "calls.txt"
@@ -48,7 +49,7 @@ class FormatEditedFilesHookTest(unittest.TestCase):
                 sorted(log.read_text().splitlines()),
                 [
                     f"prettier {root} --write {root / 'records/note.md'}",
-                    f"ruff {root} format {root / 'tool.py'}",
+                    f"ruff {root} format --config {root / 'ruff.toml'} {root / 'tool.py'}",
                 ],
             )
 

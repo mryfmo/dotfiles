@@ -61,6 +61,11 @@ def run_commands(commands: list[list[str]], files: list[Path]) -> int:
         by_root.setdefault(repository_root(resolved), []).append(str(resolved))
     for root, file_args in sorted(by_root.items()):
         for command in commands:
+            config = root / "ruff.toml"
+            if command[0] == "ruff" and config.is_file():
+                # Pin the root config: ruff otherwise picks each file's nearest
+                # pyproject.toml (vendor/compactiondb) and skips the root exclusions.
+                command = [*command, "--config", str(config)]
             try:
                 result = subprocess.run(command + file_args, cwd=root, check=False)
             except FileNotFoundError:

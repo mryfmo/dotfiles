@@ -155,8 +155,8 @@ reset-config:
 .PHONY: format
 format:
 	shfmt --indent 4 --space-redirects --diff .
-	git ls-files -z '*.py' | xargs -0 mise x ruff -- ruff format --config ruff.toml --check
-	git ls-files -z '*.md' | xargs -0 mise x node npm:prettier -- prettier --check
+	git ls-files -z '*.py' | xargs -0 ruff format --config ruff.toml --check
+	git ls-files -z '*.md' | xargs -0 prettier --check
 
 .PHONY: unit-test
 unit-test:

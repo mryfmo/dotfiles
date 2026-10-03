@@ -33,6 +33,7 @@ REQUIRED_PREFIXES = {
     ("chezmoi", "apply"),
     ("make", "update"),
     ("make", "apply"),
+    ("./setup.sh",),
 }
 
 

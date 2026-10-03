@@ -172,3 +172,11 @@ prefix_rule(
     match=["make setup", "make init", "make update", "make apply", "make upgrade", "make watch", "make reset"],
     not_match=["make unit-test", "make format", "make render-check"],
 )
+
+prefix_rule(
+    pattern=[["./setup.sh", "setup.sh"]],
+    decision="forbidden",
+    justification="setup.sh bootstraps the machine and runs chezmoi apply (operator lifecycle; make setup wraps it); ask the operator.",
+    match=["./setup.sh", "setup.sh --help"],
+    not_match=["shellcheck setup.sh", "setup-gh"],
+)

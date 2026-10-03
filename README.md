@@ -628,7 +628,8 @@ orchestrator's acceptance step), `gh release`, `npm publish`, `uv publish`,
 `terraform apply` and `destroy`, `kubectl apply` and `delete`, `chezmoi apply`,
 `chezmoi update`, all of `chezmoi init` and `chezmoi edit`, and the make
 targets that run it or reset chezmoi state (`make setup`, `init`, `update`,
-`apply`, `upgrade`, `watch`, `reset`, `reset-config`). A forbidden match is a refusal under every approval
+`apply`, `upgrade`, `watch`, `reset`, `reset-config`), and `./setup.sh`, which
+`make setup` wraps. A forbidden match is a refusal under every approval
 policy and overrides any allow rule for the same prefix. The file holds no
 allow rules, so an "always allow" that an interactive session adds there does
 not survive the next `chezmoi apply`. Codex reads the rules at startup, so

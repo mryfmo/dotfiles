@@ -81,16 +81,16 @@ Action reference: https://docs.github.com/en/actions/reference/security/secure-u
 
 ## Commands you will need
 
-| Purpose               | Command                                                                      | Expected                   |
-| --------------------- | ---------------------------------------------------------------------------- | -------------------------- |
-| Mutable Action scan   | `rg -nP 'uses:\s+(?!\./)(?!docker://)\S+@(?![0-9a-f]{40}(?:\s*#              | $))\S+' .github/workflows` | no matches                                     |
-| Rolling mise scan     | `rg -n '= "(latest                                                           | lts)"                      | version = "latest"' home/dot_mise/config.toml` | no matches after lock policy   |
-| Remote execution scan | `rg -n 'curl._\|._(sh                                                        | bash)                      | bash -c.*curl                                  | sh -c.*curl' setup.sh install` | no unverified execution path |
-| Python tests          | `make unit-test`                                                             | exit 0                     |
-| Asset validation      | `make validate-agent-assets`                                                 | exit 0                     |
-| Shell static checks   | `git ls-files -z 'setup.sh' 'install/_.sh' 'install/\**/_.sh' 'scripts/*.sh' | xargs -0 shellcheck -x`    | exit 0                                         |
-| Nix lock/check        | `nix flake lock --update-input <name>` then `nix flake check --no-build`     | exit 0; lock committed     |
-| CI-only bootstrap     | public matrix from Plan 003                                                  | all cells pass             |
+| Purpose | Command | Expected |
+|---|---|---|
+| Mutable Action scan | `rg -nP 'uses:\s+(?!\./)(?!docker://)\S+@(?![0-9a-f]{40}(?:\s*#|$))\S+' .github/workflows` | no matches |
+| Rolling mise scan | `rg -n '= "(latest|lts)"|version = "latest"' home/dot_mise/config.toml` | no matches after lock policy |
+| Remote execution scan | `rg -n 'curl.*\|.*(sh|bash)|bash -c.*curl|sh -c.*curl' setup.sh install` | no unverified execution path |
+| Python tests | `make unit-test` | exit 0 |
+| Asset validation | `make validate-agent-assets` | exit 0 |
+| Shell static checks | `git ls-files -z 'setup.sh' 'install/*.sh' 'install/**/*.sh' 'scripts/*.sh' | xargs -0 shellcheck -x` | exit 0 |
+| Nix lock/check | `nix flake lock --update-input <name>` then `nix flake check --no-build` | exit 0; lock committed |
+| CI-only bootstrap | public matrix from Plan 003 | all cells pass |
 
 ## Scope
 

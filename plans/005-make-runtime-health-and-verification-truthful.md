@@ -84,20 +84,20 @@ and required CI checks contain real assertions.
 
 ## Commands you will need
 
-| Purpose               | Command                                                                                                                                                                                                                                                     | Expected                                       |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| Python tests          | `make unit-test`                                                                                                                                                                                                                                            | exit 0                                         |
-| Agent assets          | `make validate-agent-assets`                                                                                                                                                                                                                                | exit 0                                         |
-| Generate assets       | `./scripts/update-agent-assets.sh`                                                                                                                                                                                                                          | exit 0; only expected generated diffs          |
-| Shell static checks   | `git ls-files -z 'setup.sh' 'install/_.sh' 'install/\**/_.sh' 'scripts/*.sh'                                                                                                                                                                                | xargs -0 shellcheck -x`                        | exit 0                                                              |
-| Shell format          | `shfmt --indent 4 --space-redirects --diff .`                                                                                                                                                                                                               | exit 0                                         |
-| Doctor                | `make doctor`                                                                                                                                                                                                                                               | 0 only when all required checks pass           |
-| Upgrade dry lifecycle | `make -n upgrade`                                                                                                                                                                                                                                           | expected commands, no mutation                 |
-| Herdr status          | `herdr status server --json`                                                                                                                                                                                                                                | top-level status is `running` or `not_running` |
-| CI Bats               | `./scripts/run_unit_test.sh` with matrix env                                                                                                                                                                                                                | GitHub only; exit 0                            |
-| Plan evidence search  | `rg -n 'Positive                                                                                                                                                                                                                                            | Adversarial                                    | Verify' plans/005-make-runtime-health-and-verification-truthful.md` | completion oracles listed |
-| Changed-file audit    | `git diff --name-only fa76b4a..11d27f5`                                                                                                                                                                                                                     | only Plan 005 scope and accepted review fixes  |
-| External plan gate    | `uv run python scripts/validate_plan_quality.py /Users/mryfmo/Workspace/dotfiles/plans/005-make-runtime-health-and-verification-truthful.md --acceptance /Users/mryfmo/Workspace/dotfiles/docs/verification/acceptance/005.md --require-acceptance-quality` | exit 0 from the available external gate        |
+| Purpose | Command | Expected |
+|---|---|---|
+| Python tests | `make unit-test` | exit 0 |
+| Agent assets | `make validate-agent-assets` | exit 0 |
+| Generate assets | `./scripts/update-agent-assets.sh` | exit 0; only expected generated diffs |
+| Shell static checks | `git ls-files -z 'setup.sh' 'install/*.sh' 'install/**/*.sh' 'scripts/*.sh' | xargs -0 shellcheck -x` | exit 0 |
+| Shell format | `shfmt --indent 4 --space-redirects --diff .` | exit 0 |
+| Doctor | `make doctor` | 0 only when all required checks pass |
+| Upgrade dry lifecycle | `make -n upgrade` | expected commands, no mutation |
+| Herdr status | `herdr status server --json` | top-level status is `running` or `not_running` |
+| CI Bats | `./scripts/run_unit_test.sh` with matrix env | GitHub only; exit 0 |
+| Plan evidence search | `rg -n 'Positive|Adversarial|Verify' plans/005-make-runtime-health-and-verification-truthful.md` | completion oracles listed |
+| Changed-file audit | `git diff --name-only fa76b4a..11d27f5` | only Plan 005 scope and accepted review fixes |
+| External plan gate | `uv run python scripts/validate_plan_quality.py /Users/mryfmo/Workspace/dotfiles/plans/005-make-runtime-health-and-verification-truthful.md --acceptance /Users/mryfmo/Workspace/dotfiles/docs/verification/acceptance/005.md --require-acceptance-quality` | exit 0 from the available external gate |
 
 ## Scope
 
@@ -162,7 +162,7 @@ assertion must fail before production changes.
 
 - [x] Encode this exact required doctor set in existing script control flow:
       `git`, `chezmoi`, `mise`, `uv`, `gh`, their version commands, `chezmoi
-doctor`, `mise doctor`, `mise ls --current`, and
+      doctor`, `mise doctor`, `mise ls --current`, and
       `scripts/check-agent-runtime.py` when its source/deployed roots exist.
 - [x] Treat Homebrew as required on Darwin and not applicable on Linux.
 - [x] Treat private chezmoi source/config and installed GitHub CLI extensions as

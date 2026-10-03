@@ -1,0 +1,18 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t60_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: dot-main-push-guard-revert-T60-a01 at PR #231 head 65f54c46 (6 files, +126/-401; revise round 1 added `hash-object --no-filters` and a CRLF-under-`* text` subtest that fails without it, both verified in the diff). Orchestrator verified from the diff: `main_push_guard`, `install_main_push_guard`, the `--main-push-guard` dispatch and all usage/shdoc mentions are gone from the launcher; `remove_retired_pre_push_stub` removes a pre-push hook only when `git hash-object` equals the retired stub blob af94a0b5 (both DGX clones' deployed stubs hash to it, re-derived), resolves the hook with `--git-path hooks` and only inside the common git dir, and leaves an edited copy (notice) or any other hook alone; the directive sentence, rule line 13 and SKILL line 62 carry the identical ruleset invariant (fresh `orchestration/boundary-<date>` branch, `gh pr merge --squash --auto`, acceptance merges on GitHub only); README states the ruleset is applied and shows the applied payload with `deletion` and `non_fast_forward`; the docs test token is replaced. Deviations accepted: the validation grep keeps 7 residual matches that are inherent to the removal (the log file name in the `rm` line and the retired-stub fixture in the two required tests), the stub is recognised by exact blob instead of the task's marker-line literal (stricter, from the Codex P1), and 11 tests were removed instead of 10 (the execute-bit test only covered the removed installer). Codex Bot: 5 inline threads, 4 fixed in 4445917b/8259cf5c, 1 not-applicable (per-repository retention of a retired mode is impossible); all five replied and resolved by the orchestrator, `mergeable_state` moved from blocked to clean. Reporting defect noted, not blocking: the report claims a live ruleset check whose pasted validation output is a gh usage error; the orchestrator verified the live ruleset (4 rules) and merge settings itself. CI green on 8259cf5c including the canary; branch up to date with main. Per-commit audits: 8259cf5c correct; 560df81b incorrect (3 findings, all fixed in 4445917b/8259cf5c); 4445917b incorrect (2 findings: external core.hooksPath fixed in 8259cf5c, clean-filter hashing fixed in 65f54c46 after revise round 1). CI green on 65f54c46, mergeable_state clean, no new Bot thread.",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [
+      {
+        "id": "r_t60_01_r1",
+        "body": "Resolved: approval recorded after independent verification of the diff, the deployed stub blobs, the live ruleset and the resolved Bot threads.",
+        "author": "claude-code"
+      }
+    ]
+  }
+]

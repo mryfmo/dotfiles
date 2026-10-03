@@ -135,6 +135,18 @@
             "timeout": 30
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/scripts/agent-stop-gate.sh"
+            ],
+            "timeout": 5
+          }
+        ]
       }
     ],
     "StopFailure": [

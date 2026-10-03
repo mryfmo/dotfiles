@@ -19,6 +19,7 @@ yazi = "26.9.1"
 "aqua:mikefarah/yq" = "4.53.6"
 shellcheck = "0.11.0"
 shfmt = "3.14.1"
+ruff = "0.16.10"
 "aqua:watchexec/watchexec" = "2.7.3"
 
 "npm:@anthropic-ai/claude-code" = { version = "2.1.287", allow_builds = ["@anthropic-ai/claude-code"] }
@@ -28,6 +29,7 @@ shfmt = "3.14.1"
 "npm:ccusage" = "20.0.24"
 "npm:pyright" = "1.1.414"
 "npm:fast-cli" = "5.2.0"
+"npm:prettier" = "3.9.9"
 # Builds the Understand-Anything plugin core (update-agent-assets.sh); the
 # plugin lockfile is lockfileVersion 9.0 and declares no packageManager.
 "npm:pnpm" = "12.6.0"

@@ -25,10 +25,7 @@ class ContextdbCodexNotifyTest(unittest.TestCase):
         (self.project / ".claude/contextdb").mkdir(parents=True)
         self.capture = self.root / "capture.json"
         self.local_sentinel = self.root / "project-cli-ran"
-        self.trusted_cli = (
-            self.home
-            / ".agents/compactiondb/.claude/hooks/contextdb_cli.py"
-        )
+        self.trusted_cli = self.home / ".agents/compactiondb/.claude/hooks/contextdb_cli.py"
 
     def tearDown(self) -> None:
         self.temp.cleanup()

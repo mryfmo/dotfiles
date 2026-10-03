@@ -65,19 +65,13 @@ GraphQL = Callable[[str, dict[str, Any]], Any]
 
 def gh_env() -> dict[str, str]:
     """Environment for gh that never colours output, even under CLICOLOR_FORCE panes."""
-    env = {
-        key: value
-        for key, value in os.environ.items()
-        if key not in {"CLICOLOR_FORCE", "GH_FORCE_TTY"}
-    }
+    env = {key: value for key, value in os.environ.items() if key not in {"CLICOLOR_FORCE", "GH_FORCE_TTY"}}
     env["NO_COLOR"] = "1"
     return env
 
 
 def gh(args: list[str]) -> str:
-    result = subprocess.run(
-        ["gh", *args], capture_output=True, text=True, check=False, env=gh_env()
-    )
+    result = subprocess.run(["gh", *args], capture_output=True, text=True, check=False, env=gh_env())
     if result.returncode != 0:
         sys.exit(f"gh {' '.join(args[:2])} failed: {result.stderr.strip()}")
     return result.stdout
@@ -107,9 +101,7 @@ def require_auth() -> None:
         env=gh_env(),
     )
     if result.returncode != 0:
-        print(
-            "pr-feedback: gh is not authenticated; run `gh auth login`", file=sys.stderr
-        )
+        print("pr-feedback: gh is not authenticated; run `gh auth login`", file=sys.stderr)
         raise SystemExit(2)
 
 
@@ -152,9 +144,7 @@ def item(
     }
 
 
-def thread_states(
-    repo: str, number: int, graphql: GraphQL
-) -> dict[int, dict[str, bool]]:
+def thread_states(repo: str, number: int, graphql: GraphQL) -> dict[int, dict[str, bool]]:
     """Map each review comment id to its thread's resolved and outdated state."""
     owner, name = repo.split("/", 1)
     states: dict[int, dict[str, bool]] = {}
@@ -183,9 +173,7 @@ def thread_states(
         cursor = threads["pageInfo"]["endCursor"]
 
 
-def collect(
-    repo: str, number: int, fetch: Fetch = gh_fetch, graphql: GraphQL = gh_graphql
-) -> dict[str, Any]:
+def collect(repo: str, number: int, fetch: Fetch = gh_fetch, graphql: GraphQL = gh_graphql) -> dict[str, Any]:
     pull = fetch(f"repos/{repo}/pulls/{number}", False)
     sha = pull["head"]["sha"]
     items: list[dict[str, Any]] = []
@@ -228,18 +216,12 @@ def collect(
         )
 
     checks = []
-    for run in flatten(
-        fetch(f"repos/{repo}/commits/{sha}/check-runs", True), "check_runs"
-    ):
+    for run in flatten(fetch(f"repos/{repo}/commits/{sha}/check-runs", True), "check_runs"):
         conclusion = run.get("conclusion") or run.get("status")
-        checks.append(
-            {"name": run["name"], "conclusion": conclusion, "url": run["html_url"]}
-        )
+        checks.append({"name": run["name"], "conclusion": conclusion, "url": run["html_url"]})
         output = run.get("output") or {}
         if conclusion not in PASSING_CONCLUSIONS:
-            summary = " ".join(
-                part for part in (output.get("title"), output.get("summary")) if part
-            )
+            summary = " ".join(part for part in (output.get("title"), output.get("summary")) if part)
             items.append(
                 item(
                     "check_run",
@@ -251,14 +233,8 @@ def collect(
                 )
             )
         if output.get("annotations_count"):
-            for annotation in flatten(
-                fetch(f"repos/{repo}/check-runs/{run['id']}/annotations", True)
-            ):
-                message = " ".join(
-                    part
-                    for part in (annotation.get("title"), annotation["message"])
-                    if part
-                )
+            for annotation in flatten(fetch(f"repos/{repo}/check-runs/{run['id']}/annotations", True)):
+                message = " ".join(part for part in (annotation.get("title"), annotation["message"]) if part)
                 items.append(
                     item(
                         "annotation",
@@ -294,41 +270,28 @@ def collect(
         "head_sha": sha,
         "base_ref": pull["base"]["ref"],
         "base_sha": pull["base"]["sha"],
-        "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(
-            timespec="seconds"
-        ),
+        "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
         "checks": checks,
         "items": items,
     }
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("pr", type=int, help="pull request number")
     parser.add_argument("--repo", help="owner/name; defaults to the current repository")
-    parser.add_argument(
-        "--json", type=Path, help="write the document here instead of stdout"
-    )
+    parser.add_argument("--json", type=Path, help="write the document here instead of stdout")
     args = parser.parse_args(argv)
 
     require_auth()
-    repo = (
-        args.repo
-        or gh(
-            ["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"]
-        ).strip()
-    )
+    repo = args.repo or gh(["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"]).strip()
     document = collect(repo, args.pr)
     text = json.dumps(document, indent=2, ensure_ascii=False) + "\n"
     if args.json:
         args.json.write_text(text)
     else:
         sys.stdout.write(text)
-    counts = Counter(
-        f"{entry['source']}:{entry['level']}" for entry in document["items"]
-    )
+    counts = Counter(f"{entry['source']}:{entry['level']}" for entry in document["items"])
     summary = ", ".join(f"{key}={value}" for key, value in sorted(counts.items()))
     print(
         f"pr-feedback: {repo}#{args.pr} head {document['head_sha'][:7]}: {len(document['items'])} items ({summary})",

@@ -462,8 +462,7 @@ def wait_for_comment_composer(run_dir: Path, ready_timeout: int, poll_interval: 
             page_url = result.get("pageUrl", "")
             page_title = result.get("pageTitle", "")
             raise SystemExit(
-                "Timed out waiting for a GitHub comment composer. "
-                f"Last page: {page_title} {page_url}".strip()
+                f"Timed out waiting for a GitHub comment composer. Last page: {page_title} {page_url}".strip()
             )
         time.sleep(poll_interval)
 
@@ -497,9 +496,7 @@ def upload_files(run_dir: Path, staged_files: Sequence[StagedFile], timeout_ms: 
             after_texts=[composer_after, snapshot_after],
         )
         if not attachment_url:
-            raise SystemExit(
-                f"Failed to find an attachment URL for staged file: {staged_file.staged_name}"
-            )
+            raise SystemExit(f"Failed to find an attachment URL for staged file: {staged_file.staged_name}")
         attachments.append((staged_file, attachment_url))
     return attachments
 
@@ -520,9 +517,7 @@ def perform_upload(run_dir: Path, staged_file: StagedFile, timeout_ms: int) -> d
         cwd=run_dir,
     )
     if not result.get("ok"):
-        raise SystemExit(
-            f"Upload failed for {staged_file.staged_name}: {result.get('error', 'unknown-error')}"
-        )
+        raise SystemExit(f"Upload failed for {staged_file.staged_name}: {result.get('error', 'unknown-error')}")
     return result
 
 

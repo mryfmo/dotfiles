@@ -20,10 +20,7 @@ def graph(**files: tuple[str, ...]) -> dict:
     for path, symbols in files.items():
         path = path.replace("__", "/").replace("_py", ".py").replace("_rb", ".rb").replace("_sh", ".sh")
         nodes.append({"id": f"file:{path}", "type": "file", "filePath": path})
-        nodes += [
-            {"id": f"function:{path}:{name}", "type": "function", "filePath": path}
-            for name in symbols
-        ]
+        nodes += [{"id": f"function:{path}:{name}", "type": "function", "filePath": path} for name in symbols]
     return {"nodes": nodes, "edges": []}
 
 
@@ -88,9 +85,7 @@ class UaSymbolCoverageTest(unittest.TestCase):
         self.commit(a_py=defs("one", "two"))
         for ref in ("no-such-ref", "--output=leak", ""):
             with self.subTest(ref=ref):
-                result = self.run_coverage(
-                    graph(a_py=("one", "two")), graph(a_py=()), ref=ref
-                )
+                result = self.run_coverage(graph(a_py=("one", "two")), graph(a_py=()), ref=ref)
                 self.assertEqual(2, result.returncode, result.stdout + result.stderr)
                 self.assertIn("ua-symbol-coverage: --repo-ref", result.stderr)
                 self.assertNotIn("regressions:", result.stdout)
@@ -114,9 +109,7 @@ class UaSymbolCoverageTest(unittest.TestCase):
         (self.repo / "a.py").unlink()
         self.commit()
 
-        result = self.run_coverage(
-            graph(a_py=("one", "two"), b_py=("keep",)), graph(b_py=("keep",))
-        )
+        result = self.run_coverage(graph(a_py=("one", "two"), b_py=("keep",)), graph(b_py=("keep",)))
         self.assertEqual(1, result.returncode, result.stdout)
         self.assertIn("| a.py | 2 | 0 | gone | REGRESSION |", result.stdout)
 
@@ -141,13 +134,9 @@ class UaSymbolCoverageTest(unittest.TestCase):
     def test_rename_dropping_symbols_is_regression(self) -> None:
         self.rename_a_to_b()
 
-        result = self.run_coverage(
-            graph(pkg__a_py=("one", "two")), graph(pkg__b_py=()), old_ref="HEAD~1"
-        )
+        result = self.run_coverage(graph(pkg__a_py=("one", "two")), graph(pkg__b_py=()), old_ref="HEAD~1")
         self.assertEqual(1, result.returncode, result.stdout)
-        self.assertIn(
-            "| pkg/a.py | 2 | 0 | renamed → pkg/b.py | REGRESSION |", result.stdout
-        )
+        self.assertIn("| pkg/a.py | 2 | 0 | renamed → pkg/b.py | REGRESSION |", result.stdout)
         self.assertIn("regressions: 1", result.stdout)
 
     def test_partial_deletion_in_changed_source_is_regression(self) -> None:
@@ -193,14 +182,10 @@ class UaSymbolCoverageTest(unittest.TestCase):
 
         unchanged = self.run_coverage(old, new, old_ref="HEAD~1")
         self.assertEqual(1, unchanged.returncode, unchanged.stdout)
-        self.assertIn(
-            "| a.py | 3 | 2 | 2 | REGRESSION | source unchanged |", unchanged.stdout
-        )
+        self.assertIn("| a.py | 3 | 2 | 2 | REGRESSION | source unchanged |", unchanged.stdout)
 
     def test_ruby_visibility_prefixed_defs_are_counted(self) -> None:
-        self.commit(
-            lib_rb="class A\n  def one\n  end\n\n  private def two\n  end\nend\n"
-        )
+        self.commit(lib_rb="class A\n  def one\n  end\n\n  private def two\n  end\nend\n")
 
         result = self.run_coverage(graph(lib_rb=("A", "one", "two")), graph(lib_rb=("A", "one")))
         self.assertEqual(1, result.returncode, result.stdout)
@@ -211,14 +196,10 @@ class UaSymbolCoverageTest(unittest.TestCase):
         (self.repo / "a.py").unlink()
         self.commit(b_py=defs("one", "two") + "".join(f"x{i} = {i}\n" for i in range(80)))
 
-        result = self.run_coverage(
-            graph(a_py=("one", "two")), graph(b_py=()), old_ref="HEAD~1"
-        )
+        result = self.run_coverage(graph(a_py=("one", "two")), graph(b_py=()), old_ref="HEAD~1")
         self.assertEqual(1, result.returncode, result.stdout)
         self.assertIn("| a.py | 2 | 0 | gone | explained |", result.stdout)
-        self.assertIn(
-            "| b.py | 0 | 0 | 2 | REGRESSION | new file, no symbols |", result.stdout
-        )
+        self.assertIn("| b.py | 0 | 0 | 2 | REGRESSION | new file, no symbols |", result.stdout)
 
     def test_partially_covered_new_file_is_not_flagged(self) -> None:
         # Documented ceiling: def-like lines overcount graph nodes, so only a
@@ -226,16 +207,12 @@ class UaSymbolCoverageTest(unittest.TestCase):
         self.commit(a_py=defs("keep"))
         self.commit(b_py=defs("one", "two"))
 
-        result = self.run_coverage(
-            graph(a_py=("keep",)), graph(a_py=("keep",), b_py=("one",)), old_ref="HEAD~1"
-        )
+        result = self.run_coverage(graph(a_py=("keep",)), graph(a_py=("keep",), b_py=("one",)), old_ref="HEAD~1")
         self.assertEqual(0, result.returncode, result.stdout)
         self.assertIn("| b.py | 0 | 1 | 2 | ok |  |", result.stdout)
 
     def test_shell_names_with_punctuation_are_counted(self) -> None:
-        self.commit(
-            s_sh="foo?() {\n  :\n}\nfunction bar@baz {\n  :\n}\narr=()\n"
-        )
+        self.commit(s_sh="foo?() {\n  :\n}\nfunction bar@baz {\n  :\n}\narr=()\n")
 
         result = self.run_coverage(graph(s_sh=("a", "b")), graph(s_sh=("a", "b")))
         self.assertEqual(0, result.returncode, result.stdout)
@@ -291,9 +268,7 @@ class UaSymbolCoverageTest(unittest.TestCase):
         os.chmod(self.repo / "a.py", 0o755)
         self.commit()
 
-        result = self.run_coverage(
-            graph(a_py=("one", "two")), graph(a_py=("one",)), old_ref="HEAD~1"
-        )
+        result = self.run_coverage(graph(a_py=("one", "two")), graph(a_py=("one",)), old_ref="HEAD~1")
         self.assertEqual(1, result.returncode, result.stdout)
         self.assertIn("| a.py | 2 | 1 | 2 | REGRESSION | source unchanged |", result.stdout)
 

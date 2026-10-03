@@ -50,17 +50,22 @@ class AgmsgDispatchTest(unittest.TestCase):
                 read_at TEXT)""")
         self.calls = self.root / "calls"
         self.calls.write_text("")
-        self.write_script(scripts / "send.sh", r"""
+        self.write_script(
+            scripts / "send.sh",
+            r"""
 source "$(dirname "$0")/lib/storage.sh"
 body="${4//\'/\'\'}"
 sqlite3 "$(agmsg_db_path "$1")" "INSERT INTO messages(team,from_agent,to_agent,body) VALUES ('$1','$2','$3','$body');"
 if [[ ${FAKE_STATUS} == working && ${FAKE_READ} == yes ]]; then
     sqlite3 "$(agmsg_db_path "$1")" "UPDATE messages SET read_at='read';"
 fi
-""")
+""",
+        )
         bindir = self.root / "bin"
         bindir.mkdir()
-        self.write_script(bindir / "herdr", """
+        self.write_script(
+            bindir / "herdr",
+            """
 if [[ $1 == pane && $2 == list ]]; then
     pane_status=$FAKE_STATUS
     listed=$(cat "$FAKE_CALLS.list" 2>/dev/null || printf 0)
@@ -76,12 +81,18 @@ else
         sqlite3 "$AGMSG_STORAGE_PATH/messages.db" "UPDATE messages SET read_at='read';"
     fi
 fi
-""")
-        self.env = dict(os.environ, HOME=str(self.root),
-                        PATH=f"{bindir}:{os.environ['PATH']}",
-                        AGMSG_STORAGE_PATH=str(self.db.parent),
-                        AGMSG_DISPATCH_TIMEOUT="1", FAKE_CALLS=str(self.calls),
-                        FAKE_STATUS="idle", FAKE_READ="yes")
+""",
+        )
+        self.env = dict(
+            os.environ,
+            HOME=str(self.root),
+            PATH=f"{bindir}:{os.environ['PATH']}",
+            AGMSG_STORAGE_PATH=str(self.db.parent),
+            AGMSG_DISPATCH_TIMEOUT="1",
+            FAKE_CALLS=str(self.calls),
+            FAKE_STATUS="idle",
+            FAKE_READ="yes",
+        )
 
     def write_script(self, path, body):
         path.write_text("#!/usr/bin/env bash\nset -eu\n" + body)
@@ -89,15 +100,20 @@ fi
 
     def dispatch(self, team="team", sender="sender", worker="worker"):
         return subprocess.run(
-            ["bash", str(SCRIPT), team, sender, worker, "w1:p1",
-             "private-message-body"], env=self.env, capture_output=True,
-            text=True, timeout=10)
+            ["bash", str(SCRIPT), team, sender, worker, "w1:p1", "private-message-body"],
+            env=self.env,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
 
     def test_rejects_identifiers_outside_the_strict_grammar(self):
-        for team, sender, worker in (("team", "o'brien", "worker"),
-                                     ("te'am", "sender", "worker"),
-                                     ("team", "sender", "Worker"),
-                                     ("team", "sender", "a.b")):
+        for team, sender, worker in (
+            ("team", "o'brien", "worker"),
+            ("te'am", "sender", "worker"),
+            ("team", "sender", "Worker"),
+            ("team", "sender", "a.b"),
+        ):
             with self.subTest(team=team, sender=sender, worker=worker):
                 result = self.dispatch(team, sender, worker)
                 self.assertEqual(result.returncode, 1, result.stderr)
@@ -113,8 +129,7 @@ fi
         self.assertIn("inbox.sh team worker", calls[0])
         self.assertNotIn("private-message-body", calls[0] + result.stdout + result.stderr)
         with sqlite3.connect(self.db) as db:
-            self.assertEqual(db.execute("SELECT body FROM messages").fetchone()[0],
-                             "private-message-body")
+            self.assertEqual(db.execute("SELECT body FROM messages").fetchone()[0], "private-message-body")
 
     def test_working_does_not_wake(self):
         self.env["FAKE_STATUS"] = "working"
@@ -154,8 +169,7 @@ fi
             self.assertEqual(db.execute("SELECT count(*) FROM messages").fetchone()[0], 0)
 
     def test_worker_becoming_idle_after_send_is_woken(self):
-        self.env.update(FAKE_STATUS="working", FAKE_AFTER_STATUS="idle",
-                        FAKE_READ="no", FAKE_WAKE_READ="yes")
+        self.env.update(FAKE_STATUS="working", FAKE_AFTER_STATUS="idle", FAKE_READ="no", FAKE_WAKE_READ="yes")
         result = self.dispatch()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(len(self.calls.read_text().splitlines()), 1)

@@ -15,10 +15,7 @@ DEFAULT_USAGE_DIR = Path(".agents/worklog/claude/usage")
 DEFAULT_BASELINE = DEFAULT_USAGE_DIR / "20260723-baseline.json"
 REVIEW_WINDOWS_DAYS = (7, 14)
 FABLE_FAMILY = "claude-fable"
-MANUAL_QUALITY_LINE = (
-    "quality side (rework/review misses) is manual — "
-    "decide via PR, never automatically"
-)
+MANUAL_QUALITY_LINE = "quality side (rework/review misses) is manual — decide via PR, never automatically"
 TOKEN_FIELDS = ("inputTokens", "outputTokens", "cacheReadTokens")
 FAMILY_NAMES = {
     "claude-fable": "claude-fable",
@@ -58,9 +55,7 @@ def load_snapshot(path: Path, warnings: list[str]) -> dict[str, Any]:
     return data
 
 
-def records_from_snapshot(
-    data: dict[str, Any], path: Path, warnings: list[str]
-) -> list[Any]:
+def records_from_snapshot(data: dict[str, Any], path: Path, warnings: list[str]) -> list[Any]:
     """Return one supported ccusage record list, preferring weekly data."""
     for section_name, list_name in (("weekly", "weekly"), ("daily", "daily")):
         section = data.get(section_name)
@@ -72,9 +67,7 @@ def records_from_snapshot(
     return []
 
 
-def token_value(
-    value: Any, field: str, path: Path, warnings: list[str]
-) -> int:
+def token_value(value: Any, field: str, path: Path, warnings: list[str]) -> int:
     """Return a non-negative token count or zero for malformed values."""
     if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
         warnings.append(f"WARN: ignored invalid {field} in {path}")
@@ -82,9 +75,7 @@ def token_value(
     return int(value)
 
 
-def aggregate_models(
-    data: dict[str, Any], path: Path, warnings: list[str]
-) -> dict[str, dict[str, int]]:
+def aggregate_models(data: dict[str, Any], path: Path, warnings: list[str]) -> dict[str, dict[str, int]]:
     """Aggregate supported model breakdowns by stable model family."""
     totals: dict[str, dict[str, int]] = {}
     for record in records_from_snapshot(data, path, warnings):
@@ -96,9 +87,7 @@ def aggregate_models(
             normalized_breakdowns = []
             for model_name, breakdown in breakdowns.items():
                 if not isinstance(breakdown, dict):
-                    warnings.append(
-                        f"WARN: ignored malformed model breakdown in {path}"
-                    )
+                    warnings.append(f"WARN: ignored malformed model breakdown in {path}")
                     continue
                 normalized = dict(breakdown)
                 normalized.setdefault("modelName", model_name)
@@ -116,19 +105,13 @@ def aggregate_models(
                 warnings.append(f"WARN: ignored model breakdown without modelName in {path}")
                 continue
             family = model_family(name)
-            family_totals = totals.setdefault(
-                family, {"inputTokens": 0, "outputTokens": 0, "cacheReadTokens": 0}
-            )
+            family_totals = totals.setdefault(family, {"inputTokens": 0, "outputTokens": 0, "cacheReadTokens": 0})
             for field in TOKEN_FIELDS:
-                family_totals[field] += token_value(
-                    breakdown.get(field, 0), field, path, warnings
-                )
+                family_totals[field] += token_value(breakdown.get(field, 0), field, path, warnings)
     return totals
 
 
-def captured_date(
-    data: dict[str, Any], path: Path, warnings: list[str]
-) -> date | None:
+def captured_date(data: dict[str, Any], path: Path, warnings: list[str]) -> date | None:
     """Read the capture date, falling back to the dated filename."""
     captured_at = data.get("captured_at")
     if isinstance(captured_at, str):
@@ -153,18 +136,14 @@ def signed_integer(value: int) -> str:
     return f"{value:+d}"
 
 
-def resolve_paths(
-    usage_dir: Path, baseline_path: Path | None, warnings: list[str]
-) -> tuple[Path | None, Path | None]:
+def resolve_paths(usage_dir: Path, baseline_path: Path | None, warnings: list[str]) -> tuple[Path | None, Path | None]:
     """Resolve the baseline and latest snapshots."""
     snapshots = sorted(usage_dir.glob("*.json"), key=snapshot_sort_key)
     if baseline_path is not None and baseline_path.is_file():
         baseline = baseline_path
     elif snapshots:
         if baseline_path is not None:
-            warnings.append(
-                f"WARN: baseline {baseline_path} is unavailable; using oldest snapshot"
-            )
+            warnings.append(f"WARN: baseline {baseline_path} is unavailable; using oldest snapshot")
         baseline = snapshots[0]
     else:
         warnings.append(f"WARN: no usage snapshots found in {usage_dir}")
@@ -192,13 +171,9 @@ def model_lines(
         current_total = sum(current.values())
         previous_total = sum(previous.values())
         output_share = percentage(current["outputTokens"], latest_output_total)
-        previous_output_share = percentage(
-            previous["outputTokens"], baseline_output_total
-        )
+        previous_output_share = percentage(previous["outputTokens"], baseline_output_total)
         cache_ratio = percentage(current["cacheReadTokens"], current_total)
-        previous_cache_ratio = percentage(
-            previous["cacheReadTokens"], previous_total
-        )
+        previous_cache_ratio = percentage(previous["cacheReadTokens"], previous_total)
         lines.append(
             f"{family}: "
             f"input={current['inputTokens']} "
@@ -225,9 +200,7 @@ def candidate_line(latest: dict[str, dict[str, int]]) -> str:
     total = sum(claude_usage.values())
     fable_usage = claude_usage.get(FABLE_FAMILY, 0)
     if claude_usage:
-        largest_family, largest_usage = max(
-            sorted(claude_usage.items()), key=lambda item: item[1]
-        )
+        largest_family, largest_usage = max(sorted(claude_usage.items()), key=lambda item: item[1])
     else:
         largest_family, largest_usage = "none", 0
     verdict = "yes" if fable_usage > 0 and fable_usage == largest_usage else "no"

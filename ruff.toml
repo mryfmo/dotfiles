@@ -1,0 +1,8 @@
+# Formatting only (the Claude formatter hook and the CI check run `ruff format`).
+# 120 matches vendor/compactiondb/pyproject.toml; py312 is the lowest Python in
+# the CI matrix (ubuntu-24.04 ships 3.12). force-exclude keeps the exclusions
+# when files are passed explicitly, as the hook and the CI check do.
+line-length = 120
+target-version = "py312"
+force-exclude = true
+extend-exclude = ["vendor", ".ua", ".orchestration", "reviews", ".agents", ".claude", "references"]

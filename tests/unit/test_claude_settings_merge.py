@@ -17,14 +17,10 @@ MERGE_SCRIPT = ROOT / "home/dot_claude/modify_private_settings.json"
 
 class ClaudeSettingsMergeTest(unittest.TestCase):
     def setUp(self) -> None:
-        self.temp_dir = tempfile.TemporaryDirectory(
-            prefix="claude-settings-merge-test-"
-        )
+        self.temp_dir = tempfile.TemporaryDirectory(prefix="claude-settings-merge-test-")
         self.source_dir = Path(self.temp_dir.name)
         (self.source_dir / ".chezmoitemplates").mkdir()
-        self.baseline_path = (
-            self.source_dir / ".chezmoitemplates/claude-settings-managed.json"
-        )
+        self.baseline_path = self.source_dir / ".chezmoitemplates/claude-settings-managed.json"
         self.home_dir = self.source_dir / "target-home"
 
     def tearDown(self) -> None:
@@ -169,9 +165,7 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         self.assertEqual(len(session_hooks), 2)
         self.assertTrue(
             commands[0].startswith(str(self.home_dir))
-            and commands[0].endswith(
-                '/herdr-agents --attach 2>> "$HOME/.config/herdr/herdr-agents.log" || true'
-            ),
+            and commands[0].endswith('/herdr-agents --attach 2>> "$HOME/.config/herdr/herdr-agents.log" || true'),
             f"attach hook must migrate to an absolute path, got {commands[0]!r}",
         )
         self.assertEqual(session_hooks[1], state_hook)
@@ -292,11 +286,7 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
             ),
         )
 
-        commands = [
-            h["command"]
-            for e in json.loads(output)["hooks"]["SessionStart"]
-            for h in e["hooks"]
-        ]
+        commands = [h["command"] for e in json.loads(output)["hooks"]["SessionStart"] for h in e["hooks"]]
         self.assertTrue(
             commands[0].endswith("herdr-agent-state.sh' session"),
             f"state hook must stay first, got {commands}",
@@ -407,24 +397,31 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         self.assertTrue(output.endswith("\n"))
 
     def test_real_template_preserves_herdr_matcher_and_converges(self) -> None:
-        managed = json.loads(
-            (ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()
-        )
+        managed = json.loads((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text())
         canonical_matcher = "^(startup|resume|clear|compact|fork)$"
-        current = json.dumps({
-            "hooks": {"SessionStart": [{
-                "matcher": canonical_matcher,
-                "hooks": [{
-                    "type": "command",
-                    "command": f"bash '{self.home_dir}/.claude/hooks/herdr-agent-state.sh' session",
-                    "timeout": 10,
-                }],
-            }]},
-        })
+        current = json.dumps(
+            {
+                "hooks": {
+                    "SessionStart": [
+                        {
+                            "matcher": canonical_matcher,
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": f"bash '{self.home_dir}/.claude/hooks/herdr-agent-state.sh' session",
+                                    "timeout": 10,
+                                }
+                            ],
+                        }
+                    ]
+                },
+            }
+        )
 
         once = self.merge(managed, current)
         state_entries = [
-            entry for entry in json.loads(once)["hooks"]["SessionStart"]
+            entry
+            for entry in json.loads(once)["hooks"]["SessionStart"]
             if any("herdr-agent-state.sh" in hook["command"] for hook in entry["hooks"])
         ]
         self.assertEqual(len(state_entries), 1)

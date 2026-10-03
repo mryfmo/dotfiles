@@ -21,9 +21,7 @@ class CodexConfigMergeTest(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory(prefix="codex-config-merge-test-")
         self.source_dir = Path(self.temp_dir.name)
         (self.source_dir / ".chezmoitemplates").mkdir()
-        self.baseline_path = (
-            self.source_dir / ".chezmoitemplates/codex-config-managed.toml"
-        )
+        self.baseline_path = self.source_dir / ".chezmoitemplates/codex-config-managed.toml"
 
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
@@ -80,9 +78,7 @@ class CodexConfigMergeTest(unittest.TestCase):
         self.assertEqual(list(data["projects"].keys()), [str(self.source_dir.parent)])
 
     def test_working_tree_placeholder_prefers_env_override(self) -> None:
-        self.baseline_path.write_text(
-            '[projects."{{ .chezmoi.workingTree }}"]\ntrust_level = "trusted"\n'
-        )
+        self.baseline_path.write_text('[projects."{{ .chezmoi.workingTree }}"]\ntrust_level = "trusted"\n')
         env_override = self.source_dir / "explicit-working-tree"
         env = os.environ.copy()
         env["CHEZMOI_SOURCE_DIR"] = str(self.source_dir)
@@ -151,9 +147,7 @@ class CodexConfigMergeTest(unittest.TestCase):
 
         data = tomllib.loads(output)
         self.assertEqual(data["model"], "managed")
-        self.assertEqual(
-            data["hooks"]["state"]["managed"]["trusted_hash"], "sha256:runtime"
-        )
+        self.assertEqual(data["hooks"]["state"]["managed"]["trusted_hash"], "sha256:runtime")
         self.assertEqual(data["tui"]["model_availability_nux"]["gpt-5"], 9)
         self.assertEqual(data["tui"]["model_availability_nux"]["gpt-5.5"], 2)
 

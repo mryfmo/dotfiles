@@ -118,11 +118,19 @@ prefix_rule(
 )
 
 prefix_rule(
-    pattern=[["terraform", "kubectl"], "apply"],
+    pattern=["terraform", ["apply", "destroy"]],
     decision="forbidden",
-    justification="Infrastructure changes are applied by the operator; use plan or diff to preview.",
-    match=["terraform apply", "kubectl apply -f deploy.yaml"],
-    not_match=["terraform plan", "kubectl diff -f deploy.yaml"],
+    justification="Infrastructure changes are applied by the operator; use terraform plan to preview.",
+    match=["terraform apply", "terraform destroy -auto-approve"],
+    not_match=["terraform plan"],
+)
+
+prefix_rule(
+    pattern=["kubectl", ["apply", "delete"]],
+    decision="forbidden",
+    justification="Cluster changes are applied by the operator; use kubectl diff or get to inspect.",
+    match=["kubectl apply -f deploy.yaml", "kubectl delete --all pods"],
+    not_match=["kubectl diff -f deploy.yaml", "kubectl get pods"],
 )
 
 prefix_rule(
@@ -134,11 +142,27 @@ prefix_rule(
 )
 
 prefix_rule(
-    pattern=["chezmoi", "init", ["--apply", "--apply=true", "-a", "--one-shot"]],
+    pattern=["chezmoi", "init", ["--apply", "--apply=true", "-a", "-a=true", "--one-shot", "--one-shot=true"]],
     decision="forbidden",
     justification="chezmoi init --apply applies the source state (operator lifecycle); use chezmoi diff to preview.",
-    match=["chezmoi init --apply --verbose", "chezmoi init --apply=true", "chezmoi init -a", "chezmoi init --one-shot mryfmo"],
+    match=["chezmoi init --apply --verbose", "chezmoi init --apply=true", "chezmoi init -a", "chezmoi init -a=true", "chezmoi init --one-shot mryfmo", "chezmoi init --one-shot=true mryfmo"],
     not_match=["chezmoi init --data=false"],
+)
+
+prefix_rule(
+    pattern=["chezmoi", "update"],
+    decision="forbidden",
+    justification="chezmoi update pulls and applies the source state (operator lifecycle); use chezmoi diff to preview.",
+    match=["chezmoi update", "chezmoi update --verbose"],
+    not_match=["chezmoi status"],
+)
+
+prefix_rule(
+    pattern=["chezmoi", "edit", ["--apply", "--apply=true", "-a", "-a=true"]],
+    decision="forbidden",
+    justification="chezmoi edit --apply applies the target immediately (operator lifecycle); edit the source and preview with chezmoi diff.",
+    match=["chezmoi edit --apply ~/.zshrc", "chezmoi edit -a ~/.zshrc"],
+    not_match=["chezmoi edit ~/.zshrc"],
 )
 
 prefix_rule(

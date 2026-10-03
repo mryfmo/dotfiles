@@ -1355,7 +1355,7 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             calls,
         )
         self.assertIn(
-            "agent start codex-worker-w-test --kind codex --pane w-test:p3 --timeout 30000 -- --sandbox workspace-write --profile standard",
+            "agent start codex-worker-w-test --kind codex --pane w-test:p3 --timeout 30000 -- --sandbox workspace-write --profile standard --ask-for-approval never -c sandbox_workspace_write.network_access=true",
             calls,
         )
         self.assertIn("pane rename w-test:p3 codex-worker", calls)
@@ -1454,7 +1454,9 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue(
             any(
-                call.endswith("--sandbox workspace-write --profile review")
+                call.endswith(
+                    "--sandbox workspace-write --profile review --ask-for-approval never -c sandbox_workspace_write.network_access=true"
+                )
                 for call in self.calls_path.read_text().splitlines()
                 if call.startswith("agent start codex-worker-")
             )
@@ -1470,7 +1472,9 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue(
             any(
-                call.endswith("--sandbox workspace-write --profile express")
+                call.endswith(
+                    "--sandbox workspace-write --profile express --ask-for-approval never -c sandbox_workspace_write.network_access=true"
+                )
                 for call in self.calls_path.read_text().splitlines()
                 if call.startswith("agent start codex-worker-")
             )
@@ -1486,7 +1490,9 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue(
             any(
-                call.endswith("--sandbox workspace-write --profile express")
+                call.endswith(
+                    "--sandbox workspace-write --profile express --ask-for-approval never -c sandbox_workspace_write.network_access=true"
+                )
                 for call in self.calls_path.read_text().splitlines()
                 if call.startswith("agent start codex-worker-")
             )
@@ -1504,7 +1510,9 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue(
             any(
-                call.endswith("--sandbox workspace-write --profile deep")
+                call.endswith(
+                    "--sandbox workspace-write --profile deep --ask-for-approval never -c sandbox_workspace_write.network_access=true"
+                )
                 for call in self.calls_path.read_text().splitlines()
                 if call.startswith("agent start codex-worker-")
             )
@@ -2096,7 +2104,9 @@ printf 'status=ok team=dotfiles\\n'
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue(
             any(
-                call.endswith("--sandbox workspace-write --profile express")
+                call.endswith(
+                    "--sandbox workspace-write --profile express --ask-for-approval never -c sandbox_workspace_write.network_access=true"
+                )
                 for call in self.calls_path.read_text().splitlines()
                 if call.startswith("agent start codex-worker-")
             )
@@ -2460,7 +2470,7 @@ printf 'Joined team %s as %s\\n' "$1" "$2"
         self.assertEqual(len(starts), 1, starts)
         self.assertTrue(
             starts[0].endswith(
-                f" -- --sandbox workspace-write --profile standard -c sandbox_workspace_write.writable_roots={roots}"
+                f" -- --sandbox workspace-write --profile standard --ask-for-approval never -c sandbox_workspace_write.network_access=true -c sandbox_workspace_write.writable_roots={roots}"
             ),
             starts[0],
         )
@@ -2778,7 +2788,10 @@ exit {despawn_exit}
 
         result, options = self.run_codex_add_worker()
 
-        self.assertEqual(options, "codex:\n  --profile: review\n  --sandbox: workspace-write\n")
+        self.assertEqual(
+            options,
+            "codex:\n  --profile: review\n  --sandbox: workspace-write\n  --ask-for-approval: never\n  --config: sandbox_workspace_write.network_access=true\n",
+        )
         self.assertIn("cannot read sandbox_workspace_write.writable_roots in ", result.stderr)
         self.assertIn("gets no git metadata roots", result.stderr)
 
@@ -2798,7 +2811,7 @@ exit {despawn_exit}
         roots = json.dumps(configured + self.git_metadata_roots("b2"), separators=(",", ":"))
         self.assertIn(f"  --config: sandbox_workspace_write.writable_roots={roots}\n", options)
         self.assertIn("is a shallow clone; its shallow metadata (", result.stderr)
-        self.assertIn("needs an operator-approved escalation", result.stderr)
+        self.assertIn("in the codex worker fails.", result.stderr)
 
     def git_metadata_roots(self, name: str) -> list[str]:
         common = subprocess.run(
@@ -2821,9 +2834,12 @@ exit {despawn_exit}
         roots = json.dumps(configured + self.git_metadata_roots("b2"), separators=(",", ":"))
         self.assertEqual(
             options.read_text(),
-            "codex:\n  --profile: review\n  --sandbox: workspace-write\n"
+            "codex:\n  --profile: review\n  --sandbox: workspace-write\n  --ask-for-approval: never\n  --config: sandbox_workspace_write.network_access=true\n"
             f"  --config: sandbox_workspace_write.writable_roots={roots}\n",
         )
+        # The seat never prompts and reaches the network inside the sandbox.
+        self.assertIn("  --ask-for-approval: never\n", options.read_text())
+        self.assertIn("  --config: sandbox_workspace_write.network_access=true\n", options.read_text())
         for denied in ("/config", "/hooks", "/info", "/HEAD", "/packed-refs", '.git"'):
             self.assertNotIn(denied, options.read_text())
         calls = self.calls_path.read_text().splitlines()
@@ -4702,7 +4718,10 @@ exit {exit_code}
         calls = self.calls()
         self.assertTrue(
             any(
-                c.startswith("agent start codex-worker-") and c.endswith("--sandbox workspace-write --profile express")
+                c.startswith("agent start codex-worker-")
+                and c.endswith(
+                    "--sandbox workspace-write --profile express --ask-for-approval never -c sandbox_workspace_write.network_access=true"
+                )
                 for c in calls
             ),
             calls,
@@ -4846,7 +4865,7 @@ exit {exit_code}
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = self.calls_path.read_text().splitlines()
         self.assertIn(
-            "agent start codex-worker-w-old --kind codex --pane w-old:p3 --timeout 30000 -- --sandbox workspace-write --profile standard",
+            "agent start codex-worker-w-old --kind codex --pane w-old:p3 --timeout 30000 -- --sandbox workspace-write --profile standard --ask-for-approval never -c sandbox_workspace_write.network_access=true",
             calls,
         )
         self.assertFalse(any("w-old:p9" in call for call in calls), calls)
@@ -4982,7 +5001,7 @@ exit {exit_code}
 
         calls = self.calls_path.read_text().splitlines()
         self.assertIn(
-            "agent start codex-worker-w-old --kind codex --pane w-old:p3 --timeout 30000 -- --sandbox workspace-write --profile standard",
+            "agent start codex-worker-w-old --kind codex --pane w-old:p3 --timeout 30000 -- --sandbox workspace-write --profile standard --ask-for-approval never -c sandbox_workspace_write.network_access=true",
             calls,
         )
         self.assertIn("pane rename w-old:p3 codex-worker", calls)
@@ -5006,7 +5025,7 @@ exit {exit_code}
 
         calls = self.calls_path.read_text().splitlines()
         self.assertIn(
-            "agent start codex-worker-w-old --kind codex --pane w-old:p2 --timeout 30000 -- --sandbox workspace-write --profile standard",
+            "agent start codex-worker-w-old --kind codex --pane w-old:p2 --timeout 30000 -- --sandbox workspace-write --profile standard --ask-for-approval never -c sandbox_workspace_write.network_access=true",
             calls,
         )
         self.assertIn(

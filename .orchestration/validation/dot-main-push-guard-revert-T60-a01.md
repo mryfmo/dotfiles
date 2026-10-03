@@ -510,3 +510,22 @@ resolved=true outdated=false 4445917b home/dot_local/bin/common/executable_herdr
 resolved=true outdated=true 4445917b home/dot_agents/skills/agmsg-orchestration/SKILL.md | Use a fresh branch for every boundary**
 resolved=true outdated=false 4445917b home/dot_local/bin/common/executable_herdr-agents | Scope guard retirement to repositories with the ruleset**
 ```
+
+## Orchestrator verification at acceptance (2026-10-03, unsandboxed)
+
+The two `gh api` lines in "Applied ruleset (read-only)" above failed with a gh usage error and prove nothing (Codex Bot P2 on boundary PR #232). The orchestrator ran the queries itself; verbatim successful output:
+
+```
+$ gh api repos/mryfmo/dotfiles/rulesets --jq '.[] | {id, name, enforcement}'
+{"enforcement":"active","id":24397953,"name":"main integration gate"}
+$ gh api repos/mryfmo/dotfiles/rules/branches/main --jq '.[] | .type'
+deletion
+non_fast_forward
+pull_request
+required_status_checks
+$ gh api repos/mryfmo/dotfiles/rules/branches/main --jq '.[] | select(.type=="pull_request" or .type=="required_status_checks") | .parameters'
+{"allowed_merge_methods":["merge","squash","rebase"],"dismiss_stale_reviews_on_push":true,"require_code_owner_review":false,"require_extra_approval_for_unattributed_changes":true,"require_last_push_approval":false,"required_approving_review_count":0,"required_review_thread_resolution":true,"required_reviewers":[]}
+{"do_not_enforce_on_create":false,"required_status_checks":[{"context":"validate"},{"context":"test (ubuntu-24.04, server)"},{"context":"test (ubuntu-24.04, client)"},{"context":"test (macos-14, client)"},{"context":"public-bootstrap (ubuntu-24.04, server)"},{"context":"public-bootstrap (ubuntu-24.04, client)"},{"context":"public-bootstrap (macos-14, client)"}],"strict_required_status_checks_policy":true}
+$ gh api repos/mryfmo/dotfiles --jq '{allow_squash_merge,allow_merge_commit,allow_rebase_merge,allow_auto_merge,delete_branch_on_merge}'
+{"allow_auto_merge":true,"allow_merge_commit":false,"allow_rebase_merge":false,"allow_squash_merge":true,"delete_branch_on_merge":false}
+```

@@ -1,0 +1,577 @@
+{
+  "repo": "mryfmo/dotfiles",
+  "pr": 233,
+  "head_sha": "7dff3a5cfd38d0fe7f61c5756a93127e9e3d2edf",
+  "base_ref": "main",
+  "base_sha": "3915e32716e59a94dedbce67f2f60e1119a6f9d3",
+  "generated_at": "2026-10-03T05:55:12+00:00",
+  "checks": [
+    {
+      "name": "nix",
+      "conclusion": "skipped",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37099851412/job/111137124827"
+    },
+    {
+      "name": "test (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37099851412/job/111137123988"
+    },
+    {
+      "name": "test (ubuntu-26.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37099851412/job/111137123980"
+    },
+    {
+      "name": "test (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37099851412/job/111137123969"
+    },
+    {
+      "name": "test (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37099851412/job/111137123965"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37099851445/job/111137093525"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37099851445/job/111137093500"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37099851445/job/111137093475"
+    },
+    {
+      "name": "private-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37099851445/job/111137093445"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37099851445/job/111137093441"
+    },
+    {
+      "name": "validate",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37099851411/job/111137093386"
+    },
+    {
+      "name": "build (server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37099851419/job/111137093374"
+    },
+    {
+      "name": "build",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37099851397/job/111137093272"
+    },
+    {
+      "name": "build (client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37099851419/job/111137093265"
+    },
+    {
+      "name": "public-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37099851445/job/111137093256"
+    },
+    {
+      "name": "changes",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37099851412/job/111137093182"
+    }
+  ],
+  "items": [
+    {
+      "source": "issue_comment",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary>⚙️ Run configuration</summary>\n> \n> - **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> - **Review profile**: CHILL\n> - **Plan**: Advanced\n> - **Run ID**: `ffad9052-29ba-4d31-82c2-b4a1d2447c96`\n> \n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autopilot</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n---\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=233)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary>❤️ Share</summary>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#issuecomment-5964632510",
+      "disposition": "not-applicable:CodeRabbit auto-generated \"review skipped\" notice; automatic reviews are disabled by operator decision"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `e5648fa626`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#pullrequestreview-5398626954",
+      "commit": "e5648fa626faf8f8d1cc5e9689101d084367a800",
+      "disposition": "not-applicable:Codex review summary container; each inline finding is dispositioned on its own thread item"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `b5084de556`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#pullrequestreview-5398704968",
+      "commit": "b5084de556295f36adfa9fe2c41dc0e1ad32cb14",
+      "disposition": "not-applicable:Codex review summary container; each inline finding is dispositioned on its own thread item"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `772ff3c691`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#pullrequestreview-5398741125",
+      "commit": "772ff3c691af443813518dd705dc1db1fefe7dac",
+      "disposition": "not-applicable:Codex review summary container; each inline finding is dispositioned on its own thread item"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `5702163262`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#pullrequestreview-5398779771",
+      "commit": "5702163262bdfeb156686e13d797db39b1dafa5b",
+      "disposition": "not-applicable:Codex review summary container; each inline finding is dispositioned on its own thread item"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `0827371f21`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#pullrequestreview-5399012777",
+      "commit": "0827371f2146a70b278b40af2dd3c0040fc7fab7",
+      "disposition": "not-applicable:Codex review summary container; each inline finding is dispositioned on its own thread item"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `3da4cfadc6`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#pullrequestreview-5399057691",
+      "commit": "3da4cfadc6fbd387df7ad41450568be3e24c9649",
+      "disposition": "not-applicable:Codex review summary container; each inline finding is dispositioned on its own thread item"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#pullrequestreview-5399119262",
+      "commit": "74ade52fdf153ccb1ce7bb9e80cb9e0adb98bf47",
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance; it carries no new finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#pullrequestreview-5399119348",
+      "commit": "74ade52fdf153ccb1ce7bb9e80cb9e0adb98bf47",
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance; it carries no new finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#pullrequestreview-5399119424",
+      "commit": "74ade52fdf153ccb1ce7bb9e80cb9e0adb98bf47",
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance; it carries no new finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#pullrequestreview-5399119511",
+      "commit": "74ade52fdf153ccb1ce7bb9e80cb9e0adb98bf47",
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance; it carries no new finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#pullrequestreview-5399119592",
+      "commit": "74ade52fdf153ccb1ce7bb9e80cb9e0adb98bf47",
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance; it carries no new finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#pullrequestreview-5399119799",
+      "commit": "74ade52fdf153ccb1ce7bb9e80cb9e0adb98bf47",
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance; it carries no new finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#pullrequestreview-5399119969",
+      "commit": "74ade52fdf153ccb1ce7bb9e80cb9e0adb98bf47",
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance; it carries no new finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#pullrequestreview-5399120121",
+      "commit": "74ade52fdf153ccb1ce7bb9e80cb9e0adb98bf47",
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance; it carries no new finding"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#pullrequestreview-5399120251",
+      "commit": "74ade52fdf153ccb1ce7bb9e80cb9e0adb98bf47",
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance; it carries no new finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_claude/hooks/executable_format-edited-files.py",
+      "line": 24,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Install the formatter binaries before invoking this hook**\n\nWhen an existing installation runs `make update`, it applies this hook but the update target installs only Node, ccstatusline, ccusage, and pnpm—not `ruff` or `prettier`. The first Python or Markdown Write/Edit then raises `FileNotFoundError` from `subprocess.run`, causing PostToolUse to fail on every edit; CI masks this because it installs both tools explicitly. Install these new dependencies during `make update` (or invoke them through mise) before deploying the hook.\n\nAGENTS.md reference: [AGENTS.md:L78-L78](https://github.com/mryfmo/dotfiles/blob/e5648fa626faf8f8d1cc5e9689101d084367a800/AGENTS.md#L78-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#discussion_r4171377221",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "fixed:0827371f"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "plans/004-harden-and-lock-the-supply-chain.md",
+      "line": 91,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Preserve literal command text in Markdown tables**\n\nFormatting these plan tables has changed executable command text, not just alignment: this shellcheck row now uses `install/_.sh` and `install/\\**/_.sh` instead of the `install/*.sh` and `install/**/*.sh` globs, so copying it no longer checks the intended scripts. Other rows in these tables similarly split `|` alternatives into columns, making the documented verification commands invalid; keep such commands out of Prettier-managed table cells or encode them in a form Prettier preserves.\n\nAGENTS.md reference: [AGENTS.md:L80-L80](https://github.com/mryfmo/dotfiles/blob/e5648fa626faf8f8d1cc5e9689101d084367a800/AGENTS.md#L80-L80)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#discussion_r4171377232",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:57021632"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": ".github/workflows/test.yaml",
+      "line": 290,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Run the formatting check for every formatted path**\n\nThis step is gated by `should_test`, but the preceding path filter only enables that flag for `.github/workflows/`, `home/`, `install/`, `scripts/`, `tests/`, and a few root files. A PR that changes only `plans/**/*.md`, `ruff.toml`, or `.prettierignore` therefore skips this check entirely even though it validates all tracked Python and Markdown; broaden the filter or make formatting validation unconditional.\n\nAGENTS.md reference: [AGENTS.md:L80-L80](https://github.com/mryfmo/dotfiles/blob/e5648fa626faf8f8d1cc5e9689101d084367a800/AGENTS.md#L80-L80)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#discussion_r4171377236",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "fixed:74ade52f"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_claude/hooks/executable_format-edited-files.py",
+      "line": 49,
+      "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Resolve formatter configuration from the edited repository**\n\nWhen Claude is started from a subdirectory (or outside the repository) and edits an ignored Markdown record such as `.orchestration/...`, this call inherits that CWD and invokes Prettier with absolute paths but no `cwd` or `--ignore-path`; Prettier then does not load the repository `.prettierignore`, so `--write` rewrites files the new ignore declares byte-identical. Run/group commands from each file's repository root or pass its ignore path explicitly.\n\nAGENTS.md reference: [AGENTS.md:L78-L78](https://github.com/mryfmo/dotfiles/blob/b5084de556295f36adfa9fe2c41dc0e1ad32cb14/AGENTS.md#L78-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#discussion_r4171447886",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:772ff3c6"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "plans/001-contain-starship-cleanup.md",
+      "line": 57,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Preserve the removal-scan command in this table**\n\nThe formatting pass changed the command’s regex by inserting table-padding spaces before its `|`, so copying this row now searches for `BIN_DIR` followed by many literal spaces instead of the original `BIN_DIR|...` alternation and can falsely report no matches. The newly added `.prettierignore` only exempts Plans 004 and 005, leaving this corrupted row (and the analogous Plan 003 row) in place.\n\nAGENTS.md reference: [AGENTS.md:L80-L80](https://github.com/mryfmo/dotfiles/blob/772ff3c691af443813518dd705dc1db1fefe7dac/AGENTS.md#L80-L80)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#discussion_r4171481708",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:57021632"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "ruff.toml",
+      "line": 8,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Exclude `.agents` from direct Ruff formatting**\n\nWhen Claude edits a Python artifact under the ignored `.agents/worklog/` tree, the new PostToolUse hook passes that path directly to Ruff; `force-exclude` only protects the directories listed here, and `.agents` is absent. I verified that `ruff format --config ruff.toml --check .agents/worklog/format-hook-probe.py` reports it would reformat the file, so the hook can silently rewrite local agent evidence despite `.prettierignore` protecting the same tree. Add `.agents` to `extend-exclude`.\n\nAGENTS.md reference: [AGENTS.md:L78-L78](https://github.com/mryfmo/dotfiles/blob/5702163262bdfeb156686e13d797db39b1dafa5b/AGENTS.md#L78-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#discussion_r4171515860",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:ae806f37"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": ".github/workflows/test.yaml",
+      "line": 69,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Check formatting for unlisted source paths**\n\nEven after the expanded filter, a PR that changes only a tracked Markdown file under `.github/ISSUE_TEMPLATE/` (or a Python file in a new directory) sets `should_test=false`, because this expression accepts only direct `.github/*.md` paths. The formatter step at lines 293–295 uses `git ls-files` and would include those files, so they can merge without formatting validation; broaden the filter to all format-eligible paths or make the formatting step unconditional.\n\nAGENTS.md reference: [AGENTS.md:L80-L80](https://github.com/mryfmo/dotfiles/blob/0827371f2146a70b278b40af2dd3c0040fc7fab7/AGENTS.md#L80-L80)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#discussion_r4171710147",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:74ade52f"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "Makefile",
+      "line": 159,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Resolve the formatter tools without the untrusted project config**\n\nOn a fresh checkout, these new `mise x` invocations fail before running the formatter because the repository-level `mise.toml` is untrusted; `mise x ruff -- ruff --version` exits 1 asking the user to run `mise trust`, even if the pinned tools were installed through `~/.config/mise`. `mise x --help` states that it loads tools from `mise.toml`, and this checkout's local file has an empty `[tools]` table. Invoke the installed formatter shims directly or explicitly resolve the deployed, trusted mise configuration so `make format` works after normal setup.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#discussion_r4171710149",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:74ade52f"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_claude/hooks/executable_format-edited-files.py",
+      "line": 21,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Force the hook to honor root Ruff exclusions**\n\nWhen Claude edits a Python file under `vendor/compactiondb/`, this direct invocation can let Ruff select that directory's `pyproject.toml`, which lacks the new `vendor` and `force-exclude` settings, rather than the root `ruff.toml`. The deployed PostToolUse hook can therefore rewrite vendored code despite the new exclusion policy; invoke Ruff with the root config (or otherwise enforce its exclusions) in the hook.\n\nAGENTS.md reference: [AGENTS.md:L78-L78](https://github.com/mryfmo/dotfiles/blob/3da4cfadc6fbd387df7ad41450568be3e24c9649/AGENTS.md#L78-L78)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#discussion_r4171745846",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "fixed:74ade52f"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_claude/hooks/executable_format-edited-files.py",
+      "line": 24,
+      "body": "Disposition (orchestrator acceptance): fixed in ff37f41d (a missing formatter is reported without a traceback) and 0827371f (`make update` and `install/common/mise.sh` install `ruff npm:prettier`, so existing machines get the pinned formatters). Verified in the diffs.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#discussion_r4171796778",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance; it carries no new finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "plans/004-harden-and-lock-the-supply-chain.md",
+      "line": 91,
+      "body": "Disposition (orchestrator acceptance): fixed in b5084de5 and 57021632. All of plans/ is excluded from prettier and restored; `git diff --quiet origin/main -- plans/` holds on the head.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#discussion_r4171796856",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance; it carries no new finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": ".github/workflows/test.yaml",
+      "line": 290,
+      "body": "Disposition (orchestrator acceptance): fixed in ff37f41d (plans/, docs/, root Markdown, ruff.toml, .prettierignore) and completed in 74ade52f (any changed .py or .md outside .orchestration/ sets should_test).",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#discussion_r4171796928",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance; it carries no new finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_claude/hooks/executable_format-edited-files.py",
+      "line": 49,
+      "body": "Disposition (orchestrator acceptance): fixed in 772ff3c6. The hook groups edited files by their repository root and runs the formatters with that cwd, so .prettierignore of the edited repository applies; a test covers a session cwd outside the repository.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#discussion_r4171797014",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance; it carries no new finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "plans/001-contain-starship-cleanup.md",
+      "line": 57,
+      "body": "Disposition (orchestrator acceptance): fixed in 57021632. plans/ is excluded from prettier and byte-identical to origin/main on the head.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#discussion_r4171797087",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance; it carries no new finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "ruff.toml",
+      "line": 8,
+      "body": "Disposition (orchestrator acceptance): fixed in ae806f37 (`.agents` added to ruff extend-exclude; probe under .agents/worklog is excluded with and without --config).",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#discussion_r4171797168",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance; it carries no new finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": ".github/workflows/test.yaml",
+      "line": 69,
+      "body": "Disposition (orchestrator acceptance): fixed in 74ade52f. should_test is set by any changed .py or .md outside .orchestration/ (nested paths included); the filter no longer pipes into grep -q under pipefail.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#discussion_r4171797288",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance; it carries no new finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "Makefile",
+      "line": 159,
+      "body": "Disposition (orchestrator acceptance): fixed in 74ade52f. `make format` calls ruff and prettier from PATH (the mise shims that make update installs since 0827371f) instead of `mise x`, so an untrusted repository mise.toml cannot make it refuse.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#discussion_r4171797412",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance; it carries no new finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_claude/hooks/executable_format-edited-files.py",
+      "line": 21,
+      "body": "Disposition (orchestrator acceptance): fixed in 74ade52f. The hook passes --config <repository root>/ruff.toml when that file exists, so the root exclusions govern a file under a nested pyproject.toml; the hook test asserts the flag.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/233#discussion_r4171797532",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the orchestrator's own disposition reply on a Codex thread, posted at acceptance; it carries no new finding"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37099851412/job/111137123969",
+      "check": "test (macos-14, client)",
+      "disposition": "not-applicable:GitHub-hosted macOS arm64 capacity notice emitted by the runner service; informational, not caused by or fixable in this repository"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37099851445/job/111137093445",
+      "check": "private-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub-hosted macOS arm64 capacity notice emitted by the runner service; informational, not caused by or fixable in this repository"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37099851397/job/111137093272",
+      "check": "build",
+      "disposition": "not-applicable:GitHub-hosted macOS arm64 capacity notice emitted by the runner service; informational, not caused by or fixable in this repository"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37099851445/job/111137093256",
+      "check": "public-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub-hosted macOS arm64 capacity notice emitted by the runner service; informational, not caused by or fixable in this repository"
+    },
+    {
+      "source": "status",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "success",
+      "path": null,
+      "line": null,
+      "body": "CodeRabbit: Review skipped: automatic reviews are disabled",
+      "url": null,
+      "check": "CodeRabbit",
+      "disposition": "not-applicable:CodeRabbit commit status \"review skipped\" reflects the operator decision to keep automatic reviews disabled; status is success"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t61_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: dot-formatter-hook-root-fix-T61-a01 at PR #233 head 7dff3a5c (two tooling commits 45d44292/bd9a7995, the format-only commit e5648fa6, review-fix commits ff37f41d/b5084de5/772ff3c6/57021632/ae806f37, revise round 1 0827371f, update-branch merge 3da4cfad with .orchestration-only content, revise round 2 74ade52f, revise round 3 7dff3a5c: `git -c core.quotePath=false` so non-ASCII paths reach the should_test filter unquoted). Orchestrator re-derived with the PR's own pinned tools (ruff 0.16.10, prettier 3.9.9 installed from the PR's mise config and lock): formatting bd9a7995 reproduces e5648fa6 exactly except one prettier non-idempotent line in plans/005 that later commits restore with all of plans/; the head is a fixpoint (re-running both tools changes nothing); CLAUDE.md is byte-identical to origin/main; Markdown changes outside plans/ are list markers and lazy-continuation indentation only; vendor/, .ua/, .orchestration/, reviews/, .agents/, .claude/, references/, plans/ and CLAUDE.md are excluded; ruff and npm:prettier are pinned only in the mise config with lock entries and no version literal elsewhere; the hook runs only `ruff format --config <root>/ruff.toml` and `prettier --write` from each file's repository root with the pinned PATH tools and reports a missing tool without a traceback; `make update` and first setup install both tools; CI checks formatting in the exact-config step and should_test is set by any changed .py/.md outside .orchestration/ without a pipe under pipefail; `make format` uses the PATH shims. Per-commit audits: 45d44292 incorrect (5 findings, all fixed in bd9a7995/ff37f41d/772ff3c6/ae806f37/0827371f), bd9a7995 correct, e5648fa6 incorrect (plans tables, fixed in b5084de5/57021632; 35 Python files keep identical syntax trees), ff37f41d/b5084de5/57021632/ae806f37 correct, 772ff3c6 incorrect (P3 strip, fixed in 0827371f), 0827371f correct, 74ade52f incorrect (P2 quotePath, fixed in 7dff3a5c), 7dff3a5c correct. Codex Bot: 9 inline threads over 6 pushes, all fixed in-PR and resolved by the orchestrator with the verified fix commits; the head received the Bot's thumbs-up with no finding. Known pre-existing: `make format`'s first line (`shfmt --diff .`) already fails on origin/main and is out of scope.",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [
+      {
+        "id": "r_t61_01_r1",
+        "body": "Resolved: approval recorded after independent reproduction of the format commit, the fixpoint check, the diff review of every tooling commit and the resolved Bot threads.",
+        "author": "claude-code"
+      }
+    ]
+  }
+]

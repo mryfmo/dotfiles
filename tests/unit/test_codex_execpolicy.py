@@ -6,10 +6,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 RULES = ROOT / "home/dot_codex/rules/default.rules"
-FORBIDDEN_PREFIXES = {
+REQUIRED_PREFIXES = {
     ("sudo",),
     ("rm", "-rf"),
     ("rm", "-fr"),
+    ("rm", "-r", "-f"),
+    ("rm", "-f", "-r"),
     ("gh", "pr", "merge"),
     ("gh", "release"),
     ("npm", "publish"),
@@ -17,6 +19,8 @@ FORBIDDEN_PREFIXES = {
     ("terraform", "apply"),
     ("kubectl", "apply"),
     ("chezmoi", "apply"),
+    ("make", "update"),
+    ("make", "apply"),
 }
 
 
@@ -44,7 +48,7 @@ class CodexExecpolicyTest(unittest.TestCase):
         self.assertTrue(rules)
         self.assertEqual({rule["decision"] for rule in rules}, {"forbidden"})
         covered = set().union(*(expand(rule["pattern"]) for rule in rules))
-        self.assertEqual(covered, FORBIDDEN_PREFIXES)
+        self.assertLessEqual(REQUIRED_PREFIXES, covered)
         for rule in rules:
             with self.subTest(pattern=rule["pattern"]):
                 self.assertTrue(rule["justification"])

@@ -34,6 +34,8 @@ REQUIRED_PREFIXES = {
     ("make", "update"),
     ("make", "apply"),
     ("./setup.sh",),
+    ("make", "clean"),
+    ("make", "deploy"),
 }
 
 

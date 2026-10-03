@@ -634,9 +634,14 @@ allow rules, so an "always allow" that an interactive session adds there does
 not survive the next `chezmoi apply`. Codex reads the rules at startup, so
 restart running Codex sessions after `make update` (`herdr-agents
 --restart-worker` for the pair worker). Rules match the argument list Codex is
-asked to run by prefix, so they cannot express pipelines such as `curl … | sh`
-(the Claude Code deny list covers those), flags placed after the operands, or
-commands a script spawns.
+asked to run by prefix, so they cover the documented invocation forms only.
+Global options placed before the subcommand (`terraform -chdir=<dir> apply`,
+`kubectl --context <c> apply`, `chezmoi --source <d> --config <f> apply`),
+flags after the operands, and commands a script spawns are outside prefix
+coverage, for Codex and the Claude Code deny list alike; the sandbox
+(read-only, or workspace-write with its writable roots) is the backstop for
+them. Pipelines such as `curl … | sh` are covered by the Claude Code deny
+list.
 
 Delivery reaches the pair worker through its own Stop hook as turn delivery.
 Upstream `session-start.sh` skips sessions whose cwd is under

@@ -12,10 +12,16 @@
 # decision applies). Codex reads rule files at startup, so a running session
 # keeps its old policy until it restarts (herdr-agents --restart-worker for the
 # pair worker). Rules match the argument list Codex is asked to run, prefix
-# token by token: flags after the operands (`rm build -rf`), `make -C <dir>`,
-# commands that a script or make target spawns, and pipelines such as
-# `curl ... | sh` cannot be expressed here; the Claude Code deny list covers
-# pipelines.
+# token by token, so they cover the documented invocation forms only. Global
+# options with arbitrary values placed before the subcommand
+# (`terraform -chdir=<dir> apply`, `kubectl --context <c> apply`,
+# `chezmoi --source <d> --config <f> apply`), flags after the operands
+# (`rm build -rf`), `make -C <dir>`, and commands that a script or make target
+# spawns are outside prefix coverage, for Codex and the Claude Code deny list
+# alike. Forbidding those tools wholesale would also block their read-only
+# uses in every session on the machine, so the sandbox (read-only, or
+# workspace-write with its writable roots) is the backstop for them. Pipelines
+# such as `curl ... | sh` are covered by the Claude Code deny list.
 
 prefix_rule(
     pattern=[["sudo", "/usr/bin/sudo", "/bin/sudo", "/usr/local/bin/sudo", "/run/wrappers/bin/sudo"]],

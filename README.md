@@ -619,6 +619,32 @@ operator-approved escalation; `herdr-agents` says so on stderr. Finally,
 A worker never asks another agent to approve an escalation: Codex escalation
 prompts are answered only by the human operator.
 
+The Codex execpolicy forbidden set is managed by this repository:
+`home/dot_codex/rules/default.rules` becomes `~/.codex/rules/default.rules`
+and replaces it on every `chezmoi apply`. It forbids `sudo` (also by absolute
+path), `rm -rf` and
+`rm -fr` (also split as `rm -r -f`), `gh pr merge` (merging is the
+orchestrator's acceptance step), `gh release`, `npm publish`, `uv publish`,
+`terraform apply` and `destroy`, `kubectl apply` and `delete`, `chezmoi apply`,
+`chezmoi update`, all of `chezmoi init` and `chezmoi edit`, and the make
+targets that run it or reset chezmoi state (`make setup`, `init`, `update`,
+`apply`, `upgrade`, `watch`, `reset`, `reset-config`), and `./setup.sh`, which
+`make setup` wraps. It also forbids `make clean`, whose recipe runs `rm -rf`,
+and `make deploy`, which force-pushes the docs site. A forbidden match is a refusal under every approval
+policy and overrides any allow rule for the same prefix. The file holds no
+allow rules, so an "always allow" that an interactive session adds there does
+not survive the next `chezmoi apply`. Codex reads the rules at startup, so
+restart running Codex sessions after `make update` (`herdr-agents
+--restart-worker` for the pair worker). Rules match the argument list Codex is
+asked to run by prefix, so they cover the documented invocation forms only.
+Global options placed before the subcommand (`terraform -chdir=<dir> apply`,
+`kubectl --context <c> apply`, `chezmoi --source <d> --config <f> apply`),
+flags after the operands, and commands a script spawns are outside prefix
+coverage, for Codex and the Claude Code deny list alike; the sandbox
+(read-only, or workspace-write with its writable roots) is the backstop for
+them. Pipelines such as `curl … | sh` are covered by the Claude Code deny
+list.
+
 Delivery reaches the pair worker through its own Stop hook as turn delivery.
 Upstream `session-start.sh` skips sessions whose cwd is under
 `.claude/worktrees/` (#367), and the pair worker is started without an actas

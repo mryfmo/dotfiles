@@ -142,11 +142,11 @@ prefix_rule(
 )
 
 prefix_rule(
-    pattern=["chezmoi", "init", ["--apply", "--apply=true", "-a", "-a=true", "--one-shot", "--one-shot=true"]],
+    pattern=["chezmoi", "init"],
     decision="forbidden",
-    justification="chezmoi init --apply applies the source state (operator lifecycle); use chezmoi diff to preview.",
-    match=["chezmoi init --apply --verbose", "chezmoi init --apply=true", "chezmoi init -a", "chezmoi init -a=true", "chezmoi init --one-shot mryfmo", "chezmoi init --one-shot=true mryfmo"],
-    not_match=["chezmoi init --data=false"],
+    justification="chezmoi init is operator bootstrap and can apply the source state; use chezmoi diff to preview.",
+    match=["chezmoi init --apply --verbose", "chezmoi init -a=1", "chezmoi init --one-shot=true mryfmo", "chezmoi init"],
+    not_match=["chezmoi diff", "chezmoi status"],
 )
 
 prefix_rule(
@@ -158,11 +158,11 @@ prefix_rule(
 )
 
 prefix_rule(
-    pattern=["chezmoi", "edit", ["--apply", "--apply=true", "-a", "-a=true"]],
+    pattern=["chezmoi", "edit"],
     decision="forbidden",
-    justification="chezmoi edit --apply applies the target immediately (operator lifecycle); edit the source and preview with chezmoi diff.",
-    match=["chezmoi edit --apply ~/.zshrc", "chezmoi edit -a ~/.zshrc"],
-    not_match=["chezmoi edit ~/.zshrc"],
+    justification="chezmoi edit opens an editor and can apply the target (--apply, --watch); edit the source files directly and preview with chezmoi diff.",
+    match=["chezmoi edit ~/.zshrc", "chezmoi edit --apply=1 ~/.zshrc", "chezmoi edit --watch ~/.zshrc"],
+    not_match=["chezmoi managed", "chezmoi cat ~/.zshrc"],
 )
 
 prefix_rule(

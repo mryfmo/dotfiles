@@ -619,6 +619,17 @@ operator-approved escalation; `herdr-agents` says so on stderr. Finally,
 A worker never asks another agent to approve an escalation: Codex escalation
 prompts are answered only by the human operator.
 
+The Codex execpolicy forbidden set is managed by this repository:
+`home/dot_codex/rules/default.rules` becomes `~/.codex/rules/default.rules`
+and replaces it on every `chezmoi apply`. It forbids `sudo`, `rm -rf` and
+`rm -fr`, `gh pr merge` (merging is the orchestrator's acceptance step),
+`gh release`, `npm publish`, `uv publish`, `terraform apply`, `kubectl apply`
+and `chezmoi apply`. A forbidden match is a refusal under every approval
+policy and overrides any allow rule for the same prefix. The file holds no
+allow rules, so an "always allow" that an interactive session adds there does
+not survive the next `chezmoi apply`. Prefix rules cannot express pipelines
+such as `curl … | sh`; the Claude Code deny list covers those.
+
 Delivery reaches the pair worker through its own Stop hook as turn delivery.
 Upstream `session-start.sh` skips sessions whose cwd is under
 `.claude/worktrees/` (#367), and the pair worker is started without an actas

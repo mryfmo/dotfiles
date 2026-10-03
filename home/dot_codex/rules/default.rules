@@ -1,0 +1,70 @@
+# Codex execpolicy, managed by chezmoi from home/dot_codex/rules/default.rules.
+#
+# This file is rewritten on every `chezmoi apply`. An "always allow" that an
+# interactive on-request session appends here is reset by the next apply and
+# shows up in `chezmoi diff` until then. The allow rules that past sessions
+# accumulated in the live file are dropped on purpose: workers run with
+# `--ask-for-approval never`, where nothing prompts and an allow rule buys
+# nothing. Only forbidden rules live here.
+#
+# A forbidden match is a refusal, not a prompt, under every approval policy,
+# and it wins over any allow or prompt rule for the same prefix (the strictest
+# decision applies). Rules match command prefixes token by token, so pipelines
+# such as `curl ... | sh` cannot be expressed here; the Claude Code deny list
+# covers those.
+
+prefix_rule(
+    pattern=["sudo"],
+    decision="forbidden",
+    justification="Agents never escalate privileges; ask the operator to run it.",
+    match=["sudo apt-get install jq"],
+    not_match=["sudoku"],
+)
+
+prefix_rule(
+    pattern=["rm", ["-rf", "-fr"]],
+    decision="forbidden",
+    justification="Recursive force removal is never delegated; remove specific paths instead.",
+    match=["rm -rf build", "rm -fr build"],
+    not_match=["rm build/file.txt"],
+)
+
+prefix_rule(
+    pattern=["gh", "pr", "merge"],
+    decision="forbidden",
+    justification="Merging is the orchestrator's acceptance step; report the PR instead.",
+    match=["gh pr merge 1 --squash"],
+    not_match=["gh pr view 1"],
+)
+
+prefix_rule(
+    pattern=["gh", "release"],
+    decision="forbidden",
+    justification="Releases are published by the operator.",
+    match=["gh release create v1.0.0"],
+    not_match=["gh pr create"],
+)
+
+prefix_rule(
+    pattern=[["npm", "uv"], "publish"],
+    decision="forbidden",
+    justification="Package publishing is done by the operator.",
+    match=["npm publish", "uv publish"],
+    not_match=["npm install", "uv run pytest"],
+)
+
+prefix_rule(
+    pattern=[["terraform", "kubectl"], "apply"],
+    decision="forbidden",
+    justification="Infrastructure changes are applied by the operator; use plan or diff to preview.",
+    match=["terraform apply", "kubectl apply -f deploy.yaml"],
+    not_match=["terraform plan", "kubectl diff -f deploy.yaml"],
+)
+
+prefix_rule(
+    pattern=["chezmoi", "apply"],
+    decision="forbidden",
+    justification="chezmoi apply is operator lifecycle (make update); use chezmoi diff to preview.",
+    match=["chezmoi apply --verbose"],
+    not_match=["chezmoi diff"],
+)

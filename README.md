@@ -627,7 +627,7 @@ path), `rm -rf` and
 orchestrator's acceptance step), `gh release`, `npm publish`, `uv publish`,
 `terraform apply`, `kubectl apply`, `chezmoi apply`, `chezmoi init --apply`,
 and the make targets that
-run it or reset chezmoi state (`make init`, `update`, `apply`, `upgrade`, `watch`,
+run it or reset chezmoi state (`make setup`, `init`, `update`, `apply`, `upgrade`, `watch`,
 `reset`, `reset-config`). A forbidden match is a refusal under every approval
 policy and overrides any allow rule for the same prefix. The file holds no
 allow rules, so an "always allow" that an interactive session adds there does

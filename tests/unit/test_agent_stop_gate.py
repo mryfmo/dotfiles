@@ -9,24 +9,27 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/agent-stop-gate.sh"
-# identities.sh answers the unsuffixed orchestrator at the main checkout and an
-# -aNNN worker at any .claude/worktrees path, and insists on resolution off.
+# identities.sh answers from per-seat files and insists on resolution off.
 IDENTITIES_SH = """#!/usr/bin/env bash
 [[ ${AGMSG_RESOLVE_PROJECT:-} == 0 ]] || exit 9
 case "$1" in
-*/.claude/worktrees/*) printf 'dotfiles\\tworker-a001\\n' ;;
-*) printf 'dotfiles\\tworker-a001\\ndotfiles\\torch\\n' ;;
+*/.claude/worktrees/*) cat "$HOME/ids-worker" ;;
+*) cat "$HOME/ids-main" ;;
 esac
 """
-# history.sh must be the team-wide read: an agent argument would self-name a pane.
-HISTORY_SH = """#!/usr/bin/env bash
-[[ $1 == dotfiles && -z $2 ]] || exit 9
-cat "$HOME/history.txt" 2>/dev/null || echo "No message history."
+# Stand-in for the agmsg storage facade: team-wide history only, from JSONL files.
+STORAGE_SH = """
+agmsg_storage_load() { :; }
+storage_store_exists() { [[ -f $HOME/history-$1.jsonl ]]; }
+storage_history() {
+    [[ $# == 1 && ! -e $HOME/store-down ]] || return 9
+    cat "$HOME/history-$1.jsonl"
+}
 """
 
 
 def row(sender, recipient, body):
-    return f"  ○ [2026-10-04T00:00:00Z] {sender} → {recipient}: {body}"
+    return {"from": sender, "to": recipient, "body": body, "at": "2026-10-04T00:00:00Z"}
 
 
 class AgentStopGateTest(unittest.TestCase):
@@ -36,9 +39,12 @@ class AgentStopGateTest(unittest.TestCase):
         self.home = Path(temp.name) / "home"
         scripts = self.home / ".agents/skills/agmsg/scripts"
         scripts.mkdir(parents=True)
-        for name, text in (("identities.sh", IDENTITIES_SH), ("history.sh", HISTORY_SH)):
-            (scripts / name).write_text(text)
-            (scripts / name).chmod(0o755)
+        (scripts / "lib").mkdir()
+        (scripts / "lib/storage.sh").write_text(STORAGE_SH)
+        (scripts / "identities.sh").write_text(IDENTITIES_SH)
+        (scripts / "identities.sh").chmod(0o755)
+        (self.home / "ids-main").write_text("dotfiles\tworker-a001\ndotfiles\torch\n")
+        (self.home / "ids-worker").write_text("dotfiles\tworker-a001\n")
         self.main = Path(temp.name) / "repo"
         self.main.mkdir()
         self.git("init", "-q", "-b", "main")
@@ -56,8 +62,8 @@ class AgentStopGateTest(unittest.TestCase):
             env={**os.environ, "HOME": str(self.home)},
         )
 
-    def history(self, *rows):
-        (self.home / "history.txt").write_text("".join(f"{r}\n" for r in rows))
+    def history(self, *rows, team="dotfiles"):
+        (self.home / f"history-{team}.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
 
     def run_gate(self, cwd, active=False):
         return subprocess.run(
@@ -128,6 +134,45 @@ class AgentStopGateTest(unittest.TestCase):
         stderr = self.assert_gate(self.main, 2, active=True)
         self.assertIn("task_id=T1", stderr)
         self.assertNotIn("junk.txt", stderr)
+
+    def test_worker_alive_pong_keeps_the_task_open(self):
+        self.history(
+            row("orch", "worker-a001", "AGMSG-TASK v1 task_id=T2 repo=/r"),
+            row("worker-a001", "orch", "AGMSG-PONG v1 task_id=T2 status=alive note=working"),
+        )
+        self.assertIn("task_id=T2", self.assert_gate(self.worker, 2))
+
+    def test_worker_blocked_pong_closes_the_task(self):
+        self.history(
+            row("orch", "worker-a001", "AGMSG-TASK v1 task_id=T2 repo=/r"),
+            row("worker-a001", "orch", "AGMSG-PONG v1 task_id=T2 status=blocked note=boundary"),
+        )
+        self.assert_gate(self.worker, 0)
+
+    def test_worker_revise_acceptance_reopens_the_task(self):
+        self.history(
+            row("orch", "worker-a001", "AGMSG-TASK v1 task_id=T2 repo=/r"),
+            row("worker-a001", "orch", "AGMSG-RESULT v1 task_id=T2 status=ready_for_review"),
+            row("orch", "worker-a001", "AGMSG-ACCEPTANCE v1 task_id=T2 status=revise next_action=fix"),
+        )
+        self.assertIn("task_id=T2", self.assert_gate(self.worker, 2))
+
+    def test_solo_unsuffixed_worker_is_gated(self):
+        (self.home / "ids-worker").write_text("dotfiles\tsolo-worker\n")
+        self.history(row("orch", "solo-worker", "AGMSG-TASK v1 task_id=T3 repo=/r"))
+        self.assertIn("task_id=T3", self.assert_gate(self.worker, 2))
+
+    def test_every_team_of_the_identity_is_checked(self):
+        (self.home / "ids-main").write_text("dotfiles\torch\nother\torch\n")
+        self.history()
+        self.history(row("worker-a001", "orch", "AGMSG-RESULT v1 task_id=T9 status=ready_for_review"), team="other")
+        self.assertIn("task_id=T9 in team other", self.assert_gate(self.main, 2))
+
+    def test_unreadable_store_blocks_once(self):
+        self.history()
+        (self.home / "store-down").write_text("")
+        self.assertIn("unreadable", self.assert_gate(self.main, 2))
+        self.assert_gate(self.main, 0, active=True)
 
     def test_checkout_outside_any_seat_passes(self):
         self.assert_gate(self.home, 0)

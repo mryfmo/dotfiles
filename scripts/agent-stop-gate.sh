@@ -11,13 +11,15 @@
 #   `AGMSG-RESULT` addressed to the seat's unsuffixed claude-code identity that
 #   has no later `AGMSG-ACCEPTANCE` or `AGMSG-TASK` re-dispatch from it.
 #
-#   Worker seat: blocks when the latest `AGMSG-TASK` addressed to the seat's
-#   `-aNNN` claude-code identity is newer than its latest `AGMSG-RESULT` or
-#   `AGMSG-PONG`.
+#   Worker seat: blocks when the latest `AGMSG-TASK` (or `AGMSG-ACCEPTANCE
+#   status=revise`) addressed to a claude-code identity registered at the
+#   worktree is newer than its latest `AGMSG-RESULT` or `AGMSG-PONG
+#   status=blocked`.
 #
-#   Messages come from the team-wide `history.sh <team>` read (the agmsg skill
-#   forbids reading its database directly; without an agent argument the read
-#   does not self-name a pane). The hook never writes and needs no network.
+#   Every team the identity belongs to is checked. Messages come from the
+#   whole team history through agmsg's own storage facade, the one
+#   `history.sh` reads (the agmsg skill forbids reading its database
+#   directly). The hook never writes and needs no network.
 # @exitcode 0 Nothing is pending, or the checkout is not an agmsg seat.
 # @exitcode 2 Work is pending; one reason line per violation on stderr.
 # @example
@@ -66,53 +68,56 @@ if [[ ${seat} == orchestrator && ${active} == false ]]; then
     done < <(GIT_OPTIONAL_LOCKS=0 git -C "${top}" status --porcelain --untracked-files=all 2> /dev/null)
 fi
 
-team=""
-name=""
-while IFS=$'\t' read -r row_team row_name; do
-    suffixed=false
-    [[ ${row_name} =~ -a[0-9]{3}$ ]] && suffixed=true
-    if [[ ${seat} == worker && ${suffixed} == true ]] || [[ ${seat} == orchestrator && ${suffixed} == false ]]; then
-        team="${row_team}"
-        name="${row_name}"
-        break
-    fi
-done < <(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${top}" claude-code 2> /dev/null)
+# Team-wide history as `from<TAB>to<TAB>body` rows, chronological. This is the
+# storage facade history.sh itself calls, without its per-recipient unread pass
+# (~3 s on a 600-message team; the facade reads all of it in ~0.1 s).
+read_history() {
+    # shellcheck disable=SC1091
+    source "${scripts}/lib/storage.sh" && agmsg_storage_load || return 1
+    storage_store_exists "$1" || return 0
+    storage_history "$1" | jq -r '[.from, .to, .body] | @tsv'
+}
 
-if [[ -n ${name} ]]; then
-    # ponytail: only the newest 200 team messages are read (~0.7 s) and an
-    # unreadable store blocks every turn once; add a timestamp cap if a
-    # 200-message window or a down store ever becomes a real problem.
-    if ! history="$("${scripts}/history.sh" "${team}" "" 200 2> /dev/null)"; then
+# The orchestrator is the unsuffixed identity at the main checkout; any
+# identity registered at a worker worktree (solo or -aNNN) is its worker.
+while IFS=$'\t' read -r -u 3 team name; do
+    [[ -n ${name} ]] || continue
+    [[ ${seat} == orchestrator && ${name} =~ -a[0-9]{3}$ ]] && continue
+    # ponytail: an unreadable store blocks every turn once; add a timestamp
+    # cap or a fail-open switch if a down store ever becomes a real problem.
+    if ! history="$(read_history "${team}" 2> /dev/null)"; then
         [[ ${active} == true ]] || reasons+=("agmsg history unreadable for team ${team}; check ${scripts}/history.sh ${team}")
-    else
-        # Rows: `  <mark> [<ts>] <from> → <to>: <KIND> v1 task_id=<id> ...`.
-        while IFS= read -r task; do
-            [[ -n ${task} ]] || continue
-            if [[ ${seat} == orchestrator ]]; then
-                reasons+=("AGMSG-RESULT task_id=${task} has no AGMSG-ACCEPTANCE from ${name}; review it and send AGMSG-ACCEPTANCE v1 task_id=${task}")
-            else
-                reasons+=("AGMSG-TASK task_id=${task} to ${name} has no AGMSG-RESULT/AGMSG-PONG yet; finish it and send AGMSG-RESULT v1 task_id=${task} (or AGMSG-PONG v1 status=blocked) with agmsg-dispatch")
-            fi
-        done < <(awk -v me="${name}" -v seat="${seat}" '
-            {
-                from = $3; to = $5; sub(/:$/, "", to); kind = $6; id = ""
-                for (i = 7; i <= NF; i++) if ($i ~ /^task_id=/) { id = substr($i, 9); break }
-                if (id == "") next
-                if (seat == "orchestrator") {
-                    if (to == me && kind == "AGMSG-RESULT") pending[id] = 1
-                    else if (from == me && (kind == "AGMSG-ACCEPTANCE" || kind == "AGMSG-TASK")) delete pending[id]
-                } else if (to == me && kind == "AGMSG-TASK") {
-                    open = id
-                } else if (from == me && (kind == "AGMSG-RESULT" || kind == "AGMSG-PONG")) {
-                    open = ""
-                }
-            }
-            END {
-                if (seat == "orchestrator") { for (id in pending) print id }
-                else if (open != "") print open
-            }' <<< "${history}")
+        continue
     fi
-fi
+    while IFS= read -r task; do
+        [[ -n ${task} ]] || continue
+        if [[ ${seat} == orchestrator ]]; then
+            reasons+=("AGMSG-RESULT task_id=${task} in team ${team} has no AGMSG-ACCEPTANCE from ${name}; review it and send AGMSG-ACCEPTANCE v1 task_id=${task}")
+        else
+            reasons+=("AGMSG-TASK task_id=${task} in team ${team} to ${name} has no AGMSG-RESULT yet; finish it and send AGMSG-RESULT v1 task_id=${task} (or AGMSG-PONG v1 status=blocked) with agmsg-dispatch")
+        fi
+    done < <(awk -F '\t' -v me="${name}" -v seat="${seat}" '
+        {
+            n = split($3, w, " "); kind = w[1]; id = ""; status = ""
+            for (i = 2; i <= n; i++) {
+                if (id == "" && w[i] ~ /^task_id=/) id = substr(w[i], 9)
+                if (status == "" && w[i] ~ /^status=/) status = substr(w[i], 8)
+            }
+            if (id == "") next
+            if (seat == "orchestrator") {
+                if ($2 == me && kind == "AGMSG-RESULT") pending[id] = 1
+                else if ($1 == me && (kind == "AGMSG-ACCEPTANCE" || kind == "AGMSG-TASK")) delete pending[id]
+            } else if ($2 == me && (kind == "AGMSG-TASK" || (kind == "AGMSG-ACCEPTANCE" && status == "revise"))) {
+                open = id
+            } else if ($1 == me && (kind == "AGMSG-RESULT" || (kind == "AGMSG-PONG" && status == "blocked"))) {
+                open = ""
+            }
+        }
+        END {
+            if (seat == "orchestrator") { for (id in pending) print id }
+            else if (open != "") print open
+        }' <<< "${history}")
+done 3< <(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${top}" claude-code 2> /dev/null)
 
 if [[ ${#reasons[@]} -gt 0 ]]; then
     printf 'agent-stop-gate: %s\n' "${reasons[@]}" >&2

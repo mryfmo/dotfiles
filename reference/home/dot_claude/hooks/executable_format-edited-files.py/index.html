@@ -3762,8 +3762,10 @@
 <span class="s2">"""Format files reported by Claude Code hook JSON input.</span>
 
 <span class="s2">The hook reads the complete JSON event from stdin, extracts every edited file path</span>
-<span class="s2">from common Write/Edit/MultiEdit payload shapes, filters by suffix, and invokes</span>
-<span class="s2">configured format/check commands without going through a shell.</span>
+<span class="s2">from common Write/Edit/MultiEdit payload shapes, filters by suffix, and runs the</span>
+<span class="s2">formatter for that suffix without going through a shell. ruff and prettier come</span>
+<span class="s2">from PATH: their versions are pinned in the mise config, and ruff.toml and</span>
+<span class="s2">.prettierignore keep vendored and record paths untouched.</span>
 <span class="s2">"""</span>
 
 from<span class="w"> </span>__future__<span class="w"> </span>import<span class="w"> </span>annotations
@@ -3776,12 +3778,10 @@ from<span class="w"> </span>pathlib<span class="w"> </span>import<span class="w"
 from<span class="w"> </span>typing<span class="w"> </span>import<span class="w"> </span>Any
 
 <span class="nv">PYTHON_COMMANDS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>
-<span class="w">    </span><span class="o">[</span><span class="s2">"uvx"</span>,<span class="w"> </span><span class="s2">"ruff"</span>,<span class="w"> </span><span class="s2">"format"</span><span class="o">]</span>,
-<span class="w">    </span><span class="o">[</span><span class="s2">"uvx"</span>,<span class="w"> </span><span class="s2">"ruff"</span>,<span class="w"> </span><span class="s2">"check"</span>,<span class="w"> </span><span class="s2">"--fix"</span><span class="o">]</span>,
-<span class="w">    </span><span class="o">[</span><span class="s2">"uvx"</span>,<span class="w"> </span><span class="s2">"ty"</span>,<span class="w"> </span><span class="s2">"check"</span><span class="o">]</span>,
+<span class="w">    </span><span class="o">[</span><span class="s2">"ruff"</span>,<span class="w"> </span><span class="s2">"format"</span><span class="o">]</span>,
 <span class="o">]</span>
 <span class="nv">MARKDOWN_COMMANDS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>
-<span class="w">    </span><span class="o">[</span><span class="s2">"npx"</span>,<span class="w"> </span><span class="s2">"prettier@2"</span>,<span class="w"> </span><span class="s2">"--write"</span><span class="o">]</span>,
+<span class="w">    </span><span class="o">[</span><span class="s2">"prettier"</span>,<span class="w"> </span><span class="s2">"--write"</span><span class="o">]</span>,
 <span class="o">]</span>
 
 
@@ -3799,14 +3799,42 @@ def<span class="w"> </span>collect_paths<span class="o">(</span>value:<span clas
 <span class="w">    </span><span class="k">return</span><span class="w"> </span>paths
 
 
+def<span class="w"> </span>repository_root<span class="o">(</span>path:<span class="w"> </span>Path<span class="o">)</span><span class="w"> </span>-&gt;<span class="w"> </span>Path:
+<span class="w">    </span><span class="s2">"""The git work tree containing path, else its directory: where the formatter configs live."""</span>
+<span class="w">    </span>try:
+<span class="w">        </span><span class="nv">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>subprocess.run<span class="o">(</span>
+<span class="w">            </span><span class="o">[</span><span class="s2">"git"</span>,<span class="w"> </span><span class="s2">"-C"</span>,<span class="w"> </span>str<span class="o">(</span>path.parent<span class="o">)</span>,<span class="w"> </span><span class="s2">"rev-parse"</span>,<span class="w"> </span><span class="s2">"--show-toplevel"</span><span class="o">]</span>,<span class="w"> </span><span class="nv">capture_output</span><span class="o">=</span>True,<span class="w"> </span><span class="nv">text</span><span class="o">=</span>True,<span class="w"> </span><span class="nv">check</span><span class="o">=</span>False
+<span class="w">        </span><span class="o">)</span>
+<span class="w">    </span>except<span class="w"> </span>FileNotFoundError:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>path.parent
+<span class="w">    </span><span class="nv">root</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>result.stdout.rstrip<span class="o">(</span><span class="s2">"\n"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>Path<span class="o">(</span>root<span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>result.returncode<span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="w"> </span>and<span class="w"> </span>root<span class="w"> </span><span class="k">else</span><span class="w"> </span>path.parent
+
+
 def<span class="w"> </span>run_commands<span class="o">(</span>commands:<span class="w"> </span>list<span class="o">[</span>list<span class="o">[</span>str<span class="o">]]</span>,<span class="w"> </span>files:<span class="w"> </span>list<span class="o">[</span>Path<span class="o">])</span><span class="w"> </span>-&gt;<span class="w"> </span>int:
 <span class="w">    </span><span class="nv">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>files:
-<span class="w">        </span><span class="k">return</span><span class="w"> </span>status
-<span class="w">    </span><span class="nv">file_args</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>str<span class="o">(</span>path<span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>path<span class="w"> </span><span class="k">in</span><span class="w"> </span>files<span class="o">]</span>
-<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>commands:
-<span class="w">        </span><span class="nv">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>subprocess.run<span class="o">(</span><span class="nb">command</span><span class="w"> </span>+<span class="w"> </span>file_args,<span class="w"> </span><span class="nv">check</span><span class="o">=</span>False<span class="o">)</span>
-<span class="w">        </span><span class="nv">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>max<span class="o">(</span>status,<span class="w"> </span>result.returncode<span class="o">)</span>
+<span class="w">    </span><span class="c1"># Run from each file's repository root: prettier reads .prettierignore from</span>
+<span class="w">    </span><span class="c1"># its working directory, and the session's directory may be another tree.</span>
+<span class="w">    </span>by_root:<span class="w"> </span>dict<span class="o">[</span>Path,<span class="w"> </span>list<span class="o">[</span>str<span class="o">]]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">{}</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>path<span class="w"> </span><span class="k">in</span><span class="w"> </span>files:
+<span class="w">        </span><span class="nv">resolved</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>path.resolve<span class="o">()</span>
+<span class="w">        </span>by_root.setdefault<span class="o">(</span>repository_root<span class="o">(</span>resolved<span class="o">)</span>,<span class="w"> </span><span class="o">[])</span>.append<span class="o">(</span>str<span class="o">(</span>resolved<span class="o">))</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>root,<span class="w"> </span>file_args<span class="w"> </span><span class="k">in</span><span class="w"> </span>sorted<span class="o">(</span>by_root.items<span class="o">())</span>:
+<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>commands:
+<span class="w">            </span><span class="nv">config</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>root<span class="w"> </span>/<span class="w"> </span><span class="s2">"ruff.toml"</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>command<span class="o">[</span><span class="m">0</span><span class="o">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"ruff"</span><span class="w"> </span>and<span class="w"> </span>config.is_file<span class="o">()</span>:
+<span class="w">                </span><span class="c1"># Pin the root config: ruff otherwise picks each file's nearest</span>
+<span class="w">                </span><span class="c1"># pyproject.toml (vendor/compactiondb) and skips the root exclusions.</span>
+<span class="w">                </span><span class="nb">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>*command,<span class="w"> </span><span class="s2">"--config"</span>,<span class="w"> </span>str<span class="o">(</span>config<span class="o">)]</span>
+<span class="w">            </span>try:
+<span class="w">                </span><span class="nv">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>subprocess.run<span class="o">(</span><span class="nb">command</span><span class="w"> </span>+<span class="w"> </span>file_args,<span class="w"> </span><span class="nv">cwd</span><span class="o">=</span>root,<span class="w"> </span><span class="nv">check</span><span class="o">=</span>False<span class="o">)</span>
+<span class="w">            </span>except<span class="w"> </span>FileNotFoundError:
+<span class="w">                </span><span class="c1"># make update installs only some mise tools; a full install provides</span>
+<span class="w">                </span><span class="c1"># the pinned formatters (ruff, npm:prettier in the mise config).</span>
+<span class="w">                </span>print<span class="o">(</span>f<span class="s2">"{command[0]} is not installed; run `mise install --locked`"</span>,<span class="w"> </span><span class="nv">file</span><span class="o">=</span>sys.stderr<span class="o">)</span>
+<span class="w">                </span><span class="nv">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>max<span class="o">(</span>status,<span class="w"> </span><span class="m">1</span><span class="o">)</span>
+<span class="w">                </span><span class="k">continue</span>
+<span class="w">            </span><span class="nv">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>max<span class="o">(</span>status,<span class="w"> </span>result.returncode<span class="o">)</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span>status
 
 

@@ -12,6 +12,8 @@ REQUIRED_PREFIXES = {
     ("rm", "-rfv"),
     ("rm", "-vrf"),
     ("chezmoi", "init", "--apply"),
+    ("chezmoi", "init", "--apply=true"),
+    ("chezmoi", "init", "-a"),
     ("make", "setup"),
     ("make", "init"),
     ("rm", "-rf"),

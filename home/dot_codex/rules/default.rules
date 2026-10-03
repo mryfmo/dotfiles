@@ -3,9 +3,12 @@
 # This file is rewritten on every `chezmoi apply`. An "always allow" that an
 # interactive on-request session appends here is reset by the next apply and
 # shows up in `chezmoi diff` until then. The allow rules that past sessions
-# accumulated in the live file are dropped on purpose: workers run with
-# `--ask-for-approval never`, where nothing prompts and an allow rule buys
-# nothing. Only forbidden rules live here.
+# accumulated in the live file are dropped on purpose, and none are managed
+# here by policy: an explicit allow lets the matching command run outside the
+# sandbox (Codex skips the sandbox when every command segment is explicitly
+# allowed), which this repository never grants an agent. Interactive sessions
+# may still add allow rules; the next apply removes them. Only forbidden rules
+# live here.
 #
 # A forbidden match is a refusal, not a prompt, under every approval policy,
 # and it wins over any allow or prompt rule for the same prefix (the strictest
@@ -97,10 +100,10 @@ prefix_rule(
 )
 
 prefix_rule(
-    pattern=["chezmoi", "init", "--apply"],
+    pattern=["chezmoi", "init", ["--apply", "--apply=true", "-a"]],
     decision="forbidden",
     justification="chezmoi init --apply applies the source state (operator lifecycle); use chezmoi diff to preview.",
-    match=["chezmoi init --apply --verbose"],
+    match=["chezmoi init --apply --verbose", "chezmoi init --apply=true", "chezmoi init -a"],
     not_match=["chezmoi init --data=false"],
 )
 

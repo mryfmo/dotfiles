@@ -625,7 +625,8 @@ and replaces it on every `chezmoi apply`. It forbids `sudo` (also by absolute
 path), `rm -rf` and
 `rm -fr` (also split as `rm -r -f`), `gh pr merge` (merging is the
 orchestrator's acceptance step), `gh release`, `npm publish`, `uv publish`,
-`terraform apply`, `kubectl apply`, `chezmoi apply`, `chezmoi init --apply`,
+`terraform apply`, `kubectl apply`, `chezmoi apply`, `chezmoi init --apply`
+(also `-a` and `--apply=true`),
 and the make targets that
 run it or reset chezmoi state (`make setup`, `init`, `update`, `apply`, `upgrade`, `watch`,
 `reset`, `reset-config`). A forbidden match is a refusal under every approval

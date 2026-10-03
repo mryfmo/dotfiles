@@ -63,14 +63,14 @@ shown a diff and left byte-identical instead of being force-overwritten.
 
 ## Commands you will need
 
-| Purpose               | Command                                                            | Expected                            |
-| --------------------- | ------------------------------------------------------------------ | ----------------------------------- |
-| Python tests          | `make unit-test`                                                   | exit 0                              |
-| Shell syntax          | `bash -n setup.sh install/ubuntu/common/dependencies.sh`           | exit 0                              |
-| Shell format          | `shfmt -i 4 -sr -d setup.sh install/ubuntu/common/dependencies.sh` | exit 0                              |
-| Shell static analysis | `shellcheck -x setup.sh install/ubuntu/common/dependencies.sh`     | exit 0                              |
-| Template render       | `CI=true chezmoi execute-template < home/.chezmoi.yaml.tmpl`       | valid YAML for supported role       |
-| CI Bats               | `OS=ubuntu-latest SYSTEM=<client                                   | server> ./scripts/run_unit_test.sh` | GitHub only; exit 0 |
+| Purpose | Command | Expected |
+|---|---|---|
+| Python tests | `make unit-test` | exit 0 |
+| Shell syntax | `bash -n setup.sh install/ubuntu/common/dependencies.sh` | exit 0 |
+| Shell format | `shfmt -i 4 -sr -d setup.sh install/ubuntu/common/dependencies.sh` | exit 0 |
+| Shell static analysis | `shellcheck -x setup.sh install/ubuntu/common/dependencies.sh` | exit 0 |
+| Template render | `CI=true chezmoi execute-template < home/.chezmoi.yaml.tmpl` | valid YAML for supported role |
+| CI Bats | `OS=ubuntu-latest SYSTEM=<client|server> ./scripts/run_unit_test.sh` | GitHub only; exit 0 |
 
 ## Scope
 

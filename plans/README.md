@@ -23,13 +23,13 @@ missing requirements. A STOP condition always wins over task completion.
 
 ## Phases, execution order, and status
 
-| Phase | Plan                                                        | Outcome                                                                         | Priority | Effort | Depends on    | Status                        |
-| ----- | ----------------------------------------------------------- | ------------------------------------------------------------------------------- | -------- | ------ | ------------- | ----------------------------- |
-| 1     | [001](001-contain-starship-cleanup.md)                      | Starship tests cannot delete unrelated user binaries                            | P0       | S      | —             | DONE: PR #67, merge `3826729` |
-| 1     | [002](002-make-review-evidence-non-vacuous.md)              | Crit review evidence cannot be satisfied by `null`                              | P0       | S      | —             | DONE: PR #68, merge `c3e69ad` |
-| 2     | [003](003-make-bootstrap-safe-and-publicly-testable.md)     | Public bootstrap is dependency-correct, non-destructive, and tested from the PR | P1       | L      | 001, 002      | DONE: PR #69, merge `69e2338` |
-| 3     | [004](004-harden-and-lock-the-supply-chain.md)              | Downloads, Actions, plugins, mise, externals, and Nix are pinned and verifiable | P1       | L      | 002, 003      | DONE: PR #70, merge `fa76b4a` |
-| 4     | [005](005-make-runtime-health-and-verification-truthful.md) | Runtime helpers self-heal, protect data, and report partial failures correctly  | P1       | L      | 002, 003, 004 | DONE: PR #72, merge `11d27f5` |
+| Phase | Plan | Outcome | Priority | Effort | Depends on | Status |
+|---|---|---|---|---|---|---|
+| 1 | [001](001-contain-starship-cleanup.md) | Starship tests cannot delete unrelated user binaries | P0 | S | — | DONE: PR #67, merge `3826729` |
+| 1 | [002](002-make-review-evidence-non-vacuous.md) | Crit review evidence cannot be satisfied by `null` | P0 | S | — | DONE: PR #68, merge `c3e69ad` |
+| 2 | [003](003-make-bootstrap-safe-and-publicly-testable.md) | Public bootstrap is dependency-correct, non-destructive, and tested from the PR | P1 | L | 001, 002 | DONE: PR #69, merge `69e2338` |
+| 3 | [004](004-harden-and-lock-the-supply-chain.md) | Downloads, Actions, plugins, mise, externals, and Nix are pinned and verifiable | P1 | L | 002, 003 | DONE: PR #70, merge `fa76b4a` |
+| 4 | [005](005-make-runtime-health-and-verification-truthful.md) | Runtime helpers self-heal, protect data, and report partial failures correctly | P1 | L | 002, 003, 004 | DONE: PR #72, merge `11d27f5` |
 
 Status values: `TODO`, `IN PROGRESS`, `DONE`, `BLOCKED: <reason>`, or
 `REJECTED: <reason>`.
@@ -38,27 +38,27 @@ Status values: `TODO`, `IN PROGRESS`, `DONE`, `BLOCKED: <reason>`, or
 
 Every finding from the 2026-07-11 audit is assigned exactly once below.
 
-| ID  | Finding                                                     | Plan / atomic tasks |
-| --- | ----------------------------------------------------------- | ------------------- |
-| F01 | Starship teardown can remove all of `~/.local/bin`          | 001 / A001-A005     |
-| F02 | Crit review accepts `null` evidence                         | 002 / A001-A007     |
-| F03 | Public bootstrap CI tests `main`, not the PR                | 003 / A011-A014     |
-| F04 | Remote installers lack integrity verification               | 004 / A001-A009     |
-| F05 | GitHub Actions use mutable tags and excess permissions      | 004 / A010-A019     |
-| F06 | mise uses rolling versions without a lock                   | 004 / A020-A023     |
-| F07 | Agent prompts/logs can be committed or read too broadly     | 005 / A001-A004     |
-| F08 | Ubuntu package detection confuses package and command names | 003 / A001-A004     |
-| F09 | wget bootstrap still requires curl                          | 003 / A005-A007     |
-| F10 | Nix inputs are unsupported and untested                     | 004 / A029-A033     |
-| F11 | Bootstrap force-overwrites without preview/recovery         | 003 / A008-A010     |
-| F12 | Platform Bats files are empty/placeholders                  | 005 / A019-A023     |
-| F13 | upgrade/doctor report success after required failures       | 005 / A005-A010     |
-| F14 | Linux system role accepts and persists invalid values       | 003 / A015-A018     |
-| F15 | Herdr files pane checks label, not Yazi liveness            | 005 / A011-A014     |
-| F16 | Herdr config updates do not reload the running server       | 005 / A015-A018     |
-| F17 | Statusline invokes `npx ...@latest` on its hot path         | 005 / A024-A027     |
-| F18 | chezmoi external evaluation depends on live GitHub APIs     | 004 / A024-A028     |
-| F19 | ShellCheck is absent from CI                                | 005 / A028-A031     |
+| ID | Finding | Plan / atomic tasks |
+|---|---|---|
+| F01 | Starship teardown can remove all of `~/.local/bin` | 001 / A001-A005 |
+| F02 | Crit review accepts `null` evidence | 002 / A001-A007 |
+| F03 | Public bootstrap CI tests `main`, not the PR | 003 / A011-A014 |
+| F04 | Remote installers lack integrity verification | 004 / A001-A009 |
+| F05 | GitHub Actions use mutable tags and excess permissions | 004 / A010-A019 |
+| F06 | mise uses rolling versions without a lock | 004 / A020-A023 |
+| F07 | Agent prompts/logs can be committed or read too broadly | 005 / A001-A004 |
+| F08 | Ubuntu package detection confuses package and command names | 003 / A001-A004 |
+| F09 | wget bootstrap still requires curl | 003 / A005-A007 |
+| F10 | Nix inputs are unsupported and untested | 004 / A029-A033 |
+| F11 | Bootstrap force-overwrites without preview/recovery | 003 / A008-A010 |
+| F12 | Platform Bats files are empty/placeholders | 005 / A019-A023 |
+| F13 | upgrade/doctor report success after required failures | 005 / A005-A010 |
+| F14 | Linux system role accepts and persists invalid values | 003 / A015-A018 |
+| F15 | Herdr files pane checks label, not Yazi liveness | 005 / A011-A014 |
+| F16 | Herdr config updates do not reload the running server | 005 / A015-A018 |
+| F17 | Statusline invokes `npx ...@latest` on its hot path | 005 / A024-A027 |
+| F18 | chezmoi external evaluation depends on live GitHub APIs | 004 / A024-A028 |
+| F19 | ShellCheck is absent from CI | 005 / A028-A031 |
 
 Coverage invariant: `F01` through `F19` must each appear once. If an executor
 splits or supersedes a plan, update this table without dropping or duplicating

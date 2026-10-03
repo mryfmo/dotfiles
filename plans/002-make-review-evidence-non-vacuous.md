@@ -54,12 +54,12 @@ resolved-list shape emitted by Crit. The guard does not prove its provenance.
 
 ## Commands you will need
 
-| Purpose       | Command                                                            | Expected                        |
-| ------------- | ------------------------------------------------------------------ | ------------------------------- |
-| Focused tests | `uv run python -m unittest tests.unit.test_require_crit_review -v` | all pass                        |
-| Full tests    | `make unit-test`                                                   | all pass                        |
-| Compile       | `uv run python -m py_compile scripts/require-crit-review.py`       | exit 0                          |
-| Review guard  | `make require-crit-review`                                         | correct result for current diff |
+| Purpose | Command | Expected |
+|---|---|---|
+| Focused tests | `uv run python -m unittest tests.unit.test_require_crit_review -v` | all pass |
+| Full tests | `make unit-test` | all pass |
+| Compile | `uv run python -m py_compile scripts/require-crit-review.py` | exit 0 |
+| Review guard | `make require-crit-review` | correct result for current diff |
 
 ## Scope
 

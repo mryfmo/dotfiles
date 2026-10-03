@@ -6,7 +6,7 @@ reviews/
 .agents/
 .claude/
 references/
-# Tables whose code spans contain `|` and `*` globs: prettier splits the cells
-# and rewrites the globs as emphasis, which changes the documented commands.
-plans/004-harden-and-lock-the-supply-chain.md
-plans/005-make-runtime-health-and-verification-truthful.md
+# Plans hold verification-command tables whose code spans contain `|` and `*`:
+# prettier reads the pipes as cell separators and the globs as emphasis, which
+# changes the commands (plans 001, 003, 004 and 005 today).
+plans/

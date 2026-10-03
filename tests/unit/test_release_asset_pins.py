@@ -30,9 +30,7 @@ class ReleaseAssetPinsTest(unittest.TestCase):
     def tearDown(self) -> None:
         shutil.rmtree(self.temp_dir)
 
-    def pick(
-        self, current: str, lines: list[tuple[str, int]]
-    ) -> subprocess.CompletedProcess[str]:
+    def pick(self, current: str, lines: list[tuple[str, int]]) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             [
                 "bash",
@@ -95,9 +93,7 @@ class ReleaseAssetPinsTest(unittest.TestCase):
         repo = self.temp_dir / "repo"
         (repo / "scripts").mkdir(parents=True)
         (repo / "home/dot_agents").mkdir(parents=True)
-        shutil.copy(
-            ROOT / "scripts/upgrade-tools.sh", repo / "scripts/upgrade-tools.sh"
-        )
+        shutil.copy(ROOT / "scripts/upgrade-tools.sh", repo / "scripts/upgrade-tools.sh")
         # Fixed pins keep the fixture independent of the live manifest.
         (repo / "home/dot_agents/agent-config.yaml").write_text(
             "assets:\n"
@@ -177,9 +173,7 @@ class ReleaseAssetPinsTest(unittest.TestCase):
         )
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        uv_calls = [
-            line for line in log.read_text().splitlines() if line.startswith("uv ")
-        ]
+        uv_calls = [line for line in log.read_text().splitlines() if line.startswith("uv ")]
         self.assertEqual(
             [
                 "uv run --with pyyaml scripts/generate-agent-configs.py"

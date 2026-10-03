@@ -452,7 +452,7 @@ differs from the pin or the upstream `.agmsg` marker is missing:
   their own. After `make update`, restart running agent sessions to bring
   delivery back. Re-run `delivery.sh set <mode> <type> <project>` where a
   project's hooks were dropped, and check with `delivery.sh status <type>
-  <project>`. The upstream installer prints both steps (#133).
+<project>`. The upstream installer prints both steps (#133).
 
 chezmoi no longer manages anything under `~/.agents/skills/agmsg`.
 `home/.chezmoiremove` retires the old `~/.claude/skills/agmsg/**` symlink farm,
@@ -497,7 +497,7 @@ Verified against a scratch v1.5.0 install:
 Wake and send:
 
 - Wake a worker in a `herdr-agents` pane with `agmsg-dispatch <team> <from>
-  <to> <pane_id> "<message>"`. It sends, sends a generic inbox wake, and waits
+<to> <pane_id> "<message>"`. It sends, sends a generic inbox wake, and waits
   for `read_at`, using upstream `lib/validate.sh` and `lib/storage.sh` plus a
   strict identifier grammar. It stays the sanctioned path until worker seating
   writes placement records at launch. `poke.sh` exits 1 with "no placement
@@ -507,7 +507,7 @@ Wake and send:
 - Wake a spawn-seated member (`team.sh <team> --json` shows its pane) with
   `poke.sh <team> <name> --body-file <path>`.
 - Reach a pane-less member with `send.sh <team> <from> <to> --body-file
-  <path>`.
+<path>`.
 - Pass `send.sh`/`poke.sh` bodies with `--body-file`, since a positional body
   passes through the caller's shell (#378). `agmsg-dispatch` is the one
   exception: it takes a single-line, shell-safe positional message.
@@ -680,6 +680,7 @@ when the seat acts, and its herdr agent to a hash key (`scripts/lib/self-name.sh
 do not survive on a live pair; herdr exposes no workspace env to key on either.
 `herdr-agents` therefore reads pane labels through the repository's agmsg
 seats, read at the main checkout (also from a linked worktree):
+
 - a pane labeled `<team>:<name>` counts as `claude-orchestrator` when `<name>`
   is the orchestrator, meaning the non-worker (no `-aNNN`) `claude-code`
   identity registered there;
@@ -782,18 +783,20 @@ codex|claude] [--profile NAME] [DIR]` and `herdr-agents --remove-worker
 `<worktree>` is a path under `DIR/.claude/worktrees/`.
 
 Add-worker:
+
 - creates the worktree from `origin/main` when missing and names the identity
   as for the pair worker;
 - points delivery at the worktree;
 - creates or reuses the workspace `<repo> worker <name>`;
 - seats the worker through upstream `spawn.sh <type> <name> --project
-  <worktree> --team <team> --terminal-driver herdr --window`, which pre-joins
+<worktree> --team <team> --terminal-driver herdr --window`, which pre-joins
   the identity with project resolution off, opens the tab, boots the CLI with
   its actas prompt, writes the placement record that `poke.sh` and
   `despawn.sh` need, and waits for readiness.
 
 The profile's launch arguments reach the CLI through a generated
 `AGMSG_SPAWN_OPTIONS_FILE` section:
+
 - a claude worker gets `MODEL_PROFILE_<NAME>_CLAUDE_ARGS`, so model, effort
   and advisor are all carried;
 - a codex worker gets `--profile <name> --sandbox workspace-write`.

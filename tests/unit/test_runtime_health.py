@@ -154,9 +154,7 @@ class RuntimeHealthTest(unittest.TestCase):
         self.assertEqual(0o700, stat.S_IMODE(run_dir.stat().st_mode))
         for artifact in run_dir.iterdir():
             if artifact.is_file():
-                self.assertEqual(
-                    0, stat.S_IMODE(artifact.stat().st_mode) & 0o077, artifact
-                )
+                self.assertEqual(0, stat.S_IMODE(artifact.stat().st_mode) & 0o077, artifact)
         status = self.run_test_command(
             ["git", "status", "--short", "--ignored", ".agents/runs"],
             cwd=repo,
@@ -222,13 +220,9 @@ class RuntimeHealthTest(unittest.TestCase):
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         calls = log.read_text().splitlines()
-        first_agent_call = min(
-            i for i, call in enumerate(calls) if call.startswith(("claude ", "codex "))
-        )
+        first_agent_call = min(i for i, call in enumerate(calls) if call.startswith(("claude ", "codex ")))
         self.assertLess(calls.index("npm uninstall -g @openai/codex"), first_agent_call)
-        self.assertLess(
-            calls.index("npm uninstall -g @anthropic-ai/claude-code"), first_agent_call
-        )
+        self.assertLess(calls.index("npm uninstall -g @anthropic-ai/claude-code"), first_agent_call)
 
     def test_agent_asset_update_repairs_broken_claude_with_npm_backend(self) -> None:
         repo = self.temp_dir / "agent-assets-repair-repo"
@@ -307,15 +301,8 @@ EOF
         calls = log.read_text().splitlines()
         repair = "mise npm 0 install --force --locked npm:@anthropic-ai/claude-code"
         self.assertIn(repair, calls)
-        self.assertFalse(
-            any(
-                call.endswith("npm:@openai/codex") and call.startswith("mise ")
-                for call in calls
-            )
-        )
-        self.assertLess(
-            calls.index(repair), calls.index("claude plugin marketplace list")
-        )
+        self.assertFalse(any(call.endswith("npm:@openai/codex") and call.startswith("mise ") for call in calls))
+        self.assertLess(calls.index(repair), calls.index("claude plugin marketplace list"))
 
     def test_codex_superpowers_reports_login_step_when_curated_catalog_is_missing(
         self,
@@ -348,8 +335,7 @@ EOF
 
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn(
-            "Codex Superpowers was not installed: the OpenAI-curated catalog is "
-            "unavailable.",
+            "Codex Superpowers was not installed: the OpenAI-curated catalog is unavailable.",
             result.stdout,
         )
         self.assertIn(
@@ -604,9 +590,7 @@ EOF
         self.assertEqual([str(target)], manifest["steps"]["ensure_crit_cli"]["paths"])
 
     def test_darwin_crit_checksum_failure_preserves_existing_binary(self) -> None:
-        repo, home, env, _checksum = self.crit_fixture(
-            "1.0.0", os_name="Darwin", arch="arm64"
-        )
+        repo, home, env, _checksum = self.crit_fixture("1.0.0", os_name="Darwin", arch="arm64")
         target = home / ".local/bin/crit"
         previous = target.read_bytes()
         result = self.run_test_command(
@@ -797,9 +781,7 @@ EOF
             [
                 "bash",
                 "-c",
-                "source scripts/update-agent-assets.sh; "
-                f"AGMSG_PIN_SHA256={'0' * 64}; "
-                "update_agmsg",
+                f"source scripts/update-agent-assets.sh; AGMSG_PIN_SHA256={'0' * 64}; update_agmsg",
             ],
             cwd=repo,
             env=env,
@@ -832,9 +814,7 @@ EOF
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         for state_dir in ("teams", "db", "run"):
-            self.assertEqual(
-                "live state\n", (skill_dir / state_dir / "example/data.txt").read_text()
-            )
+            self.assertEqual("live state\n", (skill_dir / state_dir / "example/data.txt").read_text())
 
     def test_agmsg_migrates_marker_less_legacy_dir_without_losing_live_state(
         self,
@@ -867,20 +847,14 @@ EOF
         self.assertEqual("9.9.9\n", (skill_dir / "VERSION").read_text())
         self.assertTrue((skill_dir / ".agmsg").exists())
         for state_dir in ("teams", "db", "run"):
-            self.assertEqual(
-                "live state\n", (skill_dir / state_dir / "example/data.txt").read_text()
-            )
+            self.assertEqual("live state\n", (skill_dir / state_dir / "example/data.txt").read_text())
         backups = list((home / ".agents/backups").glob("agmsg-state-*"))
         self.assertEqual(1, len(backups))
-        self.assertEqual(
-            "live state\n", (backups[0] / "teams/example/data.txt").read_text()
-        )
+        self.assertEqual("live state\n", (backups[0] / "teams/example/data.txt").read_text())
         self.assertIn(f"live state copied to {backups[0]}", result.stdout)
 
     def test_agmsg_update_aborts_when_install_corrupts_live_state(self) -> None:
-        repo, home, env, checksum = self.agmsg_fixture(
-            preinstalled_version="1.0.0", corrupt_state_on_install=True
-        )
+        repo, home, env, checksum = self.agmsg_fixture(preinstalled_version="1.0.0", corrupt_state_on_install=True)
         skill_dir = home / ".agents/skills/agmsg"
         (skill_dir / "teams/example").mkdir(parents=True)
         (skill_dir / "teams/example/data.txt").write_text("live state\n")
@@ -900,7 +874,9 @@ EOF
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         output = result.stdout + result.stderr
-        self.assertIn("install.sh --update --cmd agmsg --agent-type claude-code changed or removed existing live state", output)
+        self.assertIn(
+            "install.sh --update --cmd agmsg --agent-type claude-code changed or removed existing live state", output
+        )
         self.assertIn(str(skill_dir / "teams/example/data.txt"), output)
         self.assertIn("installer failed", output)
 
@@ -977,9 +953,7 @@ EOF
             [
                 "bash",
                 "-c",
-                "source scripts/update-agent-assets.sh; "
-                f"AGMSG_PIN_SHA256={checksum}; "
-                "update_agmsg",
+                f"source scripts/update-agent-assets.sh; AGMSG_PIN_SHA256={checksum}; update_agmsg",
             ],
             cwd=repo,
             env=env,
@@ -1037,9 +1011,7 @@ EOF
             [
                 "bash",
                 "-c",
-                "source scripts/update-agent-assets.sh; "
-                f"AGMSG_PIN_SHA256={checksum}; "
-                "update_agmsg",
+                f"source scripts/update-agent-assets.sh; AGMSG_PIN_SHA256={checksum}; update_agmsg",
             ],
             cwd=repo,
             env=env,
@@ -1077,9 +1049,7 @@ EOF
             esac
             """,
         )
-        self.executable(
-            bin_dir / "chezmoi", 'printf \'chezmoi %s\\n\' "$*" >> "$TEST_LOG"\n'
-        )
+        self.executable(bin_dir / "chezmoi", 'printf \'chezmoi %s\\n\' "$*" >> "$TEST_LOG"\n')
         self.executable(bin_dir / "mise", 'printf \'mise %s\\n\' "$*" >> "$TEST_LOG"\n')
         self.executable(
             bin_dir / "herdr",
@@ -1121,8 +1091,7 @@ EOF
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertNotIn("git pull --ff-only", log.read_text())
         self.assertIn(
-            "Notice: local source not pulled (tracked files have staged or "
-            "unstaged changes); run 'git -C ",
+            "Notice: local source not pulled (tracked files have staged or unstaged changes); run 'git -C ",
             result.stdout,
         )
         self.assertIn(" pull' to fetch remote updates.", result.stdout)
@@ -1133,8 +1102,7 @@ EOF
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertNotIn("git pull --ff-only", log.read_text())
         self.assertIn(
-            "index has unmerged files; resolve the conflict "
-            "(git add/commit or git reset) before pulling",
+            "index has unmerged files; resolve the conflict (git add/commit or git reset) before pulling",
             result.stdout,
         )
         self.assertNotIn("tracked files have staged or unstaged changes", result.stdout)
@@ -1151,9 +1119,7 @@ EOF
 
     def test_agent_launchers_do_not_hardcode_model_ids(self) -> None:
         herdr = (ROOT / "home/dot_local/bin/common/executable_herdr-agents").read_text()
-        fanout = (
-            ROOT / "home/dot_local/bin/common/executable_agent-fanout"
-        ).read_text()
+        fanout = (ROOT / "home/dot_local/bin/common/executable_agent-fanout").read_text()
 
         for text in (herdr, fanout):
             self.assertNotIn("claude-fable-5", text)
@@ -1264,9 +1230,7 @@ EOF
             repo / "agent-fanout",
         )
         self.executable(bin_dir / "codex", "exit 0\n")
-        artifacts = [
-            output_dir / name for name in ("prompt.txt", "codex.log", "summary.txt")
-        ]
+        artifacts = [output_dir / name for name in ("prompt.txt", "codex.log", "summary.txt")]
         for artifact in artifacts:
             artifact.write_text("old public content\n")
             artifact.chmod(0o644)
@@ -1323,9 +1287,7 @@ EOF
         self.assertIn("Refusing unsafe artifact path", result.stderr)
         self.assertEqual("preserve me\n", target.read_text())
 
-    def doctor_environment(
-        self, *, fail: str = "", os_name: str = "Linux"
-    ) -> dict[str, str]:
+    def doctor_environment(self, *, fail: str = "", os_name: str = "Linux") -> dict[str, str]:
         fixture_name = (fail or "healthy").replace(":", "-").replace(" ", "-")
         bin_dir = self.temp_dir / f"doctor-bin-{fixture_name}-{os_name}"
         log = self.temp_dir / "doctor.log"
@@ -1373,9 +1335,7 @@ EOF
                     ["bash", str(ROOT / "scripts/check-tools.sh")],
                     env=self.doctor_environment(fail=fail),
                 )
-                self.assertEqual(
-                    expected_status, result.returncode, result.stdout + result.stderr
-                )
+                self.assertEqual(expected_status, result.returncode, result.stdout + result.stderr)
                 self.assertIn(summary, result.stdout)
 
         result = self.run_test_command(
@@ -1434,9 +1394,7 @@ EOF
         self.assertIn("git --version", (self.temp_dir / "doctor.log").read_text())
         self.assertIn("Doctor summary: tools=passed; runtime=failed", result.stdout)
 
-        self.executable(
-            repo / "scripts/check-agent-runtime.py", "printf 'runtime healthy\\n'\n"
-        )
+        self.executable(repo / "scripts/check-agent-runtime.py", "printf 'runtime healthy\\n'\n")
         result = self.run_test_command(["make", "doctor"], cwd=repo, env=env)
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
 
@@ -1483,24 +1441,18 @@ EOF
         env = self.doctor_environment()
         env["HOME"] = str(home)
 
-        result = self.run_test_command(
-            ["make", "doctor", "REPAIR=1"], cwd=repo, env=env
-        )
+        result = self.run_test_command(["make", "doctor", "REPAIR=1"], cwd=repo, env=env)
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertIn("repair=1", result.stdout)
 
-    def upgrade_fixture(
-        self, fail_phase: str, os_name: str = "Linux"
-    ) -> tuple[Path, dict[str, str]]:
+    def upgrade_fixture(self, fail_phase: str, os_name: str = "Linux") -> tuple[Path, dict[str, str]]:
         repo = self.temp_dir / f"upgrade-{fail_phase}"
         bin_dir = repo / "bin"
         home = repo / "home"
         (repo / "scripts/lib").mkdir(parents=True)
         home.mkdir()
-        shutil.copy(
-            ROOT / "scripts/upgrade-tools.sh", repo / "scripts/upgrade-tools.sh"
-        )
+        shutil.copy(ROOT / "scripts/upgrade-tools.sh", repo / "scripts/upgrade-tools.sh")
         shutil.copy(
             ROOT / "scripts/lib/installer-pins.sh",
             repo / "scripts/lib/installer-pins.sh",
@@ -1653,14 +1605,10 @@ EOF
                 env["FAIL_PHASE"] = fail_phase
                 source_repo = repo if canonical else repo / "other-source"
                 (source_repo / "home").mkdir(parents=True, exist_ok=True)
-                initialized = self.run_test_command(
-                    ["git", "init", str(source_repo)], cwd=repo, env=env
-                )
+                initialized = self.run_test_command(["git", "init", str(source_repo)], cwd=repo, env=env)
                 self.assertEqual(0, initialized.returncode, initialized.stderr)
                 env["TEST_CHEZMOI_SOURCE"] = str(source_repo / "home")
-                result = self.run_test_command(
-                    ["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env
-                )
+                result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
                 self.assertEqual(
                     0 if fail_phase == "none" else 1,
                     result.returncode,
@@ -1714,17 +1662,11 @@ EOF
                     exec "{original_mise}" "$@"
                     """,
                 )
-                result = self.run_test_command(
-                    ["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env
-                )
+                result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
                 self.assertEqual(0, result.returncode, result.stdout + result.stderr)
                 for name in ("config.toml", "mise.lock"):
-                    self.assertEqual(
-                        (main_config / name).read_text(), "main-original\n"
-                    )
-                    self.assertNotEqual(
-                        (selected_config / name).read_text(), "checkout-original\n"
-                    )
+                    self.assertEqual((main_config / name).read_text(), "main-original\n")
+                    self.assertNotEqual((selected_config / name).read_text(), "checkout-original\n")
 
     def test_upgrade_required_failures_are_nonzero_and_independent(self) -> None:
         cases = (
@@ -1766,15 +1708,9 @@ EOF
         )
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertIn(
-            "Skipping mise self-update: managed by package manager.", result.stdout
-        )
-        self.assertIn(
-            "Skipping mise upgrade for pinned HTTP tool: http:bats.", result.stdout
-        )
-        self.assertIn(
-            "Skipping mise upgrade for pinned HTTP tool: http:gcloud.", result.stdout
-        )
+        self.assertIn("Skipping mise self-update: managed by package manager.", result.stdout)
+        self.assertIn("Skipping mise upgrade for pinned HTTP tool: http:bats.", result.stdout)
+        self.assertIn("Skipping mise upgrade for pinned HTTP tool: http:gcloud.", result.stdout)
         log = (repo / "commands.log").read_text()
         self.assertNotIn("mise self-update --yes", log)
         self.assertIn("mise upgrade --bump --yes --before 7d python", log)
@@ -1785,15 +1721,12 @@ EOF
             log,
         )
         codex_install = next(
-            line
-            for line in log.splitlines()
-            if line.startswith("npm install -g") and "@openai/codex@1.2.3" in line
+            line for line in log.splitlines() if line.startswith("npm install -g") and "@openai/codex@1.2.3" in line
         )
         claude_install = next(
             line
             for line in log.splitlines()
-            if line.startswith("npm install -g")
-            and "@anthropic-ai/claude-code@1.2.3" in line
+            if line.startswith("npm install -g") and "@anthropic-ai/claude-code@1.2.3" in line
         )
         self.assertIn("--ignore-scripts", codex_install)
         self.assertNotIn("--allow-scripts", codex_install)
@@ -1804,9 +1737,7 @@ EOF
         marker = repo / "lib/mise/mise-self-update-instructions.toml"
         marker.parent.mkdir(parents=True)
         marker.write_text('message = "managed by fixture package manager"\n')
-        result = self.run_test_command(
-            ["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env
-        )
+        result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
         self.assertEqual(1, result.returncode, result.stdout + result.stderr)
         self.assertIn("required failure: mise inventory/install/upgrade", result.stderr)
 
@@ -1824,20 +1755,14 @@ EOF
         removed_node_bin = repo / "removed-node-26.6.0" / "bin"
         env["PATH"] = f"{removed_node_bin}:{fallback_bin}:{env['PATH']}"
 
-        result = self.run_test_command(
-            ["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env
-        )
+        result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         log = (repo / "commands.log").read_text()
         self.assertNotIn("fallback npm", log)
         self.assertIn("mise exec node -- npm view @openai/codex version", log)
-        self.assertIn(
-            "mise exec node -- npm view @anthropic-ai/claude-code version", log
-        )
-        self.assertRegex(
-            log, r"mise exec node -- npm install -g .* @openai/codex@1\.2\.3"
-        )
+        self.assertIn("mise exec node -- npm view @anthropic-ai/claude-code version", log)
+        self.assertRegex(log, r"mise exec node -- npm install -g .* @openai/codex@1\.2\.3")
         self.assertRegex(
             log,
             r"mise exec node -- npm install -g .* @anthropic-ai/claude-code@1\.2\.3",
@@ -1878,9 +1803,7 @@ EOF
         generator = next(
             line
             for line in log.splitlines()
-            if line.startswith(
-                "uv run --with pyyaml scripts/generate-agent-configs.py "
-            )
+            if line.startswith("uv run --with pyyaml scripts/generate-agent-configs.py ")
         )
         for name in ("tode", "terminal-browser", "crit", "zed"):
             self.assertIn(f"--set-asset {name}.pin=v9.9.9", generator)
@@ -1894,9 +1817,7 @@ EOF
             "zed.sha256.linux-amd64",
             "zed.sha256.linux-arm64",
         ):
-            self.assertRegex(
-                generator, rf"--set-asset {re.escape(field)}=[0-9a-f]{{64}}(?: |$)"
-            )
+            self.assertRegex(generator, rf"--set-asset {re.escape(field)}=[0-9a-f]{{64}}(?: |$)")
         self.assertIn("curl -fsSL https://tode.sh/install", log)
         self.assertIn("curl -fsSL https://terminal-browser.sh/install", log)
         self.assertIn("crit-linux-amd64", log)

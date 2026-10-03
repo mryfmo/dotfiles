@@ -268,12 +268,6 @@ claude:
             command: "{{ .chezmoi.homeDir }}/.local/bin/common/agent-session-staleness hook"
             async: true
             timeout: 5
-    python_post_edit:
-      - uvx ruff format
-      - uvx ruff check --fix
-      - uvx ty check
-    markdown_post_edit:
-      - npx prettier@2 --write
   statusLine:
     type: command
     command: ccstatusline

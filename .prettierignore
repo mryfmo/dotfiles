@@ -1,0 +1,15 @@
+# Vendored and agent-record paths stay byte-identical (task files are hashed into task_rev).
+vendor/
+.ua/
+.orchestration/
+reviews/
+.agents/
+.claude/
+references/
+# Plans hold verification-command tables whose code spans contain `|` and `*`:
+# prettier reads the pipes as cell separators and the globs as emphasis, which
+# changes the commands (plans 001, 003, 004 and 005 today).
+plans/
+# CompactionDB-managed block: vendor/compactiondb/install.py rewrites it without
+# the blank lines prettier would add, so formatting it would ping-pong.
+CLAUDE.md

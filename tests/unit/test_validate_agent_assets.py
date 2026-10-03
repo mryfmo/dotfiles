@@ -35,9 +35,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.old_root = self.module.ROOT
         self.temp_dir = Path(tempfile.mkdtemp(prefix="validate-agent-assets-test-"))
         self.module.ROOT = self.temp_dir
-        self.required_agmsg_writable_roots = sorted(
-            self.module.REQUIRED_AGMSG_WRITABLE_ROOTS
-        )
+        self.required_agmsg_writable_roots = sorted(self.module.REQUIRED_AGMSG_WRITABLE_ROOTS)
         (self.temp_dir / "home/dot_codex").mkdir(parents=True)
         (self.temp_dir / "home/.chezmoitemplates").mkdir(parents=True)
 
@@ -81,9 +79,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     finally:
                         top_file.unlink()
 
-    def write_codex_config(
-        self, sandbox_workspace_write: str, projects_toml: str = ""
-    ) -> None:
+    def write_codex_config(self, sandbox_workspace_write: str, projects_toml: str = "") -> None:
         (self.temp_dir / "home/.chezmoitemplates/codex-config-managed.toml").write_text(
             "\n".join(
                 [
@@ -122,9 +118,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                                     {
                                         "type": "command",
                                         "command": command,
-                                        "args": [
-                                            "${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"
-                                        ],
+                                        "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/contextdb_hook.py"],
                                     }
                                 ],
                             }
@@ -135,9 +129,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         )
 
     def test_repo_claude_settings_reject_machine_specific_interpreter(self) -> None:
-        self.write_repo_claude_settings(
-            "/Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14"
-        )
+        self.write_repo_claude_settings("/Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14")
         with self.assertRaises(SystemExit):
             self.module.validate_repo_claude_settings_portable()
 
@@ -168,9 +160,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         for relative_path, _file_type in self.module.HOOK_COMPOSITION_SOURCES.values():
             self.write_text_file(str(relative_path), (ROOT / relative_path).read_text())
 
-    def update_json_hook_source(
-        self, relative_path: str, event: str, groups: list[dict]
-    ) -> None:
+    def update_json_hook_source(self, relative_path: str, event: str, groups: list[dict]) -> None:
         path = self.temp_dir / relative_path
         data = json.loads(path.read_text())
         data["hooks"][event] = groups
@@ -191,9 +181,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             for name in ("express", "standard", "review", "deep", "security", "audit")
         }
         profiles["security"]["codex"]["model"] = "gpt-6-astra"
-        profiles["audit"]["codex"].update(
-            model="gpt-6.1-sol", model_reasoning_effort="xhigh", sandbox_mode="read-only"
-        )
+        profiles["audit"]["codex"].update(model="gpt-6.1-sol", model_reasoning_effort="xhigh", sandbox_mode="read-only")
         profiles["standard"]["claude"]["advisor"] = "fable"
         manifest = {
             "schema_version": 1,
@@ -287,9 +275,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         stderr = io.StringIO()
         with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
             self.module.validate_agent_manifest()
-        self.assertIn(
-            "README.md must document herdr-agents --restart-worker", stderr.getvalue()
-        )
+        self.assertIn("README.md must document herdr-agents --restart-worker", stderr.getvalue())
 
     def asset_manifest(self) -> dict:
         return {
@@ -329,9 +315,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     "upstream": "marketplaces",
                     "pin": "per-plugin",
                     "verify": "none",
-                    "plugins": {
-                        "crit": {"marketplace": "tomasz-tomczyk/crit", "pin": "1.8.10"}
-                    },
+                    "plugins": {"crit": {"marketplace": "tomasz-tomczyk/crit", "pin": "1.8.10"}},
                 },
                 "agmsg": {
                     "source": "agmsg-installer",
@@ -357,19 +341,13 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         cases = {
             "missing pin": lambda assets: assets["mise"].pop("pin"),
             "unknown source": lambda assets: assets["mise"].update(source="ftp"),
-            "verify not valid for source": lambda assets: assets["brew"].update(
-                verify="gpg"
-            ),
+            "verify not valid for source": lambda assets: assets["brew"].update(verify="gpg"),
             "missing sha256": lambda assets: assets["brew"].pop("sha256"),
-            "missing gpg fingerprint": lambda assets: assets["aws"].pop(
-                "gpg_fingerprint"
-            ),
+            "missing gpg fingerprint": lambda assets: assets["aws"].pop("gpg_fingerprint"),
             "missing install_path": lambda assets: assets["brew"].pop("install_path"),
             "missing installer": lambda assets: assets["aws"].pop("installer"),
             "float pin": lambda assets: assets["aws"].update(pin=1.1),
-            "float plugin pin": lambda assets: assets["plugins"]["plugins"][
-                "crit"
-            ].update(pin=1.1),
+            "float plugin pin": lambda assets: assets["plugins"]["plugins"]["crit"].update(pin=1.1),
             "agmsg missing installer": lambda assets: assets["agmsg"].pop("installer"),
         }
         for name, breaks in cases.items():
@@ -414,9 +392,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             {"bootstrap_integrity": "sha256-not-an-npm-integrity-string"},
         ):
             with self.subTest(changes=changes):
-                self.assertIn(
-                    "bootstrap_integrity", self.assert_agmsg_asset_rejected(**changes)
-                )
+                self.assertIn("bootstrap_integrity", self.assert_agmsg_asset_rejected(**changes))
 
     def write_agmsg_installer_layout(self) -> None:
         self.write_text_file("home/.chezmoiremove", ".claude/skills/agmsg/**\n")
@@ -468,9 +444,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             ".claude/commands/agmsg.md",
         ):
             with self.subTest(pattern=pattern):
-                self.write_text_file(
-                    "home/.chezmoiremove", f".claude/skills/agmsg/**\n{pattern}\n"
-                )
+                self.write_text_file("home/.chezmoiremove", f".claude/skills/agmsg/**\n{pattern}\n")
                 self.assert_agmsg_ownership_rejected(f"entry {pattern!r} would remove")
 
     def test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts(
@@ -569,9 +543,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 stderr = io.StringIO()
                 with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
                     self.module.validate_agent_manifest()
-                self.assertIn(
-                    f"audit profile must set codex.{key}:", stderr.getvalue()
-                )
+                self.assertIn(f"audit profile must set codex.{key}:", stderr.getvalue())
 
     def test_hook_composition_accepts_managed_source_fixture(self) -> None:
         self.copy_managed_hook_sources()
@@ -608,9 +580,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             ],
         )
 
-        self.assert_hook_composition_fails(
-            "permgate-first source=claude event=PermissionRequest"
-        )
+        self.assert_hook_composition_fails("permgate-first source=claude event=PermissionRequest")
 
     def test_hook_composition_rejects_sync_timeout_over_budget(self) -> None:
         self.copy_managed_hook_sources()
@@ -627,9 +597,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             ],
         )
 
-        self.assert_hook_composition_fails(
-            "sync-timeout-budget source=claude event=Stop total=31s limit=30s"
-        )
+        self.assert_hook_composition_fails("sync-timeout-budget source=claude event=Stop total=31s limit=30s")
 
     def test_hook_composition_pins_sessionstart_order(self) -> None:
         self.copy_managed_hook_sources()
@@ -653,9 +621,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         }
 
     def test_claude_sandbox_accepts_manifest_symmetric_settings(self) -> None:
-        self.module.validate_claude_sandbox(
-            self.valid_claude_sandbox(), self.required_agmsg_writable_roots, "sandbox"
-        )
+        self.module.validate_claude_sandbox(self.valid_claude_sandbox(), self.required_agmsg_writable_roots, "sandbox")
 
     def test_claude_sandbox_rejects_each_broken_rule(self) -> None:
         def disabled(sandbox: dict, key: str) -> None:
@@ -664,41 +630,31 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         cases = {
             "enabled": lambda sandbox: disabled(sandbox, "enabled"),
             "failIfUnavailable": lambda sandbox: sandbox.pop("failIfUnavailable"),
-            "autoAllowBashIfSandboxed": lambda sandbox: disabled(
-                sandbox, "autoAllowBashIfSandboxed"
+            "autoAllowBashIfSandboxed": lambda sandbox: disabled(sandbox, "autoAllowBashIfSandboxed"),
+            "missing Codex writable root": lambda sandbox: sandbox["filesystem"]["allowWrite"].pop(),
+            "empty allowedDomains": lambda sandbox: sandbox["network"].update(allowedDomains=[]),
+            "scheme in allowedDomains": lambda sandbox: sandbox["network"]["allowedDomains"].append(
+                "https://github.com"
             ),
-            "missing Codex writable root": lambda sandbox: sandbox["filesystem"][
-                "allowWrite"
-            ].pop(),
-            "empty allowedDomains": lambda sandbox: sandbox["network"].update(
-                allowedDomains=[]
-            ),
-            "scheme in allowedDomains": lambda sandbox: sandbox["network"][
-                "allowedDomains"
-            ].append("https://github.com"),
-            "path in allowedDomains": lambda sandbox: sandbox["network"][
-                "allowedDomains"
-            ].append("github.com/mryfmo"),
+            "path in allowedDomains": lambda sandbox: sandbox["network"]["allowedDomains"].append("github.com/mryfmo"),
         }
         for name, breaks in cases.items():
             with self.subTest(rule=name):
                 sandbox = self.valid_claude_sandbox()
                 breaks(sandbox)
-                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(
-                    SystemExit
-                ):
-                    self.module.validate_claude_sandbox(
-                        sandbox, self.required_agmsg_writable_roots, "sandbox"
-                    )
+                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                    self.module.validate_claude_sandbox(sandbox, self.required_agmsg_writable_roots, "sandbox")
 
     def test_claude_permissions_allow_must_list_non_empty_rules(self) -> None:
         for permissions in ({}, {"allow": []}, {"allow": ["Bash(agmsg-dispatch:*)"]}):
             with self.subTest(accepts=permissions):
                 self.module.validate_claude_permissions_allow(permissions, "permissions")
         for allow in ("Bash(agmsg-dispatch:*)", [""], [3]):
-            with self.subTest(rejects=allow), contextlib.redirect_stderr(
-                io.StringIO()
-            ) as stderr, self.assertRaises(SystemExit):
+            with (
+                self.subTest(rejects=allow),
+                contextlib.redirect_stderr(io.StringIO()) as stderr,
+                self.assertRaises(SystemExit),
+            ):
                 self.module.validate_claude_permissions_allow({"allow": allow}, "permissions")
             self.assertIn("permissions.allow must be a list", stderr.getvalue())
 
@@ -715,7 +671,14 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 self.assertIn("allowWrite extra entries must be absolute or ~/ paths", stderr.getvalue())
 
     def test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs(self) -> None:
-        for socket in ("relative/herdr.sock", "./herdr.sock", "~herdr.sock", "/run/user/*/cc.sock", "~/.config/herdr/{a,b}.sock", 7):
+        for socket in (
+            "relative/herdr.sock",
+            "./herdr.sock",
+            "~herdr.sock",
+            "/run/user/*/cc.sock",
+            "~/.config/herdr/{a,b}.sock",
+            7,
+        ):
             with self.subTest(socket=socket):
                 sandbox = self.valid_claude_sandbox()
                 sandbox["network"]["allowUnixSockets"].append(socket)
@@ -726,18 +689,12 @@ class ValidateAgentAssetsTest(unittest.TestCase):
     def test_claude_sandbox_requires_extra_codex_writable_roots(self) -> None:
         roots = [*self.required_agmsg_writable_roots, "/extra/codex/root"]
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-            self.module.validate_claude_sandbox(
-                self.valid_claude_sandbox(), roots, "sandbox"
-            )
+            self.module.validate_claude_sandbox(self.valid_claude_sandbox(), roots, "sandbox")
 
     def test_codex_sandbox_workspace_write_must_match_manifest(self) -> None:
         self.write_codex_config("network_access = false")
         manifest = {
-            "model_profiles": {
-                "standard": {
-                    "codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}
-                }
-            },
+            "model_profiles": {"standard": {"codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}}},
             "interactive_profile": "standard",
             "codex": {
                 "sandbox_workspace_write": {
@@ -761,15 +718,10 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
     def test_codex_sandbox_workspace_write_accepts_matching_manifest(self) -> None:
         self.write_codex_config(
-            "network_access = false\nwritable_roots = "
-            f"{json.dumps(self.required_agmsg_writable_roots)}"
+            f"network_access = false\nwritable_roots = {json.dumps(self.required_agmsg_writable_roots)}"
         )
         manifest = {
-            "model_profiles": {
-                "standard": {
-                    "codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}
-                }
-            },
+            "model_profiles": {"standard": {"codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}}},
             "interactive_profile": "standard",
             "codex": {
                 "sandbox_workspace_write": {
@@ -792,15 +744,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
     def test_codex_sandbox_workspace_write_requires_all_agmsg_roots(self) -> None:
         roots = ["{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db"]
-        self.write_codex_config(
-            "network_access = false\nwritable_roots = " + json.dumps(roots)
-        )
+        self.write_codex_config("network_access = false\nwritable_roots = " + json.dumps(roots))
         manifest = {
-            "model_profiles": {
-                "standard": {
-                    "codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}
-                }
-            },
+            "model_profiles": {"standard": {"codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}}},
             "interactive_profile": "standard",
             "codex": {
                 "sandbox_workspace_write": {
@@ -824,11 +770,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
     def codex_config_manifest(self, projects: dict) -> dict:
         return {
-            "model_profiles": {
-                "standard": {
-                    "codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}
-                }
-            },
+            "model_profiles": {"standard": {"codex": {"model": "gpt-5.5", "model_reasoning_effort": "high"}}},
             "interactive_profile": "standard",
             "codex": {
                 "sandbox_workspace_write": {
@@ -849,8 +791,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
     def write_codex_config_with_projects(self, projects_toml: str) -> None:
         self.write_codex_config(
-            "network_access = false\nwritable_roots = "
-            f"{json.dumps(self.required_agmsg_writable_roots)}",
+            f"network_access = false\nwritable_roots = {json.dumps(self.required_agmsg_writable_roots)}",
             projects_toml=projects_toml,
         )
 
@@ -858,29 +799,21 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.write_codex_config_with_projects(
             '[projects."/Users/mryfmo/Workspace/dotfiles"]\ntrust_level = "trusted"\n'
         )
-        manifest = self.codex_config_manifest(
-            {"/Users/mryfmo/Workspace/dotfiles": {"trust_level": "trusted"}}
-        )
+        manifest = self.codex_config_manifest({"/Users/mryfmo/Workspace/dotfiles": {"trust_level": "trusted"}})
 
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_codex_config(manifest)
 
     def test_codex_projects_reject_missing_working_tree_placeholder(self) -> None:
-        self.write_codex_config_with_projects(
-            '[projects."/repo"]\ntrust_level = "trusted"\n'
-        )
+        self.write_codex_config_with_projects('[projects."/repo"]\ntrust_level = "trusted"\n')
         manifest = self.codex_config_manifest({"/repo": {"trust_level": "trusted"}})
 
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_codex_config(manifest)
 
     def test_codex_projects_accept_working_tree_placeholder(self) -> None:
-        self.write_codex_config_with_projects(
-            '[projects."{{ .chezmoi.workingTree }}"]\ntrust_level = "trusted"\n'
-        )
-        manifest = self.codex_config_manifest(
-            {"{{ .chezmoi.workingTree }}": {"trust_level": "trusted"}}
-        )
+        self.write_codex_config_with_projects('[projects."{{ .chezmoi.workingTree }}"]\ntrust_level = "trusted"\n')
+        manifest = self.codex_config_manifest({"{{ .chezmoi.workingTree }}": {"trust_level": "trusted"}})
 
         self.module.validate_codex_config(manifest)
 
@@ -903,8 +836,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
     def test_secret_scan_allows_exact_placeholder_tokens(self) -> None:
         self.write_text_file(
             "docs/reference/placeholders.md",
-            "to" + 'ken = "GITHUB_PERSONAL_ACCESS_TOKEN"\n'
-            "to" + 'ken = "FIGMA_OAUTH_TOKEN"\n',
+            "to" + 'ken = "GITHUB_PERSONAL_ACCESS_TOKEN"\nto' + 'ken = "FIGMA_OAUTH_TOKEN"\n',
         )
 
         self.module.validate_no_obvious_secrets()
@@ -944,18 +876,14 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             self.module.validate_manifest_home_paths()
 
     def test_manifest_home_paths_allow_chezmoi_home_dir(self) -> None:
-        self.write_manifest(
-            "bash '{{ .chezmoi.homeDir }}/.claude/hooks/state.sh' session"
-        )
+        self.write_manifest("bash '{{ .chezmoi.homeDir }}/.claude/hooks/state.sh' session")
 
         self.module.validate_manifest_home_paths()
 
     def test_manifest_home_paths_allow_flow_style_projects(self) -> None:
         path = self.temp_dir / "home/dot_agents/agent-config.yaml"
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            'codex:\n  projects: {"/Users/mryfmo/Workspace/dotfiles": {"trust_level": "trusted"}}\n'
-        )
+        path.write_text('codex:\n  projects: {"/Users/mryfmo/Workspace/dotfiles": {"trust_level": "trusted"}}\n')
 
         self.module.validate_manifest_home_paths()
 
@@ -992,12 +920,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
     def test_manifest_home_paths_reject_non_codex_projects_mapping(self) -> None:
         path = self.temp_dir / "home/dot_agents/agent-config.yaml"
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            "claude:\n"
-            "  projects:\n"
-            "    /Users/mryfmo/Workspace/dotfiles:\n"
-            "      trust_level: trusted\n"
-        )
+        path.write_text("claude:\n  projects:\n    /Users/mryfmo/Workspace/dotfiles:\n      trust_level: trusted\n")
 
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_manifest_home_paths()
@@ -1027,9 +950,7 @@ class MaskSecretsModeTest(unittest.TestCase):
     def test_masks_every_match_in_place_and_reports_counts(self) -> None:
         evidence = self.temp_dir / "audit.md"
         evidence.write_text(
-            f'schema:\n  design_{FIELD}: "abcdefgh"\n  applies_{FIELD}: "xyz"\n'
-            "prose line stays\n"
-            "Verdict: correct\n"
+            f'schema:\n  design_{FIELD}: "abcdefgh"\n  applies_{FIELD}: "xyz"\nprose line stays\nVerdict: correct\n'
         )
         last = self.temp_dir / "audit.md.last.md"
         last.write_text("No findings.\nVerdict: correct\n")

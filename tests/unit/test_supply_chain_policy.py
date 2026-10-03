@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 class SupplyChainPolicyTest(unittest.TestCase):
     def test_installer_cleanup_survives_mock_function_returns(self):
         cases = {
-            "install/common/mise.sh": r'''
+            "install/common/mise.sh": r"""
 uname() { [ "$1" = -s ] && printf Linux || printf x86_64; }
 curl() {
     local output
@@ -44,8 +44,8 @@ install_mise
 [ "$(type -t mise)" = function ]
 [ "$(mise)" = activated ]
 case ":${PATH}:" in *":${HOME}/.local/bin:"*) ;; *) exit 1 ;; esac
-''',
-            "install/common/sheldon.sh": r'''
+""",
+            "install/common/sheldon.sh": r"""
 mkdir -p "${HOME}/.local/bin"
 cat > "${HOME}/.local/bin/mise" <<'EOF'
 #!/bin/sh
@@ -59,8 +59,8 @@ cargo() { return 99; }
 install() { cp "$3" "$4"; chmod 0755 "$4"; }
 mv() { command mv "$@"; }
 install_sheldon
-''',
-            "install/ubuntu/server/starship.sh": r'''
+""",
+            "install/ubuntu/server/starship.sh": r"""
 uname() { printf x86_64; }
 curl() {
     local output
@@ -81,7 +81,7 @@ tar() {
 install() { cp "$3" "$4"; chmod 0755 "$4"; }
 mv() { command mv "$@"; }
 install_starship
-''',
+""",
         }
         for relative, body in cases.items():
             with self.subTest(relative=relative), tempfile.TemporaryDirectory() as directory:
@@ -123,7 +123,13 @@ install_starship
                 (root / "home").mkdir()
                 (root / "tmp").mkdir()
                 result = subprocess.run(
-                    ["bash", "-c", f'source "$1"\nset +e\n{mock}\n{function}\n[ "$?" -eq 42 ]\n', "_", str(ROOT / relative)],
+                    [
+                        "bash",
+                        "-c",
+                        f'source "$1"\nset +e\n{mock}\n{function}\n[ "$?" -eq 42 ]\n',
+                        "_",
+                        str(ROOT / relative),
+                    ],
                     env={**os.environ, "HOME": str(root / "home"), "TMPDIR": str(root / "tmp")},
                     check=False,
                 )
@@ -151,10 +157,7 @@ install_starship
     def test_executable_downloads_are_verified_and_not_piped_to_shell(self):
         paths = [ROOT / "setup.sh", *sorted((ROOT / "install").rglob("*.sh"))]
         executable = "\n".join(
-            line
-            for path in paths
-            for line in path.read_text().splitlines()
-            if not line.lstrip().startswith("#")
+            line for path in paths for line in path.read_text().splitlines() if not line.lstrip().startswith("#")
         )
         self.assertNotRegex(executable, r"curl[^\n]*\|\s*(?:sh|bash|dash)")
         for path in (
@@ -192,9 +195,17 @@ install_starship
                 config = Path(temporary) / "chezmoi.toml"
                 config.write_text("")
                 result = subprocess.run(
-                    ["chezmoi", "--config", str(config), "--source", str(ROOT / "home"),
-                     "execute-template", template.read_text()],
-                    check=True, capture_output=True,
+                    [
+                        "chezmoi",
+                        "--config",
+                        str(config),
+                        "--source",
+                        str(ROOT / "home"),
+                        "execute-template",
+                        template.read_text(),
+                    ],
+                    check=True,
+                    capture_output=True,
                 )
             self.assertEqual(result.stdout, (ROOT / f"home/dot_mise/{name}").read_bytes())
 
@@ -210,25 +221,32 @@ install_starship
                 directory.mkdir(parents=True)
             for name in ("config.toml", "mise.lock"):
                 (pins / name).write_bytes((ROOT / f"home/dot_mise/{name}").read_bytes())
-                (managed / f"{name}.tmpl").write_text(
-                    (ROOT / f"home/dot_config/mise/{name}.tmpl").read_text()
-                )
+                (managed / f"{name}.tmpl").write_text((ROOT / f"home/dot_config/mise/{name}.tmpl").read_text())
                 (applied / name).symlink_to(pins / name)
             config = fixture / "chezmoi.toml"
             config.write_text("")
             subprocess.run(
-                ["chezmoi", "--config", str(config), "--source", str(source),
-                 "--destination", str(destination), "--persistent-state", str(fixture / "state.boltdb"),
-                 "apply", "--force"],
-                check=True, capture_output=True,
+                [
+                    "chezmoi",
+                    "--config",
+                    str(config),
+                    "--source",
+                    str(source),
+                    "--destination",
+                    str(destination),
+                    "--persistent-state",
+                    str(fixture / "state.boltdb"),
+                    "apply",
+                    "--force",
+                ],
+                check=True,
+                capture_output=True,
             )
             for name in ("config.toml", "mise.lock"):
                 self.assertFalse((applied / name).is_symlink())
                 self.assertEqual((applied / name).read_bytes(), (pins / name).read_bytes())
                 (applied / name).write_text("runtime-only change\n")
-                self.assertEqual(
-                    (pins / name).read_bytes(), (ROOT / f"home/dot_mise/{name}").read_bytes()
-                )
+                self.assertEqual((pins / name).read_bytes(), (ROOT / f"home/dot_mise/{name}").read_bytes())
 
     def test_mise_npm_backend_uses_npm_and_limits_lifecycle_scripts(self):
         with (ROOT / "home/dot_mise/config.toml").open("rb") as config_file:
@@ -410,7 +428,7 @@ install_starship
                 '"Fonts/Test":\n'
                 '  type: "archive"\n'
                 f'  url: "{archive.as_uri()}"\n'
-                '  checksum:\n'
+                "  checksum:\n"
                 f'    sha256: "{"0" * 64}"\n'
             )
             result = subprocess.run(
@@ -450,9 +468,7 @@ install_starship
             "nix-darwin": "nix-darwin-26.05",
             "nixpkgs": "nixos-26.05",
         }
-        actual_refs = {
-            name: lock["nodes"][name]["original"]["ref"] for name in expected_refs
-        }
+        actual_refs = {name: lock["nodes"][name]["original"]["ref"] for name in expected_refs}
         self.assertEqual(expected_refs, actual_refs)
         workflow = (ROOT / ".github/workflows/test.yaml").read_text()
         self.assertIn("should_nix:", workflow)
@@ -470,39 +486,27 @@ install_starship
         for name in ("dependabot.yml", "dependabot.yaml"):
             self.assertFalse((ROOT / ".github" / name).exists())
         config = json.loads((ROOT / "renovate.json").read_text())
-        self.assertEqual(
-            {"github-actions", "mise", "custom.regex"}, set(config["enabledManagers"])
-        )
+        self.assertEqual({"github-actions", "mise", "custom.regex"}, set(config["enabledManagers"]))
         self.assertTrue(
             any(
                 re.search(pattern.strip("/"), "home/dot_mise/config.toml")
                 for pattern in config["mise"]["managerFilePatterns"]
             )
         )
-        manifest_rules = [
-            rule
-            for rule in config["packageRules"]
-            if "custom.regex" in rule.get("matchManagers", [])
-        ]
+        manifest_rules = [rule for rule in config["packageRules"] if "custom.regex" in rule.get("matchManagers", [])]
         self.assertEqual(1, len(manifest_rules))
         self.assertIs(True, manifest_rules[0]["dependencyDashboardApproval"])
         self.assertNotIn("automerge", json.dumps(config))
         # mise PRs cannot regenerate mise.lock, and fd stays held like upgrade-tools.sh.
-        mise_rules = [
-            rule for rule in config["packageRules"] if rule.get("matchManagers") == ["mise"]
-        ]
+        mise_rules = [rule for rule in config["packageRules"] if rule.get("matchManagers") == ["mise"]]
         self.assertTrue(
             any(
-                rule.get("dependencyDashboardApproval") is True
-                and "matchPackageNames" not in rule
+                rule.get("dependencyDashboardApproval") is True and "matchPackageNames" not in rule
                 for rule in mise_rules
             )
         )
         self.assertTrue(
-            any(
-                rule.get("matchPackageNames") == ["fd"] and rule.get("enabled") is False
-                for rule in mise_rules
-            )
+            any(rule.get("matchPackageNames") == ["fd"] and rule.get("enabled") is False for rule in mise_rules)
         )
 
     def test_setup_ci_rejects_and_preserves_local_drift(self):

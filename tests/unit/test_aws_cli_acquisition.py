@@ -12,9 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 INSTALLER = ROOT / "install/ubuntu/common/aws_cli.sh"
 FINGERPRINT = "FB5DB77FD5C118B80511ADA8A6310ACC4672475C"
 # The pin moves with make upgrade; read it from the rendered installer.
-AWS_CLI_VERSION = re.search(
-    r'^readonly AWS_CLI_VERSION="([^"]+)"$', INSTALLER.read_text(), re.MULTILINE
-).group(1)
+AWS_CLI_VERSION = re.search(r'^readonly AWS_CLI_VERSION="([^"]+)"$', INSTALLER.read_text(), re.MULTILINE).group(1)
 
 
 class AwsCliAcquisitionTest(unittest.TestCase):
@@ -72,7 +70,7 @@ class AwsCliAcquisitionTest(unittest.TestCase):
             aws.write_text("existing\n")
 
             result = self.run_shell(
-                r'''
+                r"""
 uname() { printf 'x86_64\n'; }
 curl() {
     local output
@@ -97,7 +95,7 @@ gpg() {
 gpgv() { touch "${GPGV_MARKER}"; return 1; }
 unzip() { touch "${MARKER}"; }
 install_aws_cli
-''',
+""",
                 {
                     "AWS_CLI_KEY_PATH": str(key),
                     "GPGV_MARKER": str(gpgv_marker),
@@ -129,7 +127,7 @@ install_aws_cli
                 home.mkdir()
                 temp.mkdir()
                 result = self.run_shell(
-                    r'''
+                    r"""
 uname() { printf 'x86_64\n'; }
 curl() {
     while [ "$#" -gt 0 ]; do
@@ -145,7 +143,7 @@ gpg() {
 gpgv() { touch "${MARKER}"; }
 unzip() { touch "${MARKER}"; }
 install_aws_cli
-''',
+""",
                     {
                         "AWS_CLI_KEY_PATH": str(root / "key.asc"),
                         "HOME": str(home),
@@ -172,7 +170,7 @@ install_aws_cli
             key.write_text("fixture\n")
 
             result = self.run_shell(
-                r'''
+                r"""
 uname() { printf 'aarch64\n'; }
 curl() {
     local output url
@@ -221,7 +219,7 @@ EOF
     chmod +x "${HOME}/.local/bin/aws"
 }
 install_aws_cli
-'''.replace("@AWS_CLI_VERSION@", AWS_CLI_VERSION),
+""".replace("@AWS_CLI_VERSION@", AWS_CLI_VERSION),
                 {
                     "ARGS_PATH": str(args),
                     "AWS_CLI_KEY_PATH": str(key),
@@ -266,7 +264,7 @@ install_aws_cli
             aws.write_bytes(sentinel)
 
             result = self.run_shell(
-                r'''
+                r"""
 uname() { printf 'x86_64\n'; }
 curl() {
     while [ "$#" -gt 0 ]; do
@@ -306,7 +304,7 @@ EOF
     chmod +x "${destination}/aws/dist/aws"
 }
 install_aws_cli
-''',
+""",
                 {
                     "AWS_CLI_KEY_PATH": str(key),
                     "HOME": str(home),
@@ -328,9 +326,7 @@ install_aws_cli
         self.assertNotEqual(0, result.returncode)
 
     def test_exit_zero_install_with_expected_fake_binary_passes_postcondition(self):
-        result = self.run_postcondition(
-            f"#!/bin/sh\nprintf 'aws-cli/{AWS_CLI_VERSION} Python/3.13 Linux/6\\n'\n"
-        )
+        result = self.run_postcondition(f"#!/bin/sh\nprintf 'aws-cli/{AWS_CLI_VERSION} Python/3.13 Linux/6\\n'\n")
         self.assertEqual(0, result.returncode, result.stderr)
 
     def test_repository_key_has_expected_current_fingerprint(self):

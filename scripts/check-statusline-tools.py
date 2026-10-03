@@ -31,9 +31,7 @@ def run(command: list[str], stdin: str | None = None) -> subprocess.CompletedPro
     )
     elapsed = time.monotonic() - started
     if result.returncode != 0:
-        raise SystemExit(
-            f"{' '.join(command)} failed with {result.returncode}: {result.stderr.strip()}"
-        )
+        raise SystemExit(f"{' '.join(command)} failed with {result.returncode}: {result.stderr.strip()}")
     if elapsed >= 5:
         raise SystemExit(f"{' '.join(command)} exceeded the 5-second smoke-test limit")
     return result

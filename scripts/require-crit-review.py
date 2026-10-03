@@ -38,9 +38,7 @@ STRICT_REASON_LEVELS = {
 BROAD_DIFF_FILE_LIMIT = 5
 BROAD_DIFF_LINE_LIMIT = 200
 
-IGNORED_PREFIXES = (
-    ".agents/worklog/",
-)
+IGNORED_PREFIXES = (".agents/worklog/",)
 
 HIGH_RISK_PREFIXES = (
     ".codex/",
@@ -135,7 +133,9 @@ def is_ignored(root: Path, path: str) -> bool:
     evidence_path = Path(evidence)
     if not evidence_path.is_absolute():
         evidence_path = root / evidence_path
-    return feedback_path_error(root, evidence_path) is None and feedback_relative_path(root, evidence_path) == Path(path)
+    return feedback_path_error(root, evidence_path) is None and feedback_relative_path(root, evidence_path) == Path(
+        path
+    )
 
 
 def feedback_relative_path(root: Path, path: Path) -> Path:
@@ -155,7 +155,10 @@ def feedback_path_error(root: Path, path: Path) -> str | None:
         )
     except ValueError:
         return f"{PR_FEEDBACK_ENV} must point to a repo-local JSON file"
-    if any(relative.parts[:2] != (".orchestration", "validation") or not relative.name.endswith("-pr-feedback.json") for relative in relatives):
+    if any(
+        relative.parts[:2] != (".orchestration", "validation") or not relative.name.endswith("-pr-feedback.json")
+        for relative in relatives
+    ):
         return "evidence must live under .orchestration/validation/ and end with -pr-feedback.json"
     return None
 
@@ -293,7 +296,9 @@ def agent_review_errors(root: Path, text: str, parsed_fields: dict[str, str | No
     if parsed_fields["review_surface"] != CRIT_DATA_REVIEW_SURFACE:
         errors.append(f"{EVIDENCE_ENV} agent reviewer requires `review_surface: {CRIT_DATA_REVIEW_SURFACE}`")
     if parsed_fields["review_outcome"] not in AGENT_REVIEW_OUTCOMES:
-        errors.append(f"{EVIDENCE_ENV} agent reviewer requires `review_outcome: approved` or `review_outcome: addressed`")
+        errors.append(
+            f"{EVIDENCE_ENV} agent reviewer requires `review_outcome: approved` or `review_outcome: addressed`"
+        )
     source = evidence_field(text, CRIT_DATA_SOURCE_FIELD)
     if not source:
         errors.append(f"{EVIDENCE_ENV} agent reviewer requires non-empty `{CRIT_DATA_SOURCE_FIELD}: ...`")
@@ -351,9 +356,7 @@ def commit_in_range(root: Path, commit: str, base: str, head: str) -> bool:
     )
 
 
-def pr_feedback_errors(
-    root: Path, required: bool, head: str | None = None, base: str | None = None
-) -> list[str]:
+def pr_feedback_errors(root: Path, required: bool, head: str | None = None, base: str | None = None) -> list[str]:
     """Check the filled pr-feedback.py JSON: every item needs a root-cause disposition."""
     evidence = os.environ.get(PR_FEEDBACK_ENV, "").strip()
     if not evidence:
@@ -399,8 +402,15 @@ def pr_feedback_errors(
         commit = match.group("commit")
         if commit and run_git(["cat-file", "-e", f"{commit}^{{commit}}"], root).returncode != 0:
             errors.append(f"{label} cites an unknown commit: {commit}")
-        elif commit and head is not None and base is not None and not commit_in_range(root, commit, data["base_sha"], head):
-            errors.append(f"{label} cites commit {commit} outside GitHub base {data['base_sha']}..HEAD; cite the fix commit in this PR")
+        elif (
+            commit
+            and head is not None
+            and base is not None
+            and not commit_in_range(root, commit, data["base_sha"], head)
+        ):
+            errors.append(
+                f"{label} cites commit {commit} outside GitHub base {data['base_sha']}..HEAD; cite the fix commit in this PR"
+            )
         reason = (match.group("reason") or "").strip()
         if item.get("level") in STRICT_REASON_LEVELS and not commit and len(reason) < FAILURE_REASON_MIN_CHARS:
             errors.append(
@@ -421,17 +431,27 @@ def pr_base_errors(root: Path, evidence: dict, pr: int, head: str, base: str) ->
     try:
         repository = subprocess.run(
             ["gh", "repo", "view", "--json", "nameWithOwner"],
-            cwd=root, env=env, capture_output=True, text=True, check=False,
+            cwd=root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         repo_data = json.loads(repository.stdout) if repository.returncode == 0 else None
         repo = repo_data.get("nameWithOwner") if isinstance(repo_data, dict) else None
         if not isinstance(repo, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
             return [failure]
         if evidence.get("repo") != repo:
-            return [f"{PR_FEEDBACK_ENV} does not match the local GitHub repository {repo}; rerun scripts/pr-feedback.py"]
+            return [
+                f"{PR_FEEDBACK_ENV} does not match the local GitHub repository {repo}; rerun scripts/pr-feedback.py"
+            ]
         result = subprocess.run(
             ["gh", "pr", "view", str(pr), "--repo", repo, "--json", "headRefOid,baseRefName,baseRefOid"],
-            cwd=root, env=env, capture_output=True, text=True, check=False,
+            cwd=root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         metadata = json.loads(result.stdout) if result.returncode == 0 else None
     except (OSError, json.JSONDecodeError):
@@ -441,15 +461,19 @@ def pr_base_errors(root: Path, evidence: dict, pr: int, head: str, base: str) ->
     github_base = metadata.get("baseRefOid")
     github_ref = metadata.get("baseRefName")
     if (
-        not isinstance(github_base, str) or not re.fullmatch(r"[0-9a-f]{40}", github_base)
-        or not isinstance(github_ref, str) or not github_ref.strip()
+        not isinstance(github_base, str)
+        or not re.fullmatch(r"[0-9a-f]{40}", github_base)
+        or not isinstance(github_ref, str)
+        or not github_ref.strip()
         or run_git(["cat-file", "-e", f"{github_base}^{{commit}}"], root).returncode != 0
     ):
         return [failure]
     if metadata.get("headRefOid") != head:
         return [f"PR #{pr} head on GitHub is {metadata.get('headRefOid')}, not the local HEAD {head}; push first"]
     if evidence.get("base_sha") != github_base or evidence.get("base_ref") != github_ref:
-        return [f"{PR_FEEDBACK_ENV} does not match the GitHub base {github_ref} ({github_base}); rerun scripts/pr-feedback.py"]
+        return [
+            f"{PR_FEEDBACK_ENV} does not match the GitHub base {github_ref} ({github_base}); rerun scripts/pr-feedback.py"
+        ]
 
     resolved = run_git(["rev-parse", "--verify", "--end-of-options", f"{base}^{{commit}}"], root)
     base_sha = resolved.stdout.strip()
@@ -466,7 +490,9 @@ def pr_base_errors(root: Path, evidence: dict, pr: int, head: str, base: str) ->
             expected = run_git(["merge-base", github_base, head], root)
             if actual.returncode == expected.returncode == 0 and actual.stdout == expected.stdout:
                 return []
-    return [f"--base {base!r} is not bound to PR #{pr} base {github_ref} ({github_base}); use the PR base, not its branch or HEAD"]
+    return [
+        f"--base {base!r} is not bound to PR #{pr} base {github_ref} ({github_base}); use the PR base, not its branch or HEAD"
+    ]
 
 
 def collected_feedback_errors(root: Path, evidence: dict, head: str, base: str) -> list[str]:
@@ -605,11 +631,19 @@ def main() -> None:
     print("- Claude Code: retrieve Crit comments/status data, review it inside the task, then address findings.")
     print("- Use browser Crit review only when the user explicitly asks for Crit web UI or Crit data is unavailable.")
     print("Record a receipt with `review_surface:`, `reviewer:`, and `review_outcome:`.")
-    print("For agent judgment, locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` to a repo-local JSON file.")
-    print("Evidence must contain at least one resolved record; for a finding-free review, add and resolve one review-scope approval record.")
+    print(
+        "For agent judgment, locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` to a repo-local JSON file."
+    )
+    print(
+        "Evidence must contain at least one resolved record; for a finding-free review, add and resolve one review-scope approval record."
+    )
     print("This local evidence is process evidence, not reviewer authentication.")
-    print("Then use `review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`, and `review_source: <json path>`.")
-    print("After addressing review feedback, rerun with AGENT_REVIEWED=1 or CRIT_REVIEWED=1 plus REVIEW_EVIDENCE=<path>.")
+    print(
+        "Then use `review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`, and `review_source: <json path>`."
+    )
+    print(
+        "After addressing review feedback, rerun with AGENT_REVIEWED=1 or CRIT_REVIEWED=1 plus REVIEW_EVIDENCE=<path>."
+    )
     raise SystemExit(1)
 
 

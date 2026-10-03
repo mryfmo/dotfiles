@@ -122,9 +122,7 @@ class PermgateTest(unittest.TestCase):
                     {"id": "pem", "regex": r".*\.pem"},
                     {
                         "id": "agent-auth",
-                        "regex": (
-                            r"~/(?:\.pi|\.codex|\.claude)(?:/.*)?/auth\.json"
-                        ),
+                        "regex": (r"~/(?:\.pi|\.codex|\.claude)(?:/.*)?/auth\.json"),
                     },
                 ],
             },
@@ -185,14 +183,14 @@ class PermgateTest(unittest.TestCase):
             "prompt = sys.stdin.read()\n"
             "Path(os.environ['PERMGATE_TEST_CLAUDE_CAPTURE']).write_text(\n"
             "    json.dumps({'args': sys.argv[1:], 'prompt': prompt})\n"
-            ")\n"
-            + textwrap.dedent(body).lstrip()
-            + f"\nraise SystemExit({exit_code})\n"
+            ")\n" + textwrap.dedent(body).lstrip() + f"\nraise SystemExit({exit_code})\n"
         )
         self.fake_claude.chmod(0o755)
 
     def write_fake_codex(self, body: str | None = None, *, exit_code: int = 0) -> None:
-        body = body or """
+        body = (
+            body
+            or """
             import json
             import os
             import sys
@@ -212,10 +210,9 @@ class PermgateTest(unittest.TestCase):
                 "confidence": 0.99
             }))
         """
+        )
         self.fake_codex.write_text(
-            f"#!{sys.executable}\n"
-            + textwrap.dedent(body).lstrip()
-            + f"\nraise SystemExit({exit_code})\n"
+            f"#!{sys.executable}\n" + textwrap.dedent(body).lstrip() + f"\nraise SystemExit({exit_code})\n"
         )
         self.fake_codex.chmod(0o755)
 
@@ -254,11 +251,7 @@ class PermgateTest(unittest.TestCase):
         )
 
     def read_log(self) -> list[dict]:
-        return [
-            json.loads(line)
-            for line in self.state_path.read_text().splitlines()
-            if line.strip()
-        ]
+        return [json.loads(line) for line in self.state_path.read_text().splitlines() if line.strip()]
 
     def test_layer_one_allows_documented_claude_and_codex_contracts(self) -> None:
         for agent, payload in (("claude", CLAUDE_INPUT), ("codex", CODEX_INPUT)):
@@ -271,9 +264,7 @@ class PermgateTest(unittest.TestCase):
                 self.assertEqual(set(decision["decision"]), {"behavior"})
 
     def test_layer_one_deny_uses_both_hook_output_schemas(self) -> None:
-        payload = CODEX_INPUT | {
-            "tool_input": {"command": "rm -rf /", "description": "Dangerous"}
-        }
+        payload = CODEX_INPUT | {"tool_input": {"command": "rm -rf /", "description": "Dangerous"}}
         for agent in ("claude", "codex"):
             with self.subTest(agent=agent):
                 result = self.run_gate(agent, payload)
@@ -470,9 +461,7 @@ class PermgateTest(unittest.TestCase):
         )
         for path, cwd in fixtures:
             with self.subTest(path=path, cwd=cwd):
-                result = self.run_gate(
-                    "cli", {"tool": "write", "path": path, "cwd": cwd}
-                )
+                result = self.run_gate("cli", {"tool": "write", "path": path, "cwd": cwd})
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(result.stdout, '{"decision":"ask"}\n')
 
@@ -537,7 +526,6 @@ class PermgateTest(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(result.stdout, '{"decision":"ask"}\n')
 
-
     def test_cli_reuses_every_shared_bash_allow_pattern(self) -> None:
         policy_text = (ROOT / "home/dot_agents/permgate-policy.yaml").read_text()
         policy = json.loads(policy_text)
@@ -591,10 +579,7 @@ class PermgateTest(unittest.TestCase):
         fixtures = (
             (
                 {"command": "git status --short"},
-                (
-                    '{"hookSpecificOutput":{"hookEventName":"PermissionRequest",'
-                    '"decision":{"behavior":"allow"}}}\n'
-                ),
+                ('{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}\n'),
             ),
             (
                 {"command": "rm -rf /"},
@@ -614,9 +599,7 @@ class PermgateTest(unittest.TestCase):
                     self.assertEqual(result.stdout, expected)
 
     def test_unknown_shadow_classification_returns_native_ask(self) -> None:
-        payload = CODEX_INPUT | {
-            "tool_input": {"command": "gh issue view 123", "description": "Unknown"}
-        }
+        payload = CODEX_INPUT | {"tool_input": {"command": "gh issue view 123", "description": "Unknown"}}
         result = self.run_gate("codex", payload)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, "")
@@ -735,9 +718,7 @@ class PermgateTest(unittest.TestCase):
 
     def test_log_shape_redacts_command_and_output(self) -> None:
         secret_marker = "do-not-log-this-argument"
-        payload = CODEX_INPUT | {
-            "tool_input": {"command": f"git status --short {secret_marker}"}
-        }
+        payload = CODEX_INPUT | {"tool_input": {"command": f"git status --short {secret_marker}"}}
         self.run_gate("codex", payload)
         record = self.read_log()[-1]
         self.assertTrue(
@@ -756,16 +737,12 @@ class PermgateTest(unittest.TestCase):
         self.assertNotIn(secret_marker, json.dumps(record))
 
     def test_allow_pattern_rejects_shell_chaining(self) -> None:
-        payload = CODEX_INPUT | {
-            "tool_input": {"command": "git status --short; rm -rf /"}
-        }
+        payload = CODEX_INPUT | {"tool_input": {"command": "git status --short; rm -rf /"}}
         result = self.run_gate("codex", payload)
         self.assertEqual(result.stdout, "")
 
     def test_git_diff_output_option_is_never_automatically_allowed(self) -> None:
-        payload = CODEX_INPUT | {
-            "tool_input": {"command": "git diff --output=/tmp/changed.patch"}
-        }
+        payload = CODEX_INPUT | {"tool_input": {"command": "git diff --output=/tmp/changed.patch"}}
         result = self.run_gate("codex", payload)
         self.assertEqual(result.stdout, "")
         self.assertEqual(self.read_log()[-1]["layer"], "fallthrough")
@@ -791,23 +768,17 @@ class PermgateTest(unittest.TestCase):
         )
         for command in fixtures:
             with self.subTest(command=command.split()[1]):
-                result = self.run_gate(
-                    "codex", CODEX_INPUT | {"tool_input": {"command": command}}
-                )
+                result = self.run_gate("codex", CODEX_INPUT | {"tool_input": {"command": command}})
                 record = self.read_log()[-1]
                 self.assertEqual(result.stdout, "")
                 self.assertEqual(record["layer"], "fallthrough")
                 self.assertNotIn("-secret", json.dumps(record))
 
     def test_script_named_version_is_not_a_version_check(self) -> None:
-        self.policy_path.write_text(
-            (ROOT / "home/dot_agents/permgate-policy.yaml").read_text()
-        )
+        self.policy_path.write_text((ROOT / "home/dot_agents/permgate-policy.yaml").read_text())
         for command in ("python3 version", "node version"):
             with self.subTest(command=command):
-                result = self.run_gate(
-                    "codex", CODEX_INPUT | {"tool_input": {"command": command}}
-                )
+                result = self.run_gate("codex", CODEX_INPUT | {"tool_input": {"command": command}})
                 self.assertEqual(result.stdout, "")
                 self.assertNotEqual(self.read_log()[-1]["layer"], "deterministic")
 
@@ -911,21 +882,27 @@ class PermgateTest(unittest.TestCase):
     def test_classifier_receives_metadata_without_raw_values(self) -> None:
         marker = "raw-value-must-never-reach-a-classifier"
         fixtures = (
-            ("codex", CODEX_INPUT | {
-                "tool_name": "Bash",
-                "tool_input": {"command": f"gh issue view {marker}"},
-            }),
-            ("claude", CLAUDE_INPUT | {
-                "tool_name": "Bash",
-                "tool_input": {"command": f"gh issue view {marker}"},
-            }),
+            (
+                "codex",
+                CODEX_INPUT
+                | {
+                    "tool_name": "Bash",
+                    "tool_input": {"command": f"gh issue view {marker}"},
+                },
+            ),
+            (
+                "claude",
+                CLAUDE_INPUT
+                | {
+                    "tool_name": "Bash",
+                    "tool_input": {"command": f"gh issue view {marker}"},
+                },
+            ),
         )
         for agent, payload in fixtures:
             with self.subTest(agent=agent):
                 self.run_gate(agent, payload)
-                capture_path = (
-                    self.codex_capture if agent == "codex" else self.claude_capture
-                )
+                capture_path = self.codex_capture if agent == "codex" else self.claude_capture
                 capture = capture_path.read_text()
                 self.assertNotIn(marker, capture)
                 self.assertNotIn("tool_input", capture)
@@ -1011,9 +988,7 @@ class PermgateTest(unittest.TestCase):
             "git --exec-path=/tmp status",
         ):
             with self.subTest(command=command):
-                result = self.run_gate(
-                    "codex", CODEX_INPUT | {"tool_input": {"command": command}}
-                )
+                result = self.run_gate("codex", CODEX_INPUT | {"tool_input": {"command": command}})
                 self.assertEqual(result.stdout, "")
                 self.assertEqual(self.read_log()[-1]["layer"], "fallthrough")
                 self.assertFalse(self.codex_capture.exists())
@@ -1022,9 +997,7 @@ class PermgateTest(unittest.TestCase):
         self.write_policy(enabled_agents=("codex",))
         for command in ("./gh issue view 123", "/tmp/git status"):
             with self.subTest(command=command):
-                result = self.run_gate(
-                    "codex", CODEX_INPUT | {"tool_input": {"command": command}}
-                )
+                result = self.run_gate("codex", CODEX_INPUT | {"tool_input": {"command": command}})
                 self.assertEqual(result.stdout, "")
                 self.assertEqual(self.read_log()[-1]["layer"], "fallthrough")
                 self.assertFalse(self.codex_capture.exists())

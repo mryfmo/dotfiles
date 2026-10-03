@@ -69,7 +69,7 @@ update:
 		echo "Warning: private chezmoi source/config not found. Skipping private dotfiles."; \
 	fi
 	mise install --locked node
-	mise install --locked npm:ccstatusline npm:ccusage npm:pnpm
+	mise install --locked npm:ccstatusline npm:ccusage npm:pnpm ruff npm:prettier
 	./scripts/update-agent-assets.sh
 	@if ! command -v herdr > /dev/null 2>&1; then \
 		echo "Herdr command not found; skipping config reload."; \
@@ -155,6 +155,8 @@ reset-config:
 .PHONY: format
 format:
 	shfmt --indent 4 --space-redirects --diff .
+	git ls-files -z '*.py' | xargs -0 ruff format --config ruff.toml --check
+	git ls-files -z '*.md' | xargs -0 prettier --check
 
 .PHONY: unit-test
 unit-test:

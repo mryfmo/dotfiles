@@ -17,7 +17,7 @@ class FilesFixtureTest(unittest.TestCase):
         self.assertEqual(1, helpers.count('"${FILES_TEST_CHEZMOI'))
         for name in ("FILES_TEST_SOURCE", "FILES_TEST_CONFIG"):
             self.assertIn(f"{name}=", workflow)
-            self.assertIn(f'${{{name}:?{name} is required}}', helpers)
+            self.assertIn(f"${{{name}:?{name} is required}}", helpers)
         self.assertIn('--destination "${HOME}"', helpers)
         self.assertEqual(3, helpers.count("--exclude=scripts"))
         self.assertNotIn("run chezmoi", helpers)

@@ -39,9 +39,7 @@ class AppArmorUsernsTest(unittest.TestCase):
 
     def fake(self, name: str, exit_code: int = 0) -> Path:
         path = self.bin / name
-        path.write_text(
-            f'#!/bin/bash\necho "{name} $*" >> "{self.log}"\nexit {exit_code}\n'
-        )
+        path.write_text(f'#!/bin/bash\necho "{name} $*" >> "{self.log}"\nexit {exit_code}\n')
         path.chmod(0o755)
         return path
 
@@ -72,8 +70,7 @@ class AppArmorUsernsTest(unittest.TestCase):
             [
                 "bash",
                 "-c",
-                'source "$1"; check_apparmor_userns; '
-                'echo "req=${required_failures} opt=${optional_warnings}"',
+                'source "$1"; check_apparmor_userns; echo "req=${required_failures} opt=${optional_warnings}"',
                 "_",
                 str(CHECK_TOOLS),
             ],
@@ -136,9 +133,7 @@ class AppArmorUsernsTest(unittest.TestCase):
         result = self.run_installer(self.env("1", self.fake("bwrap")))
 
         self.assertNotEqual(0, result.returncode)
-        self.assertEqual(
-            [f"sudo install -m 0644 {PROFILE} {self.profile_target}"], self.calls()
-        )
+        self.assertEqual([f"sudo install -m 0644 {PROFILE} {self.profile_target}"], self.calls())
         self.assertNotIn("Loaded AppArmor profile", result.stdout)
 
     def test_doctor_is_not_applicable_without_the_restriction(self) -> None:
@@ -179,7 +174,6 @@ class AppArmorUsernsTest(unittest.TestCase):
                 self.assertIn(message, result.stderr)
                 self.assertIn("req=1 opt=0", result.stdout)
 
-
     def test_doctor_fails_when_bwrap_is_missing_with_codex(self) -> None:
         self.fake("codex")
         result = self.run_doctor(self.env("1"))
@@ -187,9 +181,7 @@ class AppArmorUsernsTest(unittest.TestCase):
         self.assertIn("missing-bwrap is missing; sandboxed codex runs need it", result.stderr)
         self.assertIn("req=1 opt=0", result.stdout)
 
-    @unittest.skipUnless(
-        shutil.which("chezmoi") and debian_like(), "needs chezmoi on a Debian-like host"
-    )
+    @unittest.skipUnless(shutil.which("chezmoi") and debian_like(), "needs chezmoi on a Debian-like host")
     def test_wrapper_re_renders_when_prerequisites_change(self) -> None:
         home = self.temp_dir / "chezmoi-home"
         home.mkdir()
@@ -221,6 +213,7 @@ class AppArmorUsernsTest(unittest.TestCase):
         self.assertIn("restriction=1", ready)
         self.assertIn("restriction=0", unrestricted)
         self.assertEqual(3, len({skipped, ready, unrestricted}))
+
 
 if __name__ == "__main__":
     unittest.main()

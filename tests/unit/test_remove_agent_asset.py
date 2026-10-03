@@ -44,9 +44,7 @@ class RemoveAgentAssetTest(unittest.TestCase):
     def manifest(self) -> dict[str, object]:
         return json.loads(self.manifest_path.read_text())
 
-    def run_remover(
-        self, *args: str, env: dict[str, str] | None = None
-    ) -> subprocess.CompletedProcess[str]:
+    def run_remover(self, *args: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             ["bash", str(REMOVER), *args],
             env={
@@ -86,8 +84,7 @@ class RemoveAgentAssetTest(unittest.TestCase):
                 result = self.run_remover("demo", *option)
                 self.assertEqual(0, result.returncode, result.stderr)
                 self.assertEqual(
-                    f"DRY-RUN: rm -rf -- {target.resolve()}\n"
-                    "DRY-RUN: remove manifest step demo\n",
+                    f"DRY-RUN: rm -rf -- {target.resolve()}\nDRY-RUN: remove manifest step demo\n",
                     result.stdout,
                 )
                 self.assertTrue(target.is_dir())
@@ -101,9 +98,7 @@ class RemoveAgentAssetTest(unittest.TestCase):
         (target / "asset.txt").write_text("asset")
         (sibling / "keep.txt").write_text("keep")
         other = self.step("rsync", [sibling])
-        self.write_manifest(
-            {"demo": self.step("installer", [target]), "other": other}
-        )
+        self.write_manifest({"demo": self.step("installer", [target]), "other": other})
 
         result = self.run_remover("demo", "--yes")
 
@@ -122,9 +117,7 @@ class RemoveAgentAssetTest(unittest.TestCase):
         codex_entry = self.step("installer", [codex])
         self.write_manifest(
             {
-                "ensure_mise_npm_agent_cli:claude": self.step(
-                    "installer", [claude]
-                ),
+                "ensure_mise_npm_agent_cli:claude": self.step("installer", [claude]),
                 "ensure_mise_npm_agent_cli:codex": codex_entry,
             }
         )
@@ -134,9 +127,7 @@ class RemoveAgentAssetTest(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertFalse(claude.exists())
         self.assertTrue(codex.is_dir())
-        self.assertEqual(
-            {"ensure_mise_npm_agent_cli:codex"}, set(self.manifest()["steps"])
-        )
+        self.assertEqual({"ensure_mise_npm_agent_cli:codex"}, set(self.manifest()["steps"]))
         self.assertEqual(
             codex_entry,
             self.manifest()["steps"]["ensure_mise_npm_agent_cli:codex"],
@@ -179,9 +170,7 @@ class RemoveAgentAssetTest(unittest.TestCase):
         outside.mkdir()
         (safe / "keep.txt").write_text("safe")
         (outside / "keep.txt").write_text("outside")
-        self.write_manifest(
-            {"mixed": self.step("installer", [safe, outside])}
-        )
+        self.write_manifest({"mixed": self.step("installer", [safe, outside])})
 
         result = self.run_remover("mixed", "--yes")
 
@@ -229,9 +218,7 @@ class RemoveAgentAssetTest(unittest.TestCase):
         settings.parent.mkdir(parents=True, exist_ok=True)
         settings.write_text("{}")
         log = self.temp_dir / "cli.log"
-        self.executable(
-            "claude", 'printf "claude %s\\n" "$*" >> "$TEST_LOG"\n'
-        )
+        self.executable("claude", 'printf "claude %s\\n" "$*" >> "$TEST_LOG"\n')
         self.write_manifest(
             {
                 "plugin": self.step(
@@ -246,8 +233,7 @@ class RemoveAgentAssetTest(unittest.TestCase):
         removed = self.run_remover("plugin", "--yes", env={"TEST_LOG": str(log)})
 
         self.assertEqual(
-            "DRY-RUN: claude plugin uninstall demo@market\n"
-            "DRY-RUN: remove manifest step plugin\n",
+            "DRY-RUN: claude plugin uninstall demo@market\nDRY-RUN: remove manifest step plugin\n",
             dry_run.stdout,
         )
         self.assertEqual(0, removed.returncode, removed.stderr)
@@ -274,8 +260,7 @@ class RemoveAgentAssetTest(unittest.TestCase):
 
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual(
-            f"DRY-RUN: rm -rf -- {plugin_root.resolve()}\n"
-            "DRY-RUN: remove manifest step crit\n",
+            f"DRY-RUN: rm -rf -- {plugin_root.resolve()}\nDRY-RUN: remove manifest step crit\n",
             result.stdout,
         )
         self.assertNotIn(str(config), result.stdout)
@@ -284,37 +269,22 @@ class RemoveAgentAssetTest(unittest.TestCase):
         self.executable("codex", "exit 0\n")
         cache = self.home / ".codex/plugins/cache/demo/demo"
         cache.mkdir(parents=True)
-        self.write_manifest(
-            {
-                "codex-plugin": self.step(
-                    "plugin", [cache], ["codex plugin add demo@market"]
-                )
-            }
-        )
+        self.write_manifest({"codex-plugin": self.step("plugin", [cache], ["codex plugin add demo@market"])})
 
         result = self.run_remover("codex-plugin")
 
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual(
-            "DRY-RUN: codex plugin remove demo@market\n"
-            "DRY-RUN: remove manifest step codex-plugin\n",
+            "DRY-RUN: codex plugin remove demo@market\nDRY-RUN: remove manifest step codex-plugin\n",
             result.stdout,
         )
 
     def test_brew_uses_uninstall_for_unambiguous_formula(self) -> None:
         log = self.temp_dir / "brew.log"
         self.executable("brew", 'printf "brew %s\\n" "$*" >> "$TEST_LOG"\n')
-        self.write_manifest(
-            {
-                "brew-step": self.step(
-                    "brew", [], ["brew install demo-formula"]
-                )
-            }
-        )
+        self.write_manifest({"brew-step": self.step("brew", [], ["brew install demo-formula"])})
 
-        result = self.run_remover(
-            "brew-step", "--yes", env={"TEST_LOG": str(log)}
-        )
+        result = self.run_remover("brew-step", "--yes", env={"TEST_LOG": str(log)})
 
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual("brew uninstall demo-formula\n", log.read_text())
@@ -368,8 +338,7 @@ class RemoveAgentAssetTest(unittest.TestCase):
 
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual(
-            "herdr integration uninstall claude\n"
-            "herdr integration uninstall codex\n",
+            "herdr integration uninstall claude\nherdr integration uninstall codex\n",
             log.read_text(),
         )
         self.assertEqual({}, self.manifest()["steps"])

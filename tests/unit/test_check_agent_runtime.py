@@ -40,9 +40,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         path.write_text(text)
         return path
 
-    def write_target(
-        self, rel: str, text: str = "content\n", *, executable: bool = False
-    ) -> Path:
+    def write_target(self, rel: str, text: str = "content\n", *, executable: bool = False) -> Path:
         path = self.target_root / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text)
@@ -120,9 +118,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.write_target("agmsg/scripts/send.sh", executable=True)
         self.write_target("agmsg/extra.txt")
 
-        self.assertEqual(
-            self.compare(), ["skills has unexpected files: agmsg/extra.txt"]
-        )
+        self.assertEqual(self.compare(), ["skills has unexpected files: agmsg/extra.txt"])
 
     def test_unmanaged_top_level_skill_dir_warns(self) -> None:
         self.write_source("agmsg/scripts/executable_send.sh")
@@ -200,9 +196,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             self.module.SOURCE_ROOT = self.source_root
             self.module.HOME = self.target_root
             self.module.same_text = lambda *args, **kwargs: True
-            self.module.same_modified = lambda source, *args, **kwargs: (
-                modified_sources.append(source) or True
-            )
+            self.module.same_modified = lambda source, *args, **kwargs: modified_sources.append(source) or True
             self.module.compare_shared_skills = list
             self.module.compare_claude_skills = list
             self.module.check_executable_hook = lambda *args, **kwargs: []
@@ -224,9 +218,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
     def test_chezmoi_drift_warnings_classify_status_and_mode_only(self) -> None:
         status = mock.Mock(
             returncode=0,
-            stdout=(
-                " M .agents/agent-config.yaml\nMM .zshrc\nMM .codex/deep.config.toml\n"
-            ),
+            stdout=(" M .agents/agent-config.yaml\nMM .zshrc\nMM .codex/deep.config.toml\n"),
             stderr="",
         )
         content_diff = mock.Mock(
@@ -237,9 +229,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         mode_diff = mock.Mock(
             returncode=0,
             stdout=(
-                "diff --git a/.codex/deep.config.toml b/.codex/deep.config.toml\n"
-                "old mode 100600\n"
-                "new mode 100644\n"
+                "diff --git a/.codex/deep.config.toml b/.codex/deep.config.toml\nold mode 100600\nnew mode 100644\n"
             ),
             stderr="",
         )
@@ -266,9 +256,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         with mock.patch.object(self.module.subprocess, "run", return_value=result):
             warnings = self.module.chezmoi_drift_warnings()
 
-        self.assertEqual(
-            ["WARN: unable to inspect chezmoi drift: status failed"], warnings
-        )
+        self.assertEqual(["WARN: unable to inspect chezmoi drift: status failed"], warnings)
 
     def test_orphan_detection_classifies_accounted_stale_and_orphan(self) -> None:
         home = self.temp_dir / "home"
@@ -292,9 +280,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             "version": 1,
             "steps": {
                 "install_stale_skill": {"paths": [str(skills / "stale-skill/payload")]},
-                "ensure_mise_npm_agent_cli:claude": {
-                    "paths": [str(agents / "stale-root")]
-                },
+                "ensure_mise_npm_agent_cli:claude": {"paths": [str(agents / "stale-root")]},
             },
         }
         (agents / ".installed-manifest.json").write_text(json.dumps(manifest))
@@ -333,11 +319,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             path.mkdir(parents=True)
         manifest = {
             "version": 1,
-            "steps": {
-                "update_agmsg": {
-                    "paths": [str(skills / "agmsg/SKILL.md"), str(skills / "agmsg/scripts")]
-                }
-            },
+            "steps": {"update_agmsg": {"paths": [str(skills / "agmsg/SKILL.md"), str(skills / "agmsg/scripts")]}},
         }
         (agents / ".installed-manifest.json").write_text(json.dumps(manifest))
 
@@ -379,9 +361,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         warnings = self.module.orphaned_asset_warnings(home, source)
 
         self.assertEqual(
-            [
-                f"WARN: orphaned agent asset: {skills / 'unlisted-skill'}; manual review required"
-            ],
+            [f"WARN: orphaned agent asset: {skills / 'unlisted-skill'}; manual review required"],
             warnings,
         )
 
@@ -407,14 +387,10 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             expected_sources,
             ignored_paths=ignored,
         )
-        without_ignore = self.module.compare_tree_contents(
-            "skills", expected, self.target_root, expected_sources
-        )
+        without_ignore = self.module.compare_tree_contents("skills", expected, self.target_root, expected_sources)
 
         self.assertEqual([], with_ignore)
-        self.assertEqual(
-            ["skills has unexpected files: terminal-browser/SKILL.md"], without_ignore
-        )
+        self.assertEqual(["skills has unexpected files: terminal-browser/SKILL.md"], without_ignore)
 
     def test_compare_claude_skills_ignores_cowork_synced_subtree(self) -> None:
         (self.source_root / "dot_claude/skills").mkdir(parents=True)
@@ -531,9 +507,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         ]
 
         self.assertEqual(4, len(commands))
-        self.assertTrue(
-            all(command[:3] == ("chezmoi", "apply", "--force") for command in commands)
-        )
+        self.assertTrue(all(command[:3] == ("chezmoi", "apply", "--force") for command in commands))
 
     def test_deleted_shared_skill_file_repair_converges(self) -> None:
         source_root = self.temp_dir / "repo/home"
@@ -548,9 +522,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
 
         def execute(action) -> bool:
             actions.append(action)
-            self.assertEqual(
-                ("chezmoi", "apply", "--force", str(target)), action.command
-            )
+            self.assertEqual(("chezmoi", "apply", "--force", str(target)), action.command)
             target.parent.mkdir(parents=True)
             shutil.copy2(source, target)
             return True
@@ -721,15 +693,11 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             with self.subTest(name=name):
                 manifest_path = self.temp_dir / f"{name}-manifest.json"
                 manifest_path.write_text(json.dumps(manifest))
-                self.assertEqual(
-                    expected, self.module.installed_manifest_error(manifest_path)
-                )
+                self.assertEqual(expected, self.module.installed_manifest_error(manifest_path))
 
         unreadable = self.temp_dir / "directory-manifest.json"
         unreadable.mkdir()
-        self.assertRegex(
-            self.module.installed_manifest_error(unreadable), r"^unreadable: "
-        )
+        self.assertRegex(self.module.installed_manifest_error(unreadable), r"^unreadable: ")
 
     def test_invalid_manifest_is_one_error_and_skips_dependent_checks(self) -> None:
         agents = self.target_root / ".agents"
@@ -752,9 +720,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
             self.module.compare_shared_skills = list
             self.module.compare_claude_skills = list
             self.module.check_executable_hook = lambda *args, **kwargs: []
-            self.module.manifest_asset_findings = lambda *args, **kwargs: self.fail(
-                "manifest findings must be skipped"
-            )
+            self.module.manifest_asset_findings = lambda *args, **kwargs: self.fail("manifest findings must be skipped")
             self.module.orphaned_asset_warnings = lambda *args, **kwargs: self.fail(
                 "manifest orphan checks must be skipped"
             )
@@ -783,20 +749,14 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         initial = [f"Claude MCP config differs or is missing: {target}"]
         scans = iter((initial, []))
         calls: list[object] = []
-        action = self.module.RepairAction(
-            "missing file", target, ("chezmoi", "apply", "--force", str(target))
-        )
+        action = self.module.RepairAction("missing file", target, ("chezmoi", "apply", "--force", str(target)))
         original_check = self.module.check
         original_actions = self.module.repair_actions
         original_execute = self.module.execute_repair
         try:
             self.module.check = lambda: next(scans)
-            self.module.repair_actions = lambda failures, home=None: (
-                [action] if failures else []
-            )
-            self.module.execute_repair = lambda candidate: (
-                calls.append(candidate) or True
-            )
+            self.module.repair_actions = lambda failures, home=None: [action] if failures else []
+            self.module.execute_repair = lambda candidate: calls.append(candidate) or True
             stdout = io.StringIO()
             stderr = io.StringIO()
             with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
@@ -820,9 +780,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         target = self.target_root / "missing.json"
         failure = f"Claude MCP config differs or is missing: {target}"
         scan_count = 0
-        action = self.module.RepairAction(
-            "missing file", target, ("chezmoi", "apply", "--force", str(target))
-        )
+        action = self.module.RepairAction("missing file", target, ("chezmoi", "apply", "--force", str(target)))
 
         def scan() -> list[str]:
             nonlocal scan_count
@@ -857,9 +815,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         original_execute = self.module.execute_repair
         try:
             self.module.check = lambda: [warning, failure]
-            self.module.execute_repair = lambda action: self.fail(
-                f"unexpected repair: {action}"
-            )
+            self.module.execute_repair = lambda action: self.fail(f"unexpected repair: {action}")
             stdout = io.StringIO()
             stderr = io.StringIO()
             with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
@@ -883,9 +839,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         original_execute = self.module.execute_repair
         try:
             self.module.check = lambda: warnings
-            self.module.execute_repair = lambda action: self.fail(
-                f"unexpected repair: {action}"
-            )
+            self.module.execute_repair = lambda action: self.fail(f"unexpected repair: {action}")
             stdout = io.StringIO()
             with contextlib.redirect_stdout(stdout):
                 with mock.patch.dict(os.environ, {"REPAIR": "1"}):
@@ -896,11 +850,9 @@ class CheckAgentRuntimeTest(unittest.TestCase):
 
         self.assertEqual(0, result)
         self.assertEqual(
-            "\n".join(warnings)
-            + "\nactive agent runtime files match this chezmoi source tree\n",
+            "\n".join(warnings) + "\nactive agent runtime files match this chezmoi source tree\n",
             stdout.getvalue(),
         )
-
 
     def ua_core_tree(self) -> Path:
         core = self.target_root / ".understand-anything/repo/understand-anything-plugin/packages/core"
@@ -914,10 +866,7 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         warnings = self.module.understand_anything_core_warnings(self.target_root)
 
         self.assertEqual(
-            [
-                f"WARN: Understand-Anything core not built: {core / 'dist/index.js'} "
-                "is missing; run make update"
-            ],
+            [f"WARN: Understand-Anything core not built: {core / 'dist/index.js'} is missing; run make update"],
             warnings,
         )
         self.assertTrue(all(self.module.is_warning(warning) for warning in warnings))
@@ -970,10 +919,12 @@ class CheckAgentRuntimeTest(unittest.TestCase):
         self.assertEqual([], self.module.understand_anything_core_warnings(self.target_root))
 
     def test_check_includes_ua_core_warnings(self) -> None:
-        with mock.patch.object(
-            self.module, "understand_anything_core_warnings", return_value=["WARN: ua-core sentinel"]
-        ), mock.patch.object(self.module, "chezmoi_drift_warnings", return_value=[]), mock.patch.object(
-            self.module, "orchestrator_seat_lock_warnings", return_value=[]
+        with (
+            mock.patch.object(
+                self.module, "understand_anything_core_warnings", return_value=["WARN: ua-core sentinel"]
+            ),
+            mock.patch.object(self.module, "chezmoi_drift_warnings", return_value=[]),
+            mock.patch.object(self.module, "orchestrator_seat_lock_warnings", return_value=[]),
         ):
             self.assertIn("WARN: ua-core sentinel", self.module.check())
 

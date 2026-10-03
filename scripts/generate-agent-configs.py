@@ -24,9 +24,7 @@ ADH_PROFILE = {
     "codex": {
         "model": "gpt-6-astra",
         "model_reasoning_effort": "xhigh",
-        "notify": [
-            "{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify"
-        ],
+        "notify": ["{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify"],
     },
 }
 
@@ -42,9 +40,7 @@ def load_manifest() -> dict[str, Any]:
 
 def parse_manifest(text: str) -> dict[str, Any]:
     if yaml is None:
-        fail(
-            "PyYAML is required: uv run --with pyyaml scripts/generate-agent-configs.py"
-        )
+        fail("PyYAML is required: uv run --with pyyaml scripts/generate-agent-configs.py")
     data = yaml.safe_load(text)
     if not isinstance(data, dict):
         fail(f"{MANIFEST_PATH} must contain a YAML mapping")
@@ -69,12 +65,7 @@ def quote_toml(value: Any) -> str:
         return "[" + ", ".join(quote_toml(item) for item in value) + "]"
     if isinstance(value, dict):
         return (
-            "{ "
-            + ", ".join(
-                f"{quote_toml_key(str(key))} = {quote_toml(item)}"
-                for key, item in value.items()
-            )
-            + " }"
+            "{ " + ", ".join(f"{quote_toml_key(str(key))} = {quote_toml(item)}" for key, item in value.items()) + " }"
         )
     fail(f"unsupported TOML value: {value!r}")
 
@@ -129,9 +120,7 @@ def model_profiles(manifest: dict[str, Any]) -> dict[str, Any]:
             for key in keys + tuple(key for key in optional if key in mapping):
                 value = mapping.get(key)
                 if not isinstance(value, str) or not PROFILE_VALUE_RE.match(value):
-                    fail(
-                        f"model profile {name}.{agent}.{key} must be a launcher-safe string"
-                    )
+                    fail(f"model profile {name}.{agent}.{key} must be a launcher-safe string")
         sandbox_mode = profile["codex"].get("sandbox_mode")
         if sandbox_mode is not None and sandbox_mode not in CODEX_SANDBOX_MODES:
             fail(
@@ -172,9 +161,7 @@ WORKER_WORKTREE = re.compile(r"\.claude/worktrees/[A-Za-z0-9._-]+")
 def worker_worktree(manifest: dict[str, Any]) -> str | None:
     path = manifest.get("worker_worktree")
     if path is not None and (
-        not isinstance(path, str)
-        or not WORKER_WORKTREE.fullmatch(path)
-        or path.rsplit("/", 1)[1] in {".", ".."}
+        not isinstance(path, str) or not WORKER_WORKTREE.fullmatch(path) or path.rsplit("/", 1)[1] in {".", ".."}
     ):
         fail(f"worker_worktree must be a relative path under .claude/worktrees/: {path!r}")
     return path
@@ -190,9 +177,7 @@ def interactive_profile(manifest: dict[str, Any]) -> dict[str, Any]:
 
 def codex_marketplace_revision(manifest: dict[str, Any], name: str) -> dict[str, Any]:
     """Return the pinned marketplace revision recorded in assets.codex-plugins."""
-    plugin = (
-        manifest.get("assets", {}).get("codex-plugins", {}).get("plugins", {}).get(name, {})
-    )
+    plugin = manifest.get("assets", {}).get("codex-plugins", {}).get("plugins", {}).get(name, {})
     return {key: plugin[key] for key in ("last_updated", "last_revision") if key in plugin}
 
 
@@ -270,9 +255,7 @@ def render_codex(manifest: dict[str, Any]) -> str:
     ]
     profile_codex = interactive_profile(manifest)["codex"]
     lines.append(f"model = {quote_toml(profile_codex['model'])}")
-    lines.append(
-        f"model_reasoning_effort = {quote_toml(profile_codex['model_reasoning_effort'])}"
-    )
+    lines.append(f"model_reasoning_effort = {quote_toml(profile_codex['model_reasoning_effort'])}")
     for key in (
         "model_reasoning_summary",
         "model_verbosity",
@@ -296,17 +279,11 @@ def render_codex(manifest: dict[str, Any]) -> str:
                 continue
             lines.extend(["", f"[tui.{quote_toml_key(key)}]"])
             for nested_key, nested_value in value.items():
-                lines.append(
-                    f"{quote_toml_key(str(nested_key))} = {quote_toml(nested_value)}"
-                )
+                lines.append(f"{quote_toml_key(str(nested_key))} = {quote_toml(nested_value)}")
     lines.extend(["", "[sandbox_workspace_write]"])
-    lines.append(
-        f"network_access = {quote_toml(codex['sandbox_workspace_write']['network_access'])}"
-    )
+    lines.append(f"network_access = {quote_toml(codex['sandbox_workspace_write']['network_access'])}")
     if codex["sandbox_workspace_write"].get("writable_roots") is not None:
-        lines.append(
-            f"writable_roots = {quote_toml(codex['sandbox_workspace_write']['writable_roots'])}"
-        )
+        lines.append(f"writable_roots = {quote_toml(codex['sandbox_workspace_write']['writable_roots'])}")
     lines.extend(["", "[shell_environment_policy]"])
     for key, value in codex["shell_environment_policy"].items():
         lines.append(f"{quote_toml_key(str(key))} = {quote_toml(value)}")
@@ -326,15 +303,11 @@ def render_codex(manifest: dict[str, Any]) -> str:
         elif server["transport"] == "http":
             lines.append(f"url = {quote_toml(server['url'])}")
             if server.get("bearer_token_env_var"):
-                lines.append(
-                    f"bearer_token_env_var = {quote_toml(server['bearer_token_env_var'])}"
-                )
+                lines.append(f"bearer_token_env_var = {quote_toml(server['bearer_token_env_var'])}")
             if server.get("http_headers"):
                 lines.append(f"http_headers = {quote_toml(server['http_headers'])}")
             if server.get("env_http_headers"):
-                lines.append(
-                    f"env_http_headers = {quote_toml(server['env_http_headers'])}"
-                )
+                lines.append(f"env_http_headers = {quote_toml(server['env_http_headers'])}")
         else:
             fail(f"unsupported MCP transport for {name}: {server['transport']}")
         for key in (
@@ -382,8 +355,7 @@ def render_codex(manifest: dict[str, Any]) -> str:
                 'type = "command"',
                 f"command = {quote_toml(permission_request['command'])}",
                 f"timeout = {quote_toml(permission_request['timeout'])}",
-                "statusMessage = "
-                + quote_toml(permission_request["status_message"]),
+                "statusMessage = " + quote_toml(permission_request["status_message"]),
             ]
         )
     if hooks.get("state"):
@@ -426,7 +398,7 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
     claude = manifest["claude"]
     hooks = claude.get("hooks", {})
     post_hooks: list[dict[str, str]] = []
-    if hooks.get("python_post_edit") or hooks.get("markdown_post_edit"):
+    if hooks.get("format_edited_files_hook"):
         post_hooks.append(
             {
                 "type": "command",
@@ -439,21 +411,13 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
         "$schema": claude["schema"],
         "model": profile_claude["model"],
         "effortLevel": profile_claude["effort"],
-        **(
-            {"advisorModel": profile_claude["advisor"]}
-            if "advisor" in profile_claude
-            else {}
-        ),
+        **({"advisorModel": profile_claude["advisor"]} if "advisor" in profile_claude else {}),
         "alwaysThinkingEnabled": claude["alwaysThinkingEnabled"],
         "autoUpdates": claude["autoUpdates"],
         "autoUpdatesChannel": claude["autoUpdatesChannel"],
         "plansDirectory": claude["plansDirectory"],
         "permissions": {
-            **(
-                {"allow": claude["permissions"]["allow"]}
-                if "allow" in claude["permissions"]
-                else {}
-            ),
+            **({"allow": claude["permissions"]["allow"]} if "allow" in claude["permissions"] else {}),
             "deny": claude["permissions"]["deny"],
             "defaultMode": claude["permissions"]["defaultMode"],
             "ask": claude["permissions"]["ask"],
@@ -488,9 +452,7 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
                                     "type": "command",
                                     "command": permission_request["command"],
                                     "timeout": permission_request["timeout"],
-                                    "statusMessage": permission_request[
-                                        "status_message"
-                                    ],
+                                    "statusMessage": permission_request["status_message"],
                                 }
                             ],
                         }
@@ -597,19 +559,14 @@ def claude_skill_symlink_outputs() -> dict[Path, str]:
     claude_root = ROOT / "home/dot_claude/skills"
     if not skills_root.exists():
         return outputs
-    for source_file in sorted(
-        path for path in skills_root.rglob("*") if path.is_file()
-    ):
+    for source_file in sorted(path for path in skills_root.rglob("*") if path.is_file()):
         if source_file.name.startswith("."):
             continue
         rel = source_file.relative_to(skills_root)
         target_path = rel.with_name(chezmoi_target_name(rel.name))
         target_dir = claude_root / target_path.parent
-        outputs[target_dir / f"symlink_{target_path.name}.tmpl"] = (
-            render_claude_skill_symlink(source_file)
-        )
+        outputs[target_dir / f"symlink_{target_path.name}.tmpl"] = render_claude_skill_symlink(source_file)
     return outputs
-
 
 
 def render_codex_profile(name: str, profile: dict[str, Any]) -> str:
@@ -626,13 +583,15 @@ def render_codex_profile(name: str, profile: dict[str, Any]) -> str:
         lines.append(f"sandbox_mode = {quote_toml(sandbox_mode)}")
     if notify := codex.get("notify"):
         lines.append(f"notify = {quote_toml(notify)}")
-    lines.extend([
-        "",
-        "[features]",
-        "hooks = true",
-        "",
-        "[hooks.state]",
-    ])
+    lines.extend(
+        [
+            "",
+            "[features]",
+            "hooks = true",
+            "",
+            "[hooks.state]",
+        ]
+    )
     return "\n".join(lines) + "\n"
 
 
@@ -641,9 +600,9 @@ def render_codex_profile_modify(name: str, profile: dict[str, Any]) -> str:
     render_helper = ""
     managed_source = "MANAGED"
     if "{{ .chezmoi.homeDir }}" in managed:
-        render_helper = '''\n\ndef render_managed_paths(text: str) -> str:
+        render_helper = """\n\ndef render_managed_paths(text: str) -> str:
     return text.replace("{{ .chezmoi.homeDir }}", str(Path.home()))
-'''
+"""
         managed_source = "render_managed_paths(MANAGED)"
     return f'''#!/usr/bin/env python3
 """Merge the managed Codex {name} profile with Codex-owned runtime state."""
@@ -858,18 +817,16 @@ def expected_outputs(manifest: dict[str, Any]) -> dict[Path, str]:
         ROOT / manifest["plugins"]["marketplace_path"]: render_marketplace(manifest),
     }
     for name, profile in sorted(model_profiles(manifest).items()):
-        outputs[
-            ROOT / "home/dot_codex" / f"modify_private_{name}.config.toml"
-        ] = render_codex_profile_modify(name, profile)
+        outputs[ROOT / "home/dot_codex" / f"modify_private_{name}.config.toml"] = render_codex_profile_modify(
+            name, profile
+        )
     outputs[ROOT / "home/dot_agents/model-profiles.env"] = render_model_profiles_env(manifest)
     outputs[ROOT / "home/dot_claude/agents/express-explorer.md"] = render_claude_express_agent(manifest)
     for plugin in manifest["plugins"].get("codex_plugins", []):
         if not plugin.get("managed_manifest", True):
             continue
         source_path = plugin["source_path"].removeprefix("./")
-        outputs[
-            ROOT / "home/dot_agents" / source_path / ".codex-plugin/plugin.json"
-        ] = render_codex_plugin(plugin)
+        outputs[ROOT / "home/dot_agents" / source_path / ".codex-plugin/plugin.json"] = render_codex_plugin(plugin)
     outputs.update(claude_skill_symlink_outputs())
     outputs.update(render_asset_constants(manifest))
     return outputs
@@ -911,9 +868,7 @@ def stale_profile_outputs(manifest: dict[str, Any]) -> list[Path]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--check", action="store_true", help="verify generated files are up to date"
-    )
+    parser.add_argument("--check", action="store_true", help="verify generated files are up to date")
     parser.add_argument(
         "--set-asset",
         action="append",
@@ -969,10 +924,7 @@ def main() -> None:
             path.unlink()
         remove_stale_generated_outputs(outputs)
     if stale:
-        fail(
-            "generated agent configs are stale: "
-            + ", ".join(str(path) for path in stale)
-        )
+        fail("generated agent configs are stale: " + ", ".join(str(path) for path in stale))
     if args.check:
         print("generated agent configs are up to date")
     else:

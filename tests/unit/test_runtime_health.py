@@ -1741,6 +1741,18 @@ EOF
         self.assertEqual(1, result.returncode, result.stdout + result.stderr)
         self.assertIn("required failure: mise inventory/install/upgrade", result.stderr)
 
+    def test_upgrade_self_updates_mise_to_the_manifest_pin(self) -> None:
+        manifest = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
+        pin = re.search(r"^  mise:\n(?:    .*\n)*?    pin: v(\S+)$", manifest, re.MULTILINE)
+        assert pin is not None
+        repo, env = self.upgrade_fixture("none")
+
+        result = self.run_test_command(["bash", "scripts/upgrade-tools.sh"], cwd=repo, env=env)
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        log = (repo / "commands.log").read_text().splitlines()
+        self.assertIn(f"mise self-update --yes {pin.group(1)}", log)
+
     def test_upgrade_uses_current_mise_node_after_runtime_replacement(self) -> None:
         """Reject ambient npm after mise replaces the active Node runtime."""
         repo, env = self.upgrade_fixture("none")
@@ -1830,7 +1842,7 @@ EOF
     def test_upgrade_skips_ccr_notice_when_gh_is_unavailable(self) -> None:
         repo, env = self.upgrade_fixture("none")
         (repo / "bin/gh").unlink()
-        for command in ("awk", "bash", "dirname", "mkdir", "mktemp", "rm"):
+        for command in ("awk", "bash", "dirname", "grep", "mkdir", "mktemp", "rm"):
             source = shutil.which(command)
             self.assertIsNotNone(source)
             (repo / f"bin/{command}").symlink_to(source)

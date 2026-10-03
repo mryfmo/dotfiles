@@ -165,24 +165,18 @@ herdr server reload-config" ]
     [[ "$output" == *'Herdr command not found; skipping config reload.'* ]]
 }
 
-@test "[common] update fails when Herdr status fails" {
+@test "[common] update skips reload when Herdr status fails" {
     run_update_fixture running 42
-    [ "$status" -ne 0 ]
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'Herdr server unreachable; skipping config reload.'* ]]
     ! grep -q '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls"
 }
 
-@test "[common] update rejects missing or unknown Herdr server status" {
-    run_update_fixture unknown
-    [ "$status" -ne 0 ]
-    ! grep -q '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls"
-
-    run_update_fixture missing-status
-    [ "$status" -ne 0 ]
-    ! grep -q '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls"
-
-    for malformed in nonstring-status multiple-statuses malformed-json; do
-        run_update_fixture "${malformed}"
-        [ "$status" -ne 0 ]
+@test "[common] update skips reload for missing or unknown Herdr server status" {
+    for unreadable in unknown missing-status nonstring-status multiple-statuses malformed-json; do
+        run_update_fixture "${unreadable}"
+        [ "$status" -eq 0 ]
+        [[ "$output" == *'Herdr server unreachable; skipping config reload.'* ]]
         ! grep -q '^herdr server reload-config$' "${UPDATE_FIXTURE}/calls"
     done
 }

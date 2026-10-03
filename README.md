@@ -622,9 +622,11 @@ reaches the network, GitHub included, inside the sandbox: `git fetch`,
 `git push` and `gh` work without an escalation. There is no escalation prompt
 for a worker. A write outside the writable roots, or a command that the
 execpolicy below forbids, fails back to the model, and the worker reports
-`AGMSG-PONG v1 status=blocked` with the exact command. The trade-off: Codex
-`network_access` is a boolean, so the worker reaches any host, with no domain
-allowlist like Claude Code's `sandbox.network.allowedDomains`. Under `never`
+`AGMSG-PONG v1 status=blocked` with the exact command. The trade-off: the
+`sandbox_workspace_write.network_access` switch is a boolean, so the worker
+reaches any host; unlike Claude Code's `sandbox.network.allowedDomains`, no
+domain allowlist is configured (Codex's network proxy domain policy is not used
+here). Under `never`
 Codex raises no approval request, so the `permgate` PermissionRequest hook
 never fires for the worker seat; it stays live for interactive Codex sessions,
 which keep the base config (`approval_policy = "on-request"`,

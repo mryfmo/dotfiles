@@ -38,7 +38,10 @@ try:
     project_dir = (Path(cwd) if cwd else Path.cwd()).resolve()
     opt_in = project_dir / ".claude" / "contextdb"
     cli = Path.home() / ".agents" / "compactiondb" / ".claude" / "hooks" / "contextdb_cli.py"
-    if not opt_in.is_dir() or not cli.is_file():
+    # Only a real directory inside the project opts in: a repository could point
+    # .claude or .claude/contextdb elsewhere with a symlink, and the CLI would
+    # then create its state there.
+    if not opt_in.is_dir() or opt_in.resolve() != opt_in or not cli.is_file():
         raise SystemExit(0)
     subprocess.run(
         [

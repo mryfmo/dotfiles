@@ -156,6 +156,19 @@ class ContextdbCodexNotifyTest(unittest.TestCase):
         self.assertFalse(hijack.exists())
         self.assertEqual(json.loads(json.loads(self.capture.read_text(encoding="utf-8"))["input"])["session_id"], "cwd")
 
+    def test_symlinked_opt_in_outside_the_project_is_ignored(self) -> None:
+        self.write_capturing_cli()
+        outside = self.root / "outside"
+        outside.mkdir()
+        (self.project / ".claude/contextdb").rmdir()
+        (self.project / ".claude/contextdb").symlink_to(outside, target_is_directory=True)
+
+        result = self.run_receiver({"hook_event_name": "PreCompact", "session_id": "link"}, stdin=True)
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stderr, "")
+        self.assertFalse(self.capture.exists())
+
     def test_missing_trusted_runtime_is_silent(self) -> None:
         result = self.run_receiver()
 

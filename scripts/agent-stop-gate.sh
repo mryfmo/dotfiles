@@ -144,7 +144,14 @@ while IFS=$'\t' read -r -u 3 team name; do
     # `timeout 0` would mean no limit, so a spent budget blocks before the read.
     remaining=$((deadline - SECONDS))
     if [[ ${remaining} -gt 0 ]]; then
-        history="$(timeout "${remaining}" bash "${BASH_SOURCE[0]}" --read-history "${team}" 2> /dev/null)"
+        if command -v timeout > /dev/null 2>&1; then
+            history="$(timeout "${remaining}" bash "${BASH_SOURCE[0]}" --read-history "${team}" 2> /dev/null)"
+        else
+            # ponytail: stock macOS has no timeout(1), as agmsg check-inbox.sh
+            # notes; the budget is then only checked between teams. Install
+            # coreutils' timeout for the hard cap.
+            history="$(read_history "${team}" 2> /dev/null)"
+        fi
         rc=$?
     else
         rc=124

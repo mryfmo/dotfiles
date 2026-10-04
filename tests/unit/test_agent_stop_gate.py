@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 import time
@@ -256,6 +257,7 @@ class AgentStopGateTest(unittest.TestCase):
         self.assertNotIn("task_id=T1", stderr)
         self.assertFalse((self.home / "history-called").exists())
 
+    @unittest.skipUnless(shutil.which("timeout"), "the hard read budget needs timeout(1)")
     def test_slow_store_blocks_within_the_budget(self):
         self.history(row("orch", "worker-a001", "AGMSG-TASK v1 task_id=T5 repo=/r"))
         (self.home / "store-slow").write_text("")

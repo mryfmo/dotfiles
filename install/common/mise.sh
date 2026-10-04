@@ -15,7 +15,7 @@ fi
 export MISE_INSTALL_PATH="${HOME}/.local/bin/mise"
 readonly DEFAULT_NPM_MIN_RELEASE_AGE_DAYS=7
 # Rendered from assets.mise in home/dot_agents/agent-config.yaml; change it there.
-readonly MISE_VERSION="v2026.9.13"
+readonly MISE_VERSION="v2026.9.14"
 
 # @description Print the mise release artifact name for the current platform.
 function mise_artifact() {

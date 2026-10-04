@@ -92,7 +92,6 @@ def sample_manifest() -> dict:
             "statusLine": {},
             "disableSkillShellExecution": True,
             "includeGitInstructions": True,
-            "enabledPlugins": {},
         },
         "plugins": {
             "marketplace_path": "home/dot_agents/plugins/create_marketplace.json",
@@ -816,6 +815,15 @@ class GenerateAgentConfigsTest(unittest.TestCase):
                 }
             ],
         )
+
+    def test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map(self) -> None:
+        manifest = sample_manifest()
+        self.assertEqual(manifest["mcp_servers"], {})
+
+        self.assertNotIn("[mcp_servers.", self.module.render_codex(manifest))
+        claude_mcp = self.module.render_claude_mcp(manifest).split("*/}}", 1)[-1]
+        self.assertEqual(json.loads(claude_mcp), {"mcpServers": {}})
+        self.assertNotIn("enabledPlugins", json.loads(self.module.render_claude_settings(manifest)))
 
     def test_codex_config_renders_permgate_permission_request(self) -> None:
         config = self.module.render_codex(sample_manifest())

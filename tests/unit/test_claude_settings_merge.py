@@ -59,6 +59,14 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
 
         self.assertEqual(json.loads(output)["enabledPlugins"], {"crit@crit": True})
 
+    def test_runtime_enabled_plugins_survive_a_managed_file_without_the_key(self) -> None:
+        output = self.merge(
+            {"model": "managed"},
+            json.dumps({"model": "runtime", "enabledPlugins": {"crit@crit": True}}),
+        )
+
+        self.assertEqual(json.loads(output)["enabledPlugins"], {"crit@crit": True})
+
     def test_current_only_key_is_preserved(self) -> None:
         output = self.merge(
             {"model": "managed", "enabledPlugins": {}},

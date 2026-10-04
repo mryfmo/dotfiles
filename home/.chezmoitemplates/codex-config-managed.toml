@@ -30,56 +30,6 @@ writable_roots = ["{{ .chezmoi.homeDir }}/.agents/skills/agmsg/db", "{{ .chezmoi
 inherit = "core"
 set = { PATH = "{{ .chezmoi.homeDir }}/.local/share/mise/installs/node/lts/bin:{{ .chezmoi.homeDir }}/.local/share/mise/shims:{{ .chezmoi.homeDir }}/.local/bin:{{ .chezmoi.homeDir }}/.local/bin/common:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" }
 
-[mcp_servers.context7]
-command = "npx"
-args = ["-y", "@upstash/context7-mcp"]
-enabled = false
-required = false
-startup_timeout_sec = 20
-tool_timeout_sec = 60
-supports_parallel_tool_calls = true
-
-[mcp_servers.filesystem_dotfiles]
-command = "npx"
-args = ["-y", "@modelcontextprotocol/server-filesystem", "{{ .chezmoi.sourceDir }}"]
-enabled = false
-required = false
-startup_timeout_sec = 30
-tool_timeout_sec = 30
-
-[mcp_servers.github]
-command = "docker"
-args = ["run", "-i", "--rm", "-e", "GITHUB_PERSONAL_ACCESS_TOKEN", "ghcr.io/github/github-mcp-server"]
-enabled = false
-required = false
-startup_timeout_sec = 60
-tool_timeout_sec = 60
-enabled_tools = ["list_issues", "get_issue", "search_repositories", "search_code", "list_pull_requests", "get_pull_request"]
-
-[mcp_servers.time]
-command = "uvx"
-args = ["mcp-server-time"]
-enabled = false
-required = false
-startup_timeout_sec = 30
-tool_timeout_sec = 30
-
-[mcp_servers.sequential_thinking]
-command = "npx"
-args = ["-y", "@modelcontextprotocol/server-sequential-thinking"]
-enabled = false
-required = false
-startup_timeout_sec = 30
-tool_timeout_sec = 60
-
-[mcp_servers.playwright]
-command = "npx"
-args = ["@playwright/mcp@latest"]
-enabled = false
-required = false
-startup_timeout_sec = 60
-tool_timeout_sec = 120
-
 [features]
 plugins = true
 hooks = true

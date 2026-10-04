@@ -167,7 +167,8 @@ claude:
   disableSkillShellExecution: true
   includeGitInstructions: true
   permissions:
-    defaultMode: plan
+    # This must be user-level: project settings do not honour auto; the Stop gate and deny list are the boundaries.
+    defaultMode: auto
     # The only managed allow rule: agmsg-dispatch inserts one agmsg row and
     # sends a herdr wake, the sanctioned worker-to-orchestrator wake (T49).
     # It does not authorise chains: "Claude Code is aware of shell operators,
@@ -189,13 +190,12 @@ claude:
       - Bash(wget * | sh)
       - Read(secrets/**)
       - Read(config/credentials.json)
-    ask:
-      - Bash(git push:*)
       - Bash(gh release:*)
       - Bash(npm publish:*)
       - Bash(uv publish:*)
       - Bash(terraform apply:*)
       - Bash(kubectl apply:*)
+    ask: []
   # Claude Code Bash sandbox, the counterpart of codex.sandbox_workspace_write:
   # commands may write only the working directory, the session TMPDIR, and
   # filesystem.allowWrite. The generator renders allowWrite from

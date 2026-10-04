@@ -371,17 +371,28 @@ class AgentStopGateTest(unittest.TestCase):
             path.chmod(0o444)
         return paths
 
-    def mountinfo(self, mounts, options="ro,nosuid", root=None, separate_fs=False):
-        """`--mountinfo <fixture>` args: resolved directories (as the kernel lists them) in its octal escaping."""
+    def mountinfo(self, mounts, options="ro,nosuid", root=None, separate_fs=False, dev="0:5"):
+        """`--mountinfo <fixture>` args: filesystem-root mounts, then the given mounts.
+
+        Paths are resolved directories (as the kernel lists them) in mountinfo's octal escaping.
+        Device 0:5 is the root filesystem at /, 0:6 a separate filesystem at the first path
+        component (say /home), 0:7 the devtmpfs at /dev, and 0:9 another devtmpfs at /other-dev.
+        """
         resolved = [os.path.join(os.path.realpath(Path(p).parent), Path(p).name) for p in mounts]
         encoded = [p.replace("\\", "\\134").replace(" ", "\\040") for p in resolved]
+        first = "/" + encoded[0].split("/")[1] if encoded else "/home"
+        lines = [
+            "20 1 0:5 / / rw - ext4 /dev/root rw",
+            f"21 20 0:6 / {first} rw - ext4 /dev/home rw",
+            "22 20 0:7 / /dev rw - devtmpfs udev rw",
+            "23 20 0:9 / /other-dev rw - devtmpfs other rw",
+        ]
+        for i, p in enumerate(encoded):
+            mount_dev = "0:6" if separate_fs else dev
+            mount_root = root or (self.fs_relative(p) if separate_fs else p)
+            lines.append(f"{40 + i} 20 {mount_dev} {mount_root} {p} {options} - ext4 /dev/x rw")
         path = self.home / "mountinfo"
-        path.write_text(
-            "".join(
-                f"{40 + i} 35 0:5 {root or (self.fs_relative(p) if separate_fs else p)} {p} {options} - devtmpfs udev rw\n"
-                for i, p in enumerate(encoded)
-            )
-        )
+        path.write_text("".join(f"{line}\n" for line in lines))
         return ["--mountinfo", str(path)]
 
     @staticmethod
@@ -425,7 +436,7 @@ class AgentStopGateTest(unittest.TestCase):
         # Stands in for a /dev/null mask: the mount point is a character device.
         mask = self.main / ".gitconfig"
         mask.symlink_to("/dev/null")
-        self.assertEqual(self.assert_gate(self.main, 0, args=self.mountinfo([mask], root="/null")), "")
+        self.assertEqual(self.assert_gate(self.main, 0, args=self.mountinfo([mask], root="/null", dev="0:7")), "")
 
     def test_mountinfo_cannot_be_redirected_through_the_environment(self):
         fixture = self.mountinfo(self.make_placeholders())[1]
@@ -437,6 +448,19 @@ class AgentStopGateTest(unittest.TestCase):
         stderr = self.assert_gate(self.main, 2, args=self.mountinfo(self.make_placeholders(), root="/srv/empty.env"))
         self.assertIn(".zshrc", stderr)
         self.assertNotIn("placeholders ignored", stderr)
+
+    def test_same_named_file_bound_from_elsewhere_is_not_a_placeholder(self):
+        # Root /.zshrc on the root filesystem is a suffix of <repo>/.zshrc but not the same path.
+        zshrc = self.make_placeholders()[0]
+        stderr = self.assert_gate(self.main, 2, args=self.mountinfo([zshrc], root="/.zshrc"))
+        self.assertIn(".zshrc", stderr)
+        self.assertNotIn("placeholders ignored", stderr)
+
+    def test_null_device_of_another_filesystem_is_not_a_placeholder(self):
+        mask = self.main / ".gitconfig"
+        mask.symlink_to("/dev/null")
+        stderr = self.assert_gate(self.main, 2, args=self.mountinfo([mask], root="/null", dev="0:9"))
+        self.assertIn(".gitconfig", stderr)
 
     def test_untracked_symlink_to_a_mount_point_is_not_a_placeholder(self):
         # The target looks exactly like a placeholder, so following the link would skip it.

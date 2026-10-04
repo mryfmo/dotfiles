@@ -91,6 +91,16 @@ class AgentStopGateTest(unittest.TestCase):
         (self.main / "junk.txt").write_text("x")
         self.assertIn("junk.txt", self.assert_gate(self.main, 2))
 
+    def test_staged_rename_out_of_orchestration_blocks(self):
+        (self.main / ".orchestration").mkdir()
+        (self.main / ".orchestration/note.md").write_text("x")
+        self.git("add", ".orchestration/note.md")
+        self.git("commit", "-q", "-m", "note")
+        self.git("mv", ".orchestration/note.md", "moved.md")
+        self.assertIn("moved.md (from .orchestration/note.md)", self.assert_gate(self.main, 2))
+        self.git("mv", "moved.md", ".orchestration/kept.md")
+        self.assert_gate(self.main, 0)
+
     def test_result_without_acceptance_blocks(self):
         self.history(
             row("orch", "worker-a001", "AGMSG-TASK v1 task_id=T1 repo=/r"),

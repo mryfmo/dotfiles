@@ -60,14 +60,20 @@ scripts="${HOME}/.agents/skills/agmsg/scripts"
 reasons=()
 
 if [[ ${seat} == orchestrator && ${active} == false ]]; then
-    # GIT_OPTIONAL_LOCKS=0 keeps `git status` from refreshing the index.
-    while IFS= read -r line; do
-        path="${line:3}"
-        case "${path}" in
-        .orchestration/* | .agents/worklog/*) continue ;;
-        esac
-        reasons+=("uncommitted change outside .orchestration: ${path} (delegate it to a worker task or revert it)")
-    done < <(GIT_OPTIONAL_LOCKS=0 git -C "${top}" status --porcelain --untracked-files=all 2> /dev/null)
+    exempt() { [[ $1 == .orchestration/* || $1 == .agents/worklog/* ]]; }
+    # -z rows are `XY <path>`; a rename or copy row is followed by its source
+    # path, and it is exempt only when both endpoints are. GIT_OPTIONAL_LOCKS=0
+    # keeps `git status` from refreshing the index.
+    while IFS= read -r -d '' entry; do
+        xy="${entry:0:2}"
+        path="${entry:3}"
+        from=""
+        [[ ${xy} == *[RC]* ]] && IFS= read -r -d '' from
+        if exempt "${path}" && { [[ -z ${from} ]] || exempt "${from}"; }; then
+            continue
+        fi
+        reasons+=("uncommitted change outside .orchestration: ${path}${from:+ (from ${from})} (delegate it to a worker task or revert it)")
+    done < <(GIT_OPTIONAL_LOCKS=0 git -C "${top}" status --porcelain -z --untracked-files=all 2> /dev/null)
 fi
 
 # Team-wide history as `from<TAB>to<TAB>body` rows, chronological. This is the

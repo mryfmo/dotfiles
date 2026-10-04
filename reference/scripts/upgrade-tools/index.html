@@ -933,34 +933,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../home/dot_local/bin/common/executable_agent-fanout/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_local/bin/common/executable_agent-fanout
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../home/dot_local/bin/common/executable_agent-session-staleness/" class="md-nav__link">
         
   
@@ -1249,34 +1221,6 @@
     
   
     home/dot_local/bin/common/executable_herdr-agents
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../home/dot_local/bin/common/executable_herdr-session/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_local/bin/common/executable_herdr-session
   
 
     
@@ -3658,7 +3602,6 @@
 <li><code>parse_args</code></li>
 <li><code>pick_windowed_pin</code></li>
 <li><code>repair_mise_npm_package</code></li>
-<li><code>report_ccr_adoption_gates</code></li>
 <li><code>run_mise_tool_command</code></li>
 <li><code>run_mise_with_isolated_git_config</code></li>
 <li><code>run_optional_phase</code></li>
@@ -4320,33 +4263,6 @@
 <span class="o">}</span>
 
 <span class="c1">#</span>
-<span class="c1"># @description Report the warning-only Claude Code Router adoption gates.</span>
-<span class="c1">#</span>
-<span class="k">function</span><span class="w"> </span>report_ccr_adoption_gates<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>!<span class="w"> </span>has_command<span class="w"> </span>gh<span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
-
-<span class="w">    </span>section<span class="w"> </span><span class="s2">"Claude Code Router adoption gate"</span>
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>state
-<span class="w">    </span><span class="nb">local</span><span class="w"> </span>tag
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">state</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>gh<span class="w"> </span>api<span class="w"> </span>repos/musistudio/claude-code-router/issues/1115<span class="w"> </span>--jq<span class="w"> </span>.state<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span>
-<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">state</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'CCR gate G1 (#1115): %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">state</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span><span class="k">else</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'WARN: unable to check CCR gate G1 (#1115).\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nv">tag</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>gh<span class="w"> </span>api<span class="w"> </span>repos/musistudio/claude-code-router/releases/latest<span class="w"> </span>--jq<span class="w"> </span>.tag_name<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span>
-<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'CCR latest release: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tag</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span><span class="k">else</span>
-<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'WARN: unable to check the latest CCR release.\n'</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'CCR gates G2/G3 require manual primary-source verification before any canary.\n'</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="o">}</span>
-
-<span class="c1">#</span>
 <span class="c1"># @description Upgrade apt packages only when system upgrades are requested.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>upgrade_apt_packages<span class="o">()</span><span class="w"> </span><span class="o">{</span>
@@ -4419,7 +4335,6 @@
 <span class="w">    </span>run_required_phase<span class="w"> </span><span class="s2">"agent asset regeneration"</span><span class="w"> </span>upgrade_agent_assets
 <span class="w">    </span>run_required_phase<span class="w"> </span><span class="s2">"uv tool upgrade"</span><span class="w"> </span>upgrade_uv_tools
 <span class="w">    </span>run_optional_phase<span class="w"> </span><span class="s2">"GitHub CLI extension upgrade"</span><span class="w"> </span>upgrade_gh_extensions
-<span class="w">    </span>run_optional_phase<span class="w"> </span><span class="s2">"CCR adoption gate notice"</span><span class="w"> </span>report_ccr_adoption_gates
 <span class="w">    </span>run_required_phase<span class="w"> </span><span class="s2">"apt system upgrade"</span><span class="w"> </span>upgrade_apt_packages
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">required_failures</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span>run_required_phase<span class="w"> </span><span class="s2">"apply upgraded mise config"</span><span class="w"> </span>apply_upgraded_mise_config

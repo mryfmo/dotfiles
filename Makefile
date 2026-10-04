@@ -33,12 +33,6 @@ setup:
 .PHONY: init
 init:
 	chezmoi init --apply --verbose
-	@if command -v chezmoi-private > /dev/null 2>&1; then \
-		chezmoi-private init --apply --verbose --ssh mryfmo/dotfiles-private || \
-			echo "Warning: failed to initialize dotfiles-private. Continuing setup."; \
-	else \
-		echo "Warning: chezmoi-private not found. Skipping private dotfiles init."; \
-	fi
 
 .PHONY: update
 # run_once hashes let update converge committed scripts without advancing tool pins.

@@ -232,11 +232,10 @@ herdr server reload-config" ]
     [[ "$output" != *'--system'* ]]
 }
 
-@test "[common] Makefile skips private init when chezmoi-private is unavailable" {
+@test "[common] Makefile init runs only the public chezmoi init" {
     run make -n init
     [ "$status" -eq 0 ]
-    [[ "$output" == *'command -v chezmoi-private'* ]]
-    [[ "$output" == *'Skipping private dotfiles init'* ]]
+    [ "$output" = 'chezmoi init --apply --verbose' ]
 }
 
 @test "[common] Makefile does not expose a separate upgrade-system target" {

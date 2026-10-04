@@ -1,4 +1,5 @@
 .codex/ccgate.jsonnet
+.codex/adh.config.toml
 .claude/ccgate.jsonnet
 .local/bin/common/start-cognee-mcp
 .claude/skills/agmsg/**

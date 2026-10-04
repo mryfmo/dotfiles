@@ -58,10 +58,9 @@
 # @arg HERDR_AGENTS_WORKER_PROFILE Environment variable naming the worker's
 #   model profile: `--profile <name>` for a codex worker, or the profile whose
 #   `MODEL_PROFILE_<NAME>_CLAUDE_ARGS` supplies arguments for a claude worker.
-#   `HERDR_AGENTS_CODEX_PROFILE` is kept as a deprecated alias. Defaults to
-#   `worker_profile` from the manifest via ~/.agents/model-profiles.env, then
-#   MODEL_PROFILE_INTERACTIVE from the same file, then standard.
-# @arg HERDR_AGENTS_CODEX_PROFILE Deprecated alias for HERDR_AGENTS_WORKER_PROFILE.
+#   Defaults to `worker_profile` from the manifest via
+#   ~/.agents/model-profiles.env, then MODEL_PROFILE_INTERACTIVE from the same
+#   file, then standard.
 # @arg HERDR_AGENTS_CLAUDE_ARGS Optional space-delimited Claude arguments for
 #   manifest-sourced E2E profile overrides on the orchestrator pane, appended
 #   after the interactive profile args. Defaults to no arguments.
@@ -159,16 +158,11 @@ function json_agent_pane_id() {
 
 # @description Resolve the worker profile without duplicating the manifest default.
 #   Checks the kind-independent HERDR_AGENTS_WORKER_PROFILE first, then the
-#   deprecated HERDR_AGENTS_CODEX_PROFILE alias, then the manifest-generated
-#   HERDR_AGENTS_WORKER_PROFILE and MODEL_PROFILE_INTERACTIVE values from
-#   ~/.agents/model-profiles.env, then standard.
+#   manifest-generated HERDR_AGENTS_WORKER_PROFILE and MODEL_PROFILE_INTERACTIVE
+#   values from ~/.agents/model-profiles.env, then standard.
 function resolve_worker_profile() {
     if [[ -n ${HERDR_AGENTS_WORKER_PROFILE:-} ]]; then
         printf '%s\n' "${HERDR_AGENTS_WORKER_PROFILE}"
-        return
-    fi
-    if [[ -n ${HERDR_AGENTS_CODEX_PROFILE:-} ]]; then
-        printf '%s\n' "${HERDR_AGENTS_CODEX_PROFILE}"
         return
     fi
     local HERDR_AGENTS_WORKER_PROFILE="" MODEL_PROFILE_INTERACTIVE="" HERDR_AGENTS_WORKER_KIND=""

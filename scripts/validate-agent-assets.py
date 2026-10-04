@@ -1087,15 +1087,11 @@ def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
         fail(f"{express_agent} must define the low-cost explorer subagent")
 
     herdr = (ROOT / "home/dot_local/bin/common/executable_herdr-agents").read_text()
-    fanout = (ROOT / "home/dot_local/bin/common/executable_agent-fanout").read_text()
-    for launcher_text, label in ((herdr, "herdr-agents"), (fanout, "agent-fanout")):
-        for token in ("claude-fable-5", "gpt-5.6", "model_reasoning_effort="):
-            if token in launcher_text:
-                fail(f"{label} must not hardcode model settings: {token!r}")
-    if "HERDR_AGENTS_CODEX_PROFILE" not in herdr:
-        fail("herdr-agents must launch the Codex worker with a model profile")
-    if "model-profiles.env" not in fanout:
-        fail("agent-fanout must resolve profile args from model-profiles.env")
+    for token in ("claude-fable-5", "gpt-5.6", "model_reasoning_effort="):
+        if token in herdr:
+            fail(f"herdr-agents must not hardcode model settings: {token!r}")
+    if "HERDR_AGENTS_WORKER_PROFILE" not in herdr:
+        fail("herdr-agents must launch the worker with a model profile")
 
     codex_agents = (ROOT / "home/dot_config/codex/AGENTS.md").read_text()
     for token in ("model_profiles", "--profile standard", "model-profiles.env"):

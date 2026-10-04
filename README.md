@@ -525,18 +525,12 @@ Health checks are read-only: `team.sh <team> --json`, `doctor.sh --project
 
 ### Herdr and Ghostty agent workspace
 
-Ghostty starts at a normal zsh prompt. In Ghostty zsh sessions, bare `herdr`
-delegates to `herdr-session`, which simply execs the real `herdr` CLI: the
-terminal opens as one plain pane with no agent layout. Agent panes are added
+Ghostty starts at a normal zsh prompt, and `herdr` is the real Herdr CLI:
+it opens as one plain pane with no agent layout. Agent panes are added
 lazily — starting Claude Code inside a Herdr pane fires the Claude
 `SessionStart` hook, which runs `herdr-agents --attach` (its stdout reaches
 the session context; stderr is logged to `~/.config/herdr/herdr-agents.log`).
 Exiting Herdr returns to the shell.
-Argumented Herdr calls such as `herdr --remote` and `herdr server
-reload-config` still run the real Herdr CLI, as does bare `herdr` outside
-Ghostty. Already-open Ghostty shells keep the zsh function they sourced at
-startup; run `exec zsh` or open a new window after updating these dotfiles
-when the wrapper changes.
 
 A Claude Code session started from a plain shell outside Herdr (for example
 over mosh or ssh, or `claude -p`) never seats a worker. Its SessionStart hook
@@ -814,8 +808,7 @@ codex --profile audit exec --sandbox read-only -C <dir> -o <file> '<prompt>'
 ```
 
 Per-task agent switching happens at the profile layer, never in the layout:
-the worker profile comes from `HERDR_AGENTS_WORKER_PROFILE` (the deprecated
-`HERDR_AGENTS_CODEX_PROFILE` alias still works), otherwise from the manifest
+the worker profile comes from `HERDR_AGENTS_WORKER_PROFILE`, otherwise from the manifest
 `worker_profile` rendered into `~/.agents/model-profiles.env` as
 `HERDR_AGENTS_WORKER_PROFILE` (currently `standard`), then from
 `MODEL_PROFILE_INTERACTIVE` in the same file, and is `standard` only when
@@ -896,17 +889,14 @@ default enabled, agent panes can be restored with their conversation sessions
 after a Herdr server restart.
 
 Verification for this flow lives in `tests/unit/test_herdr_agents.py`: it checks
-that Ghostty does not auto-start Herdr, `herdr-session`, bare `herdr` routing in
-Ghostty, argumented `herdr` routing in Ghostty, bare `herdr` routing outside
-Ghostty, and the Herdr `prefix+alt+a` command binding. Its sandbox E2E fakes
+that Ghostty does not auto-start Herdr and the Herdr `prefix+alt+a` command
+binding. Its sandbox E2E fakes
 Herdr deeply enough to execute fake Claude Code and Codex commands, verifies
 Claude Code is run in the root pane, and verifies a right-side worker pane is
 created with `pane split --direction right --cwd` before
 `agent start --kind <worker_kind> --pane` launches the
 `<worker_kind>-worker-${workspace_id}` Herdr agent. It also covers existing workspace
-focus and missing-agent repair paths, verifies the session entrypoint still
-attaches after `herdr-agents` failure, and proves agmsg is usable by sending a
-message from fake Claude Code to fake Codex through a temporary agmsg database.
+focus and missing-agent repair paths.
 
 `make require-crit-review` is the mechanical review gate for agents
 (`scripts/require-crit-review.py` is the underlying script).

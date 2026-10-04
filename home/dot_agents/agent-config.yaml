@@ -463,7 +463,7 @@ assets:
     pin: 2.0.0+dotfiles.6
     verify: manifest-sha256
     manifest: vendor/compactiondb/MANIFEST.sha256
-    note: local-fork-of-archive/CompactionDB-2.0.0.zip
+    note: local-fork-vendored-under-vendor/compactiondb
     install_path: ~/.agents/compactiondb
     installer: scripts/update-agent-assets.sh#update_compactiondb
   agmsg:

@@ -1272,9 +1272,11 @@ def json_strings(text: str) -> list[str] | None:
 def mask_secrets(paths: list[str]) -> int:
     """Mask SECRET_PATTERN matches in place (audit evidence); 2 if any file is missing.
 
-    A `.json` file that parses is masked per string value and rewritten in the
-    pr-feedback.py layout, so a saved body equals mask_secret_matches() of the
-    collected one; any other file is masked as text.
+    A `.json` file that parses is masked per key and string value and rewritten
+    in the pr-feedback.py layout, so a saved body equals mask_secret_matches()
+    of the collected one; any other file is masked as text. Every member is
+    masked as it is parsed, and an earlier duplicate member is then dropped, as
+    json.loads (and so the gate) reads the file.
     """
     missing = [name for name in paths if not Path(name).is_file()]
     if missing:
@@ -1284,14 +1286,27 @@ def mask_secrets(paths: list[str]) -> int:
     for name in paths:
         path = Path(name)
         text = path.read_text()
+        member_count = 0
+
+        def mask_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+            nonlocal member_count
+            masked = {}
+            for key, item in pairs:
+                (key, key_count), (item, item_count) = mask_secret_matches(key), mask_json_strings(item)
+                member_count += key_count + item_count
+                masked[key] = item
+            return masked
+
         try:
-            document = json.loads(text) if path.suffix == ".json" else None
+            document = json.loads(text, object_pairs_hook=mask_members) if path.suffix == ".json" else None
         except json.JSONDecodeError:
             document = None
         if document is None:
             masked, count = mask_secret_matches(text)
         else:
+            # Objects are already masked; this pass covers strings outside any object.
             document, count = mask_json_strings(document)
+            count += member_count
             masked = json.dumps(document, indent=2, ensure_ascii=False) + "\n"
         if count:
             path.write_text(masked)

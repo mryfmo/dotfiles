@@ -1219,6 +1219,20 @@ class MaskSecretsModeTest(unittest.TestCase):
         self.assertEqual(saved[2], {module.SECRET_MASK: "a key-shaped member name"})
         self.assertNotIn(key, evidence.read_text())
 
+    def test_masks_an_earlier_duplicate_member_so_the_scan_passes(self) -> None:
+        evidence = self.temp_dir / "t-pr-feedback.json"
+        key = "ghp_" + "e" * 25
+        evidence.write_text('{"items": [{"body": "' + key + '", "body": "safe replacement"}]}\n')
+
+        result = self.run_mask(evidence)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stdout, f"masked 1 match(es) in {evidence}\n")
+        self.assertEqual(json.loads(evidence.read_text()), {"items": [{"body": "safe replacement"}]})
+        module = load_validator()
+        strings = module.json_strings(evidence.read_text())
+        self.assertFalse(any(module.SECRET_PATTERN.search(s) for s in strings))
+
     def test_missing_file_exits_2_without_touching_others(self) -> None:
         evidence = self.temp_dir / "audit.md"
         evidence.write_text(f'{FIELD}: "abc"\n')

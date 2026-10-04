@@ -4,12 +4,14 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import re
 import subprocess
 import tempfile
 from collections import Counter
+from functools import cache
 import sys
 from pathlib import Path
 
@@ -427,8 +429,48 @@ def pr_feedback_errors(root: Path, required: bool, head: str | None = None, base
     return errors
 
 
-def feedback_key(item: dict) -> tuple:
-    return tuple(item.get(field) for field in ("source", "url", "level", "path", "line", "body"))
+@cache
+def validator():
+    """Load the validator that ships next to this guard, for its secret masker."""
+    spec = importlib.util.spec_from_file_location(
+        "validate_agent_assets", Path(__file__).resolve().with_name("validate-agent-assets.py")
+    )
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def feedback_key(item: dict, masked: bool = False) -> tuple:
+    """Identify a feedback item; `masked` takes its body and path as `--mask-secrets` saves them.
+
+    A saved body or path may be verbatim or exactly that masked form, because
+    masking (`validate-agent-assets.py --mask-secrets`, which masks the string
+    values of a JSON file) is the repository's documented way to keep evidence
+    scannable, and the url still identifies the item. Source, url, level and
+    line stay byte-exact.
+    """
+    key = {field: item.get(field) for field in ("source", "url", "level", "path", "line", "body")}
+    if masked:
+        # Only the body and a key-shaped file path may be masked; the rest is exact.
+        for field in ("path", "body"):
+            if isinstance(key[field], str):
+                key[field] = validator().mask_secret_matches(key[field])[0]
+    return tuple(key.values())
+
+
+def missing_feedback(collected: list, saved: list) -> Counter:
+    """Count collected items with no saved item, verbatim or masked, left to match."""
+    available = Counter(feedback_key(item) for item in saved if isinstance(item, dict))
+    missing: Counter = Counter()
+    for item in collected:
+        for key in dict.fromkeys((feedback_key(item), feedback_key(item, masked=True))):
+            if available[key]:
+                available[key] -= 1
+                break
+        else:
+            missing[feedback_key(item)] += 1
+    return missing
 
 
 def pr_base_errors(root: Path, evidence: dict, pr: int, head: str, base: str) -> list[str]:
@@ -544,9 +586,7 @@ def collected_feedback_errors(root: Path, evidence: dict, head: str, base: str) 
         return [f"PR #{pr} head on GitHub is {collected.get('head_sha')}, not the local HEAD {head}; push first"]
     if collected.get("repo") != evidence["repo"]:
         return [f"collected feedback does not match the local GitHub repository {evidence['repo']}"]
-    missing = Counter(map(feedback_key, collected.get("items", []))) - Counter(
-        feedback_key(item) for item in evidence.get("items", []) if isinstance(item, dict)
-    )
+    missing = missing_feedback(collected.get("items", []), evidence.get("items", []))
     if missing:
         sample = next(iter(missing))
         return [

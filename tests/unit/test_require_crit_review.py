@@ -564,6 +564,54 @@ class ReviewGuardTest(unittest.TestCase):
                 self.assertEqual(result.returncode, 1, result.stdout)
                 self.assertIn("current feedback item(s) for PR #1", result.stdout)
 
+    def test_pr_feedback_bodies_are_compared_after_secret_masking(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        key_shaped = "ghp_" + "a" * 25
+        quoted = f"quotes {key_shaped} here"
+        with_placeholder = f"GITHUB_PERSONAL_ACCESS_TOKEN stays\n{quoted}"
+        assignment = "set api_" + 'key = "live-value"'
+        for name, live, saved, mask_file, returncode in (
+            ("masked with --mask-secrets", quoted, quoted, True, 0),
+            ("placeholder on another line, masked", with_placeholder, with_placeholder, True, 0),
+            ("quoted assignment, masked", assignment, assignment, True, 0),
+            ("verbatim body", quoted, quoted, False, 0),
+            ("different body", quoted, "quotes something else here", False, 1),
+            ("placeholder dropped from a body without a match", "GITHUB_PERSONAL_ACCESS_TOKEN only", " only", False, 1),
+            ("unmasked assignment with another value", assignment, assignment.replace("live", "other"), False, 1),
+        ):
+            with self.subTest(case=name):
+                item = {"source": "review_comment", "level": "comment", "url": "https://x/r1"}
+                feedback = self.write_feedback([{**item, "body": saved, "disposition": "not-applicable:quoted only"}])
+                path = self.temp_dir / feedback
+                if mask_file:
+                    masker = ROOT / "scripts/validate-agent-assets.py"
+                    run([sys.executable, str(masker), "--mask-secrets", str(path)], self.temp_dir)
+                    self.assertIn("<redacted:secret-pattern>", json.loads(path.read_text())["items"][0]["body"])
+                self.write_collected([{**item, "body": live}])
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+                self.assertEqual(result.returncode, returncode, result.stdout)
+                if returncode:
+                    self.assertIn("current feedback item(s) for PR #1", result.stdout)
+
+    def test_pr_feedback_matches_a_masked_path_but_not_an_edited_one(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        key_shaped = "ghp_" + "c" * 25
+        base = {"source": "review_comment", "level": "comment", "url": "https://x/r1", "body": "nit"}
+        masker = ROOT / "scripts/validate-agent-assets.py"
+        for name, live, saved, mask_file, returncode in (
+            ("path masked with --mask-secrets", {"path": f"docs/{key_shaped}.md"}, {}, True, 0),
+            ("edited path", {"path": f"docs/{key_shaped}.md"}, {"path": "docs/other.md"}, False, 1),
+            ("url masked with --mask-secrets", {"url": f"https://x/{key_shaped}"}, {}, True, 1),
+        ):
+            with self.subTest(case=name):
+                live_item = {**base, **live}
+                feedback = self.write_feedback([{**live_item, **saved, "disposition": "not-applicable:a nit"}])
+                if mask_file:
+                    run([sys.executable, str(masker), "--mask-secrets", str(self.temp_dir / feedback)], self.temp_dir)
+                self.write_collected([live_item])
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+                self.assertEqual(result.returncode, returncode, result.stdout)
+
     def test_pr_feedback_requires_the_github_head_to_match(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback([])

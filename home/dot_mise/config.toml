@@ -22,7 +22,7 @@ shfmt = "3.14.1"
 ruff = "0.16.10"
 "aqua:watchexec/watchexec" = "2.7.3"
 
-"npm:@anthropic-ai/claude-code" = { version = "2.1.287", allow_builds = ["@anthropic-ai/claude-code"] }
+"npm:@anthropic-ai/claude-code" = { version = "2.1.288", allow_builds = ["@anthropic-ai/claude-code"] }
 "npm:@openai/codex" = "0.160.0"
 "npm:bash-language-server" = "5.8.1"
 "npm:ccstatusline" = "2.2.30"
@@ -32,7 +32,7 @@ ruff = "0.16.10"
 "npm:prettier" = "3.9.9"
 # Builds the Understand-Anything plugin core (update-agent-assets.sh); the
 # plugin lockfile is lockfileVersion 9.0 and declares no packageManager.
-"npm:pnpm" = "12.6.0"
+"npm:pnpm" = "12.7.0"
 
 "github:x-motemen/ghq" = "1.10.1"
 "github:d-kuro/gwq" = "0.1.1"

@@ -766,13 +766,28 @@ worker pane is never relabeled as the orchestrator. To tear down a stray
 duplicate workspace, `/exit` each of its agents with
 `herdr agent prompt <pane> "/exit"`, then run `herdr workspace close <id>`.
 
-`herdr-agents --audit <sha> [--out PATH] [--timeout SECONDS] [DIR]` makes the
+`herdr-agents --audit <sha> [--task ID] [--out PATH] [--timeout SECONDS] [DIR]` makes the
 orchestrator's Codex audit visible: it runs
 `codex <MODEL_PROFILE_AUDIT_CODEX_ARGS> exec --sandbox read-only -C DIR -o PATH.last.md '<prompt>'`
 in the pair workspace's dedicated `audit` tab (created once, then reused and
-left open). The prompt tells the auditor to audit only `<sha>`, follow the
-AGENTS.md "Audit" section, and end with one concluding `Verdict:` line. The
-helper tees the transcript to PATH (default
+left open). Without `--task`, the prompt tells the auditor to audit only
+`<sha>`, follow the AGENTS.md "Audit" section, and end with one concluding
+`Verdict:` line.
+
+A task is audited once, on its PR's final head, with `--task ID`. The prompt then
+names `.orchestration/tasks/ID.md` (required; a missing file exits 2), the
+worker's `reports/ID.md`, `validation/ID.md` and `sandboxes/ID.md`, and
+`validation/ID-pr-feedback.json` with the CI check runs and the review threads
+(each named only when present). It also gives the full PR diff
+`git diff <base> <sha>`, where `<base>` is `git merge-base origin/main <sha>`
+in DIR (exit 2 when there is none). The auditor judges specification
+conformance, implementation, and evidence reality, reports findings as
+`[P0-P3] confidence dimension file:line rationale`, and ends with the same
+`Verdict:` line. PATH then defaults to
+`.orchestration/validation/ID-audit-<sha7>.md`. Per-commit audits remain
+available without `--task` but are no longer the default.
+
+The helper tees the transcript to PATH (default
 `.orchestration/validation/audit-<sha>.md` under DIR), waits up to SECONDS
 (default 1800) for its exit marker, and exits nonzero when the audit does.
 `codex review --commit` is not used: it accepts no prompt with `--commit` and

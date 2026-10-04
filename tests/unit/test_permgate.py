@@ -178,7 +178,12 @@ class PermgateTest(unittest.TestCase):
         self.assertFalse(self.state_path.exists())
 
     def test_invalid_policy_returns_ask_and_logs_config_error(self) -> None:
-        for text in ("not-json\n", '["schema_version", "allow_patterns", "deny_patterns"]\n'):
+        for text in (
+            "not-json\n",
+            '["schema_version", "allow_patterns", "deny_patterns"]\n',
+            '{"schema_version": 3, "allow_patterns": [null], "deny_patterns": []}\n',
+            '{"schema_version": 3, "allow_patterns": [], "deny_patterns": [null]}\n',
+        ):
             with self.subTest(text=text.strip()):
                 self.policy_path.write_text(text)
                 result = self.run_gate("codex", CODEX_INPUT)

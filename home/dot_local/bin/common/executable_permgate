@@ -236,7 +236,7 @@ def main() -> int:
         return 0
     try:
         output, record = decide(agent, payload, policy)
-    except (KeyError, TypeError, ValueError, re.error):
+    except (AttributeError, KeyError, TypeError, ValueError, re.error):
         output = None
         record = decision_record(agent, payload, "config-error", "ask", 0)
     try:

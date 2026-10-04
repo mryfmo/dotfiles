@@ -974,6 +974,13 @@ def validate_permgate_policy(policy_path: Path) -> None:
         fail(f"{policy_path} must hold only schema_version, allow_patterns and deny_patterns")
     if policy["schema_version"] != 3:
         fail(f"{policy_path} must declare schema_version 3")
+    for key in ("allow_patterns", "deny_patterns"):
+        patterns = policy[key]
+        if not isinstance(patterns, list) or not all(
+            isinstance(pattern, dict) and isinstance(pattern.get("tool"), str) and isinstance(pattern.get("regex"), str)
+            for pattern in patterns
+        ):
+            fail(f"{policy_path} {key} must be a list of objects with string tool and regex")
 
 
 def validate_model_profile_assets(manifest: dict[str, Any]) -> None:

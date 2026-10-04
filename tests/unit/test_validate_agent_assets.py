@@ -505,6 +505,16 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 '{"schema_version": 3, "allow_patterns": [], "deny_patterns": [], "providers": {}}',
                 "must hold only",
             ),
+            (
+                "null allow entry",
+                '{"schema_version": 3, "allow_patterns": [null], "deny_patterns": []}',
+                "allow_patterns must be a list of objects",
+            ),
+            (
+                "deny not a list",
+                '{"schema_version": 3, "allow_patterns": [], "deny_patterns": {}}',
+                "deny_patterns must be a list of objects",
+            ),
         ):
             with self.subTest(label):
                 policy_path.write_text(text + "\n")

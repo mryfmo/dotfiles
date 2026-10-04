@@ -33,11 +33,34 @@ class SandboxPlaceholderIgnoreTest(unittest.TestCase):
             check=False,
         ).returncode
 
+    def status(self) -> str:
+        return subprocess.run(
+            ["git", "-c", "core.excludesFile=/dev/null", "status", "--porcelain", "--untracked-files=all"],
+            cwd=self.repo,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+
     def test_every_placeholder_is_ignored_at_the_root_only(self) -> None:
         for path in PLACEHOLDERS:
             with self.subTest(path=path):
                 self.assertEqual(self.check_ignore(path), 0)
                 self.assertEqual(self.check_ignore(f"home/{path}"), 1)
+
+    def test_empty_placeholder_files_on_disk_leave_status_clean(self) -> None:
+        (self.repo / ".claude").mkdir()
+        for path in PLACEHOLDERS:
+            (self.repo / path).touch(mode=0o444)
+        self.assertEqual(self.status(), "?? .gitignore\n")
+
+    def test_a_real_directory_of_that_name_stays_visible(self) -> None:
+        for path in PLACEHOLDERS:
+            with self.subTest(path=path):
+                (self.repo / path).mkdir(parents=True)
+                (self.repo / path / "reviewer.md").write_text("real\n")
+                self.assertEqual(self.check_ignore(f"{path}/reviewer.md"), 1)
+                self.assertIn(f"{path}/reviewer.md", self.status())
 
     def test_claude_settings_stay_visible(self) -> None:
         for path in (".claude/settings.json", ".claude/settings.local.json"):

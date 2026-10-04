@@ -31,23 +31,44 @@ __pycache__/
 
 # Claude Code sandbox placeholder targets: the sandbox bind-mounts /dev/null
 # over these paths and can leave them behind on the host as empty read-only
-# files at the repository root. Root-anchored; .claude/settings*.json stay visible.
+# files at the repository root. Root-anchored; .claude/settings*.json stay
+# visible, and each `!/<path>/` re-includes a real directory of that name, so
+# only the file form is ignored.
 /.bash_profile
+!/.bash_profile/
 /.bashrc
+!/.bashrc/
 /.claude/agents
+!/.claude/agents/
 /.claude/commands
+!/.claude/commands/
 /.claude/launch.json
+!/.claude/launch.json/
 /.claude/loop.md
+!/.claude/loop.md/
 /.claude/output-styles
+!/.claude/output-styles/
 /.claude/routines
+!/.claude/routines/
 /.claude/skills
+!/.claude/skills/
 /.claude/workflows
+!/.claude/workflows/
 /.gitconfig
+!/.gitconfig/
 /.gitmodules
+!/.gitmodules/
 /.idea
+!/.idea/
 /.mcp.json
+!/.mcp.json/
 /.profile
+!/.profile/
 /.ripgreprc
+!/.ripgreprc/
 /.vscode
+!/.vscode/
 /.zprofile
+!/.zprofile/
 /.zshrc
+!/.zshrc/

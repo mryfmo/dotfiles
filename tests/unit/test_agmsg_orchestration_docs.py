@@ -27,6 +27,26 @@ class AgmsgOrchestrationDocsParityTest(unittest.TestCase):
                 with self.subTest(path=path.name, invariant=invariant):
                     self.assertIn(invariant, text)
 
+    def test_rule_and_skill_share_the_parallel_execution_and_routing_invariants(self) -> None:
+        for path in (RULE, SKILL):
+            text = path.read_text()
+            for invariant in (
+                "pairwise-disjoint",
+                "--add-worker",
+                "re-tasked immediately",
+                "acceptance follows RESULT arrival order",
+                "gh pr update-branch",
+                "Self-Modification",
+                "home/dot_claude/modify_private_settings.json",
+                "AGMSG-PONG v1 status=blocked",
+                "--ask-for-approval never",
+            ):
+                with self.subTest(path=path.name, invariant=invariant):
+                    self.assertIn(invariant, text)
+
+    def test_rule_drops_the_worker_network_escalation(self) -> None:
+        self.assertNotIn("network access stays off", RULE.read_text())
+
     def test_skill_drops_the_pane_status_gate_and_raw_pane_wakes(self) -> None:
         text = SKILL.read_text()
         for stale in (

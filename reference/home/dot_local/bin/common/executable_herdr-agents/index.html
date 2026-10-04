@@ -3786,6 +3786,7 @@
 <ul>
 <li><code>accept_claude_workspace_trust_dialog</code></li>
 <li><code>accept_spawned_claude_trust_dialog</code></li>
+<li><code>added_worker_pane_filter</code></li>
 <li><code>agent_name_for_workspace</code></li>
 <li><code>attach_panes_are_unambiguous</code></li>
 <li><code>audit_pane_id</code></li>
@@ -3795,6 +3796,7 @@
 <li><code>claim_orchestrator_seat</code></li>
 <li><code>claim_seat_and_print_directive</code></li>
 <li><code>claude_ancestor_pid</code></li>
+<li><code>close_worker_tab</code></li>
 <li><code>codex_worktree_writable_roots</code></li>
 <li><code>despawn_worker_seat</code></li>
 <li><code>distinct_agmsg_identity_count</code></li>
@@ -3890,7 +3892,7 @@
 <span class="c1">#   `.orchestration/validation/audit-&lt;sha&gt;.md`.</span>
 <span class="c1"># @option --timeout &lt;seconds&gt; Audit exit-marker wait bound. Defaults to 1800.</span>
 <span class="c1"># @option --add-worker &lt;worktree&gt; Seat an extra resident worker for DIR/&lt;worktree&gt; via agmsg spawn.sh.</span>
-<span class="c1"># @option --remove-worker &lt;worktree&gt; Despawn that worker and close its workspace.</span>
+<span class="c1"># @option --remove-worker &lt;worktree&gt; Despawn that worker and close its tab (or its own workspace).</span>
 <span class="c1"># @option --kind &lt;codex|claude&gt; Add-worker agent kind. Defaults to the manifest worker_kind.</span>
 <span class="c1"># @option --profile &lt;name&gt; Add-worker model profile. Defaults to the manifest worker_profile.</span>
 <span class="c1"># @option --ready-timeout &lt;seconds&gt; Add-worker: spawn.sh readiness wait bound (spawn.sh default 90).</span>
@@ -3969,13 +3971,15 @@
 <span class="s">codex exec -o last message) is not `Verdict: correct` (a missing, blocked, or</span>
 <span class="s">incorrect verdict); it exits 2 without a managed workspace.</span>
 <span class="s">Add-worker mode seats an extra resident worker for &lt;worktree&gt; (a path under</span>
-<span class="s">DIR/.claude/worktrees/, created from origin/main when missing) in its own</span>
-<span class="s">workspace through upstream agmsg spawn.sh, with the profile's launch args;</span>
+<span class="s">DIR/.claude/worktrees/, created from origin/main when missing) in its own tab</span>
+<span class="s">of the pair workspace for DIR (labeled &lt;team&gt;:&lt;name&gt;; the pair tab is left</span>
+<span class="s">untouched), or in its own workspace when DIR has no pair workspace, through</span>
+<span class="s">upstream agmsg spawn.sh, with the profile's launch args;</span>
 <span class="s">a pane-less caller gets HERDR_SOCKET_PATH derived from the default Herdr server</span>
 <span class="s">socket ~/.config/herdr/herdr.sock (the path the Claude sandbox allowlists), a claude worker's workspace-trust dialog is accepted while spawn.sh</span>
 <span class="s">waits, and --ready-timeout bounds that wait (spawn.sh default 90 seconds);</span>
 <span class="s">remove-worker mode despawns it, turns its delivery off, leaves its team, and</span>
-<span class="s">closes that workspace, refusing a dirty worktree unless --force.</span>
+<span class="s">closes that tab (or that workspace), refusing a dirty worktree unless --force.</span>
 <span class="s">USAGE</span>
 <span class="o">}</span>
 
@@ -5141,14 +5145,25 @@
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_ids</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
+<span class="c1"># @description jq predicate for a pane of an --add-worker seat: it keeps its</span>
+<span class="c1">#   self-named `&lt;team&gt;:&lt;name&gt;` label (only the pair seats are normalized) and</span>
+<span class="c1">#   runs in a linked worktree under $workdir. Such a pane lives in its own tab</span>
+<span class="c1">#   of the pair workspace and is never one of the pair's panes.</span>
+<span class="k">function</span><span class="w"> </span>added_worker_pane_filter<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="c1"># shellcheck disable=SC2016 # jq variables are intentional literal input.</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s'</span><span class="w"> </span><span class="s1">'((.label // "") | test("^[^:[:space:]]+:[^:[:space:]]+$")) and ((.cwd // "") | startswith($worktrees))'</span>
+<span class="o">}</span>
+
 <span class="c1"># @description Return success when a Claude orchestrator pane is present.</span>
+<span class="c1">#   An added claude worker's pane (added_worker_pane_filter) does not count.</span>
 <span class="c1"># @arg $1 json Herdr pane list JSON.</span>
 <span class="c1"># @arg $2 pane_id Worker pane id to exclude, so a claude worker does not count.</span>
 <span class="k">function</span><span class="w"> </span>has_claude_pane<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">panes_json</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">worker_pane_id</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">2</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span>
 
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-e<span class="w"> </span>--arg<span class="w"> </span>worker<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'.result.panes[]? | select(.agent == "claude" and .pane_id != $worker)'</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-e<span class="w"> </span>--arg<span class="w"> </span>worker<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--arg<span class="w"> </span>worktrees<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">/.claude/worktrees/"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s2">".result.panes[]? | select(.agent == \"claude\" and .pane_id != \$worker and (</span><span class="k">$(</span>added_worker_pane_filter<span class="k">)</span><span class="s2"> | not))"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null
 <span class="o">}</span>
 
 <span class="c1"># @description Return the worker pane id when the registered agent points to a live pane.</span>
@@ -5550,8 +5565,10 @@
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">panes_json</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nv">exclude_pane_id</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">2</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span>
 
-<span class="w">    </span><span class="c1"># Preserve legacy files panes and the audit pane as non-agent panes.</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span>--arg<span class="w"> </span>exclude<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">exclude_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'.result.panes[]? | select((.agent? // "") == "" and .label? != "files" and .label? != "audit" and .pane_id != $exclude) | .pane_id // empty'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="c1"># Preserve legacy files panes, the audit pane and an exited added worker's</span>
+<span class="w">    </span><span class="c1"># pane (added_worker_pane_filter) as non-agent panes.</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">panes_json</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span>--arg<span class="w"> </span>exclude<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">exclude_pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--arg<span class="w"> </span>worktrees<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="k">:-</span><span class="si">}</span><span class="s2">/.claude/worktrees/"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s2">".result.panes[]? | select((.agent? // \"\") == \"\" and .label? != \"files\" and .label? != \"audit\" and .pane_id != \$exclude and (</span><span class="k">$(</span>added_worker_pane_filter<span class="k">)</span><span class="s2"> | not)) | .pane_id // empty"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>
 <span class="o">}</span>
 
 <span class="c1"># @description Remove a node-global npm copy that shadows the dedicated mise tool install.</span>
@@ -5611,6 +5628,26 @@
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span>herdr<span class="w"> </span>pane<span class="w"> </span>rename<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>audit<span class="w"> </span>&gt;<span class="w"> </span>/dev/null
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pane_id</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1"># @description Close the tab an added worker was seated in inside the pair</span>
+<span class="c1">#   workspace. despawn.sh usually closes the worker's pane, and with it the</span>
+<span class="c1">#   tab; this closes what is left. Only a tab whose every pane carries the</span>
+<span class="c1">#   worker's `&lt;team&gt;:&lt;name&gt;` label, or is an unlabeled pane with no agent (an</span>
+<span class="c1">#   empty shell), is closed, so the pair tab, the audit tab and any tab with</span>
+<span class="c1">#   another running agent are never touched.</span>
+<span class="c1"># @arg $1 string Pair workspace id.</span>
+<span class="c1"># @arg $2 string Worker seat label `&lt;team&gt;:&lt;name&gt;`.</span>
+<span class="k">function</span><span class="w"> </span>close_worker_tab<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>tab_id
+
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>tab_id<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">tab_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span>herdr<span class="w"> </span>tab<span class="w"> </span>close<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tab_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: unable to close tab %s of worker %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">tab_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>herdr<span class="w"> </span>pane<span class="w"> </span>list<span class="w"> </span>--workspace<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span>--arg<span class="w"> </span>label<span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="s1">'[.result.panes[]? | select(.tab_id | type == "string")] | group_by(.tab_id)[]</span>
+<span class="s1">         | select(any(.[]; .label == $label) and all(.[]; .label == $label or ((.label // "") == "" and (.agent? // "") == "")))</span>
+<span class="s1">         | .[0].tab_id'</span><span class="o">)</span>
 <span class="o">}</span>
 
 <span class="c1"># @description Require a command before starting a partial layout.</span>
@@ -5790,6 +5827,10 @@
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'herdr-agents: several Herdr workspaces are labeled %q; refusing.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_label</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="c1"># The pair workspace hosts each added worker in its own tab; only a</span>
+<span class="w">    </span><span class="c1"># pane-less caller without one gets the worker's own workspace.</span>
+<span class="w">    </span>load_seat_labels<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">pair_workspace_id</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>single_managed_workspace<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>basename<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2"> agents"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workdir</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
 <span class="k">fi</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">add_worker_mode</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
@@ -5823,7 +5864,15 @@
 <span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Herdr agents worker %s is already seated in workspace %s (%s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_dir</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">seat_workspace_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">pair_workspace_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="c1"># spawn.sh labels the worker's tab and pane &lt;team&gt;:&lt;name&gt;.</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>herdr<span class="w"> </span>pane<span class="w"> </span>list<span class="w"> </span>--workspace<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pair_workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-e<span class="w"> </span>--arg<span class="w"> </span>label<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_team</span><span class="si">}</span><span class="s2">:</span><span class="si">${</span><span class="nv">seat_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">            </span><span class="s1">'.result.panes[]? | select(.label == $label and (.agent? // "") != "")'</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Herdr agents worker %s is already seated in workspace %s (%s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pair_workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_dir</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">            </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="nv">seat_workspace_id</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">pair_workspace_id</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">seat_workspace_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">        </span><span class="nv">seat_env</span><span class="o">=(</span>--env<span class="w"> </span><span class="nv">HERDR_AGENTS_LAYOUT</span><span class="o">=</span>managed<span class="w"> </span>--env<span class="w"> </span><span class="nv">AGMSG_RESOLVE_PROJECT</span><span class="o">=</span><span class="m">0</span><span class="o">)</span>
 <span class="w">        </span><span class="c1"># A spawn-seated claude worker runs a Monitor watch (its actas boot starts one).</span>
 <span class="w">        </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">seat_kind</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>claude<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">seat_env</span><span class="o">+=(</span>--env<span class="w"> </span><span class="nv">AGMSG_CC_MONITOR_KEEP_ALIVE</span><span class="o">=</span><span class="m">1</span><span class="o">)</span>
@@ -5838,7 +5887,8 @@
 <span class="w">    </span>write_spawn_options<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_kind</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_options</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">    </span><span class="nv">seat_panes</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>herdr<span class="w"> </span>pane<span class="w"> </span>list<span class="w"> </span>--workspace<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-c<span class="w"> </span><span class="s1">'[.result.panes[]?.pane_id]'</span><span class="k">)</span><span class="s2">"</span>
 <span class="w">    </span><span class="c1"># spawn.sh seats the member (placement record, actas boot, readiness wait);</span>
-<span class="w">    </span><span class="c1"># --window opens a tab in HERDR_WORKSPACE_ID, and --project opts the join</span>
+<span class="w">    </span><span class="c1"># --window opens a tab in HERDR_WORKSPACE_ID (the pair workspace when one</span>
+<span class="w">    </span><span class="c1"># exists, the pair tab untouched), and --project opts the join</span>
 <span class="w">    </span><span class="c1"># out of project resolution. It runs in the background so a claude worker's</span>
 <span class="w">    </span><span class="c1"># trust dialog is accepted during the readiness wait, not after it.</span>
 <span class="w">    </span><span class="nv">HERDR_WORKSPACE_ID</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="nv">AGMSG_SPAWN_OPTIONS_FILE</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_options</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
@@ -5900,6 +5950,7 @@
 <span class="w">            </span><span class="k">fi</span>
 <span class="w">            </span><span class="s2">"</span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">/delivery.sh"</span><span class="w"> </span><span class="nb">set</span><span class="w"> </span>off<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_type</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 <span class="w">            </span><span class="s2">"</span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">/leave.sh"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_team</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="w">            </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">pair_workspace_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>close_worker_tab<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">pair_workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_team</span><span class="si">}</span><span class="s2">:</span><span class="si">${</span><span class="nv">seat_name</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">            </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Herdr agents worker removed: %s (%s)\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_dir</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">        </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span><span class="nv">AGMSG_RESOLVE_PROJECT</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">/identities.sh"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_dir</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat_type</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="o">)</span>
 <span class="w">    </span><span class="k">done</span>

@@ -960,6 +960,54 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_no_obvious_secrets()
 
+    def test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries(self) -> None:
+        binary = self.temp_dir / "home/dot_local/share/blob.bin"
+        binary.parent.mkdir(parents=True, exist_ok=True)
+        binary.write_bytes(b"\x00\x01ghp_" + b"x" * 25)
+        self.module.validate_no_obvious_secrets()
+
+        evidence = self.temp_dir / ".orchestration/validation/t-a01.md"
+        evidence.parent.mkdir(parents=True)
+        evidence.write_bytes(b"heading\x00ghp_" + b"x" * 25)
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_no_obvious_secrets()
+        self.assertIn(".orchestration/validation/t-a01.md holds a NUL byte at offset 7", stderr.getvalue())
+
+    def test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset(self) -> None:
+        evidence = self.temp_dir / ".orchestration/validation/t-utf16.md"
+        evidence.parent.mkdir(parents=True)
+        evidence.write_bytes(("ghp_" + "f" * 25 + "\n").encode("utf-16"))
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_no_obvious_secrets()
+        self.assertIn(".orchestration/validation/t-utf16.md holds a NUL byte at offset 3", stderr.getvalue())
+
+        evidence.write_bytes("\u3042\u3044".encode("utf-16"))  # UTF-16 with no NUL byte
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_no_obvious_secrets()
+        self.assertIn(".orchestration/validation/t-utf16.md is UTF-16; evidence must be UTF-8 text", stderr.getvalue())
+
+    def test_secret_scan_reads_json_per_key_and_string_value(self) -> None:
+        key = "ghp_" + "d" * 25
+        path = self.temp_dir / ".orchestration/validation/t-pr-feedback.json"
+        path.parent.mkdir(parents=True)
+        across_fields = json.dumps({"items": [{"body": f"ends with {FIELD} = ", "url": "https://x/1"}]}, indent=2)
+        path.write_text(across_fields)
+        self.module.validate_no_obvious_secrets()
+
+        for name, text in (
+            ("key-shaped object key", json.dumps({key: "value"})),
+            ("duplicate key's earlier value", '{"m": "' + key + '", "m": "later"}'),
+            ("escaped quoted assignment", json.dumps({"body": f"{FIELD} = " + '"abc"'})),
+            ("not JSON, text scan", across_fields[:-1]),
+        ):
+            with self.subTest(case=name):
+                path.write_text(text)
+                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                    self.module.validate_no_obvious_secrets()
+
     def test_secret_scan_checks_utf16_bom_text(self) -> None:
         path = self.temp_dir / "docs/reference/leaky-utf16.md"
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -1161,6 +1209,57 @@ class MaskSecretsModeTest(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(result.stdout, f"masked 0 match(es) in {evidence}\n")
+        self.assertEqual(evidence.read_text(), original)
+
+    def test_masks_json_string_values_and_keeps_the_document_parseable(self) -> None:
+        evidence = self.temp_dir / "t-pr-feedback.json"
+        key = "ghp_" + "b" * 25
+        items = [
+            {"body": f"ends with {FIELD} = ", "url": "https://x/1"},
+            {"body": f"line\n{key}\nset {FIELD} = " + '"abc"', "url": "https://x/2"},
+            {key: "a key-shaped member name"},
+        ]
+        evidence.write_text(json.dumps({"items": items}, indent=2) + "\n")
+
+        result = self.run_mask(evidence)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stdout, f"masked 3 match(es) in {evidence}\n")
+        saved = json.loads(evidence.read_text())["items"]
+        module = load_validator()
+        self.assertEqual([item.get("url") for item in saved[:2]], ["https://x/1", "https://x/2"])
+        self.assertEqual(
+            [item["body"] for item in saved[:2]], [module.mask_secret_matches(i["body"])[0] for i in items[:2]]
+        )
+        self.assertEqual(saved[2], {module.SECRET_MASK: "a key-shaped member name"})
+        self.assertNotIn(key, evidence.read_text())
+
+    def test_masks_an_earlier_duplicate_member_so_the_scan_passes(self) -> None:
+        evidence = self.temp_dir / "t-pr-feedback.json"
+        key = "ghp_" + "e" * 25
+        evidence.write_text('{"items": [{"body": "' + key + '", "body": "safe replacement"}]}\n')
+
+        result = self.run_mask(evidence)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stdout, f"masked 1 match(es) in {evidence}\n")
+        self.assertEqual(json.loads(evidence.read_text()), {"items": [{"body": "safe replacement"}]})
+        module = load_validator()
+        strings = module.json_strings(evidence.read_text())
+        self.assertFalse(any(module.SECRET_PATTERN.search(s) for s in strings))
+
+    def test_a_masked_key_collision_fails_and_leaves_the_file_unchanged(self) -> None:
+        evidence = self.temp_dir / "t-pr-feedback.json"
+        first, second = "ghp_" + "g" * 25, "ghp_" + "h" * 25
+        original = json.dumps({"items": [{first: "one", second: "two"}]}) + "\n"
+        evidence.write_text(original)
+
+        result = self.run_mask(evidence)
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn(str(evidence), result.stderr)
+        self.assertIn(repr(first), result.stderr)
+        self.assertIn(repr(second), result.stderr)
         self.assertEqual(evidence.read_text(), original)
 
     def test_missing_file_exits_2_without_touching_others(self) -> None:

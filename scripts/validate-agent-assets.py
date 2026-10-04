@@ -10,6 +10,7 @@ import posixpath
 import re
 import subprocess
 import sys
+from collections.abc import Iterable
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -1169,12 +1170,20 @@ def validate_no_removed_claude_skill() -> None:
 
 def read_scannable_text(path: Path) -> str | None:
     data = path.read_bytes()
+    offset = data.find(b"\0")
+    # Orchestration evidence is UTF-8 text; a NUL or a UTF-16 encoding there
+    # would hide it from the scan, so both fail before any decode.
+    if path.relative_to(ROOT).parts[:1] == (".orchestration",):
+        if offset != -1:
+            fail(f"{path.relative_to(ROOT)} holds a NUL byte at offset {offset}; evidence must be UTF-8 text")
+        if data.startswith((b"\xff\xfe", b"\xfe\xff")):
+            fail(f"{path.relative_to(ROOT)} is UTF-16; evidence must be UTF-8 text")
     if data.startswith((b"\xff\xfe", b"\xfe\xff")):
         try:
             return data.decode("utf-16")
         except UnicodeDecodeError:
             return None
-    if b"\0" in data:
+    if offset != -1:
         return None
     try:
         return data.decode("utf-8")
@@ -1203,7 +1212,7 @@ def mask_secret_matches(text: str) -> tuple[str, int]:
     Mirrors validate_no_obvious_secrets(): allowed placeholders are stripped
     before matching, so a line is masked only when its stripped form still
     matches and every other line is kept byte for byte. A final whole-text
-    pass covers a match that spans lines, so masked output always passes the
+    pass covers a match that spans lines, so masked text always passes the
     scan.
     """
     count = 0
@@ -1223,20 +1232,105 @@ def mask_secret_matches(text: str) -> tuple[str, int]:
     return masked, count
 
 
+def mask_json_strings(value: Any) -> tuple[Any, int]:
+    """Mask every string in a parsed JSON value, so the document stays parseable."""
+    if isinstance(value, str):
+        return mask_secret_matches(value)
+    if isinstance(value, list):
+        pairs = [mask_json_strings(item) for item in value]
+        return [item for item, _ in pairs], sum(count for _, count in pairs)
+    if isinstance(value, dict):
+        return mask_members(value.items())
+    return value, 0
+
+
+class MaskedKeyCollision(Exception):
+    """Two distinct object keys mask to one name, so masking would drop a member."""
+
+
+def mask_members(pairs: Iterable[tuple[str, Any]]) -> tuple[dict[str, Any], int]:
+    """Mask an object's keys and values; a repeated original key keeps its last value."""
+    masked: dict[str, Any] = {}
+    originals: dict[str, str] = {}
+    count = 0
+    for key, item in pairs:
+        masked_key, key_count = mask_secret_matches(key)
+        if originals.setdefault(masked_key, key) != key:
+            raise MaskedKeyCollision(f"keys {originals[masked_key]!r} and {key!r} both mask to {masked_key!r}")
+        masked[masked_key], item_count = mask_json_strings(item)
+        count += key_count + item_count
+    return masked, count
+
+
+def json_strings(text: str) -> list[str] | None:
+    """Every key and string value of a JSON document, or None when text is not JSON.
+
+    Objects are read as pair tuples, so a duplicate key's earlier value is kept.
+    """
+    try:
+        document = json.loads(text, object_pairs_hook=tuple)
+    except (ValueError, RecursionError):
+        return None
+    strings: list[str] = []
+    stack = [document]
+    while stack:
+        value = stack.pop()
+        if isinstance(value, str):
+            strings.append(value)
+        elif isinstance(value, list):
+            stack.extend(value)
+        elif isinstance(value, tuple):
+            for key, item in value:
+                strings.append(key)
+                stack.append(item)
+    return strings
+
+
 def mask_secrets(paths: list[str]) -> int:
-    """Mask SECRET_PATTERN matches in place (audit evidence); 2 if any file is missing."""
+    """Mask SECRET_PATTERN matches in place (audit evidence); 2 if any file is missing, 1 on a key collision.
+
+    A `.json` file that parses is masked per key and string value and rewritten
+    in the pr-feedback.py layout, so a saved body equals mask_secret_matches()
+    of the collected one; any other file is masked as text. Every member is
+    masked as it is parsed, and an earlier duplicate member is then dropped, as
+    json.loads (and so the gate) reads the file.
+    """
     missing = [name for name in paths if not Path(name).is_file()]
     if missing:
         for name in missing:
             print(f"--mask-secrets: no such file: {name}", file=sys.stderr)
         return 2
+    status = 0
     for name in paths:
         path = Path(name)
-        masked, count = mask_secret_matches(path.read_text())
+        text = path.read_text()
+        member_count = 0
+
+        def mask_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+            nonlocal member_count
+            masked, count = mask_members(pairs)
+            member_count += count
+            return masked
+
+        try:
+            document = json.loads(text, object_pairs_hook=mask_object) if path.suffix == ".json" else None
+        except json.JSONDecodeError:
+            document = None
+        except MaskedKeyCollision as error:
+            print(f"--mask-secrets: {path}: {error}; rename one key, the file is unchanged", file=sys.stderr)
+            status = 1
+            continue
+        if document is None:
+            masked, count = mask_secret_matches(text)
+        else:
+            # Objects are already masked; this pass covers strings outside any object.
+            document, count = mask_json_strings(document)
+            count += member_count
+            masked = json.dumps(document, indent=2, ensure_ascii=False) + "\n"
         if count:
             path.write_text(masked)
         print(f"masked {count} match(es) in {path}")
-    return 0
+    return status
 
 
 def validate_no_obvious_secrets() -> None:
@@ -1259,7 +1353,10 @@ def validate_no_obvious_secrets() -> None:
         text = read_scannable_text(path)
         if text is None:
             continue
-        if SECRET_PATTERN.search(strip_allowed_secret_placeholders(text)):
+        # A JSON document is scanned per key and string value, so a match never
+        # spans JSON syntax between two fields; any other text is scanned whole.
+        strings = json_strings(text) or [text]
+        if any(SECRET_PATTERN.search(strip_allowed_secret_placeholders(s)) for s in strings):
             fail(f"possible committed secret in {path.relative_to(ROOT)}")
 
 

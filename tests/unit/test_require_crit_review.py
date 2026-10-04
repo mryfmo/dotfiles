@@ -928,7 +928,7 @@ class ReviewGuardTest(unittest.TestCase):
             "AUDIT_DISPOSITIONS": "",
         }
         if audit_text is not None:
-            audit = audit_path or f".orchestration/validation/t1-audit-{sha or self.head_commit()[:7]}.md"
+            audit = audit_path or f".orchestration/validation/test-audit-{sha or self.head_commit()[:7]}.md"
             self.write_review_file(audit, audit_text)
             if last_text is not None:
                 self.write_review_file(f"{audit}.last.md", last_text)
@@ -947,12 +947,17 @@ class ReviewGuardTest(unittest.TestCase):
     def test_base_accepts_a_correct_audit_of_head(self) -> None:
         result = self.audit_guard("[P3] high spec a:1 nit\nVerdict: correct\n")
         self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertIn("Audit evidence accepted: .orchestration/validation/t1-audit-", result.stdout)
+        self.assertIn("Audit evidence accepted: .orchestration/validation/test-audit-", result.stdout)
         self.assertIn("Review requirement satisfied by AGENT_REVIEWED=1", result.stdout)
 
     def test_audit_must_name_head_and_live_under_validation(self) -> None:
         for label, kwargs, message in (
             ("wrong sha", {"sha": "0000000"}, "audits 0000000, not HEAD"),
+            (
+                "other task",
+                {"audit_path": ".orchestration/validation/other-audit-abcdef0.md"},
+                "audits task 'other', not 'test'",
+            ),
             (
                 "outside validation",
                 {"audit_path": "docs/t1-audit-abcdef0.md"},

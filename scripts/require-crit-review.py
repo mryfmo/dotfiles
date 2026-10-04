@@ -566,8 +566,8 @@ def orchestration_path_error(root: Path, path: Path, env: str, directory: str) -
     return None
 
 
-def audit_errors(root: Path, head: str) -> list[str]:
-    """Require the task-level audit of HEAD: `correct`, or `incorrect` with every finding not-applicable."""
+def audit_errors(root: Path, head: str, task: str) -> list[str]:
+    """Require the task-level audit of HEAD for task: `correct`, or `incorrect` with every finding not-applicable."""
     evidence = os.environ.get(AUDIT_ENV, "").strip()
     if not evidence:
         return [
@@ -583,6 +583,10 @@ def audit_errors(root: Path, head: str) -> list[str]:
         match = AUDIT_NAME.fullmatch(name)
         if not match:
             return [f"{AUDIT_ENV} must be named <id>-audit-<sha7>.md, not {name}"]
+        if match.group("task") != task:
+            return [
+                f"{AUDIT_ENV} audits task {match.group('task')!r}, not {task!r} named by {PR_FEEDBACK_ENV} (<task>-pr-feedback.json)"
+            ]
         if not head.startswith(match.group("sha")):
             return [f"{AUDIT_ENV} audits {match.group('sha')}, not HEAD {head}; audit the final head"]
     if not path.is_file():
@@ -721,7 +725,9 @@ def main() -> None:
         return
 
     if head is not None and not all(path.startswith(".orchestration/") for path in paths):
-        errors = audit_errors(root, head)
+        # The base path already validated PR_FEEDBACK_EVIDENCE's location and -pr-feedback.json suffix.
+        task = Path(os.environ[PR_FEEDBACK_ENV].strip()).name.removesuffix("-pr-feedback.json")
+        errors = audit_errors(root, head, task)
         if errors:
             print("Task-level audit evidence is required for PR integration of this change:")
             for line in (*reasons, *errors):

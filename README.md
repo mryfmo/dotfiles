@@ -176,7 +176,9 @@ vendored CompactionDB tree, and updates the pinned agmsg skill in place
 and must come through unchanged). It then reloads a
 running Herdr server, skips reload
 when the server is reported as not running or the command is unavailable, and
-fails on ambiguous status or reload errors other than `protocol_mismatch`. A
+fails on reload errors other than `protocol_mismatch`. When the server status
+cannot be read or is unknown, it prints
+`Herdr server unreachable; skipping config reload.` and continues. A
 protocol mismatch after updating Herdr prints instructions to stop and restart
 the server (or recreate the Ghostty session), then continues successfully; run
 `herdr server reload-config` manually after restarting. Finally,
@@ -297,8 +299,12 @@ stops `/usr/bin/bwrap` from creating the user namespaces that sandboxed Codex
 runs need. Rather than relaxing that sysctl globally, `chezmoi apply` installs
 the `bwrap-userns` AppArmor profile
 (`install/ubuntu/common/apparmor/bwrap-userns`, loaded by
-`install/ubuntu/common/apparmor_userns.sh` with sudo), and `make doctor` probes
-`bwrap` to confirm it works. To remove it, run
+`install/ubuntu/common/apparmor_userns.sh` with `sudo -n`), and `make doctor`
+probes `bwrap` to confirm it works. Without cached sudo credentials the
+installer never prompts: it leaves the profile pending, and `make doctor`
+reports it missing. Install it with
+`sudo -v && bash install/ubuntu/common/apparmor_userns.sh` from the repository
+root; `make update` does not retry it. To remove it, run
 `sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns` and then
 `sudo rm /etc/apparmor.d/bwrap-userns`.
 

@@ -14,7 +14,8 @@
 #   Worker seat: blocks on every task_id whose latest `AGMSG-TASK` (or
 #   `AGMSG-ACCEPTANCE status=revise`) addressed to a claude-code identity
 #   registered at the worktree has no later `AGMSG-RESULT` or `AGMSG-PONG
-#   status=blocked` for that task_id from it.
+#   status=blocked` for that task_id from it, nor a later `AGMSG-ACCEPTANCE`
+#   with any other status (accepted, withdrawn, ...) addressed to it.
 #
 #   Every team the identity belongs to is checked. Messages come from the
 #   whole team history through agmsg's own storage facade, the one
@@ -42,7 +43,9 @@ active="$(jq -r '.stop_hook_active // false' <<< "${input}" 2> /dev/null)"
 cwd="$(jq -r '.cwd // empty' <<< "${input}" 2> /dev/null)"
 cwd="${cwd:-${PWD}}"
 
-# Main checkout as in check-regime-boundary.sh.
+# Main checkout as in check-regime-boundary.sh, discovered from cwd alone: an
+# inherited GIT_DIR or GIT_WORK_TREE would select another repository.
+unset GIT_DIR GIT_WORK_TREE
 top="$(git -C "${cwd}" rev-parse --show-toplevel 2> /dev/null)" || exit 0
 common="$(git -C "${cwd}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null)" || exit 0
 main="${common%/.git}"
@@ -143,6 +146,8 @@ while IFS=$'\t' read -r -u 3 team name; do
             } else if ($2 == me && (kind == "AGMSG-TASK" || (kind == "AGMSG-ACCEPTANCE" && status == "revise"))) {
                 pending[id] = 1
             } else if ($1 == me && (kind == "AGMSG-RESULT" || (kind == "AGMSG-PONG" && status == "blocked"))) {
+                delete pending[id]
+            } else if ($2 == me && kind == "AGMSG-ACCEPTANCE") {
                 delete pending[id]
             }
         }

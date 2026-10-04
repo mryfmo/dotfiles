@@ -154,6 +154,23 @@ class AgentStopGateTest(unittest.TestCase):
         self.assertIn("task_id=T1 ", stderr)
         self.assertNotIn("task_id=T2 ", stderr)
 
+    def test_worker_task_closed_by_a_non_revise_acceptance(self):
+        self.history(
+            row("orch", "worker-a001", "AGMSG-TASK v1 task_id=T4 repo=/r"),
+            row("orch", "worker-a001", "AGMSG-ACCEPTANCE v1 task_id=T4 status=withdrawn reason=lane-reclaimed"),
+        )
+        self.assert_gate(self.worker, 0)
+        self.history(
+            row("orch", "worker-a001", "AGMSG-TASK v1 task_id=T4 repo=/r"),
+            row("orch", "worker-a001", "AGMSG-ACCEPTANCE v1 task_id=T4 status=revise next_action=fix"),
+        )
+        self.assertIn("task_id=T4", self.assert_gate(self.worker, 2))
+
+    def test_inherited_git_dir_does_not_hide_the_seat(self):
+        self.history(row("worker-a001", "orch", "AGMSG-RESULT v1 task_id=T1 status=ready_for_review"))
+        env = {"GIT_DIR": str(self.home / "no-such-repo"), "GIT_WORK_TREE": str(self.home)}
+        self.assertIn("task_id=T1", self.assert_gate(self.main, 2, env=env))
+
     def test_worker_after_result_passes(self):
         self.history(
             row("orch", "worker-a001", "AGMSG-TASK v1 task_id=T2 repo=/r"),

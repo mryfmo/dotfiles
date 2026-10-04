@@ -19,20 +19,6 @@ if [[ -d "${HOME}/.local/bin/common" ]]; then
 fi
 
 #
-# Herdr in Ghostty
-#
-# @description
-#   Start the managed layout for bare `herdr` only in Ghostty. Rootshell and
-#   argument-bearing calls invoke the real Herdr binary.
-function herdr() {
-    if [[ $# -eq 0 && -n "${GHOSTTY_RESOURCES_DIR:-}" ]]; then
-        herdr-session
-        return
-    fi
-    command herdr "$@"
-}
-
-#
 # sheldon initialization
 #
 if command -v sheldon > /dev/null 2>&1; then

@@ -26,8 +26,9 @@ FAILURE_REASON_MIN_CHARS = 20
 # herdr-agents --audit names and concludes the task-level audit this way.
 AUDIT_NAME = re.compile(r"(?P<task>.+)-audit-(?P<sha>[0-9a-f]{7,40})\.md")
 AUDIT_VERDICT = re.compile(r"\s*Verdict: (correct|incorrect|blocked)\s*")
-AUDIT_FINDING = re.compile(r"^\s*\[P[0-3]\]", re.M)
+AUDIT_FINDING = re.compile(r"^\s*(?:[-*+]\s+)?\[P[0-3]\]", re.M)
 AUDIT_FINDING_DISPOSITION_PREFIX = "audit-finding:"
+AUDIT_FINDING_NUMBER = re.compile(rf"{AUDIT_FINDING_DISPOSITION_PREFIX}\s*(?P<number>\d+)\b")
 # Levels whose not-applicable disposition needs a concrete reason: failures and
 # runs that did not finish, so a work-in-progress run cannot be waved through.
 STRICT_REASON_LEVELS = {
@@ -618,10 +619,20 @@ def audit_disposition_errors(root: Path, findings: int) -> list[str]:
     if not path.is_file():
         return [f"{AUDIT_DISPOSITIONS_ENV} file does not exist: {path}"]
     errors: list[str] = []
-    accepted = 0
+    covered: set[int] = set()
     for line in path.read_text().splitlines():
         line = line.strip()
         if not line.startswith(AUDIT_FINDING_DISPOSITION_PREFIX):
+            continue
+        number = AUDIT_FINDING_NUMBER.match(line)
+        if number is None or not 1 <= int(number.group("number")) <= findings:
+            errors.append(
+                f"{AUDIT_DISPOSITIONS_ENV} line must name its finding as `{AUDIT_FINDING_DISPOSITION_PREFIX} <1-{findings}>` in audit order: {line}"
+            )
+            continue
+        finding = int(number.group("number"))
+        if finding in covered:
+            errors.append(f"{AUDIT_DISPOSITIONS_ENV} dispositions finding {finding} more than once: {line}")
             continue
         match = PR_FEEDBACK_DISPOSITION.search(line)
         if match is None:
@@ -635,10 +646,11 @@ def audit_disposition_errors(root: Path, findings: int) -> list[str]:
                 f"{AUDIT_DISPOSITIONS_ENV} not-applicable needs a reason of at least {FAILURE_REASON_MIN_CHARS} characters: {line}"
             )
         else:
-            accepted += 1
-    if accepted < findings:
+            covered.add(finding)
+    missing = sorted(set(range(1, findings + 1)) - covered)
+    if missing:
         errors.append(
-            f"{AUDIT_DISPOSITIONS_ENV} dispositions {accepted} of {findings} audit finding(s); add one `{AUDIT_FINDING_DISPOSITION_PREFIX} … not-applicable:<reason>` line per finding"
+            f"{AUDIT_DISPOSITIONS_ENV} leaves audit finding(s) {', '.join(map(str, missing))} of {findings} without a disposition; add one `{AUDIT_FINDING_DISPOSITION_PREFIX} <n> … not-applicable:<reason>` line per finding, numbered in audit order"
         )
     return errors
 
@@ -708,7 +720,7 @@ def main() -> None:
         print("Review not required: no meaningful review trigger found.")
         return
 
-    if head is not None:
+    if head is not None and not all(path.startswith(".orchestration/") for path in paths):
         errors = audit_errors(root, head)
         if errors:
             print("Task-level audit evidence is required for PR integration of this change:")

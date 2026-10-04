@@ -999,14 +999,21 @@ class ReviewGuardTest(unittest.TestCase):
                 self.assertIn(message, result.stdout)
 
     def test_incorrect_audit_needs_not_applicable_dispositions(self) -> None:
-        audit = "[P2] high impl a:1 one\n  [P3] low impl b:2 two\nVerdict: incorrect\n"
+        audit = "[P2] high impl a:1 one\n  - [P3] low impl b:2 two\nVerdict: incorrect\n"
         reason = "not-applicable:the flagged path is generated output outside this task"
         for label, dispositions, message in (
             ("no dispositions", None, "AUDIT_DISPOSITIONS must name the acceptance record"),
-            ("fixed commit", f"audit-finding: one fixed:{'a' * 7}\naudit-finding: two {reason}\n", "a fix moves HEAD"),
-            ("short reason", f"audit-finding: one not-applicable:nope\naudit-finding: two {reason}\n", "at least 20"),
-            ("one missing", f"audit-finding: one {reason}\n", "dispositions 1 of 2 audit finding(s)"),
-            ("accepted", f"# acceptance\naudit-finding: one {reason}\naudit-finding: two {reason}\n", None),
+            ("fixed commit", f"audit-finding: 1 fixed:{'a' * 7}\naudit-finding: 2 {reason}\n", "a fix moves HEAD"),
+            ("short reason", f"audit-finding: 1 not-applicable:nope\naudit-finding: 2 {reason}\n", "at least 20"),
+            ("one missing", f"audit-finding: 1 {reason}\n", "leaves audit finding(s) 2 of 2 without a disposition"),
+            ("unnumbered repeat", f"audit-finding: x {reason}\naudit-finding: x {reason}\n", "must name its finding"),
+            (
+                "same finding twice",
+                f"audit-finding: 1 {reason}\naudit-finding: 1 {reason}\n",
+                "finding 1 more than once",
+            ),
+            ("out of range", f"audit-finding: 1 {reason}\naudit-finding: 3 {reason}\n", "<1-2>"),
+            ("accepted", f"# acceptance\naudit-finding: 1 {reason}\naudit-finding: 2 {reason}\n", None),
         ):
             with self.subTest(label):
                 self.tearDown()
@@ -1036,6 +1043,21 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertIn("Review not required", result.stdout)
         self.assertNotIn("AUDIT_EVIDENCE", result.stdout)
+
+    def test_broad_orchestration_only_pr_needs_no_audit(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        run(["git", "switch", "-c", "feature"], self.temp_dir)
+        for index in range(5):
+            self.write_review_file(f".orchestration/reports/t{index}.md", "line\n" * 50)
+        run(["git", "add", ".orchestration"], self.temp_dir)
+        run(["git", "commit", "-m", "boundary"], self.temp_dir)
+        feedback = self.write_feedback([])
+
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "AUDIT_EVIDENCE": ""})
+
+        self.assertIn("broad diff touches", result.stdout)
+        self.assertNotIn("AUDIT_EVIDENCE", result.stdout)
+        self.assertNotIn("Task-level audit evidence is required", result.stdout)
 
 
 if __name__ == "__main__":

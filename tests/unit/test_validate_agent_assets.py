@@ -480,6 +480,26 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     self.module.validate_assets(manifest)
                 self.assertIn("assets.mise.render entries must each be a mapping", stderr.getvalue())
 
+    def test_assets_reject_one_assignment_rendered_from_two_fields(self) -> None:
+        manifest = self.asset_manifest()
+        mise = manifest["assets"]["mise"]
+        mise["sha256"] = "abc"
+        mise["render"] = [
+            mise["render"],
+            {"file": "install/common/mise.sh", "constants": {"MISE_VERSION": "sha256"}},
+        ]
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_assets(manifest)
+        self.assertIn(
+            "install/common/mise.sh MISE_VERSION is rendered from both assets.mise.pin and assets.mise.sha256",
+            stderr.getvalue(),
+        )
+
+        mise["render"] = [mise["render"][0], dict(mise["render"][0])]
+        self.write_text_file("install/common/mise.sh", 'readonly MISE_VERSION="v1"\n')
+        self.module.validate_assets(manifest)
+
     def test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts(
         self,
     ) -> None:

@@ -178,11 +178,13 @@ class PermgateTest(unittest.TestCase):
         self.assertFalse(self.state_path.exists())
 
     def test_invalid_policy_returns_ask_and_logs_config_error(self) -> None:
-        self.policy_path.write_text("not-json\n")
-        result = self.run_gate("codex", CODEX_INPUT)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, "")
-        self.assertEqual(self.read_log()[-1]["layer"], "config-error")
+        for text in ("not-json\n", '["schema_version", "allow_patterns", "deny_patterns"]\n'):
+            with self.subTest(text=text.strip()):
+                self.policy_path.write_text(text)
+                result = self.run_gate("codex", CODEX_INPUT)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, "")
+                self.assertEqual(self.read_log()[-1]["layer"], "config-error")
 
     def test_invalid_policy_fields_fail_closed(self) -> None:
         base_policy = json.loads(self.policy_path.read_text())

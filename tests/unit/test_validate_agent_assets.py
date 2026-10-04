@@ -492,6 +492,28 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             self.write_text_file("install/ubuntu/common/tool.sh", derived)
             self.module.validate_assets(self.asset_manifest())
 
+    def test_permgate_policy_requires_a_schema_3_object(self) -> None:
+        policy_path = self.temp_dir / "permgate-policy.yaml"
+        policy_path.write_text('{"schema_version": 3, "allow_patterns": [], "deny_patterns": []}\n')
+        self.module.validate_permgate_policy(policy_path)
+
+        for label, text, message in (
+            ("array", '["schema_version", "allow_patterns", "deny_patterns"]', "must be a JSON object"),
+            ("old schema", '{"schema_version": 2, "allow_patterns": [], "deny_patterns": []}', "schema_version 3"),
+            (
+                "extra key",
+                '{"schema_version": 3, "allow_patterns": [], "deny_patterns": [], "providers": {}}',
+                "must hold only",
+            ),
+        ):
+            with self.subTest(label):
+                policy_path.write_text(text + "\n")
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_permgate_policy(policy_path)
+                self.assertIn(str(policy_path), stderr.getvalue())
+                self.assertIn(message, stderr.getvalue())
+
     def test_agent_manifest_rejects_missing_security_profile(self) -> None:
         manifest = self.write_valid_agent_manifest()
         del manifest["model_profiles"]["security"]

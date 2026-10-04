@@ -70,7 +70,7 @@ def state_path() -> Path:
 
 def load_policy() -> dict[str, Any]:
     policy = json.loads(policy_path().read_text())
-    if policy.get("schema_version") != 3:
+    if not isinstance(policy, dict) or policy.get("schema_version") != 3:
         raise ValueError("unsupported policy schema")
     return policy
 

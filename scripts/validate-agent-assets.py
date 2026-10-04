@@ -966,6 +966,16 @@ def validate_understand_anything_assets() -> None:
             fail(f"README.md must document Understand-Anything lifecycle token {token!r}")
 
 
+def validate_permgate_policy(policy_path: Path) -> None:
+    policy = json.loads(policy_path.read_text())
+    if not isinstance(policy, dict):
+        fail(f"{policy_path} must be a JSON object")
+    if set(policy) != {"schema_version", "allow_patterns", "deny_patterns"}:
+        fail(f"{policy_path} must hold only schema_version, allow_patterns and deny_patterns")
+    if policy["schema_version"] != 3:
+        fail(f"{policy_path} must declare schema_version 3")
+
+
 def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
     codex_path = ROOT / "home/.chezmoitemplates/codex-config-managed.toml"
     codex_text = render_template_text(codex_path)
@@ -986,9 +996,7 @@ def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
     permgate_path = ROOT / "home/dot_local/bin/common/executable_permgate"
     if not policy_path.exists() or not permgate_path.exists():
         fail("permgate policy and executable must exist")
-    policy = json.loads(policy_path.read_text())
-    if set(policy) != {"schema_version", "allow_patterns", "deny_patterns"}:
-        fail("permgate policy must hold only schema_version, allow_patterns and deny_patterns")
+    validate_permgate_policy(policy_path)
     permgate_text = permgate_path.read_text()
     for token in (
         "--no-cache",

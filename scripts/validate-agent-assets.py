@@ -966,6 +966,23 @@ def validate_understand_anything_assets() -> None:
             fail(f"README.md must document Understand-Anything lifecycle token {token!r}")
 
 
+def validate_permgate_policy(policy_path: Path) -> None:
+    policy = json.loads(policy_path.read_text())
+    if not isinstance(policy, dict):
+        fail(f"{policy_path} must be a JSON object")
+    if set(policy) != {"schema_version", "allow_patterns", "deny_patterns"}:
+        fail(f"{policy_path} must hold only schema_version, allow_patterns and deny_patterns")
+    if policy["schema_version"] != 3:
+        fail(f"{policy_path} must declare schema_version 3")
+    for key in ("allow_patterns", "deny_patterns"):
+        patterns = policy[key]
+        if not isinstance(patterns, list) or not all(
+            isinstance(pattern, dict) and isinstance(pattern.get("tool"), str) and isinstance(pattern.get("regex"), str)
+            for pattern in patterns
+        ):
+            fail(f"{policy_path} {key} must be a list of objects with string tool and regex")
+
+
 def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
     codex_path = ROOT / "home/.chezmoitemplates/codex-config-managed.toml"
     codex_text = render_template_text(codex_path)
@@ -986,31 +1003,11 @@ def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
     permgate_path = ROOT / "home/dot_local/bin/common/executable_permgate"
     if not policy_path.exists() or not permgate_path.exists():
         fail("permgate policy and executable must exist")
-    policy = json.loads(policy_path.read_text())
-    providers = policy.get("providers", {})
-    if set(providers) != {"claude", "codex"}:
-        fail("permgate must define claude and codex providers")
-    if any(provider.get("llm_enabled") is not False for provider in providers.values()):
-        fail("permgate providers must ship in shadow mode")
-    if not providers.get("claude", {}).get("model", "").startswith("claude-haiku-4-5-20"):
-        fail("permgate Claude provider must pin a dated Haiku model")
-    if providers.get("codex", {}).get("model") != "gpt-5.6-luna":
-        fail("permgate Codex provider must use the express Codex model")
-    if any(not 0 < provider.get("timeout_seconds", 0) <= 8 for provider in providers.values()):
-        fail("permgate provider timeouts must leave hook headroom")
-    if set(policy.get("classifier_actions", {})) != set(policy.get("categories", [])):
-        fail("permgate must bound every classifier category to explicit actions")
+    validate_permgate_policy(policy_path)
     permgate_text = permgate_path.read_text()
     for token in (
         "--no-cache",
         "PERMGATE_INNER",
-        "PERMGATE_CODEX_COMMAND",
-        "--safe-mode",
-        "--tools",
-        "--disable-slash-commands",
-        "--ignore-user-config",
-        "--ignore-rules",
-        "classification_subject",
         "decisions.jsonl",
     ):
         if token not in permgate_text:

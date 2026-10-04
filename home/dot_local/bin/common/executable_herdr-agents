@@ -90,6 +90,7 @@ Usage: herdr-agents [DIR]
        herdr-agents --audit <sha> [--task ID] [--out PATH] [--timeout SECONDS] [DIR]
        herdr-agents --add-worker <worktree> [--kind codex|claude] [--profile NAME] [--ready-timeout SECONDS] [DIR]
        herdr-agents --remove-worker <worktree> [--force] [DIR]
+       herdr-agents --directive
 
 Create a Herdr workspace for DIR with equal-width Claude Code and worker
 panes from left to right, and open DIR in Zed when available. Herdr, jq,
@@ -111,6 +112,12 @@ on-demand worker and auditor commands, and the manifest worktree's seated
 worker, if any. In a regime repository (a main checkout with one orchestrator
 agmsg identity and a manifest worker seat) an agmsg-orchestration directive
 line follows, as it follows seat_claim= inside the orchestrator's Herdr pane.
+Full, attach and restart-worker modes seat a Claude orchestrator, so they exit 2
+before touching Herdr when HERDR_AGENTS_ORCHESTRATOR_KIND (default
+orchestrator_kind from ~/.agents/model-profiles.env, then claude) is codex; the
+other modes work under either kind. Directive mode prints the
+agmsg-orchestration directive line for the current directory when it is a
+regime repository, and nothing otherwise; it needs no Herdr server.
 Restart-worker mode exits the worker agent in the existing pair's worker pane
 and starts it again in the same pane with the current worker_kind and
 worker_profile launch arguments; it never creates panes or workspaces.
@@ -186,6 +193,31 @@ function resolve_worker_kind() {
         source "${HOME}/.agents/model-profiles.env"
     fi
     printf '%s\n' "${HERDR_AGENTS_WORKER_KIND:-codex}"
+}
+
+# @description Resolve the orchestrator kind the way resolve_worker_kind resolves
+#   the worker's: explicit environment first, then the manifest-generated
+#   ~/.agents/model-profiles.env, then claude.
+# @stdout claude or codex.
+# @exitcode 2 If the value is neither claude nor codex.
+function resolve_orchestrator_kind() {
+    local kind="${HERDR_AGENTS_ORCHESTRATOR_KIND:-}"
+
+    if [[ -z ${kind} ]]; then
+        local HERDR_AGENTS_ORCHESTRATOR_KIND=""
+        if [[ -f ${HOME}/.agents/model-profiles.env ]]; then
+            # shellcheck source=/dev/null
+            source "${HOME}/.agents/model-profiles.env"
+        fi
+        kind="${HERDR_AGENTS_ORCHESTRATOR_KIND:-claude}"
+    fi
+    case "${kind}" in
+    claude | codex) printf '%s\n' "${kind}" ;;
+    *)
+        printf 'herdr-agents: orchestrator_kind must be claude or codex: %s\n' "${kind}" >&2
+        return 2
+        ;;
+    esac
 }
 
 # @description Resolve the pair worker's worktree, relative to the repository,
@@ -1876,6 +1908,29 @@ if [[ ${1:-} == "--help" || ${1:-} == "-h" ]]; then
     usage
     exit 0
 fi
+
+# --directive needs neither Herdr nor a pane, so a Codex orchestrator's first turn can carry it.
+if [[ ${1:-} == "--directive" ]]; then
+    if [[ $# -ne 1 ]]; then
+        usage >&2
+        exit 2
+    fi
+    print_regime_directive "$(pwd -P)"
+    exit 0
+fi
+
+# The Claude pair (full mode, --attach, --restart-worker) seats a Claude
+# orchestrator, so it refuses before touching Herdr when the manifest names Codex.
+case "${1:-}" in
+--bootstrap-agmsg | --add-worker | --remove-worker | --audit) ;;
+*)
+    orchestrator_kind="$(resolve_orchestrator_kind)" || exit 2
+    if [[ ${orchestrator_kind} == codex ]]; then
+        printf 'herdr-agents: orchestrator_kind=codex: use codex-orchestrate\n' >&2
+        exit 2
+    fi
+    ;;
+esac
 
 attach_mode=false
 bootstrap_mode=false

@@ -607,6 +607,80 @@ fi
         )
         self.assertFalse(self.calls_path.exists())
 
+    def test_codex_orchestrator_kind_refuses_the_claude_pair_before_herdr(self) -> None:
+        codex = {"HERDR_AGENTS_ORCHESTRATOR_KIND": "codex"}
+        for name, run in (
+            ("full mode", lambda: self.run_helper(extra_env=codex)),
+            ("restart-worker", lambda: self.run_helper("--restart-worker", extra_env=codex)),
+            ("attach in a pane", lambda: self.run_attach_helper(in_herdr=True, extra_env=codex)),
+            ("attach in a plain shell", lambda: self.run_attach_helper(in_herdr=False, extra_env=codex)),
+        ):
+            with self.subTest(mode=name):
+                result = run()
+                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                self.assertEqual(result.stderr, "herdr-agents: orchestrator_kind=codex: use codex-orchestrate\n")
+                self.assertEqual(result.stdout, "")
+                self.assertFalse(self.calls_path.exists())  # no herdr call and no agmsg join
+
+    def test_orchestrator_kind_comes_from_the_manifest_env_and_is_validated(self) -> None:
+        profiles = self.home_dir / ".agents/model-profiles.env"
+        profiles.parent.mkdir(parents=True, exist_ok=True)
+        profiles.write_text('HERDR_AGENTS_ORCHESTRATOR_KIND="codex"\n')
+        result = self.run_attach_helper(in_herdr=False)
+        self.assertEqual(
+            (result.returncode, result.stderr), (2, "herdr-agents: orchestrator_kind=codex: use codex-orchestrate\n")
+        )
+
+        result = self.run_attach_helper(in_herdr=False, extra_env={"HERDR_AGENTS_ORCHESTRATOR_KIND": "zed"})
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("orchestrator_kind must be claude or codex: zed", result.stderr)
+        self.assertFalse(self.calls_path.exists())
+
+    def test_codex_orchestrator_kind_keeps_the_non_seating_modes(self) -> None:
+        result = self.run_agmsg_bootstrap_helper(extra_env={"HERDR_AGENTS_ORCHESTRATOR_KIND": "codex"})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn("orchestrator_kind", result.stderr)
+
+    def test_claude_orchestrator_kind_keeps_the_attach_summary(self) -> None:
+        result = self.run_attach_helper(in_herdr=False, extra_env={"HERDR_AGENTS_ORCHESTRATOR_KIND": "claude"})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue(result.stdout.startswith("herdr-agents: not in a Herdr pane"), result.stdout)
+
+    def run_directive(self) -> subprocess.CompletedProcess[str]:
+        env = os.environ.copy()
+        env["HOME"] = str(self.home_dir)
+        env["PATH"] = f"{os.pathsep}".join(("/usr/bin", "/bin"))  # no herdr anywhere on PATH
+        for key in ("HERDR_AGENTS_ORCHESTRATOR_KIND", "HERDR_ENV", "HERDR_PANE_ID", "HERDR_WORKSPACE_ID"):
+            env.pop(key, None)
+        env["HERDR_AGENTS_ORCHESTRATOR_KIND"] = "codex"  # the directive serves a Codex orchestrator too
+        return subprocess.run(
+            ["bash", str(SCRIPT), "--directive"],
+            cwd=self.workdir,
+            env=env,
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+    def test_directive_prints_the_regime_line_without_herdr(self) -> None:
+        unseated = self.run_directive()
+        self.assertEqual((unseated.returncode, unseated.stdout, unseated.stderr), (0, "", ""))
+
+        self.write_worktree_seat()
+        seated = self.run_directive()
+
+        self.assertEqual(seated.returncode, 0, seated.stdout + seated.stderr)
+        lines = seated.stdout.splitlines()
+        self.assertEqual(len(lines), 1, seated.stdout)
+        self.assertTrue(
+            lines[0].startswith(
+                f"agmsg-orchestration: this session is the orchestrator seat claude-remediation-dot for {self.workdir.resolve()} "
+            ),
+            lines[0],
+        )
+        self.assertTrue(all(not call.startswith("herdr") for call in self.calls_path.read_text().splitlines()))
+
     def test_attach_without_herdr_environment_names_the_seated_worker(self) -> None:
         worktree = self.write_worktree_seat(worktree_identities="dotfiles\tclaude-standard-dot-a005")
         worktree.mkdir(parents=True)

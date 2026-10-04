@@ -101,6 +101,51 @@ def sample_manifest() -> dict:
     }
 
 
+COMMAND_HOOKS = [
+    {"event": "PreCompact", "command": "contextdb hook pre-compact", "timeout": 30, "status_message": "Saving context"},
+    {
+        "event": "PostCompact",
+        "command": "contextdb hook post-compact",
+        "timeout": 30,
+        "status_message": "Restoring context",
+    },
+    {
+        "event": "SessionEnd",
+        "command": "contextdb hook session-end",
+        "timeout": 10,
+        "status_message": "Closing session",
+    },
+]
+COMMAND_HOOKS_TOML = """
+[[hooks.PreCompact]]
+matcher = "*"
+
+[[hooks.PreCompact.hooks]]
+type = "command"
+command = "contextdb hook pre-compact"
+timeout = 30
+statusMessage = "Saving context"
+
+[[hooks.PostCompact]]
+matcher = "*"
+
+[[hooks.PostCompact.hooks]]
+type = "command"
+command = "contextdb hook post-compact"
+timeout = 30
+statusMessage = "Restoring context"
+
+[[hooks.SessionEnd]]
+matcher = "*"
+
+[[hooks.SessionEnd.hooks]]
+type = "command"
+command = "contextdb hook session-end"
+timeout = 10
+statusMessage = "Closing session"
+"""
+
+
 class GenerateAgentConfigsTest(unittest.TestCase):
     def setUp(self) -> None:
         self.module = load_generator()
@@ -824,6 +869,26 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         claude_mcp = self.module.render_claude_mcp(manifest).split("*/}}", 1)[-1]
         self.assertEqual(json.loads(claude_mcp), {"mcpServers": {}})
         self.assertNotIn("enabledPlugins", json.loads(self.module.render_claude_settings(manifest)))
+
+    def test_codex_command_hooks_render_after_permission_request_in_manifest_order(self) -> None:
+        manifest = sample_manifest()
+        manifest["codex"]["hooks"]["command_hooks"] = COMMAND_HOOKS
+
+        config = self.module.render_codex(manifest)
+
+        self.assertIn(COMMAND_HOOKS_TOML, config)
+        self.assertLess(config.index("[[hooks.PermissionRequest]]"), config.index("[[hooks.PreCompact]]"))
+        if "[hooks.state]" in config:
+            self.assertLess(config.index("[[hooks.SessionEnd.hooks]]"), config.index("[hooks.state]"))
+        tomllib.loads(config)
+
+    def test_empty_or_missing_codex_command_hooks_render_no_table(self) -> None:
+        baseline = self.module.render_codex(sample_manifest())
+        manifest = sample_manifest()
+        manifest["codex"]["hooks"]["command_hooks"] = []
+
+        self.assertEqual(self.module.render_codex(manifest), baseline)
+        self.assertEqual(baseline.count("[[hooks."), 2)  # PermissionRequest and its handler only.
 
     def test_codex_config_renders_permgate_permission_request(self) -> None:
         config = self.module.render_codex(sample_manifest())

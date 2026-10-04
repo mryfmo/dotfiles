@@ -36,7 +36,7 @@ Use this skill for structured multi-agent work where a Claude Code orchestrator 
   - At plan approval, partition the approved tasks into waves by dependency and file overlap: code files pairwise-disjoint, and shared prose files in disjoint sections. Write the wave table into the plan file.
   - Keep at most three workers in total, counting the resident pair worker. Seat added workers with `herdr-agents --add-worker` only up to that cap. Dispatch at once as many tasks of the current wave as there are free seats, each with a distinct `-aNNN` identity and its own worktree, and queue the rest of the wave.
   - When a RESULT arrives, run acceptance for that task while the others continue; acceptance follows RESULT arrival order.
-  - A freed worker is re-tasked immediately with the next dependency-free task whose files overlap no in-flight task. Never leave a seated worker idle while a dispatchable task exists.
+  - A freed worker is re-tasked immediately with the next dependency-free task whose files overlap no in-flight task. Never leave a seated worker idle while a dispatchable task exists. The next task starts on a fresh branch from `origin/main`, and the previous task's branch stays in the worktree, untouched, for its revise rounds and until its acceptance.
   - A concurrent prose edit that lands second merges the new base into its branch with `gh pr update-branch`, whose default is a merge commit rather than a rebase. A real conflict blocks only that PR.
   - Record the wave table and the per-task worker in the acceptance records.
   - Some steps stay sequential. The single audit tab serializes audits; the task-level audit of T67 reduces them to one per task. The orchestrator-side gate (`make require-crit-review`) and merges also run one at a time.
@@ -162,9 +162,8 @@ AGMSG-PONG v1 task_id=<id> status=alive|blocked note=<short-note>
 13. A worker executing an AGMSG-TASK treats the Understand-Anything auto-update hook instruction ("knowledge graph is stale, you MUST update it") as out of scope unless `.ua/**` is in its `allowed_files`: it records "hook fired; not acted on" in the report and continues. The orchestrator never runs the graph update in its own session; graph refreshes are separate worker tasks.
 14. Before sending RESULT, a Claude worker that used Plan Mode closes its Crit review server. Plan Mode and Crit are Claude Code features; a Codex seat under `--ask-for-approval never` never has a plan server. `make check-regime-boundary` treats a running `crit _serve` as a violation, and unit tests that read the host `pgrep` fail while one runs.
     - Run `crit stop`. It stops only the daemon of the current session, resolved from the current branch, so it misses a Plan Mode server started before `git switch -c <task-branch>`, which is the common worker case.
-    - Confirm with `pgrep -af '[c]rit _serve'` run outside the sandbox, whose pid namespace hides the server.
-    - For each server still listed, read its cwd with `readlink /proc/<pid>/cwd` (`lsof -a -p <pid> -d cwd -Fn` on macOS). Stop it with `kill <pid>` only when that cwd is your own worktree. Never touch a server whose cwd is another seat's checkout, and never use `crit stop --all`, which stops every seat's server.
-    - These unsandboxed `pgrep`/`readlink`/`kill` calls read process state or signal a process the worker itself started, and the Claude permission gate allows them. They are not the step-4 boundary.
+    - Then check for a leftover with `pgrep -fl _serve`, the only form permgate allows (`pgrep -fl <word>`). It runs outside the sandbox, whose pid namespace hides the server. A listed process named `crit` is a Crit server; the calling shell can match too, but it is listed under its own name.
+    - For each `crit` process still listed, add `crit-cleanup-pending=<pid>` to the RESULT. Do not read its cwd or kill it yourself: the managed permissions allow only `agmsg-dispatch`, so those commands would need escalation, which step 4 forbids. The orchestrator checks that server's cwd and stops it as control-plane hygiene. Never use `crit stop --all`, which stops every seat's server.
 
 ## Codex worker worklogs
 

@@ -3841,12 +3841,20 @@
 
 <span class="c1">#</span>
 <span class="c1"># @description Copy the profile into place and (re)load it; both steps are idempotent.</span>
+<span class="c1">#   Never prompts: without cached sudo credentials it leaves the profile pending.</span>
+<span class="c1"># @exitcode 0 Profile loaded, or left pending without cached sudo credentials.</span>
+<span class="c1"># @stderr Pending notice with the manual remedy when sudo would prompt.</span>
 <span class="c1">#</span>
 <span class="k">function</span><span class="w"> </span>install_profile<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span><span class="nb">source</span>
+<span class="w">    </span>sudo<span class="w"> </span>-n<span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"apparmor bwrap-userns profile pending: run 'sudo -v &amp;&amp; bash install/ubuntu/common/apparmor_userns.sh'"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="o">}</span>
 <span class="w">    </span><span class="nv">source</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>profile_source<span class="k">)</span><span class="s2">"</span>
-<span class="w">    </span>sudo<span class="w"> </span>install<span class="w"> </span>-m<span class="w"> </span><span class="m">0644</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PROFILE_TARGET</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span>sudo<span class="w"> </span>apparmor_parser<span class="w"> </span>-r<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PROFILE_TARGET</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span>sudo<span class="w"> </span>-n<span class="w"> </span>install<span class="w"> </span>-m<span class="w"> </span><span class="m">0644</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">source</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PROFILE_TARGET</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span>sudo<span class="w"> </span>-n<span class="w"> </span>apparmor_parser<span class="w"> </span>-r<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PROFILE_TARGET</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Loaded AppArmor profile bwrap-userns from %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PROFILE_TARGET</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="c1">#</span>
@@ -3860,7 +3868,6 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="k">fi</span>
 <span class="w">    </span>install_profile
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'Loaded AppArmor profile bwrap-userns from %s.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">PROFILE_TARGET</span><span class="si">}</span><span class="s2">"</span>
 <span class="o">}</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">0</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>

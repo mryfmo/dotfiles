@@ -34,10 +34,11 @@ class ContextdbCodexNotifyTest(unittest.TestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(f"#!{sys.executable}\n{body}", encoding="utf-8")
 
-    def run_receiver(self) -> subprocess.CompletedProcess[str]:
-        payload = json.dumps({"cwd": str(self.project), "type": "agent-turn-complete"})
+    def run_receiver(self, event: dict | None = None, *, stdin: bool = False) -> subprocess.CompletedProcess[str]:
+        payload = json.dumps({"cwd": str(self.project), **(event or {"type": "agent-turn-complete"})})
         return subprocess.run(
-            ["bash", str(RECEIVER), payload],
+            ["bash", str(RECEIVER)] if stdin else ["bash", str(RECEIVER), payload],
+            input=payload if stdin else "",
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -80,6 +81,58 @@ class ContextdbCodexNotifyTest(unittest.TestCase):
         )
         self.assertEqual(Path(capture["cwd"]), self.project.resolve())
         self.assertEqual(json.loads(capture["input"])["cwd"], str(self.project))
+
+    def write_capturing_cli(self) -> None:
+        self.write_cli(
+            self.trusted_cli,
+            "import json, sys\n"
+            f"open({str(self.capture)!r}, 'w').write(json.dumps({{'argv': sys.argv[1:], 'input': sys.stdin.read()}}))\n",
+        )
+
+    def test_hook_payload_on_stdin_is_ingested(self) -> None:
+        self.write_capturing_cli()
+        event = {"hook_event_name": "PreCompact", "session_id": "t82", "trigger": "manual"}
+
+        result = self.run_receiver(event, stdin=True)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, "")
+        capture = json.loads(self.capture.read_text(encoding="utf-8"))
+        self.assertEqual(capture["argv"][-3:], ["ingest", "--ingested-from", "codex"])
+        self.assertEqual(json.loads(capture["input"]), {"cwd": str(self.project), **event})
+
+    def test_argv_payload_wins_over_stdin(self) -> None:
+        self.write_capturing_cli()
+        argv_payload = json.dumps({"cwd": str(self.project), "hook_event_name": "SessionEnd", "session_id": "argv"})
+
+        result = subprocess.run(
+            ["bash", str(RECEIVER), argv_payload],
+            input=json.dumps({"cwd": str(self.project), "session_id": "stdin"}),
+            text=True,
+            capture_output=True,
+            env={**os.environ, "HOME": str(self.home)},
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        capture = json.loads(self.capture.read_text(encoding="utf-8"))
+        self.assertEqual(json.loads(capture["input"])["session_id"], "argv")
+
+    def test_invalid_stdin_payload_reports_and_exits_zero(self) -> None:
+        self.write_capturing_cli()
+
+        result = subprocess.run(
+            ["bash", str(RECEIVER)],
+            input="not json",
+            text=True,
+            capture_output=True,
+            env={**os.environ, "HOME": str(self.home)},
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stderr, "contextdb-codex-notify: ingest failed\n")
+        self.assertFalse(self.capture.exists())
 
     def test_missing_trusted_runtime_is_silent(self) -> None:
         result = self.run_receiver()

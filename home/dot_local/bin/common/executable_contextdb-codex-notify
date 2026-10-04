@@ -1,14 +1,23 @@
 #!/usr/bin/env bash
 
 # @file home/dot_local/bin/common/executable_contextdb-codex-notify
-# @brief Ingest a Codex turn-complete notification into an opted-in project's CompactionDB.
+# @brief Ingest a Codex notification or hook event into an opted-in project's CompactionDB.
+# @description
+#   Codex `notify` passes the JSON payload as the first argument; Codex command
+#   hooks (PreCompact, PostCompact, SessionEnd) deliver it on stdin. Either way
+#   the payload is only ingested, never pruned or vacuumed, so the SessionEnd
+#   hook stays within Codex's 3-second limit. Failures print one stderr line
+#   and exit 0 so Codex is never blocked.
+# @arg $1 string Optional JSON payload; read from stdin when absent.
 
 if ! command -v python3 > /dev/null 2>&1; then
     printf '%s\n' 'contextdb-codex-notify: ingest failed' >&2
     exit 0
 fi
 
-if ! python3 - "${1-}" 2> /dev/null << 'PY'
+payload="${1:-$(cat)}"
+
+if ! python3 - "${payload}" 2> /dev/null << 'PY'
 import json
 import subprocess
 import sys

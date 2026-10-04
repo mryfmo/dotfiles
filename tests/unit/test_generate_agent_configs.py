@@ -914,6 +914,17 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertIn("{{ .chezmoi.homeDir }}/.local/bin/common/permgate codex", codex)
         self.assertIn("~/.local/bin/common/permgate claude", claude)
 
+    def test_managed_codex_config_routes_compaction_and_session_end_to_compactiondb(self) -> None:
+        hooks = tomllib.loads((ROOT / "home/.chezmoitemplates/codex-config-managed.toml").read_text())["hooks"]
+
+        for event, timeout in (("PreCompact", 10), ("PostCompact", 10), ("SessionEnd", 3)):
+            with self.subTest(event=event):
+                (table,) = hooks[event]
+                (handler,) = table["hooks"]
+                self.assertEqual(table["matcher"], "*")
+                self.assertEqual(handler["command"], "{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify")
+                self.assertEqual(handler["timeout"], timeout)
+
     def test_managed_claude_sandbox_excludes_agmsg_dispatch(self) -> None:
         claude = json.loads((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text())
 

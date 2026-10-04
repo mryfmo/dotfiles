@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../agent-stop-gate/">
+        <link rel="prev" href="../../install/ubuntu/server/starship/">
       
       
-        <link rel="next" href="../check-tools/">
+        <link rel="next" href="../check-regime-boundary/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>scripts/check-regime-boundary.sh - Dotfiles Docs</title>
+        <title>scripts/agent-stop-gate.sh - Dotfiles Docs</title>
       
     
     
@@ -68,7 +68,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#scriptscheck-regime-boundarysh" class="md-skip">
+        <a href="#scriptsagent-stop-gatesh" class="md-skip">
           Skip to content
         </a>
       
@@ -104,7 +104,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              scripts/check-regime-boundary.sh
+              scripts/agent-stop-gate.sh
             
           </span>
         </div>
@@ -2961,34 +2961,6 @@
                 
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="../agent-stop-gate/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    scripts/agent-stop-gate.sh
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
     
   
   
@@ -3008,7 +2980,7 @@
   <span class="md-ellipsis">
     
   
-    scripts/check-regime-boundary.sh
+    scripts/agent-stop-gate.sh
   
 
     
@@ -3026,7 +2998,7 @@
   <span class="md-ellipsis">
     
   
-    scripts/check-regime-boundary.sh
+    scripts/agent-stop-gate.sh
   
 
     
@@ -3088,6 +3060,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../check-regime-boundary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    scripts/check-regime-boundary.sh
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -3628,176 +3628,266 @@
 
 
 
-<h1 id="scriptscheck-regime-boundarysh">scripts/check-regime-boundary.sh<a class="headerlink" href="#scriptscheck-regime-boundarysh" title="Permanent link">&para;</a></h1>
-<p>Verifies the Stop list of the agmsg-orchestration skill for this repository and prints one line per violation: untracked <code>.orchestration</code> files in every registered checkout (<code>git worktree list</code>); exactly one agmsg identity name across claude-code and codex at each active seat (the main checkout and the manifest <code>worker_worktree</code>; an empty seat is reported too), and more than one name per type at any other checkout; running <code>crit _serve</code> review servers; leftover <code>&lt;repo&gt; worker &lt;name&gt;</code> Herdr workspaces and added-worker tabs in the pair workspace (only when <code>herdr</code> is reachable); and a bare-id orchestrator seat lock, through the one implementation in scripts/check-agent-runtime.py (<code>orchestrator_seat_lock_warnings</code>). Every probe is read-only, and a missing tool skips its check.</p>
+<h1 id="scriptsagent-stop-gatesh">scripts/agent-stop-gate.sh<a class="headerlink" href="#scriptsagent-stop-gatesh" title="Permanent link">&para;</a></h1>
+<p>Reads the Stop hook JSON on stdin and classifies the session's checkout: the main checkout is the orchestrator seat, a worktree under <code>.claude/worktrees/</code> is a worker seat, and anything else passes.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Source: <code>scripts/check-regime-boundary.sh</code></li>
+<li>Source: <code>scripts/agent-stop-gate.sh</code></li>
 <li>Category: repository script</li>
 <li>Renderer: <code>shell-fallback</code></li>
 </ul>
 <h2 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>count_names</code></li>
+<li><code>block</code></li>
+<li><code>exempt() { [[ $1 == .orchestration/* || $1 == .agents/worklog/* ]]; }</code></li>
+<li><code>read_bounded</code></li>
+<li><code>read_history</code></li>
 </ul>
 <h2 id="source">Source<a class="headerlink" href="#source" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#!/usr/bin/env bash</span>
-<span class="c1"># @file check-regime-boundary.sh</span>
-<span class="c1"># @brief Check the agmsg regime Stop checklist at a session boundary.</span>
+<span class="c1"># @file agent-stop-gate.sh</span>
+<span class="c1"># @brief Claude Code Stop hook that keeps an agmsg seat from idling with work pending.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Verifies the Stop list of the agmsg-orchestration skill for this</span>
-<span class="c1">#   repository and prints one line per violation:</span>
-<span class="c1">#   untracked `.orchestration` files in every registered checkout</span>
-<span class="c1">#   (`git worktree list`); exactly one agmsg identity name across claude-code</span>
-<span class="c1">#   and codex at each active seat (the main checkout and the manifest</span>
-<span class="c1">#   `worker_worktree`; an empty seat is reported too), and more than one name</span>
-<span class="c1">#   per type at any other checkout; running `crit _serve` review servers; leftover `&lt;repo&gt; worker &lt;name&gt;` Herdr</span>
-<span class="c1">#   workspaces and added-worker tabs in the pair workspace (only when `herdr`</span>
-<span class="c1">#   is reachable); and a bare-id orchestrator</span>
-<span class="c1">#   seat lock, through the one implementation in</span>
-<span class="c1">#   scripts/check-agent-runtime.py (`orchestrator_seat_lock_warnings`).</span>
-<span class="c1">#   Every probe is read-only, and a missing tool skips its check.</span>
-<span class="c1"># @option --report Print the same lines but always exit 0 (for validate-agent-assets).</span>
-<span class="c1"># @exitcode 0 If no violation was found, or with --report.</span>
-<span class="c1"># @exitcode 1 If at least one violation was found.</span>
+<span class="c1">#   Reads the Stop hook JSON on stdin and classifies the session's checkout:</span>
+<span class="c1">#   the main checkout is the orchestrator seat, a worktree under</span>
+<span class="c1">#   `.claude/worktrees/` is a worker seat, and anything else passes.</span>
+<span class="c1">#</span>
+<span class="c1">#   Orchestrator seat: blocks on `git status` entries outside `.orchestration/`</span>
+<span class="c1">#   and `.agents/worklog/` (skipped when `stop_hook_active` is true), and on an</span>
+<span class="c1">#   `AGMSG-RESULT` addressed to the seat's unsuffixed claude-code identity that</span>
+<span class="c1">#   has no later `AGMSG-ACCEPTANCE` or `AGMSG-TASK` re-dispatch from it.</span>
+<span class="c1">#</span>
+<span class="c1">#   Worker seat: blocks on every task_id whose latest `AGMSG-TASK` (or</span>
+<span class="c1">#   `AGMSG-ACCEPTANCE status=revise`) addressed to a claude-code identity</span>
+<span class="c1">#   registered at the worktree has no later `AGMSG-RESULT` or `AGMSG-PONG</span>
+<span class="c1">#   status=blocked` for that task_id from it, nor a later `AGMSG-ACCEPTANCE`</span>
+<span class="c1">#   with any other status (accepted, withdrawn, ...) addressed to it.</span>
+<span class="c1">#</span>
+<span class="c1">#   Every team the identity belongs to is checked. Messages come from the</span>
+<span class="c1">#   whole team history through agmsg's own storage facade, the one</span>
+<span class="c1">#   `history.sh` reads (the agmsg skill forbids reading its database</span>
+<span class="c1">#   directly). The hook never writes to the agmsg store or the repository and</span>
+<span class="c1">#   needs no network; only the watchdog fallback (no timeout or gtimeout) uses</span>
+<span class="c1">#   one private mktemp file under TMPDIR, removed before it returns. Without an</span>
+<span class="c1">#   agmsg install it passes; a failing identity lookup or an unreadable store blocks</span>
+<span class="c1">#   unless `stop_hook_active` is true.</span>
+<span class="c1"># @option --read-history &lt;team&gt; Internal: print one team's history rows (the gate runs itself this way under timeout).</span>
+<span class="c1"># @exitcode 0 Nothing is pending, or the checkout is not an agmsg seat.</span>
+<span class="c1"># @exitcode 2 Work is pending; one reason line per violation on stderr.</span>
 <span class="c1"># @example</span>
-<span class="c1">#   make check-regime-boundary</span>
-<span class="nb">set</span><span class="w"> </span>-euo<span class="w"> </span>pipefail
+<span class="c1">#   echo '{"stop_hook_active":false,"cwd":"'"$PWD"'"}' | scripts/agent-stop-gate.sh</span>
+<span class="nb">set</span><span class="w"> </span>-uo<span class="w"> </span>pipefail
 
-<span class="nv">report</span><span class="o">=</span><span class="nb">false</span>
-<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>--report<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span><span class="nv">report</span><span class="o">=</span><span class="nb">true</span>
-<span class="k">fi</span>
-<span class="nv">root</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>dirname<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">/.."</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span>
-<span class="c1"># Worker workspace labels are `&lt;main checkout basename&gt; worker &lt;name&gt;`, also</span>
-<span class="c1"># when this script runs from a linked worktree.</span>
-<span class="nv">main</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span>
-<span class="k">if</span><span class="w"> </span><span class="nv">common</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--path-format<span class="o">=</span>absolute<span class="w"> </span>--git-common-dir<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span><span class="nv">main</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">common</span><span class="p">%/.git</span><span class="si">}</span><span class="s2">"</span>
-<span class="k">fi</span>
 <span class="nv">scripts</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/skills/agmsg/scripts"</span>
-<span class="nv">violations</span><span class="o">=()</span>
 
-<span class="nv">checkouts</span><span class="o">=()</span>
-<span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>checkout<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">checkout</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">checkouts</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">checkout</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
-<span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>worktree<span class="w"> </span>list<span class="w"> </span>--porcelain<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'s/^worktree //p'</span><span class="o">)</span>
-<span class="o">[[</span><span class="w"> </span><span class="si">${#</span><span class="nv">checkouts</span><span class="p">[@]</span><span class="si">}</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">checkouts</span><span class="o">=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
-
-<span class="k">for</span><span class="w"> </span>checkout<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">checkouts</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>path<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">violations</span><span class="o">+=(</span><span class="s2">"untracked .orchestration file in </span><span class="si">${</span><span class="nv">checkout</span><span class="si">}</span><span class="s2">: </span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">checkout</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>ls-files<span class="w"> </span>--others<span class="w"> </span>--exclude-standard<span class="w"> </span>--<span class="w"> </span>.orchestration<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="o">)</span>
-<span class="k">done</span>
-
-<span class="c1"># @description Print the number of distinct agmsg identity names at a path.</span>
-<span class="c1"># @arg $1 path Checkout path.</span>
-<span class="c1"># @arg $2 string Agent type.</span>
-count_names<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">    </span><span class="nv">AGMSG_RESOLVE_PROJECT</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">/identities.sh"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-f<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-c<span class="w"> </span>.<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+<span class="c1"># Team-wide history as `from&lt;TAB&gt;to&lt;TAB&gt;body` rows, chronological. This is the</span>
+<span class="c1"># storage facade history.sh itself calls, without its per-recipient unread pass</span>
+<span class="c1"># (~3 s on a 600-message team; the facade reads all of it in ~0.1 s).</span>
+<span class="c1"># AGMSG_BUSY_TIMEOUT (agmsg's documented knob, default 5000 ms per sqlite call)</span>
+<span class="c1"># shortens each wait on a contended store. storage_history runs storage_init, which writes unless</span>
+<span class="c1"># the store is already at the current schema revision; for the sqlite driver,</span>
+<span class="c1"># read that revision first (the same read as storage_init's fast path) and</span>
+<span class="c1"># treat any other store as unreadable rather than letting it be re-initialized.</span>
+<span class="c1"># storage_init can still write if its own revision read fails under</span>
+<span class="c1"># SQLITE_BUSY; only a non-initializing storage_history upstream would close that.</span>
+read_history<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">export</span><span class="w"> </span><span class="nv">AGMSG_BUSY_TIMEOUT</span><span class="o">=</span><span class="m">1000</span>
+<span class="w">    </span><span class="c1"># shellcheck disable=SC1091</span>
+<span class="w">    </span><span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">/lib/storage.sh"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>agmsg_storage_load<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>storage_store_exists<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">_AGMSG_STORAGE_LOADED</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>sqlite<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>agmsg_sqlite<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>_sqlite_db<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="s1">'PRAGMA user_version;'</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">_AGMSG_STORAGE_SCHEMA_REV</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>storage_history<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'[.from, .to, .body] | @tsv'</span>
 <span class="o">}</span>
 
-<span class="nv">worker_worktree</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>
-<span class="w">    </span><span class="c1"># shellcheck source=/dev/null</span>
-<span class="w">    </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span>/.agents/model-profiles.env<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">source</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.agents/model-profiles.env"</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">HERDR_AGENTS_WORKER_WORKTREE</span><span class="k">:-</span><span class="si">}</span><span class="s2">"</span>
-<span class="k">)</span><span class="s2">"</span>
+<span class="c1"># `--read-history &lt;team&gt;` is the read alone, so the gate can run it under</span>
+<span class="c1"># timeout as a child of itself.</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>--read-history<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span>read_history<span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">exit</span>
+<span class="k">fi</span>
 
-<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-x<span class="w"> </span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span>/identities.sh<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span><span class="c1"># The active seats are the main checkout (orchestrator) and the manifest</span>
-<span class="w">    </span><span class="c1"># worker_worktree (worker); each holds exactly one identity across both</span>
-<span class="w">    </span><span class="c1"># runtime types. Other worktrees are not seats: only a per-type surplus</span>
-<span class="w">    </span><span class="c1"># is flagged there.</span>
-<span class="w">    </span><span class="nv">seats</span><span class="o">=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">main</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">worker_worktree</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>-d<span class="w"> </span><span class="si">${</span><span class="nv">main</span><span class="si">}</span>/<span class="si">${</span><span class="nv">worker_worktree</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nv">seats</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">main</span><span class="si">}</span><span class="s2">/</span><span class="si">${</span><span class="nv">worker_worktree</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="c1"># GNU timeout, or Homebrew coreutils' gtimeout on macOS; empty when neither.</span>
+<span class="nv">runner</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>timeout<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>gtimeout<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span><span class="s2">"</span>
+
+<span class="c1"># Same bounded stdin read as agmsg check-inbox.sh; jq decodes JSON escapes.</span>
+<span class="nv">input</span><span class="o">=</span><span class="s2">""</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>!<span class="w"> </span>-t<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">runner</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">input</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="s2">"</span><span class="si">${</span><span class="nv">runner</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span><span class="w"> </span>cat<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nv">input</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>cat<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span><span class="s2">"</span>
 <span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span><span class="nv">resolved_seats</span><span class="o">=</span><span class="s2">" "</span>
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>seat<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seats</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="nv">resolved_seats</span><span class="o">+=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2"> "</span>
-<span class="w">    </span><span class="k">done</span>
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>seat<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seats</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="nv">names</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="o">{</span>
-<span class="w">            </span><span class="nv">AGMSG_RESOLVE_PROJECT</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">/identities.sh"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>claude-code<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
-<span class="w">            </span><span class="nv">AGMSG_RESOLVE_PROJECT</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">/identities.sh"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">seat</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>codex<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
-<span class="w">        </span><span class="o">}</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-f<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-c<span class="w"> </span>.<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span><span class="s2">"</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="nv">names</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">0</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nv">violations</span><span class="o">+=(</span><span class="s2">"no agmsg identity at the active seat </span><span class="si">${</span><span class="nv">seat</span><span class="si">}</span><span class="s2"> (expected one)"</span><span class="o">)</span>
-<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">((</span>names<span class="w"> </span>&gt;<span class="w"> </span><span class="m">1</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nv">violations</span><span class="o">+=(</span><span class="s2">"stray identities at the active seat </span><span class="si">${</span><span class="nv">seat</span><span class="si">}</span><span class="s2">: </span><span class="si">${</span><span class="nv">names</span><span class="si">}</span><span class="s2"> names across claude-code and codex (expected one)"</span><span class="o">)</span>
+<span class="k">fi</span>
+<span class="nv">active</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.stop_hook_active // false'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">input</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span>
+<span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">active</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">active</span><span class="o">=</span><span class="nb">false</span>
+<span class="nv">cwd</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.cwd // empty'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">input</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span>
+<span class="c1"># Claude Code keeps CLAUDE_PROJECT_DIR at the session's project while `cwd`</span>
+<span class="c1"># follows a `cd`, so the project, not the current directory, names the seat.</span>
+<span class="nv">cwd</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">CLAUDE_PROJECT_DIR</span><span class="k">:-</span><span class="si">${</span><span class="nv">cwd</span><span class="k">:-</span><span class="si">${</span><span class="nv">PWD</span><span class="si">}}}</span><span class="s2">"</span>
+
+<span class="c1"># Repository discovered from cwd alone: inherited overrides would select</span>
+<span class="c1"># another repository, index, or object store, and injected configuration</span>
+<span class="c1"># (GIT_CONFIG_PARAMETERS, or GIT_CONFIG_COUNT with its KEY_n/VALUE_n pairs,</span>
+<span class="c1"># which Git ignores once the count is unset) could hide a dirty tree, e.g.</span>
+<span class="c1"># status.showUntrackedFiles=no.</span>
+<span class="nb">unset</span><span class="w"> </span>GIT_DIR<span class="w"> </span>GIT_WORK_TREE<span class="w"> </span>GIT_COMMON_DIR<span class="w"> </span>GIT_INDEX_FILE<span class="w"> </span>GIT_OBJECT_DIRECTORY<span class="w"> </span>GIT_ALTERNATE_OBJECT_DIRECTORIES<span class="w"> </span>GIT_CEILING_DIRECTORIES
+<span class="nb">unset</span><span class="w"> </span>GIT_CONFIG_PARAMETERS<span class="w"> </span>GIT_CONFIG_COUNT
+<span class="nv">top</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">cwd</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--show-toplevel<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="c1"># Seat by Git's own layout, not by path suffix: the main worktree is the one</span>
+<span class="c1"># whose git dir is the common dir (true with --separate-git-dir too, where</span>
+<span class="c1"># `worktree list` prints the metadata dir); a worker is a linked worktree under</span>
+<span class="c1"># &lt;main&gt;/.claude/worktrees/ whose &lt;main&gt; owns the same common dir.</span>
+<span class="nv">gitdir</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">cwd</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--path-format<span class="o">=</span>absolute<span class="w"> </span>--git-dir<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="nv">common</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">cwd</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--path-format<span class="o">=</span>absolute<span class="w"> </span>--git-common-dir<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">gitdir</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">common</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nv">seat</span><span class="o">=</span>orchestrator
+<span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">top</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>*/.claude/worktrees/*<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">top</span><span class="p">%/.claude/worktrees/*</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>rev-parse<span class="w"> </span>--path-format<span class="o">=</span>absolute<span class="w"> </span>--git-dir<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">common</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nv">seat</span><span class="o">=</span>worker
+<span class="k">else</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="k">fi</span>
+
+<span class="c1"># Without an agmsg install this is not a regime machine.</span>
+<span class="o">[[</span><span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span>/identities.sh<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="nv">reasons</span><span class="o">=()</span>
+
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">seat</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>orchestrator<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">active</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span>exempt<span class="o">()</span><span class="w"> </span><span class="o">{</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="nv">$1</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>.orchestration/*<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">$1</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>.agents/worklog/*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="o">}</span>
+<span class="w">    </span><span class="c1"># -z rows are `XY &lt;path&gt;`; a rename or copy row is followed by its source</span>
+<span class="w">    </span><span class="c1"># path, and it is exempt only when both endpoints are. A trailing `rc=&lt;n&gt;`</span>
+<span class="w">    </span><span class="c1"># record carries git's exit status (a real row has a space at offset 2).</span>
+<span class="w">    </span><span class="c1"># GIT_OPTIONAL_LOCKS=0 keeps `git status` from refreshing the index.</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>-d<span class="w"> </span><span class="s1">''</span><span class="w"> </span>entry<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">entry</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nv">rc</span><span class="o">=</span>*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">entry</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nv">rc</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">reasons</span><span class="o">+=(</span><span class="s2">"git status failed in </span><span class="si">${</span><span class="nv">top</span><span class="si">}</span><span class="s2"> (</span><span class="si">${</span><span class="nv">entry</span><span class="si">}</span><span class="s2">); repair the checkout, the dirty-tree check could not run"</span><span class="o">)</span>
+<span class="w">            </span><span class="k">continue</span>
 <span class="w">        </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">done</span>
-<span class="w">    </span><span class="k">for</span><span class="w"> </span>checkout<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">checkouts</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="nv">resolved</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">checkout</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">resolved</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">checkout</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">        </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">resolved_seats</span><span class="si">}</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>*<span class="s2">" </span><span class="si">${</span><span class="nv">resolved</span><span class="si">}</span><span class="s2"> "</span>*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
-<span class="w">        </span><span class="k">for</span><span class="w"> </span>agent_type<span class="w"> </span><span class="k">in</span><span class="w"> </span>claude-code<span class="w"> </span>codex<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">            </span><span class="nv">names</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>count_names<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">checkout</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">agent_type</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
-<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="o">((</span>names<span class="w"> </span>&gt;<span class="w"> </span><span class="m">1</span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">                </span><span class="nv">violations</span><span class="o">+=(</span><span class="s2">"stray </span><span class="si">${</span><span class="nv">agent_type</span><span class="si">}</span><span class="s2"> identities at </span><span class="si">${</span><span class="nv">checkout</span><span class="si">}</span><span class="s2">: </span><span class="si">${</span><span class="nv">names</span><span class="si">}</span><span class="s2"> names (expected one)"</span><span class="o">)</span>
-<span class="w">            </span><span class="k">fi</span>
-<span class="w">        </span><span class="k">done</span>
-<span class="w">    </span><span class="k">done</span>
-<span class="k">fi</span>
-
-<span class="k">if</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>pgrep<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>pgrep<span class="w"> </span>-f<span class="w"> </span><span class="s1">'crit _serve'</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span><span class="nv">violations</span><span class="o">+=(</span><span class="s2">"crit review server still running (pgrep -f 'crit _serve')"</span><span class="o">)</span>
-<span class="k">fi</span>
-
-<span class="k">if</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>herdr<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>jq<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">&amp;&amp;</span>
-<span class="w">    </span><span class="nv">workspaces</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>herdr<span class="w"> </span>workspace<span class="w"> </span>list<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span><span class="c1"># The label prefix alone also matches another clone with the same</span>
-<span class="w">    </span><span class="c1"># basename, so a workspace counts only when one of its panes has its cwd</span>
-<span class="w">    </span><span class="c1"># in this main checkout (the find_managed_workspaces rule in herdr-agents).</span>
-<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="s1">$'\t'</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>workspace_id<span class="w"> </span>label<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>herdr<span class="w"> </span>pane<span class="w"> </span>list<span class="w"> </span>--workspace<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span>
-<span class="w">            </span>jq<span class="w"> </span>-e<span class="w"> </span>--arg<span class="w"> </span>main<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">main</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'.result.panes[]? | (.cwd // "") | select(. == $main or startswith($main + "/"))'</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">            </span><span class="nv">violations</span><span class="o">+=(</span><span class="s2">"additional worker workspace still open: </span><span class="si">${</span><span class="nv">label</span><span class="si">}</span><span class="s2"> (herdr-agents --remove-worker)"</span><span class="o">)</span>
+<span class="w">        </span><span class="nv">xy</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">entry</span><span class="p">:</span><span class="nv">0</span><span class="p">:</span><span class="nv">2</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">path</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">entry</span><span class="p">:</span><span class="nv">3</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">from</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">xy</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>*<span class="o">[</span>RC<span class="o">]</span>*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>-d<span class="w"> </span><span class="s1">''</span><span class="w"> </span>from
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>exempt<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">{</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">from</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>exempt<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">from</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="o">}</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="k">continue</span>
 <span class="w">        </span><span class="k">fi</span>
-<span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>jq<span class="w"> </span>-r<span class="w"> </span>--arg<span class="w"> </span>prefix<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>basename<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">main</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2"> worker "</span><span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="s1">'.result.workspaces[]? | select(.workspace_id and ((.label // "") | startswith($prefix))) | [.workspace_id, .label] | @tsv'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspaces</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="o">)</span>
-<span class="w">    </span><span class="c1"># herdr-agents --add-worker seats a worker in its own tab of the pair</span>
-<span class="w">    </span><span class="c1"># workspace (the one with a pane in the main checkout itself; attach mode</span>
-<span class="w">    </span><span class="c1"># keeps the workspace's own label): a pane there whose cwd is another</span>
-<span class="w">    </span><span class="c1"># linked worktree than the manifest worker_worktree is an added worker.</span>
-<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="s1">$'\t'</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>workspace_id<span class="w"> </span>label<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
-<span class="w">        </span>herdr<span class="w"> </span>pane<span class="w"> </span>list<span class="w"> </span>--workspace<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span>
-<span class="w">            </span>jq<span class="w"> </span>-e<span class="w"> </span>--arg<span class="w"> </span>main<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">main</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'.result.panes[]? | select(.cwd == $main)'</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
-<span class="w">        </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>pane_label<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">            </span><span class="nv">violations</span><span class="o">+=(</span><span class="s2">"additional worker tab still open in </span><span class="si">${</span><span class="nv">label</span><span class="si">}</span><span class="s2">: </span><span class="si">${</span><span class="nv">pane_label</span><span class="si">}</span><span class="s2"> (herdr-agents --remove-worker)"</span><span class="o">)</span>
-<span class="w">        </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>herdr<span class="w"> </span>pane<span class="w"> </span>list<span class="w"> </span>--workspace<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspace_id</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">|</span>
-<span class="w">            </span>jq<span class="w"> </span>-r<span class="w"> </span>--arg<span class="w"> </span>worktrees<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">main</span><span class="si">}</span><span class="s2">/.claude/worktrees/"</span><span class="w"> </span>--arg<span class="w"> </span>seat<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">worker_worktree</span><span class="p">:+</span><span class="si">${</span><span class="nv">main</span><span class="si">}</span><span class="p">/</span><span class="si">${</span><span class="nv">worker_worktree</span><span class="si">}}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
-<span class="w">                </span><span class="s1">'[.result.panes[]? | select(((.cwd // "") | startswith($worktrees)) and (.cwd | rtrimstr("/")) != $seat)</span>
-<span class="s1">                  | (.label // .pane_id)] | unique[]'</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="o">)</span>
-<span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>jq<span class="w"> </span>-r<span class="w"> </span>--arg<span class="w"> </span>prefix<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>basename<span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">main</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2"> worker "</span><span class="w"> </span><span class="se">\</span>
-<span class="w">        </span><span class="s1">'.result.workspaces[]? | select(.workspace_id and ((.label // "") | startswith($prefix) | not)) | [.workspace_id, (.label // "")] | @tsv'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">workspaces</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="o">)</span>
+<span class="w">        </span><span class="c1"># Paths are repository data on their way to Claude (stderr of an exit 2</span>
+<span class="w">        </span><span class="c1"># Stop hook), so control characters are shell-quoted, never raw.</span>
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span>-v<span class="w"> </span>path<span class="w"> </span><span class="s1">'%q'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">from</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span>-v<span class="w"> </span>from<span class="w"> </span><span class="s1">'%q'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">from</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">reasons</span><span class="o">+=(</span><span class="s2">"uncommitted change outside .orchestration: </span><span class="si">${</span><span class="nv">path</span><span class="si">}${</span><span class="nv">from</span><span class="p">:+ (from </span><span class="si">${</span><span class="nv">from</span><span class="si">}</span><span class="p">)</span><span class="si">}</span><span class="s2"> (delegate it to a worker task or revert it)"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>
+<span class="w">        </span><span class="nv">GIT_OPTIONAL_LOCKS</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>git<span class="w"> </span>-C<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">top</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>status<span class="w"> </span>--porcelain<span class="w"> </span>-z<span class="w"> </span>--untracked-files<span class="o">=</span>all<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null
+<span class="w">        </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'rc=%s\0'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$?</span><span class="s2">"</span>
+<span class="w">    </span><span class="o">)</span>
 <span class="k">fi</span>
 
-<span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>warning<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">warning</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">violations</span><span class="o">+=(</span><span class="s2">"</span><span class="si">${</span><span class="nv">warning</span><span class="p">#WARN: </span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
-<span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>
-<span class="w">    </span>python3<span class="w"> </span>-<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">root</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">main</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s">&lt;&lt; 'PY' 2&gt; /dev/null</span>
-<span class="s">import importlib.util</span>
-<span class="s">import sys</span>
-<span class="s">from pathlib import Path</span>
-
-<span class="s">sys.dont_write_bytecode = True</span>
-<span class="s">root = Path(sys.argv[1])</span>
-<span class="s">spec = importlib.util.spec_from_file_location("check_agent_runtime", root / "scripts/check-agent-runtime.py")</span>
-<span class="s">module = importlib.util.module_from_spec(spec)</span>
-<span class="s">spec.loader.exec_module(module)</span>
-<span class="s"># The seat lock belongs to the main checkout, also when run from a worktree.</span>
-<span class="s">print("\n".join(module.orchestrator_seat_lock_warnings(Path(sys.argv[2]))))</span>
-<span class="s">PY</span>
-<span class="o">)</span>
-
-<span class="k">for</span><span class="w"> </span>violation<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="si">${</span><span class="nv">violations</span><span class="p">[@]+</span><span class="s2">"</span><span class="si">${</span><span class="nv">violations</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'regime-boundary: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">violation</span><span class="si">}</span><span class="s2">"</span>
-<span class="k">done</span>
-<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">report</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${#</span><span class="nv">violations</span><span class="p">[@]</span><span class="si">}</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="c1"># A lookup that runs but fails must not read as "no seat here"; it blocks once,</span>
+<span class="c1"># like an unreadable store.</span>
+<span class="k">if</span><span class="w"> </span>!<span class="w"> </span><span class="nv">identities</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nv">AGMSG_RESOLVE_PROJECT</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">/identities.sh"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">top</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>claude-code<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nv">identities</span><span class="o">=</span><span class="s2">""</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">active</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">reasons</span><span class="o">+=(</span><span class="s2">"agmsg identity lookup failed for </span><span class="si">${</span><span class="nv">top</span><span class="si">}</span><span class="s2">; check </span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">/identities.sh"</span><span class="o">)</span>
 <span class="k">fi</span>
+
+block<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agent-stop-gate: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">reasons</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
+<span class="o">}</span>
+
+<span class="c1"># All history reads share one 3 s budget inside the 5 s hook timeout: a</span>
+<span class="c1"># timed-out hook's output is discarded, which would let the seat stop, so</span>
+<span class="c1"># running out of budget blocks at once.</span>
+<span class="nv">deadline</span><span class="o">=</span><span class="k">$((</span><span class="nv">SECONDS</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">3</span><span class="k">))</span>
+
+<span class="c1"># Read one team's history into ${history} within ${remaining} seconds; exit</span>
+<span class="c1"># status 124 on expiry, as timeout(1) reports it. Without timeout or gtimeout</span>
+<span class="c1"># (stock macOS) a watchdog kills the reader; the reader writes to a file so a</span>
+<span class="c1"># grandchild it leaves behind cannot hold a pipe open.</span>
+read_bounded<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">runner</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">history</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="s2">"</span><span class="si">${</span><span class="nv">runner</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">remaining</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>bash<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--read-history<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">return</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="nb">local</span><span class="w"> </span>out<span class="w"> </span>child<span class="w"> </span>watchdog<span class="w"> </span>rc
+<span class="w">    </span><span class="nv">out</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span>bash<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">BASH_SOURCE</span><span class="p">[0]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>--read-history<span class="w"> </span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">out</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="p">&amp;</span>
+<span class="w">    </span><span class="nv">child</span><span class="o">=</span><span class="nv">$!</span>
+<span class="w">    </span><span class="o">(</span>
+<span class="w">        </span>sleep<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">remaining</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nb">kill</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">child</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="o">)</span><span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">&amp;</span>
+<span class="w">    </span><span class="nv">watchdog</span><span class="o">=</span><span class="nv">$!</span>
+<span class="w">    </span><span class="nb">wait</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">child</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nv">rc</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="nb">kill</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">watchdog</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null
+<span class="w">    </span><span class="c1"># Only the watchdog's TERM ends the reader with 128+15; whether the</span>
+<span class="w">    </span><span class="c1"># watchdog subshell has exited yet by now is a race, so it is not the test.</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">rc</span><span class="si">}</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">143</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">rc</span><span class="o">=</span><span class="m">124</span>
+<span class="w">    </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">rc</span><span class="si">}</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">history</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>&lt;<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">out</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span>rm<span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">out</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">rc</span><span class="si">}</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c1"># The orchestrator is the unsuffixed identity at the main checkout; any</span>
+<span class="c1"># identity registered at a worker worktree (solo or -aNNN) is its worker.</span>
+<span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="s1">$'\t'</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>-u<span class="w"> </span><span class="m">3</span><span class="w"> </span>team<span class="w"> </span>name<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">seat</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>orchestrator<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="w"> </span><span class="o">=</span>~<span class="w"> </span>-a<span class="o">[</span><span class="m">0</span>-9<span class="o">]{</span><span class="m">3</span><span class="o">}</span>$<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">    </span><span class="c1"># ponytail: an unreadable store blocks every turn once; add a timestamp</span>
+<span class="w">    </span><span class="c1"># cap or a fail-open switch if a down store ever becomes a real problem.</span>
+<span class="w">    </span><span class="c1"># `timeout 0` would mean no limit, so a spent budget blocks before the read.</span>
+<span class="w">    </span><span class="nv">remaining</span><span class="o">=</span><span class="k">$((</span><span class="nv">deadline</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nv">SECONDS</span><span class="k">))</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">remaining</span><span class="si">}</span><span class="w"> </span>-gt<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span>read_bounded<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">team</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">rc</span><span class="o">=</span><span class="nv">$?</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">        </span><span class="nv">rc</span><span class="o">=</span><span class="m">124</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">rc</span><span class="si">}</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">124</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="nv">reasons</span><span class="o">+=(</span><span class="s2">"agmsg history read exceeded the hook budget; retry"</span><span class="o">)</span>
+<span class="w">        </span>block
+<span class="w">    </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">rc</span><span class="si">}</span><span class="w"> </span>-ne<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">active</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">reasons</span><span class="o">+=(</span><span class="s2">"agmsg history unreadable for team </span><span class="si">${</span><span class="nv">team</span><span class="si">}</span><span class="s2">; check </span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span><span class="s2">/history.sh </span><span class="si">${</span><span class="nv">team</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">continue</span>
+<span class="w">    </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>task<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">task</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">continue</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">seat</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>orchestrator<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">reasons</span><span class="o">+=(</span><span class="s2">"AGMSG-RESULT task_id=</span><span class="si">${</span><span class="nv">task</span><span class="si">}</span><span class="s2"> in team </span><span class="si">${</span><span class="nv">team</span><span class="si">}</span><span class="s2"> has no AGMSG-ACCEPTANCE from </span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">; review it and send AGMSG-ACCEPTANCE v1 task_id=</span><span class="si">${</span><span class="nv">task</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">else</span>
+<span class="w">            </span><span class="nv">reasons</span><span class="o">+=(</span><span class="s2">"AGMSG-TASK task_id=</span><span class="si">${</span><span class="nv">task</span><span class="si">}</span><span class="s2"> in team </span><span class="si">${</span><span class="nv">team</span><span class="si">}</span><span class="s2"> to </span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2"> has no AGMSG-RESULT yet; finish it and send AGMSG-RESULT v1 task_id=</span><span class="si">${</span><span class="nv">task</span><span class="si">}</span><span class="s2"> (or AGMSG-PONG v1 status=blocked) with agmsg-dispatch"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">    </span><span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span>&lt;<span class="o">(</span>awk<span class="w"> </span>-F<span class="w"> </span><span class="s1">'\t'</span><span class="w"> </span>-v<span class="w"> </span><span class="nv">me</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">name</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-v<span class="w"> </span><span class="nv">seat</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">seat</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s1">'</span>
+<span class="s1">        {</span>
+<span class="s1">            n = split($3, w, " "); kind = w[1]; id = ""; status = ""</span>
+<span class="s1">            for (i = 2; i &lt;= n; i++) {</span>
+<span class="s1">                if (id == "" &amp;&amp; w[i] ~ /^task_id=/) id = substr(w[i], 9)</span>
+<span class="s1">                if (status == "" &amp;&amp; w[i] ~ /^status=/) status = substr(w[i], 8)</span>
+<span class="s1">            }</span>
+<span class="s1">            if (id == "") next</span>
+<span class="s1">            # pending[id] holds the peer: the RESULT sender (orchestrator) or the</span>
+<span class="s1">            # TASK / revise ACCEPTANCE sender (worker). Only a message between</span>
+<span class="s1">            # me and that peer closes the task.</span>
+<span class="s1">            if (seat == "orchestrator") {</span>
+<span class="s1">                if ($2 == me &amp;&amp; kind == "AGMSG-RESULT") pending[id] = $1</span>
+<span class="s1">                else if ((id in pending) &amp;&amp; $1 == me &amp;&amp; $2 == pending[id] &amp;&amp; (kind == "AGMSG-ACCEPTANCE" || kind == "AGMSG-TASK")) delete pending[id]</span>
+<span class="s1">            } else if ($2 == me &amp;&amp; (kind == "AGMSG-TASK" || (kind == "AGMSG-ACCEPTANCE" &amp;&amp; status == "revise"))) {</span>
+<span class="s1">                pending[id] = $1</span>
+<span class="s1">            } else if (!(id in pending)) {</span>
+<span class="s1">                next</span>
+<span class="s1">            } else if ($1 == me &amp;&amp; $2 == pending[id] &amp;&amp; (kind == "AGMSG-RESULT" || (kind == "AGMSG-PONG" &amp;&amp; status == "blocked"))) {</span>
+<span class="s1">                delete pending[id]</span>
+<span class="s1">            } else if ($1 == pending[id] &amp;&amp; $2 == me &amp;&amp; kind == "AGMSG-ACCEPTANCE") {</span>
+<span class="s1">                delete pending[id]</span>
+<span class="s1">            }</span>
+<span class="s1">        }</span>
+<span class="s1">        END { for (id in pending) print id }'</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">history</span><span class="si">}</span><span class="s2">"</span><span class="o">)</span>
+<span class="k">done</span><span class="w"> </span><span class="m">3</span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">identities</span><span class="si">}</span><span class="s2">"</span>
+
+<span class="o">[[</span><span class="w"> </span><span class="si">${#</span><span class="nv">reasons</span><span class="p">[@]</span><span class="si">}</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>block
 <span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 </code></pre></div>
 

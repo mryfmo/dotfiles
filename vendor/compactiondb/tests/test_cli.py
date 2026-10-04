@@ -104,6 +104,16 @@ class CliTests(unittest.TestCase):
         self.assertEqual(("Stop", "turn_stop", "codex-tui"), (row["hook_event_name"], row["event_type"], row["agent_id"]))
         self.assertEqual("renamed", json.loads(row["detail_json"])["last_assistant_message"])
 
+        # A repeated delivery of the same turn is one event (stable event_uuid from thread-id and turn-id).
+        code, out, err = self.invoke(["ingest", str(source), "--ingested-from", "codex"])
+        self.assertEqual(0, code, err)
+        conn = self.p.store.connect()
+        try:
+            count = conn.execute("SELECT COUNT(*) FROM events WHERE session_id='codex-thread-2'").fetchone()[0]
+        finally:
+            conn.close()
+        self.assertEqual(1, count)
+
     def test_prune_enforces_the_size_cap_and_vacuums(self) -> None:
         self.p.event({"hook_event_name": "UserPromptSubmit", "session_id": "s1", "prompt": "[memory:decision] Keep it."})
         # An unpromoted session_outcome candidate goes with its event; the promoted one stays.

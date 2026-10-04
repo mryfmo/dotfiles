@@ -160,18 +160,24 @@ def _codex_notify_as_hook(payload: dict[str, Any]) -> dict[str, Any]:
     """Map a Codex `notify` agent-turn-complete payload onto the Stop hook shape.
 
     Codex passes `type`, `thread-id`, `turn-id`, `cwd`, `input-messages` and
-    `last-assistant-message`; `client` names the caller when present. Any other
-    payload, including every hook payload, is returned unchanged.
+    `last-assistant-message`; `client` names the caller when present. `thread-id`
+    and `turn-id` derive a stable `event_uuid`. Any other payload, including every
+    hook payload, is returned unchanged.
     """
     if payload.get("hook_event_name") or payload.get("type") != "agent-turn-complete":
         return payload
-    return {
+    mapped = {
         **payload,
         "hook_event_name": "Stop",
         "session_id": payload.get("thread-id"),
         "agent_id": payload.get("client"),
         "last_assistant_message": payload.get("last-assistant-message"),
     }
+    # One turn is one event: a repeated delivery of the same turn dedups on event_uuid.
+    if not payload.get("event_uuid") and payload.get("thread-id") and payload.get("turn-id"):
+        key = f"codex-notify:{payload['thread-id']}:{payload['turn-id']}"
+        mapped["event_uuid"] = str(uuid.uuid5(uuid.NAMESPACE_URL, key))
+    return mapped
 
 
 def normalize_hook_payload(payload: dict[str, Any], paths: ProjectPaths, config: dict[str, Any]) -> dict[str, Any]:

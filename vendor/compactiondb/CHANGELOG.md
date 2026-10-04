@@ -2,8 +2,8 @@
 
 ## 2.0.0+dotfiles.7
 
-- Normalised the Codex `notify` payload: an `agent-turn-complete` object without `hook_event_name` is recorded as a `Stop` hook (`turn_stop`) with `thread-id` as the session, `client` as the agent and `last-assistant-message` as `last_assistant_message`, instead of an `unknown` event. Hook payloads are unchanged.
-- Bounded the ledger on the explicit `prune` command only: a new `capture.max_db_bytes` setting (default 512 MiB) deletes the oldest events in batches of 100 (with their unpromoted memory candidates; durable memories and promoted candidates stay) until the in-use pages fit, and `prune` runs `VACUUM` afterwards or whenever free pages exceed 64 MiB. The SessionEnd hook still only deletes expired events and never vacuums.
+- Normalised the Codex `notify` payload: an `agent-turn-complete` object without `hook_event_name` is recorded as a `Stop` hook (`turn_stop`) with `thread-id` as the session, `client` as the agent and `last-assistant-message` as `last_assistant_message`, instead of an `unknown` event; `thread-id` and `turn-id` derive a stable `event_uuid`, so a repeated delivery of one turn is stored once. Hook payloads are unchanged.
+- Bounded the ledger on the explicit `prune` command only: a new `capture.max_db_bytes` setting (default 512 MiB) first deletes unpromoted memory candidates whose source events retention already removed, then the oldest events in batches of 100 (with their unpromoted candidates; durable memories and promoted candidates stay) until the in-use pages fit, and merges the FTS index so the deleted rows' segment pages are freed, and `prune` runs `VACUUM` afterwards or whenever free pages exceed 64 MiB. The SessionEnd hook still only deletes expired events and never vacuums.
 - Added a `make manifest` target that regenerates `MANIFEST.sha256` from the tracked files.
 
 ## 2.0.0+dotfiles.6

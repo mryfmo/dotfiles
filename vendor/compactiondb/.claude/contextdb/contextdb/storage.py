@@ -1077,6 +1077,12 @@ class ContextStore:
         """
         removed = 0
         unpromoted = "DELETE FROM memory_candidates WHERE project_id=? AND promoted_memory_uuid IS NULL"
+        if self._page_bytes(conn)[0] > max_bytes:
+            # Candidates whose source events retention already removed go before any newer event.
+            conn.execute(
+                f"{unpromoted} AND source_event_uuid NOT IN (SELECT event_uuid FROM events WHERE project_id=?)",
+                (project_id, project_id),
+            )
         while self._page_bytes(conn)[0] > max_bytes:
             rows = conn.execute(
                 # ponytail: fixed batches can overshoot the cap by up to 99 events; fine at ledger scale.
@@ -1084,11 +1090,6 @@ class ContextStore:
                 (project_id,),
             ).fetchall()
             if not rows:
-                # Candidates whose source events an earlier prune already removed.
-                conn.execute(
-                    f"{unpromoted} AND source_event_uuid NOT IN (SELECT event_uuid FROM events WHERE project_id=?)",
-                    (project_id, project_id),
-                )
                 break
             uuids = [str(row[1]) for row in rows]
             conn.execute(
@@ -1097,6 +1098,9 @@ class ContextStore:
             )
             self._delete_event_ids(conn, [int(row[0]) for row in rows])
             removed += len(rows)
+        if removed and self.fts_tokenizer(conn) != "none":
+            # Deleted FTS rows keep their segment pages until the index is merged; VACUUM alone keeps them.
+            conn.execute("INSERT INTO events_fts(events_fts) VALUES('optimize')")
         return removed
 
     def vacuum_if_fragmented(self, conn: sqlite3.Connection, *, threshold_bytes: int, force: bool = False) -> bool:

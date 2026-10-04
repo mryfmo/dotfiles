@@ -278,6 +278,48 @@ class StorageTests(unittest.TestCase):
         finally:
             conn.close()
 
+    def test_size_cap_reclaims_orphaned_candidates_before_any_newer_event(self) -> None:
+        conn = self.p.store.connect()
+        try:
+            with conn:
+                for i in range(200):
+                    event = normalize_hook_payload(
+                        {
+                            "hook_event_name": "Stop",
+                            "session_id": "old",
+                            "cwd": str(self.p.root),
+                            "last_assistant_message": f"task {i} completed. " + "y" * 1500,
+                        },
+                        self.p.paths,
+                        self.p.config,
+                    )
+                    self.p.store.insert_event(conn, event, ingested_from="test")
+                conn.execute("UPDATE events SET ts_utc='2000-01-01T00:00:00.000Z'")
+                self.p.store.prune_expired(conn, self.p.paths.project_id, days=0)
+            self.assertEqual(0, int(conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]))
+            self.assertEqual(200, int(conn.execute("SELECT COUNT(*) FROM memory_candidates").fetchone()[0]))
+            self._bulk_events(conn, 10)
+            used, _ = self.p.store._page_bytes(conn)
+            with conn:
+                removed = self.p.store.enforce_size_cap(conn, self.p.paths.project_id, used - 1)
+            self.assertEqual(0, removed)
+            self.assertEqual(10, int(conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]))
+            self.assertEqual(0, int(conn.execute("SELECT COUNT(*) FROM memory_candidates").fetchone()[0]))
+        finally:
+            conn.close()
+
+    def test_capping_every_event_returns_the_fts_pages(self) -> None:
+        conn = self.p.store.connect()
+        try:
+            fresh, _ = self.p.store._page_bytes(conn)
+            self._bulk_events(conn, 200)
+            with conn:
+                self.p.store.enforce_size_cap(conn, self.p.paths.project_id, 1)
+            self.p.store.vacuum_if_fragmented(conn, threshold_bytes=0, force=True)
+            self.assertLessEqual(self.p.store._page_bytes(conn)[0], fresh)
+        finally:
+            conn.close()
+
     def test_vacuum_runs_only_over_the_free_page_threshold_or_when_forced(self) -> None:
         conn = self.p.store.connect()
         try:

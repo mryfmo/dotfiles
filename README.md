@@ -536,7 +536,9 @@ The launcher requires the generated `HERDR_AGENTS_ORCHESTRATOR_KIND=codex` and
 takes its interactive Codex arguments from that same file. It temporarily
 exchanges the main checkout's Claude orchestrator registrations for
 `codex-<interactive-profile>-<project-suffix>`, preserving worker registrations.
-It restores the exchanged registrations on normal exit, failure, or INT/TERM.
+It configures agmsg `turn` delivery for Codex before the first invocation. On
+normal exit, failure, or INT/TERM, it restores the exchanged Claude registrations
+and their `both` delivery mode. The Codex project delivery setting remains `turn`.
 An existing matching Codex seat is reused and left registered. The exchange uses
 project/type-scoped agmsg resets; registrations in other projects or runtimes stay
 intact. Stop the current
@@ -567,7 +569,9 @@ failure, confirm the launcher has stopped, inspect the snapshot, reset only its 
 Codex registration with `AGMSG_RESOLVE_PROJECT=0 bash ~/.agents/skills/agmsg/scripts/reset.sh <repo> codex <name>`
 (skip this when `existing_codex` is nonempty), and re-join each TSV row with
 `AGMSG_RESOLVE_PROJECT=0 bash ~/.agents/skills/agmsg/scripts/join.sh <team> <name> <type> <project>`.
-Remove the stale repository lock only after restoring those registrations.
+If Claude rows were restored, also run
+`bash ~/.agents/skills/agmsg/scripts/delivery.sh set both claude-code <repo>`.
+Remove the stale repository lock only after restoring registrations and delivery.
 
 `CODEX_ORCHESTRATE_DELIVERY=poll` is the default. T87 still needs to verify whether
 the trusted project Stop hook consumes messages under `codex exec`: the worker

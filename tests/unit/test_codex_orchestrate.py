@@ -1,10 +1,9 @@
 import json
 import os
-from pathlib import Path
 import subprocess
 import tempfile
 import unittest
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "home/dot_local/bin/common/executable_codex-orchestrate"
@@ -36,6 +35,10 @@ elif name == "join.sh":
         rc = 7
     elif args not in s["members"]:
         s["members"].append(args)
+elif name == "delivery.sh":
+    rc = 8 if args[1] == s.get("delivery_failure") else 0
+    if not rc:
+        s.setdefault("delivery_modes", {})[args[2]] = args[1]
 elif name == "herdr-agents":
     print("agmsg-orchestration: fake directive")
 elif name == "inbox.sh":
@@ -43,6 +46,7 @@ elif name == "inbox.sh":
         print(s["messages"].pop(0), end="")
 elif name == "codex":
     s.setdefault("members_during_exec", []).append(s["members"][:])
+    s.setdefault("delivery_during_exec", []).append(s.get("delivery_modes", {}).copy())
     answer = s["answers"].pop(0) if s["answers"] else "waiting"
     Path(args[args.index("-o") + 1]).write_text(answer)
     rc = s.get("codex_failure", 0)
@@ -67,7 +71,7 @@ class CodexOrchestrateTest(unittest.TestCase):
         self.scripts.mkdir(parents=True)
         self.bin = self.base / "bin"
         self.bin.mkdir()
-        for name in ("identities.sh", "inbox.sh", "join.sh", "reset.sh", "leave.sh", "team.sh"):
+        for name in ("identities.sh", "inbox.sh", "join.sh", "reset.sh", "leave.sh", "team.sh", "delivery.sh"):
             self.fake(self.scripts / name)
         for name in ("codex", "herdr-agents", "sleep"):
             self.fake(self.bin / name)
@@ -103,6 +107,7 @@ class CodexOrchestrateTest(unittest.TestCase):
             capture_output=True,
             text=True,
             timeout=12,
+            check=False,
         )
 
     def calls(self, name):
@@ -121,6 +126,17 @@ class CodexOrchestrateTest(unittest.TestCase):
         self.assertIn("agmsg-orchestration: fake directive\n", first[-1])
         self.assertEqual(second[-1], "worker result")
         self.assertEqual(self.calls("herdr-agents"), [["--directive"]])
+        self.assertEqual(
+            self.calls("delivery.sh"),
+            [["set", "turn", "codex", str(self.repo)], ["set", "both", "claude-code", str(self.repo)]],
+        )
+        state = json.loads(self.state.read_text())
+        self.assertEqual(state["delivery_during_exec"], [{"codex": "turn"}] * 2)
+        self.assertEqual(state["delivery_modes"]["claude-code"], "both")
+        names = [c[0] for c in state["calls"]]
+        self.assertLess(names.index("join.sh"), names.index("delivery.sh"))
+        self.assertEqual(names[-2:], ["join.sh", "delivery.sh"])
+
         self.assertEqual(self.calls("inbox.sh"), [["team", "codex-fixture-dot", "--quiet"]])
         self.assertEqual(json.loads(self.state.read_text())["members"], [self.member])
         transcript = next(
@@ -133,6 +149,24 @@ class CodexOrchestrateTest(unittest.TestCase):
         for call in json.loads(self.state.read_text())["calls"]:
             if call[0] in {"join.sh", "reset.sh", "identities.sh"}:
                 self.assertEqual(call[2], "0")
+
+    def test_codex_delivery_failure_restores_claude_without_starting_a_turn(self):
+        self.save(delivery_failure="turn")
+        result = self.run_script()
+        self.assertEqual(result.returncode, 8, result.stderr)
+        self.assertEqual(self.calls("codex"), [])
+        state = json.loads(self.state.read_text())
+        self.assertEqual(state["members"], [self.member])
+        self.assertEqual(state["delivery_modes"]["claude-code"], "both")
+
+    def test_claude_delivery_restore_failure_keeps_recovery_lock(self):
+        self.save(delivery_failure="both", answers=["ORCHESTRATION-DONE"])
+        result = self.run_script()
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertEqual(json.loads(self.state.read_text())["members"], [self.member])
+        self.assertTrue((self.repo / ".orchestration/validation/codex-orchestrate.lock").exists())
+        context = next((self.home / ".agents/skills/agmsg/run").glob("codex-orchestrate.*/context.txt"))
+        self.assertIn("restore_exit=1", context.read_text())
 
     def test_repeated_runs_restore_and_increment_transcripts(self):
         for _ in range(2):
@@ -153,6 +187,7 @@ class CodexOrchestrateTest(unittest.TestCase):
         self.assertEqual(self.calls("join.sh"), [])
         self.assertEqual(self.calls("reset.sh"), [])
         self.assertEqual(json.loads(self.state.read_text())["members"], [member])
+        self.assertEqual(self.calls("delivery.sh"), [["set", "turn", "codex", str(self.repo)]])
 
     def test_worker_seats_and_multiple_previous_identities_are_preserved(self):
         worker = ["team", "claude-standard-dot-a001", "claude-code", str(self.repo)]

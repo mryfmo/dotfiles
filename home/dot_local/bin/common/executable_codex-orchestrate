@@ -81,6 +81,7 @@ restore() {
         [[ -n $restore_team ]] || continue
         bash "$scripts/join.sh" "$restore_team" "$restore_name" claude-code "$repo" || restore_rc=1
     done <<< "$restores"
+    if [[ -n $restores ]]; then bash "$scripts/delivery.sh" set both claude-code "$repo" || restore_rc=1; fi
     [[ -z $snapshot ]] || printf 'restore_exit=%s\n' "$restore_rc" >> "$snapshot/context.txt"
     if ((restore_rc)); then exit 1; fi
     rmdir "$lock"
@@ -110,6 +111,7 @@ if [[ -z $existing ]]; then
     joined=true
     bash "$scripts/join.sh" "$team" "$name" codex "$repo"
 fi
+bash "$scripts/delivery.sh" set turn codex "$repo"
 prompt="$(herdr-agents --directive)"$'\n'"$1"
 command_args=(exec -C "$repo")
 for ((turn = 1; turn <= max_turns; turn++)); do

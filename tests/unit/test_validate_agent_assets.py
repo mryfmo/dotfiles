@@ -981,6 +981,16 @@ class SecretPatternBoundaryTest(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertIsNotNone(pattern.search(text))
 
+    def test_a_key_after_json_escaped_whitespace_is_flagged(self) -> None:
+        # Audit evidence holds JSON-encoded transcripts: the character before the
+        # key is then the n/r/t of an escape sequence, a word character.
+        pattern = load_validator().SECRET_PATTERN
+        keys = ("s" + "k-" + "a1" * 12, "gh" + "p_" + "a1" * 12, "github" + "_pat_" + "a1" * 12)
+        for key in keys:
+            for text in (json.dumps({"m": "\n" + key}), json.dumps({"m": "\t" + key}), json.dumps({"m": "\r" + key})):
+                with self.subTest(text=text):
+                    self.assertIsNotNone(pattern.search(text))
+
 
 class MaskSecretsModeTest(unittest.TestCase):
     """`--mask-secrets` rewrites SECRET_PATTERN matches in place (audit evidence)."""

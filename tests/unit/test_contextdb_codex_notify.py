@@ -169,6 +169,32 @@ class ContextdbCodexNotifyTest(unittest.TestCase):
         self.assertEqual(result.stderr, "")
         self.assertFalse(self.capture.exists())
 
+    def test_symlinked_storage_directory_is_refused(self) -> None:
+        self.write_capturing_cli()
+        outside = self.root / "shared"
+        outside.mkdir()
+        (self.project / ".claude/contextdb/state").symlink_to(outside, target_is_directory=True)
+
+        result = self.run_receiver({"hook_event_name": "PreCompact", "session_id": "state-link"}, stdin=True)
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stderr, "contextdb-codex-notify: ingest failed\n")
+        self.assertFalse(self.capture.exists())
+        self.assertEqual(list(outside.iterdir()), [])
+
+    def test_real_storage_directories_are_accepted(self) -> None:
+        self.write_capturing_cli()
+        for child in ("state", "spool", "health"):
+            (self.project / ".claude/contextdb" / child).mkdir()
+
+        result = self.run_receiver({"hook_event_name": "PreCompact", "session_id": "state-real"}, stdin=True)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, "")
+        self.assertEqual(
+            json.loads(json.loads(self.capture.read_text(encoding="utf-8"))["input"])["session_id"], "state-real"
+        )
+
     def test_missing_trusted_runtime_is_silent(self) -> None:
         result = self.run_receiver()
 

@@ -43,6 +43,13 @@ try:
     # then create its state there.
     if not opt_in.is_dir() or opt_in.resolve() != opt_in or not cli.is_file():
         raise SystemExit(0)
+    # The CLI creates and chmods these storage directories; a symlinked one
+    # would send its writes outside the project, so each must be a real
+    # directory or not exist yet.
+    for child in ("state", "spool", "health"):
+        storage = opt_in / child
+        if storage.is_symlink() or (storage.exists() and not storage.is_dir()):
+            raise ValueError(f"{storage} must be a real directory")
     subprocess.run(
         [
             sys.executable,

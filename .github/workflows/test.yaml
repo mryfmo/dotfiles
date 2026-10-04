@@ -207,16 +207,17 @@ jobs:
       - name: Pin mise from install/common/mise.sh
         if: ${{ needs.changes.outputs.should_test == 'true' }}
         run: |
-          # MISE_VERSION renders from assets.mise in agent-config.yaml.
+          # MISE_VERSION renders from assets.mise in agent-config.yaml; the
+          # variable stays outside MISE_*, which mise reads as its own settings.
           pin="$(sed -n 's/^readonly MISE_VERSION="v\(.*\)"$/\1/p' install/common/mise.sh)"
           test -n "${pin}"
-          echo "MISE_PIN=${pin}" >> "${GITHUB_ENV}"
+          echo "DOTFILES_MISE_VERSION=${pin}" >> "${GITHUB_ENV}"
 
       - name: Setup mise for statusline smoke
         if: ${{ needs.changes.outputs.should_test == 'true' }}
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
         with:
-          version: ${{ env.MISE_PIN }}
+          version: ${{ env.DOTFILES_MISE_VERSION }}
           install: false
           cache: true
 

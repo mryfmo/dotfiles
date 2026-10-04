@@ -6,6 +6,7 @@ from __future__ import annotations
 import configparser
 import fnmatch
 import json
+import posixpath
 import re
 import subprocess
 import sys
@@ -613,12 +614,17 @@ def validate_assets(manifest: dict[str, Any]) -> None:
             if (
                 not isinstance(entry, dict)
                 or not isinstance(entry.get("file"), str)
+                # One canonical relative spelling per target: no "..", "./" or
+                # absolute path, so conflict detection sees every file once.
+                or posixpath.normpath(entry["file"]) != entry["file"]
+                or entry["file"].startswith(("/", "../"))
+                or entry["file"] == ".."
                 or not isinstance(constants, dict)
                 or not constants
                 or not all(isinstance(key, str) and isinstance(value, str) for key, value in constants.items())
             ):
                 fail(
-                    f"assets.{name}.render entries must each be a mapping with a string file and a "
+                    f"assets.{name}.render entries must each be a mapping with a normalized relative file and a "
                     f"non-empty constants mapping of string to string: {entry!r}"
                 )
             for constant, field in constants.items():

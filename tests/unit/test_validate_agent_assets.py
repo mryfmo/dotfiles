@@ -471,6 +471,10 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             [{"file": "install/common/mise.sh", "constants": {}}],
             [{"file": 1, "constants": {"MISE_VERSION": "pin"}}],
             {"file": "install/common/mise.sh", "constants": {"MISE_VERSION": 1}},
+            [{"file": "install/../install/common/mise.sh", "constants": {"MISE_VERSION": "pin"}}],
+            [{"file": "./install/common/mise.sh", "constants": {"MISE_VERSION": "pin"}}],
+            [{"file": "/etc/mise.sh", "constants": {"MISE_VERSION": "pin"}}],
+            [{"file": "../outside.sh", "constants": {"MISE_VERSION": "pin"}}],
         ):
             with self.subTest(render=render):
                 manifest = self.asset_manifest()

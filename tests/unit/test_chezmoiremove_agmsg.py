@@ -69,6 +69,8 @@ class ChezmoiRemoveRetiredShellFilesTest(unittest.TestCase):
         ".config/alias/server.sh",
         ".config/tango.yml",
         ".local/bin/common/setup-python-env",
+        ".local/bin/common/herdr-session",
+        ".local/bin/common/agent-fanout",
         ".local/bin/server/history.sh",
         ".local/bin/server/cache.sh",
     )

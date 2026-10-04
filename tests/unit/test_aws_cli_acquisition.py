@@ -10,9 +10,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 INSTALLER = ROOT / "install/ubuntu/common/aws_cli.sh"
-FINGERPRINT = "FB5DB77FD5C118B80511ADA8A6310ACC4672475C"
-# The pin moves with make upgrade; read it from the rendered installer.
+# The pins move with make upgrade; read them from the rendered installer.
 AWS_CLI_VERSION = re.search(r'^readonly AWS_CLI_VERSION="([^"]+)"$', INSTALLER.read_text(), re.MULTILINE).group(1)
+FINGERPRINT = re.search(r'^readonly AWS_CLI_FINGERPRINT="([0-9A-F]{40})"$', INSTALLER.read_text(), re.MULTILINE).group(
+    1
+)
 
 
 class AwsCliAcquisitionTest(unittest.TestCase):
@@ -83,7 +85,7 @@ gpg() {
     case " $* " in
         *" --with-colons "*)
             printf 'pub:-:4096:1:A6310ACC4672475C:1568845749:1814472778::::::sc::::::23::0:\n'
-            printf 'fpr:::::::::FB5DB77FD5C118B80511ADA8A6310ACC4672475C:\n'
+            printf 'fpr:::::::::@FINGERPRINT@:\n'
             ;;
         *" --dearmor "*)
             while [ "$#" -gt 0 ]; do
@@ -95,7 +97,7 @@ gpg() {
 gpgv() { touch "${GPGV_MARKER}"; return 1; }
 unzip() { touch "${MARKER}"; }
 install_aws_cli
-""",
+""".replace("@FINGERPRINT@", FINGERPRINT),
                 {
                     "AWS_CLI_KEY_PATH": str(key),
                     "GPGV_MARKER": str(gpgv_marker),
@@ -112,7 +114,7 @@ install_aws_cli
 
     def test_key_metadata_failures_stop_before_dearmor_and_gpgv(self):
         valid_pub = "pub:-:4096:1:A6310ACC4672475C:1568845749:1814472778::::::sc::::::23::0:"
-        valid_fpr = "fpr:::::::::FB5DB77FD5C118B80511ADA8A6310ACC4672475C:"
+        valid_fpr = f"fpr:::::::::{FINGERPRINT}:"
         cases = {
             "fingerprint": f"{valid_pub}\nfpr:::::::::{'0' * 40}:\n",
             "expired": f"pub:-:4096:1:A6310ACC4672475C:1568845749:1::::::sc::::::23::0:\n{valid_fpr}\n",
@@ -184,7 +186,7 @@ gpg() {
     case " $* " in
         *" --with-colons "*)
             printf 'pub:-:4096:1:A6310ACC4672475C:1568845749:1814472778::::::sc::::::23::0:\n'
-            printf 'fpr:::::::::FB5DB77FD5C118B80511ADA8A6310ACC4672475C:\n'
+            printf 'fpr:::::::::@FINGERPRINT@:\n'
             ;;
         *" --dearmor "*)
             while [ "$#" -gt 0 ]; do
@@ -219,7 +221,7 @@ EOF
     chmod +x "${HOME}/.local/bin/aws"
 }
 install_aws_cli
-""".replace("@AWS_CLI_VERSION@", AWS_CLI_VERSION),
+""".replace("@FINGERPRINT@", FINGERPRINT).replace("@AWS_CLI_VERSION@", AWS_CLI_VERSION),
                 {
                     "ARGS_PATH": str(args),
                     "AWS_CLI_KEY_PATH": str(key),
@@ -275,7 +277,7 @@ gpg() {
     case " $* " in
         *" --with-colons "*)
             printf 'pub:-:4096:1:A6310ACC4672475C:1568845749:1814472778::::::sc::::::23::0:\n'
-            printf 'fpr:::::::::FB5DB77FD5C118B80511ADA8A6310ACC4672475C:\n'
+            printf 'fpr:::::::::@FINGERPRINT@:\n'
             ;;
         *" --dearmor "*)
             while [ "$#" -gt 0 ]; do
@@ -304,7 +306,7 @@ EOF
     chmod +x "${destination}/aws/dist/aws"
 }
 install_aws_cli
-""",
+""".replace("@FINGERPRINT@", FINGERPRINT),
                 {
                     "AWS_CLI_KEY_PATH": str(key),
                     "HOME": str(home),

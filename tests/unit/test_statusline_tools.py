@@ -20,9 +20,9 @@ CCUSAGE_SETTINGS = ROOT / "home/dot_ccstatusline/settings.json"
 CLAUDE_SETTINGS = ROOT / "home/.chezmoitemplates/claude-settings-managed.json"
 CI_WORKFLOW = ROOT / ".github/workflows/test.yaml"
 INTEGRATION_SMOKE = ROOT / "scripts/check-statusline-tools.py"
+# The pins are declared once, in home/dot_mise/config.toml.
 EXPECTED_TOOLS = {
-    "npm:ccusage": "20.0.24",
-    "npm:ccstatusline": "2.2.30",
+    tool: tomllib.loads(MISE_CONFIG.read_text())["tools"][tool] for tool in ("npm:ccusage", "npm:ccstatusline")
 }
 
 
@@ -95,11 +95,13 @@ class StatuslineToolsTest(unittest.TestCase):
         workflow = CI_WORKFLOW.read_text()
         smoke = INTEGRATION_SMOKE.read_text()
         node_install = 'mise -C "${RUNNER_TEMP}/statusline-mise" install --locked node'
+        tools_install = 'mise -C "${RUNNER_TEMP}/statusline-mise" install --locked npm:ccstatusline npm:ccusage'
 
         for token in (
             node_install,
-            "npm:ccstatusline@2.2.30",
-            "npm:ccusage@20.0.24",
+            tools_install,
+            'where npm:ccstatusline)"',
+            'where npm:ccusage)"',
             'mise trust --yes "${RUNNER_TEMP}/statusline-mise/mise.toml"',
             "sudo unshare --net",
             "/usr/bin/sandbox-exec",
@@ -108,7 +110,10 @@ class StatuslineToolsTest(unittest.TestCase):
             "scripts/check-statusline-tools.py",
         ):
             self.assertIn(token, workflow)
-        self.assertLess(workflow.index(node_install), workflow.index("npm:ccstatusline@2.2.30"))
+        self.assertLess(workflow.index(node_install), workflow.index(tools_install))
+        # The versions come from the copied config; the workflow carries no literal.
+        for literal in ("ccstatusline@", "ccusage@"):
+            self.assertNotIn(literal, workflow)
         for token in (
             '"display_name": "Claude"',
             '"session_id": "offline-test"',

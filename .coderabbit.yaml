@@ -8,7 +8,6 @@ reviews:
   request_changes_workflow: true
   path_filters:
     - "!.orchestration/**"
-    - "!reviews/**"
     - "!.ua/**"
   auto_review:
     # Each review event, automatic on open or on a push, or requested, spends

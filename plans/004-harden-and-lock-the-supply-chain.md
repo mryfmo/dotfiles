@@ -1,5 +1,8 @@
 # Plan 004: Pin, verify, and continuously test every executable dependency source
 
+> **Note (2026-10-04):** the Nix flake was removed in #247; the Nix commands and
+> paths below (`flake.nix`, `flake.lock`, `nix flake …`) no longer apply.
+
 > **Executor instructions**: Work by source class in the listed order. Never
 > replace one mutable alias with another mutable alias. Record every resolved
 > version, full commit SHA, and checksum source. If upstream supplies neither an

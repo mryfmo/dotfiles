@@ -15,7 +15,9 @@ missing requirements. A STOP condition always wins over task completion.
 - Do not commit `.agents/worklog/**`, coverage output, caches, or review evidence.
 - Before committing a non-empty diff, run `make require-crit-review` and follow
   the repository's Crit-data receipt workflow when it requests review.
-- Use Conventional Commits. Push and open/update a PR only when the operator
+- Use Conventional Commits as
+  `home/dot_agents/skills/gh-first-workflow/references/gh-git-rules.md`
+  defines them. Push and open/update a PR only when the operator
   explicitly requests it.
 - After pushing, wait for every required CI check and every review bot. Fix all
   actionable failures and unresolved comments, rerun local gates, then merge

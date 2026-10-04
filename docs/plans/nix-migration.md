@@ -1,5 +1,8 @@
 # Nix migration plan
 
+> **Note (2026-10-04):** the Nix flake was removed in #247; the commands and
+> paths below no longer apply.
+
 This plan keeps Nix optional while introducing a path toward reproducible package and host management.
 
 ## Principles

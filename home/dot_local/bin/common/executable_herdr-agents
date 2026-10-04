@@ -2183,9 +2183,14 @@ if [[ ${audit_mode} == true ]]; then
     if [[ -n ${audit_task} ]]; then
         audit_inputs="the task file \`${audit_task_file}\`"
         audit_artifacts=()
+        # Earlier tasks declared some artifacts as .txt; the .md form wins.
         for audit_kind in report:reports validation:validation sandbox:sandboxes; do
-            [[ ! -f ${workdir}/.orchestration/${audit_kind#*:}/${audit_task}.md ]] ||
-                audit_artifacts+=("${audit_kind%%:*} \`.orchestration/${audit_kind#*:}/${audit_task}.md\`")
+            for audit_ext in md txt; do
+                if [[ -f ${workdir}/.orchestration/${audit_kind#*:}/${audit_task}.${audit_ext} ]]; then
+                    audit_artifacts+=("${audit_kind%%:*} \`.orchestration/${audit_kind#*:}/${audit_task}.${audit_ext}\`")
+                    break
+                fi
+            done
         done
         case ${#audit_artifacts[@]} in
         0) ;;

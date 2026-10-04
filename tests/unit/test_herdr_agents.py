@@ -5005,6 +5005,25 @@ exit {exit_code}
         self.assertNotIn("worker's", prompt)
         self.assertNotIn("feedback JSON `", prompt)
 
+    def test_audit_task_names_a_txt_artifact_when_no_md_one_exists(self) -> None:
+        self.write_audit_pair_state(self.audit_tab_pane())
+        _, head = self.write_task_audit_repo()
+        orchestration = self.workdir.resolve() / ".orchestration"
+        for path in ("tasks/T1.md", "validation/T1.txt", "sandboxes/T1.md", "sandboxes/T1.txt"):
+            (orchestration / path).parent.mkdir(parents=True, exist_ok=True)
+            (orchestration / path).write_text("x\n")
+        self.write_audit_evidence("Verdict: correct\n", orchestration / f"validation/T1-audit-{head[:7]}.md.last.md")
+
+        result = self.run_helper("--audit", head, "--task", "T1")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        prompt = self.audit_codex_words(self.audit_inner_command())[-1]
+        self.assertIn(
+            "; the worker's validation `.orchestration/validation/T1.txt` and sandbox `.orchestration/sandboxes/T1.md`;",
+            prompt,
+        )
+        self.assertNotIn("sandboxes/T1.txt", prompt)
+
     def test_audit_task_refuses_a_missing_task_file_or_merge_base_before_herdr_work(self) -> None:
         self.write_audit_pair_state(self.audit_tab_pane())
         _, head = self.write_task_audit_repo()

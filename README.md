@@ -778,7 +778,7 @@ A task is audited once, on its PR's final head, with `--task ID`. The prompt the
 names `.orchestration/tasks/ID.md` (required; a missing file exits 2), the
 worker's `reports/ID.md`, `validation/ID.md` and `sandboxes/ID.md`, and
 `validation/ID-pr-feedback.json` with the CI check runs and the review threads
-(each named only when present). It also gives the full PR diff
+(each named only when present; the worker artifacts may be `.txt` in older tasks). It also gives the full PR diff
 `git diff <base> <sha>`, where `<base>` is `git merge-base origin/main <sha>`
 in DIR (exit 2 when there is none). The auditor judges specification
 conformance, implementation, and evidence reality, reports findings as

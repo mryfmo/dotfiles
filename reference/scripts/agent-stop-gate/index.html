@@ -3640,6 +3640,7 @@
 <ul>
 <li><code>block</code></li>
 <li><code>exempt() { [[ $1 == .orchestration/* || $1 == .agents/worklog/* ]]; }</code></li>
+<li><code>placeholder</code></li>
 <li><code>read_bounded</code></li>
 <li><code>read_history</code></li>
 </ul>
@@ -3671,7 +3672,15 @@
 <span class="c1">#   one private mktemp file under TMPDIR, removed before it returns. Without an</span>
 <span class="c1">#   agmsg install it passes; a failing identity lookup or an unreadable store blocks</span>
 <span class="c1">#   unless `stop_hook_active` is true.</span>
+<span class="c1">#</span>
+<span class="c1">#   An untracked path that is a read-only mount point in the hook's own</span>
+<span class="c1">#   namespace and is either an empty regular file bound onto itself or a</span>
+<span class="c1">#   character device bound from /dev/null is a Claude Code sandbox</span>
+<span class="c1">#   placeholder, not a change, and is skipped. Mounts are read once from</span>
+<span class="c1">#   fields 3-6 of /proc/self/mountinfo (a root is joined onto its source</span>
+<span class="c1">#   filesystem's mount point) and matched exactly, so no symlink is followed.</span>
 <span class="c1"># @option --read-history &lt;team&gt; Internal: print one team's history rows (the gate runs itself this way under timeout).</span>
+<span class="c1"># @option --mountinfo &lt;file&gt; Test only: read mount points from &lt;file&gt;. The Stop hook passes no arguments, so its inherited environment cannot redirect the table.</span>
 <span class="c1"># @exitcode 0 Nothing is pending, or the checkout is not an agmsg seat.</span>
 <span class="c1"># @exitcode 2 Work is pending; one reason line per violation on stderr.</span>
 <span class="c1"># @example</span>
@@ -3706,6 +3715,10 @@ read_history<span class="o">()</span><span class="w"> </span><span class="o">{</
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>--read-history<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>read_history<span class="w"> </span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span>
 <span class="w">    </span><span class="nb">exit</span>
+<span class="k">fi</span>
+<span class="nv">mountinfo</span><span class="o">=</span>/proc/self/mountinfo
+<span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>--mountinfo<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nv">mountinfo</span><span class="o">=</span><span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span>
 <span class="k">fi</span>
 
 <span class="c1"># GNU timeout, or Homebrew coreutils' gtimeout on macOS; empty when neither.</span>
@@ -3753,8 +3766,47 @@ read_history<span class="o">()</span><span class="w"> </span><span class="o">{</
 <span class="o">[[</span><span class="w"> </span>-e<span class="w"> </span><span class="si">${</span><span class="nv">scripts</span><span class="si">}</span>/identities.sh<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
 <span class="nv">reasons</span><span class="o">=()</span>
 
+<span class="nv">placeholders</span><span class="o">=</span><span class="m">0</span>
 <span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">seat</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>orchestrator<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="si">${</span><span class="nv">active</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
 <span class="w">    </span>exempt<span class="o">()</span><span class="w"> </span><span class="o">{</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="nv">$1</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>.orchestration/*<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nv">$1</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>.agents/worklog/*<span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="o">}</span>
+<span class="w">    </span><span class="c1"># A real untracked file is never a mount point; a sandbox placeholder is.</span>
+<span class="w">    </span><span class="c1"># The mount table is read once (one awk, however many untracked paths) and</span>
+<span class="w">    </span><span class="c1"># compared as text in mountinfo's own octal escaping of \, space, tab and</span>
+<span class="w">    </span><span class="c1"># newline. No /proc (macOS) means no mounts, which is right: the macOS</span>
+<span class="w">    </span><span class="c1"># sandbox creates no placeholders.</span>
+<span class="w">    </span><span class="c1"># Only Claude's kind of mount counts, and only read-only (mountinfo field</span>
+<span class="w">    </span><span class="c1"># 6, not `-w`, which root always passes): an `S` self-bind of an empty</span>
+<span class="w">    </span><span class="c1"># regular file, or an `N` bind of /dev/null over a character device. A</span>
+<span class="w">    </span><span class="c1"># mount's root (field 4) is relative to its source filesystem, so it is</span>
+<span class="w">    </span><span class="c1"># joined onto the mount point of that filesystem's own root mount (same</span>
+<span class="w">    </span><span class="c1"># device, field 3, root `/`; the first pass): a self-bind joins to its own</span>
+<span class="w">    </span><span class="c1"># mount point and a /dev/null mask joins to /dev/null. Anything else (a</span>
+<span class="w">    </span><span class="c1"># user's bind of another file, a same-named file from elsewhere, a `null`</span>
+<span class="w">    </span><span class="c1"># device of another filesystem) is reported.</span>
+<span class="w">    </span><span class="nv">mounts</span><span class="o">=</span><span class="s1">$'\n'</span><span class="s2">"</span><span class="k">$(</span>awk<span class="w"> </span><span class="s1">'NR == FNR { if ($4 == "/") fsroot[$3] = fsroot[$3] SUBSEP $5; next }</span>
+<span class="s1">        $6 ~ /^ro(,|$)/ &amp;&amp; ($3 in fsroot) {</span>
+<span class="s1">            n = split(substr(fsroot[$3], 2), roots, SUBSEP)</span>
+<span class="s1">            for (i = 1; i &lt;= n; i++) {</span>
+<span class="s1">                path = (roots[i] == "/" ? "" : roots[i]) $4</span>
+<span class="s1">                if (path == $5) print "S" $5</span>
+<span class="s1">                if (path == "/dev/null") print "N" $5</span>
+<span class="s1">            }</span>
+<span class="s1">        }'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mountinfo</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">mountinfo</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="k">)</span><span class="s2">"</span><span class="s1">$'\n'</span>
+<span class="w">    </span>placeholder<span class="o">()</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">local</span><span class="w"> </span>kind<span class="w"> </span><span class="nv">mount</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">top</span><span class="si">}</span><span class="s2">/</span><span class="nv">$1</span><span class="s2">"</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-c<span class="w"> </span><span class="si">${</span><span class="nv">mount</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">kind</span><span class="o">=</span>N
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">mount</span><span class="si">}</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>!<span class="w"> </span>-s<span class="w"> </span><span class="si">${</span><span class="nv">mount</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">kind</span><span class="o">=</span>S
+<span class="w">        </span><span class="k">else</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="nv">mount</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">mount</span><span class="p">//</span><span class="se">\\</span><span class="p">/</span><span class="se">\\</span><span class="nv">134</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">mount</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">mount</span><span class="p">// /</span><span class="se">\\</span><span class="nv">040</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">mount</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">mount</span><span class="p">//</span><span class="s1">$'\t'</span><span class="p">/</span><span class="se">\\</span><span class="nv">011</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="nv">mount</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">mount</span><span class="p">//</span><span class="s1">$'\n'</span><span class="p">/</span><span class="se">\\</span><span class="nv">012</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">        </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">mounts</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>*<span class="s1">$'\n'</span><span class="s2">"</span><span class="si">${</span><span class="nv">kind</span><span class="si">}${</span><span class="nv">mount</span><span class="si">}</span><span class="s2">"</span><span class="s1">$'\n'</span>*<span class="w"> </span><span class="o">]]</span>
+<span class="w">    </span><span class="o">}</span>
 <span class="w">    </span><span class="c1"># -z rows are `XY &lt;path&gt;`; a rename or copy row is followed by its source</span>
 <span class="w">    </span><span class="c1"># path, and it is exempt only when both endpoints are. A trailing `rc=&lt;n&gt;`</span>
 <span class="w">    </span><span class="c1"># record carries git's exit status (a real row has a space at offset 2).</span>
@@ -3769,6 +3821,10 @@ read_history<span class="o">()</span><span class="w"> </span><span class="o">{</
 <span class="w">        </span><span class="nv">from</span><span class="o">=</span><span class="s2">""</span>
 <span class="w">        </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">xy</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>*<span class="o">[</span>RC<span class="o">]</span>*<span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>-d<span class="w"> </span><span class="s1">''</span><span class="w"> </span>from
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>exempt<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">{</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-z<span class="w"> </span><span class="si">${</span><span class="nv">from</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span>exempt<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">from</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="o">}</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="k">continue</span>
+<span class="w">        </span><span class="k">fi</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">xy</span><span class="si">}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s1">'??'</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>placeholder<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">path</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">            </span><span class="nv">placeholders</span><span class="o">=</span><span class="k">$((</span><span class="nv">placeholders</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1</span><span class="k">))</span>
 <span class="w">            </span><span class="k">continue</span>
 <span class="w">        </span><span class="k">fi</span>
 <span class="w">        </span><span class="c1"># Paths are repository data on their way to Claude (stderr of an exit 2</span>
@@ -3791,6 +3847,7 @@ read_history<span class="o">()</span><span class="w"> </span><span class="o">{</
 
 block<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agent-stop-gate: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">reasons</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="o">[[</span><span class="w"> </span><span class="si">${</span><span class="nv">placeholders</span><span class="si">}</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'agent-stop-gate: sandbox placeholders ignored: %s\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">placeholders</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">2</span>
 <span class="o">}</span>
 

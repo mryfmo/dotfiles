@@ -157,6 +157,58 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         )
         self.assertEqual(len(outputs), 2)
 
+    def test_a_list_render_writes_one_pin_into_several_files_and_declare_r(self) -> None:
+        manifest = self.write_asset_fixture()
+        bootstrap = self.temp_dir / "setup.sh"
+        bootstrap.write_text('#!/usr/bin/env bash\ndeclare -r MISE_VERSION="v0.0.1"\n')
+        mise = manifest["assets"]["mise"]
+        mise["render"] = [mise["render"], {"file": "setup.sh", "constants": {"MISE_VERSION": "pin"}}]
+
+        outputs = self.module.render_asset_constants(manifest)
+
+        self.assertEqual(
+            outputs[self.temp_dir / "install/common/mise.sh"],
+            '#!/usr/bin/env bash\nreadonly MISE_VERSION="v2026.9.12"\necho "${MISE_VERSION}"\n',
+        )
+        self.assertEqual(outputs[bootstrap], '#!/usr/bin/env bash\ndeclare -r MISE_VERSION="v2026.9.12"\n')
+        self.assertEqual(len(outputs), 3)
+
+    def test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot(self) -> None:
+        manifest = self.write_asset_fixture()
+        pins = self.temp_dir / "scripts/lib/installer-pins.sh"
+        (pins.parent / "alias.sh").symlink_to(pins.name)
+        manifest["assets"]["crit"]["render"] = [
+            {
+                "file": "scripts/lib/alias.sh",
+                "constants": {"CRIT_PIN_VERSION": "pin", "CRIT_LINUX_AMD64_SHA256": "sha256.linux-amd64"},
+            },
+            {"file": "scripts/lib/installer-pins.sh", "constants": {"CRIT_PIN_VERSION": "pin"}},
+        ]
+
+        outputs = self.module.render_asset_constants(manifest)
+
+        crit_outputs = [path for path in outputs if path.resolve() == pins.resolve()]
+        self.assertEqual(len(crit_outputs), 1, outputs)
+        self.assertEqual(
+            outputs[crit_outputs[0]],
+            '#!/usr/bin/env bash\nCRIT_PIN_VERSION="v0.20.3"\nCRIT_LINUX_AMD64_SHA256="d3a3"\n',
+        )
+        self.module.write_outputs(outputs)
+        self.assertEqual(pins.read_text(), outputs[crit_outputs[0]])
+
+    def test_a_declare_r_assignment_must_appear_exactly_once(self) -> None:
+        manifest = self.write_asset_fixture()
+        bootstrap = self.temp_dir / "setup.sh"
+        mise = manifest["assets"]["mise"]
+        mise["render"] = [mise["render"], {"file": "setup.sh", "constants": {"MISE_VERSION": "pin"}}]
+        for body in ('declare -r MISE_VERSION="a"\ndeclare -r MISE_VERSION="b"\n', "echo no assignment\n"):
+            with self.subTest(body=body):
+                bootstrap.write_text(body)
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.render_asset_constants(manifest)
+                self.assertIn("setup.sh must assign MISE_VERSION exactly once for assets.mise", stderr.getvalue())
+
     def test_asset_constant_must_be_assigned_exactly_once(self) -> None:
         manifest = self.write_asset_fixture()
         manifest["assets"]["mise"]["render"]["constants"] = {"MISSING_VERSION": "pin"}

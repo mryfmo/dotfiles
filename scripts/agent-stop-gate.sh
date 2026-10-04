@@ -20,8 +20,10 @@
 #   Every team the identity belongs to is checked. Messages come from the
 #   whole team history through agmsg's own storage facade, the one
 #   `history.sh` reads (the agmsg skill forbids reading its database
-#   directly). The hook never writes and needs no network. Without an agmsg
-#   install it passes; a failing identity lookup or an unreadable store blocks
+#   directly). The hook never writes to the agmsg store or the repository and
+#   needs no network; only the watchdog fallback (no timeout or gtimeout) uses
+#   one private mktemp file under TMPDIR, removed before it returns. Without an
+#   agmsg install it passes; a failing identity lookup or an unreadable store blocks
 #   unless `stop_hook_active` is true.
 # @option --read-history <team> Internal: print one team's history rows (the gate runs itself this way under timeout).
 # @exitcode 0 Nothing is pending, or the checkout is not an agmsg seat.

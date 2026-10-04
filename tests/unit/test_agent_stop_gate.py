@@ -77,9 +77,9 @@ class AgentStopGateTest(unittest.TestCase):
     def history(self, *rows, team="dotfiles"):
         (self.home / f"history-{team}.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
 
-    def run_gate(self, cwd, active=False, env=None):
+    def run_gate(self, cwd, active=False, env=None, args=()):
         return subprocess.run(
-            ["bash", str(SCRIPT)],
+            ["bash", str(SCRIPT), *args],
             input=json.dumps({"stop_hook_active": active, "cwd": str(cwd), "session_id": "s"}),
             capture_output=True,
             check=False,
@@ -93,8 +93,8 @@ class AgentStopGateTest(unittest.TestCase):
             timeout=10,
         )
 
-    def assert_gate(self, cwd, code, active=False, env=None):
-        result = self.run_gate(cwd, active, env)
+    def assert_gate(self, cwd, code, active=False, env=None, args=()):
+        result = self.run_gate(cwd, active, env, args)
         self.assertEqual(result.returncode, code, result.stderr)
         return result.stderr
 
@@ -372,19 +372,20 @@ class AgentStopGateTest(unittest.TestCase):
         return paths
 
     def mountinfo(self, mounts, options="ro,nosuid"):
-        """A mountinfo fixture: resolved paths (as the kernel lists them) in its octal escaping."""
-        encoded = [os.path.realpath(p).replace("\\", "\\134").replace(" ", "\\040") for p in mounts]
+        """`--mountinfo <fixture>` args: resolved directories (as the kernel lists them) in its octal escaping."""
+        resolved = [os.path.join(os.path.realpath(Path(p).parent), Path(p).name) for p in mounts]
+        encoded = [p.replace("\\", "\\134").replace(" ", "\\040") for p in resolved]
         path = self.home / "mountinfo"
         path.write_text(
             "".join(f"{40 + i} 35 0:5 /null {p} {options} - devtmpfs udev rw\n" for i, p in enumerate(encoded))
         )
-        return {"AGENT_STOP_GATE_MOUNTINFO": str(path)}
+        return ["--mountinfo", str(path)]
 
     def test_sandbox_placeholders_are_skipped(self):
-        env = self.mountinfo(self.make_placeholders())
-        self.assertEqual(self.assert_gate(self.main, 0, env=env), "")
+        args = self.mountinfo(self.make_placeholders())
+        self.assertEqual(self.assert_gate(self.main, 0, args=args), "")
         (self.main / "junk.txt").write_text("x")
-        stderr = self.assert_gate(self.main, 2, env=env)
+        stderr = self.assert_gate(self.main, 2, args=args)
         self.assertIn("junk.txt", stderr)
         self.assertNotIn(".zshrc", stderr)
         self.assertNotIn(".claude/agents", stderr)
@@ -393,20 +394,31 @@ class AgentStopGateTest(unittest.TestCase):
     def test_user_bind_mount_of_a_real_file_is_not_a_placeholder(self):
         env_file = self.main / ".env"
         env_file.write_text("SECRET=1\n")
-        stderr = self.assert_gate(self.main, 2, env=self.mountinfo([env_file]))
+        stderr = self.assert_gate(self.main, 2, args=self.mountinfo([env_file]))
         self.assertIn(".env", stderr)
         self.assertNotIn("placeholders ignored", stderr)
 
     def test_read_write_mount_is_not_a_placeholder(self):
         # Decided by the mount's own options, not by -w, which root always passes.
-        stderr = self.assert_gate(self.main, 2, env=self.mountinfo(self.make_placeholders(), options="rw,relatime"))
+        stderr = self.assert_gate(self.main, 2, args=self.mountinfo(self.make_placeholders(), options="rw,relatime"))
         self.assertIn(".zshrc", stderr)
         self.assertNotIn("placeholders ignored", stderr)
+
+    def test_character_device_placeholder_is_skipped(self):
+        # Stands in for a /dev/null mask: the mount point is a character device.
+        mask = self.main / ".gitconfig"
+        mask.symlink_to("/dev/null")
+        self.assertEqual(self.assert_gate(self.main, 0, args=self.mountinfo([mask])), "")
+
+    def test_mountinfo_cannot_be_redirected_through_the_environment(self):
+        fixture = self.mountinfo(self.make_placeholders())[1]
+        stderr = self.assert_gate(self.main, 2, env={"AGENT_STOP_GATE_MOUNTINFO": fixture})
+        self.assertIn(".zshrc", stderr)
 
     def test_untracked_symlink_to_a_mount_point_is_not_a_placeholder(self):
         # "/" is a mount point everywhere, so following the link would skip it.
         (self.main / "link").symlink_to("/")
-        stderr = self.assert_gate(self.main, 2, env=self.mountinfo([Path("/")]))
+        stderr = self.assert_gate(self.main, 2, args=self.mountinfo([Path("/")]))
         self.assertIn("link", stderr)
         self.assertNotIn("placeholders ignored", stderr)
 

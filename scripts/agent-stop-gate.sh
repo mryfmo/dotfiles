@@ -26,13 +26,13 @@
 #   agmsg install it passes; a failing identity lookup or an unreadable store blocks
 #   unless `stop_hook_active` is true.
 #
-#   An untracked empty regular file that is a read-only mount point in the
-#   hook's own namespace is a Claude Code sandbox placeholder (a 0-byte bind
-#   mount over a protected path), not a change, and is skipped. Read-only
-#   mount points are read once from fields 5 and 6 of /proc/self/mountinfo and
-#   matched exactly, so no symlink is followed (AGENT_STOP_GATE_MOUNTINFO
-#   overrides that file, for tests only).
+#   An untracked empty regular file or character device that is a read-only
+#   mount point in the hook's own namespace is a Claude Code sandbox
+#   placeholder (a bind mount over a protected path), not a change, and is
+#   skipped. Read-only mount points are read once from fields 5 and 6 of
+#   /proc/self/mountinfo and matched exactly, so no symlink is followed.
 # @option --read-history <team> Internal: print one team's history rows (the gate runs itself this way under timeout).
+# @option --mountinfo <file> Test only: read mount points from <file>. The Stop hook passes no arguments, so its inherited environment cannot redirect the table.
 # @exitcode 0 Nothing is pending, or the checkout is not an agmsg seat.
 # @exitcode 2 Work is pending; one reason line per violation on stderr.
 # @example
@@ -67,6 +67,10 @@ read_history() {
 if [[ ${1:-} == --read-history ]]; then
     read_history "$2"
     exit
+fi
+mountinfo=/proc/self/mountinfo
+if [[ ${1:-} == --mountinfo ]]; then
+    mountinfo="$2"
 fi
 
 # GNU timeout, or Homebrew coreutils' gtimeout on macOS; empty when neither.
@@ -122,12 +126,13 @@ if [[ ${seat} == orchestrator && ${active} == false ]]; then
     # compared as text in mountinfo's own octal escaping of \, space, tab and
     # newline. No /proc (macOS) means no mounts, which is right: the macOS
     # sandbox creates no placeholders.
-    mounts=$'\n'"$(awk '$6 ~ /^ro(,|$)/ { print $5 }' "${AGENT_STOP_GATE_MOUNTINFO:-/proc/self/mountinfo}" 2> /dev/null)"$'\n'
-    # Only Claude's kind of mount counts: an empty regular file mounted
-    # read-only (mountinfo field 6, not `-w`, which root always passes). A
-    # user's own bind mount of a real file (say a nonempty .env) is reported.
+    mounts=$'\n'"$(awk '$6 ~ /^ro(,|$)/ { print $5 }' "${mountinfo}" 2> /dev/null)"$'\n'
+    # Only Claude's kind of mount counts: an empty regular file or a character
+    # device (a /dev/null mask) mounted read-only (mountinfo field 6, not `-w`,
+    # which root always passes). A user's own bind mount of a real file (say a
+    # nonempty .env) is reported.
     placeholder() {
-        [[ -f ${top}/$1 && ! -s ${top}/$1 ]] || return 1
+        [[ -c ${top}/$1 ]] || [[ -f ${top}/$1 && ! -s ${top}/$1 ]] || return 1
         local mount="${top}/$1"
         mount="${mount//\\/\\134}"
         mount="${mount// /\\040}"

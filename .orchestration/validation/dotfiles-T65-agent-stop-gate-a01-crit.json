@@ -1,0 +1,18 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t65_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: dotfiles-T65-agent-stop-gate-a01 at PR #237 head fd8aa360 (substantive commits e11659ac, 13340185, 5a9f35f5, 775a527a, 8433a01b, a62fce9d, ea112e2e, a9a85ecf, 4dfceb6e, cb3ded43, bc636cb7, 1845139e, 3568b7e2, 8262be37, 92cad328, fd8aa360 over six revise rounds; update-branch merges onto main through 8922f13b). Orchestrator read the stop gate at each round head and the final script: project-level Stop hook in .claude/settings.json; the seat is classified from CLAUDE_PROJECT_DIR by Git layout (git-dir == common-dir for the main worktree, a linked worktree under <main>/.claude/worktrees/ whose main owns the same common dir for a worker) after unsetting every repository override and injected configuration (GIT_DIR, GIT_WORK_TREE, GIT_COMMON_DIR, GIT_INDEX_FILE, object dirs, CEILING, GIT_CONFIG_PARAMETERS, GIT_CONFIG_COUNT); the orchestrator seat blocks on uncommitted changes outside .orchestration/ and .agents/worklog/ (paths shell-quoted) and on RESULTs without an ACCEPTANCE or TASK back to the same peer; the worker seat blocks on TASK/revise without a RESULT or blocked PONG to the dispatching peer or an ACCEPTANCE from it; history reads go through agmsg's storage facade without re-initializing the store, share one 3 s budget inside the 5 s hook timeout via timeout, gtimeout or a bash watchdog (exit 143 \u2192 124), and a spent budget or unreadable store blocks. 35 gate tests. Fifteen Bot threads on the round-4/5 heads: eight fixed in-PR, seven not-applicable with recorded reasons; every earlier thread fixed in-PR; all replied and resolved. Reporting defect recorded: the round-3 RESULT claimed no Bot response on cb3ded43 because its listings were unpaginated; corrected in round 4. Task-level audit of 92cad328: four findings, two corrected in fd8aa360 (the header now states the watchdog temp file; the report no longer claims \"no shellcheck disable\"), protocol-version checking not-applicable as for the Bot thread, the 150-line target waived by the orchestrator after six required rounds. CI green on fd8aa360, mergeable CLEAN. Pre-merge item done: the T13 historical closure was re-sent to its RESULT sender a003 so the deployed gate does not block the orchestrator seat.",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [
+      {
+        "id": "r_t65_01_r1",
+        "body": "Resolved: approval recorded after reading the final script and every round's diff.",
+        "author": "claude-code"
+      }
+    ]
+  }
+]

@@ -1,0 +1,12 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t73_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: dotfiles-T73-tool-versions-from-config-a01 at PR #241 head b63c6b7d (update-branch merge over the single substantive commit 60688d49; 4 files, +35/-23). Orchestrator read the full diff: test.yaml installs and resolves `npm:ccstatusline`/`npm:ccusage` from the copied exact config without `@version` literals; `scripts/check-statusline-tools.py` reads the two versions from `home/dot_mise/config.toml` with `tomllib` relative to its own location (no new CLI argument, so the no-network smoke is unchanged); `tests/unit/test_statusline_tools.py` reads the same config and asserts the workflow carries no `ccstatusline@`/`ccusage@` literal while keeping the node-before-tools ordering check; `tests/unit/test_aws_cli_acquisition.py` reads `AWS_CLI_FINGERPRINT` from the installer and substitutes it into the four fake-gpg fixtures (`@FINGERPRINT@`, following the existing `@AWS_CLI_VERSION@` pattern). No pin value changed. Grep for the old literals over .github/scripts/tests is empty. The fake-gpg key id `A6310ACC4672475C` (last 16 hex digits of the fingerprint) remains as fixture data the installer does not validate; accepted. tomllib needs Python ≥ 3.11: the smoke passed on ubuntu-24.04, ubuntu-26.04 and macos-14 on the head. CI green, mergeable clean, Codex Bot thumbs-up on both heads with no thread; sweep 5 items none failure/warning.",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [{"id": "r_t73_01_r1", "body": "Resolved: approval recorded after reading the diff and confirming the smoke passed on every runner.", "author": "claude-code"}]
+  }
+]

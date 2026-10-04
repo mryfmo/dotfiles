@@ -1,0 +1,9 @@
+[P3] high evidence .orchestration/learning/dotfiles-T68-gate-audit-evidence-a01.md:3 The learning artifact claims empty `.last.md` files fall back to the transcript, but final head rejects missing or empty companions; update this stale guidance.
+
+[P3] high evidence .orchestration/reports/dotfiles-T68-gate-audit-evidence-a01.md:18 Three task revisions are claimed as verified, but their verification commands and hash outputs are absent from validation, leaving that claim unsupported.
+
+No implementation defects found; 17 read-only behavior checks passed. The supplied JSON confirms 12 successful CI checks and all 10 Bot findings resolved. Changed files remain within the amended scope, and expected artifacts exist.
+
+📝 まとめ: Audit completed; two evidence corrections remain.
+
+Verdict: incorrect

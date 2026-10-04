@@ -1,0 +1,12 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t70_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: dotfiles-T70-make-update-unattended-a01 at PR #238 head 71f48b30 (update-branch merge of main a575b3cc; substantive commits 229a2ec1 and 95acd5b6; 8 files). Orchestrator read the full diff: Makefile `update` treats a failing/unparsable/unknown `herdr status server --json` as `unreachable` and prints `Herdr server unreachable; skipping config reload.` instead of exiting 1 (running/protocol_mismatch/not_running/absent paths unchanged; the operator-phase definition is a comment block above the target); `install/ubuntu/common/apparmor_userns.sh` guards with `sudo -n true` and leaves the profile pending with the standalone remedy `sudo -v && bash install/ubuntu/common/apparmor_userns.sh` (PONG decision 1: the chezmoi run_onchange wrapper would not rerun on identical content), `sudo -n install`/`apparmor_parser`, `Loaded…` moved into `install_profile`; `scripts/check-tools.sh` keeps the REQUIRED failure and only fixes its stale remedy text (decision 1(2): no duplicate warn_optional); `scripts/upgrade-tools.sh` self-updates mise to the manifest pin with the `v` stripped (VERIFY: mise `self_update.rs` prepends `v`); tests synced (lifecycle.bats skip-and-continue cases, test_apparmor_userns pending/failing/remedy cases, test_runtime_health pin test, grep on the minimal PATH); README (95acd5b6) documents the warning-and-skip Herdr behaviour and the pending-profile remedy, fixing the two Codex P2s at the root instead of deferring them to T83. CI green on the head, branch up to date, Codex Bot thumbs-up on 95acd5b6 with no new finding; both threads replied and resolved. Live acceptance (`sudo -K; script -q /dev/null make update` exit 0 without a password prompt; `herdr server stop; make update` exit 0) is the operator's after merge. Note for consolidation: the recorded decision text says 'doctor warning'; per decision 1(2) the doctor signal stays a required failure.",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [{"id": "r_t70_01_r1", "body": "Resolved: approval recorded after reading every diff hunk and verifying the Bot fixes.", "author": "claude-code"}]
+  }
+]

@@ -1,0 +1,12 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t75_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: dotfiles-T75-shell-dead-code-a01 at PR #244 head 339c1496 (substantive commits ef5742f9 and 339c1496; update-branch merge fa5f5a3f; 17 files, 10 insertions and ~147 deletions plus the .chezmoiremove entries and test). Orchestrator read the full diff: the empty alias files and their sheldon blocks, the never-sourced server history.sh/cache.sh and their bashrc lines, setup-python-env, tango.yml and its bats line, the hoge/fuga ignore patterns, the duplicate sheldon mise activation (dot_zshrc:10 and dot_zprofile --shims remain) and the dev tmux branch are deleted; prompt.sh/aliases.sh/secrets.sh sourcing and dot_profile:2 stay; bats pins moved from cache.sh to the still-deployed ssh_agent.sh. Item 7 (`zsh/plugins/chezmoi-notify/`) was correctly kept: the worker's re-verification found `sheldon/plugin_sources/server.toml` loading it on servers, which the orchestrator's exploration had missed; the decision text is amended at acceptance. Codex P2 and the audit's P2 (deployed targets remain on existing machines) fixed at the root in 339c1496: `home/.chezmoiremove` retires the six targets, a scratch `chezmoi apply` removed exactly those six and kept alias/common.sh, dev and ssh_agent.sh, and a unit test asserts each retired target is listed and has no source. The grep validation keeps matching chezmoi-notify by design. CI green (tests/files bats run in CI), branch up to date with main 57885db1, Bot thumbs-up on 339c1496, the one thread replied and resolved; sweep none failure/warning. Live acceptance (both hosts after `make update`): a login zsh activates mise once.",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [{"id": "r_t75_01_r1", "body": "Resolved: approval recorded after reading every deletion, the retained chezmoi-notify evidence and the .chezmoiremove fix.", "author": "claude-code"}]
+  }
+]

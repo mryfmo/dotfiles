@@ -1,0 +1,18 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t63_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: dotfiles-T63-codex-execpolicy-forbidden-a01 at PR #235 head ddb7bf16 (revise round 2: c58e4835 forbids `chezmoi init` and `chezmoi edit` wholesale instead of enumerating flag spellings, 7e83ed9c forbids `./setup.sh`, ddb7bf16 forbids `make clean` and `make deploy`; previously 3 files: home/dot_codex/rules/default.rules, README paragraph, tests/unit/test_codex_execpolicy.py; commits a0b05905, 04d6e1f3, e16012eb, 7a7c21cd, 1f4f409a, eb67299c (revise round 1: chezmoi init aliases, allow-rule sentence corrected per exec_policy.rs bypass_sandbox), 34e7423f, 8770ed66 (Bot fixes: separated -v rm forms, chezmoi init --one-shot/=true, chezmoi update, chezmoi edit --apply, terraform destroy, kubectl delete)). Orchestrator re-derived with `codex execpolicy check --rules <head file> --pretty` on 25 commands: forbidden for sudo (incl. /usr/bin/sudo), rm -rf/-fR/-rfv/-r -f, gh pr merge, gh release, npm/uv publish, terraform/kubectl apply, chezmoi apply, chezmoi init --apply, make update/setup; no match for rm -r, gh pr view, terraform plan, chezmoi diff, make unit-test/render-check, git push; the documented gaps (`rm build -rf`, `terraform -chdir=x apply`) are indeed unmatched. The file holds 19 forbidden rules and 0 allow rules (re-derived on the head: chezmoi init / init -a=1 / edit --watch / apply / update / ./setup.sh / make clean / make deploy forbidden; chezmoi diff/status/managed, make docs/unit-test unmatched), each with justification and load-time match/not_match examples; the header documents overwrite-on-apply, the dropped 23 live allows, restart-after-update, and the prefix-coverage limits (global-option-first forms, flags after operands, make -C, script-spawned commands, pipelines) with the sandbox as backstop, mirroring the Claude deny list. Scope extension accepted: split rm forms, absolute sudo paths, chezmoi init --apply and the lifecycle make targets (setup, init, update, apply, upgrade, watch, reset, reset-config) came from Bot findings fixed at the root; the CompactionDB decision is amended at acceptance. Codex Bot: 17 threads over 7 reviewed heads, 14 fixed in-PR, 3 not-applicable (2 per PONG decision 1 option c, 1 grouped rm spelling per the header coverage statement); all replied and resolved by the orchestrator; the final head ddb7bf16 received the Bot's thumbs-up with no finding. The worker flagged non-convergence (prefix rules enumerate spellings); the header's coverage statement is the stop rule. VERIFY (a)(b)(c) answered from the rust-v0.160.0 source (rules dir, strictest-decision precedence, Forbidden bypasses approval_policy); the end-to-end `codex exec` refusal was not shown (scratch project layer did not load), accepted because the deployment path is the user layer and the deterministic checker is the same code path. Operator post-apply check: `codex execpolicy check --rules ~/.codex/rules/default.rules -- gh pr merge 1` → forbidden.",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [
+      {
+        "id": "r_t63_01_r1",
+        "body": "Resolved: approval recorded after independent evaluation of the rules file with the Codex checker and verification of every Bot fix.",
+        "author": "claude-code"
+      }
+    ]
+  }
+]

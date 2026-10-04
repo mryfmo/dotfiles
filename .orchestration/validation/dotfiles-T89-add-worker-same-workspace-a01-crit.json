@@ -1,0 +1,12 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t89_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: dotfiles-T89-add-worker-same-workspace-a01 at PR #239 head 672f720e (update-branch merge over 958468ba; substantive commits 55d7e77c, 37cf5e47, 958468ba; 5 files, +301/-23). Orchestrator read the launcher and boundary-check diff: `--add-worker` resolves the pair workspace with the same lookup restart/audit/full mode use and, when present, seats the worker through the unchanged upstream `spawn.sh --window` path with `HERDR_WORKSPACE_ID=<pair>` (a tab labelled `<team>:<name>`, pair tab untouched, placement record and linkage line unchanged); without a pair workspace the own-workspace pane-less flow is kept (PONG decision 1 q1=A); `--remove-worker` closes only a tab whose panes all carry the worker label or are unlabelled and agentless (Codex P2 fixed in 958468ba) and still closes a legacy own workspace (needed for the live migration of wY/wZ); full-mode `has_claude_pane`/`empty_pane_id` skip added-worker panes (self-named label + cwd in a linked worktree), a justified extension beyond the PONG premise since those helpers scan the whole workspace; `check-regime-boundary.sh` keeps the legacy workspace check and adds an added-worker-tab check keyed on panes whose cwd is a linked worktree other than the manifest seat; README/SKILL sentences updated and the README codex spawn-options line gains the T64 flags. Seven new tests, each failing against the code it guards; 722 unit tests OK; CI green; Bot thumbs-up on 958468ba and 672f720e. Accepted caveats, to be proven at the operator's live migration (`--remove-worker` then `--add-worker` for worker-d/worker-e after `make update`): Herdr drops a tab when its last pane closes; concurrent `--audit` tab creation vs the pane diff. Follow-ups routed: spawn-seated workers never received the `workspace create --env` variables (AGMSG_RESOLVE_PROJECT, AGMSG_CC_MONITOR_KEEP_ALIVE, HERDR_AGENTS_LAYOUT) → launcher follow-up; README pane-less paragraph (~555) still names `team.sh --json`/`poke.sh` → T83 docs. Behaviour change noted: `--remove-worker` exits 2 on duplicate pair workspaces.",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [{"id": "r_t89_01_r1", "body": "Resolved: approval recorded after reading the diff and the test inventory; live assumptions are the operator's migration checks.", "author": "claude-code"}]
+  }
+]

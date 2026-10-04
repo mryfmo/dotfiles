@@ -1,0 +1,12 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t69_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: dotfiles-T69-protocol-docs-unification-a01 at PR #253 head d31dc32d (substantive commits acb1b93c, 4e83dd8d, 3c6a3cb2, d31dc32d; update-branch merges onto main c6b348ba; 12 files, +79/-19). Orchestrator read every hunk: the audit command is written once in the SKILL (pair form `herdr-agents --audit <head-sha> --task <id>` writing `<id>-audit-<sha7>.md` and its `.last.md`; headless form `codex <MODEL_PROFILE_AUDIT_CODEX_ARGS> exec --sandbox read-only -C <repo> -o <out>.last.md … | tee <out>` masked with `--mask-secrets`; clean tree; a new push needs a new audit; one `audit-finding:` line per finding at column one) and AGENTS.md:55, README, model-selection.md, the rule, the Makefile comment, the gh-first-workflow skill and the herdr-agents stderr string point to it; `codex --profile audit review --commit` is gone everywhere except README's explanatory sentence; Orchestrator Playbook step 10 is the single integration order (sweep → task-level audit of the head → acceptance record with dispositions → gate with AUDIT_EVIDENCE/AUDIT_DISPOSITIONS → `gh pr merge --squash` → ACCEPTANCE, repeated after an update-branch; an incorrect verdict is not a failed step); Worker Playbook step 15 is the bounded Bot wait by paginated review and Bot-comment listings (the permitted exception to the no-polling rule), a 👍 is not a review, every unresolved thread is named in the RESULT; the pr-integration rule and its Codex mirror carry the boundary-PR exception (no sweep JSON, no audit, thread replies as the record, next boundary message names the PR); the docs test pins the shared tokens. Ten Codex threads (Bot-wait mechanism, clean checkout for audits, headless evidence capture and masking, dispositions after correct and incorrect verdicts, boundary-PR gate, AUDIT_DISPOSITIONS in the README example, Bot-only comment filter), all fixed in-PR, replied and resolved. CI green on d31dc32d, Bot no response on the final head within the listing window, up to date with main c6b348ba.",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [{"id": "r_t69_01_r1", "body": "Resolved: approval recorded after reading every hunk of the twelve files.", "author": "claude-code"}]
+  }
+]

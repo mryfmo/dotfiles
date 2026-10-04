@@ -1,0 +1,18 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t71_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: dotfiles-T71-generator-multi-target-a01 at PR #249 head ef4324d0 (substantive commits 1ea56252, 383ebbae, 3ecb4876, f03505f3, ef4324d0; update-branch merges 001affb1 onto f32f33a0 and c7b5fb3d onto 0ea5948b). Orchestrator read the generator and validator diffs: `render:` is one {file, constants} mapping or a list, each entry rewriting its own target through the shared outputs map; the assignment regex accepts `readonly` and `declare -r`; exactly-once is per (file, constant) and names the entry's file; LITERAL_VERSION_ASSIGNMENT recognises `declare -r`; the rendered set covers every entry; render entries are shape-checked, an assignment claimed by two (asset, field) pairs fails (Codex P2 383ebbae), and render files must be one canonical relative spelling (Codex P2 3ecb4876); scanned roots unchanged (setup.sh stays for T72). Four Codex threads: three fixed in-PR (the symlink-alias thread was first dispositioned not-applicable, then the task-level audit of 3ecb4876 reproduced the overwrite, so round 1 keys render conflicts on the resolved real path, f03505f3, with a fixture-symlink test), one not-applicable (unquoted assignments were never rendered and fail loudly), all replied and resolved. Round 1 also replaced the mode-prefixed `git ls-files -s` grep with a real `awk '$1 == \"120000\"'` check (no symlink among 50 entries) and pasted verbatim render-check, validation and unit-test output. Round 2 (task-level audit of c7b5fb3d): render_asset_constants now keeps one snapshot per resolved real file (ef4324d0, alias fixture test), so compatible mappings through an alias and its target no longer lose a write; the Bot's follow-up (resolve aliases in the literal-version scan) is not-applicable because the rendered set stays on the canonical spelling by design and an alias entry fails loudly. render-check and asset validation exit 0, 756 tests, CI green on 3ecb4876 after a first-run upstream download failure, up to date with main f32f33a0.",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [
+      {
+        "id": "r_t71_01_r1",
+        "body": "Resolved: approval recorded after reading the generator and validator diffs.",
+        "author": "claude-code"
+      }
+    ]
+  }
+]

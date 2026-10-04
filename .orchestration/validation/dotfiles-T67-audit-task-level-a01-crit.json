@@ -1,0 +1,12 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t67_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: dotfiles-T67-audit-task-level-a01 at PR #242 head 9476141f (substantive commits 28373e27 and 9476141f; update-branch merge 58f5677a; 3 files, +188/-11). Orchestrator read the launcher diff: `--audit <sha> --task <id>` validates the id as one path segment (an explicit empty id is refused rather than silently falling back), requires `.orchestration/tasks/<id>.md` and a merge-base of origin/main before any Herdr call (exit 2 with the path / a fetch hint), names the worker's report/validation/sandbox as `<id>.md` or `<id>.txt` (Codex P1 fixed in 9476141f) and `<id>-pr-feedback.json` when present, inlines `git diff <base> <sha>` and the commit list, uses the task-level three-dimension prompt (specification conformance, implementation, evidence reality; Bot code-review and security-review threads named as inputs), defaults the output to `<id>-audit-<sha7>.md`, and leaves the no-task path, exit-marker mechanics, masker trust guard and verdict regex unchanged. README's audit section documents the one-audit-per-final-head rule and keeps the headless form. Four new tests plus two subtests, each failing against the old launcher; 726 unit tests OK; CI green; Bot thumbs-up on 28373e27 and 9476141f; the one P1 thread replied and resolved. Activation: after merge the operator's `make update` deploys the launcher; from then the acceptance procedure uses `--task` and one audit per final head.",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [{"id": "r_t67_01_r1", "body": "Resolved: approval recorded after reading the diff, the prompt text and the test inventory.", "author": "claude-code"}]
+  }
+]

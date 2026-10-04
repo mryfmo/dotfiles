@@ -366,46 +366,11 @@ function initialize_dotfiles() {
     run_chezmoi
 }
 
-function get_system_from_chezmoi() {
-    local system
-    system=$(chezmoi data | jq -r '.system')
-    echo "${system}"
-}
-
-function restart_shell_system() {
-    local system
-    system=$(get_system_from_chezmoi)
-
-    # exec shell as login shell (to reload the .zprofile or .profile)
-    if [ "${system}" == "client" ]; then
-        /bin/zsh --login
-
-    elif [ "${system}" == "server" ]; then
-        /bin/bash --login
-
-    else
-        echo "Invalid system: ${system}; expected \`client\` or \`server\`" >&2
-        exit 1
-    fi
-}
-
-# @description Restart an interactive shell, or defer when setup input is piped.
-function restart_shell() {
-    if [ -p /dev/stdin ]; then
-        echo "Now continue with Rebooting your shell"
-    else
-        echo "Restarting your shell..."
-        restart_shell_system
-    fi
-}
-
 function main() {
     echo "${DOTFILES_LOGO}"
 
     initialize_os_env
     initialize_dotfiles
-
-    # restart_shell # Disabled because the at_exit function does not work properly.
 }
 
 if [[ -z "${BASH_SOURCE[0]:-}" || "${BASH_SOURCE[0]}" == "${0}" ]]; then

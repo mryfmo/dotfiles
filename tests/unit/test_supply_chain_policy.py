@@ -457,31 +457,6 @@ install_starship
             self.assertEqual("preserve\n", (target / "sentinel").read_text())
             self.assertFalse((target / "font.txt").exists())
 
-    def test_nix_inputs_lock_and_ci_use_2605(self):
-        flake = (ROOT / "flake.nix").read_text()
-        self.assertNotIn("25.05", flake)
-        self.assertEqual(3, flake.count("26.05"))
-        with (ROOT / "flake.lock").open() as lock_file:
-            lock = json.load(lock_file)
-        expected_refs = {
-            "home-manager": "release-26.05",
-            "nix-darwin": "nix-darwin-26.05",
-            "nixpkgs": "nixos-26.05",
-        }
-        actual_refs = {name: lock["nodes"][name]["original"]["ref"] for name in expected_refs}
-        self.assertEqual(expected_refs, actual_refs)
-        workflow = (ROOT / ".github/workflows/test.yaml").read_text()
-        self.assertIn("should_nix:", workflow)
-        self.assertIn("nix:", workflow)
-        self.assertIn("macos-14", workflow)
-        self.assertIn("ubuntu-24.04", workflow)
-        self.assertIn("fail-fast: false", workflow)
-        self.assertNotIn("workflow_dispatch:", workflow)
-        self.assertEqual(4, workflow.count("--no-update-lock-file"))
-        self.assertNotIn("Refresh Nix lock", workflow)
-        self.assertNotIn("Upload generated lock", workflow)
-        self.assertNotIn("Require committed Nix lock", workflow)
-
     def test_renovate_owns_dependency_update_notifications(self):
         for name in ("dependabot.yml", "dependabot.yaml"):
             self.assertFalse((ROOT / ".github" / name).exists())

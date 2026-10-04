@@ -126,6 +126,5 @@
     "command": "ccstatusline"
   },
   "disableSkillShellExecution": true,
-  "includeGitInstructions": true,
-  "enabledPlugins": {}
+  "includeGitInstructions": true
 }

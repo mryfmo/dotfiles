@@ -473,7 +473,6 @@ def render_claude_settings(manifest: dict[str, Any]) -> str:
         "statusLine": claude["statusLine"],
         "disableSkillShellExecution": claude["disableSkillShellExecution"],
         "includeGitInstructions": claude["includeGitInstructions"],
-        "enabledPlugins": claude["enabledPlugins"],
     }
     return json_dumps(settings)
 

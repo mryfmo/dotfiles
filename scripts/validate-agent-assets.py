@@ -467,9 +467,10 @@ def validate_codex_config(manifest: dict[str, Any]) -> dict[str, Any]:
 def validate_claude_mcp_config() -> dict[str, Any]:
     path = ROOT / "home/dot_claude/private_mcp.json.tmpl"
     data = json.loads(render_template_text(path))
-    servers = data.get("mcpServers", {})
-    if not isinstance(servers, dict) or not servers:
-        fail(f"{path} must define mcpServers")
+    servers = data.get("mcpServers")
+    # An empty map is valid: servers are declared only when one is enabled.
+    if not isinstance(servers, dict):
+        fail(f"{path} must define mcpServers as a mapping")
     for name, server in servers.items():
         if server.get("disabled") is not True:
             fail(f"Claude MCP server {name} should be disabled by default")

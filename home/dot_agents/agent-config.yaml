@@ -271,10 +271,6 @@ claude:
   statusLine:
     type: command
     command: ccstatusline
-  # External Claude plugins are intentionally not enabled here. The shared local
-  # workflow pack is represented as the common skill tree, because settings alone
-  # cannot install third-party Claude plugins or marketplaces.
-  enabledPlugins: {}
 
 plugins:
   marketplace_path: home/dot_agents/plugins/create_marketplace.json
@@ -305,137 +301,8 @@ plugins:
       authentication: ON_INSTALL
       installation: INSTALLED_BY_DEFAULT
 
-mcp_servers:
-  context7:
-    description: Library documentation lookup through Upstash Context7.
-    enabled: false
-    required: false
-    transport: stdio
-    command: npx
-    args:
-      - -y
-      - '@upstash/context7-mcp'
-    timeout: 60
-    connect_timeout: 20
-    startup_timeout_sec: 20
-    tool_timeout_sec: 60
-    supports_parallel_tool_calls: true
-    prompts: false
-    resources: false
-    sampling: false
-    agents:
-      codex: true
-      claude: true
-
-  filesystem_dotfiles:
-    description: Scoped filesystem access to this chezmoi source tree for dotfiles maintenance.
-    enabled: false
-    required: false
-    transport: stdio
-    command: npx
-    args:
-      - -y
-      - '@modelcontextprotocol/server-filesystem'
-      - '{{ .chezmoi.sourceDir }}'
-    timeout: 30
-    connect_timeout: 30
-    startup_timeout_sec: 30
-    tool_timeout_sec: 30
-    prompts: false
-    resources: false
-    sampling: false
-    agents:
-      codex: true
-      claude: true
-
-  github:
-    description: Official GitHub MCP server using GITHUB_PERSONAL_ACCESS_TOKEN inherited by Docker.
-    enabled: false
-    required: false
-    transport: stdio
-    command: docker
-    args:
-      - run
-      - -i
-      - --rm
-      - -e
-      - GITHUB_PERSONAL_ACCESS_TOKEN
-      - ghcr.io/github/github-mcp-server
-    timeout: 60
-    connect_timeout: 60
-    startup_timeout_sec: 60
-    tool_timeout_sec: 60
-    include_tools:
-      - list_issues
-      - get_issue
-      - search_repositories
-      - search_code
-      - list_pull_requests
-      - get_pull_request
-    prompts: false
-    resources: false
-    sampling: false
-    agents:
-      codex: true
-      claude: true
-
-  time:
-    description: Local time MCP server.
-    enabled: false
-    required: false
-    transport: stdio
-    command: uvx
-    args:
-      - mcp-server-time
-    timeout: 30
-    connect_timeout: 30
-    startup_timeout_sec: 30
-    tool_timeout_sec: 30
-    prompts: false
-    resources: false
-    sampling: false
-    agents:
-      codex: true
-      claude: true
-
-  sequential_thinking:
-    description: Structured step-by-step reasoning scratchpad MCP server.
-    enabled: false
-    required: false
-    transport: stdio
-    command: npx
-    args:
-      - -y
-      - '@modelcontextprotocol/server-sequential-thinking'
-    timeout: 60
-    connect_timeout: 30
-    startup_timeout_sec: 30
-    tool_timeout_sec: 60
-    prompts: false
-    resources: false
-    sampling: false
-    agents:
-      codex: true
-      claude: true
-
-  playwright:
-    description: Browser automation MCP server for web QA and debugging.
-    enabled: false
-    required: false
-    transport: stdio
-    command: npx
-    args:
-      - '@playwright/mcp@latest'
-    timeout: 120
-    connect_timeout: 60
-    startup_timeout_sec: 60
-    tool_timeout_sec: 120
-    prompts: false
-    resources: false
-    sampling: false
-    agents:
-      codex: true
-      claude: true
+# MCP servers are declared only when one is enabled for a target agent.
+mcp_servers: {}
 
 # Third-party assets: one declaration per component with its upstream, pin,
 # verification, install path, and installer step. generate-agent-configs.py

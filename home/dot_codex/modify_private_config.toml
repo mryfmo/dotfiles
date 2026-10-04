@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -13,6 +14,10 @@ RUNTIME_PREFIXES = (
     "tui.model_availability_nux",
     "projects",
 )
+# T76 removed these never-enabled servers from the managed baseline; purge their last managed (disabled) copies.
+RETIRED_MCP_SERVERS = ("context7", "filesystem_dotfiles", "github", "time", "sequential_thinking", "playwright")
+RETIRED_MCP_TABLES = {f"mcp_servers.{server}" for server in RETIRED_MCP_SERVERS}
+DISABLED = re.compile(r"^\s*enabled\s*=\s*false\s*(?:#.*)?$", re.MULTILINE)
 
 def source_dir() -> Path:
     if os.environ.get("CHEZMOI_SOURCE_DIR"):
@@ -157,6 +162,8 @@ def merge_config(managed: str, current: str) -> str:
             emitted_runtime_prefixes.add(prefix)
             continue
         if name not in managed_names:
+            if name in RETIRED_MCP_TABLES and DISABLED.search(chunk):
+                continue
             output.append(chunk)
 
     merged = "".join(output)

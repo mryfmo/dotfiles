@@ -121,45 +121,6 @@ class RuntimeHealthTest(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertEqual("gh-extensions-ensured\n", result.stdout)
 
-    def test_agent_runs_are_private_and_ignored(self) -> None:
-        repo = self.temp_dir / "repo"
-        home = self.temp_dir / "home"
-        bin_dir = self.temp_dir / "bin"
-        repo.mkdir()
-        home.mkdir()
-        shutil.copy(ROOT / ".gitignore", repo / ".gitignore")
-        shutil.copy(
-            ROOT / "home/dot_local/bin/common/executable_agent-fanout",
-            repo / "agent-fanout",
-        )
-        self.executable(bin_dir / "codex", "printf 'fake agent output\\n'\n")
-        self.run_test_command(["git", "init", "-q"], cwd=repo, check=True)
-
-        result = self.run_test_command(
-            ["bash", "./agent-fanout", "--no-claude", "secret prompt"],
-            cwd=repo,
-            env={
-                **os.environ,
-                "HOME": str(home),
-                "PATH": f"{bin_dir}:{os.environ['PATH']}",
-            },
-        )
-
-        self.assertEqual(0, result.returncode, result.stderr)
-        runs = repo / ".agents/runs"
-        run_dir = next(runs.iterdir())
-        self.assertEqual(0o700, stat.S_IMODE(runs.stat().st_mode))
-        self.assertEqual(0o700, stat.S_IMODE(run_dir.stat().st_mode))
-        for artifact in run_dir.iterdir():
-            if artifact.is_file():
-                self.assertEqual(0, stat.S_IMODE(artifact.stat().st_mode) & 0o077, artifact)
-        status = self.run_test_command(
-            ["git", "status", "--short", "--ignored", ".agents/runs"],
-            cwd=repo,
-            check=True,
-        )
-        self.assertIn("!! .agents/runs/", status.stdout)
-
     def test_agent_asset_update_removes_node_global_shadows_before_agent_commands(
         self,
     ) -> None:
@@ -1117,173 +1078,11 @@ EOF
 
     def test_agent_launchers_do_not_hardcode_model_ids(self) -> None:
         herdr = (ROOT / "home/dot_local/bin/common/executable_herdr-agents").read_text()
-        fanout = (ROOT / "home/dot_local/bin/common/executable_agent-fanout").read_text()
 
-        for text in (herdr, fanout):
-            self.assertNotIn("claude-fable-5", text)
-            self.assertNotIn("gpt-5.6", text)
-            self.assertNotIn("model_reasoning_effort=", text)
+        self.assertNotIn("claude-fable-5", herdr)
+        self.assertNotIn("gpt-5.6", herdr)
+        self.assertNotIn("model_reasoning_effort=", herdr)
         self.assertIn('--profile "${HERDR_AGENTS_WORKER_PROFILE:-standard}"', herdr)
-        self.assertIn("model-profiles.env", fanout)
-
-    def test_agent_fanout_applies_profile_args_from_generated_fragment(self) -> None:
-        repo = self.temp_dir / "fanout-profile-repo"
-        output_dir = repo / "output"
-        bin_dir = self.temp_dir / "fanout-profile-bin"
-        repo.mkdir()
-        shutil.copy(
-            ROOT / "home/dot_local/bin/common/executable_agent-fanout",
-            repo / "agent-fanout",
-        )
-        self.executable(bin_dir / "codex", "exit 0\n")
-        profile_env = self.temp_dir / "model-profiles.env"
-        profile_env.write_text(
-            'MODEL_PROFILE_INTERACTIVE="deep"\n'
-            'MODEL_PROFILE_EXPRESS_CLAUDE_ARGS="--model haiku --effort low"\n'
-            'MODEL_PROFILE_EXPRESS_CODEX_ARGS="--profile express"\n'
-        )
-        env = {
-            **os.environ,
-            "PATH": f"{bin_dir}:{os.environ['PATH']}",
-            "AGENT_FANOUT_PROFILE_ENV": str(profile_env),
-        }
-
-        result = self.run_test_command(
-            [
-                "bash",
-                "./agent-fanout",
-                "--dry-run",
-                "--no-claude",
-                "--profile",
-                "express",
-                "--output-dir",
-                str(output_dir),
-                "prompt",
-            ],
-            cwd=repo,
-            env=env,
-        )
-
-        self.assertEqual(0, result.returncode, result.stderr)
-        self.assertIn(
-            "DRY RUN: codex --profile express exec --full-auto <prompt>",
-            (output_dir / "codex.log").read_text(),
-        )
-
-        result = self.run_test_command(
-            [
-                "bash",
-                "./agent-fanout",
-                "--dry-run",
-                "--no-claude",
-                "--profile",
-                "nope",
-                "--output-dir",
-                str(output_dir),
-                "prompt",
-            ],
-            cwd=repo,
-            env=env,
-        )
-
-        self.assertEqual(2, result.returncode, result.stderr)
-        self.assertIn("Unknown model profile: nope", result.stderr)
-
-    def test_agent_fanout_preserves_caller_umask_for_child_agents(self) -> None:
-        repo = self.temp_dir / "fanout-umask-repo"
-        bin_dir = self.temp_dir / "fanout-umask-bin"
-        observed_umask = self.temp_dir / "child-umask.txt"
-        repo.mkdir()
-        shutil.copy(
-            ROOT / "home/dot_local/bin/common/executable_agent-fanout",
-            repo / "agent-fanout",
-        )
-        self.executable(bin_dir / "codex", 'umask > "$OBSERVED_UMASK"\n')
-
-        result = self.run_test_command(
-            [
-                "bash",
-                "-c",
-                'umask 0022; exec bash ./agent-fanout --no-claude "secret prompt"',
-            ],
-            cwd=repo,
-            env={
-                **os.environ,
-                "PATH": f"{bin_dir}:{os.environ['PATH']}",
-                "OBSERVED_UMASK": str(observed_umask),
-            },
-        )
-
-        self.assertEqual(0, result.returncode, result.stderr)
-        self.assertEqual("0022", observed_umask.read_text().strip())
-
-    def test_agent_fanout_restricts_preexisting_output_artifacts(self) -> None:
-        repo = self.temp_dir / "fanout-existing-repo"
-        output_dir = repo / "output"
-        bin_dir = self.temp_dir / "fanout-existing-bin"
-        repo.mkdir()
-        output_dir.mkdir()
-        shutil.copy(
-            ROOT / "home/dot_local/bin/common/executable_agent-fanout",
-            repo / "agent-fanout",
-        )
-        self.executable(bin_dir / "codex", "exit 0\n")
-        artifacts = [output_dir / name for name in ("prompt.txt", "codex.log", "summary.txt")]
-        for artifact in artifacts:
-            artifact.write_text("old public content\n")
-            artifact.chmod(0o644)
-
-        result = self.run_test_command(
-            [
-                "bash",
-                "./agent-fanout",
-                "--dry-run",
-                "--no-claude",
-                "--output-dir",
-                str(output_dir),
-                "secret",
-            ],
-            cwd=repo,
-            env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}"},
-        )
-
-        self.assertEqual(0, result.returncode, result.stderr)
-        self.assertEqual(0o700, stat.S_IMODE(output_dir.stat().st_mode))
-        for artifact in artifacts:
-            self.assertEqual(0o600, stat.S_IMODE(artifact.stat().st_mode), artifact)
-
-    def test_agent_fanout_refuses_symlink_artifacts(self) -> None:
-        repo = self.temp_dir / "fanout-symlink-repo"
-        output_dir = repo / "output"
-        bin_dir = self.temp_dir / "fanout-symlink-bin"
-        target = self.temp_dir / "must-not-change.txt"
-        repo.mkdir()
-        output_dir.mkdir()
-        target.write_text("preserve me\n")
-        (output_dir / "codex.log").symlink_to(target)
-        shutil.copy(
-            ROOT / "home/dot_local/bin/common/executable_agent-fanout",
-            repo / "agent-fanout",
-        )
-        self.executable(bin_dir / "codex", "exit 0\n")
-
-        result = self.run_test_command(
-            [
-                "bash",
-                "./agent-fanout",
-                "--dry-run",
-                "--no-claude",
-                "--output-dir",
-                str(output_dir),
-                "secret",
-            ],
-            cwd=repo,
-            env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}"},
-        )
-
-        self.assertNotEqual(0, result.returncode)
-        self.assertIn("Refusing unsafe artifact path", result.stderr)
-        self.assertEqual("preserve me\n", target.read_text())
 
     def doctor_environment(self, *, fail: str = "", os_name: str = "Linux") -> dict[str, str]:
         fixture_name = (fail or "healthy").replace(":", "-").replace(" ", "-")
@@ -1558,10 +1357,8 @@ EOF
             printf 'gh %s\n' "$*" >> "$TEST_LOG"
             [[ "$FAIL_PHASE:$1" != gh:extension ]] || exit 9
             case "$*" in
-                *issues/1115*) printf 'open\n' ;;
                 *tomasz-tomczyk/crit/releases/latest*) printf 'v9.9.9\n' ;;
                 *zed-industries/zed/releases/latest*) printf 'v9.9.9\n' ;;
-                *musistudio/claude-code-router/releases/latest*) printf 'v3.0.15\n' ;;
             esac
             """,
         )
@@ -1836,39 +1633,6 @@ EOF
         self.assertIn("crit-darwin-arm64", log)
         self.assertIn("zed-linux-x86_64.tar.gz", log)
         self.assertIn("zed-linux-aarch64.tar.gz", log)
-
-    def test_upgrade_skips_ccr_notice_when_gh_is_unavailable(self) -> None:
-        repo, env = self.upgrade_fixture("none")
-        (repo / "bin/gh").unlink()
-        for command in ("awk", "bash", "dirname", "grep", "mkdir", "mktemp", "rm"):
-            source = shutil.which(command)
-            self.assertIsNotNone(source)
-            (repo / f"bin/{command}").symlink_to(source)
-        env["PATH"] = str(repo / "bin")
-
-        result = self.run_test_command(
-            ["bash", "scripts/upgrade-tools.sh"],
-            cwd=repo,
-            env=env,
-        )
-
-        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertNotIn("CCR gate G1", result.stdout)
-        self.assertNotIn("CCR latest release", result.stdout)
-
-    def test_upgrade_reports_ccr_adoption_gate_values(self) -> None:
-        repo, env = self.upgrade_fixture("none")
-
-        result = self.run_test_command(
-            ["bash", "scripts/upgrade-tools.sh"],
-            cwd=repo,
-            env=env,
-        )
-
-        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertIn("CCR gate G1 (#1115): open", result.stdout)
-        self.assertIn("CCR latest release: v3.0.15", result.stdout)
-        self.assertIn("G2/G3 require manual primary-source verification", result.stdout)
 
 
 if __name__ == "__main__":

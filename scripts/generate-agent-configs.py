@@ -775,7 +775,7 @@ def render_model_profiles_env(manifest: dict[str, Any]) -> str:
     profiles = model_profiles(manifest)
     interactive_profile(manifest)
     lines = [
-        "# Shell fragment sourced by agent launchers (herdr-agents, agent-fanout).",
+        "# Shell fragment sourced by agent launchers (herdr-agents).",
         f"# {GENERATED_HEADER}",
         f'MODEL_PROFILE_INTERACTIVE="{manifest["interactive_profile"]}"',
         f'HERDR_AGENTS_WORKER_KIND="{worker_kind(manifest)}"',

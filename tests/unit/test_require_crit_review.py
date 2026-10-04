@@ -138,7 +138,6 @@ class ReviewGuardTest(unittest.TestCase):
     def test_agent_lifecycle_surfaces_require_review(self) -> None:
         high_risk_paths = (
             "home/dot_local/bin/common/executable_herdr-agents",
-            "home/dot_local/bin/common/executable_agent-fanout",
             "home/dot_config/herdr/config.yaml",
             "home/dot_zshrc",
             "home/.chezmoiscripts/common/run_once_after_06-install-agent-assets.sh.tmpl",

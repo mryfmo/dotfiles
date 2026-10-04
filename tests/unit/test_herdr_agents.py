@@ -3,18 +3,14 @@
 
 from __future__ import annotations
 
-import errno
-import hashlib
 import json
 import os
-import pty
 import re
 import shutil
 import socket
 import sqlite3
 import subprocess
 import sys
-import tarfile
 import tempfile
 import textwrap
 import threading
@@ -27,7 +23,6 @@ import tomllib
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "home/dot_local/bin/common/executable_herdr-agents"
 MAKEFILE = ROOT / "Makefile"
-HERDR_SESSION_SCRIPT = ROOT / "home/dot_local/bin/common/executable_herdr-session"
 CLAUDE_SETTINGS_MODIFIER = ROOT / "home/dot_claude/modify_private_settings.json"
 HERDR_CONFIG = ROOT / "home/dot_config/herdr/config.toml"
 FILE_VIEWER_CONFIG = ROOT / "home/dot_config/herdr/plugins/config/herdr-file-viewer/config.toml"
@@ -417,63 +412,6 @@ fi
             )
         )
 
-    def materialize_agmsg_scripts(self) -> Path:
-        """Extract the real, pinned upstream agmsg scripts/ tree for an E2E test.
-
-        This deliberately fetches the same commit+sha256 pinned in
-        scripts/update-agent-assets.sh (assets.agmsg in the manifest), cached
-        under the system temp dir keyed by commit, rather than keeping a
-        local fork of upstream scripts (forbidden by the T19 task spec) or
-        faking send.sh/join.sh/inbox.sh (this test proves real message
-        delivery between two fake agent processes, which a fake can't do).
-        """
-        updater_text = (ROOT / "scripts/update-agent-assets.sh").read_text()
-        commit = re.search(r'^AGMSG_PIN_COMMIT="([0-9a-f]+)"$', updater_text, re.MULTILINE).group(1)
-        expected_sha256 = re.search(r'^AGMSG_PIN_SHA256="([0-9a-f]+)"$', updater_text, re.MULTILINE).group(1)
-
-        cache_dir = Path(tempfile.gettempdir()) / f"agmsg-fixture-cache-{commit}"
-        tarball = cache_dir / "agmsg.tar.gz"
-        if not tarball.exists():
-            cache_dir.mkdir(parents=True, exist_ok=True)
-            url = f"https://github.com/fujibee/agmsg/archive/{commit}.tar.gz"
-            subprocess.run(["curl", "-fsSL", url, "-o", str(tarball)], check=True)
-        actual_sha256 = hashlib.sha256(tarball.read_bytes()).hexdigest()
-        self.assertEqual(
-            expected_sha256,
-            actual_sha256,
-            "cached agmsg fixture tarball does not match the pinned checksum",
-        )
-
-        extract_root = self.temp_dir / "agmsg"
-        extract_root.mkdir()
-        with tarfile.open(tarball) as archive:
-            for member in archive.getmembers():
-                relative = Path(member.name).relative_to(Path(member.name).parts[0])
-                if relative == Path("."):
-                    continue
-                member.name = str(relative)
-                archive.extract(member, extract_root, filter="data")
-        return extract_root / "scripts"
-
-    def install_zshrc_fakes(self, *, herdr_session_exit_code: int = 0) -> None:
-        self.write_executable(
-            "sheldon",
-            "#!/usr/bin/env bash\nif [[ ${1:-} == source ]]; then exit 0; fi\n",
-        )
-        self.write_executable(
-            "herdr-session",
-            f"""#!/usr/bin/env bash
-printf 'herdr-session %s\\n' "$*" >> {self.calls_path}
-exit {herdr_session_exit_code}
-""",
-        )
-        self.write_executable(
-            "herdr",
-            f"""#!/usr/bin/env bash
-printf 'herdr %s\\n' "$*" >> {self.calls_path}
-""",
-        )
-
     def write_workspace_state(
         self,
         workspace_id: str,
@@ -554,7 +492,6 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         env = os.environ.copy()
         env["HOME"] = str(self.home_dir)
         env["PATH"] = f"{self.bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"
-        env.pop("HERDR_AGENTS_CODEX_PROFILE", None)
         env.pop("HERDR_AGENTS_WORKER_PROFILE", None)
         env.pop("HERDR_AGENTS_WORKER_KIND", None)
         env.pop("HERDR_AGENTS_CLAUDE_ARGS", None)
@@ -581,20 +518,6 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             stderr=subprocess.PIPE,
         )
 
-    def run_session_helper(self, *args: str) -> subprocess.CompletedProcess[str]:
-        env = os.environ.copy()
-        env["HOME"] = str(self.home_dir)
-        env["PATH"] = f"{self.bin_dir}{os.pathsep}{env['PATH']}"
-        return subprocess.run(
-            ["bash", str(HERDR_SESSION_SCRIPT), *args],
-            cwd=self.workdir,
-            env=env,
-            check=False,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-
     def run_attach_helper(
         self,
         *,
@@ -613,7 +536,6 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         env.pop("FPATH", None)
         env.pop("HERDR_AGENTS_WORKER_KIND", None)
         env.pop("HERDR_AGENTS_WORKER_PROFILE", None)
-        env.pop("HERDR_AGENTS_CODEX_PROFILE", None)
         env.pop("CLAUDE_CODE_SESSION_ID", None)
         env.pop("CLAUDE_PID", None)
         if extra_env:
@@ -1336,9 +1258,6 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             command,
         )
 
-    def test_herdr_session_does_not_prebuild_agent_layout(self) -> None:
-        self.assertNotIn("herdr-agents", HERDR_SESSION_SCRIPT.read_text())
-
     def test_uses_initial_workspace_pane_for_claude_and_splits_codex_right(
         self,
     ) -> None:
@@ -1457,24 +1376,6 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
             any(
                 call.endswith(
                     "--sandbox workspace-write --profile review --ask-for-approval never -c sandbox_workspace_write.network_access=true"
-                )
-                for call in self.calls_path.read_text().splitlines()
-                if call.startswith("agent start codex-worker-")
-            )
-        )
-
-    def test_codex_profile_env_override_wins_over_generated_profile(self) -> None:
-        profiles = self.home_dir / ".agents/model-profiles.env"
-        profiles.parent.mkdir(parents=True)
-        profiles.write_text("MODEL_PROFILE_INTERACTIVE=review\n")
-
-        result = self.run_helper(extra_env={"HERDR_AGENTS_CODEX_PROFILE": "express"})
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertTrue(
-            any(
-                call.endswith(
-                    "--sandbox workspace-write --profile express --ask-for-approval never -c sandbox_workspace_write.network_access=true"
                 )
                 for call in self.calls_path.read_text().splitlines()
                 if call.startswith("agent start codex-worker-")
@@ -2090,27 +1991,6 @@ printf 'status=ok team=dotfiles\\n'
             "agent start claude-worker-w-test --kind claude --pane w-test:p3 "
             "--timeout 30000 -- --model sonnet --effort low",
             self.calls_path.read_text().splitlines(),
-        )
-
-    def test_worker_profile_env_takes_priority_over_deprecated_codex_alias(
-        self,
-    ) -> None:
-        result = self.run_helper(
-            extra_env={
-                "HERDR_AGENTS_WORKER_PROFILE": "express",
-                "HERDR_AGENTS_CODEX_PROFILE": "review",
-            }
-        )
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertTrue(
-            any(
-                call.endswith(
-                    "--sandbox workspace-write --profile express --ask-for-approval never -c sandbox_workspace_write.network_access=true"
-                )
-                for call in self.calls_path.read_text().splitlines()
-                if call.startswith("agent start codex-worker-")
-            )
         )
 
     def test_claude_worker_sharing_the_orchestrator_identity_is_refused(self) -> None:
@@ -5397,161 +5277,6 @@ exit {exit_code}
         )
         self.assertIn("workspace focus w-old", calls)
 
-    def test_ghostty_herdr_starts_plain_workspace(self) -> None:
-        agmsg_scripts = self.materialize_agmsg_scripts()
-        agmsg_storage = self.temp_dir / "agmsg-db"
-        agmsg_storage.mkdir()
-        e2e_log = self.temp_dir / "e2e.log"
-
-        self.write_executable(
-            "herdr-session",
-            f"""#!/usr/bin/env bash
-printf 'herdr-session %s\\n' "$*" >> {self.calls_path}
-exec bash {HERDR_SESSION_SCRIPT}
-""",
-        )
-        self.write_executable(
-            "herdr-agents",
-            f"""#!/usr/bin/env bash
-printf 'herdr-agents %s\\n' "$1" >> {self.calls_path}
-exec bash {SCRIPT} "$@"
-""",
-        )
-        self.write_executable(
-            "herdr",
-            f"""#!/usr/bin/env bash
-set -euo pipefail
-printf 'herdr %s\\n' "$*" >> {self.calls_path}
-if [[ $# -eq 0 ]]; then
-    printf 'attached workspace from cwd=%s\\n' "$PWD" >> {e2e_log}
-    exit 0
-fi
-if [[ $1 == workspace && $2 == list ]]; then
-    printf '%s\\n' '{{"id":"cli:workspace:list","result":{{"type":"workspace_list","workspaces":[]}}}}'
-    exit 0
-fi
-if [[ $1 == workspace && $2 == create ]]; then
-    printf '%s\\n' '{{"id":"cli:workspace:create","result":{{"root_pane":{{"pane_id":"w-test:p1"}},"workspace":{{"workspace_id":"w-test"}}}}}}'
-    exit 0
-fi
-if [[ $1 == pane && $2 == split ]]; then
-    printf '%s\\n' '{{"id":"cli:pane:split","result":{{"pane":{{"pane_id":"w-test:p3"}}}}}}'
-    exit 0
-fi
-if [[ $1 == pane && $2 == run ]]; then
-    printf 'left pane=%s cwd=%s command=%s\\n' "$3" "$PWD" "$4" >> {e2e_log}
-    if [[ $3 == w-test:p1 ]]; then
-        bash -c "$4"
-    fi
-    exit 0
-fi
-if [[ $1 == pane && $2 == rename ]]; then
-    exit 0
-fi
-if [[ $1 == agent && $2 == start ]]; then
-    cwd=''
-    workspace=''
-    split=''
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            --cwd) cwd="$2"; shift 2 ;;
-            --workspace) workspace="$2"; shift 2 ;;
-            --split) split="$2"; shift 2 ;;
-            --) shift; break ;;
-            *) shift ;;
-        esac
-    done
-    printf 'right workspace=%s split=%s cwd=%s command=%s\\n' "$workspace" "$split" "$cwd" "$*" >> {e2e_log}
-    (cd "$cwd" && "$@")
-    printf '%s\\n' '{{"id":"cli:agent:start","result":{{"pane":{{"pane_id":"w-test:p2"}}}}}}'
-    exit 0
-fi
-""",
-        )
-        self.write_executable(
-            "claude",
-            f"""#!/usr/bin/env bash
-set -euo pipefail
-printf 'claude cwd=%s\\n' "$PWD" >> {e2e_log}
-{agmsg_scripts}/join.sh ghostty-e2e claude-code claude-code "$PWD" > /dev/null
-{agmsg_scripts}/send.sh ghostty-e2e claude-code codex "ready from claude" > /dev/null
-""",
-        )
-        self.write_executable(
-            "codex",
-            f"""#!/usr/bin/env bash
-set -euo pipefail
-printf 'codex cwd=%s\\n' "$PWD" >> {e2e_log}
-{agmsg_scripts}/join.sh ghostty-e2e codex codex "$PWD" > /dev/null
-{agmsg_scripts}/inbox.sh ghostty-e2e codex >> {e2e_log}
-""",
-        )
-
-        env = os.environ.copy()
-        for key in tuple(env):
-            if key.startswith(("GHOSTTY_", "HERDR_")):
-                env.pop(key)
-        env.pop("TERM_PROGRAM", None)
-        env["PATH"] = f"{self.bin_dir}{os.pathsep}{env['PATH']}"
-        env["AGMSG_STORAGE_PATH"] = str(agmsg_storage)
-        env["GHOSTTY_RESOURCES_DIR"] = str(self.temp_dir / "ghostty")
-        env["HOME"] = str(self.home_dir)
-        result = subprocess.run(
-            ["zsh", "-fc", f"source {ZSHRC}; herdr"],
-            cwd=self.workdir,
-            env=env,
-            check=False,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(
-            self.calls_path.read_text().splitlines(),
-            [
-                "herdr-session ",
-                "herdr ",
-            ],
-        )
-        e2e_lines = e2e_log.read_text()
-        self.assertIn(f"attached workspace from cwd={self.workdir.resolve()}", e2e_lines)
-        self.assertNotIn("claude cwd=", e2e_lines)
-        self.assertNotIn("codex cwd=", e2e_lines)
-
-    def test_herdr_session_passes_syntax_check(self) -> None:
-        result = subprocess.run(
-            ["bash", "-n", str(HERDR_SESSION_SCRIPT)],
-            cwd=ROOT,
-            check=False,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-    def test_herdr_session_execs_herdr_without_prebuilding_agents(self) -> None:
-        self.write_executable(
-            "herdr",
-            f"""#!/usr/bin/env bash
-printf 'herdr %s\\n' "$*" >> {self.calls_path}
-""",
-        )
-
-        result = self.run_session_helper()
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(
-            self.calls_path.read_text().splitlines(),
-            ["herdr "],
-        )
-        self.assertFalse((self.home_dir / ".config/herdr/herdr-agents.log").exists())
-
-    def test_herdr_session_rejects_arguments(self) -> None:
-        result = self.run_session_helper("extra")
-        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
-        self.assertIn("Usage: herdr-session", result.stderr)
-        self.assertFalse(self.calls_path.exists())
-
     def test_herdr_prefix_alt_a_runs_helper_from_active_pane(self) -> None:
         config = tomllib.loads(HERDR_CONFIG.read_text())
         command = next(item for item in config["keys"]["command"] if item["key"] == "prefix+alt+a")
@@ -5627,73 +5352,6 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(zed_calls.read_text(), "--add example.txt\n")
         self.assertFalse(editor_calls.exists())
 
-    def run_zshrc_herdr(
-        self,
-        command: str,
-        *,
-        ghostty: bool,
-        herdr_session_exit_code: int = 0,
-    ) -> subprocess.CompletedProcess[str]:
-        self.install_zshrc_fakes(herdr_session_exit_code=herdr_session_exit_code)
-        env = os.environ.copy()
-        env["HOME"] = str(self.home_dir)
-        env["PATH"] = f"{self.bin_dir}{os.pathsep}{env['PATH']}"
-        if ghostty:
-            env["GHOSTTY_RESOURCES_DIR"] = str(self.temp_dir / "ghostty")
-        else:
-            env.pop("GHOSTTY_RESOURCES_DIR", None)
-
-        return subprocess.run(
-            ["zsh", "-fc", f"source {ZSHRC}; {command}"],
-            cwd=self.workdir,
-            env=env,
-            check=False,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-
-    def run_interactive_ghostty_herdr(self) -> subprocess.CompletedProcess[str]:
-        self.install_zshrc_fakes()
-        env = os.environ.copy()
-        env["HOME"] = str(self.home_dir)
-        env["PATH"] = f"{self.bin_dir}{os.pathsep}{env['PATH']}"
-        env["GHOSTTY_RESOURCES_DIR"] = str(self.temp_dir / "ghostty")
-
-        master_fd, slave_fd = pty.openpty()
-        try:
-            proc = subprocess.Popen(
-                ["zsh", "-ifc", f"source {ZSHRC}; herdr"],
-                cwd=self.workdir,
-                env=env,
-                text=True,
-                stdin=slave_fd,
-                stdout=slave_fd,
-                stderr=slave_fd,
-            )
-        finally:
-            os.close(slave_fd)
-
-        output = []
-        with os.fdopen(master_fd, "r", errors="replace") as tty:
-            while True:
-                try:
-                    chunk = tty.read()
-                except OSError as error:
-                    if error.errno != errno.EIO:
-                        raise
-                    break
-                if not chunk:
-                    break
-                output.append(chunk)
-
-        return subprocess.CompletedProcess(
-            proc.args,
-            proc.wait(),
-            "".join(output),
-            "",
-        )
-
     def test_ghostty_config_does_not_auto_start_herdr_session(self) -> None:
         self.assertNotIn("initial-command", GHOSTTY_CONFIG.read_text())
 
@@ -5705,38 +5363,6 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertIn('"${HOME}/.local/bin/common"', zprofile)
         self.assertIn('if [[ -d "${directory}" ]]', zprofile)
         self.assertNotIn("typeset -gU path fpath", zshrc)
-
-    def test_bare_herdr_in_ghostty_starts_plain_session(self) -> None:
-        result = self.run_zshrc_herdr("herdr", ghostty=True)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(
-            self.calls_path.read_text().splitlines(),
-            ["herdr-session "],
-        )
-
-    def test_interactive_ghostty_shell_attaches_plain_session(self) -> None:
-        result = self.run_interactive_ghostty_herdr()
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(
-            self.calls_path.read_text().splitlines(),
-            ["herdr-session "],
-        )
-
-    def test_herdr_with_args_in_ghostty_uses_real_cli(self) -> None:
-        result = self.run_zshrc_herdr("herdr server reload-config", ghostty=True)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(
-            self.calls_path.read_text().splitlines(),
-            ["herdr server reload-config"],
-        )
-
-    def test_bare_herdr_outside_ghostty_uses_real_cli(self) -> None:
-        result = self.run_zshrc_herdr("herdr", ghostty=False)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(
-            self.calls_path.read_text().splitlines(),
-            ["herdr "],
-        )
 
 
 if __name__ == "__main__":

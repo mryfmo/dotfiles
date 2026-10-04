@@ -112,7 +112,7 @@ COMMAND_HOOKS = [
     {
         "event": "SessionEnd",
         "command": "contextdb hook session-end",
-        "timeout": 10,
+        "timeout": 3,
         "status_message": "Closing session",
     },
 ]
@@ -141,7 +141,7 @@ matcher = "*"
 [[hooks.SessionEnd.hooks]]
 type = "command"
 command = "contextdb hook session-end"
-timeout = 10
+timeout = 3
 statusMessage = "Closing session"
 """
 

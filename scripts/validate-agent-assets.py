@@ -398,6 +398,9 @@ CODEX_HOOK_EVENTS = frozenset(
 )
 
 
+CODEX_SHORT_HOOK_EVENTS = frozenset({"Interrupt", "SessionEnd"})
+
+
 def codex_hook_table(hook: dict[str, Any]) -> dict[str, Any]:
     """The parsed [[hooks.<Event>]] matcher group that generate-agent-configs.py renders for one hook."""
     handler = {"type": "command", "command": hook["command"], "timeout": hook["timeout"]}
@@ -426,6 +429,9 @@ def validate_codex_command_hooks(
         timeout = hook.get("timeout")
         if not isinstance(timeout, int) or isinstance(timeout, bool) or timeout <= 0:
             fail(f"{label} timeout must be a positive integer: {timeout!r}")
+        # https://developers.openai.com/codex/hooks/: these two events support up to 3 seconds.
+        if hook["event"] in CODEX_SHORT_HOOK_EVENTS and timeout > 3:
+            fail(f"{label} timeout must be at most 3 seconds for {hook['event']}: {timeout!r}")
         if not isinstance(hook.get("status_message"), str):
             fail(f"{label} must set status_message as a string")
         expected.setdefault(hook["event"], []).append(codex_hook_table(hook))

@@ -42,7 +42,7 @@ COMMAND_HOOKS = [
     {
         "event": "SessionEnd",
         "command": "contextdb hook session-end",
-        "timeout": 10,
+        "timeout": 3,
         "status_message": "Closing session",
     },
 ]
@@ -71,7 +71,7 @@ matcher = "*"
 [[hooks.SessionEnd.hooks]]
 type = "command"
 command = "contextdb hook session-end"
-timeout = 10
+timeout = 3
 statusMessage = "Closing session"
 """
 
@@ -975,6 +975,12 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             ),
             ("stray hand-edited table", COMMAND_HOOKS, stray, "must hold exactly the manifest's Codex hook tables"),
             ("undeclared rendered table", [], rendered, "must hold exactly the manifest's Codex hook tables"),
+            (
+                "SessionEnd over 3 seconds",
+                [{**COMMAND_HOOKS[2], "timeout": 4}],
+                rendered,
+                "at most 3 seconds for SessionEnd",
+            ),
             ("mapping instead of a list", {}, {}, "codex.hooks.command_hooks must be a list"),
             ("false instead of a list", False, {}, "codex.hooks.command_hooks must be a list"),
             ("null instead of a list", None, {}, "codex.hooks.command_hooks must be a list"),

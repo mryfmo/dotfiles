@@ -1,0 +1,38 @@
+[
+  {
+    "id": "t97-independent-evidence-approval",
+    "body": "Independent security review by t97_evidence_review found no actionable security or evidence-integrity issue in the five investigation artifacts. Socket traces substantiate AF_UNIX denial inside Claude and successful parent D-Bus/keyring access; token values remain masked; successful push dry-run is distinguished from an actual push. Historical blocked states are explicitly superseded by appended continuation. Verdict: correct.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "t97-independent-docs-approval",
+    "body": "Independent focused review by t97_evidence_review found no actionable issue in the SKILL step-4 and matching worker-rule changes. Both match the orchestrator-prescribed text and narrow the previous GitHub exception to permission-gated gh calls after an initial sandbox attempt, consistent with the recorded keyring failure. Adjacent CompactionDB/agmsg exceptions, classifier-denial handling, and Codex sandbox restrictions remain. No runtime settings or defaults change. Verdict: correct. This is worker-side review; acceptance remains with the orchestrator.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "t97-independent-bot-finding-disposition",
+    "body": "Independent reviewer t97_evidence_review assessed Codex Bot P2 comment 4178090986. Its inference that Claude cannot write shared Git metadata is contradicted by the tested Claude 2.1.288 runtime: final mountinfo grants objects, refs, logs and worker-e metadata rw and test -w confirms the three probed directories. Static launcher configuration alone does not establish effective runtime permissions. Proposed not-applicable disposition is limited to this observed runtime; no new-object fetch was performed. Shared Git config remains read-only. Verdict: correct. GitHub thread remains unresolved for orchestrator acceptance.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "t97-revise-r1-independent-approval",
+    "body": "Independent reviewer t97_evidence_review found no actionable issue in the orchestrator-requested two-file revision: include gh and git push whose credential helper is gh in the permission-gated exception, leave fetch sandbox-first, and remove only the duplicate SKILL blocked-PONG clause. Both documented exceptions and final blocked-PONG restriction remain. Earlier SSH dry-run success does not establish HTTPS credential-helper success. No runtime settings changed. Verdict: correct.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "t97-private-https-fetch-p2",
+    "body": "Independent security reviewer t97_evidence_review confirms Bot comment4178339453 is valid P2, high confidence: SKILL170 and rule16 exclude authenticated fetch despite config.tmpl25-26 assigning gh credential helper, and pushInsteadOf only changes push. Public fetch evidence does not cover private repositories. Request task scope revision; cannot truthfully disposition not-applicable. Verdict: incorrect. Orchestrator addendum 2 (task SHA256 b8c92fbcaf7aa91e01acda3eba7a767d06fdb3a802f70879341a37809386e862) explicitly limits current worker scope to the public regime, dispositions the private-remote case not-applicable to that scope, replies as comment4178361536 and resolves the GitHub thread. No text change authorized. This record is procedurally resolved by that scope decision; the technical private-HTTPS limitation remains, and the independent reviewer finding is not withdrawn or represented as fixed.",
+    "scope": "review",
+    "resolved": true
+  },
+  {
+    "id": "t97-round2-authenticated-fetch-fix",
+    "body": "Independent reviewer t97_evidence_review confirms the private HTTPS fetch P2 is fixed in both passages: authenticated fetches using gh helper now receive the permission-gated fallback while sandbox-first remains required. Two-file diff matches revised scope and preserves all adjacent exceptions and restrictions; no new actionable finding. Verdict: correct. This supersedes the earlier public-repository scope disposition: the technical policy omission is now corrected.",
+    "scope": "review",
+    "resolved": true
+  }
+]

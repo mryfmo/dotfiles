@@ -58,3 +58,33 @@ gh api repos/mryfmo/dotfiles/pulls/<pr-number> --jq '.mergeable_state'
 1. **P2, headless audit command.** The SKILL's headless form keeps an old `<out>.last.md` and loses codex's exit status through `tee`, so a failed rerun could present an earlier `Verdict: correct`. Write it the way the pair implementation behaves: `rm -f <out> <out>.last.md` first, run with `set -o pipefail` (or capture codex's status with `${PIPESTATUS[0]}`), treat a non-zero codex exit as "no audit" (nothing to gate; rerun), and only then mask both files. One bullet.
 
 One commit; `gh pr update-branch 253` if `main` moved (c6b348ba now); CI; Bot (paginated listing per your own step 15); RESULT. Standing directive applies.
+
+## Revise round 2 (orchestrator, 2026-10-04 18:20Z) — task-level audit of 4656f19f is `incorrect`
+
+1. **P2, facts in one place.** `AGENTS.md:55`, `README.md` (the two audit sentences), `model-selection.md:3` and `gh-first-workflow/SKILL.md:26` still restate the audit or gate command. Replace each with a pointer ("the task-level audit and gate are run as the agmsg-orchestration SKILL's task-level audit bullet and Orchestrator Playbook step 10 describe"); the command text lives only in the SKILL. Keep the docs test tokens on the SKILL.
+2. **P2, evidence.** The validation's `grep -rn "review --commit" …` output is labelled verbatim but reordered (the pasted lines start with SKILL.md while the operand order prints AGENTS.md, README.md and Makefile matches first). Recapture the real output for the final head.
+3. **P2, Worker Playbook step 4 vs reality.** Claude worker seats run `git push`, `gh pr create` and the other GitHub calls outside their sandbox through the permission gate (the auto-mode classifier since T62, the operator before), because the Claude sandbox has no network allowance for GitHub; step 4's "sandbox or block" wording does not say so. Write the exception explicitly: a Claude seat's GitHub calls (`git fetch/push`, `gh`) are the only commands it runs unsandboxed, through the permission gate, until dotfiles-T97 gives the Claude sandbox a GitHub network allowance; every other out-of-sandbox action stays a blocked PONG. A Codex seat has in-sandbox network (T64) and never leaves its sandbox.
+
+One commit; `gh pr update-branch 253` if `main` moved; CI; Bot (paginated listing filtered to the final head); RESULT. Standing directive applies.
+
+### Round 2 addendum (orchestrator, 2026-10-04 18:30Z) — item 3 wording
+
+The Claude sandbox already lists `github.com`, `api.github.com`, `uploads.github.com`, `objects.githubusercontent.com` and `codeload.github.com` in `claude.sandbox.network.allowedDomains`, yet `git push` and `gh` fail inside the sandbox in practice (T39: the sandbox blocks gh; this session's orchestrator and every Claude worker run them unsandboxed through the permission gate). Write item 3 as: "GitHub calls are the one class of commands a Claude seat runs outside its sandbox, through the permission gate (the auto-mode classifier since T62), because the sandbox's GitHub domain allowance does not make `gh`/`git push` work there yet; dotfiles-T97 investigates and fixes that, after which the exception ends." Do not claim the allowance is missing.
+
+### Round 2 addendum 2 (orchestrator, 2026-10-04 18:50Z) — Codex seat branch creation
+
+Observed twice today on the Codex seat: `git switch -c <branch> origin/main` fails with `config.lock: File exists` / `unable to write upstream config`, because the shared `.git/config` is read-only for a Codex worker by design (T64 writable roots), and `-u`/tracking setup writes it. Add one sentence to the Worker Playbook (the step that tells a worker how to branch): a Codex seat creates branches with `git switch -c <branch> --no-track origin/main`, pushes with `git push origin <branch>` (no `-u`), and opens the PR with `gh pr create --head <branch>`; a leftover `.git/config.lock` from a failed attempt is removed by the orchestrator. Same commit as round 2.
+
+## Revise round 3 (orchestrator, 2026-10-04 19:55Z) — Codex P2 4177767259
+
+Allowed: the second stale headless hint string in `executable_herdr-agents` (~2159, the no-workspace path of `--audit`) is in scope like the first; replace it with the same pointer wording (string only, no code), with its `tests/unit/test_herdr_agents.py` pin if any. One commit; `gh pr update-branch 253` if `main` moved; CI; Bot (paginated, head-filtered); RESULT. The round-2 audit is running; its findings, if any, follow as an addendum.
+
+### Round 3 addendum (orchestrator, 2026-10-04 22:35Z) — round-2 audit of 6b060ac4 is `incorrect` (6)
+
+Already covered by fdb938ad (Worker Playbook step 2 branch sentence, step 4 exception wording per line 72): nothing more there. Remaining for the round-3 commit(s):
+
+1. **Evidence (P3).** The validation file's final-head block must paste each exact invocation with its full output tail: `uv run python -m unittest tests.unit.test_agmsg_orchestration_docs tests.unit.test_herdr_agents -v 2>&1 | tail -5` (reconcile the test count it reports against the two modules), the prettier command, `make unit-test`, `make validate-agent-assets`, each followed by `; echo "rc=$?"`. Replace the summary-only block for the final head.
+2. **No change:** `gh-first-workflow/SKILL.md` step 8 keeps its gate literal because `tests/unit/test_pr_feedback.py:407` pins it in both skills (outside `allowed_files`); T83 consolidates. The orchestrator dispositions that finding.
+3. The pr-feedback snapshot finding is the orchestrator's evidence; it is re-swept on the final head.
+
+Same RESULT as round 3 (`herdr-agents` ~2159 string).

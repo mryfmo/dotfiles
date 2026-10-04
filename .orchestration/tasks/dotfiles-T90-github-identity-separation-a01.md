@@ -55,3 +55,32 @@ gh api repos/mryfmo/dotfiles/pulls/<pr-number> --jq '.mergeable_state'
 3. Artifacts at the exact expected paths; validation with verbatim outputs, PR number, head SHA, VERIFY results with sources; the operator steps (gh login for the worker config dir, ruleset PUT) listed in the report.
 4. CompactionDB `memory add --kind decision --scope project` with the `[memory:decision]` text from the main checkout; paste command and output.
 5. `AGMSG-RESULT v1` via `agmsg-dispatch dotfiles <your identity> claude-remediation-dot wT:p1 "<single line>"` (outside the sandbox). `cost:` line. max_turns=40.
+
+## Dispatch
+
+- 2026-10-04 (queued for `codex-security-dot-a007`, the Codex security-profile seat in `.claude/worktrees/worker-e`, once PR #253 (T69) has merged, because both edit `home/dot_agents/skills/agmsg-orchestration/SKILL.md`; `scripts/require-crit-review.py` is free since T93 merged). Branch from the commit that merged #253 or later. The second GitHub account's `gh auth login` into the worker gh config dir is the operator's; the task delivers the launcher, doctor, gate and ruleset payload and documents the login step. Routing: `GH_CONFIG_DIR` for worker panes and the gate's author/approver check are trust-boundary work for the security profile; they are not a seat's sandbox or permission source.
+
+## Scope addition from T97 (orchestrator, 2026-10-04 19:25Z) — sandbox-readable worker credential
+
+T97 proved that a Claude seat's `gh` cannot use the host keyring inside the Linux sandbox (AF_UNIX socket creation denied; `allowUnixSockets` grants no path there). The worker gh configuration this task introduces must therefore work without the keyring:
+
+- `GH_CONFIG_DIR=<worker gh dir>` (default `~/.config/gh-worker`, operator-created) holds the write-only account's credentials in gh's file storage (`gh auth login --insecure-storage` into that dir, or `gh auth login` with `GH_CONFIG_DIR` set and insecure storage forced), mode 0600, owned by the user; the Claude sandbox must be able to read that directory (check `claude.sandbox` read denies; the dir must not fall under a denied pattern) and the Codex sandbox likewise.
+- The orchestrator keeps its own default gh config (keyring, the merging account) and never exports it to a seat.
+- Doctor: besides "two different logins", verify the worker dir's `hosts.yml` carries a token (file storage) and that its mode is 0600.
+- Document the operator step once in README's operator phase: create the dir, run the login for the write account with insecure storage, confirm `GH_CONFIG_DIR=… gh auth status`.
+- Security review of this change is this seat's own profile; the orchestrator still accepts.
+
+This supersedes any wording in the objective that assumed keyring storage for the worker account.
+
+## Dispatch 2 (orchestrator, 2026-10-05 01:50Z) — to `codex-security-dot-a007`
+
+- T69 (04bce61b) and T97's final text are settled; PR #258 (T97, two sentences in SKILL step 4 and the rule's worker-commands bullet) merges within the hour, before this PR. Branch from the current `origin/main` (the T77 merge or later) with `git switch -c feat/github-identity-separation --no-track origin/main`, push with `git push origin <branch>`, open with `gh pr create --head <branch>`; after #258 merges, `gh pr update-branch` and keep your SKILL edit to the acceptance step (step 10) only.
+- **Gate check must not strand acceptance.** Until the operator has provisioned the second account (`gh auth login --insecure-storage` into the worker gh dir) and applied the ruleset, every seat still shares one login. Make the new author/approver check in `scripts/require-crit-review.py` active only when the worker gh configuration exists (`WORKER_GH_CONFIG_DIR`'s `hosts.yml` present) **and** the ruleset reports `required_approving_review_count >= 1` for `main`; otherwise print one `notice:` line naming what is missing and pass. Document that activation condition in README and the rule bullet. Tests cover both states.
+- `make doctor` likewise: the two-login check is a required failure only once the worker gh dir exists; a missing dir is a `warn_optional` naming the operator step.
+- Artifacts: write the five files plus `-worker-crit.json` / `-worker-review-receipt.md` under your worktree's `.orchestration/`; the orchestrator transfers them. Bot wait per SKILL on the diff head only (no repeated wait on update-branch heads). RESULT via `agmsg-dispatch dotfiles codex-security-dot-a007 claude-remediation-dot wT:p1 "<line>"`.
+
+### PONG decision (orchestrator, 2026-10-05 02:05Z) — launcher env hand-offs and the Codex env policy
+
+1. **Authorized:** a narrow adapter in `executable_herdr-agents` so `GH_CONFIG_DIR=<worker gh dir>` reaches both worker hand-offs: the pair worker pane's boot environment and spawn-seated workers (`--add-worker`, upstream `spawn.sh` with the herdr terminal driver, where `workspace create --env` reaches only the root pane; the same gap the T89 follow-up recorded for `AGMSG_RESOLVE_PROJECT`/`AGMSG_CC_MONITOR_KEEP_ALIVE`/`HERDR_AGENTS_LAYOUT`). Keep it to the smallest mechanism that carries a fixed list of variables (reuse it for those three if that costs nothing extra; otherwise leave them for the follow-up), covered by fake-CLI tests. No raw herdr topology changes beyond what the existing code already issues.
+2. **Authorized as identity routing:** for Codex worker launches only, `-c shell_environment_policy.additional_include=["GH_CONFIG_DIR"]` on the worker command line in `herdr-agents` (next to the existing `-c sandbox_workspace_write.writable_roots=…`), because `inherit=core` drops the variable. Not in any profile TOML, not for the orchestrator or audit lanes, no change to `sandbox_workspace_write`, `approval_policy` or network. The seat-capability rule concerns sandbox, approval and permission sources; an environment-variable allow-list for identity routing is outside it, and this decision records that classification. Claude worker panes need no equivalent (the pane environment is inherited).
+3. Record both in the report's design section with the test names.

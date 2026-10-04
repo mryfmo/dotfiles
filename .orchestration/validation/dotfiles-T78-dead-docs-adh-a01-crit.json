@@ -1,0 +1,8 @@
+[
+  {
+    "id": "dotfiles-T78-review-1",
+    "scope": "review",
+    "body": "Orchestrator adversarial review of PR #261 head 8d536a38 (dotfiles-T78, dead documents and the ADH clauses): the AGENTS.md ADH section, reviews/ADH_Integrated_Plan (198 files; reviews/ now empty) with the .coderabbit.yaml exclusion and the .prettierignore line, the Hermes description/subset/runtime prose and the learn_index.md obligation in the agmsg-orchestration SKILL (the learn-file content rule stays), the Codex AGENTS.md learn-check section, and .github/copilot-instructions.md are deleted; commit.md and plans/README.md point at gh-first-workflow/references/gh-git-rules.md instead of restating the Conventional Commit rules; the two docs/plans nix files and plans/004 carry a dated note that the flake left in #247. Hermes/learn_index/ADH grep is empty at the head, no reviews/ or copilot file remains, 773 unit tests pass, validate-agent-assets ok, prettier ok, CI 13/13 green on 8d536a38, branch on main 6534df0f. One Codex P2 (retain Copilot instructions) is not applicable: the deletion is the operator's decision and nothing in the repository reads the file.",
+    "resolved": true
+  }
+]

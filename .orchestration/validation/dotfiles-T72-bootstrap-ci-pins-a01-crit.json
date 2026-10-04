@@ -1,0 +1,8 @@
+[
+  {
+    "id": "dotfiles-T72-review-1",
+    "scope": "review",
+    "body": "Orchestrator adversarial review of PR #256 head d5856e26 (dotfiles-T72): the chezmoi bootstrap pin, the Homebrew installer commit/sha and the mise pin now render from agent-config.yaml assets into setup.sh, installer-pins.sh, the four workflows, the Dockerfile and the docker make target; no pin value changed (render-check clean), the hard-coded 2.70.5/2026.9.12 CI literals are gone, the Dockerfile installs a checksum-verified release tarball instead of piping get.chezmoi.io, make docker rebuilds on label mismatch (Codex P2 4177599468 fixed in d5856e26), and the validator now scans setup.sh. Deviation accepted: tests/unit/test_release_asset_pins.py pins the exact --set-asset call sequence of bump_release_asset_pins, so the fifth pin cannot land without that edit; it is class-pure. The variable rename MISE_PIN -> DOTFILES_MISE_VERSION is a correct fix (mise reads MISE_* as settings). Residual: docs.yml/ubuntu.yaml/macos.yaml pin steps are not exercised on a PR (push-to-main or secret-gated); the same step passed in test.yaml on both platforms. CI 16/16 green on the head; branch up to date.",
+    "resolved": true
+  }
+]

@@ -1177,6 +1177,25 @@ class MaskSecretsModeTest(unittest.TestCase):
         self.assertEqual(result.stdout, f"masked 0 match(es) in {evidence}\n")
         self.assertEqual(evidence.read_text(), original)
 
+    def test_masks_json_string_values_and_keeps_the_document_parseable(self) -> None:
+        evidence = self.temp_dir / "t-pr-feedback.json"
+        key = "ghp_" + "b" * 25
+        items = [
+            {"body": f"ends with {FIELD} = ", "url": "https://x/1"},
+            {"body": f"line\n{key}\nset {FIELD} = " + '"abc"', "url": "https://x/2"},
+        ]
+        evidence.write_text(json.dumps({"items": items}, indent=2) + "\n")
+
+        result = self.run_mask(evidence)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stdout, f"masked 2 match(es) in {evidence}\n")
+        saved = json.loads(evidence.read_text())["items"]
+        module = load_validator()
+        self.assertEqual([item["url"] for item in saved], ["https://x/1", "https://x/2"])
+        self.assertEqual([item["body"] for item in saved], [module.mask_secret_matches(i["body"])[0] for i in items])
+        self.assertNotIn(key, evidence.read_text())
+
     def test_missing_file_exits_2_without_touching_others(self) -> None:
         evidence = self.temp_dir / "audit.md"
         evidence.write_text(f'{FIELD}: "abc"\n')

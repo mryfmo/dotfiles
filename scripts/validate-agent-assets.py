@@ -1207,7 +1207,7 @@ def mask_secret_matches(text: str) -> tuple[str, int]:
     Mirrors validate_no_obvious_secrets(): allowed placeholders are stripped
     before matching, so a line is masked only when its stripped form still
     matches and every other line is kept byte for byte. A final whole-text
-    pass covers a match that spans lines, so masked output always passes the
+    pass covers a match that spans lines, so masked text always passes the
     scan.
     """
     count = 0
@@ -1227,8 +1227,26 @@ def mask_secret_matches(text: str) -> tuple[str, int]:
     return masked, count
 
 
+def mask_json_strings(value: Any) -> tuple[Any, int]:
+    """Mask every string in a parsed JSON value, so the document stays parseable."""
+    if isinstance(value, str):
+        return mask_secret_matches(value)
+    if isinstance(value, list):
+        pairs = [mask_json_strings(item) for item in value]
+        return [item for item, _ in pairs], sum(count for _, count in pairs)
+    if isinstance(value, dict):
+        pairs = {key: mask_json_strings(item) for key, item in value.items()}
+        return {key: item for key, (item, _) in pairs.items()}, sum(count for _, count in pairs.values())
+    return value, 0
+
+
 def mask_secrets(paths: list[str]) -> int:
-    """Mask SECRET_PATTERN matches in place (audit evidence); 2 if any file is missing."""
+    """Mask SECRET_PATTERN matches in place (audit evidence); 2 if any file is missing.
+
+    A `.json` file that parses is masked per string value and rewritten in the
+    pr-feedback.py layout, so a saved body equals mask_secret_matches() of the
+    collected one; any other file is masked as text.
+    """
     missing = [name for name in paths if not Path(name).is_file()]
     if missing:
         for name in missing:
@@ -1236,7 +1254,16 @@ def mask_secrets(paths: list[str]) -> int:
         return 2
     for name in paths:
         path = Path(name)
-        masked, count = mask_secret_matches(path.read_text())
+        text = path.read_text()
+        try:
+            document = json.loads(text) if path.suffix == ".json" else None
+        except json.JSONDecodeError:
+            document = None
+        if document is None:
+            masked, count = mask_secret_matches(text)
+        else:
+            document, count = mask_json_strings(document)
+            masked = json.dumps(document, indent=2, ensure_ascii=False) + "\n"
         if count:
             path.write_text(masked)
         print(f"masked {count} match(es) in {path}")

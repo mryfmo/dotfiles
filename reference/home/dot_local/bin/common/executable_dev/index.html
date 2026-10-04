@@ -750,34 +750,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../dot_config/alias/client/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_config/alias/client.sh
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../../../dot_config/alias/common/" class="md-nav__link">
         
   
@@ -786,34 +758,6 @@
     
   
     home/dot_config/alias/common.sh
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../../dot_config/alias/server/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_config/alias/server.sh
   
 
     
@@ -1581,34 +1525,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../executable_setup-python-env/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_local/bin/common/executable_setup-python-env
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../executable_ua-symbol-coverage/" class="md-nav__link">
         
   
@@ -1720,34 +1636,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../server/cache/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_local/bin/server/cache.sh
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../server/cuda/" class="md-nav__link">
         
   
@@ -1756,34 +1644,6 @@
     
   
     home/dot_local/bin/server/cuda.sh
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../server/history/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    home/dot_local/bin/server/history.sh
   
 
     
@@ -3775,7 +3635,7 @@
 
 
 <h1 id="homedot_localbincommonexecutable_dev">home/dot_local/bin/common/executable_dev<a class="headerlink" href="#homedot_localbincommonexecutable_dev" title="Permanent link">&para;</a></h1>
-<p>Lets the user choose a repository path from <code>ghq</code>, changes into it, and renames the current tmux session to match the selected repository.</p>
+<p>Lets the user choose a repository path from <code>ghq</code> and changes into it.</p>
 <h2 id="metadata">Metadata<a class="headerlink" href="#metadata" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Source: <code>home/dot_local/bin/common/executable_dev</code></li>
@@ -3792,8 +3652,7 @@
 <span class="c1"># @file home/dot_local/bin/common/executable_dev</span>
 <span class="c1"># @brief Change into a repository selected from `ghq`.</span>
 <span class="c1"># @description</span>
-<span class="c1">#   Lets the user choose a repository path from `ghq`, changes into it, and</span>
-<span class="c1">#   renames the current tmux session to match the selected repository.</span>
+<span class="c1">#   Lets the user choose a repository path from `ghq` and changes into it.</span>
 <span class="c1"># @example</span>
 <span class="c1">#   dev</span>
 
@@ -3805,19 +3664,11 @@
 <span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">'%s\n'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$selected_path</span><span class="s2">"</span>
 <span class="o">}</span>
 
-<span class="c1"># @description Change into a selected `ghq` repository and rename tmux session.</span>
+<span class="c1"># @description Change into a selected `ghq` repository.</span>
 <span class="k">function</span><span class="w"> </span>dev<span class="o">()</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">local</span><span class="w"> </span>moveto
 <span class="w">    </span><span class="nv">moveto</span><span class="o">=</span><span class="k">$(</span>ghq-path<span class="k">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">    </span><span class="nb">cd</span><span class="w"> </span>--<span class="w"> </span><span class="s2">"</span><span class="nv">$moveto</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
-
-<span class="w">    </span><span class="c1"># rename session if in tmux</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="si">${</span><span class="nv">TMUX</span><span class="si">}</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">        </span><span class="nb">local</span><span class="w"> </span>repo_name
-<span class="w">        </span><span class="nv">repo_name</span><span class="o">=</span><span class="s2">"</span><span class="si">${</span><span class="nv">moveto</span><span class="p">##*/</span><span class="si">}</span><span class="s2">"</span>
-
-<span class="w">        </span>tmux<span class="w"> </span>rename-session<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">repo_name</span><span class="p">//./-</span><span class="si">}</span><span class="s2">"</span>
-<span class="w">    </span><span class="k">fi</span>
 <span class="o">}</span>
 
 <span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">"</span><span class="k">$(</span><span class="nv">$SHELL</span><span class="w"> </span>-c<span class="w"> </span><span class="s2">"echo </span><span class="si">${</span><span class="nv">ZSH_VERSION</span><span class="si">}</span><span class="s2">"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>

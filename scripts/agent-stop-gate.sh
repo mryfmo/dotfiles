@@ -80,8 +80,12 @@ cwd="$(jq -r '.cwd // empty' <<< "${input}" 2> /dev/null)"
 cwd="${CLAUDE_PROJECT_DIR:-${cwd:-${PWD}}}"
 
 # Repository discovered from cwd alone: inherited overrides would select
-# another repository, index, or object store.
+# another repository, index, or object store, and injected configuration
+# (GIT_CONFIG_PARAMETERS, or GIT_CONFIG_COUNT with its KEY_n/VALUE_n pairs,
+# which Git ignores once the count is unset) could hide a dirty tree, e.g.
+# status.showUntrackedFiles=no.
 unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_CEILING_DIRECTORIES
+unset GIT_CONFIG_PARAMETERS GIT_CONFIG_COUNT
 top="$(git -C "${cwd}" rev-parse --show-toplevel 2> /dev/null)" || exit 0
 # Seat by Git's own layout, not by path suffix: the main worktree is the one
 # whose git dir is the common dir (true with --separate-git-dir too, where

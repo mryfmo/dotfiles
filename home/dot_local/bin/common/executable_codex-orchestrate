@@ -10,8 +10,7 @@
 # @exitcode 124 Inbox wait timed out.
 set -euo pipefail
 umask 077
-max_turns=40 timeout_seconds=1800 team=""
-delivery="${CODEX_ORCHESTRATE_DELIVERY:-poll}"
+max_turns=40 timeout_seconds=1800 team="" delivery="${CODEX_ORCHESTRATE_DELIVERY:-poll}"
 # @description Report a configuration error before changing a seat.
 die() {
     printf 'codex-orchestrate: %s\n' "$*" >&2
@@ -67,7 +66,16 @@ seats="$(printf '%s\n%s\n' "$previous" "$existing" | awk -F '\t' 'NF==2 && $2 !~
 suffix="$(awk -F '\t' -v team="$team" '$1==team {n=split($2,a,"-");print a[n]}' <<< "$seats" | sort -u)"
 [[ -n $suffix && $suffix != *$'\n'* ]] || die 'ambiguous or missing project suffix; check herdr-agents registration'
 name="codex-$profile-$suffix"
-[[ -z $existing || $existing == "$team"$'\t'"$name" ]] || die 'another Codex seat exists at this checkout'
+[[ -z $existing || $(cut -f 2 <<< "$existing" | sort -u) == "$name" ]] || die 'another Codex seat exists at this checkout'
+[[ -z $existing || $(awk -F '\t' -v team="$team" '$1==team {print $2}' <<< "$existing") == "$name" ]] || die 'select a team containing the existing Codex seat'
+conflicts="$(python3 -c '
+import json, pathlib, sys
+for config in pathlib.Path(sys.argv[1]).glob("*/config.json"):
+    agent = json.loads(config.read_text()).get("agents", {}).get(sys.argv[2], {})
+    for row in agent.get("registrations", [agent]):
+        if row.get("project") not in (None, sys.argv[3]): print(row["project"])
+' "$scripts/../teams" "$name" "$repo")"
+[[ -z $conflicts ]] || die "Codex name $name is registered at another project: $conflicts"
 mkdir -p .orchestration/validation "$scripts/../run"
 lock=.orchestration/validation/codex-orchestrate.lock
 mkdir "$lock" 2> /dev/null || die 'another launcher is active; inspect codex-orchestrate.lock'
@@ -113,6 +121,7 @@ if [[ -z $existing ]]; then
 fi
 bash "$scripts/delivery.sh" set turn codex "$repo"
 prompt="$(herdr-agents --directive)"$'\n'"$1"
+prompt+=$'\n'"When the orchestration is complete, end your final message with the line \`ORCHESTRATION-DONE\`; otherwise end the turn and wait for the next agmsg delivery."
 command_args=(exec -C "$repo")
 for ((turn = 1; turn <= max_turns; turn++)); do
     printf '\n## Turn %s prompt\n\n%s\n' "$turn" "$prompt" >> "$out.md"

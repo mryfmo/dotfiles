@@ -539,13 +539,19 @@ exchanges the main checkout's Claude orchestrator registrations for
 It configures agmsg `turn` delivery for Codex before the first invocation. On
 normal exit, failure, or INT/TERM, it restores the exchanged Claude registrations
 and their `both` delivery mode. The Codex project delivery setting remains `turn`.
-An existing matching Codex seat is reused and left registered. The exchange uses
+An existing matching Codex seat is reused across all its same-checkout teams;
+`--team` selects one of those memberships for inbox polling. A different Codex
+identity at this checkout, or the target name registered at another project in
+any local team, is refused before the exchange. The launcher uses Python 3 to
+read registration metadata without inspecting panes. The exchange uses
 project/type-scoped agmsg resets; registrations in other projects or runtimes stay
 intact. Stop the current
 orchestrator before launching; do not run another Codex session in that checkout
 while this loop uses `exec resume --last`.
 
-The first turn receives `herdr-agents --directive` and the operator task. Workers
+The first turn receives `herdr-agents --directive`, the operator task, and an
+explicit instruction to finish completed orchestration with the line
+`ORCHESTRATION-DONE` or otherwise wait for the next delivery. Workers
 reply through the pane-less convention:
 
 ```bash

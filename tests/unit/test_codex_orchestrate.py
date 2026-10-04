@@ -98,6 +98,18 @@ class CodexOrchestrateTest(unittest.TestCase):
         state = json.loads(self.state.read_text()) if self.state.exists() else {"calls": []}
         state.update(updates)
         self.state.write_text(json.dumps(state))
+        if "members" in updates:
+            teams = self.scripts.parent / "teams"
+            for config in teams.glob("*/config.json"):
+                config.unlink()
+            configs = {}
+            for team, name, kind, project in updates["members"]:
+                agent = configs.setdefault(team, {}).setdefault(name, {"registrations": []})
+                agent["registrations"].append({"type": kind, "project": project})
+            for team, agents in configs.items():
+                config = teams / team / "config.json"
+                config.parent.mkdir(parents=True, exist_ok=True)
+                config.write_text(json.dumps({"name": team, "agents": agents}))
 
     def run_script(self, *args, cwd=None):
         return subprocess.run(
@@ -123,7 +135,12 @@ class CodexOrchestrateTest(unittest.TestCase):
         )
         self.assertEqual(first[:5], ["--profile", "from-env", "exec", "-C", str(self.repo)])
         self.assertEqual(second[:5], ["--profile", "from-env", "exec", "resume", "--last"])
-        self.assertIn("agmsg-orchestration: fake directive\n", first[-1])
+        self.assertEqual(
+            first[-1],
+            "agmsg-orchestration: fake directive\noperator task `literal` $value\n"
+            "When the orchestration is complete, end your final message with the line `ORCHESTRATION-DONE`; "
+            "otherwise end the turn and wait for the next agmsg delivery.",
+        )
         self.assertEqual(second[-1], "worker result")
         self.assertEqual(self.calls("herdr-agents"), [["--directive"]])
         self.assertEqual(
@@ -269,14 +286,70 @@ class CodexOrchestrateTest(unittest.TestCase):
         self.assertEqual(self.calls("team.sh"), [])
         self.assertEqual(self.calls("leave.sh"), [])
 
-    def test_target_codex_registration_elsewhere_is_preserved(self):
-        members = [self.member, ["team", "codex-fixture-dot", "codex", "/another/project"]]
-        self.save(members=members, answers=["ORCHESTRATION-DONE"])
+    def test_target_codex_registration_elsewhere_is_refused_before_mutation(self):
+        for team, already_here in (("team", False), ("team", True), ("unrelated-team", True)):
+            with self.subTest(team=team, already_here=already_here):
+                target = ["team", "codex-fixture-dot", "codex", str(self.repo)]
+                members = [self.member, [team, target[1], "codex", "/another/project"]]
+                if already_here:
+                    members.insert(1, target)
+                self.save(members=members, calls=[], answers=["ORCHESTRATION-DONE"])
+                result = self.run_script()
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertIn("/another/project", result.stderr)
+                self.assertEqual(json.loads(self.state.read_text())["members"], members)
+                for command in ("join.sh", "reset.sh", "delivery.sh", "codex"):
+                    self.assertEqual(self.calls(command), [])
+
+    def test_legacy_target_registration_elsewhere_is_refused(self):
+        config = self.scripts.parent / "teams/legacy/config.json"
+        config.parent.mkdir()
+        config.write_text(json.dumps({"agents": {"codex-fixture-dot": {"type": "codex", "project": "/legacy"}}}))
         result = self.run_script()
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertCountEqual(json.loads(self.state.read_text())["members"], members)
-        self.assertEqual(self.calls("team.sh"), [])
-        self.assertEqual(self.calls("leave.sh"), [])
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn("/legacy", result.stderr)
+        self.assertEqual(self.calls("reset.sh"), [])
+
+    def test_malformed_global_registration_fails_before_mutation(self):
+        config = self.scripts.parent / "teams/broken/config.json"
+        config.parent.mkdir()
+        config.write_text("{invalid")
+        result = self.run_script()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.calls("reset.sh"), [])
+        self.assertEqual(self.calls("join.sh"), [])
+
+    def test_existing_codex_seat_in_multiple_teams_is_reused(self):
+        members = [[team, "codex-fixture-dot", "codex", str(self.repo)] for team in ("team", "other-team")]
+        for team in ("team", "other-team"):
+            with self.subTest(team=team):
+                self.save(
+                    members=members, calls=[], messages=["worker result"], answers=["waiting", "ORCHESTRATION-DONE"]
+                )
+                result = self.run_script("--team", team)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.calls("inbox.sh"), [[team, "codex-fixture-dot", "--quiet"]])
+                self.assertEqual(self.calls("join.sh"), [])
+                self.assertEqual(self.calls("reset.sh"), [])
+                self.assertEqual(json.loads(self.state.read_text())["members"], members)
+
+    def test_existing_codex_seat_requires_membership_in_selected_team(self):
+        members = [self.member, ["other-team", "codex-fixture-dot", "codex", str(self.repo)]]
+        self.save(members=members)
+        result = self.run_script("--team", "team")
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn("select a team", result.stderr)
+        self.assertEqual(self.calls("join.sh"), [])
+        self.assertEqual(self.calls("reset.sh"), [])
+
+    def test_different_codex_identity_at_checkout_is_refused(self):
+        members = [self.member, ["team", "codex-other-dot", "codex", str(self.repo)]]
+        self.save(members=members)
+        result = self.run_script()
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn("another Codex seat", result.stderr)
+        self.assertEqual(self.calls("join.sh"), [])
+        self.assertEqual(self.calls("reset.sh"), [])
 
     def test_snapshot_covers_all_teams_before_partial_reset_and_restores_them(self):
         other = ["other-team", *self.member[1:]]

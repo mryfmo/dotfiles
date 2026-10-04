@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import tomllib
 import unittest
 from pathlib import Path
 
@@ -28,6 +29,51 @@ def load_validator():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+COMMAND_HOOKS = [
+    {"event": "PreCompact", "command": "contextdb hook pre-compact", "timeout": 30, "status_message": "Saving context"},
+    {
+        "event": "PostCompact",
+        "command": "contextdb hook post-compact",
+        "timeout": 30,
+        "status_message": "Restoring context",
+    },
+    {
+        "event": "SessionEnd",
+        "command": "contextdb hook session-end",
+        "timeout": 3,
+        "status_message": "Closing session",
+    },
+]
+COMMAND_HOOKS_TOML = """
+[[hooks.PreCompact]]
+matcher = "*"
+
+[[hooks.PreCompact.hooks]]
+type = "command"
+command = "contextdb hook pre-compact"
+timeout = 30
+statusMessage = "Saving context"
+
+[[hooks.PostCompact]]
+matcher = "*"
+
+[[hooks.PostCompact.hooks]]
+type = "command"
+command = "contextdb hook post-compact"
+timeout = 30
+statusMessage = "Restoring context"
+
+[[hooks.SessionEnd]]
+matcher = "*"
+
+[[hooks.SessionEnd.hooks]]
+type = "command"
+command = "contextdb hook session-end"
+timeout = 3
+statusMessage = "Closing session"
+"""
 
 
 class ValidateAgentAssetsTest(unittest.TestCase):
@@ -907,6 +953,43 @@ class ValidateAgentAssetsTest(unittest.TestCase):
 
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.module.validate_codex_config(manifest)
+
+    def test_codex_command_hooks_accept_the_declared_tables(self) -> None:
+        self.module.validate_codex_command_hooks(
+            {"command_hooks": COMMAND_HOOKS}, tomllib.loads(COMMAND_HOOKS_TOML)["hooks"], Path("codex.toml")
+        )
+        self.module.validate_codex_command_hooks({}, {}, Path("codex.toml"))
+
+    def test_codex_command_hooks_reject_bad_entries_and_stray_tables(self) -> None:
+        rendered = tomllib.loads(COMMAND_HOOKS_TOML)["hooks"]
+        stray = tomllib.loads(COMMAND_HOOKS_TOML + COMMAND_HOOKS_TOML.split("[[hooks.PostCompact]]")[0])["hooks"]
+        for name, hooks, tables, message in (
+            ("unknown event", [{**COMMAND_HOOKS[0], "event": "Notification"}], rendered, "is not a Codex hook event"),
+            ("missing command", [{**COMMAND_HOOKS[0], "command": ""}], rendered, "must set a non-empty command"),
+            ("string timeout", [{**COMMAND_HOOKS[0], "timeout": "30"}], rendered, "timeout must be a positive integer"),
+            (
+                "boolean timeout",
+                [{**COMMAND_HOOKS[0], "timeout": True}],
+                rendered,
+                "timeout must be a positive integer",
+            ),
+            ("stray hand-edited table", COMMAND_HOOKS, stray, "must hold exactly the manifest's Codex hook tables"),
+            ("undeclared rendered table", [], rendered, "must hold exactly the manifest's Codex hook tables"),
+            (
+                "SessionEnd over 3 seconds",
+                [{**COMMAND_HOOKS[2], "timeout": 4}],
+                rendered,
+                "at most 3 seconds for SessionEnd",
+            ),
+            ("mapping instead of a list", {}, {}, "codex.hooks.command_hooks must be a list"),
+            ("false instead of a list", False, {}, "codex.hooks.command_hooks must be a list"),
+            ("null instead of a list", None, {}, "codex.hooks.command_hooks must be a list"),
+        ):
+            with self.subTest(case=name):
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_codex_command_hooks({"command_hooks": hooks}, tables, Path("codex.toml"))
+                self.assertIn(message, stderr.getvalue())
 
     def codex_config_manifest(self, projects: dict) -> dict:
         return {

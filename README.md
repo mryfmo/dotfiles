@@ -351,6 +351,16 @@ CRIT_REVIEW=off make require-crit-review
 make upgrade
 ```
 
+Codex runs a hook from `~/.codex/config.toml` only after you review and trust
+its exact definition. Once per machine, after `make update`, open Codex, run
+`/hooks`, and trust the four config hooks: the three CompactionDB hooks
+(`PreCompact`, `PostCompact` and `SessionEnd`, which run
+`contextdb-codex-notify`) and the permgate `PermissionRequest` hook. Then
+confirm that `[hooks.state]` in `~/.codex/config.toml` has an entry for each of
+them. Later applies keep these runtime entries, because the managed config
+merge preserves `hooks.state`; trust again in `/hooks` whenever a hook
+definition changes.
+
 ### Claude Code sandbox
 
 `claude.sandbox` in `home/dot_agents/agent-config.yaml` renders the `sandbox`

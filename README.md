@@ -951,6 +951,8 @@ python3 scripts/pr-feedback.py <pr> --json .orchestration/validation/<task>-pr-f
 # Fill every item's disposition with fixed:<commit> or not-applicable:<reason>,
 # run the task-level audit of the head, write the acceptance record, then run
 # the integration guard against the base branch (agmsg-orchestration SKILL step 10).
+# For a `Verdict: incorrect` audit, also pass the acceptance record that
+# dispositions each finding: AUDIT_DISPOSITIONS=.orchestration/acceptance/<task>.md
 BASE=origin/main PR_FEEDBACK_EVIDENCE=.orchestration/validation/<task>-pr-feedback.json \
   AUDIT_EVIDENCE=.orchestration/validation/<task>-audit-<sha7>.md \
   make require-crit-review

@@ -9,7 +9,8 @@
 #   and codex at each active seat (the main checkout and the manifest
 #   `worker_worktree`; an empty seat is reported too), and more than one name
 #   per type at any other checkout; running `crit _serve` review servers; leftover `<repo> worker <name>` Herdr
-#   workspaces (only when `herdr` is reachable); and a bare-id orchestrator
+#   workspaces and added-worker tabs in the pair workspace (only when `herdr`
+#   is reachable); and a bare-id orchestrator
 #   seat lock, through the one implementation in
 #   scripts/check-agent-runtime.py (`orchestrator_seat_lock_warnings`).
 #   Every probe is read-only, and a missing tool skips its check.
@@ -53,17 +54,18 @@ count_names() {
     AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "$1" "$2" 2> /dev/null | cut -f 2 | sort -u | grep -c . || true
 }
 
+worker_worktree="$(
+    # shellcheck source=/dev/null
+    [[ ! -f ${HOME}/.agents/model-profiles.env ]] || source "${HOME}/.agents/model-profiles.env"
+    printf '%s' "${HERDR_AGENTS_WORKER_WORKTREE:-}"
+)"
+
 if [[ -x ${scripts}/identities.sh ]]; then
     # The active seats are the main checkout (orchestrator) and the manifest
     # worker_worktree (worker); each holds exactly one identity across both
     # runtime types. Other worktrees are not seats: only a per-type surplus
     # is flagged there.
     seats=("${main}")
-    worker_worktree="$(
-        # shellcheck source=/dev/null
-        [[ ! -f ${HOME}/.agents/model-profiles.env ]] || source "${HOME}/.agents/model-profiles.env"
-        printf '%s' "${HERDR_AGENTS_WORKER_WORKTREE:-}"
-    )"
     if [[ -n ${worker_worktree} && -d ${main}/${worker_worktree} ]]; then
         seats+=("${main}/${worker_worktree}")
     fi
@@ -111,6 +113,22 @@ if command -v herdr > /dev/null 2>&1 && command -v jq > /dev/null 2>&1 &&
         fi
     done < <(jq -r --arg prefix "$(basename -- "${main}") worker " \
         '.result.workspaces[]? | select(.workspace_id and ((.label // "") | startswith($prefix))) | [.workspace_id, .label] | @tsv' <<< "${workspaces}" 2> /dev/null)
+    # herdr-agents --add-worker seats a worker in its own tab of the pair
+    # workspace (the one with a pane in the main checkout itself; attach mode
+    # keeps the workspace's own label): a pane there whose cwd is another
+    # linked worktree than the manifest worker_worktree is an added worker.
+    while IFS=$'\t' read -r workspace_id label; do
+        [[ -n ${workspace_id} ]] || continue
+        herdr pane list --workspace "${workspace_id}" 2> /dev/null |
+            jq -e --arg main "${main}" '.result.panes[]? | select(.cwd == $main)' > /dev/null 2>&1 || continue
+        while IFS= read -r pane_label; do
+            violations+=("additional worker tab still open in ${label}: ${pane_label} (herdr-agents --remove-worker)")
+        done < <(herdr pane list --workspace "${workspace_id}" 2> /dev/null |
+            jq -r --arg worktrees "${main}/.claude/worktrees/" --arg seat "${worker_worktree:+${main}/${worker_worktree}}" \
+                '[.result.panes[]? | select(((.cwd // "") | startswith($worktrees)) and (.cwd | rtrimstr("/")) != $seat)
+                  | (.label // .pane_id)] | unique[]' 2> /dev/null)
+    done < <(jq -r --arg prefix "$(basename -- "${main}") worker " \
+        '.result.workspaces[]? | select(.workspace_id and ((.label // "") | startswith($prefix) | not)) | [.workspace_id, (.label // "")] | @tsv' <<< "${workspaces}" 2> /dev/null)
 fi
 
 while IFS= read -r warning; do

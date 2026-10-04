@@ -431,14 +431,14 @@ def pr_feedback_errors(root: Path, required: bool, head: str | None = None, base
 
 @cache
 def secret_masker():
-    """Load mask_secret_matches from the validator that ships next to this guard."""
+    """Load the secret masker from the validator that ships next to this guard."""
     spec = importlib.util.spec_from_file_location(
         "validate_agent_assets", Path(__file__).resolve().with_name("validate-agent-assets.py")
     )
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.mask_secret_matches
+    return lambda text: module.mask_secret_matches(module.strip_allowed_secret_placeholders(text))[0]
 
 
 def feedback_key(item: dict) -> tuple:
@@ -446,12 +446,13 @@ def feedback_key(item: dict) -> tuple:
 
     A masked body is accepted because masking (`validate-agent-assets.py
     --mask-secrets`) is the repository's documented way to keep evidence
-    scannable, and the url still identifies the item. Every other field stays
-    byte-exact.
+    scannable, and the url still identifies the item. Both sides drop the
+    allowed placeholders first: masking the saved JSON strips them from a whole
+    body line that also holds a match. Every other field stays byte-exact.
     """
     body = item.get("body")
     if isinstance(body, str):
-        body = secret_masker()(body)[0]
+        body = secret_masker()(body)
     return (*(item.get(field) for field in ("source", "url", "level", "path", "line")), body)
 
 

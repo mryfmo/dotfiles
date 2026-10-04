@@ -567,22 +567,24 @@ class ReviewGuardTest(unittest.TestCase):
     def test_pr_feedback_bodies_are_compared_after_secret_masking(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
         key_shaped = "ghp_" + "a" * 25
-        collected = {
-            "source": "review_comment",
-            "level": "comment",
-            "url": "https://x/r1",
-            "body": f"quotes {key_shaped} here",
-        }
-        for name, body, returncode in (
-            ("masked body", "quotes <redacted:secret-pattern> here", 0),
-            ("verbatim body", f"quotes {key_shaped} here", 0),
-            ("different body", "quotes something else here", 1),
+        quoted = f"quotes {key_shaped} here"
+        with_placeholder = f"GITHUB_PERSONAL_ACCESS_TOKEN stays\n{quoted}"
+        for name, live, saved, mask_file, returncode in (
+            ("masked with --mask-secrets", quoted, quoted, True, 0),
+            ("placeholder on another line, masked", with_placeholder, with_placeholder, True, 0),
+            ("verbatim body", quoted, quoted, False, 0),
+            ("different body", quoted, "quotes something else here", False, 1),
         ):
             with self.subTest(case=name):
-                feedback = self.write_feedback(
-                    [{**collected, "body": body, "disposition": "not-applicable:quoted only"}]
-                )
-                self.write_collected([collected])
+                item = {"source": "review_comment", "level": "comment", "url": "https://x/r1"}
+                feedback = self.write_feedback([{**item, "body": saved, "disposition": "not-applicable:quoted only"}])
+                path = self.temp_dir / feedback
+                if mask_file:
+                    path.write_text(json.dumps(json.loads(path.read_text()), indent=2) + "\n")
+                    masker = ROOT / "scripts/validate-agent-assets.py"
+                    run([sys.executable, str(masker), "--mask-secrets", str(path)], self.temp_dir)
+                    self.assertNotIn(key_shaped, path.read_text())
+                self.write_collected([{**item, "body": live}])
                 result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
                 self.assertEqual(result.returncode, returncode, result.stdout)
                 if returncode:

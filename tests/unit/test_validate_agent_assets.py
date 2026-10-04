@@ -990,6 +990,12 @@ class SecretPatternBoundaryTest(unittest.TestCase):
             for text in (json.dumps({"m": "\n" + key}), json.dumps({"m": "\t" + key}), json.dumps({"m": "\r" + key})):
                 with self.subTest(text=text):
                     self.assertIsNotNone(pattern.search(text))
+            # JSON may also escape whitespace as \uXXXX (or \b/\f); every escape
+            # that ends in a letter or digit must still let the key be found.
+            for escape in ("\\u000a", "\\u000d", "\\u0009", "\\u0020", "\\b", "\\f"):
+                text = '{"m": "' + escape + key + '"}'
+                with self.subTest(text=text):
+                    self.assertIsNotNone(pattern.search(text))
 
 
 class MaskSecretsModeTest(unittest.TestCase):

@@ -28,9 +28,9 @@
 #
 #   An untracked path that is a mount point in the hook's own namespace is a
 #   Claude Code sandbox placeholder (a 0-byte bind mount for a protected path),
-#   not a change, and is skipped; `mountpoint` decides, else field 5 of
-#   /proc/self/mountinfo (AGENT_STOP_GATE_MOUNTINFO overrides that file, for
-#   tests only).
+#   not a change, and is skipped; mount points are read once from field 5 of
+#   /proc/self/mountinfo and matched exactly, so no symlink is followed
+#   (AGENT_STOP_GATE_MOUNTINFO overrides that file, for tests only).
 # @option --read-history <team> Internal: print one team's history rows (the gate runs itself this way under timeout).
 # @exitcode 0 Nothing is pending, or the checkout is not an agmsg seat.
 # @exitcode 2 Work is pending; one reason line per violation on stderr.
@@ -117,20 +117,18 @@ placeholders=0
 if [[ ${seat} == orchestrator && ${active} == false ]]; then
     exempt() { [[ $1 == .orchestration/* || $1 == .agents/worklog/* ]]; }
     # A real untracked file is never a mount point; a sandbox placeholder is.
+    # The mount table is read once (one awk, however many untracked paths) and
+    # compared as text in mountinfo's own octal escaping of \, space, tab and
+    # newline. No /proc (macOS) means no mounts, which is right: the macOS
+    # sandbox creates no placeholders.
+    mounts=$'\n'"$(awk '{ print $5 }' "${AGENT_STOP_GATE_MOUNTINFO:-/proc/self/mountinfo}" 2> /dev/null)"$'\n'
     placeholder() {
-        if command -v mountpoint > /dev/null 2>&1; then
-            mountpoint -q -- "${top}/$1"
-        else
-            # mountinfo octal-escapes \, space, tab and newline; ENVIRON keeps
-            # awk from interpreting escapes as `-v` would.
-            local mount="${top}/$1"
-            mount="${mount//\\/\\134}"
-            mount="${mount// /\\040}"
-            mount="${mount//$'\t'/\\011}"
-            mount="${mount//$'\n'/\\012}"
-            MOUNT="${mount}" awk '$5 == ENVIRON["MOUNT"] { found = 1 } END { exit !found }' \
-                "${AGENT_STOP_GATE_MOUNTINFO:-/proc/self/mountinfo}" 2> /dev/null
-        fi
+        local mount="${top}/$1"
+        mount="${mount//\\/\\134}"
+        mount="${mount// /\\040}"
+        mount="${mount//$'\t'/\\011}"
+        mount="${mount//$'\n'/\\012}"
+        [[ ${mounts} == *$'\n'"${mount}"$'\n'* ]]
     }
     # -z rows are `XY <path>`; a rename or copy row is followed by its source
     # path, and it is exempt only when both endpoints are. A trailing `rc=<n>`

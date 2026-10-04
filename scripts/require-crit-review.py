@@ -547,7 +547,7 @@ def pr_base_errors(root: Path, evidence: dict, pr: int, head: str, base: str) ->
 
 
 def github_identity_errors(root: Path, evidence: dict, head: str) -> list[str]:
-    """Require distinct author/approver after file provisioning and enforced rules activate it."""
+    """Bind integration to the sole PR bypass user, with a boundary-only author exemption."""
     worker_dir = "~/.config/gh-worker"
     profiles = Path.home() / ".agents/model-profiles.env"
     try:
@@ -586,16 +586,48 @@ def github_identity_errors(root: Path, evidence: dict, head: str) -> list[str]:
         ]
         if not all(isinstance(n, int) and not isinstance(n, bool) and n >= 0 for n in counts):
             raise ValueError("invalid approval requirement")
-        if not any(n >= 1 for n in counts):
-            print("notice: GitHub role gate inactive: main has no enforced required approval; apply README ruleset")
+        restrictions = [
+            rule
+            for rule in rules
+            if rule["type"] == "update"
+            or (rule["type"] == "pull_request" and rule["parameters"]["required_approving_review_count"] >= 1)
+        ]
+        if not restrictions:
+            print(
+                "notice: GitHub role gate inactive: main has no update restriction or required approval; apply README rulesets"
+            )
             return []
-        current = api("user")["login"]
+        user = api("user")
+        current = user["login"]
+        if type(user["id"]) is not int or user["id"] <= 0:
+            raise ValueError("invalid authenticated user ID")
+        ruleset_ids = [rule["ruleset_id"] for rule in restrictions]
+        if not all(type(rule_id) is int and rule_id > 0 for rule_id in ruleset_ids):
+            raise ValueError("invalid effective ruleset ID")
+        for rule_id in set(ruleset_ids):
+            actors = api(f"repos/{repo}/rulesets/{rule_id}")["bypass_actors"]
+            if (
+                not isinstance(actors, list)
+                or len(actors) != 1
+                or actors[0].get("actor_type") != "User"
+                or type(actors[0].get("actor_id")) is not int
+                or actors[0]["actor_id"] != user["id"]
+                or actors[0].get("bypass_mode") != "pull_request"
+            ):
+                return ["GitHub role gate: current login must be the sole User bypass actor in pull_request mode"]
         pr = api(f"repos/{repo}/pulls/{evidence['pr']}")
         author = pr["user"]["login"]
         if not all(isinstance(login, str) and login for login in (current, author)) or pr["head"]["sha"] != head:
             raise ValueError("invalid identity or stale PR head")
         if current.casefold() == author.casefold():
-            return ["GitHub role gate: PR author cannot approve/integrate their own PR; use the orchestrator login"]
+            # Inspect every committed path, including worklogs normally ignored for review sizing.
+            diff = run_git(["diff", "--name-only", "--no-renames", "-z", f"{evidence['base_sha']}...{head}"], root)
+            if diff.returncode:
+                raise ValueError("could not verify boundary diff")
+            paths = diff.stdout.split("\0")[:-1]
+            if paths and all(path.startswith(".orchestration/") for path in paths):
+                return []
+            return ["GitHub role gate: author integration without approval is limited to an .orchestration-only PR"]
         reviews = api(f"repos/{repo}/pulls/{evidence['pr']}/reviews", True)
         decisive = [
             r

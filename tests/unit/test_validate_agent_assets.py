@@ -998,6 +998,17 @@ class SecretPatternBoundaryTest(unittest.TestCase):
                 with self.subTest(text=text):
                     self.assertIsNotNone(pattern.search(text))
 
+    def test_an_sk_key_body_needs_a_hyphen_free_run(self) -> None:
+        pattern = load_validator().SECRET_PATTERN
+        bare, project = "s" + "k-" + "a1" * 12, "s" + "k-" + "proj-" + "a1" * 12
+        for text in (f"x {bare}", f"x {project}", json.dumps({"m": "\n" + project})):
+            with self.subTest(text=text):
+                self.assertIsNotNone(pattern.search(text))
+        slug = "dotfiles-T91-secret-scan-" + "s" + "k-boundary-a01"
+        for text in (f"{slug}-audit-1845139e.md", f"{slug}-pr-feedback.json", f"{slug}-review-receipt.md"):
+            with self.subTest(text=text):
+                self.assertIsNone(pattern.search(text))
+
     def test_masking_keeps_the_escape_before_the_key(self) -> None:
         module = load_validator()
         key = "s" + "k-" + "a1" * 12

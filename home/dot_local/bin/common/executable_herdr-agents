@@ -1782,8 +1782,9 @@ function audit_pane_id() {
 # @description Close the tab an added worker was seated in inside the pair
 #   workspace. despawn.sh usually closes the worker's pane, and with it the
 #   tab; this closes what is left. Only a tab whose every pane carries the
-#   worker's `<team>:<name>` label (or none, an empty shell) is closed, so the
-#   pair tab and the audit tab are never touched.
+#   worker's `<team>:<name>` label, or is an unlabeled pane with no agent (an
+#   empty shell), is closed, so the pair tab, the audit tab and any tab with
+#   another running agent are never touched.
 # @arg $1 string Pair workspace id.
 # @arg $2 string Worker seat label `<team>:<name>`.
 function close_worker_tab() {
@@ -1794,7 +1795,7 @@ function close_worker_tab() {
         herdr tab close "${tab_id}" > /dev/null || printf 'herdr-agents: unable to close tab %s of worker %s.\n' "${tab_id}" "$2" >&2
     done < <(herdr pane list --workspace "$1" | jq -r --arg label "$2" \
         '[.result.panes[]? | select(.tab_id | type == "string")] | group_by(.tab_id)[]
-         | select(any(.[]; .label == $label) and all(.[]; .label == $label or (.label // "") == ""))
+         | select(any(.[]; .label == $label) and all(.[]; .label == $label or ((.label // "") == "" and (.agent? // "") == "")))
          | .[0].tab_id')
 }
 

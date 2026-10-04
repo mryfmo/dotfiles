@@ -3613,6 +3613,25 @@ exit {exit_code}
         self.assertEqual(indexes, sorted(indexes), calls)
         self.assertEqual([c for c in calls if c.startswith(("tab close", "workspace close"))], ["tab close w-pair:t3"])
 
+    def test_remove_worker_keeps_a_worker_tab_that_holds_another_running_agent(self) -> None:
+        self.write_worktree_seat(
+            main_identities="dotfiles\tclaude-remediation-dot",
+            worktree_identities="dotfiles\tclaude-standard-dot-a007",
+        )
+        self.write_seat_lifecycle_fakes()
+        worktree = self.add_seat_worktree("b1")
+        pane = {"cwd": str(worktree), "workspace_id": "w-pair", "tab_id": "w-pair:t3"}
+        self.write_pair_workspace(
+            {**pane, "pane_id": "w-pair:p5", "agent": None, "label": "dotfiles:claude-standard-dot-a007"},
+            {**pane, "pane_id": "w-pair:p6", "agent": "codex"},
+        )
+
+        result = self.run_helper("--remove-worker", ".claude/worktrees/b1")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.calls_path.read_text().splitlines()
+        self.assertFalse(any(c.startswith(("tab close", "workspace close")) for c in calls), calls)
+
     def test_remove_worker_refuses_a_dirty_worktree_without_force(self) -> None:
         self.write_worktree_seat(worktree_identities="dotfiles\tclaude-standard-dot-a007")
         self.write_seat_lifecycle_fakes()

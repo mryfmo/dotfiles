@@ -3,24 +3,29 @@
 # @file home/dot_claude/hooks/executable_enforce-uv.sh
 # @brief Block direct Python and pip commands in favor of `uv`.
 # @description
-#   Claude hook that inspects shell commands and returns a JSON decision that
-#   blocks direct `pip` or `python` usage, guiding the caller toward `uv`.
+#   Emit PreToolUse permissionDecision deny for direct `pip` or `python` usage;
+#   other input exits successfully without output. Contract verified 2026-10-05.
+# @see https://code.claude.com/docs/en/hooks#pretooluse-decision-control
 
-# Function definitions.
+# @description Encode the denial reason from stdin using the current hook contract.
+# @stdout PreToolUse deny JSON with the original multiline reason.
+function deny_command() {
+    jq -Rsc '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: rtrimstr("\n")}}'
+}
 
 # @description Emit the `uv` replacement message for `pip install`.
 # @arg $1 string Parsed `pip` subcommand beginning with `install`.
 function handle_pip_install() {
     local pip_cmd="$1"
-    local packages=$(echo "$pip_cmd" | sed 's/install//' | sed 's/--[^ ]*//g' | xargs)
+    local packages
+    packages=$(echo "$pip_cmd" | sed 's/install//' | sed 's/--[^ ]*//g' | xargs)
 
     # -r requirements.txt
     if [[ "$pip_cmd" =~ -r\ .*\.txt ]]; then
-        local req_file=$(echo "$pip_cmd" | sed -n 's/.*-r \([^ ]*\).*/\1/p')
-        cat <<- EOF
-		{
-		  "decision": "block",
-		  "reason": "📋 requirements.txtからインストール:
+        local req_file
+        req_file=$(echo "$pip_cmd" | sed -n 's/.*-r \([^ ]*\).*/\1/p')
+        deny_command <<- EOF
+		📋 requirements.txtからインストール:
 
 		✅ 推奨方法:
 		uv add -r $req_file
@@ -33,32 +38,26 @@ function handle_pip_install() {
 		💡 制約ファイルがある場合:
 		uv add -r $req_file -c constraints.txt
 
-		📌 注意: この方法が最も確実で、バージョン指定も正しく処理されます"
-		}
+		📌 注意: この方法が最も確実で、バージョン指定も正しく処理されます
 		EOF
         exit 0
     fi
 
     # 開発依存関係
     if [[ "$pip_cmd" =~ --dev ]] || [[ "$pip_cmd" =~ -e ]]; then
-        cat <<- EOF
-		{
-		  "decision": "block",
-		  "reason": "🔧 開発依存関係をインストール:
+        deny_command <<- EOF
+		🔧 開発依存関係をインストール:
 
 		uv add --dev $packages
 
-		編集可能インストール: uv add -e ."
-		}
+		編集可能インストール: uv add -e .
 		EOF
         exit 0
     fi
 
     # 通常のインストール
-    cat <<- EOF
-	{
-	  "decision": "block",
-	  "reason": "📦 パッケージをインストール:
+    deny_command <<- EOF
+	📦 パッケージをインストール:
 
 	uv add $packages
 
@@ -68,8 +67,7 @@ function handle_pip_install() {
 	💡 特殊なケース:
 	• URLからのインストール: パッケージを手動でダウンロードしてから追加
 	• 開発版: uv add --dev $packages
-	• ローカルパッケージ: uv add -e ./path/to/package"
-	}
+	• ローカルパッケージ: uv add -e ./path/to/package
 	EOF
     exit 0
 }
@@ -78,34 +76,29 @@ function handle_pip_install() {
 # @arg $1 string Parsed `pip` subcommand beginning with `uninstall`.
 function handle_pip_uninstall() {
     local pip_cmd="$1"
-    local packages=$(echo "$pip_cmd" | sed 's/uninstall//' | sed 's/-y//g' | xargs)
-    cat <<- EOF
-	{
-	  "decision": "block",
-	  "reason": "🗑️ パッケージを削除:
+    local packages
+    packages=$(echo "$pip_cmd" | sed 's/uninstall//' | sed 's/-y//g' | xargs)
+    deny_command <<- EOF
+	🗑️ パッケージを削除:
 
 	uv remove $packages
 
-	✨ 依存関係も自動的にクリーンアップされます"
-	}
+	✨ 依存関係も自動的にクリーンアップされます
 	EOF
     exit 0
 }
 
 # @description Explain the `uv` alternatives for `pip list` and `pip freeze`.
 function handle_pip_list() {
-    cat <<- 'EOF'
-	{
-	  "decision": "block",
-	  "reason": "📊 パッケージ一覧を確認:
+    deny_command <<- 'EOF'
+	📊 パッケージ一覧を確認:
 
 	• プロジェクト依存関係: cat pyproject.toml
 	• ロックファイル詳細: cat uv.lock
 	• インストール済み一覧: uv tree
 	• requirements.txt形式でエクスポート: uv export --format requirements-txt
 
-	💡 'uv tree'はプロジェクトの依存関係ツリーを表示します"
-	}
+	💡 'uv tree'はプロジェクトの依存関係ツリーを表示します
 	EOF
     exit 0
 }
@@ -114,15 +107,12 @@ function handle_pip_list() {
 # @arg $1 string Parsed `pip` subcommand.
 function handle_pip_other() {
     local pip_cmd="$1"
-    cat <<- EOF
-	{
-	  "decision": "block",
-	  "reason": "🔀 pipコマンドをuvで実行:
+    deny_command <<- EOF
+	🔀 pipコマンドをuvで実行:
 
 	uv $pip_cmd
 
-	💡 パッケージのインストール/削除には 'uv add/remove' を使用してください"
-	}
+	💡 パッケージのインストール/削除には 'uv add/remove' を使用してください
 	EOF
     exit 0
 }
@@ -134,42 +124,35 @@ function handle_python_m_pip() {
 
     # Parse pip install commands
     if [[ "$pip_cmd" =~ ^install ]]; then
-        local packages=$(echo "$pip_cmd" | sed 's/install//' | sed 's/--[^ ]*//g' | xargs)
+        local packages
+        packages=$(echo "$pip_cmd" | sed 's/install//' | sed 's/--[^ ]*//g' | xargs)
         if [[ "$pip_cmd" =~ -r\ .*\.txt ]]; then
-            local req_file=$(echo "$pip_cmd" | sed -n 's/.*-r \([^ ]*\).*/\1/p')
-            cat <<- EOF
-			{
-			  "decision": "block",
-			  "reason": "📋 requirements.txtからインストール:
+            local req_file
+            req_file=$(echo "$pip_cmd" | sed -n 's/.*-r \([^ ]*\).*/\1/p')
+            deny_command <<- EOF
+			📋 requirements.txtからインストール:
 
 			✅ 推奨方法:
 			uv add -r $req_file
 
-			💡 これによりすべての依存関係がpyproject.tomlに追加されます"
-			}
+			💡 これによりすべての依存関係がpyproject.tomlに追加されます
 			EOF
         else
-            cat <<- EOF
-			{
-			  "decision": "block",
-			  "reason": "📦 パッケージをインストール:
+            deny_command <<- EOF
+			📦 パッケージをインストール:
 
 			uv add $packages
 
-			💡 'uv add' はpyproject.tomlに依存関係を保存します"
-			}
+			💡 'uv add' はpyproject.tomlに依存関係を保存します
 			EOF
         fi
     else
-        cat <<- EOF
-		{
-		  "decision": "block",
-		  "reason": "🔀 pipコマンドをuvで実行:
+        deny_command <<- EOF
+		🔀 pipコマンドをuvで実行:
 
 		uv $pip_cmd
 
-		💡 パッケージ管理には 'uv add/remove' を使用してください"
-		}
+		💡 パッケージ管理には 'uv add/remove' を使用してください
 		EOF
     fi
     exit 0
@@ -179,15 +162,12 @@ function handle_python_m_pip() {
 # @arg $1 string Module invocation after `python -m`.
 function handle_python_m_module() {
     local module="$1"
-    cat <<- EOF
-	{
-	  "decision": "block",
-	  "reason": "uvでモジュールを実行:
+    deny_command <<- EOF
+	uvでモジュールを実行:
 
 	uv run python -m $module
 
-	🔄 uvは自動的に環境を同期してから実行します。"
-	}
+	🔄 uvは自動的に環境を同期してから実行します。
 	EOF
     exit 0
 }
@@ -196,41 +176,39 @@ function handle_python_m_module() {
 # @arg $1 string Original Python arguments.
 function handle_python_run() {
     local args="$1"
-    cat <<- EOF
-	{
-	  "decision": "block",
-	  "reason": "uvでPythonを実行:
+    deny_command <<- EOF
+	uvでPythonを実行:
 
 	uv run $args
 
-	✅ 仮想環境のアクティベーションは不要です！"
-	}
+	✅ 仮想環境のアクティベーションは不要です！
 	EOF
     exit 0
 }
 
 # @description Read hook input JSON, classify the command, and emit a decision.
 function main() {
-    local input=$(cat)
+    local input
+    input=$(cat)
 
     # Validate input
     if [ -z "$input" ]; then
-        echo '{"decision": "approve"}'
         exit 0
     fi
 
     # Extract fields with error handling
-    local tool_name=$(echo "$input" | jq -r '.tool_name' 2> /dev/null || echo "")
-    local command=$(echo "$input" | jq -r '.tool_input.command // ""' 2> /dev/null || echo "")
-    local file_path=$(echo "$input" | jq -r '.tool_input.file_path // .tool_input.path // ""' 2> /dev/null || echo "")
-    local current_dir=$(pwd)
+    local tool_name
+    tool_name=$(echo "$input" | jq -r '.tool_name' 2> /dev/null || echo "")
+    local command
+    command=$(echo "$input" | jq -r '.tool_input.command // ""' 2> /dev/null || echo "")
 
     # ===== pip関連コマンド =====
     if [[ "$tool_name" == "Bash" ]]; then
         case "$command" in
         pip\ * | pip3\ *)
             # pipコマンドの詳細な解析
-            local pip_cmd=$(echo "$command" | sed -E 's/^pip[0-9]? *//' | xargs)
+            local pip_cmd
+            pip_cmd=$(echo "$command" | sed -E 's/^pip[0-9]? *//' | xargs)
 
             case "$pip_cmd" in
             install\ *)
@@ -249,17 +227,20 @@ function main() {
             ;;
 
         # ===== 直接的なPython実行の処理 =====
-        python* | python3* | py\ *)
+        python* | py\ *)
             # 通常のuvへの変換
-            local args=$(echo "$command" | sed -E 's/^python[0-9]? //' | xargs)
+            local args
+            args=$(echo "$command" | sed -E 's/^python[0-9]? //' | xargs)
 
             # -m オプションの特別処理
             if [[ "$args" =~ ^-m ]]; then
-                local module=$(echo "$args" | sed 's/-m //')
+                local module
+                module=${args/-m /}
 
                 case "$module" in
                 pip\ *)
-                    local pip_cmd=$(echo "$module" | sed 's/pip //')
+                    local pip_cmd
+                    pip_cmd=${module/pip /}
                     handle_python_m_pip "$pip_cmd"
                     ;;
                 *)
@@ -274,8 +255,7 @@ function main() {
         esac
     fi
 
-    # デフォルトは承認
-    echo '{"decision": "approve"}'
+    exit 0
 }
 
 main

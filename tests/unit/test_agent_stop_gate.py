@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -19,8 +20,9 @@ esac
 """
 # Stand-in for the agmsg storage facade: team-wide history only, from JSONL files.
 # With $HOME/sqlite-rev present it poses as the sqlite driver whose store is at
-# that schema revision (current revision: 9); storage_history fails if the store
-# would have been re-initialized or the busy timeout was left at its default.
+# that schema revision (current revision: 9). storage_history records each call
+# in $HOME/history-called, sleeps while $HOME/store-slow exists, and fails if the
+# busy timeout was left at its default.
 STORAGE_SH = """
 _AGMSG_STORAGE_SCHEMA_REV=9
 agmsg_storage_load() { [[ -e $HOME/sqlite-rev ]] && _AGMSG_STORAGE_LOADED=sqlite; :; }
@@ -28,8 +30,9 @@ _sqlite_db() { printf '%s/history-%s.jsonl' "$HOME" "$1"; }
 agmsg_sqlite() { cat "$HOME/sqlite-rev"; }
 storage_store_exists() { [[ -f $HOME/history-$1.jsonl ]]; }
 storage_history() {
+    echo "$1" >> "$HOME/history-called"
     [[ $# == 1 && ! -e $HOME/store-down && ${AGMSG_BUSY_TIMEOUT:-} == 1000 ]] || return 9
-    [[ ! -e $HOME/sqlite-rev || $(cat "$HOME/sqlite-rev") == 9 ]] || return 9
+    [[ ! -e $HOME/store-slow ]] || sleep 30
     cat "$HOME/history-$1.jsonl"
 }
 """
@@ -246,10 +249,20 @@ class AgentStopGateTest(unittest.TestCase):
         self.history(row("worker-a001", "orch", "AGMSG-RESULT v1 task_id=T1 status=ready_for_review"))
         (self.home / "sqlite-rev").write_text("9\n")
         self.assertIn("task_id=T1", self.assert_gate(self.main, 2))
+        (self.home / "history-called").unlink()
         (self.home / "sqlite-rev").write_text("0\n")
         stderr = self.assert_gate(self.main, 2)
         self.assertIn("unreadable", stderr)
         self.assertNotIn("task_id=T1", stderr)
+        self.assertFalse((self.home / "history-called").exists())
+
+    def test_slow_store_blocks_within_the_budget(self):
+        self.history(row("orch", "worker-a001", "AGMSG-TASK v1 task_id=T5 repo=/r"))
+        (self.home / "store-slow").write_text("")
+        started = time.monotonic()
+        stderr = self.assert_gate(self.worker, 2)
+        self.assertLess(time.monotonic() - started, 4.5)
+        self.assertIn("exceeded the hook budget", stderr)
 
     def test_checkout_outside_any_seat_passes(self):
         self.assert_gate(self.home, 0)

@@ -91,12 +91,15 @@ fi
 # storage facade history.sh itself calls, without its per-recipient unread pass
 # (~3 s on a 600-message team; the facade reads all of it in ~0.1 s).
 # AGMSG_BUSY_TIMEOUT (agmsg's documented knob, default 5000 ms per sqlite call)
-# keeps a contended store inside the 5 s hook timeout, so it fails closed
-# instead of timing out. storage_history runs storage_init, which writes unless
+# shortens each wait on a contended store. storage_history runs storage_init, which writes unless
 # the store is already at the current schema revision; for the sqlite driver,
 # read that revision first (the same read as storage_init's fast path) and
 # treat any other store as unreadable rather than letting it be re-initialized.
+# storage_init can still write if its own revision read fails under
+# SQLITE_BUSY; only a non-initializing storage_history upstream would close that.
+# shellcheck disable=SC2329 # invoked through `bash -c` under timeout below
 read_history() {
+    set -o pipefail # the child bash does not inherit it
     export AGMSG_BUSY_TIMEOUT=1000
     # shellcheck disable=SC1091
     source "${scripts}/lib/storage.sh" && agmsg_storage_load || return 1
@@ -114,6 +117,18 @@ if ! identities="$(AGMSG_RESOLVE_PROJECT=0 "${scripts}/identities.sh" "${top}" c
     [[ ${active} == true ]] || reasons+=("agmsg identity lookup failed for ${top}; check ${scripts}/identities.sh")
 fi
 
+block() {
+    printf 'agent-stop-gate: %s\n' "${reasons[@]}" >&2
+    exit 2
+}
+
+# All history reads share one 3 s budget inside the 5 s hook timeout: a
+# timed-out hook's output is discarded, which would let the seat stop, so
+# running out of budget blocks at once.
+export scripts
+export -f read_history
+deadline=$((SECONDS + 3))
+
 # The orchestrator is the unsuffixed identity at the main checkout; any
 # identity registered at a worker worktree (solo or -aNNN) is its worker.
 while IFS=$'\t' read -r -u 3 team name; do
@@ -121,7 +136,19 @@ while IFS=$'\t' read -r -u 3 team name; do
     [[ ${seat} == orchestrator && ${name} =~ -a[0-9]{3}$ ]] && continue
     # ponytail: an unreadable store blocks every turn once; add a timestamp
     # cap or a fail-open switch if a down store ever becomes a real problem.
-    if ! history="$(read_history "${team}" 2> /dev/null)"; then
+    # `timeout 0` would mean no limit, so a spent budget blocks before the read.
+    remaining=$((deadline - SECONDS))
+    if [[ ${remaining} -gt 0 ]]; then
+        # shellcheck disable=SC2016 # $1 expands in the child bash
+        history="$(timeout "${remaining}" bash -c 'read_history "$1"' _ "${team}" 2> /dev/null)"
+        rc=$?
+    else
+        rc=124
+    fi
+    if [[ ${rc} -eq 124 ]]; then
+        reasons+=("agmsg history read exceeded the hook budget; retry")
+        block
+    elif [[ ${rc} -ne 0 ]]; then
         [[ ${active} == true ]] || reasons+=("agmsg history unreadable for team ${team}; check ${scripts}/history.sh ${team}")
         continue
     fi
@@ -154,8 +181,5 @@ while IFS=$'\t' read -r -u 3 team name; do
         END { for (id in pending) print id }' <<< "${history}")
 done 3<<< "${identities}"
 
-if [[ ${#reasons[@]} -gt 0 ]]; then
-    printf 'agent-stop-gate: %s\n' "${reasons[@]}" >&2
-    exit 2
-fi
+[[ ${#reasons[@]} -eq 0 ]] || block
 exit 0

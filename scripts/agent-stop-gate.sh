@@ -167,10 +167,13 @@ read_bounded() {
     watchdog=$!
     wait "${child}"
     rc=$?
-    if kill "${watchdog}" 2> /dev/null; then
-        history="$(< "${out}")"
-    else
+    kill "${watchdog}" 2> /dev/null
+    # Only the watchdog's TERM ends the reader with 128+15; whether the
+    # watchdog subshell has exited yet by now is a race, so it is not the test.
+    if [[ ${rc} -eq 143 ]]; then
         rc=124
+    elif [[ ${rc} -eq 0 ]]; then
+        history="$(< "${out}")"
     fi
     rm -f "${out}"
     return "${rc}"

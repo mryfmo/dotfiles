@@ -227,12 +227,15 @@ def render_asset_constants(manifest: dict[str, Any]) -> dict[Path, str]:
     reach several files; `readonly` and `declare -r` assignments are rewritten.
     """
     outputs: dict[Path, str] = {}
+    # One snapshot per real file: entries reaching it through a symlink alias
+    # share the first-seen path, so no write restores another entry's values.
+    snapshot_paths: dict[Path, Path] = {}
     for name, asset in manifest.get("assets", {}).items():
         render = asset.get("render")
         if not render:
             continue
         for entry in render if isinstance(render, list) else [render]:
-            path = ROOT / entry["file"]
+            path = snapshot_paths.setdefault((ROOT / entry["file"]).resolve(), ROOT / entry["file"])
             text = outputs.get(path)
             if text is None:
                 text = path.read_text()

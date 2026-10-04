@@ -52,7 +52,7 @@
 
 ## Audit
 
-Standing review rules for the auditor (the task-level audit of a final head, `herdr-agents --audit <head-sha> --task <id>` or the headless form in the agmsg-orchestration SKILL's task-level audit bullet; read-only sandbox):
+Standing review rules for the auditor (the task-level audit of a final head, run as the agmsg-orchestration SKILL's task-level audit bullet describes; read-only sandbox):
 
 - Audit only the named changeset from a clean tree. Do not edit code, approve, merge, or expand scope beyond the changeset.
 - Cover:

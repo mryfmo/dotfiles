@@ -574,6 +574,7 @@ class ReviewGuardTest(unittest.TestCase):
             ("placeholder on another line, masked", with_placeholder, with_placeholder, True, 0),
             ("verbatim body", quoted, quoted, False, 0),
             ("different body", quoted, "quotes something else here", False, 1),
+            ("placeholder dropped from a body without a match", "GITHUB_PERSONAL_ACCESS_TOKEN only", " only", False, 1),
         ):
             with self.subTest(case=name):
                 item = {"source": "review_comment", "level": "comment", "url": "https://x/r1"}

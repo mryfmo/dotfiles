@@ -13,6 +13,7 @@
 #   The values render from assets: in home/dot_agents/agent-config.yaml
 #   through scripts/generate-agent-configs.py.
 
+CHEZMOI_BOOTSTRAP_PIN_VERSION="2.70.4"
 TERMINAL_CODE_PIN_VERSION="v0.4.2"
 TERMINAL_CODE_INSTALLER_SHA256="de7c1540305d516ded9734f7dca4ed2d7d308fcc9cdb27a52717c4d26054e933"
 TERMINAL_BROWSER_PIN_VERSION="v0.13.4"

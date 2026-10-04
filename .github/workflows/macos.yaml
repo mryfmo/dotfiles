@@ -130,9 +130,18 @@ jobs:
           alert-comment-cc-users: "@mryfmo"
           benchmark-data-dir-path: "."
 
+      - name: Pin mise from install/common/mise.sh
+        if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}
+        run: |
+          # MISE_VERSION renders from assets.mise in agent-config.yaml.
+          pin="$(sed -n 's/^readonly MISE_VERSION="v\(.*\)"$/\1/p' install/common/mise.sh)"
+          test -n "${pin}"
+          echo "MISE_PIN=${pin}" >> "${GITHUB_ENV}"
+
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
         if: ${{ env.HAS_PRIVATE_DOTFILES_KEY == 'true' && env.HAS_EMAIL_ADDRESS == 'true' }}
         with:
+          version: ${{ env.MISE_PIN }}
           install: true
           cache: true
 

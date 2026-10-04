@@ -18,7 +18,8 @@ MKDOCS_PYTHON = NO_MKDOCS_2_WARNING=true $(MKDOCS_UV) python
 .PHONY: docker
 docker:
 	@if ! docker inspect $(DOCKER_IMAGE_NAME) &>/dev/null; then \
-		docker build -t $(DOCKER_IMAGE_NAME) . --build-arg USERNAME="$$(whoami)"; \
+		docker build -t $(DOCKER_IMAGE_NAME) . --build-arg USERNAME="$$(whoami)" \
+			--build-arg CHEZMOI_VERSION="$$(sed -n 's/^declare -r CHEZMOI_VERSION="\(.*\)"$$/\1/p' setup.sh)"; \
 	fi
 	docker run -it -v "$$(pwd):/home/$$(whoami)/.local/share/chezmoi" --hostname dotfiles-test dotfiles /bin/bash --login
 

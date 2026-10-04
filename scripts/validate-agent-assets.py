@@ -640,12 +640,18 @@ def validate_assets(manifest: dict[str, Any]) -> None:
                         f"{entry['file']} {constant} is rendered from both assets.{source[0]}.{source[1]} "
                         f"(via {source[2]}) and assets.{name}.{field}; render each assignment from one field"
                     )
-    for root in ("install", "scripts"):
-        for path in sorted((ROOT / root).rglob("*.sh")):
-            relative = str(path.relative_to(ROOT))
-            for match in LITERAL_VERSION_ASSIGNMENT.finditer(path.read_text()):
-                if (relative, match.group(1)) not in rendered:
-                    fail(f"{relative} hard-codes {match.group(1)}; declare it in assets: and render it into this file")
+    # setup.sh is the bootstrap entry point; its pins render like the installers'.
+    scanned = [
+        ROOT / "setup.sh",
+        *(path for root in ("install", "scripts") for path in sorted((ROOT / root).rglob("*.sh"))),
+    ]
+    for path in scanned:
+        if not path.is_file():
+            continue
+        relative = str(path.relative_to(ROOT))
+        for match in LITERAL_VERSION_ASSIGNMENT.finditer(path.read_text()):
+            if (relative, match.group(1)) not in rendered:
+                fail(f"{relative} hard-codes {match.group(1)}; declare it in assets: and render it into this file")
 
 
 def validate_agent_manifest() -> dict[str, Any]:

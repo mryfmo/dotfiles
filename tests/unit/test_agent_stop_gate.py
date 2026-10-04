@@ -350,8 +350,8 @@ class AgentStopGateTest(unittest.TestCase):
         self.assertNotIn("task_id=T1", stderr)
         self.assertFalse((self.home / "history-called").exists())
 
-    def tool_path(self, gtimeout=False):
-        """A PATH without timeout(1): the tools the gate and the fakes use, plus an optional gtimeout."""
+    def tool_path(self, gtimeout=False, mountpoint=False):
+        """A PATH without timeout(1) or mountpoint(1): the tools the gate and the fakes use, plus optional fakes."""
         bindir = self.home / "bin"
         bindir.mkdir()
         for tool in ("bash", "git", "jq", "awk", "sed", "grep", "cat", "sleep", "env", "mktemp", "rm"):
@@ -360,7 +360,49 @@ class AgentStopGateTest(unittest.TestCase):
             # A wrapper, not a symlink: a multicall coreutils dispatches on its own name.
             (bindir / "gtimeout").write_text(f'#!/bin/sh\nexec {shutil.which("timeout")} "$@"\n')
             (bindir / "gtimeout").chmod(0o755)
+        if mountpoint:
+            # Reports the paths listed in $HOME/mounts as mount points.
+            (bindir / "mountpoint").write_text(
+                '#!/bin/bash\n[[ $1 == -q ]] && shift\n[[ $1 == -- ]] && shift\ngrep -qxF -- "$1" "$HOME/mounts"\n'
+            )
+            (bindir / "mountpoint").chmod(0o755)
         return str(bindir)
+
+    def make_placeholders(self):
+        """0-byte, read-only untracked files like the sandbox's bind-mounted placeholders."""
+        paths = [self.main / ".zshrc", self.main / ".claude/agents"]
+        for path in paths:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("")
+            path.chmod(0o444)
+        return paths
+
+    def test_sandbox_placeholders_are_skipped_via_mountpoint(self):
+        paths = self.make_placeholders()
+        (self.home / "mounts").write_text("".join(f"{p}\n" for p in paths))
+        env = {"PATH": self.tool_path(mountpoint=True)}
+        self.assertEqual(self.assert_gate(self.main, 0, env=env), "")
+        (self.main / "junk.txt").write_text("x")
+        stderr = self.assert_gate(self.main, 2, env=env)
+        self.assertIn("junk.txt", stderr)
+        self.assertNotIn(".zshrc", stderr)
+        self.assertIn("sandbox placeholders ignored: 2", stderr)
+
+    def test_sandbox_placeholders_are_skipped_via_mountinfo(self):
+        paths = self.make_placeholders()
+        mountinfo = self.home / "mountinfo"
+        # The kernel octal-escapes the backslash in the fixture repository path.
+        encoded = [str(p).replace("\\", "\\134") for p in paths]
+        mountinfo.write_text(
+            "".join(f"{40 + i} 35 0:5 /null {p} ro,nosuid - devtmpfs udev rw\n" for i, p in enumerate(encoded))
+        )
+        env = {"PATH": self.tool_path(), "AGENT_STOP_GATE_MOUNTINFO": str(mountinfo)}
+        self.assertEqual(self.assert_gate(self.main, 0, env=env), "")
+        (self.main / "junk.txt").write_text("x")
+        stderr = self.assert_gate(self.main, 2, env=env)
+        self.assertIn("junk.txt", stderr)
+        self.assertNotIn(".claude/agents", stderr)
+        self.assertIn("sandbox placeholders ignored: 2", stderr)
 
     def assert_slow_store_blocks_within_the_budget(self, env=None):
         self.history(row("orch", "worker-a001", "AGMSG-TASK v1 task_id=T5 repo=/r"))

@@ -25,6 +25,12 @@
 #   one private mktemp file under TMPDIR, removed before it returns. Without an
 #   agmsg install it passes; a failing identity lookup or an unreadable store blocks
 #   unless `stop_hook_active` is true.
+#
+#   An untracked path that is a mount point in the hook's own namespace is a
+#   Claude Code sandbox placeholder (a 0-byte bind mount for a protected path),
+#   not a change, and is skipped; `mountpoint` decides, else field 5 of
+#   /proc/self/mountinfo (AGENT_STOP_GATE_MOUNTINFO overrides that file, for
+#   tests only).
 # @option --read-history <team> Internal: print one team's history rows (the gate runs itself this way under timeout).
 # @exitcode 0 Nothing is pending, or the checkout is not an agmsg seat.
 # @exitcode 2 Work is pending; one reason line per violation on stderr.
@@ -107,8 +113,25 @@ fi
 [[ -e ${scripts}/identities.sh ]] || exit 0
 reasons=()
 
+placeholders=0
 if [[ ${seat} == orchestrator && ${active} == false ]]; then
     exempt() { [[ $1 == .orchestration/* || $1 == .agents/worklog/* ]]; }
+    # A real untracked file is never a mount point; a sandbox placeholder is.
+    placeholder() {
+        if command -v mountpoint > /dev/null 2>&1; then
+            mountpoint -q -- "${top}/$1"
+        else
+            # mountinfo octal-escapes \, space, tab and newline; ENVIRON keeps
+            # awk from interpreting escapes as `-v` would.
+            local mount="${top}/$1"
+            mount="${mount//\\/\\134}"
+            mount="${mount// /\\040}"
+            mount="${mount//$'\t'/\\011}"
+            mount="${mount//$'\n'/\\012}"
+            MOUNT="${mount}" awk '$5 == ENVIRON["MOUNT"] { found = 1 } END { exit !found }' \
+                "${AGENT_STOP_GATE_MOUNTINFO:-/proc/self/mountinfo}" 2> /dev/null
+        fi
+    }
     # -z rows are `XY <path>`; a rename or copy row is followed by its source
     # path, and it is exempt only when both endpoints are. A trailing `rc=<n>`
     # record carries git's exit status (a real row has a space at offset 2).
@@ -123,6 +146,10 @@ if [[ ${seat} == orchestrator && ${active} == false ]]; then
         from=""
         [[ ${xy} == *[RC]* ]] && IFS= read -r -d '' from
         if exempt "${path}" && { [[ -z ${from} ]] || exempt "${from}"; }; then
+            continue
+        fi
+        if [[ ${xy} == '??' ]] && placeholder "${path}"; then
+            placeholders=$((placeholders + 1))
             continue
         fi
         # Paths are repository data on their way to Claude (stderr of an exit 2
@@ -145,6 +172,7 @@ fi
 
 block() {
     printf 'agent-stop-gate: %s\n' "${reasons[@]}" >&2
+    [[ ${placeholders} -eq 0 ]] || printf 'agent-stop-gate: sandbox placeholders ignored: %s\n' "${placeholders}" >&2
     exit 2
 }
 

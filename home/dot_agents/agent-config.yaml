@@ -454,7 +454,7 @@ assets:
   mise:
     source: github-release
     upstream: jdx/mise
-    pin: v2026.9.13
+    pin: v2026.9.14
     verify: release-shasums
     install_path: ~/.local/bin/mise
     installer: install/common/mise.sh
@@ -484,7 +484,7 @@ assets:
   aws-cli:
     source: https-download
     upstream: https://awscli.amazonaws.com
-    pin: 2.37.3
+    pin: 2.37.4
     verify: gpg
     gpg_fingerprint: FB5DB77FD5C118B80511ADA8A6310ACC4672475C
     install_path: ~/.local/share/aws-cli
@@ -530,13 +530,13 @@ assets:
   crit:
     source: github-release
     upstream: tomasz-tomczyk/crit
-    pin: v0.21.0
+    pin: v0.21.1
     verify: sha256
     sha256:
-      linux-amd64: cfaaaa4aa291ef208739b48d1fa0ef2a33b1101c20794491153b50024d800c66
-      linux-arm64: ca21efb1ff5e7f24b09de7fa4d0b6e5b44e06418da4cbead04d132f0e1dd7cf4
-      darwin-amd64: b3ded3bae8deb4997daaad7001eca9dce6be19e3e50d4e142a94bd3069708455
-      darwin-arm64: 0eb05b29d81230cf16168bb373e8d9a18eab5c60ae868ef6a92fee73df7dd90e
+      linux-amd64: bbc7de53ebb29377c412d1737c658752efeaf44e8bd0f124278f6e41632ad670
+      linux-arm64: 875c03a0b75de7777a26294dc585f59f3e4f49fe2735f5043fb668f92e2dc258
+      darwin-amd64: 08f9f1a7e2f56f5d4dc5d9d86d0e06e92c165d2b885745d6ffed5ab3eda354dc
+      darwin-arm64: 40cc7014f0b6c7d604be0bfdf4c462e2366549c520b95b790b414aa221d2a9a0
     install_path: ~/.local/bin/crit
     installer: scripts/update-agent-assets.sh#ensure_crit_cli
     render:

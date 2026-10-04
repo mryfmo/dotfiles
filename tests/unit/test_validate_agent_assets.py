@@ -974,6 +974,25 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             self.module.validate_no_obvious_secrets()
         self.assertIn(".orchestration/validation/t-a01.md holds a NUL byte at offset 7", stderr.getvalue())
 
+    def test_secret_scan_reads_json_per_key_and_string_value(self) -> None:
+        key = "ghp_" + "d" * 25
+        path = self.temp_dir / ".orchestration/validation/t-pr-feedback.json"
+        path.parent.mkdir(parents=True)
+        across_fields = json.dumps({"items": [{"body": f"ends with {FIELD} = ", "url": "https://x/1"}]}, indent=2)
+        path.write_text(across_fields)
+        self.module.validate_no_obvious_secrets()
+
+        for name, text in (
+            ("key-shaped object key", json.dumps({key: "value"})),
+            ("duplicate key's earlier value", '{"m": "' + key + '", "m": "later"}'),
+            ("escaped quoted assignment", json.dumps({"body": f"{FIELD} = " + '"abc"'})),
+            ("not JSON, text scan", across_fields[:-1]),
+        ):
+            with self.subTest(case=name):
+                path.write_text(text)
+                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                    self.module.validate_no_obvious_secrets()
+
     def test_secret_scan_checks_utf16_bom_text(self) -> None:
         path = self.temp_dir / "docs/reference/leaky-utf16.md"
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -1183,17 +1202,21 @@ class MaskSecretsModeTest(unittest.TestCase):
         items = [
             {"body": f"ends with {FIELD} = ", "url": "https://x/1"},
             {"body": f"line\n{key}\nset {FIELD} = " + '"abc"', "url": "https://x/2"},
+            {key: "a key-shaped member name"},
         ]
         evidence.write_text(json.dumps({"items": items}, indent=2) + "\n")
 
         result = self.run_mask(evidence)
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(result.stdout, f"masked 2 match(es) in {evidence}\n")
+        self.assertEqual(result.stdout, f"masked 3 match(es) in {evidence}\n")
         saved = json.loads(evidence.read_text())["items"]
         module = load_validator()
-        self.assertEqual([item["url"] for item in saved], ["https://x/1", "https://x/2"])
-        self.assertEqual([item["body"] for item in saved], [module.mask_secret_matches(i["body"])[0] for i in items])
+        self.assertEqual([item.get("url") for item in saved[:2]], ["https://x/1", "https://x/2"])
+        self.assertEqual(
+            [item["body"] for item in saved[:2]], [module.mask_secret_matches(i["body"])[0] for i in items[:2]]
+        )
+        self.assertEqual(saved[2], {module.SECRET_MASK: "a key-shaped member name"})
         self.assertNotIn(key, evidence.read_text())
 
     def test_missing_file_exits_2_without_touching_others(self) -> None:

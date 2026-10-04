@@ -1235,9 +1235,38 @@ def mask_json_strings(value: Any) -> tuple[Any, int]:
         pairs = [mask_json_strings(item) for item in value]
         return [item for item, _ in pairs], sum(count for _, count in pairs)
     if isinstance(value, dict):
-        pairs = {key: mask_json_strings(item) for key, item in value.items()}
-        return {key: item for key, (item, _) in pairs.items()}, sum(count for _, count in pairs.values())
+        # ponytail: two key-shaped keys masked to one name keep only the last value.
+        masked, count = {}, 0
+        for key, item in value.items():
+            key, key_count = mask_secret_matches(key)
+            masked[key], item_count = mask_json_strings(item)
+            count += key_count + item_count
+        return masked, count
     return value, 0
+
+
+def json_strings(text: str) -> list[str] | None:
+    """Every key and string value of a JSON document, or None when text is not JSON.
+
+    Objects are read as pair tuples, so a duplicate key's earlier value is kept.
+    """
+    try:
+        document = json.loads(text, object_pairs_hook=tuple)
+    except (ValueError, RecursionError):
+        return None
+    strings: list[str] = []
+    stack = [document]
+    while stack:
+        value = stack.pop()
+        if isinstance(value, str):
+            strings.append(value)
+        elif isinstance(value, list):
+            stack.extend(value)
+        elif isinstance(value, tuple):
+            for key, item in value:
+                strings.append(key)
+                stack.append(item)
+    return strings
 
 
 def mask_secrets(paths: list[str]) -> int:
@@ -1290,7 +1319,10 @@ def validate_no_obvious_secrets() -> None:
         text = read_scannable_text(path)
         if text is None:
             continue
-        if SECRET_PATTERN.search(strip_allowed_secret_placeholders(text)):
+        # A JSON document is scanned per key and string value, so a match never
+        # spans JSON syntax between two fields; any other text is scanned whole.
+        strings = json_strings(text) or [text]
+        if any(SECRET_PATTERN.search(strip_allowed_secret_placeholders(s)) for s in strings):
             fail(f"possible committed secret in {path.relative_to(ROOT)}")
 
 

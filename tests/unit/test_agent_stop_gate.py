@@ -314,29 +314,35 @@ class AgentStopGateTest(unittest.TestCase):
         self.assertNotIn("task_id=T1", stderr)
         self.assertFalse((self.home / "history-called").exists())
 
-    @unittest.skipUnless(shutil.which("timeout"), "the hard read budget needs timeout(1)")
-    def test_slow_store_blocks_within_the_budget_with_gtimeout_only(self):
-        # A PATH with gtimeout (as Homebrew coreutils installs it) and no timeout.
-        bindir = self.home / "gbin"
+    def tool_path(self, gtimeout=False):
+        """A PATH without timeout(1): the tools the gate and the fakes use, plus an optional gtimeout."""
+        bindir = self.home / "bin"
         bindir.mkdir()
-        for tool in ("bash", "git", "jq", "awk", "sed", "grep", "cat", "sleep", "env"):
+        for tool in ("bash", "git", "jq", "awk", "sed", "grep", "cat", "sleep", "env", "mktemp", "rm"):
             (bindir / tool).symlink_to(shutil.which(tool))
-        (bindir / "gtimeout").symlink_to(shutil.which("timeout"))
+        if gtimeout:
+            # A wrapper, not a symlink: a multicall coreutils dispatches on its own name.
+            (bindir / "gtimeout").write_text(f'#!/bin/sh\nexec {shutil.which("timeout")} "$@"\n')
+            (bindir / "gtimeout").chmod(0o755)
+        return str(bindir)
+
+    def assert_slow_store_blocks_within_the_budget(self, env=None):
         self.history(row("orch", "worker-a001", "AGMSG-TASK v1 task_id=T5 repo=/r"))
         (self.home / "store-slow").write_text("")
         started = time.monotonic()
-        stderr = self.assert_gate(self.worker, 2, env={"PATH": str(bindir)})
+        stderr = self.assert_gate(self.worker, 2, env=env)
         self.assertLess(time.monotonic() - started, 4.5)
         self.assertIn("exceeded the hook budget", stderr)
 
-    @unittest.skipUnless(shutil.which("timeout"), "the hard read budget needs timeout(1)")
     def test_slow_store_blocks_within_the_budget(self):
-        self.history(row("orch", "worker-a001", "AGMSG-TASK v1 task_id=T5 repo=/r"))
-        (self.home / "store-slow").write_text("")
-        started = time.monotonic()
-        stderr = self.assert_gate(self.worker, 2)
-        self.assertLess(time.monotonic() - started, 4.5)
-        self.assertIn("exceeded the hook budget", stderr)
+        self.assert_slow_store_blocks_within_the_budget()
+
+    def test_slow_store_blocks_within_the_budget_without_timeout(self):
+        self.assert_slow_store_blocks_within_the_budget(env={"PATH": self.tool_path()})
+
+    @unittest.skipUnless(shutil.which("timeout"), "the gtimeout stand-in wraps timeout(1)")
+    def test_slow_store_blocks_within_the_budget_with_gtimeout_only(self):
+        self.assert_slow_store_blocks_within_the_budget(env={"PATH": self.tool_path(gtimeout=True)})
 
     def test_checkout_outside_any_seat_passes(self):
         self.assert_gate(self.home, 0)

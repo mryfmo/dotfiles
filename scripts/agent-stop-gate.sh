@@ -141,6 +141,35 @@ block() {
 # running out of budget blocks at once.
 deadline=$((SECONDS + 3))
 
+# Read one team's history into ${history} within ${remaining} seconds; exit
+# status 124 on expiry, as timeout(1) reports it. Without timeout or gtimeout
+# (stock macOS) a watchdog kills the reader; the reader writes to a file so a
+# grandchild it leaves behind cannot hold a pipe open.
+read_bounded() {
+    if [[ -n ${runner} ]]; then
+        history="$("${runner}" "${remaining}" bash "${BASH_SOURCE[0]}" --read-history "$1" 2> /dev/null)"
+        return
+    fi
+    local out child watchdog rc
+    out="$(mktemp)" || return 1
+    bash "${BASH_SOURCE[0]}" --read-history "$1" > "${out}" 2> /dev/null &
+    child=$!
+    (
+        sleep "${remaining}"
+        kill "${child}"
+    ) > /dev/null 2>&1 &
+    watchdog=$!
+    wait "${child}"
+    rc=$?
+    if kill "${watchdog}" 2> /dev/null; then
+        history="$(< "${out}")"
+    else
+        rc=124
+    fi
+    rm -f "${out}"
+    return "${rc}"
+}
+
 # The orchestrator is the unsuffixed identity at the main checkout; any
 # identity registered at a worker worktree (solo or -aNNN) is its worker.
 while IFS=$'\t' read -r -u 3 team name; do
@@ -151,13 +180,7 @@ while IFS=$'\t' read -r -u 3 team name; do
     # `timeout 0` would mean no limit, so a spent budget blocks before the read.
     remaining=$((deadline - SECONDS))
     if [[ ${remaining} -gt 0 ]]; then
-        if [[ -n ${runner} ]]; then
-            history="$("${runner}" "${remaining}" bash "${BASH_SOURCE[0]}" --read-history "${team}" 2> /dev/null)"
-        else
-            # ponytail: without timeout or gtimeout (stock macOS) the budget is
-            # only checked between teams; install coreutils for the hard cap.
-            history="$(read_history "${team}" 2> /dev/null)"
-        fi
+        read_bounded "${team}"
         rc=$?
     else
         rc=124

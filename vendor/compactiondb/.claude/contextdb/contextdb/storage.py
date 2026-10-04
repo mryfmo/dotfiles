@@ -1070,23 +1070,33 @@ class ContextStore:
     def enforce_size_cap(self, conn: sqlite3.Connection, project_id: str, max_bytes: int) -> int:
         """Delete this project's oldest events until the in-use pages fit max_bytes.
 
-        Durable memories are never deleted, so the cap can stay exceeded once no
-        events remain. Run only from the explicit prune command, never from a hook.
+        Unpromoted memory candidates go with their source events; durable
+        memories and promoted candidates are never deleted, so the cap can stay
+        exceeded once nothing else remains. Run only from the explicit prune
+        command, never from a hook.
         """
         removed = 0
+        unpromoted = "DELETE FROM memory_candidates WHERE project_id=? AND promoted_memory_uuid IS NULL"
         while self._page_bytes(conn)[0] > max_bytes:
-            ids = [
-                int(row[0])
-                for row in conn.execute(
-                    # ponytail: fixed batches can overshoot the cap by up to 99 events; fine at ledger scale.
-                    "SELECT id FROM events WHERE project_id=? ORDER BY id LIMIT 100",
-                    (project_id,),
+            rows = conn.execute(
+                # ponytail: fixed batches can overshoot the cap by up to 99 events; fine at ledger scale.
+                "SELECT id, event_uuid FROM events WHERE project_id=? ORDER BY id LIMIT 100",
+                (project_id,),
+            ).fetchall()
+            if not rows:
+                # Candidates whose source events an earlier prune already removed.
+                conn.execute(
+                    f"{unpromoted} AND source_event_uuid NOT IN (SELECT event_uuid FROM events WHERE project_id=?)",
+                    (project_id, project_id),
                 )
-            ]
-            if not ids:
                 break
-            self._delete_event_ids(conn, ids)
-            removed += len(ids)
+            uuids = [str(row[1]) for row in rows]
+            conn.execute(
+                f"{unpromoted} AND source_event_uuid IN ({','.join('?' for _ in uuids)})",
+                (project_id, *uuids),
+            )
+            self._delete_event_ids(conn, [int(row[0]) for row in rows])
+            removed += len(rows)
         return removed
 
     def vacuum_if_fragmented(self, conn: sqlite3.Connection, *, threshold_bytes: int, force: bool = False) -> bool:

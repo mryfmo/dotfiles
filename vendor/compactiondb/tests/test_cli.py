@@ -106,6 +106,9 @@ class CliTests(unittest.TestCase):
 
     def test_prune_enforces_the_size_cap_and_vacuums(self) -> None:
         self.p.event({"hook_event_name": "UserPromptSubmit", "session_id": "s1", "prompt": "[memory:decision] Keep it."})
+        # An unpromoted session_outcome candidate goes with its event; the promoted one stays.
+        self.p.event({"hook_event_name": "Stop", "session_id": "s1", "last_assistant_message": "The task completed."})
+        self.assertEqual(2, self.p.count("memory_candidates"))
         config = json.loads(self.p.paths.config_path.read_text(encoding="utf-8"))
         config["capture"]["max_db_bytes"] = 1
         self.p.paths.config_path.write_text(json.dumps(config), encoding="utf-8")
@@ -114,10 +117,17 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(0, code, err)
         result = json.loads(out)
-        self.assertEqual(3, result["size_cap_removed_events"])
+        self.assertEqual(4, result["size_cap_removed_events"])
         self.assertTrue(result["vacuumed"])
         self.assertEqual(0, self.p.count("events"))
         self.assertEqual(1, self.p.count("memories"))
+        conn = self.p.store.connect()
+        try:
+            rows = conn.execute("SELECT kind, promoted_memory_uuid FROM memory_candidates").fetchall()
+        finally:
+            conn.close()
+        self.assertEqual(["decision"], [row["kind"] for row in rows])
+        self.assertIsNotNone(rows[0]["promoted_memory_uuid"])
 
     def test_ingest_rejects_invalid_source(self) -> None:
         code, out, err = self.invoke(["ingest", "missing.json", "--ingested-from", "Codex!"])

@@ -32,6 +32,8 @@ WORKDIR /home/$USERNAME/.local/share/chezmoi
 # The pinned release that setup.sh bootstraps; `make docker` passes the
 # version rendered from assets.chezmoi-bootstrap in agent-config.yaml.
 ARG CHEZMOI_VERSION
+# make docker rebuilds the image when this label differs from setup.sh's pin.
+LABEL chezmoi.version=$CHEZMOI_VERSION
 RUN test -n "$CHEZMOI_VERSION" || { echo "build with --build-arg CHEZMOI_VERSION (make docker)" >&2; exit 1; } \
     && artifact="chezmoi_${CHEZMOI_VERSION}_linux_$(dpkg --print-architecture).tar.gz" \
     && base_url="https://github.com/twpayne/chezmoi/releases/download/v${CHEZMOI_VERSION}" \

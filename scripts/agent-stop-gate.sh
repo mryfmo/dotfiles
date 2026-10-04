@@ -30,8 +30,9 @@
 #   namespace and is either an empty regular file bound onto itself or a
 #   character device bound from /dev/null is a Claude Code sandbox
 #   placeholder, not a change, and is skipped. Mounts are read once from
-#   fields 4-6 of /proc/self/mountinfo and matched exactly, so no symlink is
-#   followed.
+#   fields 4-6 of /proc/self/mountinfo (a self-bind's root is a suffix of its
+#   mount point, as roots are relative to the source filesystem) and matched
+#   exactly, so no symlink is followed.
 # @option --read-history <team> Internal: print one team's history rows (the gate runs itself this way under timeout).
 # @option --mountinfo <file> Test only: read mount points from <file>. The Stop hook passes no arguments, so its inherited environment cannot redirect the table.
 # @exitcode 0 Nothing is pending, or the checkout is not an agmsg seat.
@@ -128,11 +129,18 @@ if [[ ${seat} == orchestrator && ${active} == false ]]; then
     # newline. No /proc (macOS) means no mounts, which is right: the macOS
     # sandbox creates no placeholders.
     # Only Claude's kind of mount counts, and only read-only (mountinfo field
-    # 6, not `-w`, which root always passes): an `S` self-bind (root, field 4,
-    # equal to the mount point) of an empty regular file, or an `N` bind of
-    # /dev/null over a character device. A bind of another file (say a user's
-    # own .env from elsewhere) has a different root and is reported.
-    mounts=$'\n'"$(awk '$6 ~ /^ro(,|$)/ { if ($4 == $5) print "S" $5; else if ($4 == "/null") print "N" $5 }' "${mountinfo}" 2> /dev/null)"$'\n'
+    # 6, not `-w`, which root always passes): an `S` self-bind of an empty
+    # regular file, or an `N` bind of /dev/null over a character device. The
+    # root (field 4) is relative to the source filesystem, so a self-bind is a
+    # mount point ending with its root (equal to it when the file lives on the
+    # root filesystem, a suffix when e.g. /home is its own). Root `/` (a
+    # whole-filesystem bind) never matches, as no mount point ends in `/`. A
+    # bind of another file (say a
+    # user's own .env from elsewhere) has a different root and is reported.
+    mounts=$'\n'"$(awk '$6 ~ /^ro(,|$)/ {
+        if ($4 == "/null") print "N" $5
+        if (length($4) <= length($5) && substr($5, length($5) - length($4) + 1) == $4) print "S" $5
+    }' "${mountinfo}" 2> /dev/null)"$'\n'
     placeholder() {
         local kind mount="${top}/$1"
         if [[ -c ${mount} ]]; then

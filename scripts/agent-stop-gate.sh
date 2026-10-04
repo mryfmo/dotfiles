@@ -32,6 +32,8 @@
 #   placeholder, not a change, and is skipped. Mounts are read once from
 #   fields 3-6 of /proc/self/mountinfo (a root is joined onto its source
 #   filesystem's mount point) and matched exactly, so no symlink is followed.
+#   Placeholders the sandbox leaves on the host as plain empty files are not
+#   mounts there; the repository's .gitignore hides them from `git status`.
 # @option --read-history <team> Internal: print one team's history rows (the gate runs itself this way under timeout).
 # @option --mountinfo <file> Test only: read mount points from <file>. The Stop hook passes no arguments, so its inherited environment cannot redirect the table.
 # @exitcode 0 Nothing is pending, or the checkout is not an agmsg seat.

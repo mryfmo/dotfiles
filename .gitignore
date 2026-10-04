@@ -28,3 +28,26 @@ __pycache__/
 !.claude/contextdb/spool/quarantine/.gitkeep
 .claude/contextdb/health/*
 !.claude/contextdb/health/.gitkeep
+
+# Claude Code sandbox placeholder targets: the sandbox bind-mounts /dev/null
+# over these paths and can leave them behind on the host as empty read-only
+# files at the repository root. Root-anchored; .claude/settings*.json stay visible.
+/.bash_profile
+/.bashrc
+/.claude/agents
+/.claude/commands
+/.claude/launch.json
+/.claude/loop.md
+/.claude/output-styles
+/.claude/routines
+/.claude/skills
+/.claude/workflows
+/.gitconfig
+/.gitmodules
+/.idea
+/.mcp.json
+/.profile
+/.ripgreprc
+/.vscode
+/.zprofile
+/.zshrc

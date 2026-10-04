@@ -29,7 +29,20 @@ RUN existing_group="$(getent group "$USER_GID" | cut -d: -f1)" \
 USER $USERNAME
 WORKDIR /home/$USERNAME/.local/share/chezmoi
 
-RUN sudo sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /usr/local/bin
+# The pinned release that setup.sh bootstraps; `make docker` passes the
+# version rendered from assets.chezmoi-bootstrap in agent-config.yaml.
+ARG CHEZMOI_VERSION
+# make docker rebuilds the image when this label differs from setup.sh's pin.
+LABEL chezmoi.version=$CHEZMOI_VERSION
+RUN test -n "$CHEZMOI_VERSION" || { echo "build with --build-arg CHEZMOI_VERSION (make docker)" >&2; exit 1; } \
+    && artifact="chezmoi_${CHEZMOI_VERSION}_linux_$(dpkg --print-architecture).tar.gz" \
+    && base_url="https://github.com/twpayne/chezmoi/releases/download/v${CHEZMOI_VERSION}" \
+    && cd /tmp \
+    && curl -fsSLO "${base_url}/${artifact}" \
+    && curl -fsSL "${base_url}/chezmoi_${CHEZMOI_VERSION}_checksums.txt" | grep "  ${artifact}$" | sha256sum --check --strict \
+    && tar -xzf "${artifact}" chezmoi \
+    && sudo install -m 0755 chezmoi /usr/local/bin/chezmoi \
+    && rm -f chezmoi "${artifact}"
 
 RUN mkdir -p ~/.local/share/fonts
 RUN mkdir -p /tmp

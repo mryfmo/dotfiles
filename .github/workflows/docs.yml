@@ -41,9 +41,18 @@ jobs:
         with:
           enable-cache: false
 
+      - name: Pin mise from install/common/mise.sh
+        run: |
+          # MISE_VERSION renders from assets.mise in agent-config.yaml; the
+          # variable stays outside MISE_*, which mise reads as its own settings.
+          pin="$(sed -n 's/^readonly MISE_VERSION="v\(.*\)"$/\1/p' install/common/mise.sh)"
+          test -n "${pin}"
+          echo "DOTFILES_MISE_VERSION=${pin}" >> "${GITHUB_ENV}"
+
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
         with:
+          version: ${{ env.DOTFILES_MISE_VERSION }}
           install: false
           cache: true
 

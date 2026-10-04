@@ -523,6 +523,59 @@ Wake and send:
 Health checks are read-only: `team.sh <team> --json`, `doctor.sh --project
 <p>`, `peek.sh <team>`, and `delivery.sh status <type> <project>`.
 
+### Codex orchestration without a pane
+
+After selecting the Codex orchestrator in the agent manifest and deploying its
+generated `~/.agents/model-profiles.env`, run from the main checkout root:
+
+```bash
+codex-orchestrate --max-turns 40 --timeout 1800 --team dotfiles "<operator task>"
+```
+
+The launcher requires the generated `HERDR_AGENTS_ORCHESTRATOR_KIND=codex` and
+takes its interactive Codex arguments from that same file. It temporarily
+exchanges the main checkout's Claude orchestrator registrations for
+`codex-<interactive-profile>-<project-suffix>`, preserving worker registrations.
+It restores the exchanged registrations on normal exit, failure, or INT/TERM.
+An existing matching Codex seat is reused and left registered. The exchange uses
+project/type-scoped agmsg resets; registrations in other projects or runtimes stay
+intact. Stop the current
+orchestrator before launching; do not run another Codex session in that checkout
+while this loop uses `exec resume --last`.
+
+The first turn receives `herdr-agents --directive` and the operator task. Workers
+reply through the pane-less convention:
+
+```bash
+bash ~/.agents/skills/agmsg/scripts/send.sh <team> <worker> <codex-orchestrator-name> --body-file <result-file>
+```
+
+The launcher checks the quiet inbox immediately, then every 15 seconds, and
+resumes on delivered text. It exits successfully when the last message contains
+`ORCHESTRATION-DONE`; reaching the turn limit exits 2, and an idle inbox timeout
+exits 124. The timeout bounds inbox waiting, not a running Codex turn. Prompts,
+final messages, and previous seat names are recorded in
+`.orchestration/validation/codex-orchestrate-<date>-<n>.md`, with the latest final
+message in the adjacent `.last.md`. Each run increments `<n>`; a directory lock
+prevents concurrent launcher runs. Before any reset, the launcher saves every exchanged team/name row in a private
+`~/.agents/skills/agmsg/run/codex-orchestrate.<random>/registrations.tsv`
+(`team`, `name`, `type`, `project` columns). Its `context.txt` records the repository,
+Codex seat, pre-existing Codex registration, and restoration outcome; the transcript
+links to this snapshot. These files remain after exit for recovery. A failed
+restoration also retains the lock. After an uncatchable termination or restoration
+failure, confirm the launcher has stopped, inspect the snapshot, reset only its new
+Codex registration with `AGMSG_RESOLVE_PROJECT=0 bash ~/.agents/skills/agmsg/scripts/reset.sh <repo> codex <name>`
+(skip this when `existing_codex` is nonempty), and re-join each TSV row with
+`AGMSG_RESOLVE_PROJECT=0 bash ~/.agents/skills/agmsg/scripts/join.sh <team> <name> <type> <project>`.
+Remove the stale repository lock only after restoring those registrations.
+
+`CODEX_ORCHESTRATE_DELIVERY=poll` is the default. T87 still needs to verify whether
+the trusted project Stop hook consumes messages under `codex exec`: the worker
+probe could not initialize Codex with its runtime home read-only. If that live
+probe confirms hook delivery, use `CODEX_ORCHESTRATE_DELIVERY=hook`; this skips
+inbox polling and resumes with an empty prompt after each unfinished turn,
+bounded by `--max-turns`. It does not change or bypass hook trust settings.
+
 ### Herdr and Ghostty agent workspace
 
 Ghostty starts at a normal zsh prompt, and `herdr` is the real Herdr CLI:

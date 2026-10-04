@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+# @file codex-orchestrate
+# @brief Run sequential Codex orchestrator turns with a reversible agmsg seat.
+# @description Run from the main repository root; restore previous seats on exit.
+# @arg $1 string Operator task after any options.
+# @option --max-turns N Maximum Codex invocations (default 40).
+# @option --timeout SECONDS Maximum idle inbox wait (default 1800).
+# @option --team T Select the team when more than one is registered.
+# @exitcode 2 Invalid configuration, identity, or turn limit.
+# @exitcode 124 Inbox wait timed out.
+set -euo pipefail
+umask 077
+max_turns=40 timeout_seconds=1800 team=""
+delivery="${CODEX_ORCHESTRATE_DELIVERY:-poll}"
+# @description Report a configuration error before changing a seat.
+die() {
+    printf 'codex-orchestrate: %s\n' "$*" >&2
+    exit 2
+}
+while [[ $# -gt 0 ]]; do
+    [[ $1 != --max-turns && $1 != --timeout && $1 != --team || $# -ge 2 ]] || die "missing value: $1"
+    case "$1" in
+    --max-turns)
+        max_turns="${2:-}"
+        shift 2
+        ;;
+    --timeout)
+        timeout_seconds="${2:-}"
+        shift 2
+        ;;
+    --team)
+        team="${2:-}"
+        shift 2
+        ;;
+    --)
+        shift
+        break
+        ;;
+    --*) die "unknown option: $1" ;;
+    *) break ;;
+    esac
+done
+[[ $# == 1 && -n $1 ]] || die 'usage: codex-orchestrate [--max-turns N] [--timeout SECONDS] [--team T] "task"'
+[[ $max_turns =~ ^[1-9][0-9]{0,8}$ && $timeout_seconds =~ ^[1-9][0-9]{0,8}$ ]] || die 'limits must be positive integers of at most 9 digits'
+[[ $delivery == poll || $delivery == hook ]] || die 'CODEX_ORCHESTRATE_DELIVERY must be poll or hook'
+repo="$(git rev-parse --show-toplevel)"
+[[ $(pwd -P) == "$repo" && $(git worktree list --porcelain | head -n 1) == "worktree $repo" ]] || die 'run from the main checkout root'
+HERDR_AGENTS_ORCHESTRATOR_KIND="" MODEL_PROFILE_INTERACTIVE=""
+[[ -r $HOME/.agents/model-profiles.env ]] || die 'deploy model-profiles.env for herdr-agents first'
+# shellcheck source=/dev/null
+source "$HOME/.agents/model-profiles.env"
+[[ $HERDR_AGENTS_ORCHESTRATOR_KIND == codex ]] || die 'select the codex orchestrator in the manifest used by herdr-agents'
+profile="$MODEL_PROFILE_INTERACTIVE"
+[[ $profile =~ ^[a-zA-Z][a-zA-Z0-9_]*$ ]] || die 'invalid interactive profile'
+key="MODEL_PROFILE_$(printf '%s' "$profile" | tr '[:lower:]' '[:upper:]')_CODEX_ARGS"
+[[ -n $profile && -n ${!key:-} ]] || die 'missing interactive Codex profile arguments'
+read -r -a model_args <<< "${!key}"
+scripts="$HOME/.agents/skills/agmsg/scripts"
+export AGMSG_RESOLVE_PROJECT=0
+previous="$(bash "$scripts/identities.sh" "$repo" claude-code)"
+workers="$(bash "$scripts/identities.sh" "$repo/${HERDR_AGENTS_WORKER_WORKTREE:?}" claude-code)"
+previous="$(awk -F '\t' -v workers="$workers" 'BEGIN {n=split(workers,rows,"\n"); for(i=1;i<=n;i++) {split(rows[i],parts,"\t");excluded[parts[2]]=1}} NF==2 && $2 !~ /-a[0-9][0-9][0-9]$/ && !($2 in excluded)' <<< "$previous")"
+existing="$(bash "$scripts/identities.sh" "$repo" codex)"
+seats="$(printf '%s\n%s\n' "$previous" "$existing" | awk -F '\t' 'NF==2 && $2 !~ /-a[0-9][0-9][0-9]$/' | sort -u)"
+[[ -n $team ]] || team="$(cut -f 1 <<< "$seats" | sort -u)"
+[[ -n $team && $team != *$'\n'* ]] || die 'select one registered team with --team'
+suffix="$(awk -F '\t' -v team="$team" '$1==team {n=split($2,a,"-");print a[n]}' <<< "$seats" | sort -u)"
+[[ -n $suffix && $suffix != *$'\n'* ]] || die 'ambiguous or missing project suffix; check herdr-agents registration'
+name="codex-$profile-$suffix"
+[[ -z $existing || $existing == "$team"$'\t'"$name" ]] || die 'another Codex seat exists at this checkout'
+mkdir -p .orchestration/validation "$scripts/../run"
+lock=.orchestration/validation/codex-orchestrate.lock
+mkdir "$lock" 2> /dev/null || die 'another launcher is active; inspect codex-orchestrate.lock'
+restores="$previous" joined=false snapshot=""
+# @description Restore only registrations exchanged by this invocation, on any exit.
+restore() {
+    local result=$? restore_rc=0 restore_team restore_name
+    trap - EXIT
+    if $joined; then bash "$scripts/reset.sh" "$repo" codex "$name" || restore_rc=1; fi
+    while IFS=$'\t' read -r restore_team restore_name; do
+        [[ -n $restore_team ]] || continue
+        bash "$scripts/join.sh" "$restore_team" "$restore_name" claude-code "$repo" || restore_rc=1
+    done <<< "$restores"
+    [[ -z $snapshot ]] || printf 'restore_exit=%s\n' "$restore_rc" >> "$snapshot/context.txt"
+    if ((restore_rc)); then exit 1; fi
+    rmdir "$lock"
+    exit "$result"
+}
+trap restore EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+snapshot="$(mktemp -d "$scripts/../run/codex-orchestrate.XXXXXX")"
+printf 'repo=%s\ncodex_team=%s\ncodex_name=%s\nexisting_codex=%s\n' "$repo" "$team" "$name" "$existing" > "$snapshot/context.txt"
+: > "$snapshot/registrations.tsv"
+while IFS=$'\t' read -r old_team old_name; do
+    [[ -n $old_team ]] || continue
+    printf '%s\t%s\tclaude-code\t%s\n' "$old_team" "$old_name" "$repo" >> "$snapshot/registrations.tsv"
+done <<< "$previous"
+prefix=".orchestration/validation/codex-orchestrate-$(date +%F)"
+run=1
+while [[ -e $prefix-$run.md || -e $prefix-$run.last.md ]]; do run=$((run + 1)); done
+out="$prefix-$run"
+printf '# Codex orchestration\n\nPrevious seats:\n%s\n\nActive: %s / %s\n' "$previous" "$team" "$name" > "$out.md"
+printf 'Snapshot: %s\n' "$snapshot" >> "$out.md"
+while IFS=$'\t' read -r old_team old_name; do
+    [[ -n $old_team ]] || continue
+    bash "$scripts/reset.sh" "$repo" claude-code "$old_name"
+done <<< "$previous"
+if [[ -z $existing ]]; then
+    joined=true
+    bash "$scripts/join.sh" "$team" "$name" codex "$repo"
+fi
+prompt="$(herdr-agents --directive)"$'\n'"$1"
+command_args=(exec -C "$repo")
+for ((turn = 1; turn <= max_turns; turn++)); do
+    printf '\n## Turn %s prompt\n\n%s\n' "$turn" "$prompt" >> "$out.md"
+    : > "$out.last.md"
+    turn_rc=0
+    codex "${model_args[@]}" "${command_args[@]}" -o "$out.last.md" -- "$prompt" < /dev/null || turn_rc=$?
+    printf '\n## Turn %s final\n\n' "$turn" >> "$out.md"
+    cat "$out.last.md" >> "$out.md"
+    ((turn_rc == 0)) || exit "$turn_rc"
+    if grep -q 'ORCHESTRATION-DONE' "$out.last.md"; then exit 0; fi
+    ((turn < max_turns)) || die 'max-turns reached without ORCHESTRATION-DONE'
+    command_args=(exec resume --last)
+    prompt=""
+    if [[ $delivery == hook ]]; then continue; fi
+    deadline=$((SECONDS + timeout_seconds))
+    while [[ -z $prompt ]]; do
+        remaining=$((deadline - SECONDS))
+        if ((remaining <= 0)); then
+            printf 'codex-orchestrate: inbox timeout\n' >&2
+            exit 124
+        fi
+        prompt="$(bash "$scripts/inbox.sh" "$team" "$name" --quiet)"
+        [[ -z $prompt ]] || break
+        sleep "$((remaining < 15 ? remaining : 15))"
+    done
+done

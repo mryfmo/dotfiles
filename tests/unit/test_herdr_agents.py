@@ -646,13 +646,13 @@ fi
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue(result.stdout.startswith("herdr-agents: not in a Herdr pane"), result.stdout)
 
-    def run_directive(self) -> subprocess.CompletedProcess[str]:
+    def run_directive(self, kind: str = "claude") -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env["HOME"] = str(self.home_dir)
         env["PATH"] = f"{os.pathsep}".join(("/usr/bin", "/bin"))  # no herdr anywhere on PATH
-        for key in ("HERDR_AGENTS_ORCHESTRATOR_KIND", "HERDR_ENV", "HERDR_PANE_ID", "HERDR_WORKSPACE_ID"):
+        for key in ("HERDR_ENV", "HERDR_PANE_ID", "HERDR_WORKSPACE_ID"):
             env.pop(key, None)
-        env["HERDR_AGENTS_ORCHESTRATOR_KIND"] = "codex"  # the directive serves a Codex orchestrator too
+        env["HERDR_AGENTS_ORCHESTRATOR_KIND"] = kind
         return subprocess.run(
             ["bash", str(SCRIPT), "--directive"],
             cwd=self.workdir,
@@ -680,6 +680,44 @@ fi
             lines[0],
         )
         self.assertTrue(all(not call.startswith("herdr") for call in self.calls_path.read_text().splitlines()))
+
+    def test_directive_looks_up_a_codex_orchestrator_identity(self) -> None:
+        self.write_worktree_seat()
+        identities = self.home_dir / ".agents/skills/agmsg/scripts/identities.sh"
+        identities.write_text(
+            "#!/usr/bin/env bash\n"
+            f"printf 'identities %s\\n' \"$*\" >> {self.calls_path}\n"
+            f"[[ $1 == {self.workdir.resolve()} && $2 == codex ]] && printf 'dotfiles\\tcodex-deep-dot\\n'\n"
+            "exit 0\n"
+        )
+
+        codex = self.run_directive("codex")
+        claude = self.run_directive("claude")
+
+        self.assertEqual(codex.returncode, 0, codex.stdout + codex.stderr)
+        self.assertEqual(len(codex.stdout.splitlines()), 1, codex.stdout)
+        self.assertIn("this session is the orchestrator seat codex-deep-dot for", codex.stdout)
+        self.assertEqual((claude.returncode, claude.stdout), (0, ""))  # no claude-code orchestrator identity
+
+    def test_codex_orchestrator_kind_leaves_a_worker_worktree_attach_quiet(self) -> None:
+        worktree = self.write_worktree_seat()
+        subprocess.run(
+            ["git", "-C", str(self.workdir), "worktree", "add", "-q", "--detach", str(worktree), "origin/main"],
+            check=True,
+            capture_output=True,
+        )
+        self.workdir = worktree
+
+        result = self.run_attach_helper(
+            in_herdr=True,
+            workspace_id="w-old",
+            pane_id="w-old:p2",
+            extra_env={"HERDR_AGENTS_ORCHESTRATOR_KIND": "codex"},
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stderr, "")
+        self.assertFalse(self.calls_path.exists() and self.calls_path.read_text())
 
     def test_attach_without_herdr_environment_names_the_seated_worker(self) -> None:
         worktree = self.write_worktree_seat(worktree_identities="dotfiles\tclaude-standard-dot-a005")

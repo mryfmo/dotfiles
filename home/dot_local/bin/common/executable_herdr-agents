@@ -115,9 +115,11 @@ line follows, as it follows seat_claim= inside the orchestrator's Herdr pane.
 Full, attach and restart-worker modes seat a Claude orchestrator, so they exit 2
 before touching Herdr when HERDR_AGENTS_ORCHESTRATOR_KIND (default
 orchestrator_kind from ~/.agents/model-profiles.env, then claude) is codex; the
-other modes work under either kind. Directive mode prints the
+other modes work under either kind, and a claude worker's own attach in its
+linked worktree still exits quietly. Directive mode prints the
 agmsg-orchestration directive line for the current directory when it is a
-regime repository, and nothing otherwise; it needs no Herdr server.
+regime repository (the orchestrator identity is looked up as the kind's agmsg
+type, claude-code or codex), and nothing otherwise; it needs no Herdr server.
 Restart-worker mode exits the worker agent in the existing pair's worker pane
 and starts it again in the same pane with the current worker_kind and
 worker_profile launch arguments; it never creates panes or workspaces.
@@ -555,6 +557,16 @@ function is_main_checkout() {
         [[ ${git_dir} == "${common_dir}" ]]
 }
 
+# @description Succeed when DIR is a linked git worktree (a worker seat), not a main checkout.
+# @arg $1 dir Directory to check.
+function is_linked_worktree() {
+    local git_dir common_dir
+
+    git_dir="$(git -C "$1" rev-parse --path-format=absolute --git-dir 2> /dev/null)" &&
+        common_dir="$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2> /dev/null)" &&
+        [[ ${git_dir} != "${common_dir}" ]]
+}
+
 # @description Print the pid of the nearest `claude` ancestor of this shell.
 #   AGMSG_AGENT_PID overrides the walk as in upstream agmsg_agent_pid: a numeric
 #   value is used as is, and a set but empty value skips the walk.
@@ -690,14 +702,15 @@ function claim_orchestrator_seat() {
 #   the seat claim does instead of depending on a rule being read. Prints
 #   nothing anywhere else.
 # @arg $1 workdir Absolute repository path.
+# @arg $2 type The orchestrator's agmsg identity type (default claude-code; codex for a Codex orchestrator).
 function print_regime_directive() {
-    local workdir="$1"
+    local workdir="$1" type="${2:-claude-code}"
     local identities="${HOME}/.agents/skills/agmsg/scripts/identities.sh"
     local seat identity
 
     seat="$(resolve_worker_worktree 2> /dev/null)" || seat=""
     [[ -n ${seat} && -x ${identities} ]] && is_main_checkout "${workdir}" || return 0
-    identity="$(AGMSG_RESOLVE_PROJECT=0 "${identities}" "${workdir}" claude-code 2> /dev/null |
+    identity="$(AGMSG_RESOLVE_PROJECT=0 "${identities}" "${workdir}" "${type}" 2> /dev/null |
         awk -F '\t' '$2 !~ /-a[0-9][0-9][0-9]$/ { print $2 }' | sort -u)" || identity=""
     [[ -n ${identity} && ${identity} != *$'\n'* ]] || return 0
     printf 'agmsg-orchestration: this session is the orchestrator seat %s for %s (worker seat %s). Before any other action, invoke the agmsg-orchestration skill. Delegate every repository-mutating change, make upgrade pin diffs included, to the seated worker as an AGMSG-TASK; when no worker is seated, seat one first (herdr-agents --restart-worker in the pair, herdr-agents --add-worker %s otherwise): no worker is never an implicit opt-out. Before acting directly under an exemption, declare which one in one line. Never push to main yourself: main accepts only pull requests (GitHub ruleset), so every change, the .orchestration boundary commit included, travels as a PR merged with gh pr merge --squash.\n' \
@@ -1915,17 +1928,24 @@ if [[ ${1:-} == "--directive" ]]; then
         usage >&2
         exit 2
     fi
-    print_regime_directive "$(pwd -P)"
+    orchestrator_kind="$(resolve_orchestrator_kind)" || exit 2
+    if [[ ${orchestrator_kind} == codex ]]; then
+        print_regime_directive "$(pwd -P)" codex
+    else
+        print_regime_directive "$(pwd -P)"
+    fi
     exit 0
 fi
 
 # The Claude pair (full mode, --attach, --restart-worker) seats a Claude
 # orchestrator, so it refuses before touching Herdr when the manifest names Codex.
+# A Claude worker's own SessionStart --attach runs in its linked worktree and
+# keeps its quiet worker-pane exit below.
 case "${1:-}" in
 --bootstrap-agmsg | --add-worker | --remove-worker | --audit) ;;
 *)
     orchestrator_kind="$(resolve_orchestrator_kind)" || exit 2
-    if [[ ${orchestrator_kind} == codex ]]; then
+    if [[ ${orchestrator_kind} == codex ]] && ! { [[ ${1:-} == --attach ]] && is_linked_worktree "$(pwd -P)"; }; then
         printf 'herdr-agents: orchestrator_kind=codex: use codex-orchestrate\n' >&2
         exit 2
     fi

@@ -675,8 +675,9 @@ printf 'herdr %s\\n' "$*" >> {self.calls_path}
         self.assertEqual(
             result.stdout,
             "herdr-agents: not in a Herdr pane, so the agent pair is not started; start the worker on demand with "
-            '"herdr-agents --add-worker <worktree> [DIR]" and run the auditor headless with '
-            '"codex --profile audit review --commit <sha>"; no worker is seated at the manifest worker_worktree.\n',
+            '"herdr-agents --add-worker <worktree> [DIR]" and run the auditor headless as the agmsg-orchestration '
+            'SKILL task-level audit bullet shows ("codex <audit profile args> exec --sandbox read-only -C <repo> '
+            '-o <out>.last.md <prompt>"); no worker is seated at the manifest worker_worktree.\n',
         )
         self.assertFalse(self.calls_path.exists())
 

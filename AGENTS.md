@@ -48,11 +48,11 @@
 - Agent evidence must contain at least one resolved record. For a finding-free review, add and resolve one review-scope approval record.
 - When the crit CLI or its data is unavailable, save the independent agent review in that same JSON shape (hand-written records are acceptable), mark each record `resolved: true` after addressing it, and reference it from the receipt exactly as crit-exported evidence; the guard validates shape, not provenance.
 - This local evidence is process evidence, not reviewer authentication. Human `CRIT_REVIEWED=1` receipts remain supported.
-- Before merging a pull request, optionally request `@coderabbitai full review` on the final head (when a CodeRabbit review exists it is swept and dispositioned like any other item; the gate does not require a bot review), run `scripts/pr-feedback.py <pr> --json .orchestration/validation/<task>-pr-feedback.json`, give every item a `fixed:<commit>` or `not-applicable:<reason>` disposition, and pass the file with `BASE=origin/main PR_FEEDBACK_EVIDENCE=<json> make require-crit-review` (see `home/dot_config/claude/rules/pr-integration.md`).
+- Before merging a pull request, follow the integration order in the agmsg-orchestration SKILL's Orchestrator Playbook step 10 and `home/dot_config/claude/rules/pr-integration.md`: the `scripts/pr-feedback.py` sweep, the task-level audit, the acceptance record, then the gate with `PR_FEEDBACK_EVIDENCE` and `AUDIT_EVIDENCE` (`AUDIT_DISPOSITIONS` for an `incorrect` verdict).
 
 ## Audit
 
-Standing review rules for the auditor (`codex --profile audit review --commit <sha>`, read-only sandbox):
+Standing review rules for the auditor (the task-level audit of a final head, `herdr-agents --audit <head-sha> --task <id>` or the headless form in the agmsg-orchestration SKILL's task-level audit bullet; read-only sandbox):
 
 - Audit only the named changeset from a clean tree. Do not edit code, approve, merge, or expand scope beyond the changeset.
 - Cover:

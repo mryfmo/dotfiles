@@ -1130,7 +1130,7 @@ function print_plain_start_summary() {
     else
         seated="no worker is seated at ${worker_worktree:-the manifest worker_worktree}"
     fi
-    printf 'herdr-agents: not in a Herdr pane, so the agent pair is not started; start the worker on demand with "herdr-agents --add-worker %s [DIR]" and run the auditor headless with "codex --profile audit review --commit <sha>"; %s.\n' \
+    printf 'herdr-agents: not in a Herdr pane, so the agent pair is not started; start the worker on demand with "herdr-agents --add-worker %s [DIR]" and run the auditor headless as the agmsg-orchestration SKILL task-level audit bullet shows ("codex <audit profile args> exec --sandbox read-only -C <repo> -o <out>.last.md <prompt>"); %s.\n' \
         "${worker_worktree:-<worktree>}" "${seated}"
     print_regime_directive "${workdir}"
 }

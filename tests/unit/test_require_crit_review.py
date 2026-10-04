@@ -899,6 +899,144 @@ class ReviewGuardTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("CRIT_REVIEW=off", result.stdout)
 
+    def audit_guard(
+        self,
+        audit_text: str | None,
+        *,
+        last_text: str | None = None,
+        sha: str | None = None,
+        audit_path: str | None = None,
+        dispositions: str | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        """Run --base on a reviewed lifecycle change whose feedback and review evidence pass."""
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        self.commit_on_branch("scripts/update-agent-assets.sh")
+        feedback = self.write_feedback([])
+        source = ".agents/worklog/review/crit-comments.json"
+        self.write_review_file(
+            source, json.dumps([{"id": "c1", "body": "approved", "scope": "review", "resolved": True}])
+        )
+        receipt = self.write_review_file(
+            ".agents/worklog/review/receipt.md",
+            f"review_surface: crit-data\nreviewer: claude-code\nreview_source: {source}\nreview_outcome: approved\n",
+        )
+        env = {
+            "PR_FEEDBACK_EVIDENCE": feedback,
+            "AGENT_REVIEWED": "1",
+            "REVIEW_EVIDENCE": str(receipt),
+            "AUDIT_EVIDENCE": "",
+            "AUDIT_DISPOSITIONS": "",
+        }
+        if audit_text is not None:
+            audit = audit_path or f".orchestration/validation/t1-audit-{sha or self.head_commit()[:7]}.md"
+            self.write_review_file(audit, audit_text)
+            if last_text is not None:
+                self.write_review_file(f"{audit}.last.md", last_text)
+            env["AUDIT_EVIDENCE"] = audit
+        if dispositions is not None:
+            env["AUDIT_DISPOSITIONS"] = ".orchestration/acceptance/t1.md"
+            self.write_review_file(env["AUDIT_DISPOSITIONS"], dispositions)
+        return self.guard_base(env)
+
+    def test_base_requires_audit_evidence_for_a_reviewed_change(self) -> None:
+        result = self.audit_guard(None)
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("AUDIT_EVIDENCE must point to the task-level audit of HEAD", result.stdout)
+        self.assertIn("agent lifecycle path changed: scripts/update-agent-assets.sh", result.stdout)
+
+    def test_base_accepts_a_correct_audit_of_head(self) -> None:
+        result = self.audit_guard("[P3] high spec a:1 nit\nVerdict: correct\n")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("Audit evidence accepted: .orchestration/validation/t1-audit-", result.stdout)
+        self.assertIn("Review requirement satisfied by AGENT_REVIEWED=1", result.stdout)
+
+    def test_audit_must_name_head_and_live_under_validation(self) -> None:
+        for label, kwargs, message in (
+            ("wrong sha", {"sha": "0000000"}, "audits 0000000, not HEAD"),
+            (
+                "outside validation",
+                {"audit_path": "docs/t1-audit-abcdef0.md"},
+                "must live under .orchestration/validation/",
+            ),
+            (
+                "bad name",
+                {"audit_path": ".orchestration/validation/t1-review-abcdef0.md"},
+                "must be named <id>-audit-<sha7>.md",
+            ),
+        ):
+            with self.subTest(label):
+                self.tearDown()
+                self.setUp()
+                result = self.audit_guard("Verdict: correct\n", **kwargs)
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn(message, result.stdout)
+
+    def test_audit_verdict_prefers_the_last_message_file(self) -> None:
+        blocked = self.audit_guard("transcript\nVerdict: correct\n", last_text="cannot assess\nVerdict: blocked\n")
+        self.assertEqual(blocked.returncode, 1, blocked.stdout)
+        self.assertIn("verdict is blocked", blocked.stdout)
+
+        self.tearDown()
+        self.setUp()
+        correct = self.audit_guard("transcript tail without a verdict\n", last_text="Verdict: correct\n")
+        self.assertEqual(correct.returncode, 0, correct.stdout)
+
+        self.tearDown()
+        self.setUp()
+        empty_last = self.audit_guard("Verdict: correct\n", last_text="\n")
+        self.assertEqual(empty_last.returncode, 0, empty_last.stdout)
+
+    def test_blocked_or_missing_audit_verdict_fails(self) -> None:
+        for text, message in (
+            ("Verdict: blocked\n", "verdict is blocked"),
+            ("no verdict here\n", "verdict is missing"),
+        ):
+            with self.subTest(message):
+                self.tearDown()
+                self.setUp()
+                result = self.audit_guard(text)
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn(message, result.stdout)
+
+    def test_incorrect_audit_needs_not_applicable_dispositions(self) -> None:
+        audit = "[P2] high impl a:1 one\n  [P3] low impl b:2 two\nVerdict: incorrect\n"
+        reason = "not-applicable:the flagged path is generated output outside this task"
+        for label, dispositions, message in (
+            ("no dispositions", None, "AUDIT_DISPOSITIONS must name the acceptance record"),
+            ("fixed commit", f"audit-finding: one fixed:{'a' * 7}\naudit-finding: two {reason}\n", "a fix moves HEAD"),
+            ("short reason", f"audit-finding: one not-applicable:nope\naudit-finding: two {reason}\n", "at least 20"),
+            ("one missing", f"audit-finding: one {reason}\n", "dispositions 1 of 2 audit finding(s)"),
+            ("accepted", f"# acceptance\naudit-finding: one {reason}\naudit-finding: two {reason}\n", None),
+        ):
+            with self.subTest(label):
+                self.tearDown()
+                self.setUp()
+                result = self.audit_guard(audit, dispositions=dispositions)
+                if message is None:
+                    self.assertEqual(result.returncode, 0, result.stdout)
+                    self.assertIn("Audit evidence accepted", result.stdout)
+                else:
+                    self.assertEqual(result.returncode, 1, result.stdout)
+                    self.assertIn(message, result.stdout)
+
+    def test_incorrect_audit_without_findings_fails(self) -> None:
+        result = self.audit_guard(
+            "Verdict: incorrect\n", dispositions="audit-finding: x not-applicable:nothing to see here at all\n"
+        )
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("lists no [P0-P3] finding", result.stdout)
+
+    def test_orchestration_only_pr_needs_no_audit(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        self.commit_on_branch(".orchestration/reports/t1.md")
+        feedback = self.write_feedback([])
+
+        result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback, "AUDIT_EVIDENCE": ""})
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("Review not required", result.stdout)
+        self.assertNotIn("AUDIT_EVIDENCE", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

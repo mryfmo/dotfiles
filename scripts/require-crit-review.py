@@ -19,8 +19,15 @@ NATIVE_REVIEWED_ENV = "AGENT_REVIEWED"
 EVIDENCE_ENV = "REVIEW_EVIDENCE"
 DISABLE_ENV = "CRIT_REVIEW"
 PR_FEEDBACK_ENV = "PR_FEEDBACK_EVIDENCE"
+AUDIT_ENV = "AUDIT_EVIDENCE"
+AUDIT_DISPOSITIONS_ENV = "AUDIT_DISPOSITIONS"
 PR_FEEDBACK_DISPOSITION = re.compile(r"(?:fixed:(?P<commit>[0-9a-f]{7,40})|not-applicable:(?P<reason>.*\S.*))", re.S)
 FAILURE_REASON_MIN_CHARS = 20
+# herdr-agents --audit names and concludes the task-level audit this way.
+AUDIT_NAME = re.compile(r"(?P<task>.+)-audit-(?P<sha>[0-9a-f]{7,40})\.md")
+AUDIT_VERDICT = re.compile(r"\s*Verdict: (correct|incorrect|blocked)\s*")
+AUDIT_FINDING = re.compile(r"^\s*\[P[0-3]\]", re.M)
+AUDIT_FINDING_DISPOSITION_PREFIX = "audit-finding:"
 # Levels whose not-applicable disposition needs a concrete reason: failures and
 # runs that did not finish, so a work-in-progress run cannot be waved through.
 STRICT_REASON_LEVELS = {
@@ -547,6 +554,95 @@ def collected_feedback_errors(root: Path, evidence: dict, head: str, base: str) 
     return []
 
 
+def orchestration_path_error(root: Path, path: Path, env: str, directory: str) -> str | None:
+    """Apply feedback_path_error's rule (repo-local, also after resolving links) to another .orchestration dir."""
+    try:
+        relatives = (feedback_relative_path(root, path), path.resolve().relative_to(root.resolve()))
+    except ValueError:
+        return f"{env} must point to a repo-local file under .orchestration/{directory}/"
+    if any(relative.parts[:2] != (".orchestration", directory) for relative in relatives):
+        return f"{env} must live under .orchestration/{directory}/"
+    return None
+
+
+def audit_errors(root: Path, head: str) -> list[str]:
+    """Require the task-level audit of HEAD: `correct`, or `incorrect` with every finding not-applicable."""
+    evidence = os.environ.get(AUDIT_ENV, "").strip()
+    if not evidence:
+        return [
+            f"{AUDIT_ENV} must point to the task-level audit of HEAD, .orchestration/validation/<id>-audit-<sha7>.md (herdr-agents --audit)"
+        ]
+    path = Path(evidence)
+    if not path.is_absolute():
+        path = root / path
+    path_error = orchestration_path_error(root, path, AUDIT_ENV, "validation")
+    if path_error:
+        return [path_error]
+    for name in (path.name, path.resolve().name):
+        match = AUDIT_NAME.fullmatch(name)
+        if not match:
+            return [f"{AUDIT_ENV} must be named <id>-audit-<sha7>.md, not {name}"]
+        if not head.startswith(match.group("sha")):
+            return [f"{AUDIT_ENV} audits {match.group('sha')}, not HEAD {head}; audit the final head"]
+    if not path.is_file():
+        return [f"{AUDIT_ENV} file does not exist: {path}"]
+    # Same verdict source as herdr-agents: the codex last-message file when it has content.
+    last = path.with_name(f"{path.name}.last.md")
+    source = last if last.is_file() and last.read_text().strip() else path
+    text = source.read_text()
+    lines = [line for line in text.splitlines() if line.strip()]
+    match = AUDIT_VERDICT.fullmatch(lines[-1]) if lines else None
+    verdict = match.group(1) if match else "missing"
+    if verdict == "correct":
+        return []
+    if verdict != "incorrect":
+        return [f"{AUDIT_ENV} verdict is {verdict} in {source}; a blocked or missing audit cannot be accepted"]
+    findings = len(AUDIT_FINDING.findall(text))
+    if not findings:
+        return [f"{AUDIT_ENV} verdict is incorrect but {source} lists no [P0-P3] finding to disposition"]
+    return audit_disposition_errors(root, findings)
+
+
+def audit_disposition_errors(root: Path, findings: int) -> list[str]:
+    value = os.environ.get(AUDIT_DISPOSITIONS_ENV, "").strip()
+    if not value:
+        return [
+            f"{AUDIT_ENV} verdict is incorrect: {AUDIT_DISPOSITIONS_ENV} must name the acceptance record that dispositions its {findings} finding(s)"
+        ]
+    path = Path(value)
+    if not path.is_absolute():
+        path = root / path
+    path_error = orchestration_path_error(root, path, AUDIT_DISPOSITIONS_ENV, "acceptance")
+    if path_error:
+        return [path_error]
+    if not path.is_file():
+        return [f"{AUDIT_DISPOSITIONS_ENV} file does not exist: {path}"]
+    errors: list[str] = []
+    accepted = 0
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line.startswith(AUDIT_FINDING_DISPOSITION_PREFIX):
+            continue
+        match = PR_FEEDBACK_DISPOSITION.search(line)
+        if match is None:
+            errors.append(f"{AUDIT_DISPOSITIONS_ENV} line needs `not-applicable:<reason>`: {line}")
+        elif match.group("commit"):
+            errors.append(
+                f"{AUDIT_DISPOSITIONS_ENV} line cites fixed:{match.group('commit')}; a fix moves HEAD, so audit the new head instead: {line}"
+            )
+        elif len(match.group("reason").strip()) < FAILURE_REASON_MIN_CHARS:
+            errors.append(
+                f"{AUDIT_DISPOSITIONS_ENV} not-applicable needs a reason of at least {FAILURE_REASON_MIN_CHARS} characters: {line}"
+            )
+        else:
+            accepted += 1
+    if accepted < findings:
+        errors.append(
+            f"{AUDIT_DISPOSITIONS_ENV} dispositions {accepted} of {findings} audit finding(s); add one `{AUDIT_FINDING_DISPOSITION_PREFIX} … not-applicable:<reason>` line per finding"
+        )
+    return errors
+
+
 def evidence_field(text: str, field: str) -> str | None:
     prefix = f"{field}:"
     for line in text.splitlines():
@@ -577,7 +673,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--base",
-        help="also review committed changes in <base>...HEAD and require PR_FEEDBACK_EVIDENCE (PR integration)",
+        help="also review committed changes in <base>...HEAD and require PR_FEEDBACK_EVIDENCE, plus AUDIT_EVIDENCE when review is required (PR integration)",
     )
     args = parser.parse_args()
     if os.environ.get(DISABLE_ENV) == "off":
@@ -611,6 +707,15 @@ def main() -> None:
     if not reasons:
         print("Review not required: no meaningful review trigger found.")
         return
+
+    if head is not None:
+        errors = audit_errors(root, head)
+        if errors:
+            print("Task-level audit evidence is required for PR integration of this change:")
+            for line in (*reasons, *errors):
+                print(f"- {line}")
+            raise SystemExit(1)
+        print(f"Audit evidence accepted: {os.environ[AUDIT_ENV].strip()}")
 
     marker = review_marker()
     if marker:

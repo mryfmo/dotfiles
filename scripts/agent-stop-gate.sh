@@ -11,10 +11,10 @@
 #   `AGMSG-RESULT` addressed to the seat's unsuffixed claude-code identity that
 #   has no later `AGMSG-ACCEPTANCE` or `AGMSG-TASK` re-dispatch from it.
 #
-#   Worker seat: blocks when the latest `AGMSG-TASK` (or `AGMSG-ACCEPTANCE
-#   status=revise`) addressed to a claude-code identity registered at the
-#   worktree is newer than its latest `AGMSG-RESULT` or `AGMSG-PONG
-#   status=blocked`.
+#   Worker seat: blocks on every task_id whose latest `AGMSG-TASK` (or
+#   `AGMSG-ACCEPTANCE status=revise`) addressed to a claude-code identity
+#   registered at the worktree has no later `AGMSG-RESULT` or `AGMSG-PONG
+#   status=blocked` for that task_id from it.
 #
 #   Every team the identity belongs to is checked. Messages come from the
 #   whole team history through agmsg's own storage facade, the one
@@ -62,9 +62,14 @@ reasons=()
 if [[ ${seat} == orchestrator && ${active} == false ]]; then
     exempt() { [[ $1 == .orchestration/* || $1 == .agents/worklog/* ]]; }
     # -z rows are `XY <path>`; a rename or copy row is followed by its source
-    # path, and it is exempt only when both endpoints are. GIT_OPTIONAL_LOCKS=0
-    # keeps `git status` from refreshing the index.
+    # path, and it is exempt only when both endpoints are. A trailing `rc=<n>`
+    # record carries git's exit status (a real row has a space at offset 2).
+    # GIT_OPTIONAL_LOCKS=0 keeps `git status` from refreshing the index.
     while IFS= read -r -d '' entry; do
+        if [[ ${entry} == rc=* ]]; then
+            [[ ${entry} == rc=0 ]] || reasons+=("git status failed in ${top} (${entry}); repair the checkout, the dirty-tree check could not run")
+            continue
+        fi
         xy="${entry:0:2}"
         path="${entry:3}"
         from=""
@@ -73,7 +78,10 @@ if [[ ${seat} == orchestrator && ${active} == false ]]; then
             continue
         fi
         reasons+=("uncommitted change outside .orchestration: ${path}${from:+ (from ${from})} (delegate it to a worker task or revert it)")
-    done < <(GIT_OPTIONAL_LOCKS=0 git -C "${top}" status --porcelain -z --untracked-files=all 2> /dev/null)
+    done < <(
+        GIT_OPTIONAL_LOCKS=0 git -C "${top}" status --porcelain -z --untracked-files=all 2> /dev/null
+        printf 'rc=%s\0' "$?"
+    )
 fi
 
 # Team-wide history as `from<TAB>to<TAB>body` rows, chronological. This is the
@@ -123,15 +131,12 @@ while IFS=$'\t' read -r -u 3 team name; do
                 if ($2 == me && kind == "AGMSG-RESULT") pending[id] = 1
                 else if ($1 == me && (kind == "AGMSG-ACCEPTANCE" || kind == "AGMSG-TASK")) delete pending[id]
             } else if ($2 == me && (kind == "AGMSG-TASK" || (kind == "AGMSG-ACCEPTANCE" && status == "revise"))) {
-                open = id
+                pending[id] = 1
             } else if ($1 == me && (kind == "AGMSG-RESULT" || (kind == "AGMSG-PONG" && status == "blocked"))) {
-                open = ""
+                delete pending[id]
             }
         }
-        END {
-            if (seat == "orchestrator") { for (id in pending) print id }
-            else if (open != "") print open
-        }' <<< "${history}")
+        END { for (id in pending) print id }' <<< "${history}")
 done 3<<< "${identities}"
 
 if [[ ${#reasons[@]} -gt 0 ]]; then

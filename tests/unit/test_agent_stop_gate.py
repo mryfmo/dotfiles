@@ -66,19 +66,19 @@ class AgentStopGateTest(unittest.TestCase):
     def history(self, *rows, team="dotfiles"):
         (self.home / f"history-{team}.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
 
-    def run_gate(self, cwd, active=False):
+    def run_gate(self, cwd, active=False, env=None):
         return subprocess.run(
             ["bash", str(SCRIPT)],
             input=json.dumps({"stop_hook_active": active, "cwd": str(cwd), "session_id": "s"}),
             capture_output=True,
             check=False,
             text=True,
-            env={**os.environ, "HOME": str(self.home)},
+            env={**os.environ, "HOME": str(self.home), **(env or {})},
             timeout=10,
         )
 
-    def assert_gate(self, cwd, code, active=False):
-        result = self.run_gate(cwd, active)
+    def assert_gate(self, cwd, code, active=False, env=None):
+        result = self.run_gate(cwd, active, env)
         self.assertEqual(result.returncode, code, result.stderr)
         return result.stderr
 
@@ -100,6 +100,12 @@ class AgentStopGateTest(unittest.TestCase):
         self.assertIn("moved.md (from .orchestration/note.md)", self.assert_gate(self.main, 2))
         self.git("mv", "moved.md", ".orchestration/kept.md")
         self.assert_gate(self.main, 0)
+
+    def test_failing_git_status_blocks(self):
+        bad_index = self.home / "not-an-index"
+        bad_index.write_text("garbage")
+        stderr = self.assert_gate(self.main, 2, env={"GIT_INDEX_FILE": str(bad_index)})
+        self.assertIn("git status failed", stderr)
 
     def test_result_without_acceptance_blocks(self):
         self.history(
@@ -130,6 +136,16 @@ class AgentStopGateTest(unittest.TestCase):
         stderr = self.assert_gate(self.worker, 2)
         self.assertIn("task_id=T2", stderr)
         self.assertNotIn("task_id=T1", stderr)
+
+    def test_worker_tracks_each_task_id(self):
+        self.history(
+            row("orch", "worker-a001", "AGMSG-TASK v1 task_id=T1 repo=/r"),
+            row("orch", "worker-a001", "AGMSG-TASK v1 task_id=T2 repo=/r"),
+            row("worker-a001", "orch", "AGMSG-RESULT v1 task_id=T2 status=ready_for_review"),
+        )
+        stderr = self.assert_gate(self.worker, 2)
+        self.assertIn("task_id=T1 ", stderr)
+        self.assertNotIn("task_id=T2 ", stderr)
 
     def test_worker_after_result_passes(self):
         self.history(

@@ -1,0 +1,231 @@
+{
+  "repo": "mryfmo/dotfiles",
+  "pr": 258,
+  "head_sha": "391d2b4c39f68dc34f4fe131c6fda95b82101d56",
+  "base_ref": "main",
+  "base_sha": "67451fc66999edded926e92abe4099d3ce21bf87",
+  "generated_at": "2026-10-04T16:50:58+00:00",
+  "checks": [
+    {
+      "name": "test (ubuntu-26.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37217686306/job/111481475921"
+    },
+    {
+      "name": "test (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37217686306/job/111481475798"
+    },
+    {
+      "name": "test (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37217686306/job/111481475754"
+    },
+    {
+      "name": "test (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37217686306/job/111481475739"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37217686375/job/111481444147"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37217686375/job/111481443867"
+    },
+    {
+      "name": "public-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37217686375/job/111481443863"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37217686375/job/111481443858"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37217686375/job/111481443851"
+    },
+    {
+      "name": "private-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37217686375/job/111481443766"
+    },
+    {
+      "name": "changes",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37217686306/job/111481443465"
+    },
+    {
+      "name": "validate",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37217686308/job/111481443365"
+    }
+  ],
+  "items": [
+    {
+      "source": "issue_comment",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary>⚙️ Run configuration</summary>\n> \n> - **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> - **Review profile**: CHILL\n> - **Plan**: Advanced\n> - **Run ID**: `06e77e03-e454-4147-a3d4-c1a9c7a63fc2`\n> \n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autopilot</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n---\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=258)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary>❤️ Share</summary>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/258#issuecomment-5981116414",
+      "disposition": "not-applicable:CodeRabbit summary comment (automatic reviews disabled); no finding"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `8ffa554738`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/258#pullrequestreview-5406686942",
+      "commit": "8ffa554738c6f8b524f33787332a31337e935122",
+      "disposition": "not-applicable:Codex review container; its inline finding is dispositioned on the review_comment item"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/258#pullrequestreview-5406761609",
+      "commit": "8ffa554738c6f8b524f33787332a31337e935122",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition reply; no finding"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `5b6b0d9f89`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/258#pullrequestreview-5407013778",
+      "commit": "5b6b0d9f89049eff0efbdc4699c425f711e58557",
+      "disposition": "not-applicable:Codex review container; its inline finding is dispositioned on the review_comment item"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/258#pullrequestreview-5407053604",
+      "commit": "5b6b0d9f89049eff0efbdc4699c425f711e58557",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition reply; no finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_agents/skills/agmsg-orchestration/SKILL.md",
+      "line": 170,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Retain a fallback for linked-worktree Git operations**\n\nFor a Claude worker in the normal `.claude/worktrees/...` layout, `git fetch` writes fetched objects and remote refs in the shared Git common directory, outside the worktree. `executable_herdr-agents` grants those metadata roots only to Codex workers, while the managed Claude sandbox does not allow the common directory. This new instruction therefore makes a required fetch fail in the sandbox and then requires a blocked PONG because only `gh` may run outside it; a Claude task that needs a fresh `origin/main` can no longer proceed. Keep an explicitly permitted unsandboxed fallback for Git commands, or provision the corresponding Claude writable roots before requiring the in-sandbox attempt.\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/258#discussion_r4178090986",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:Claude worker seats already run git fetch inside their sandbox in the nested-worktree layout (a005 T95 sandbox record), so the text does not turn a required fetch into a blocked PONG; the git push wording was corrected in 68e19ef7"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_agents/skills/agmsg-orchestration/SKILL.md",
+      "line": 170,
+      "body": "not-applicable: Claude worker seats already fetch inside their sandbox in the nested-worktree layout (a005 recorded `git fetch`, branch, commit and a push as sandboxed in its T95 run; the Codex seat additionally holds the common-dir roots from herdr-agents), so the instruction does not turn a required fetch into a blocked PONG. The `git push` wording is being corrected in the next commit: pushes ask `gh` for credentials and therefore share the keyring exception.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/258#discussion_r4178153646",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:orchestrator disposition reply on the resolved Codex thread, not a finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_agents/skills/agmsg-orchestration/SKILL.md",
+      "line": 170,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Restore the fallback for private HTTPS fetches**\n\nFor a Claude task in a private GitHub repository whose `origin` is HTTPS, this removes the usable fetch path: `home/dot_config/git/config.tmpl:25-26` configures `credential.helper = !gh auth git-credential`, while its `pushInsteadOf` rule affects only pushes. Git documents that `pushInsteadOf` rewrites the URL that “will be pushed to,” so `git fetch` still invokes the same `gh`/host-keyring flow this change says returns HTTP 401; the new policy then requires it to remain sandboxed and blocks every other unsandboxed action. A worker that needs a fresh `origin/main` will therefore stop with a PONG. Permit an authenticated fetch retry outside the sandbox or provision the credential first. [git-config documentation](https://git-scm.com/docs/git-config#Documentation/git-config.txt-urlltbasegtpushInsteadOf)\n\nAGENTS.md reference: [AGENTS.md:L78-L79](https://github.com/mryfmo/dotfiles/blob/5b6b0d9f89049eff0efbdc4699c425f711e58557/AGENTS.md#L78-L79)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/258#discussion_r4178339453",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "fixed:efe6735e"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_agents/skills/agmsg-orchestration/SKILL.md",
+      "line": 170,
+      "body": "not-applicable: the Worker Playbook describes the seats of this regime, whose repository (mryfmo/dotfiles) is public, so a worker's `git fetch` needs no credential and runs inside the sandbox (observed on Claude seats in T72, T76 and T95). A private remote is not something a worker seat here fetches; the private chezmoi source is operator-managed. When a private remote enters the regime, its fetch joins the same keyring exception that `gh` and `git push` already carry, which T90's sandbox-readable credential closes for all three.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/258#discussion_r4178361536",
+      "resolved": true,
+      "outdated": true,
+      "disposition": "not-applicable:orchestrator disposition reply on the resolved Codex thread, not a finding"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37217686306/job/111481475739",
+      "check": "test (macos-14, client)",
+      "disposition": "not-applicable:GitHub macOS arm64 runner capacity notice, not a code finding"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37217686375/job/111481443863",
+      "check": "public-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub macOS arm64 runner capacity notice, not a code finding"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37217686375/job/111481443766",
+      "check": "private-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub macOS arm64 runner capacity notice, not a code finding"
+    },
+    {
+      "source": "status",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "success",
+      "path": null,
+      "line": null,
+      "body": "CodeRabbit: Review skipped: automatic reviews are disabled",
+      "url": null,
+      "check": "CodeRabbit",
+      "disposition": "not-applicable:CodeRabbit status context reports review skipped; the gate does not require a bot review"
+    }
+  ]
+}

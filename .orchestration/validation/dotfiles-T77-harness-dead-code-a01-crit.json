@@ -1,0 +1,8 @@
+[
+  {
+    "id": "dotfiles-T77-review-1",
+    "scope": "review",
+    "body": "Orchestrator adversarial review of PR #260 head 977bdf1f (dotfiles-T77, harness dead code): the zsh herdr() wrapper and herdr-session, agent-fanout (with its validator tokens, the require-crit-review path entry, the runtime-health tests and the model-profiles.env header mention), the CCR adoption-gate notice in upgrade-tools.sh with its tests and gh stub arms, the deprecated HERDR_AGENTS_CODEX_PROFILE alias in herdr-agents (the validator now checks HERDR_AGENTS_WORKER_PROFILE), archive/CompactionDB-2.0.0.zip with the manifest note, and the README paragraphs are deleted; home/.chezmoiremove retires the two deployed executables (Codex P2 4178373800 fixed in 977bdf1f). Item 5 (enforce-uv.sh, a Claude PreToolUse hook) was routed out to a Codex seat as T77b per the seat-capability rule and is untouched. 17 files, +26/-958; 18 tests removed with their subjects, no test added (two entries added to the RETIRED tuple of test_chezmoiremove_agmsg.py); render-check clean; CI 13/13 green on 977bdf1f; branch on main f6320f37. Coverage note accepted: the deleted CCR test was the only gh-absent upgrade coverage, and the CCR phase it covered is gone.",
+    "resolved": true
+  }
+]

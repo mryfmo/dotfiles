@@ -1,0 +1,181 @@
+{
+  "repo": "mryfmo/dotfiles",
+  "pr": 259,
+  "head_sha": "3a060118500090ca7ddd42ade85446dcf1a42ed8",
+  "base_ref": "main",
+  "base_sha": "40993f206adf8068ebc2d85d3fb049f017fc37cb",
+  "generated_at": "2026-10-04T15:39:29+00:00",
+  "checks": [
+    {
+      "name": "test (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37213004008/job/111467815680"
+    },
+    {
+      "name": "test (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37213004008/job/111467815647"
+    },
+    {
+      "name": "test (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37213004008/job/111467815643"
+    },
+    {
+      "name": "test (ubuntu-26.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37213004008/job/111467815618"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37213004077/job/111467790952"
+    },
+    {
+      "name": "private-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37213004077/job/111467790930"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37213004077/job/111467790893"
+    },
+    {
+      "name": "private-bootstrap (ubuntu-24.04, server)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37213004077/job/111467790837"
+    },
+    {
+      "name": "public-bootstrap (macos-14, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37213004077/job/111467790825"
+    },
+    {
+      "name": "public-bootstrap (ubuntu-24.04, client)",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37213004077/job/111467790737"
+    },
+    {
+      "name": "validate",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37213004072/job/111467790655"
+    },
+    {
+      "name": "changes",
+      "conclusion": "success",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37213004008/job/111467790461"
+    }
+  ],
+  "items": [
+    {
+      "source": "issue_comment",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": null,
+      "line": null,
+      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review skipped\n> \n> Auto reviews are disabled on this repository. Please check the settings in the CodeRabbit UI or the `.coderabbit.yaml` file in this repository. To trigger a single review, invoke the `@coderabbitai review` command.\n> \n> <details>\n> <summary>⚙️ Run configuration</summary>\n> \n> - **Configuration used**: Repository: mryfmo/dotfiles/.coderabbit.yaml\n> - **Review profile**: CHILL\n> - **Plan**: Advanced\n> - **Run ID**: `1a3cb21d-4794-4beb-82f7-8ccd9d0e8cfe`\n> \n> </details>\n> \n> You can disable this status message by setting the `reviews.review_status` to `false` in the CodeRabbit configuration file.\n> \n> Use the checkbox below for a quick retry:\n> - [ ] <!-- {\"checkboxId\":\"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- autopilot:start -->\n- [ ] <!-- {\"checkboxId\":\"2708ad07-9f24-4260-9c11-7dc76a49f2e3\"} --> <strong title=\"Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\">Autopilot</strong> · Keep fixing CodeRabbit findings and required CI, and resolving merge conflicts\n<!-- autopilot:end -->\n<!-- tips_start -->\n\n---\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=mryfmo/dotfiles&utm_content=259)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary>❤️ Share</summary>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
+      "url": "https://github.com/mryfmo/dotfiles/pull/259#issuecomment-5981581909",
+      "disposition": "not-applicable:CodeRabbit summary comment (automatic reviews disabled); no finding"
+    },
+    {
+      "source": "review",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `3a06011850`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>",
+      "url": "https://github.com/mryfmo/dotfiles/pull/259#pullrequestreview-5406880900",
+      "commit": "3a060118500090ca7ddd42ade85446dcf1a42ed8",
+      "disposition": "not-applicable:Codex review container; its inline finding is dispositioned on the review_comment item"
+    },
+    {
+      "source": "review",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "commented",
+      "path": null,
+      "line": null,
+      "body": "",
+      "url": "https://github.com/mryfmo/dotfiles/pull/259#pullrequestreview-5406910786",
+      "commit": "3a060118500090ca7ddd42ade85446dcf1a42ed8",
+      "disposition": "not-applicable:review container created by the orchestrator's own disposition reply; no finding"
+    },
+    {
+      "source": "review_comment",
+      "author": "chatgpt-codex-connector[bot]",
+      "bot": true,
+      "level": "comment",
+      "path": "home/dot_config/claude/rules/model-selection.md",
+      "line": 3,
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Correct the future-dated authentication probe**\n\nThis rule cites a ChatGPT-login probe dated 2026-10-05, but the reviewed commit is dated 2026-10-04. That makes the stated basis for removing the API-key requirement impossible at this revision; operators may rely on the new authentication guidance and be blocked when launching these profiles. Record the actual probe date, or retain the requirement until the probe has occurred.\n\nAGENTS.md reference: [AGENTS.md:L57-L64](https://github.com/mryfmo/dotfiles/blob/3a060118500090ca7ddd42ade85446dcf1a42ed8/AGENTS.md#L57-L64)\n\nUseful? React with 👍 / 👎.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/259#discussion_r4178257366",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:the probe date 2026-10-05 is the JST date of probes run at 00:20/00:25 JST (2026-10-04 15:20Z/15:25Z) before the commit timestamped 2026-10-05T00:21:53+09:00; the validation file records both JST mtimes and UTC equivalents, so the citation is accurate and not future-dated"
+    },
+    {
+      "source": "review_comment",
+      "author": "moriya-fumio-thd",
+      "bot": false,
+      "level": "comment",
+      "path": "home/dot_config/claude/rules/model-selection.md",
+      "line": 3,
+      "body": "not-applicable: the probe date is correct in the repository's local time. Both probes ran on 2026-10-05 at 00:20 and 00:25 JST (= 2026-10-04 15:20Z/15:25Z), before the commit at 2026-10-05T00:21:53+09:00; the validation file records both the JST mtimes and the UTC equivalents. The comparison here mixed a JST date with the commit's UTC date.",
+      "url": "https://github.com/mryfmo/dotfiles/pull/259#discussion_r4178286705",
+      "resolved": true,
+      "outdated": false,
+      "disposition": "not-applicable:orchestrator disposition reply on the resolved Codex thread, not a finding"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37213004008/job/111467815647",
+      "check": "test (macos-14, client)",
+      "disposition": "not-applicable:GitHub macOS arm64 runner capacity notice, not a code finding"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37213004077/job/111467790930",
+      "check": "private-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub macOS arm64 runner capacity notice, not a code finding"
+    },
+    {
+      "source": "annotation",
+      "author": "github-actions",
+      "bot": true,
+      "level": "notice",
+      "path": ".github",
+      "line": 1,
+      "body": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "url": "https://github.com/mryfmo/dotfiles/actions/runs/37213004077/job/111467790825",
+      "check": "public-bootstrap (macos-14, client)",
+      "disposition": "not-applicable:GitHub macOS arm64 runner capacity notice, not a code finding"
+    },
+    {
+      "source": "status",
+      "author": "coderabbitai[bot]",
+      "bot": true,
+      "level": "success",
+      "path": null,
+      "line": null,
+      "body": "CodeRabbit: Review skipped: automatic reviews are disabled",
+      "url": null,
+      "check": "CodeRabbit",
+      "disposition": "not-applicable:CodeRabbit status context reports review skipped; the gate does not require a bot review"
+    }
+  ]
+}

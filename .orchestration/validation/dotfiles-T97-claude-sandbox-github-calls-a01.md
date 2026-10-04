@@ -1,0 +1,6844 @@
+# T97 validation — raw observed evidence
+
+```text
+$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
+f46650e0be2b652a18fa0f00ab6888ea8ad131e529a383df5fa1a49bd18d1fb6  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
+$ git status --short
+$ git branch --show-current
+chore/claude-auto-deny
+$ git fetch origin
+```
+Fetch exit 0; no output.
+
+```text
+$ gh pr view 253 --json url,state,mergedAt,headRefOid
+{"headRefOid":"4656f19f2183467052aa010e741e4df73bc663d8","mergedAt":null,"state":"OPEN","url":"https://github.com/mryfmo/dotfiles/pull/253"}
+$ git switch -c fix/claude-sandbox-github-calls origin/main
+error: could not lock config file /home/moriya/Workspace/dotfiles/.git/config: File exists
+error: unable to write upstream branch configuration
+hint: 
+hint: After fixing the error cause you may try to fix up
+hint: the remote tracking information by invoking:
+hint:   git branch --set-upstream-to=origin/refs/heads/main
+```
+Individual switch exit status not captured: subsequent read-only commands in that call exited 0. Failure is established by stderr and the unchanged HEAD, not by a claimed return code.
+
+```text
+$ git branch --show-current
+chore/claude-auto-deny
+$ git show-ref --verify refs/heads/fix/claude-sandbox-github-calls
+680b29b1e652267530cd90f0a20c5d12191486ed refs/heads/fix/claude-sandbox-github-calls
+$ git rev-parse HEAD origin/main
+de8b8b2e80fe52e9e74322e6f9ac531609c026d1
+680b29b1e652267530cd90f0a20c5d12191486ed
+$ ls -l /home/moriya/Workspace/dotfiles/.git/config.lock
+-r--r--r-- 1 moriya moriya 0 Oct  4 22:04 /home/moriya/Workspace/dotfiles/.git/config.lock
+$ git diff origin/main --stat
+$ git diff --cached origin/main --stat
+$ git diff --stat
+$ make require-crit-review
+Native agent review required before completion.
+- review-sensitive path changed: .orchestration/validation/dotfiles-T62-claude-auto-deny-a01-crit.json
+- broad diff touches 359 files
+- broad diff changes 342960 lines
+Use the active agent's review path, not a browser by default:
+- Codex: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Claude Code: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Use browser Crit review only when the user explicitly asks for Crit web UI or Crit data is unavailable.
+Record a receipt with `review_surface:`, `reviewer:`, and `review_outcome:`.
+For agent judgment, locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` to a repo-local JSON file.
+Evidence must contain at least one resolved record; for a finding-free review, add and resolve one review-scope approval record.
+This local evidence is process evidence, not reviewer authentication.
+Then use `review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`, and `review_source: <json path>`.
+After addressing review feedback, rerun with AGENT_REVIEWED=1 or CRIT_REVIEWED=1 plus REVIEW_EVIDENCE=<path>.
+make: *** [Makefile:176: require-crit-review] Error 1
+```
+Make exit 2. The three diff commands produced no output. No render/unit/asset validation or Claude reproduction executed.
+
+## Revision 1: authorized recovery
+
+```text
+$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
+ac076fab47928f50a080a9a256dbd62f0eee8ed6a93eac4ada363d784baa3a38  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
+$ git switch fix/claude-sandbox-github-calls
+Switched to branch 'fix/claude-sandbox-github-calls'
+$ claude --version
+2.1.288 (Claude Code)
+```
+Switch exit 0. Only the five untracked T97 artifacts remain; the partial index state is recovered without reset.
+
+## Scratch Claude run: reproduction
+
+Launcher: sourced MODEL_PROFILE_EXPRESS_CLAUDE_ARGS; claude --print --no-session-persistence --permission-prompts none --tools Bash --strict-mcp-config --verbose --output-format stream-json. Exit 0 for each launcher; child command status follows. No settings overrides.
+
+Tool call: Bash
+```json
+{"command":"gh api user --jq .login","description":"Get GitHub login via gh API (authorized command 1/4)"}
+```
+Tool result (is_error=true):
+```text
+Exit code 1
+{
+  "message": "Requires authentication",
+  "documentation_url": "https://docs.github.com/rest",
+  "status": "401"
+}gh: Requires authentication (HTTP 401)
+```
+Tool call: Bash
+```json
+{"command":"gh pr view 253 --json url,state","description":"Get PR 253 metadata via gh (authorized command 2/4)"}
+```
+Tool result (is_error=true):
+```text
+Exit code 1
+HTTP 401: Requires authentication (https://api.github.com/graphql)
+Try authenticating with:  gh auth login -h github.com
+```
+Tool call: Bash
+```json
+{"command":"git fetch origin","description":"Fetch from GitHub remote (authorized command 3/4)"}
+```
+Tool result (is_error=false):
+```text
+warning: unable to access '/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.gitmodules': Permission denied
+warning: unable to access '/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.gitmodules': Permission denied
+```
+Tool call: Bash
+```json
+{"command":"git push --dry-run origin HEAD","description":"Test push to GitHub remote (authorized command 4/4)"}
+```
+Tool result (is_error=false):
+```text
+To github.com:mryfmo/dotfiles.git
+ * [new branch]        HEAD -> fix/claude-sandbox-github-calls
+```
+
+## Scratch Claude run: auth
+
+Launcher: sourced MODEL_PROFILE_EXPRESS_CLAUDE_ARGS; claude --print --no-session-persistence --permission-prompts none --tools Bash --strict-mcp-config --verbose --output-format stream-json. Exit 0 for each launcher; child command status follows. No settings overrides.
+
+Tool call: Bash
+```json
+{"command":"gh auth status","description":"Check GitHub authentication status"}
+```
+Tool call: Bash
+```json
+{"command":"command -v gh","description":"Locate gh command"}
+```
+Tool call: Bash
+```json
+{"command":"command -v git","description":"Locate git command"}
+```
+Tool result (is_error=true):
+```text
+Exit code 1
+github.com
+  X Failed to log in to github.com account moriya-fumio-thd (default)
+  - Active account: true
+  - The token in default is invalid.
+  - To re-authenticate, run: gh auth login -h github.com
+  - To forget about this account, run: gh auth logout -h github.com -u moriya-fumio-thd
+
+  X Failed to log in to github.com account mryfmo (default)
+  - Active account: false
+  - The token in default is invalid.
+  - To re-authenticate, run: gh auth login -h github.com
+  - To forget about this account, run: gh auth logout -h github.com -u mryfmo
+```
+Tool result (is_error=false):
+```text
+/home/moriya/.local/share/mise/shims/gh
+```
+Tool result (is_error=false):
+```text
+/usr/bin/git
+```
+Tool call: Bash
+```json
+{"command":"env | grep -E '^(GH_TOKEN|GITHUB_TOKEN|GH_CONFIG_DIR|SSH_AUTH_SOCK|DBUS_SESSION_BUS_ADDRESS|HTTP_PROXY|HTTPS_PROXY)=' | sed 's/=.*/=SET/'","description":"Check environment variables (masking values)"}
+```
+Tool result (is_error=false):
+```text
+HTTP_PROXY=SET
+HTTPS_PROXY=SET
+```
+Tool call: Bash
+```json
+{"command":"readlink /proc/self/ns/mnt","description":"Get mount namespace"}
+```
+Tool result (is_error=false):
+```text
+mnt:[4026533116]
+```
+Tool call: Bash
+```json
+{"command":"readlink /proc/self/ns/net","description":"Get network namespace"}
+```
+Tool result (is_error=false):
+```text
+net:[4026533047]
+```
+Tool call: Bash
+```json
+{"command":"grep -E '^(Seccomp|NoNewPrivs)' /proc/self/status","description":"Check Seccomp and NoNewPrivs fields"}
+```
+Tool result (is_error=false):
+```text
+NoNewPrivs:	1
+Seccomp:	2
+Seccomp_filters:	2
+```
+Tool call: Bash
+```json
+{"command":"readlink /proc/1/ns/mnt /proc/1/ns/net 2>&1","description":"Get root process namespaces for comparison"}
+```
+Tool result (is_error=false):
+```text
+(Bash completed with no output)
+```
+Tool call: Bash
+```json
+{"command":"ls -la /proc/1/ns/ 2>&1 | head -5","description":"Check access to /proc/1/ns directory"}
+```
+Tool result (is_error=false):
+```text
+ls: cannot open directory '/proc/1/ns/': Permission denied
+```
+
+## Scratch Claude run: connect
+
+Launcher: sourced MODEL_PROFILE_EXPRESS_CLAUDE_ARGS; claude --print --no-session-persistence --permission-prompts none --tools Bash --strict-mcp-config --verbose --output-format stream-json. Exit 0 for each launcher; child command status follows. No settings overrides.
+
+Tool call: Bash
+```json
+{"command":"strace -f -e trace=socket,connect -s 160 gh api user --jq .login 2>&1","description":"Run strace with socket/connect syscall tracing for gh api call"}
+```
+Tool result (is_error=true):
+```text
+Exit code 1
+strace: Process 7 attached
+strace: Process 8 attached
+strace: Process 9 attached
+strace: Process 10 attached
+strace: Process 11 attached
+strace: Process 12 attached
+strace: Process 13 attached
+strace: Process 14 attached
+strace: Process 15 attached
+strace: Process 16 attached
+strace: Process 17 attached
+strace: Process 18 attached
+strace: Process 19 attached
+strace: Process 20 attached
+strace: Process 21 attached
+strace: Process 22 attached
+[pid    21] +++ exited with 0 +++
+[pid    20] +++ exited with 0 +++
+[pid    16] +++ exited with 0 +++
+[pid    12] +++ exited with 0 +++
+[pid    11] +++ exited with 0 +++
+[pid     9] +++ exited with 0 +++
+[pid     7] +++ exited with 0 +++
+[pid    14] +++ exited with 0 +++
+[pid    22] +++ exited with 0 +++
+[pid    13] +++ exited with 0 +++
+[pid    19] +++ exited with 0 +++
+[pid    17] +++ exited with 0 +++
+[pid     8] +++ exited with 0 +++
+[pid    10] +++ exited with 0 +++
+[pid    18] +++ exited with 0 +++
+[pid    15] +++ exited with 0 +++
+strace: Process 23 attached
+strace: Process 24 attached
+strace: Process 25 attached
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+strace: Process 26 attached
+strace: Process 27 attached
+strace: Process 28 attached
+strace: Process 29 attached
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+strace: Process 30 attached
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    26] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    27] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    28] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    28] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    28] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    30] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    24] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+strace: Process 31 attached
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    31] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    30] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    30] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+strace: Process 32 attached
+[pid    32] +++ exited with 0 +++
+strace: Process 33 attached
+[pid    33] +++ exited with 0 +++
+[pid     6] --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=33, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    30] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    27] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    31] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    27] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    25] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    28] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    28] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    31] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    27] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    27] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    25] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    27] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    31] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    24] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    25] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    26] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    26] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    28] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+strace: Process 34 attached
+[pid    24] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    26] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    31] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    28] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    28] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    26] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    26] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    26] socket(AF_UNIX, SOCK_STREAM|SOCK_CLOEXEC|SOCK_NONBLOCK, 0) = -1 EPERM (Operation not permitted)
+[pid    26] socket(AF_UNIX, SOCK_STREAM|SOCK_CLOEXEC|SOCK_NONBLOCK, 0) = -1 EPERM (Operation not permitted)
+[pid    26] socket(AF_INET, SOCK_STREAM|SOCK_CLOEXEC|SOCK_NONBLOCK, IPPROTO_IP) = 6
+[pid    26] connect(6, {sa_family=AF_INET, sin_port=htons(3128), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+[pid    34] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+{
+  "message": "Requires authentication",
+  "documentation_url": "https://docs.github.com/rest",
+  "status": "401"
+}gh: Requires authentication (HTTP 401)
+[pid    34] +++ exited with 1 +++
+[pid    31] +++ exited with 1 +++
+[pid    28] +++ exited with 1 +++
+[pid    26] +++ exited with 1 +++
+[pid    30] +++ exited with 1 +++
+[pid    29] +++ exited with 1 +++
+[pid    23] +++ exited with 1 +++
+[pid    27] +++ exited with 1 +++
+[pid    25] +++ exited with 1 +++
+[pid    24] +++ exited with 1 +++
++++ exited with 1 +++
+```
+
+## Parent comparator (Codex sandbox, outside Claude sandbox)
+
+```text
+$ gh api user --jq .login
+moriya-fumio-thd
+$ gh auth status
+github.com
+  ✓ Logged in to github.com account moriya-fumio-thd (keyring)
+  - Active account: true
+  - Git operations protocol: https
+  - Token: gho_************************************
+  - Token scopes: 'gist', 'read:org', 'repo', 'workflow'
+
+  ✓ Logged in to github.com account mryfmo (keyring)
+  - Active account: false
+  - Git operations protocol: https
+  - Token: gho_************************************
+  - Token scopes: 'gist', 'read:org', 'repo', 'workflow'
+$ readlink /proc/self/ns/mnt /proc/self/ns/net
+mnt:[4026533046]
+net:[4026531833]
+$ rg '^(Seccomp|NoNewPrivs)' /proc/self/status
+NoNewPrivs:	1
+Seccomp:	2
+Seccomp_filters:	1
+$ bash -c 'for name in GH_TOKEN GITHUB_TOKEN GH_CONFIG_DIR SSH_AUTH_SOCK DBUS_SESSION_BUS_ADDRESS HTTP_PROXY HTTPS_PROXY; do if test -v "$name"; then printf "%s=set\n" "$name"; else printf "%s=unset\n" "$name"; fi; done'
+GH_TOKEN=unset
+GITHUB_TOKEN=unset
+GH_CONFIG_DIR=unset
+SSH_AUTH_SOCK=unset
+DBUS_SESSION_BUS_ADDRESS=unset
+HTTP_PROXY=unset
+HTTPS_PROXY=unset
+```
+
+Parent socket-only trace, complete stdout and stderr (no read/write payload tracing):
+
+```text
+$ strace -f -e trace=socket,connect -s 160 gh api user --jq .login
+moriya-fumio-thd
+strace: Process 7 attached
+strace: Process 8 attached
+strace: Process 9 attached
+strace: Process 10 attached
+strace: Process 11 attached
+strace: Process 12 attached
+strace: Process 13 attached
+strace: Process 14 attached
+strace: Process 15 attached
+strace: Process 16 attached
+strace: Process 17 attached
+strace: Process 18 attached
+strace: Process 19 attached
+strace: Process 20 attached
+strace: Process 21 attached
+strace: Process 22 attached
+[pid    19] +++ exited with 0 +++
+[pid    18] +++ exited with 0 +++
+[pid    22] +++ exited with 0 +++
+[pid    16] +++ exited with 0 +++
+[pid    17] +++ exited with 0 +++
+[pid    14] +++ exited with 0 +++
+[pid     7] +++ exited with 0 +++
+[pid    21] +++ exited with 0 +++
+[pid    10] +++ exited with 0 +++
+[pid    20] +++ exited with 0 +++
+[pid    15] +++ exited with 0 +++
+[pid     9] +++ exited with 0 +++
+[pid    13] +++ exited with 0 +++
+[pid    11] +++ exited with 0 +++
+[pid    12] +++ exited with 0 +++
+[pid     8] +++ exited with 0 +++
+strace: Process 23 attached
+strace: Process 24 attached
+strace: Process 25 attached
+strace: Process 26 attached
+strace: Process 27 attached
+strace: Process 28 attached
+strace: Process 29 attached
+strace: Process 30 attached
+strace: Process 31 attached
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    26] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    28] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    25] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    28] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    30] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    31] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    28] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    29] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    27] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    27] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    26] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    29] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    24] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    27] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    28] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    29] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+strace: Process 32 attached
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    32] +++ exited with 0 +++
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+strace: Process 33 attached
+strace: Process 34 attached
+[pid    27] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    28] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    30] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    30] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    34] +++ exited with 0 +++
+[pid    23] --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=34, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---
+[pid    28] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    29] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    29] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    28] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    24] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    28] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    24] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    24] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    29] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    31] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    26] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    31] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    27] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid     6] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    26] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    25] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+strace: Process 35 attached
+[pid    27] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    27] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    27] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    25] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    35] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    27] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    26] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    26] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    26] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    26] socket(AF_UNIX, SOCK_STREAM|SOCK_CLOEXEC|SOCK_NONBLOCK, 0) = 4
+[pid    26] connect(4, {sa_family=AF_UNIX, sun_path="/run/user/1000/bus"}, 21) = 0
+[pid    26] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    25] socket(AF_INET, SOCK_DGRAM|SOCK_CLOEXEC|SOCK_NONBLOCK, IPPROTO_IP <unfinished ...>
+[pid    24] socket(AF_INET, SOCK_DGRAM|SOCK_CLOEXEC|SOCK_NONBLOCK, IPPROTO_IP <unfinished ...>
+[pid    25] <... socket resumed>)       = 7
+[pid    24] <... socket resumed>)       = 8
+[pid    25] connect(7, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16 <unfinished ...>
+[pid    24] connect(8, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16 <unfinished ...>
+[pid    25] <... connect resumed>)      = 0
+[pid    24] <... connect resumed>)      = 0
+[pid    24] socket(AF_INET, SOCK_STREAM|SOCK_CLOEXEC|SOCK_NONBLOCK, IPPROTO_IP) = 7
+[pid    24] connect(7, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("20.27.177.116")}, 16) = -1 EINPROGRESS (Operation now in progress)
+[pid    24] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    30] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    30] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    35] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    25] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    26] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    26] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    35] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    29] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    35] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    26] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    25] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    26] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    26] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    26] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    26] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    26] --- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=6, si_uid=1000} ---
+[pid    31] +++ exited with 0 +++
+[pid    30] +++ exited with 0 +++
+[pid    29] +++ exited with 0 +++
+[pid    25] +++ exited with 0 +++
+[pid    23] +++ exited with 0 +++
+[pid    35] +++ exited with 0 +++
+[pid    33] +++ exited with 0 +++
+[pid    26] +++ exited with 0 +++
+[pid    27] +++ exited with 0 +++
+[pid    28] +++ exited with 0 +++
+[pid    24] +++ exited with 0 +++
++++ exited with 0 +++
+```
+The traced process exited 0 (see trace). Parent attaches to `/run/user/1000/bus`; Claude child is denied AF_UNIX socket creation before connect.
+
+## Interpretation limits
+
+No `<sandbox_violations>` block was returned. The syscall trace, separate mount/network namespaces, and additional seccomp filter establish the restriction; absence of a violations block is not used as proof of sandboxing. The scratch model's prose was not relied upon: its claim that `.gitmodules` warnings were unrelated to sandboxing is unsupported. Only tool inputs/results are preserved above.
+
+`gh` tested REST via `gh api user --jq .login` (login-only output avoids unrelated account data) and GraphQL via `gh pr view 253 --json url,state`. Both fail with HTTP 401, exit 1. Fetch and push dry-run return non-error tool results, and dry-run reports the prospective new branch. No actual push or credential manipulation occurred.
+
+## Primary reference
+
+https://github.com/anthropics/sandbox-runtime/blob/main/src/sandbox/linux-sandbox-utils.ts (wrapCommandWithSandboxLinux comment) and https://code.claude.com/docs/en/sandboxing . Retrieved via gh first; web used to find the canonical moved upstream repo after the guessed source path returned 404. Current upstream explicitly describes AF_UNIX creation filtering and why Linux cannot use path-specific allowUnixSockets. This corroborates rather than replaces the Claude 2.1.288 runtime evidence.
+
+Unsuccessful source lookup: `gh api repos/anthropic-experimental/sandbox-runtime/contents/src/sandbox/linux-sandbox.ts --jq .content | base64 --decode` returned `gh: Not Found (HTTP 404)` and `base64: invalid input`; no source conclusion used that output. An unquoted recursive-tree URL initially hit zsh `no matches found`; the quoted retry succeeded.
+
+## Final blocked-state checks
+
+```text
+$ git diff origin/main --stat
+$ git status --short
+?? .orchestration/autoskill/runs/dotfiles-T97-claude-sandbox-github-calls-a01.md
+?? .orchestration/learning/dotfiles-T97-claude-sandbox-github-calls-a01.md
+?? .orchestration/reports/dotfiles-T97-claude-sandbox-github-calls-a01.md
+?? .orchestration/sandboxes/dotfiles-T97-claude-sandbox-github-calls-a01.md
+?? .orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01.md
+$ gh pr view 253 --json url,state,mergedAt
+{"mergedAt":null,"state":"OPEN","url":"https://github.com/mryfmo/dotfiles/pull/253"}
+$ crit status --json
+{
+  "branch": "fix/claude-sandbox-github-calls",
+  "daemon": {
+    "running": false
+  },
+  "review_file": "/home/moriya/.crit/reviews/106a9c018146/review.json",
+  "review_file_exists": false,
+  "sessions": [],
+  "vcs": "git"
+}
+$ make require-crit-review
+Native agent review required before completion.
+- broad diff touches 5 files
+- broad diff changes 657 lines
+Use the active agent's review path, not a browser by default:
+- Codex: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Claude Code: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Use browser Crit review only when the user explicitly asks for Crit web UI or Crit data is unavailable.
+Record a receipt with `review_surface:`, `reviewer:`, and `review_outcome:`.
+For agent judgment, locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` to a repo-local JSON file.
+Evidence must contain at least one resolved record; for a finding-free review, add and resolve one review-scope approval record.
+This local evidence is process evidence, not reviewer authentication.
+Then use `review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`, and `review_source: <json path>`.
+After addressing review feedback, rerun with AGENT_REVIEWED=1 or CRIT_REVIEWED=1 plus REVIEW_EVIDENCE=<path>.
+make: *** [Makefile:176: require-crit-review] Error 1
+```
+Gate exit 2: the five evidence artifacts alone exceed its broad-diff threshold. No review data exists, no daemon runs, and no approval receipt or bypass flag was fabricated. This blocked RESULT does not claim the completion gate passed; independent review/evidence would be needed before accepting a later completed task. Additional JSON review evidence is outside the dispatched five-artifact allowlist.
+
+## Go-ahead and dependency resolution
+
+```text
+$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
+d91836c1b7b78fede3796ffe927024f44766db459c6825bd05b8b73a1645f461  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
+$ gh pr view 253 --json state,mergedAt,mergeCommit,url
+{"mergeCommit":{"oid":"04bce61b47b15d6f748abdce05bfdc5a8943bd98"},"mergedAt":"2026-10-04T14:30:23Z","state":"MERGED","url":"https://github.com/mryfmo/dotfiles/pull/253"}
+$ git fetch origin
+From https://github.com/mryfmo/dotfiles
+   da66949a..7af8ae7f  gh-pages   -> origin/gh-pages
+$ git switch -c docs/claude-sandbox-gh-keyring-limit --no-track origin/main
+Switched to a new branch 'docs/claude-sandbox-gh-keyring-limit'
+$ git rev-parse HEAD origin/main
+04bce61b47b15d6f748abdce05bfdc5a8943bd98
+04bce61b47b15d6f748abdce05bfdc5a8943bd98
+```
+All above commands exited 0.
+
+## Go-ahead validation: render
+
+Cache for uv commands: UV_CACHE_DIR=/tmp/t97-uv-cache (within writable temporary storage).
+
+```text
+$ make render-check
+uv run --with pyyaml scripts/generate-agent-configs.py --check
+Installed 1 package in 2ms
+generated agent configs are up to date
+```
+Exit code: 0.
+
+## Go-ahead validation: assets
+
+Cache for uv commands: UV_CACHE_DIR=/tmp/t97-uv-cache (within writable temporary storage).
+
+```text
+$ make validate-agent-assets
+uv run --with pyyaml scripts/validate-agent-assets.py
+Installed 1 package in 2ms
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T69-protocol-docs-unification-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T76-ineffective-settings-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T76-ineffective-settings-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T76-ineffective-settings-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T76-ineffective-settings-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-4656f19.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-4656f19.md.last.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-6b060ac.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-6b060ac.md.last.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-d9bbd80.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-d9bbd80.md.last.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-audit-d5856e2.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-audit-d5856e2.md.last.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T76-ineffective-settings-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T97-claude-sandbox-github-calls-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T97-claude-sandbox-github-calls-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T97-claude-sandbox-github-calls-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T97-claude-sandbox-github-calls-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01.md
+WARN: regime-boundary: additional worker workspace still open: dotfiles worker worker-d (herdr-agents --remove-worker)
+WARN: regime-boundary: additional worker tab still open in dotfiles: dotfiles:codex-security-dot-a007 (herdr-agents --remove-worker)
+agent asset validation ok
+```
+Exit code: 0.
+
+## Go-ahead validation: approved-gate
+
+Cache for uv commands: UV_CACHE_DIR=/tmp/t97-uv-cache (within writable temporary storage).
+
+```text
+$ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01-worker-review-receipt.md make require-crit-review
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+```
+Exit code: 0.
+
+```text
+$ git diff --check
+$ git diff origin/main --stat
+ home/dot_agents/skills/agmsg-orchestration/SKILL.md | 2 +-
+ home/dot_config/claude/rules/agmsg-orchestration.md | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+$ prettier --check home/dot_agents/skills/agmsg-orchestration/SKILL.md home/dot_config/claude/rules/agmsg-orchestration.md
+Checking formatting...
+All matched files use Prettier code style!
+```
+All three exit 0. Asset validation warns about ongoing regime workspaces and untracked orchestration artifacts, including other tasks in the main checkout, but exits 0. No cleanup of those unrelated paths was attempted.
+
+```text
+$ crit status --json
+{
+  "branch": "docs/claude-sandbox-gh-keyring-limit",
+  "daemon": {
+    "running": false
+  },
+  "review_file": "/home/moriya/.crit/reviews/2e99b3cd23cf/review.json",
+  "review_file_exists": false,
+  "sessions": [],
+  "vcs": "git"
+}
+$ make require-crit-review
+Native agent review required before completion.
+- agent lifecycle path changed: home/dot_agents/skills/agmsg-orchestration/SKILL.md
+- broad diff touches 7 files
+- broad diff changes 736 lines
+Use the active agent's review path, not a browser by default:
+- Codex: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Claude Code: retrieve Crit comments/status data, review it inside the task, then address findings.
+- Use browser Crit review only when the user explicitly asks for Crit web UI or Crit data is unavailable.
+Record a receipt with `review_surface:`, `reviewer:`, and `review_outcome:`.
+For agent judgment, locate the review with `crit status --json`, then save `crit comments --all --json <review.json>` to a repo-local JSON file.
+Evidence must contain at least one resolved record; for a finding-free review, add and resolve one review-scope approval record.
+This local evidence is process evidence, not reviewer authentication.
+Then use `review_surface: crit-data`, `reviewer: codex` or `reviewer: claude-code`, and `review_source: <json path>`.
+After addressing review feedback, rerun with AGENT_REVIEWED=1 or CRIT_REVIEWED=1 plus REVIEW_EVIDENCE=<path>.
+make: *** [Makefile:179: require-crit-review] Error 1
+```
+Initial gate exit 2. The independent subagent reviewed evidence and product diff; JSON and worker receipt were saved at the specifically permitted paths, inspected, then the approved gate above passed. The earlier blocked receipt limitation is resolved by the orchestrator's allowlist update (SHA256 0ad849949b8442b094d284641098caa5db8a28d1f099b2f5104e1ada6ce5e037).
+
+## Product commit / PR
+
+```text
+$ git add home/dot_agents/skills/agmsg-orchestration/SKILL.md home/dot_config/claude/rules/agmsg-orchestration.md
+$ git diff --cached --stat
+ home/dot_agents/skills/agmsg-orchestration/SKILL.md | 2 +-
+ home/dot_config/claude/rules/agmsg-orchestration.md | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+$ git commit -m 'docs(agents): clarify Claude sandbox keyring limitation'
+[docs/claude-sandbox-gh-keyring-limit 8ffa5547] docs(agents): clarify Claude sandbox keyring limitation
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+$ git rev-parse HEAD
+8ffa554738c6f8b524f33787332a31337e935122
+$ git push origin docs/claude-sandbox-gh-keyring-limit
+remote: 
+remote: Create a pull request for 'docs/claude-sandbox-gh-keyring-limit' on GitHub by visiting:        
+remote:      https://github.com/mryfmo/dotfiles/pull/new/docs/claude-sandbox-gh-keyring-limit        
+remote: 
+To github.com:mryfmo/dotfiles.git
+ * [new branch]        docs/claude-sandbox-gh-keyring-limit -> docs/claude-sandbox-gh-keyring-limit
+$ gh pr create --head docs/claude-sandbox-gh-keyring-limit --base main --title 'docs(agents): clarify Claude sandbox keyring limitation' --body-file /tmp/t97-pr-body.md
+https://github.com/mryfmo/dotfiles/pull/258
+$ gh pr view 258 --json url,headRefOid,baseRefOid,mergeStateStatus,files
+{"baseRefOid":"04bce61b47b15d6f748abdce05bfdc5a8943bd98","files":[{"path":"home/dot_agents/skills/agmsg-orchestration/SKILL.md","additions":1,"deletions":1,"changeType":"MODIFIED"},{"path":"home/dot_config/claude/rules/agmsg-orchestration.md","additions":1,"deletions":1,"changeType":"MODIFIED"}],"headRefOid":"8ffa554738c6f8b524f33787332a31337e935122","mergeStateStatus":"BLOCKED","url":"https://github.com/mryfmo/dotfiles/pull/258"}
+```
+All above commands exited 0. PR contains only the two requested prose changes. Task artifacts remain in worker-e for the orchestrator to move, as dispatched; they are not added to the product PR. PR description explicitly states unit suite and CI are pending at creation.
+
+## Full unit suite
+
+UV_CACHE_DIR=/tmp/t97-uv-cache
+
+```text
+$ make unit-test
+uv run python -m unittest discover -s tests/unit -v
+test_bounded_scan_finishes_under_wall_limit (test_agent_session_staleness.AgentSessionStalenessTest.test_bounded_scan_finishes_under_wall_limit) ... ok
+test_check_is_silent_when_assets_predate_session (test_agent_session_staleness.AgentSessionStalenessTest.test_check_is_silent_when_assets_predate_session) ... ok
+test_check_reports_new_versions_and_mtimes_deduplicated_by_root (test_agent_session_staleness.AgentSessionStalenessTest.test_check_reports_new_versions_and_mtimes_deduplicated_by_root) ... ok
+test_doctor_delegates_session_staleness_to_installed_script (test_agent_session_staleness.AgentSessionStalenessTest.test_doctor_delegates_session_staleness_to_installed_script) ... ok
+test_hook_first_call_writes_private_baseline_and_is_silent (test_agent_session_staleness.AgentSessionStalenessTest.test_hook_first_call_writes_private_baseline_and_is_silent) ... ok
+test_hook_missing_or_garbage_stdin_is_silent_success (test_agent_session_staleness.AgentSessionStalenessTest.test_hook_missing_or_garbage_stdin_is_silent_success) ... ok
+test_hook_prunes_state_files_older_than_seven_days (test_agent_session_staleness.AgentSessionStalenessTest.test_hook_prunes_state_files_older_than_seven_days) ... ok
+test_hook_second_call_detects_asset_updated_after_baseline (test_agent_session_staleness.AgentSessionStalenessTest.test_hook_second_call_detects_asset_updated_after_baseline) ... ok
+test_internal_failure_is_silent_success_with_one_stderr_line (test_agent_session_staleness.AgentSessionStalenessTest.test_internal_failure_is_silent_success_with_one_stderr_line) ... ok
+test_no_arguments_prints_ten_recent_updates (test_agent_session_staleness.AgentSessionStalenessTest.test_no_arguments_prints_ten_recent_updates) ... ok
+test_runtime_state_and_sqlite_files_are_excluded (test_agent_session_staleness.AgentSessionStalenessTest.test_runtime_state_and_sqlite_files_are_excluded) ... ok
+test_ceiling_directories_do_not_hide_the_seat (test_agent_stop_gate.AgentStopGateTest.test_ceiling_directories_do_not_hide_the_seat) ... ok
+test_character_device_placeholder_is_skipped (test_agent_stop_gate.AgentStopGateTest.test_character_device_placeholder_is_skipped) ... ok
+test_checkout_outside_any_seat_passes (test_agent_stop_gate.AgentStopGateTest.test_checkout_outside_any_seat_passes) ... ok
+test_clean_orchestrator_passes (test_agent_stop_gate.AgentStopGateTest.test_clean_orchestrator_passes) ... ok
+test_every_team_of_the_identity_is_checked (test_agent_stop_gate.AgentStopGateTest.test_every_team_of_the_identity_is_checked) ... ok
+test_failing_git_status_blocks (test_agent_stop_gate.AgentStopGateTest.test_failing_git_status_blocks) ... ok
+test_failing_identity_lookup_blocks_once (test_agent_stop_gate.AgentStopGateTest.test_failing_identity_lookup_blocks_once) ... ok
+test_inherited_alternate_index_does_not_hide_a_staged_change (test_agent_stop_gate.AgentStopGateTest.test_inherited_alternate_index_does_not_hide_a_staged_change) ... ok
+test_inherited_git_dir_does_not_hide_the_seat (test_agent_stop_gate.AgentStopGateTest.test_inherited_git_dir_does_not_hide_the_seat) ... ok
+test_injected_git_config_does_not_hide_untracked_files (test_agent_stop_gate.AgentStopGateTest.test_injected_git_config_does_not_hide_untracked_files) ... ok
+test_json_escaped_cwd_resolves (test_agent_stop_gate.AgentStopGateTest.test_json_escaped_cwd_resolves) ... ok
+test_missing_agmsg_install_passes (test_agent_stop_gate.AgentStopGateTest.test_missing_agmsg_install_passes) ... ok
+test_mountinfo_cannot_be_redirected_through_the_environment (test_agent_stop_gate.AgentStopGateTest.test_mountinfo_cannot_be_redirected_through_the_environment) ... ok
+test_null_device_of_another_filesystem_is_not_a_placeholder (test_agent_stop_gate.AgentStopGateTest.test_null_device_of_another_filesystem_is_not_a_placeholder) ... ok
+test_orchestrator_acceptance_to_another_member_keeps_the_result_open (test_agent_stop_gate.AgentStopGateTest.test_orchestrator_acceptance_to_another_member_keeps_the_result_open) ... ok
+test_project_dir_anchors_the_seat_after_a_cd (test_agent_stop_gate.AgentStopGateTest.test_project_dir_anchors_the_seat_after_a_cd) ... ok
+test_read_only_bind_of_another_empty_file_is_not_a_placeholder (test_agent_stop_gate.AgentStopGateTest.test_read_only_bind_of_another_empty_file_is_not_a_placeholder) ... ok
+test_read_write_mount_is_not_a_placeholder (test_agent_stop_gate.AgentStopGateTest.test_read_write_mount_is_not_a_placeholder) ... ok
+test_result_then_acceptance_passes (test_agent_stop_gate.AgentStopGateTest.test_result_then_acceptance_passes) ... ok
+test_result_then_revision_task_passes (test_agent_stop_gate.AgentStopGateTest.test_result_then_revision_task_passes) ... ok
+test_result_without_acceptance_blocks (test_agent_stop_gate.AgentStopGateTest.test_result_without_acceptance_blocks) ... ok
+test_same_named_file_bound_from_elsewhere_is_not_a_placeholder (test_agent_stop_gate.AgentStopGateTest.test_same_named_file_bound_from_elsewhere_is_not_a_placeholder) ... ok
+test_sandbox_placeholders_are_skipped (test_agent_stop_gate.AgentStopGateTest.test_sandbox_placeholders_are_skipped) ... ok
+test_sandbox_placeholders_on_a_separate_filesystem_are_skipped (test_agent_stop_gate.AgentStopGateTest.test_sandbox_placeholders_on_a_separate_filesystem_are_skipped) ... ok
+test_separate_git_dir_main_worktree_is_a_seat (test_agent_stop_gate.AgentStopGateTest.test_separate_git_dir_main_worktree_is_a_seat) ... ok
+test_slow_store_blocks_within_the_budget (test_agent_stop_gate.AgentStopGateTest.test_slow_store_blocks_within_the_budget) ... ok
+test_slow_store_blocks_within_the_budget_with_gtimeout_only (test_agent_stop_gate.AgentStopGateTest.test_slow_store_blocks_within_the_budget_with_gtimeout_only) ... ok
+test_slow_store_blocks_within_the_budget_without_timeout (test_agent_stop_gate.AgentStopGateTest.test_slow_store_blocks_within_the_budget_without_timeout) ... ok
+test_solo_unsuffixed_worker_is_gated (test_agent_stop_gate.AgentStopGateTest.test_solo_unsuffixed_worker_is_gated) ... ok
+test_sqlite_store_off_the_current_schema_is_not_initialized (test_agent_stop_gate.AgentStopGateTest.test_sqlite_store_off_the_current_schema_is_not_initialized) ... ok
+test_staged_rename_out_of_orchestration_blocks (test_agent_stop_gate.AgentStopGateTest.test_staged_rename_out_of_orchestration_blocks) ... ok
+test_stop_hook_active_skips_only_the_dirty_tree_check (test_agent_stop_gate.AgentStopGateTest.test_stop_hook_active_skips_only_the_dirty_tree_check) ... ok
+test_unreadable_store_blocks_once (test_agent_stop_gate.AgentStopGateTest.test_unreadable_store_blocks_once) ... ok
+test_untracked_file_outside_orchestration_blocks (test_agent_stop_gate.AgentStopGateTest.test_untracked_file_outside_orchestration_blocks) ... ok
+test_untracked_symlink_to_a_mount_point_is_not_a_placeholder (test_agent_stop_gate.AgentStopGateTest.test_untracked_symlink_to_a_mount_point_is_not_a_placeholder) ... ok
+test_untrusted_filenames_are_quoted (test_agent_stop_gate.AgentStopGateTest.test_untrusted_filenames_are_quoted) ... ok
+test_user_bind_mount_of_a_real_file_is_not_a_placeholder (test_agent_stop_gate.AgentStopGateTest.test_user_bind_mount_of_a_real_file_is_not_a_placeholder) ... ok
+test_whole_filesystem_bind_is_not_a_placeholder (test_agent_stop_gate.AgentStopGateTest.test_whole_filesystem_bind_is_not_a_placeholder) ... ok
+test_worker_after_result_passes (test_agent_stop_gate.AgentStopGateTest.test_worker_after_result_passes) ... ok
+test_worker_alive_pong_keeps_the_task_open (test_agent_stop_gate.AgentStopGateTest.test_worker_alive_pong_keeps_the_task_open) ... ok
+test_worker_blocked_pong_closes_the_task (test_agent_stop_gate.AgentStopGateTest.test_worker_blocked_pong_closes_the_task) ... ok
+test_worker_result_to_another_member_keeps_the_task_open (test_agent_stop_gate.AgentStopGateTest.test_worker_result_to_another_member_keeps_the_task_open) ... ok
+test_worker_revise_acceptance_reopens_the_task (test_agent_stop_gate.AgentStopGateTest.test_worker_revise_acceptance_reopens_the_task) ... ok
+test_worker_task_closed_by_a_non_revise_acceptance (test_agent_stop_gate.AgentStopGateTest.test_worker_task_closed_by_a_non_revise_acceptance) ... ok
+test_worker_task_newer_than_result_blocks (test_agent_stop_gate.AgentStopGateTest.test_worker_task_newer_than_result_blocks) ... ok
+test_worker_tracks_each_task_id (test_agent_stop_gate.AgentStopGateTest.test_worker_tracks_each_task_id) ... ok
+test_default_store_uses_shared_helper (test_agmsg_dispatch.AgmsgDispatchTest.test_default_store_uses_shared_helper) ... ok
+test_idle_wakes_once_and_reads (test_agmsg_dispatch.AgmsgDispatchTest.test_idle_wakes_once_and_reads) ... ok
+test_invalid_timeout_does_not_send (test_agmsg_dispatch.AgmsgDispatchTest.test_invalid_timeout_does_not_send) ... ok
+test_missing_pane_inserts_nothing (test_agmsg_dispatch.AgmsgDispatchTest.test_missing_pane_inserts_nothing) ... ok
+test_rejects_identifiers_outside_the_strict_grammar (test_agmsg_dispatch.AgmsgDispatchTest.test_rejects_identifiers_outside_the_strict_grammar) ... ok
+test_retry_does_not_wake_newly_working_pane (test_agmsg_dispatch.AgmsgDispatchTest.test_retry_does_not_wake_newly_working_pane) ... ok
+test_timeout_is_one_shared_budget (test_agmsg_dispatch.AgmsgDispatchTest.test_timeout_is_one_shared_budget) ... ok
+test_unread_retries_once_then_fails (test_agmsg_dispatch.AgmsgDispatchTest.test_unread_retries_once_then_fails) ... ok
+test_wake_failure_identifies_sent_message (test_agmsg_dispatch.AgmsgDispatchTest.test_wake_failure_identifies_sent_message) ... ok
+test_worker_becoming_idle_after_send_is_woken (test_agmsg_dispatch.AgmsgDispatchTest.test_worker_becoming_idle_after_send_is_woken) ... ok
+test_working_does_not_wake (test_agmsg_dispatch.AgmsgDispatchTest.test_working_does_not_wake) ... ok
+test_working_unread_never_wakes (test_agmsg_dispatch.AgmsgDispatchTest.test_working_unread_never_wakes) ... ok
+test_docs_no_longer_name_codex_review_commit (test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_docs_no_longer_name_codex_review_commit) ... ok
+test_rule_and_skill_share_the_audit_gate_and_bot_wait_invariants (test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_rule_and_skill_share_the_audit_gate_and_bot_wait_invariants) ... ok
+test_rule_and_skill_share_the_parallel_execution_and_routing_invariants (test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_rule_and_skill_share_the_parallel_execution_and_routing_invariants) ... ok
+test_rule_and_skill_share_the_registration_and_delivery_invariants (test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_rule_and_skill_share_the_registration_and_delivery_invariants) ... ok
+test_rule_drops_the_worker_network_escalation (test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_rule_drops_the_worker_network_escalation) ... ok
+test_skill_drops_the_pane_status_gate_and_raw_pane_wakes (test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_skill_drops_the_pane_status_gate_and_raw_pane_wakes) ... ok
+test_doctor_fails_when_bwrap_is_missing_with_codex (test_apparmor_userns.AppArmorUsernsTest.test_doctor_fails_when_bwrap_is_missing_with_codex) ... ok
+test_doctor_fails_when_the_bwrap_probe_fails (test_apparmor_userns.AppArmorUsernsTest.test_doctor_fails_when_the_bwrap_probe_fails) ... ok
+test_doctor_is_not_applicable_without_the_restriction (test_apparmor_userns.AppArmorUsernsTest.test_doctor_is_not_applicable_without_the_restriction) ... ok
+test_doctor_passes_when_the_bwrap_probe_succeeds (test_apparmor_userns.AppArmorUsernsTest.test_doctor_passes_when_the_bwrap_probe_succeeds) ... ok
+test_doctor_warns_optionally_when_codex_is_missing (test_apparmor_userns.AppArmorUsernsTest.test_doctor_warns_optionally_when_codex_is_missing) ... ok
+test_installer_copies_and_reloads_the_profile_with_sudo (test_apparmor_userns.AppArmorUsernsTest.test_installer_copies_and_reloads_the_profile_with_sudo) ... ok
+test_installer_fails_when_loading_the_profile_fails (test_apparmor_userns.AppArmorUsernsTest.test_installer_fails_when_loading_the_profile_fails) ... ok
+test_installer_is_a_no_op_when_the_host_does_not_need_the_profile (test_apparmor_userns.AppArmorUsernsTest.test_installer_is_a_no_op_when_the_host_does_not_need_the_profile) ... ok
+test_installer_leaves_the_profile_pending_without_cached_sudo (test_apparmor_userns.AppArmorUsernsTest.test_installer_leaves_the_profile_pending_without_cached_sudo) ... ok
+test_wrapper_re_renders_when_prerequisites_change (test_apparmor_userns.AppArmorUsernsTest.test_wrapper_re_renders_when_prerequisites_change) ... ok
+test_chezmoi_rendered_updater_uses_exported_source_root (test_asset_manifest.AssetManifestTest.test_chezmoi_rendered_updater_uses_exported_source_root) ... ok
+test_chezmoi_rendered_updater_uses_inlined_manifest_library (test_asset_manifest.AssetManifestTest.test_chezmoi_rendered_updater_uses_inlined_manifest_library) ... ok
+test_chezmoi_wrapper_renders_shebang_and_source_root (test_asset_manifest.AssetManifestTest.test_chezmoi_wrapper_renders_shebang_and_source_root) ... ok
+test_failed_atomic_commit_leaves_previous_manifest_intact (test_asset_manifest.AssetManifestTest.test_failed_atomic_commit_leaves_previous_manifest_intact) ... ok
+test_records_schema_two_steps_and_replaces_one_whole_entry (test_asset_manifest.AssetManifestTest.test_records_schema_two_steps_and_replaces_one_whole_entry) ... ok
+test_rendered_updater_fails_when_no_source_root_is_valid (test_asset_manifest.AssetManifestTest.test_rendered_updater_fails_when_no_source_root_is_valid) ... ok
+test_same_run_mise_repairs_preserve_both_identity_steps (test_asset_manifest.AssetManifestTest.test_same_run_mise_repairs_preserve_both_identity_steps) ... ok
+test_two_real_install_steps_record_under_fake_home (test_asset_manifest.AssetManifestTest.test_two_real_install_steps_record_under_fake_home) ... ok
+test_unwritable_destination_warns_once_without_failing (test_asset_manifest.AssetManifestTest.test_unwritable_destination_warns_once_without_failing) ... ok
+test_updater_direct_source_resolves_repository_root (test_asset_manifest.AssetManifestTest.test_updater_direct_source_resolves_repository_root) ... ok
+test_updater_has_one_recording_call_for_each_install_step (test_asset_manifest.AssetManifestTest.test_updater_has_one_recording_call_for_each_install_step) ... ok
+test_exit_zero_install_with_expected_fake_binary_passes_postcondition (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_exit_zero_install_with_expected_fake_binary_passes_postcondition) ... ok
+test_exit_zero_install_with_wrong_version_fails_postcondition (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_exit_zero_install_with_wrong_version_fails_postcondition) ... ok
+test_exit_zero_partial_install_without_binary_fails_postcondition (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_exit_zero_partial_install_without_binary_fails_postcondition) ... ok
+test_gpgv_failure_preserves_existing_aws_and_skips_unzip (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_gpgv_failure_preserves_existing_aws_and_skips_unzip) ... ok
+test_key_metadata_failures_stop_before_dearmor_and_gpgv (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_key_metadata_failures_stop_before_dearmor_and_gpgv) ... ok
+test_linux_urls_are_versioned_and_unknown_architecture_fails (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_linux_urls_are_versioned_and_unknown_architecture_fails) ... ok
+test_platform_package_managers_and_wrapper_own_aws_cli (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_platform_package_managers_and_wrapper_own_aws_cli) ... ok
+test_repository_key_has_expected_current_fingerprint (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_repository_key_has_expected_current_fingerprint) ... ok
+test_verified_archive_runs_installer_with_user_local_update_arguments (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_verified_archive_runs_installer_with_user_local_update_arguments) ... ok
+test_wrong_staged_version_preserves_existing_aws_and_skips_installer (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_wrong_staged_version_preserves_existing_aws_and_skips_installer) ... ok
+test_agmsg_runtime_paths_are_ignored_on_both_sides (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_runtime_paths_are_ignored_on_both_sides) ... ok
+test_agmsg_separate_store_prefix_is_ignored (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_separate_store_prefix_is_ignored) ... ok
+test_asset_repair_invokes_only_the_detected_step (test_check_agent_runtime.CheckAgentRuntimeTest.test_asset_repair_invokes_only_the_detected_step) ... <frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc06833c40>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc06833b50>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea1210>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea13f0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea14e0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea15d0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea16c0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea17b0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea18a0>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea1990>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea1a80>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea1b70>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea1c60>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea1d50>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea1e40>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea1f30>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea2020>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea2110>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+<frozen importlib._bootstrap>:488: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc067af880>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_check_includes_ua_core_warnings (test_check_agent_runtime.CheckAgentRuntimeTest.test_check_includes_ua_core_warnings) ... ok
+test_check_uses_same_modified_for_codex_profiles (test_check_agent_runtime.CheckAgentRuntimeTest.test_check_uses_same_modified_for_codex_profiles) ... ok
+test_chezmoi_drift_status_failure_is_warning (test_check_agent_runtime.CheckAgentRuntimeTest.test_chezmoi_drift_status_failure_is_warning) ... ok
+test_chezmoi_drift_warnings_classify_status_and_mode_only (test_check_agent_runtime.CheckAgentRuntimeTest.test_chezmoi_drift_warnings_classify_status_and_mode_only) ... ok
+test_compare_claude_skills_ignores_cowork_synced_subtree (test_check_agent_runtime.CheckAgentRuntimeTest.test_compare_claude_skills_ignores_cowork_synced_subtree) ... ok
+test_content_drift_still_fails (test_check_agent_runtime.CheckAgentRuntimeTest.test_content_drift_still_fails) ... ok
+test_crit_codex_skills_are_not_orphans (test_check_agent_runtime.CheckAgentRuntimeTest.test_crit_codex_skills_are_not_orphans) ... ok
+test_deleted_shared_skill_file_repair_converges (test_check_agent_runtime.CheckAgentRuntimeTest.test_deleted_shared_skill_file_repair_converges) ... ok
+test_every_generated_chezmoi_repair_action_is_forced (test_check_agent_runtime.CheckAgentRuntimeTest.test_every_generated_chezmoi_repair_action_is_forced) ... ok
+test_executable_prefix_is_compared_against_deployed_name (test_check_agent_runtime.CheckAgentRuntimeTest.test_executable_prefix_is_compared_against_deployed_name) ... ok
+test_executable_prefix_requires_deployed_execute_bit (test_check_agent_runtime.CheckAgentRuntimeTest.test_executable_prefix_requires_deployed_execute_bit) ... ok
+test_execute_repair_calls_each_mapped_command_once (test_check_agent_runtime.CheckAgentRuntimeTest.test_execute_repair_calls_each_mapped_command_once) ... ok
+test_ignored_paths_suppress_receipt_linked_tree_entries (test_check_agent_runtime.CheckAgentRuntimeTest.test_ignored_paths_suppress_receipt_linked_tree_entries) ... ok
+test_installed_manifest_integrity_reasons (test_check_agent_runtime.CheckAgentRuntimeTest.test_installed_manifest_integrity_reasons) ... ok
+test_installer_owned_agmsg_skill_and_backups_are_not_orphans (test_check_agent_runtime.CheckAgentRuntimeTest.test_installer_owned_agmsg_skill_and_backups_are_not_orphans) ... ok
+test_invalid_manifest_is_one_error_and_skips_dependent_checks (test_check_agent_runtime.CheckAgentRuntimeTest.test_invalid_manifest_is_one_error_and_skips_dependent_checks) ... ok
+test_json_modifier_accepts_cosmetic_reserialization (test_check_agent_runtime.CheckAgentRuntimeTest.test_json_modifier_accepts_cosmetic_reserialization) ... ok
+test_json_modifier_rejects_real_value_drift (test_check_agent_runtime.CheckAgentRuntimeTest.test_json_modifier_rejects_real_value_drift) ... ok
+test_managed_top_level_extra_still_fails_with_unmanaged_warning_mode (test_check_agent_runtime.CheckAgentRuntimeTest.test_managed_top_level_extra_still_fails_with_unmanaged_warning_mode) ... ok
+test_manifest_drift_requires_recorded_step_with_missing_path (test_check_agent_runtime.CheckAgentRuntimeTest.test_manifest_drift_requires_recorded_step_with_missing_path) ... ok
+test_missing_crit_asset_is_repairable (test_check_agent_runtime.CheckAgentRuntimeTest.test_missing_crit_asset_is_repairable) ... ok
+test_missing_terminal_browser_receipt_is_harmless (test_check_agent_runtime.CheckAgentRuntimeTest.test_missing_terminal_browser_receipt_is_harmless) ... ok
+test_only_exact_agmsg_root_legacy_database_names_are_ignored (test_check_agent_runtime.CheckAgentRuntimeTest.test_only_exact_agmsg_root_legacy_database_names_are_ignored) ... ok
+test_orchestrator_seat_lock_is_quiet_for_a_composite_id_or_no_live_session (test_check_agent_runtime.CheckAgentRuntimeTest.test_orchestrator_seat_lock_is_quiet_for_a_composite_id_or_no_live_session) ... ok
+test_orchestrator_seat_lock_warns_on_a_bare_session_id (test_check_agent_runtime.CheckAgentRuntimeTest.test_orchestrator_seat_lock_warns_on_a_bare_session_id) ... ok
+test_orphan_detection_classifies_accounted_stale_and_orphan (test_check_agent_runtime.CheckAgentRuntimeTest.test_orphan_detection_classifies_accounted_stale_and_orphan) ... ok
+test_parameterized_mise_step_uses_key_identity (test_check_agent_runtime.CheckAgentRuntimeTest.test_parameterized_mise_step_uses_key_identity) ... ok
+test_private_prefix_is_compared_against_deployed_name (test_check_agent_runtime.CheckAgentRuntimeTest.test_private_prefix_is_compared_against_deployed_name) ... ok
+test_repair_actions_map_only_detected_file_drift (test_check_agent_runtime.CheckAgentRuntimeTest.test_repair_actions_map_only_detected_file_drift) ... ok
+test_repair_mode_converges_once_and_reports_each_action (test_check_agent_runtime.CheckAgentRuntimeTest.test_repair_mode_converges_once_and_reports_each_action) ... ok
+test_repair_mode_fails_after_one_non_convergent_round (test_check_agent_runtime.CheckAgentRuntimeTest.test_repair_mode_fails_after_one_non_convergent_round) ... ok
+test_repair_mode_never_acts_on_stale_or_orphan_warnings (test_check_agent_runtime.CheckAgentRuntimeTest.test_repair_mode_never_acts_on_stale_or_orphan_warnings) ... ok
+test_repair_unset_is_byte_identical_and_never_mutates (test_check_agent_runtime.CheckAgentRuntimeTest.test_repair_unset_is_byte_identical_and_never_mutates) ... ok
+test_sourced_asset_repair_runs_no_main_or_sibling_step (test_check_agent_runtime.CheckAgentRuntimeTest.test_sourced_asset_repair_runs_no_main_or_sibling_step) ... ok
+test_terminal_browser_receipt_links_are_not_orphans (test_check_agent_runtime.CheckAgentRuntimeTest.test_terminal_browser_receipt_links_are_not_orphans) ... ok
+test_ua_core_is_quiet_when_dist_is_fresh_or_no_clone_exists (test_check_agent_runtime.CheckAgentRuntimeTest.test_ua_core_is_quiet_when_dist_is_fresh_or_no_clone_exists) ... ok
+test_ua_core_warns_when_dist_is_older_than_src (test_check_agent_runtime.CheckAgentRuntimeTest.test_ua_core_warns_when_dist_is_older_than_src) ... ok
+test_ua_core_warns_when_dist_is_older_than_the_root_lockfile (test_check_agent_runtime.CheckAgentRuntimeTest.test_ua_core_warns_when_dist_is_older_than_the_root_lockfile) ... ok
+test_ua_core_warns_when_the_codex_clone_has_no_built_dist (test_check_agent_runtime.CheckAgentRuntimeTest.test_ua_core_warns_when_the_codex_clone_has_no_built_dist) ... ok
+test_unexpected_non_runtime_file_still_fails (test_check_agent_runtime.CheckAgentRuntimeTest.test_unexpected_non_runtime_file_still_fails) ... ok
+test_unmanaged_top_level_skill_dir_warns (test_check_agent_runtime.CheckAgentRuntimeTest.test_unmanaged_top_level_skill_dir_warns) ... ok
+test_apply_removes_the_symlink_farm_and_keeps_installer_owned_paths (test_chezmoiremove_agmsg.ChezmoiRemoveAgmsgTest.test_apply_removes_the_symlink_farm_and_keeps_installer_owned_paths) ... ok
+test_retired_targets_are_listed_and_have_no_source (test_chezmoiremove_agmsg.ChezmoiRemoveRetiredShellFilesTest.test_retired_targets_are_listed_and_have_no_source) ... ok
+test_current_only_key_is_preserved (test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_only_key_is_preserved) ... ok
+test_current_session_start_order_is_preserved (test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_session_start_order_is_preserved)
+Order is preserved; a stale bare herdr-agents command still migrates. ... ok
+test_desired_current_output_is_byte_identical (test_claude_settings_merge.ClaudeSettingsMergeTest.test_desired_current_output_is_byte_identical) ... ok
+test_empty_stdin_outputs_managed (test_claude_settings_merge.ClaudeSettingsMergeTest.test_empty_stdin_outputs_managed) ... ok
+test_enabled_plugins_are_preserved_from_current (test_claude_settings_merge.ClaudeSettingsMergeTest.test_enabled_plugins_are_preserved_from_current) ... ok
+test_invalid_json_outputs_managed (test_claude_settings_merge.ClaudeSettingsMergeTest.test_invalid_json_outputs_managed) ... ok
+test_managed_hook_object_key_order_is_preserved (test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_hook_object_key_order_is_preserved) ... ok
+test_managed_permgate_replaces_stale_current_ccgate_hook (test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_permgate_replaces_stale_current_ccgate_hook) ... ok
+test_managed_session_start_replacement_keeps_hook_order (test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_session_start_replacement_keeps_hook_order)
+Replacing a managed entry must not reorder SessionStart. ... ok
+test_managed_session_start_replaces_stale_hard_coded_home_hook (test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_session_start_replaces_stale_hard_coded_home_hook)
+Upgrade path: a machine that received the old hard-coded managed hook. ... ok
+test_managed_wins_for_managed_key (test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_wins_for_managed_key) ... ok
+test_merge_is_idempotent (test_claude_settings_merge.ClaudeSettingsMergeTest.test_merge_is_idempotent) ... ok
+test_permission_merge_preserves_custom_hook_in_mixed_entry (test_claude_settings_merge.ClaudeSettingsMergeTest.test_permission_merge_preserves_custom_hook_in_mixed_entry) ... ok
+test_permission_merge_preserves_unrelated_current_hooks (test_claude_settings_merge.ClaudeSettingsMergeTest.test_permission_merge_preserves_unrelated_current_hooks) ... ok
+test_real_template_preserves_herdr_matcher_and_converges (test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_template_preserves_herdr_matcher_and_converges) ... ok
+test_real_value_change_is_redumped (test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_value_change_is_redumped) ... ok
+test_reordered_but_equal_current_is_byte_identical (test_claude_settings_merge.ClaudeSettingsMergeTest.test_reordered_but_equal_current_is_byte_identical) ... ok
+test_trailing_newline (test_claude_settings_merge.ClaudeSettingsMergeTest.test_trailing_newline) ... ok
+test_current_only_runtime_tables_keep_current_group_order (test_codex_config_merge.CodexConfigMergeTest.test_current_only_runtime_tables_keep_current_group_order) ... ok
+test_fresh_machine_outputs_managed_baseline (test_codex_config_merge.CodexConfigMergeTest.test_fresh_machine_outputs_managed_baseline) ... ok
+test_managed_permgate_replaces_stale_private_ccgate_hook (test_codex_config_merge.CodexConfigMergeTest.test_managed_permgate_replaces_stale_private_ccgate_hook) ... ok
+test_managed_templates_are_rendered_before_merge (test_codex_config_merge.CodexConfigMergeTest.test_managed_templates_are_rendered_before_merge) ... ok
+test_managed_wins_for_managed_keys (test_codex_config_merge.CodexConfigMergeTest.test_managed_wins_for_managed_keys) ... ok
+test_repeated_runtime_tables_are_preserved_in_order (test_codex_config_merge.CodexConfigMergeTest.test_repeated_runtime_tables_are_preserved_in_order) ... ok
+test_runtime_tables_are_preserved (test_codex_config_merge.CodexConfigMergeTest.test_runtime_tables_are_preserved) ... ok
+test_runtime_tables_seed_from_managed_when_absent (test_codex_config_merge.CodexConfigMergeTest.test_runtime_tables_seed_from_managed_when_absent) ... ok
+test_unknown_current_tables_are_preserved (test_codex_config_merge.CodexConfigMergeTest.test_unknown_current_tables_are_preserved) ... ok
+test_working_tree_placeholder_falls_back_to_source_dir_parent (test_codex_config_merge.CodexConfigMergeTest.test_working_tree_placeholder_falls_back_to_source_dir_parent) ... ok
+test_working_tree_placeholder_prefers_env_override (test_codex_config_merge.CodexConfigMergeTest.test_working_tree_placeholder_prefers_env_override) ... ok
+test_rules_are_forbidden_only_and_cover_the_declared_prefixes (test_codex_execpolicy.CodexExecpolicyTest.test_rules_are_forbidden_only_and_cover_the_declared_prefixes) ... ok
+test_missing_trusted_runtime_is_silent (test_contextdb_codex_notify.ContextdbCodexNotifyTest.test_missing_trusted_runtime_is_silent) ... ok
+test_non_opted_project_is_silent_even_with_trusted_runtime (test_contextdb_codex_notify.ContextdbCodexNotifyTest.test_non_opted_project_is_silent_even_with_trusted_runtime) ... ok
+test_project_cli_is_data_only_and_trusted_cli_gets_explicit_root (test_contextdb_codex_notify.ContextdbCodexNotifyTest.test_project_cli_is_data_only_and_trusted_cli_gets_explicit_root) ... ok
+test_coverage_gems_are_compatible_and_exact (test_files_fixture.FilesFixtureTest.test_coverage_gems_are_compatible_and_exact) ... ok
+test_fixture_uses_chezmoi_binary_outside_mise_shims (test_files_fixture.FilesFixtureTest.test_fixture_uses_chezmoi_binary_outside_mise_shims) ... ok
+test_legacy_file_workflows_initialize_required_fixture_paths (test_files_fixture.FilesFixtureTest.test_legacy_file_workflows_initialize_required_fixture_paths) ... ok
+test_a_missing_formatter_is_reported_without_a_traceback (test_format_edited_files_hook.FormatEditedFilesHookTest.test_a_missing_formatter_is_reported_without_a_traceback) ... ok
+test_formatters_run_from_the_edited_files_repository_root (test_format_edited_files_hook.FormatEditedFilesHookTest.test_formatters_run_from_the_edited_files_repository_root) ... ok
+test_a_declare_r_assignment_must_appear_exactly_once (test_generate_agent_configs.GenerateAgentConfigsTest.test_a_declare_r_assignment_must_appear_exactly_once) ... ok
+test_a_list_render_writes_one_pin_into_several_files_and_declare_r (test_generate_agent_configs.GenerateAgentConfigsTest.test_a_list_render_writes_one_pin_into_several_files_and_declare_r) ... ok
+test_absent_worker_profile_renders_no_env_line (test_generate_agent_configs.GenerateAgentConfigsTest.test_absent_worker_profile_renders_no_env_line) ... ok
+test_absent_worker_worktree_renders_no_env_line (test_generate_agent_configs.GenerateAgentConfigsTest.test_absent_worker_worktree_renders_no_env_line) ... ok
+test_asset_constant_must_be_assigned_exactly_once (test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constant_must_be_assigned_exactly_once) ... ok
+test_asset_constants_render_into_their_files (test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constants_render_into_their_files) ... ok
+test_asset_pin_must_be_a_plain_value (test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_pin_must_be_a_plain_value) ... ok
+test_audit_profile_renders_read_only_sandbox_override (test_generate_agent_configs.GenerateAgentConfigsTest.test_audit_profile_renders_read_only_sandbox_override) ... ok
+test_bootstrap_pins_render_into_setup_and_their_installers (test_generate_agent_configs.GenerateAgentConfigsTest.test_bootstrap_pins_render_into_setup_and_their_installers) ... ok
+test_check_reports_asset_render_drift (test_generate_agent_configs.GenerateAgentConfigsTest.test_check_reports_asset_render_drift) ... ok
+test_claude_deny_rules_use_edit_for_file_mutations (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_deny_rules_use_edit_for_file_mutations) ... ok
+test_claude_sandbox_renders_optional_socket_and_extra_write_keys (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_optional_socket_and_extra_write_keys) ... ok
+test_claude_settings_render_interactive_advisor_only_when_set (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_render_interactive_advisor_only_when_set) ... ok
+test_claude_settings_render_the_format_hook_from_its_path (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_render_the_format_hook_from_its_path) ... ok
+test_claude_settings_renders_session_start_hooks (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_renders_session_start_hooks) ... ok
+test_claude_settings_use_interactive_profile_with_permgate (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_use_interactive_profile_with_permgate) ... ok
+test_claude_skill_symlink_outputs_strip_executable_target_prefix (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_skill_symlink_outputs_strip_executable_target_prefix) ... ok
+test_codex_config_renders_permgate_permission_request (test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_permgate_permission_request) ... ok
+test_codex_config_renders_working_tree_project_key (test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_working_tree_project_key) ... ok
+test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot (test_generate_agent_configs.GenerateAgentConfigsTest.test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot) ... ok
+test_expected_outputs_uses_codex_baseline_path (test_generate_agent_configs.GenerateAgentConfigsTest.test_expected_outputs_uses_codex_baseline_path) ... ok
+test_managed_claude_sandbox_excludes_agmsg_dispatch (test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_claude_sandbox_excludes_agmsg_dispatch) ... ok
+test_managed_codex_path_includes_installed_common_bin (test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_codex_path_includes_installed_common_bin) ... ok
+test_managed_hooks_use_installed_permgate_paths (test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_hooks_use_installed_permgate_paths) ... ok
+test_manifest_keeps_model_ids_only_in_profiles (test_generate_agent_configs.GenerateAgentConfigsTest.test_manifest_keeps_model_ids_only_in_profiles) ... ok
+test_model_profiles_env_renders_claude_advisor_only_when_set (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_claude_advisor_only_when_set) ... ok
+test_model_profiles_env_renders_worker_kind (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_kind) ... ok
+test_model_profiles_env_renders_worker_profile (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_profile) ... ok
+test_model_profiles_env_renders_worker_worktree (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_worktree) ... ok
+test_model_profiles_reject_incomplete_or_unsafe_entries (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_incomplete_or_unsafe_entries) ... ERROR: model profile standard is missing codex
+ERROR: model profile standard.claude.model must be a launcher-safe string
+ERROR: model_profiles must define the express profile
+ok
+test_model_profiles_reject_invalid_sandbox_mode (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_invalid_sandbox_mode) ... ok
+test_model_profiles_reject_unsafe_advisor (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_unsafe_advisor) ... ERROR: model profile standard.claude.advisor must be a launcher-safe string
+ok
+test_profile_modify_scripts_are_byte_idempotent_with_runtime_state (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_byte_idempotent_with_runtime_state) ... ok
+test_profile_modify_scripts_are_quiet_for_matching_hook_trust (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_quiet_for_matching_hook_trust) ... ok
+test_profile_modify_scripts_preserve_repeated_runtime_tables (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_repeated_runtime_tables) ... ok
+test_profile_modify_scripts_preserve_runtime_state (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_runtime_state) ... ok
+test_profile_modify_scripts_seed_base_hook_trust (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_seed_base_hook_trust) ... ok
+test_profile_modify_scripts_warn_on_hook_trust_divergence (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_warn_on_hook_trust_divergence) ... ok
+test_repository_marketplace_is_a_runtime_owned_seed (test_generate_agent_configs.GenerateAgentConfigsTest.test_repository_marketplace_is_a_runtime_owned_seed) ... ok
+test_security_profile_renders_launcher_and_expanded_notify (test_generate_agent_configs.GenerateAgentConfigsTest.test_security_profile_renders_launcher_and_expanded_notify) ... ok
+test_set_asset_field_rejects_unknown_targets_and_unsafe_values (test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rejects_unknown_targets_and_unsafe_values) ... ok
+test_set_asset_field_rewrites_only_the_named_scalar (test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rewrites_only_the_named_scalar) ... ok
+test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid (test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid) ... ok
+test_set_asset_refuses_fields_other_than_pins_and_checksums (test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_refuses_fields_other_than_pins_and_checksums) ... ok
+test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string (test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string) ... ok
+test_set_asset_reports_an_unparsable_manifest_without_a_traceback (test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_reports_an_unparsable_manifest_without_a_traceback) ... ok
+test_set_asset_updates_the_manifest_and_renders_its_pins (test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_updates_the_manifest_and_renders_its_pins) ... ok
+test_unknown_interactive_profile_fails (test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_interactive_profile_fails) ... ERROR: interactive_profile must name a model profile: 'missing'
+ok
+test_unknown_worker_kind_fails (test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_kind_fails) ... ERROR: worker_kind must be one of ('codex', 'claude'): 'banana'
+ok
+test_unknown_worker_profile_fails (test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_profile_fails) ... ERROR: worker_profile must name a model profile: 'missing'
+ok
+test_worker_kind_defaults_to_codex (test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_kind_defaults_to_codex) ... ok
+test_worker_worktree_outside_claude_worktrees_fails (test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_worktree_outside_claude_worktrees_fails) ... ERROR: worker_worktree must be a relative path under .claude/worktrees/: 'worker-c'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '/abs/.claude/worktrees/x'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/..'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/a/b'
+ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/$(x)'
+ok
+test_a_real_directory_of_that_name_stays_visible (test_gitignore_sandbox_placeholders.SandboxPlaceholderIgnoreTest.test_a_real_directory_of_that_name_stays_visible) ... ok
+test_claude_settings_stay_visible (test_gitignore_sandbox_placeholders.SandboxPlaceholderIgnoreTest.test_claude_settings_stay_visible) ... ok
+test_empty_placeholder_files_on_disk_leave_status_clean (test_gitignore_sandbox_placeholders.SandboxPlaceholderIgnoreTest.test_empty_placeholder_files_on_disk_leave_status_clean) ... ok
+test_every_placeholder_is_ignored_at_the_root_only (test_gitignore_sandbox_placeholders.SandboxPlaceholderIgnoreTest.test_every_placeholder_is_ignored_at_the_root_only) ... ok
+test_add_worker_accepts_a_claude_trust_dialog_while_spawn_waits (test_herdr_agents.HerdrAgentsTest.test_add_worker_accepts_a_claude_trust_dialog_while_spawn_waits) ... ok
+test_add_worker_derives_the_default_herdr_socket_for_spawn (test_herdr_agents.HerdrAgentsTest.test_add_worker_derives_the_default_herdr_socket_for_spawn) ... ok
+test_add_worker_emits_no_override_for_an_unparseable_codex_config (test_herdr_agents.HerdrAgentsTest.test_add_worker_emits_no_override_for_an_unparseable_codex_config) ... ok
+test_add_worker_exits_zero_when_a_timed_out_spawn_still_links (test_herdr_agents.HerdrAgentsTest.test_add_worker_exits_zero_when_a_timed_out_spawn_still_links) ... ok
+test_add_worker_keeps_the_configured_roots_from_an_indented_multi_line_array (test_herdr_agents.HerdrAgentsTest.test_add_worker_keeps_the_configured_roots_from_an_indented_multi_line_array) ... ok
+test_add_worker_linkage_failure_prints_the_invocation_and_the_query (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_failure_prints_the_invocation_and_the_query) ... ok
+test_add_worker_linkage_falls_back_to_the_legacy_record_without_the_resolver (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_falls_back_to_the_legacy_record_without_the_resolver) ... ok
+test_add_worker_linkage_ignores_a_delayed_pong_for_another_ping (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_ignores_a_delayed_pong_for_another_ping) ... ok
+test_add_worker_linkage_ignores_a_placement_record_for_a_pane_gone_from_the_workspace (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_ignores_a_placement_record_for_a_pane_gone_from_the_workspace) ... ok
+test_add_worker_linkage_ignores_a_placement_record_for_a_pane_that_predates_this_spawn (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_ignores_a_placement_record_for_a_pane_that_predates_this_spawn) ... ok
+test_add_worker_linkage_ignores_a_placement_record_from_another_workspace (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_ignores_a_placement_record_from_another_workspace) ... ok
+test_add_worker_linkage_ignores_a_pong_older_than_this_ping (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_ignores_a_pong_older_than_this_ping) ... ok
+test_add_worker_linkage_reads_a_leading_zero_wait_as_decimal (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_reads_a_leading_zero_wait_as_decimal) ... ok
+test_add_worker_linkage_refuses_a_placement_conflict (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_refuses_a_placement_conflict) ... ok
+test_add_worker_linkage_refuses_several_orchestrator_identities (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_refuses_several_orchestrator_identities) ... ok
+test_add_worker_linkage_resolves_an_id_keyed_placement_record (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_resolves_an_id_keyed_placement_record) ... ok
+test_add_worker_linkage_survives_a_non_numeric_pong_wait (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_survives_a_non_numeric_pong_wait) ... ok
+test_add_worker_linkage_uses_the_spawn_placement_record_not_team_sh (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_uses_the_spawn_placement_record_not_team_sh) ... ok
+test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options (test_herdr_agents.HerdrAgentsTest.test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options) ... ok
+test_add_worker_refuses_an_undefined_profile_before_any_change (test_herdr_agents.HerdrAgentsTest.test_add_worker_refuses_an_undefined_profile_before_any_change) ... ok
+test_add_worker_refuses_before_any_change_when_no_herdr_socket_is_found (test_herdr_agents.HerdrAgentsTest.test_add_worker_refuses_before_any_change_when_no_herdr_socket_is_found) ... ok
+test_add_worker_rejects_a_worktree_outside_claude_worktrees (test_herdr_agents.HerdrAgentsTest.test_add_worker_rejects_a_worktree_outside_claude_worktrees) ... ok
+test_add_worker_reports_a_failed_claude_spawn_without_a_trust_dialog (test_herdr_agents.HerdrAgentsTest.test_add_worker_reports_a_failed_claude_spawn_without_a_trust_dialog) ... ok
+test_add_worker_reports_a_failed_spawn (test_herdr_agents.HerdrAgentsTest.test_add_worker_reports_a_failed_spawn) ... ok
+test_add_worker_reports_linkage_ok_after_a_ready_spawn (test_herdr_agents.HerdrAgentsTest.test_add_worker_reports_linkage_ok_after_a_ready_spawn) ... ok
+test_add_worker_reports_linkage_unreached_after_a_failed_spawn (test_herdr_agents.HerdrAgentsTest.test_add_worker_reports_linkage_unreached_after_a_failed_spawn) ... ok
+test_add_worker_reports_shallow_metadata_as_not_granted (test_herdr_agents.HerdrAgentsTest.test_add_worker_reports_shallow_metadata_as_not_granted) ... ok
+test_add_worker_reuses_a_seat_tab_in_the_pair_workspace (test_herdr_agents.HerdrAgentsTest.test_add_worker_reuses_a_seat_tab_in_the_pair_workspace) ... ok
+test_add_worker_reuses_a_seated_workspace (test_herdr_agents.HerdrAgentsTest.test_add_worker_reuses_a_seated_workspace) ... ok
+test_add_worker_seats_the_worker_in_a_tab_of_the_pair_workspace (test_herdr_agents.HerdrAgentsTest.test_add_worker_seats_the_worker_in_a_tab_of_the_pair_workspace) ... ok
+test_add_worker_spawns_the_seat_in_its_own_workspace_with_profile_args (test_herdr_agents.HerdrAgentsTest.test_add_worker_spawns_the_seat_in_its_own_workspace_with_profile_args) ... ok
+test_add_worker_succeeds_for_a_claude_worker_without_a_trust_dialog (test_herdr_agents.HerdrAgentsTest.test_add_worker_succeeds_for_a_claude_worker_without_a_trust_dialog) ... ok
+test_agent_name_taken_gives_up_after_bounded_wait (test_herdr_agents.HerdrAgentsTest.test_agent_name_taken_gives_up_after_bounded_wait) ... ok
+test_another_team_members_pane_is_not_a_second_worker (test_herdr_agents.HerdrAgentsTest.test_another_team_members_pane_is_not_a_second_worker) ... ok
+test_attach_bootstraps_agmsg_after_codex_reuse (test_herdr_agents.HerdrAgentsTest.test_attach_bootstraps_agmsg_after_codex_reuse) ... ok
+test_attach_bootstraps_agmsg_after_codex_start (test_herdr_agents.HerdrAgentsTest.test_attach_bootstraps_agmsg_after_codex_start) ... ok
+test_attach_builds_codex_right_of_current_claude_pane (test_herdr_agents.HerdrAgentsTest.test_attach_builds_codex_right_of_current_claude_pane) ... ok
+test_attach_complete_workspace_is_idempotent (test_herdr_agents.HerdrAgentsTest.test_attach_complete_workspace_is_idempotent) ... ok
+test_attach_completes_bootstrap_on_a_self_named_pair (test_herdr_agents.HerdrAgentsTest.test_attach_completes_bootstrap_on_a_self_named_pair) ... ok
+test_attach_correct_order_does_not_swap (test_herdr_agents.HerdrAgentsTest.test_attach_correct_order_does_not_swap) ... ok
+test_attach_does_not_restart_codex_agent_from_another_tab (test_herdr_agents.HerdrAgentsTest.test_attach_does_not_restart_codex_agent_from_another_tab) ... ok
+test_attach_equal_halves_does_not_resize (test_herdr_agents.HerdrAgentsTest.test_attach_equal_halves_does_not_resize) ... ok
+test_attach_from_the_self_named_worker_pane_exits_quietly (test_herdr_agents.HerdrAgentsTest.test_attach_from_the_self_named_worker_pane_exits_quietly) ... ok
+test_attach_from_the_worker_pane_does_not_relabel_it (test_herdr_agents.HerdrAgentsTest.test_attach_from_the_worker_pane_does_not_relabel_it) ... ok
+test_attach_from_the_worker_worktree_exits_quietly (test_herdr_agents.HerdrAgentsTest.test_attach_from_the_worker_worktree_exits_quietly) ... ok
+test_attach_ignores_agmsg_bootstrap_failure (test_herdr_agents.HerdrAgentsTest.test_attach_ignores_agmsg_bootstrap_failure) ... ok
+test_attach_ignores_extra_panes_on_other_tabs (test_herdr_agents.HerdrAgentsTest.test_attach_ignores_extra_panes_on_other_tabs) ... ok
+test_attach_leaves_a_self_named_pair_alone (test_herdr_agents.HerdrAgentsTest.test_attach_leaves_a_self_named_pair_alone) ... ok
+test_attach_legacy_files_pane_refuses_repair_without_layout_mutation (test_herdr_agents.HerdrAgentsTest.test_attach_legacy_files_pane_refuses_repair_without_layout_mutation) ... ok
+test_attach_lowercases_and_validates_derived_agent_name (test_herdr_agents.HerdrAgentsTest.test_attach_lowercases_and_validates_derived_agent_name) ... ok
+test_attach_noops_for_full_mode_managed_layout (test_herdr_agents.HerdrAgentsTest.test_attach_noops_for_full_mode_managed_layout) ... ok
+test_attach_ratio_repair_skips_unsafe_layouts (test_herdr_agents.HerdrAgentsTest.test_attach_ratio_repair_skips_unsafe_layouts) ... ok
+test_attach_rejects_invalid_derived_agent_name (test_herdr_agents.HerdrAgentsTest.test_attach_rejects_invalid_derived_agent_name) ... ok
+test_attach_repair_splits_the_missing_worker_pane_in_its_worktree (test_herdr_agents.HerdrAgentsTest.test_attach_repair_splits_the_missing_worker_pane_in_its_worktree) ... ok
+test_attach_repairs_codex_claude_order_with_one_swap (test_herdr_agents.HerdrAgentsTest.test_attach_repairs_codex_claude_order_with_one_swap) ... ok
+test_attach_repairs_skewed_widths_to_equal_halves (test_herdr_agents.HerdrAgentsTest.test_attach_repairs_skewed_widths_to_equal_halves) ... ok
+test_attach_reports_agmsg_skip_when_not_installed (test_herdr_agents.HerdrAgentsTest.test_attach_reports_agmsg_skip_when_not_installed) ... ok
+test_attach_skips_delivery_when_turn_hook_exists (test_herdr_agents.HerdrAgentsTest.test_attach_skips_delivery_when_turn_hook_exists) ... ok
+test_attach_warns_after_one_nonconverging_resize (test_herdr_agents.HerdrAgentsTest.test_attach_warns_after_one_nonconverging_resize) ... ok
+test_attach_warns_when_multiple_agmsg_identities_exist (test_herdr_agents.HerdrAgentsTest.test_attach_warns_when_multiple_agmsg_identities_exist) ... ok
+test_attach_without_herdr_environment_names_the_seated_worker (test_herdr_agents.HerdrAgentsTest.test_attach_without_herdr_environment_names_the_seated_worker) ... ok
+test_attach_without_herdr_environment_prints_the_bring_up_summary (test_herdr_agents.HerdrAgentsTest.test_attach_without_herdr_environment_prints_the_bring_up_summary) ... ok
+test_attach_without_herdr_environment_stays_quiet_in_the_worker_worktree (test_herdr_agents.HerdrAgentsTest.test_attach_without_herdr_environment_stays_quiet_in_the_worker_worktree) ... ok
+test_audit_accepts_a_dir_with_an_apostrophe_quoted_intact (test_herdr_agents.HerdrAgentsTest.test_audit_accepts_a_dir_with_an_apostrophe_quoted_intact) ... ok
+test_audit_creates_the_audit_tab_once_and_reuses_it (test_herdr_agents.HerdrAgentsTest.test_audit_creates_the_audit_tab_once_and_reuses_it) ... ok
+test_audit_exits_2_without_a_managed_workspace (test_herdr_agents.HerdrAgentsTest.test_audit_exits_2_without_a_managed_workspace) ... ok
+test_audit_fails_as_unmasked_when_masking_fails (test_herdr_agents.HerdrAgentsTest.test_audit_fails_as_unmasked_when_masking_fails) ... ok
+test_audit_falls_back_to_the_recent_unwrapped_prompt_without_process_info (test_herdr_agents.HerdrAgentsTest.test_audit_falls_back_to_the_recent_unwrapped_prompt_without_process_info) ... ok
+test_audit_finds_the_self_named_pair_workspace (test_herdr_agents.HerdrAgentsTest.test_audit_finds_the_self_named_pair_workspace) ... ok
+test_audit_gates_on_the_concluding_line_of_the_last_message (test_herdr_agents.HerdrAgentsTest.test_audit_gates_on_the_concluding_line_of_the_last_message) ... ok
+test_audit_marker_detection_reads_unwrapped_snapshots (test_herdr_agents.HerdrAgentsTest.test_audit_marker_detection_reads_unwrapped_snapshots) ... ok
+test_audit_masks_evidence_before_the_verdict_gate (test_herdr_agents.HerdrAgentsTest.test_audit_masks_evidence_before_the_verdict_gate) ... ok
+test_audit_masks_evidence_even_when_the_audit_exit_is_nonzero (test_herdr_agents.HerdrAgentsTest.test_audit_masks_evidence_even_when_the_audit_exit_is_nonzero) ... ok
+test_audit_nonzero_exit_marker_fails_the_helper (test_herdr_agents.HerdrAgentsTest.test_audit_nonzero_exit_marker_fails_the_helper) ... ok
+test_audit_pane_command_tees_evidence_and_waits_for_a_fresh_marker (test_herdr_agents.HerdrAgentsTest.test_audit_pane_command_tees_evidence_and_waits_for_a_fresh_marker) ... ok
+test_audit_quotes_a_non_ascii_out_path_under_the_c_locale (test_herdr_agents.HerdrAgentsTest.test_audit_quotes_a_non_ascii_out_path_under_the_c_locale) ... ok
+test_audit_quotes_the_last_message_path_for_a_non_ascii_out (test_herdr_agents.HerdrAgentsTest.test_audit_quotes_the_last_message_path_for_a_non_ascii_out) ... ok
+test_audit_refuses_a_busy_audit_pane (test_herdr_agents.HerdrAgentsTest.test_audit_refuses_a_busy_audit_pane) ... ok
+test_audit_refuses_a_tracked_masker_missing_from_the_tree (test_herdr_agents.HerdrAgentsTest.test_audit_refuses_a_tracked_masker_missing_from_the_tree) ... ok
+test_audit_refuses_an_uncommitted_or_untracked_masker (test_herdr_agents.HerdrAgentsTest.test_audit_refuses_an_uncommitted_or_untracked_masker) ... ok
+test_audit_refuses_the_masker_from_the_audited_commit (test_herdr_agents.HerdrAgentsTest.test_audit_refuses_the_masker_from_the_audited_commit) ... ok
+test_audit_rejects_unsafe_arguments_before_calling_herdr (test_herdr_agents.HerdrAgentsTest.test_audit_rejects_unsafe_arguments_before_calling_herdr) ... ok
+test_audit_runs_codex_exec_with_the_prompt_and_last_message_file (test_herdr_agents.HerdrAgentsTest.test_audit_runs_codex_exec_with_the_prompt_and_last_message_file) ... ok
+test_audit_runs_in_dir_even_when_the_reused_pane_moved (test_herdr_agents.HerdrAgentsTest.test_audit_runs_in_dir_even_when_the_reused_pane_moved) ... ok
+test_audit_skips_masking_without_a_repo_validator (test_herdr_agents.HerdrAgentsTest.test_audit_skips_masking_without_a_repo_validator) ... ok
+test_audit_tab_does_not_break_attach_order_and_ratio_repair (test_herdr_agents.HerdrAgentsTest.test_audit_tab_does_not_break_attach_order_and_ratio_repair) ... ok
+test_audit_tab_keeps_the_full_mode_duplicate_workspace_guard (test_herdr_agents.HerdrAgentsTest.test_audit_tab_keeps_the_full_mode_duplicate_workspace_guard) ... ok
+test_audit_task_inlines_the_task_inputs_and_the_merge_base_diff (test_herdr_agents.HerdrAgentsTest.test_audit_task_inlines_the_task_inputs_and_the_merge_base_diff) ... ok
+test_audit_task_names_a_txt_artifact_when_no_md_one_exists (test_herdr_agents.HerdrAgentsTest.test_audit_task_names_a_txt_artifact_when_no_md_one_exists) ... ok
+test_audit_task_names_only_the_task_file_when_no_artifact_exists (test_herdr_agents.HerdrAgentsTest.test_audit_task_names_only_the_task_file_when_no_artifact_exists) ... ok
+test_audit_task_refuses_a_missing_task_file_or_merge_base_before_herdr_work (test_herdr_agents.HerdrAgentsTest.test_audit_task_refuses_a_missing_task_file_or_merge_base_before_herdr_work) ... ok
+test_audit_trusts_a_shell_foreground_over_a_stale_visible_snapshot (test_herdr_agents.HerdrAgentsTest.test_audit_trusts_a_shell_foreground_over_a_stale_visible_snapshot) ... ok
+test_audit_uses_manifest_audit_codex_args (test_herdr_agents.HerdrAgentsTest.test_audit_uses_manifest_audit_codex_args) ... ok
+test_audit_verdict_gate_reads_only_the_final_codex_block (test_herdr_agents.HerdrAgentsTest.test_audit_verdict_gate_reads_only_the_final_codex_block) ... ok
+test_audit_waits_for_the_prompt_on_a_new_audit_tab (test_herdr_agents.HerdrAgentsTest.test_audit_waits_for_the_prompt_on_a_new_audit_tab) ... ok
+test_bare_herdr_in_ghostty_starts_plain_session (test_herdr_agents.HerdrAgentsTest.test_bare_herdr_in_ghostty_starts_plain_session) ... ok
+test_bare_herdr_outside_ghostty_uses_real_cli (test_herdr_agents.HerdrAgentsTest.test_bare_herdr_outside_ghostty_uses_real_cli) ... ok
+test_bootstrap_accepts_same_identity_in_multiple_teams (test_herdr_agents.HerdrAgentsTest.test_bootstrap_accepts_same_identity_in_multiple_teams) ... ok
+test_bootstrap_leaves_a_foreign_pre_push_hook_alone (test_herdr_agents.HerdrAgentsTest.test_bootstrap_leaves_a_foreign_pre_push_hook_alone) ... ok
+test_bootstrap_only_creates_missing_herdr_log_directory (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_creates_missing_herdr_log_directory) ... ok
+test_bootstrap_only_does_not_call_herdr_or_agents (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_does_not_call_herdr_or_agents) ... ok
+test_bootstrap_only_sets_claude_delivery_once_when_hook_is_missing (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_sets_claude_delivery_once_when_hook_is_missing) ... ok
+test_bootstrap_only_sets_each_missing_delivery_once (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_sets_each_missing_delivery_once) ... ok
+test_bootstrap_only_skips_all_delivery_when_both_hooks_exist (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_skips_all_delivery_when_both_hooks_exist) ... ok
+test_bootstrap_only_skips_home_without_agmsg_calls (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_skips_home_without_agmsg_calls) ... ok
+test_bootstrap_only_warns_for_missing_claude_identity_without_joining (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_warns_for_missing_claude_identity_without_joining) ... ok
+test_bootstrap_only_warns_for_multiple_claude_identities (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_warns_for_multiple_claude_identities) ... ok
+test_bootstrap_removes_its_retired_pre_push_stub (test_herdr_agents.HerdrAgentsTest.test_bootstrap_removes_its_retired_pre_push_stub) ... ok
+test_bootstrap_with_claude_worker_accepts_two_claude_identities (test_herdr_agents.HerdrAgentsTest.test_bootstrap_with_claude_worker_accepts_two_claude_identities) ... ok
+test_bootstrap_with_claude_worker_hints_at_a_missing_worker_identity (test_herdr_agents.HerdrAgentsTest.test_bootstrap_with_claude_worker_hints_at_a_missing_worker_identity) ... ok
+test_bootstrap_with_claude_worker_leaves_codex_hooks_alone (test_herdr_agents.HerdrAgentsTest.test_bootstrap_with_claude_worker_leaves_codex_hooks_alone) ... ok
+test_claude_agent_accepts_manifest_profile_arguments_for_e2e (test_herdr_agents.HerdrAgentsTest.test_claude_agent_accepts_manifest_profile_arguments_for_e2e) ... ok
+test_claude_repair_skips_just_restarted_codex_pane_without_agent_field (test_herdr_agents.HerdrAgentsTest.test_claude_repair_skips_just_restarted_codex_pane_without_agent_field) ... ok
+test_claude_settings_add_herdr_attach_session_hook (test_herdr_agents.HerdrAgentsTest.test_claude_settings_add_herdr_attach_session_hook) ... ok
+test_claude_worker_sharing_the_orchestrator_identity_is_refused (test_herdr_agents.HerdrAgentsTest.test_claude_worker_sharing_the_orchestrator_identity_is_refused) ... ok
+test_claude_worker_with_a_registered_worker_identity_proceeds (test_herdr_agents.HerdrAgentsTest.test_claude_worker_with_a_registered_worker_identity_proceeds) ... ok
+test_codex_profile_defaults_to_generated_interactive_profile (test_herdr_agents.HerdrAgentsTest.test_codex_profile_defaults_to_generated_interactive_profile) ... ok
+test_codex_profile_env_override_wins_over_generated_profile (test_herdr_agents.HerdrAgentsTest.test_codex_profile_env_override_wins_over_generated_profile) ... ok
+test_codex_worker_is_not_subject_to_the_identity_guard (test_herdr_agents.HerdrAgentsTest.test_codex_worker_is_not_subject_to_the_identity_guard) ... ok
+test_existing_legacy_files_pane_is_not_reused_for_claude_or_split_again (test_herdr_agents.HerdrAgentsTest.test_existing_legacy_files_pane_is_not_reused_for_claude_or_split_again) ... ok
+test_existing_two_pane_workspace_repairs_skewed_widths (test_herdr_agents.HerdrAgentsTest.test_existing_two_pane_workspace_repairs_skewed_widths) ... ok
+test_existing_workspace_matches_canonical_macos_workdir (test_herdr_agents.HerdrAgentsTest.test_existing_workspace_matches_canonical_macos_workdir) ... ok
+test_existing_workspace_restarts_missing_claude_in_empty_pane (test_herdr_agents.HerdrAgentsTest.test_existing_workspace_restarts_missing_claude_in_empty_pane) ... ok
+test_existing_workspace_restarts_missing_codex_agent (test_herdr_agents.HerdrAgentsTest.test_existing_workspace_restarts_missing_codex_agent) ... ok
+test_existing_workspace_splits_when_missing_claude_has_no_empty_pane (test_herdr_agents.HerdrAgentsTest.test_existing_workspace_splits_when_missing_claude_has_no_empty_pane) ... ok
+test_existing_workspace_with_legacy_files_pane_focuses_without_mutation (test_herdr_agents.HerdrAgentsTest.test_existing_workspace_with_legacy_files_pane_focuses_without_mutation) ... ok
+test_explicit_worker_kind_and_profile_survive_seat_label_loading (test_herdr_agents.HerdrAgentsTest.test_explicit_worker_kind_and_profile_survive_seat_label_loading) ... ok
+test_file_viewer_plugin_config_sets_micro_editor (test_herdr_agents.HerdrAgentsTest.test_file_viewer_plugin_config_sets_micro_editor) ... ok
+test_full_and_restart_modes_refuse_duplicate_managed_workspaces (test_herdr_agents.HerdrAgentsTest.test_full_and_restart_modes_refuse_duplicate_managed_workspaces) ... ok
+test_full_mode_does_not_duplicate_a_solo_codex_worker_seat (test_herdr_agents.HerdrAgentsTest.test_full_mode_does_not_duplicate_a_solo_codex_worker_seat) ... ok
+test_full_mode_gives_a_codex_worker_its_worktree_git_metadata_roots (test_herdr_agents.HerdrAgentsTest.test_full_mode_gives_a_codex_worker_its_worktree_git_metadata_roots) ... ok
+test_full_mode_heal_moves_a_reused_empty_pane_into_the_worktree (test_herdr_agents.HerdrAgentsTest.test_full_mode_heal_moves_a_reused_empty_pane_into_the_worktree) ... ok
+test_full_mode_heal_never_starts_the_worker_in_an_exited_added_worker_pane (test_herdr_agents.HerdrAgentsTest.test_full_mode_heal_never_starts_the_worker_in_an_exited_added_worker_pane) ... ok
+test_full_mode_heal_never_starts_the_worker_in_the_audit_pane (test_herdr_agents.HerdrAgentsTest.test_full_mode_heal_never_starts_the_worker_in_the_audit_pane) ... ok
+test_full_mode_heals_nothing_in_a_healthy_self_named_pair (test_herdr_agents.HerdrAgentsTest.test_full_mode_heals_nothing_in_a_healthy_self_named_pair) ... ok
+test_full_mode_heals_the_orchestrator_beside_a_live_added_claude_worker (test_herdr_agents.HerdrAgentsTest.test_full_mode_heals_the_orchestrator_beside_a_live_added_claude_worker) ... ok
+test_full_mode_reuses_agentless_worker_pane_in_attach_labeled_workspace (test_herdr_agents.HerdrAgentsTest.test_full_mode_reuses_agentless_worker_pane_in_attach_labeled_workspace) ... ok
+test_full_mode_skips_agmsg_bootstrap_for_home (test_herdr_agents.HerdrAgentsTest.test_full_mode_skips_agmsg_bootstrap_for_home) ... ok
+test_full_mode_splits_the_worker_pane_in_its_worktree (test_herdr_agents.HerdrAgentsTest.test_full_mode_splits_the_worker_pane_in_its_worktree) ... ok
+test_ghostty_config_does_not_auto_start_herdr_session (test_herdr_agents.HerdrAgentsTest.test_ghostty_config_does_not_auto_start_herdr_session) ... ok
+test_ghostty_herdr_starts_plain_workspace (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_plain_workspace) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea2890>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d9d50>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064da200>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d9f30>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d87c0>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d8130>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d8e50>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d8d60>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d9210>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d8f40>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d97b0>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc066c74c0>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d94e0>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc066c7e20>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d95d0>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d98a0>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d9b70>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064d96c0>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064da4d0>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064da5c0>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064da6b0>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064da7a0>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064da890>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064da980>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064daa70>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064dab60>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064dac50>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064dad40>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064dae30>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064daf20>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064db010>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064db100>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/_compression.py:67: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc064db1f0>
+  with memoryview(b) as view, view.cast("B") as byte_view:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_herdr_prefix_alt_a_runs_helper_from_active_pane (test_herdr_agents.HerdrAgentsTest.test_herdr_prefix_alt_a_runs_helper_from_active_pane) ... ok
+test_herdr_prefix_f_opens_file_viewer_popup (test_herdr_agents.HerdrAgentsTest.test_herdr_prefix_f_opens_file_viewer_popup) ... ok
+test_herdr_session_does_not_prebuild_agent_layout (test_herdr_agents.HerdrAgentsTest.test_herdr_session_does_not_prebuild_agent_layout) ... ok
+test_herdr_session_execs_herdr_without_prebuilding_agents (test_herdr_agents.HerdrAgentsTest.test_herdr_session_execs_herdr_without_prebuilding_agents) ... ok
+test_herdr_session_passes_syntax_check (test_herdr_agents.HerdrAgentsTest.test_herdr_session_passes_syntax_check) ... ok
+test_herdr_session_rejects_arguments (test_herdr_agents.HerdrAgentsTest.test_herdr_session_rejects_arguments) ... ok
+test_herdr_with_args_in_ghostty_uses_real_cli (test_herdr_agents.HerdrAgentsTest.test_herdr_with_args_in_ghostty_uses_real_cli) ... ok
+test_interactive_ghostty_shell_attaches_plain_session (test_herdr_agents.HerdrAgentsTest.test_interactive_ghostty_shell_attaches_plain_session) ... ok
+test_make_update_and_upgrade_include_agmsg_bootstrap (test_herdr_agents.HerdrAgentsTest.test_make_update_and_upgrade_include_agmsg_bootstrap) ... ok
+test_mixed_legacy_and_seat_labels_are_one_pair (test_herdr_agents.HerdrAgentsTest.test_mixed_legacy_and_seat_labels_are_one_pair) ... ok
+test_new_pane_waits_for_shell_and_retries_agent_start_once_on_timeout (test_herdr_agents.HerdrAgentsTest.test_new_pane_waits_for_shell_and_retries_agent_start_once_on_timeout) ... ok
+test_orchestrator_pane_appends_claude_args_after_profile_args (test_herdr_agents.HerdrAgentsTest.test_orchestrator_pane_appends_claude_args_after_profile_args) ... ok
+test_orchestrator_pane_start_claims_the_seat_with_the_composite_id (test_herdr_agents.HerdrAgentsTest.test_orchestrator_pane_start_claims_the_seat_with_the_composite_id) ... ok
+test_orchestrator_pane_start_without_a_session_claims_nothing (test_herdr_agents.HerdrAgentsTest.test_orchestrator_pane_start_without_a_session_claims_nothing) ... ok
+test_orchestrator_pane_uses_interactive_profile_args (test_herdr_agents.HerdrAgentsTest.test_orchestrator_pane_uses_interactive_profile_args) ... ok
+test_pane_creation_propagates_explicit_fpath (test_herdr_agents.HerdrAgentsTest.test_pane_creation_propagates_explicit_fpath) ... ok
+test_regime_boundary_check_counts_names_across_runtime_types_at_an_active_seat (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_counts_names_across_runtime_types_at_an_active_seat) ... ok
+test_regime_boundary_check_finds_worker_workspaces_from_a_worktree (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_finds_worker_workspaces_from_a_worktree) ... ok
+test_regime_boundary_check_flags_empty_seats_only (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_flags_empty_seats_only) ... ok
+test_regime_boundary_check_gives_the_seat_lock_check_the_main_checkout (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_gives_the_seat_lock_check_the_main_checkout) ... ok
+test_regime_boundary_check_reports_an_added_worker_tab_in_the_pair_workspace (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_reports_an_added_worker_tab_in_the_pair_workspace) ... ok
+test_regime_boundary_check_scans_every_worktree_for_untracked_evidence (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_scans_every_worktree_for_untracked_evidence) ... ok
+test_registered_agent_not_ready_waits_for_idle_without_duplicate_start (test_herdr_agents.HerdrAgentsTest.test_registered_agent_not_ready_waits_for_idle_without_duplicate_start) ... ok
+test_remove_worker_cleans_up_a_codex_seat_without_a_placement_record (test_herdr_agents.HerdrAgentsTest.test_remove_worker_cleans_up_a_codex_seat_without_a_placement_record) ... ok
+test_remove_worker_closes_only_its_tab_in_the_pair_workspace (test_herdr_agents.HerdrAgentsTest.test_remove_worker_closes_only_its_tab_in_the_pair_workspace) ... ok
+test_remove_worker_despawns_then_turns_delivery_off_leaves_and_closes (test_herdr_agents.HerdrAgentsTest.test_remove_worker_despawns_then_turns_delivery_off_leaves_and_closes) ... ok
+test_remove_worker_force_retries_a_failed_graceful_despawn (test_herdr_agents.HerdrAgentsTest.test_remove_worker_force_retries_a_failed_graceful_despawn) ... ok
+test_remove_worker_force_skips_the_forced_despawn_when_graceful_succeeds (test_herdr_agents.HerdrAgentsTest.test_remove_worker_force_skips_the_forced_despawn_when_graceful_succeeds) ... ok
+test_remove_worker_forces_despawn_when_graceful_reports_needs_force (test_herdr_agents.HerdrAgentsTest.test_remove_worker_forces_despawn_when_graceful_reports_needs_force) ... ok
+test_remove_worker_keeps_a_worker_tab_that_holds_another_running_agent (test_herdr_agents.HerdrAgentsTest.test_remove_worker_keeps_a_worker_tab_that_holds_another_running_agent) ... ok
+test_remove_worker_refuses_a_dirty_worktree_without_force (test_herdr_agents.HerdrAgentsTest.test_remove_worker_refuses_a_dirty_worktree_without_force) ... ok
+test_remove_worker_stops_when_a_graceful_despawn_fails (test_herdr_agents.HerdrAgentsTest.test_remove_worker_stops_when_a_graceful_despawn_fails) ... ok
+test_remove_worker_stops_when_the_forced_retry_also_fails (test_herdr_agents.HerdrAgentsTest.test_remove_worker_stops_when_the_forced_retry_also_fails) ... ok
+test_restart_worker_confirms_the_exit_dialog_once (test_herdr_agents.HerdrAgentsTest.test_restart_worker_confirms_the_exit_dialog_once) ... ok
+test_restart_worker_exits_2_without_a_managed_workspace (test_herdr_agents.HerdrAgentsTest.test_restart_worker_exits_2_without_a_managed_workspace) ... ok
+test_restart_worker_finds_a_solo_codex_worker_seat (test_herdr_agents.HerdrAgentsTest.test_restart_worker_finds_a_solo_codex_worker_seat) ... ok
+test_restart_worker_finds_the_worker_by_its_seat_label (test_herdr_agents.HerdrAgentsTest.test_restart_worker_finds_the_worker_by_its_seat_label) ... ok
+test_restart_worker_never_treats_the_audit_pane_as_the_worker (test_herdr_agents.HerdrAgentsTest.test_restart_worker_never_treats_the_audit_pane_as_the_worker) ... ok
+test_restart_worker_passes_manifest_advisor_args_to_claude_worker (test_herdr_agents.HerdrAgentsTest.test_restart_worker_passes_manifest_advisor_args_to_claude_worker) ... ok
+test_restart_worker_refuses_to_start_outside_the_seat_when_the_pane_hangs (test_herdr_agents.HerdrAgentsTest.test_restart_worker_refuses_to_start_outside_the_seat_when_the_pane_hangs) ... ok
+test_restart_worker_refuses_unmanaged_extra_panes (test_herdr_agents.HerdrAgentsTest.test_restart_worker_refuses_unmanaged_extra_panes) ... ok
+test_restart_worker_refuses_when_the_pane_never_reaches_a_shell (test_herdr_agents.HerdrAgentsTest.test_restart_worker_refuses_when_the_pane_never_reaches_a_shell) ... ok
+test_restart_worker_relaunches_the_worker_in_its_existing_pane (test_herdr_agents.HerdrAgentsTest.test_restart_worker_relaunches_the_worker_in_its_existing_pane) ... ok
+test_restart_worker_repairs_a_legacy_orchestrator_label_on_the_worker_pane (test_herdr_agents.HerdrAgentsTest.test_restart_worker_repairs_a_legacy_orchestrator_label_on_the_worker_pane) ... ok
+test_restart_worker_reseats_a_main_path_worker_into_its_worktree (test_herdr_agents.HerdrAgentsTest.test_restart_worker_reseats_a_main_path_worker_into_its_worktree) ... ok
+test_restart_worker_waits_for_stale_registration_then_retries_once (test_herdr_agents.HerdrAgentsTest.test_restart_worker_waits_for_stale_registration_then_retries_once) ... ok
+test_seat_claim_fails_when_a_later_team_is_held_by_another_session (test_herdr_agents.HerdrAgentsTest.test_seat_claim_fails_when_a_later_team_is_held_by_another_session) ... ok
+test_seat_claim_held_by_another_session_fails_without_release (test_herdr_agents.HerdrAgentsTest.test_seat_claim_held_by_another_session_fails_without_release) ... ok
+test_seat_claim_keeps_a_same_session_composite_lock_of_a_live_claude (test_herdr_agents.HerdrAgentsTest.test_seat_claim_keeps_a_same_session_composite_lock_of_a_live_claude) ... ok
+test_seat_claim_replaces_a_same_session_bare_lock (test_herdr_agents.HerdrAgentsTest.test_seat_claim_replaces_a_same_session_bare_lock) ... ok
+test_seat_claim_replaces_a_same_session_composite_lock_of_a_dead_pid (test_herdr_agents.HerdrAgentsTest.test_seat_claim_replaces_a_same_session_composite_lock_of_a_dead_pid) ... ok
+test_seat_claim_replaces_a_same_session_composite_lock_of_a_recycled_pid (test_herdr_agents.HerdrAgentsTest.test_seat_claim_replaces_a_same_session_composite_lock_of_a_recycled_pid) ... ok
+test_seat_claim_replaces_same_session_bare_locks_in_every_team (test_herdr_agents.HerdrAgentsTest.test_seat_claim_replaces_same_session_bare_locks_in_every_team) ... ok
+test_session_start_attach_bounds_a_trickling_hook_payload (test_herdr_agents.HerdrAgentsTest.test_session_start_attach_bounds_a_trickling_hook_payload) ... ok
+test_session_start_attach_claims_the_seat_in_a_managed_pane (test_herdr_agents.HerdrAgentsTest.test_session_start_attach_claims_the_seat_in_a_managed_pane) ... ok
+test_session_start_attach_claims_when_the_hook_keeps_stdin_open (test_herdr_agents.HerdrAgentsTest.test_session_start_attach_claims_when_the_hook_keeps_stdin_open) ... ok
+test_session_start_attach_prints_no_directive_for_a_pane_that_is_not_the_orchestrator (test_herdr_agents.HerdrAgentsTest.test_session_start_attach_prints_no_directive_for_a_pane_that_is_not_the_orchestrator) ... ok
+test_session_start_attach_prints_the_regime_directive_with_a_worker_seat (test_herdr_agents.HerdrAgentsTest.test_session_start_attach_prints_the_regime_directive_with_a_worker_seat) ... ok
+test_session_start_attach_reads_the_hook_payload_and_herdr_pid (test_herdr_agents.HerdrAgentsTest.test_session_start_attach_reads_the_hook_payload_and_herdr_pid) ... ok
+test_session_start_attach_skips_a_pane_that_is_not_the_orchestrator (test_herdr_agents.HerdrAgentsTest.test_session_start_attach_skips_a_pane_that_is_not_the_orchestrator) ... ok
+test_start_keeps_node_global_without_mise_tool_install (test_herdr_agents.HerdrAgentsTest.test_start_keeps_node_global_without_mise_tool_install) ... ok
+test_start_removes_node_global_agent_clis_shadowing_mise (test_herdr_agents.HerdrAgentsTest.test_start_removes_node_global_agent_clis_shadowing_mise) ... ok
+test_start_skips_node_global_removal_without_stray (test_herdr_agents.HerdrAgentsTest.test_start_skips_node_global_removal_without_stray) ... ok
+test_successful_agent_start_does_not_poll_agent_list (test_herdr_agents.HerdrAgentsTest.test_successful_agent_start_does_not_poll_agent_list) ... ok
+test_two_self_named_pair_workspaces_still_refuse (test_herdr_agents.HerdrAgentsTest.test_two_self_named_pair_workspaces_still_refuse) ... ok
+test_uses_initial_workspace_pane_for_claude_and_splits_codex_right (test_herdr_agents.HerdrAgentsTest.test_uses_initial_workspace_pane_for_claude_and_splits_codex_right) ... ok
+test_worker_kind_claude_accepts_a_workspace_trust_dialog (test_herdr_agents.HerdrAgentsTest.test_worker_kind_claude_accepts_a_workspace_trust_dialog) ... ok
+test_worker_kind_claude_appends_extra_worker_args (test_herdr_agents.HerdrAgentsTest.test_worker_kind_claude_appends_extra_worker_args) ... ok
+test_worker_kind_claude_does_not_require_codex (test_herdr_agents.HerdrAgentsTest.test_worker_kind_claude_does_not_require_codex) ... ok
+test_worker_kind_claude_skips_send_keys_without_a_trust_dialog (test_herdr_agents.HerdrAgentsTest.test_worker_kind_claude_skips_send_keys_without_a_trust_dialog) ... ok
+test_worker_kind_claude_starts_a_claude_worker_pane_with_profile_args (test_herdr_agents.HerdrAgentsTest.test_worker_kind_claude_starts_a_claude_worker_pane_with_profile_args) ... ok
+test_worker_kind_claude_starts_with_no_resolved_args (test_herdr_agents.HerdrAgentsTest.test_worker_kind_claude_starts_with_no_resolved_args) ... ok
+test_worker_kind_defaults_to_generated_env_fragment (test_herdr_agents.HerdrAgentsTest.test_worker_kind_defaults_to_generated_env_fragment) ... ok
+test_worker_kind_env_override_wins_over_generated_env_fragment (test_herdr_agents.HerdrAgentsTest.test_worker_kind_env_override_wins_over_generated_env_fragment) ... ok
+test_worker_kind_rejects_an_unknown_value (test_herdr_agents.HerdrAgentsTest.test_worker_kind_rejects_an_unknown_value) ... ok
+test_worker_profile_defaults_to_generated_worker_profile (test_herdr_agents.HerdrAgentsTest.test_worker_profile_defaults_to_generated_worker_profile) ... ok
+test_worker_profile_env_override_wins_over_generated_worker_profile (test_herdr_agents.HerdrAgentsTest.test_worker_profile_env_override_wins_over_generated_worker_profile) ... ok
+test_worker_profile_env_takes_priority_over_deprecated_codex_alias (test_herdr_agents.HerdrAgentsTest.test_worker_profile_env_takes_priority_over_deprecated_codex_alias) ... ok
+test_worker_seat_ambiguity_leaves_no_worktree_behind (test_herdr_agents.HerdrAgentsTest.test_worker_seat_ambiguity_leaves_no_worktree_behind) ... ok
+test_worker_seat_is_skipped_in_a_non_git_directory (test_herdr_agents.HerdrAgentsTest.test_worker_seat_is_skipped_in_a_non_git_directory) ... ok
+test_worker_seat_is_skipped_in_an_unregistered_repository (test_herdr_agents.HerdrAgentsTest.test_worker_seat_is_skipped_in_an_unregistered_repository) ... ok
+test_worker_seat_is_skipped_outside_a_git_main_checkout (test_herdr_agents.HerdrAgentsTest.test_worker_seat_is_skipped_outside_a_git_main_checkout) ... ok
+test_worker_seat_label_comes_from_the_worker_worktree_registration (test_herdr_agents.HerdrAgentsTest.test_worker_seat_label_comes_from_the_worker_worktree_registration) ... ok
+test_worker_seat_refuses_a_path_that_is_not_a_worktree (test_herdr_agents.HerdrAgentsTest.test_worker_seat_refuses_a_path_that_is_not_a_worktree) ... ok
+test_worker_seat_refuses_an_ambiguous_orchestrator_identity (test_herdr_agents.HerdrAgentsTest.test_worker_seat_refuses_an_ambiguous_orchestrator_identity) ... ok
+test_worker_seat_reuses_the_identity_and_hook_already_at_the_worktree (test_herdr_agents.HerdrAgentsTest.test_worker_seat_reuses_the_identity_and_hook_already_at_the_worktree) ... ok
+test_yazi_edit_opener_prefers_zed_with_editor_fallback (test_herdr_agents.HerdrAgentsTest.test_yazi_edit_opener_prefers_zed_with_editor_fallback) ... ok
+test_zprofile_adds_common_bin_to_login_shell_path (test_herdr_agents.HerdrAgentsTest.test_zprofile_adds_common_bin_to_login_shell_path) ... ok
+test_allow_pattern_rejects_shell_chaining (test_permgate.PermgateTest.test_allow_pattern_rejects_shell_chaining) ... ok
+test_apply_patch_is_never_deterministically_allowed (test_permgate.PermgateTest.test_apply_patch_is_never_deterministically_allowed) ... ok
+test_bash_credentials_fall_through_without_logging_them (test_permgate.PermgateTest.test_bash_credentials_fall_through_without_logging_them) ... ok
+test_claude_and_codex_hook_outputs_match_golden_bytes (test_permgate.PermgateTest.test_claude_and_codex_hook_outputs_match_golden_bytes) ... ok
+test_git_diff_output_option_is_never_automatically_allowed (test_permgate.PermgateTest.test_git_diff_output_option_is_never_automatically_allowed) ... ok
+test_invalid_policy_fields_fail_closed (test_permgate.PermgateTest.test_invalid_policy_fields_fail_closed) ... ok
+test_invalid_policy_returns_ask_and_logs_config_error (test_permgate.PermgateTest.test_invalid_policy_returns_ask_and_logs_config_error) ... ok
+test_layer_one_allows_documented_claude_and_codex_contracts (test_permgate.PermgateTest.test_layer_one_allows_documented_claude_and_codex_contracts) ... ok
+test_layer_one_deny_uses_both_hook_output_schemas (test_permgate.PermgateTest.test_layer_one_deny_uses_both_hook_output_schemas) ... ok
+test_log_shape_redacts_command_and_output (test_permgate.PermgateTest.test_log_shape_redacts_command_and_output) ... ok
+test_mutating_or_executable_read_options_fall_through (test_permgate.PermgateTest.test_mutating_or_executable_read_options_fall_through) ... ok
+test_recursion_sentinel_is_a_complete_no_op (test_permgate.PermgateTest.test_recursion_sentinel_is_a_complete_no_op) ... ok
+test_repository_policy_allows_and_falls_through (test_permgate.PermgateTest.test_repository_policy_allows_and_falls_through) ... ok
+test_script_named_version_is_not_a_version_check (test_permgate.PermgateTest.test_script_named_version_is_not_a_version_check) ... ok
+test_structured_secret_is_redacted_from_the_summary (test_permgate.PermgateTest.test_structured_secret_is_redacted_from_the_summary) ... ok
+test_unconstrained_native_reads_fall_through (test_permgate.PermgateTest.test_unconstrained_native_reads_fall_through) ... ok
+test_undecided_request_falls_through_to_the_native_prompt (test_permgate.PermgateTest.test_undecided_request_falls_through_to_the_native_prompt) ... ok
+test_annotations_keep_every_level_even_on_passing_checks (test_pr_feedback.PrFeedbackTest.test_annotations_keep_every_level_even_on_passing_checks) ... ok
+test_bots_are_detected_from_type_login_or_app (test_pr_feedback.PrFeedbackTest.test_bots_are_detected_from_type_login_or_app) ... ok
+test_collects_every_feedback_source_for_the_head (test_pr_feedback.PrFeedbackTest.test_collects_every_feedback_source_for_the_head) ... ok
+test_collects_the_github_base_with_the_head (test_pr_feedback.PrFeedbackTest.test_collects_the_github_base_with_the_head) ... ok
+test_commit_status_keeps_the_latest_state_per_context (test_pr_feedback.PrFeedbackTest.test_commit_status_keeps_the_latest_state_per_context) ... ok
+test_every_item_carries_the_disposition_schema (test_pr_feedback.PrFeedbackTest.test_every_item_carries_the_disposition_schema) ... ok
+test_gh_never_receives_forced_colour (test_pr_feedback.PrFeedbackTest.test_gh_never_receives_forced_colour) ... ok
+test_graphql_strings_are_raw_and_only_integers_are_typed (test_pr_feedback.PrFeedbackTest.test_graphql_strings_are_raw_and_only_integers_are_typed) ... ok
+test_main_writes_the_document_to_json (test_pr_feedback.PrFeedbackTest.test_main_writes_the_document_to_json) ... ok
+test_only_non_passing_check_runs_become_items (test_pr_feedback.PrFeedbackTest.test_only_non_passing_check_runs_become_items) ... ok
+test_review_comments_carry_thread_resolution_across_pages (test_pr_feedback.PrFeedbackTest.test_review_comments_carry_thread_resolution_across_pages) ... ok
+test_thread_state_covers_comments_beyond_the_first_page (test_pr_feedback.PrFeedbackTest.test_thread_state_covers_comments_beyond_the_first_page) ... ok
+test_unauthenticated_gh_exits_non_zero (test_pr_feedback.PrFeedbackTest.test_unauthenticated_gh_exits_non_zero) ... ok
+test_rule_mirrors_and_skills_carry_the_same_requirements (test_pr_feedback.PrIntegrationRuleParityTest.test_rule_mirrors_and_skills_carry_the_same_requirements) ... ok
+test_rule_symlink_points_at_the_rule (test_pr_feedback.PrIntegrationRuleParityTest.test_rule_symlink_points_at_the_rule) ... ok
+test_bump_writes_only_the_five_pins_through_set_asset (test_release_asset_pins.ReleaseAssetPinsTest.test_bump_writes_only_the_five_pins_through_set_asset) ... ok
+test_window_never_moves_a_pin_backwards (test_release_asset_pins.ReleaseAssetPinsTest.test_window_never_moves_a_pin_backwards) ... ok
+test_window_rejects_an_unknown_current_pin (test_release_asset_pins.ReleaseAssetPinsTest.test_window_rejects_an_unknown_current_pin) ... ok
+test_window_skips_a_young_release_and_takes_an_older_one (test_release_asset_pins.ReleaseAssetPinsTest.test_window_skips_a_young_release_and_takes_an_older_one) ... ok
+test_all_paths_are_preflighted_before_any_deletion (test_remove_agent_asset.RemoveAgentAssetTest.test_all_paths_are_preflighted_before_any_deletion) ... ok
+test_brew_refuses_ambiguous_formula (test_remove_agent_asset.RemoveAgentAssetTest.test_brew_refuses_ambiguous_formula) ... ok
+test_brew_uses_uninstall_for_unambiguous_formula (test_remove_agent_asset.RemoveAgentAssetTest.test_brew_uses_uninstall_for_unambiguous_formula) ... ok
+test_crit_plugin_falls_back_to_data_path_but_not_config (test_remove_agent_asset.RemoveAgentAssetTest.test_crit_plugin_falls_back_to_data_path_but_not_config) ... ok
+test_default_and_explicit_dry_run_print_without_mutating (test_remove_agent_asset.RemoveAgentAssetTest.test_default_and_explicit_dry_run_print_without_mutating) ... ok
+test_integration_uses_verified_herdr_uninstall (test_remove_agent_asset.RemoveAgentAssetTest.test_integration_uses_verified_herdr_uninstall) ... ok
+test_invalid_manifest_is_rejected (test_remove_agent_asset.RemoveAgentAssetTest.test_invalid_manifest_is_rejected) ... ok
+test_parameterized_step_removal_preserves_sibling_identity (test_remove_agent_asset.RemoveAgentAssetTest.test_parameterized_step_removal_preserves_sibling_identity) ... ok
+test_plugin_uses_verified_claude_uninstall (test_remove_agent_asset.RemoveAgentAssetTest.test_plugin_uses_verified_claude_uninstall) ... ok
+test_plugin_uses_verified_codex_remove (test_remove_agent_asset.RemoveAgentAssetTest.test_plugin_uses_verified_codex_remove) ... ok
+test_recorded_symlink_is_removed_without_following_target (test_remove_agent_asset.RemoveAgentAssetTest.test_recorded_symlink_is_removed_without_following_target) ... ok
+test_tampered_manifest_outside_safe_roots_is_refused (test_remove_agent_asset.RemoveAgentAssetTest.test_tampered_manifest_outside_safe_roots_is_refused) ... ok
+test_unknown_step_lists_known_steps_without_guessing (test_remove_agent_asset.RemoveAgentAssetTest.test_unknown_step_lists_known_steps_without_guessing) ... ok
+test_yes_removes_only_recorded_path_and_preserves_other_steps (test_remove_agent_asset.RemoveAgentAssetTest.test_yes_removes_only_recorded_path_and_preserves_other_steps) ... ok
+test_advanced_base_cannot_delete_collector_to_trigger_head_fallback (test_require_crit_review.ReviewGuardTest.test_advanced_base_cannot_delete_collector_to_trigger_head_fallback) ... ok
+test_advanced_base_cannot_supply_an_untrusted_collector (test_require_crit_review.ReviewGuardTest.test_advanced_base_cannot_supply_an_untrusted_collector) ... ok
+test_agent_lifecycle_script_change_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_lifecycle_script_change_requires_review) ... ok
+test_agent_lifecycle_surfaces_require_review (test_require_crit_review.ReviewGuardTest.test_agent_lifecycle_surfaces_require_review) ... ok
+test_agent_lifecycle_tokens_require_review (test_require_crit_review.ReviewGuardTest.test_agent_lifecycle_tokens_require_review) ... ok
+test_agent_reviewer_rejects_empty_or_malformed_crit_data (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_rejects_empty_or_malformed_crit_data) ... ok
+test_agent_reviewer_rejects_invalid_review_outcome (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_rejects_invalid_review_outcome) ... ok
+test_agent_reviewer_with_command_string_source_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_command_string_source_still_requires_review) ... ok
+test_agent_reviewer_with_crit_data_satisfies_required_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_crit_data_satisfies_required_review) ... ok
+test_agent_reviewer_with_crit_reviewed_marker_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_crit_reviewed_marker_still_requires_review) ... ok
+test_agent_reviewer_with_external_crit_json_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_external_crit_json_still_requires_review) ... ok
+test_agent_reviewer_with_non_review_crit_json_object_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_non_review_crit_json_object_still_requires_review) ... ok
+test_agent_reviewer_with_resolved_line_comment_satisfies_required_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_resolved_line_comment_satisfies_required_review) ... ok
+test_agent_reviewer_with_unresolved_crit_json_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_unresolved_crit_json_still_requires_review) ... ok
+test_agent_self_review_flag_evidence_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_self_review_flag_evidence_still_requires_review) ... ok
+test_agent_self_reviewer_evidence_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_self_reviewer_evidence_still_requires_review) ... ok
+test_audit_must_name_head_and_live_under_validation (test_require_crit_review.ReviewGuardTest.test_audit_must_name_head_and_live_under_validation) ... ok
+test_base_accepts_a_correct_audit_of_head (test_require_crit_review.ReviewGuardTest.test_base_accepts_a_correct_audit_of_head) ... ok
+test_base_accepts_exact_and_advanced_base_with_unchanged_merge_base (test_require_crit_review.ReviewGuardTest.test_base_accepts_exact_and_advanced_base_with_unchanged_merge_base) ... ok
+test_base_fails_closed_when_github_metadata_is_unavailable (test_require_crit_review.ReviewGuardTest.test_base_fails_closed_when_github_metadata_is_unavailable) ... ok
+test_base_fails_closed_when_unresolvable_or_option_like (test_require_crit_review.ReviewGuardTest.test_base_fails_closed_when_unresolvable_or_option_like) ... ok
+test_base_rejects_forged_evidence_metadata (test_require_crit_review.ReviewGuardTest.test_base_rejects_forged_evidence_metadata) ... ok
+test_base_rejects_pr_commits_before_executing_their_collector (test_require_crit_review.ReviewGuardTest.test_base_rejects_pr_commits_before_executing_their_collector) ... ok
+test_base_rejects_side_branch_and_advanced_base_containing_pr_commits (test_require_crit_review.ReviewGuardTest.test_base_rejects_side_branch_and_advanced_base_containing_pr_commits) ... ok
+test_base_requires_audit_evidence_for_a_reviewed_change (test_require_crit_review.ReviewGuardTest.test_base_requires_audit_evidence_for_a_reviewed_change) ... ok
+test_base_requires_pr_feedback_evidence (test_require_crit_review.ReviewGuardTest.test_base_requires_pr_feedback_evidence) ... ok
+test_base_reviews_committed_branch_changes (test_require_crit_review.ReviewGuardTest.test_base_reviews_committed_branch_changes) ... ok
+test_blocked_or_missing_audit_verdict_fails (test_require_crit_review.ReviewGuardTest.test_blocked_or_missing_audit_verdict_fails) ... ok
+test_broad_diff_requires_review (test_require_crit_review.ReviewGuardTest.test_broad_diff_requires_review) ... ok
+test_broad_orchestration_only_pr_needs_no_audit (test_require_crit_review.ReviewGuardTest.test_broad_orchestration_only_pr_needs_no_audit) ... ok
+test_companion_must_be_this_audits_own_last_message (test_require_crit_review.ReviewGuardTest.test_companion_must_be_this_audits_own_last_message) ... ok
+test_explicit_disable_skips_guard (test_require_crit_review.ReviewGuardTest.test_explicit_disable_skips_guard) ... ok
+test_feedback_accepts_absolute_path_through_a_repository_parent_alias (test_require_crit_review.ReviewGuardTest.test_feedback_accepts_absolute_path_through_a_repository_parent_alias) ... ok
+test_feedback_cannot_hide_an_arbitrary_path_without_base (test_require_crit_review.ReviewGuardTest.test_feedback_cannot_hide_an_arbitrary_path_without_base) ... ok
+test_feedback_does_not_exclude_symlink_aliases_outside_validation (test_require_crit_review.ReviewGuardTest.test_feedback_does_not_exclude_symlink_aliases_outside_validation) ... ok
+test_feedback_path_itself_must_be_under_validation (test_require_crit_review.ReviewGuardTest.test_feedback_path_itself_must_be_under_validation) ... ok
+test_feedback_symlink_cannot_hide_a_file_outside_validation (test_require_crit_review.ReviewGuardTest.test_feedback_symlink_cannot_hide_a_file_outside_validation) ... ok
+test_fixed_commit_is_checked_against_github_base_not_an_older_side_parent (test_require_crit_review.ReviewGuardTest.test_fixed_commit_is_checked_against_github_base_not_an_older_side_parent) ... ok
+test_github_lookup_ignores_environment_repository_override (test_require_crit_review.ReviewGuardTest.test_github_lookup_ignores_environment_repository_override) ... ok
+test_github_lookup_rejects_evidence_from_another_repository (test_require_crit_review.ReviewGuardTest.test_github_lookup_rejects_evidence_from_another_repository) ... ok
+test_high_risk_markdown_change_requires_review (test_require_crit_review.ReviewGuardTest.test_high_risk_markdown_change_requires_review) ... ok
+test_incorrect_audit_needs_not_applicable_dispositions (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_needs_not_applicable_dispositions) ... ok
+test_incorrect_audit_without_findings_fails (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_without_findings_fails) ... ok
+test_large_untracked_file_requires_broad_diff_review (test_require_crit_review.ReviewGuardTest.test_large_untracked_file_requires_broad_diff_review) ... ok
+test_missing_base_collector_falls_back_only_after_binding (test_require_crit_review.ReviewGuardTest.test_missing_base_collector_falls_back_only_after_binding) ... ok
+test_native_reviewed_environment_rejects_human_reviewer (test_require_crit_review.ReviewGuardTest.test_native_reviewed_environment_rejects_human_reviewer) ... ok
+test_native_reviewed_without_evidence_still_requires_review (test_require_crit_review.ReviewGuardTest.test_native_reviewed_without_evidence_still_requires_review) ... ok
+test_no_diff_does_not_require_review (test_require_crit_review.ReviewGuardTest.test_no_diff_does_not_require_review) ... ok
+test_older_base_must_not_be_on_the_head_first_parent_chain (test_require_crit_review.ReviewGuardTest.test_older_base_must_not_be_on_the_head_first_parent_chain) ... ok
+test_orchestration_only_pr_needs_no_audit (test_require_crit_review.ReviewGuardTest.test_orchestration_only_pr_needs_no_audit) ... ok
+test_pr_feedback_accepts_complete_evidence_without_a_bot_review (test_require_crit_review.ReviewGuardTest.test_pr_feedback_accepts_complete_evidence_without_a_bot_review) ... ok
+test_pr_feedback_accepts_complete_root_cause_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_accepts_complete_root_cause_dispositions) ... ok
+test_pr_feedback_bodies_are_compared_after_secret_masking (test_require_crit_review.ReviewGuardTest.test_pr_feedback_bodies_are_compared_after_secret_masking) ... ok
+test_pr_feedback_evidence_file_is_not_counted_as_a_change (test_require_crit_review.ReviewGuardTest.test_pr_feedback_evidence_file_is_not_counted_as_a_change) ... ok
+test_pr_feedback_fails_when_the_collector_cannot_run (test_require_crit_review.ReviewGuardTest.test_pr_feedback_fails_when_the_collector_cannot_run) ... ok
+test_pr_feedback_fixed_commit_must_be_in_the_pr_range (test_require_crit_review.ReviewGuardTest.test_pr_feedback_fixed_commit_must_be_in_the_pr_range) ... ok
+test_pr_feedback_matches_a_masked_path_but_not_an_edited_one (test_require_crit_review.ReviewGuardTest.test_pr_feedback_matches_a_masked_path_but_not_an_edited_one) ... ok
+test_pr_feedback_must_be_collected_for_the_current_head (test_require_crit_review.ReviewGuardTest.test_pr_feedback_must_be_collected_for_the_current_head) ... ok
+test_pr_feedback_must_cover_every_currently_collected_item (test_require_crit_review.ReviewGuardTest.test_pr_feedback_must_cover_every_currently_collected_item) ... ok
+test_pr_feedback_rejects_evidence_outside_the_repository (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_evidence_outside_the_repository) ... ok
+test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) ... ok
+test_pr_feedback_requires_the_github_head_to_match (test_require_crit_review.ReviewGuardTest.test_pr_feedback_requires_the_github_head_to_match) ... ok
+test_pr_feedback_uses_the_base_collector_not_the_prs_own (test_require_crit_review.ReviewGuardTest.test_pr_feedback_uses_the_base_collector_not_the_prs_own) ... ok
+test_pr_feedback_without_base_is_only_format_checked (test_require_crit_review.ReviewGuardTest.test_pr_feedback_without_base_is_only_format_checked) ... ok
+test_recollection_must_match_the_authenticated_repository (test_require_crit_review.ReviewGuardTest.test_recollection_must_match_the_authenticated_repository) ... ok
+test_reviewed_environment_satisfies_required_review (test_require_crit_review.ReviewGuardTest.test_reviewed_environment_satisfies_required_review) ... ok
+test_reviewed_with_blank_evidence_values_still_requires_review (test_require_crit_review.ReviewGuardTest.test_reviewed_with_blank_evidence_values_still_requires_review) ... ok
+test_reviewed_with_incomplete_evidence_still_requires_review (test_require_crit_review.ReviewGuardTest.test_reviewed_with_incomplete_evidence_still_requires_review) ... ok
+test_small_docs_only_change_does_not_require_review (test_require_crit_review.ReviewGuardTest.test_small_docs_only_change_does_not_require_review) ... ok
+test_verdict_comes_only_from_the_last_message_file (test_require_crit_review.ReviewGuardTest.test_verdict_comes_only_from_the_last_message_file) ... ok
+test_agent_asset_update_removes_node_global_shadows_before_agent_commands (test_runtime_health.RuntimeHealthTest.test_agent_asset_update_removes_node_global_shadows_before_agent_commands) ... ok
+test_agent_asset_update_repairs_broken_claude_with_npm_backend (test_runtime_health.RuntimeHealthTest.test_agent_asset_update_repairs_broken_claude_with_npm_backend) ... ok
+test_agent_asset_update_runs_gh_extension_ensure (test_runtime_health.RuntimeHealthTest.test_agent_asset_update_runs_gh_extension_ensure) ... ok
+test_agent_fanout_applies_profile_args_from_generated_fragment (test_runtime_health.RuntimeHealthTest.test_agent_fanout_applies_profile_args_from_generated_fragment) ... ok
+test_agent_fanout_preserves_caller_umask_for_child_agents (test_runtime_health.RuntimeHealthTest.test_agent_fanout_preserves_caller_umask_for_child_agents) ... ok
+test_agent_fanout_refuses_symlink_artifacts (test_runtime_health.RuntimeHealthTest.test_agent_fanout_refuses_symlink_artifacts) ... ok
+test_agent_fanout_restricts_preexisting_output_artifacts (test_runtime_health.RuntimeHealthTest.test_agent_fanout_restricts_preexisting_output_artifacts) ... ok
+test_agent_launchers_do_not_hardcode_model_ids (test_runtime_health.RuntimeHealthTest.test_agent_launchers_do_not_hardcode_model_ids) ... ok
+test_agent_runs_are_private_and_ignored (test_runtime_health.RuntimeHealthTest.test_agent_runs_are_private_and_ignored) ... ok
+test_agmsg_accepts_a_store_the_installer_creates_and_notes_run_changes (test_runtime_health.RuntimeHealthTest.test_agmsg_accepts_a_store_the_installer_creates_and_notes_run_changes) ... ok
+test_agmsg_already_pinned_skips_download (test_runtime_health.RuntimeHealthTest.test_agmsg_already_pinned_skips_download) ... ok
+test_agmsg_checksum_mismatch_fails_closed (test_runtime_health.RuntimeHealthTest.test_agmsg_checksum_mismatch_fails_closed) ... ok
+test_agmsg_fresh_install_populates_skill_and_records_manifest (test_runtime_health.RuntimeHealthTest.test_agmsg_fresh_install_populates_skill_and_records_manifest) ... ok
+test_agmsg_migrates_marker_less_legacy_dir_without_losing_live_state (test_runtime_health.RuntimeHealthTest.test_agmsg_migrates_marker_less_legacy_dir_without_losing_live_state) ... ok
+test_agmsg_migration_reports_an_installer_that_mutates_live_state (test_runtime_health.RuntimeHealthTest.test_agmsg_migration_reports_an_installer_that_mutates_live_state) ... ok
+test_agmsg_refuses_to_install_when_the_state_snapshot_is_empty (test_runtime_health.RuntimeHealthTest.test_agmsg_refuses_to_install_when_the_state_snapshot_is_empty) ... ok
+test_agmsg_refuses_to_install_without_tar (test_runtime_health.RuntimeHealthTest.test_agmsg_refuses_to_install_without_tar) ... ok
+test_agmsg_reports_an_installer_that_leaves_the_wrong_version (test_runtime_health.RuntimeHealthTest.test_agmsg_reports_an_installer_that_leaves_the_wrong_version) ... ok
+test_agmsg_update_aborts_when_install_corrupts_live_state (test_runtime_health.RuntimeHealthTest.test_agmsg_update_aborts_when_install_corrupts_live_state) ... ok
+test_agmsg_update_never_touches_teams_db_run (test_runtime_health.RuntimeHealthTest.test_agmsg_update_never_touches_teams_db_run) ... ok
+test_client_bashrc_treats_private_sources_as_optional (test_runtime_health.RuntimeHealthTest.test_client_bashrc_treats_private_sources_as_optional) ... ok
+test_codex_crit_normalizes_managed_marketplace_mode (test_runtime_health.RuntimeHealthTest.test_codex_crit_normalizes_managed_marketplace_mode) ... ok
+test_codex_superpowers_reports_login_step_when_curated_catalog_is_missing (test_runtime_health.RuntimeHealthTest.test_codex_superpowers_reports_login_step_when_curated_catalog_is_missing) ... ok
+test_darwin_crit_checksum_failure_preserves_existing_binary (test_runtime_health.RuntimeHealthTest.test_darwin_crit_checksum_failure_preserves_existing_binary) ... ok
+test_darwin_crit_install_is_pinned_atomic_and_recorded (test_runtime_health.RuntimeHealthTest.test_darwin_crit_install_is_pinned_atomic_and_recorded) ... ok
+test_doctor_reports_claude_sandbox_prerequisites (test_runtime_health.RuntimeHealthTest.test_doctor_reports_claude_sandbox_prerequisites) ... ok
+test_doctor_required_optional_and_healthy_statuses (test_runtime_health.RuntimeHealthTest.test_doctor_required_optional_and_healthy_statuses) ... ok
+test_linux_crit_checksum_failure_preserves_existing_binary (test_runtime_health.RuntimeHealthTest.test_linux_crit_checksum_failure_preserves_existing_binary) ... ok
+test_linux_crit_correct_version_is_download_free (test_runtime_health.RuntimeHealthTest.test_linux_crit_correct_version_is_download_free) ... ok
+test_linux_crit_failure_does_not_leak_cleanup_trap (test_runtime_health.RuntimeHealthTest.test_linux_crit_failure_does_not_leak_cleanup_trap) ... ok
+test_linux_crit_install_is_pinned_atomic_and_recorded (test_runtime_health.RuntimeHealthTest.test_linux_crit_install_is_pinned_atomic_and_recorded) ... ok
+test_linux_crit_prefers_pinned_target_over_older_path_binary (test_runtime_health.RuntimeHealthTest.test_linux_crit_prefers_pinned_target_over_older_path_binary) ... ok
+test_make_doctor_does_not_skip_runtime_check_when_deployed_root_is_missing (test_runtime_health.RuntimeHealthTest.test_make_doctor_does_not_skip_runtime_check_when_deployed_root_is_missing) ... ok
+test_make_doctor_passes_repair_variable_to_runtime_check (test_runtime_health.RuntimeHealthTest.test_make_doctor_passes_repair_variable_to_runtime_check) ... ok
+test_make_doctor_propagates_runtime_drift_after_tool_checks (test_runtime_health.RuntimeHealthTest.test_make_doctor_propagates_runtime_drift_after_tool_checks) ... ok
+test_make_update_pulls_clean_main_before_apply (test_runtime_health.RuntimeHealthTest.test_make_update_pulls_clean_main_before_apply) ... ok
+test_make_update_reports_unmerged_feature_branch_before_branch_notice (test_runtime_health.RuntimeHealthTest.test_make_update_reports_unmerged_feature_branch_before_branch_notice) ... ok
+test_make_update_reports_unmerged_index_before_dirty_notice (test_runtime_health.RuntimeHealthTest.test_make_update_reports_unmerged_index_before_dirty_notice) ... ok
+test_make_update_skips_dirty_main_with_manual_pull_notice (test_runtime_health.RuntimeHealthTest.test_make_update_skips_dirty_main_with_manual_pull_notice) ... ok
+test_upgrade_applies_mise_only_from_successful_canonical_checkout (test_runtime_health.RuntimeHealthTest.test_upgrade_applies_mise_only_from_successful_canonical_checkout) ... ok
+test_upgrade_bumps_terminal_and_crit_pins_from_fetched_artifacts (test_runtime_health.RuntimeHealthTest.test_upgrade_bumps_terminal_and_crit_pins_from_fetched_artifacts) ... ok
+test_upgrade_changes_checkout_not_live_mise_symlink_target (test_runtime_health.RuntimeHealthTest.test_upgrade_changes_checkout_not_live_mise_symlink_target) ... ok
+test_upgrade_github_extensions_are_warning_only (test_runtime_health.RuntimeHealthTest.test_upgrade_github_extensions_are_warning_only) ... ok
+test_upgrade_reports_ccr_adoption_gate_values (test_runtime_health.RuntimeHealthTest.test_upgrade_reports_ccr_adoption_gate_values) ... ok
+test_upgrade_required_failures_are_nonzero_and_independent (test_runtime_health.RuntimeHealthTest.test_upgrade_required_failures_are_nonzero_and_independent) ... ok
+test_upgrade_self_updates_mise_to_the_manifest_pin (test_runtime_health.RuntimeHealthTest.test_upgrade_self_updates_mise_to_the_manifest_pin) ... ok
+test_upgrade_skips_ccr_notice_when_gh_is_unavailable (test_runtime_health.RuntimeHealthTest.test_upgrade_skips_ccr_notice_when_gh_is_unavailable) ... ok
+test_upgrade_skips_unavailable_mise_self_update (test_runtime_health.RuntimeHealthTest.test_upgrade_skips_unavailable_mise_self_update) ... ok
+test_upgrade_uses_current_mise_node_after_runtime_replacement (test_runtime_health.RuntimeHealthTest.test_upgrade_uses_current_mise_node_after_runtime_replacement)
+Reject ambient npm after mise replaces the active Node runtime. ... ok
+test_ci_smokes_exact_tools_with_network_denied (test_statusline_tools.StatuslineToolsTest.test_ci_smokes_exact_tools_with_network_denied) ... ok
+test_direct_commands_use_offline_path_binaries (test_statusline_tools.StatuslineToolsTest.test_direct_commands_use_offline_path_binaries) ... ok
+test_generated_commands_are_direct_and_static (test_statusline_tools.StatuslineToolsTest.test_generated_commands_are_direct_and_static) ... ok
+test_mise_config_and_lock_pin_exact_npm_versions (test_statusline_tools.StatuslineToolsTest.test_mise_config_and_lock_pin_exact_npm_versions) ... ok
+test_missing_binary_fails_immediately (test_statusline_tools.StatuslineToolsTest.test_missing_binary_fails_immediately) ... ok
+test_binary_installers_replace_from_same_directory_stages (test_supply_chain_policy.SupplyChainPolicyTest.test_binary_installers_replace_from_same_directory_stages) ... ok
+test_executable_downloads_are_verified_and_not_piped_to_shell (test_supply_chain_policy.SupplyChainPolicyTest.test_executable_downloads_are_verified_and_not_piped_to_shell) ... ok
+test_external_checksum_failure_preserves_destination (test_supply_chain_policy.SupplyChainPolicyTest.test_external_checksum_failure_preserves_destination) ... ok
+test_externals_render_without_network_discovery (test_supply_chain_policy.SupplyChainPolicyTest.test_externals_render_without_network_discovery) ... ok
+test_externals_use_fixed_urls_and_checksums (test_supply_chain_policy.SupplyChainPolicyTest.test_externals_use_fixed_urls_and_checksums) ... ok
+test_installer_cleanup_preserves_failure_status (test_supply_chain_policy.SupplyChainPolicyTest.test_installer_cleanup_preserves_failure_status) ... ok
+test_installer_cleanup_survives_mock_function_returns (test_supply_chain_policy.SupplyChainPolicyTest.test_installer_cleanup_survives_mock_function_returns) ... ok
+test_mise_apply_replaces_live_symlinks_with_independent_copies (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_apply_replaces_live_symlinks_with_independent_copies) ... ok
+test_mise_lock_matches_config_and_supported_platforms (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_lock_matches_config_and_supported_platforms) ... ok
+test_mise_lock_url_entries_have_checksums (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_lock_url_entries_have_checksums) ... ok
+test_mise_main_preserves_install_failure (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_main_preserves_install_failure) ... ok
+test_mise_npm_backend_uses_npm_and_limits_lifecycle_scripts (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_npm_backend_uses_npm_and_limits_lifecycle_scripts) ... ok
+test_mise_versions_are_exact_and_locking_is_enforced (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_versions_are_exact_and_locking_is_enforced) ... ok
+test_renovate_owns_dependency_update_notifications (test_supply_chain_policy.SupplyChainPolicyTest.test_renovate_owns_dependency_update_notifications) ... ok
+test_setup_ci_rejects_and_preserves_local_drift (test_supply_chain_policy.SupplyChainPolicyTest.test_setup_ci_rejects_and_preserves_local_drift) ... ok
+test_sheldon_git_sources_have_revisions (test_supply_chain_policy.SupplyChainPolicyTest.test_sheldon_git_sources_have_revisions) ... ok
+test_sheldon_uses_locked_crates_io_source (test_supply_chain_policy.SupplyChainPolicyTest.test_sheldon_uses_locked_crates_io_source) ... ok
+test_absent_path_without_old_ref_is_regression (test_ua_symbol_coverage.UaSymbolCoverageTest.test_absent_path_without_old_ref_is_regression) ... ok
+test_chmod_only_change_keeps_the_source_unchanged_note (test_ua_symbol_coverage.UaSymbolCoverageTest.test_chmod_only_change_keeps_the_source_unchanged_note) ... ok
+test_comment_lines_are_not_definitions (test_ua_symbol_coverage.UaSymbolCoverageTest.test_comment_lines_are_not_definitions) ... ok
+test_def_column_reads_the_new_graph_revision (test_ua_symbol_coverage.UaSymbolCoverageTest.test_def_column_reads_the_new_graph_revision) ... ok
+test_deleted_path_with_old_ref_is_explained (test_ua_symbol_coverage.UaSymbolCoverageTest.test_deleted_path_with_old_ref_is_explained) ... ok
+test_flags_unexplained_symbol_loss_only (test_ua_symbol_coverage.UaSymbolCoverageTest.test_flags_unexplained_symbol_loss_only) ... ok
+test_grammar_file_missing_from_graph_fails_in_covered_directories (test_ua_symbol_coverage.UaSymbolCoverageTest.test_grammar_file_missing_from_graph_fails_in_covered_directories) ... ok
+test_low_similarity_move_with_no_symbols_is_regression (test_ua_symbol_coverage.UaSymbolCoverageTest.test_low_similarity_move_with_no_symbols_is_regression) ... ok
+test_partial_deletion_in_changed_source_is_regression (test_ua_symbol_coverage.UaSymbolCoverageTest.test_partial_deletion_in_changed_source_is_regression) ... ok
+test_partially_covered_new_file_is_not_flagged (test_ua_symbol_coverage.UaSymbolCoverageTest.test_partially_covered_new_file_is_not_flagged) ... ok
+test_python_defs_inside_strings_do_not_count (test_ua_symbol_coverage.UaSymbolCoverageTest.test_python_defs_inside_strings_do_not_count) ... ok
+test_rename_dropping_symbols_is_regression (test_ua_symbol_coverage.UaSymbolCoverageTest.test_rename_dropping_symbols_is_regression) ... ok
+test_rename_preserving_symbols_is_ok (test_ua_symbol_coverage.UaSymbolCoverageTest.test_rename_preserving_symbols_is_ok) ... ok
+test_ruby_visibility_prefixed_defs_are_counted (test_ua_symbol_coverage.UaSymbolCoverageTest.test_ruby_visibility_prefixed_defs_are_counted) ... ok
+test_shell_names_with_punctuation_are_counted (test_ua_symbol_coverage.UaSymbolCoverageTest.test_shell_names_with_punctuation_are_counted) ... ok
+test_unchanged_source_loss_is_noted (test_ua_symbol_coverage.UaSymbolCoverageTest.test_unchanged_source_loss_is_noted) ... ok
+test_unreadable_candidate_fails_closed (test_ua_symbol_coverage.UaSymbolCoverageTest.test_unreadable_candidate_fails_closed) ... ok
+test_unresolvable_ref_fails_closed (test_ua_symbol_coverage.UaSymbolCoverageTest.test_unresolvable_ref_fails_closed) ... ok
+test_uv_run_script_shebang_is_python (test_ua_symbol_coverage.UaSymbolCoverageTest.test_uv_run_script_shebang_is_python) ... ok
+test_builds_in_the_clone_when_no_release_artifact_exists (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_builds_in_the_clone_when_no_release_artifact_exists) ... ok
+test_builds_missing_core_in_the_release_artifact_then_copies_it (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_builds_missing_core_in_the_release_artifact_then_copies_it) ... ok
+test_doctor_stale_warning_is_cleared_by_the_update_build (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_doctor_stale_warning_is_cleared_by_the_update_build) ... ok
+test_frozen_install_failure_falls_back_to_plain_install (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_frozen_install_failure_falls_back_to_plain_install) ... ok
+test_make_update_installs_the_pinned_pnpm (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_make_update_installs_the_pinned_pnpm) ... ok
+test_prefers_mise_exec_over_an_unbacked_pnpm_shim (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_prefers_mise_exec_over_an_unbacked_pnpm_shim) ... ok
+test_rebuilds_a_release_dist_older_than_its_sources (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_rebuilds_a_release_dist_older_than_its_sources) ... ok
+test_skips_the_build_when_the_release_artifact_already_has_dist (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_skips_the_build_when_the_release_artifact_already_has_dist) ... ok
+test_uses_mise_exec_when_pnpm_is_not_on_path (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_uses_mise_exec_when_pnpm_is_not_on_path) ... ok
+test_uses_path_pnpm_only_when_mise_is_absent (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_uses_path_pnpm_only_when_mise_is_absent) ... ok
+test_warns_and_continues_when_no_pnpm_is_resolvable (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_warns_and_continues_when_no_pnpm_is_resolvable) ... ok
+test_warns_and_continues_when_the_build_fails (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_warns_and_continues_when_the_build_fails) ... ok
+test_candidate_is_no_when_another_claude_family_is_larger (test_usage_review.UsageReviewTests.test_candidate_is_no_when_another_claude_family_is_larger) ... ok
+test_malformed_latest_snapshot_warns_and_never_raises (test_usage_review.UsageReviewTests.test_malformed_latest_snapshot_warns_and_never_raises) ... ok
+test_report_computes_share_ratio_and_baseline_deltas (test_usage_review.UsageReviewTests.test_report_computes_share_ratio_and_baseline_deltas) ... ok
+test_report_emits_due_windows_and_matching_notes_suppress_them (test_usage_review.UsageReviewTests.test_report_emits_due_windows_and_matching_notes_suppress_them) ... ok
+test_snapshot_does_not_rewrite_existing_daily_file (test_usage_review.UsageReviewTests.test_snapshot_does_not_rewrite_existing_daily_file) ... ok
+test_a_masked_key_collision_fails_and_leaves_the_file_unchanged (test_validate_agent_assets.MaskSecretsModeTest.test_a_masked_key_collision_fails_and_leaves_the_file_unchanged) ... ok
+test_leaves_allowed_placeholders_the_scan_accepts (test_validate_agent_assets.MaskSecretsModeTest.test_leaves_allowed_placeholders_the_scan_accepts) ... ok
+test_masks_an_earlier_duplicate_member_so_the_scan_passes (test_validate_agent_assets.MaskSecretsModeTest.test_masks_an_earlier_duplicate_member_so_the_scan_passes) ... ok
+test_masks_every_match_in_place_and_reports_counts (test_validate_agent_assets.MaskSecretsModeTest.test_masks_every_match_in_place_and_reports_counts) ... ok
+test_masks_json_string_values_and_keeps_the_document_parseable (test_validate_agent_assets.MaskSecretsModeTest.test_masks_json_string_values_and_keeps_the_document_parseable) ... ok
+test_missing_file_exits_2_without_touching_others (test_validate_agent_assets.MaskSecretsModeTest.test_missing_file_exits_2_without_touching_others) ... ok
+test_a_key_after_json_escaped_whitespace_is_flagged (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_after_json_escaped_whitespace_is_flagged) ... ok
+test_a_key_prefix_inside_a_hyphenated_word_is_clean (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_prefix_inside_a_hyphenated_word_is_clean) ... ok
+test_a_long_hyphenated_run_scans_in_linear_time (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_long_hyphenated_run_scans_in_linear_time) ... ok
+test_a_real_key_prefix_is_still_flagged (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_real_key_prefix_is_still_flagged) ... /home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea2890>
+  def __enter__(self):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea2020>
+  def __enter__(self):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea1210>
+  def __enter__(self):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea15d0>
+  def __enter__(self):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea2b60>
+  def __enter__(self):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea0d60>
+  def __enter__(self):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea2a70>
+  def __enter__(self):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea1d50>
+  def __enter__(self):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea07c0>
+  def __enter__(self):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/moriya/.local/share/uv/python/cpython-3.13.15-linux-aarch64-gnu/lib/python3.13/contextlib.py:136: ResourceWarning: unclosed database in <sqlite3.Connection object at 0xe4dc05ea1030>
+  def __enter__(self):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_an_sk_key_body_needs_a_hyphen_free_run (test_validate_agent_assets.SecretPatternBoundaryTest.test_an_sk_key_body_needs_a_hyphen_free_run) ... ok
+test_masking_keeps_the_escape_before_the_key (test_validate_agent_assets.SecretPatternBoundaryTest.test_masking_keeps_the_escape_before_the_key) ... ok
+test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees) ... ok
+test_agent_manifest_accepts_exact_security_profile_set (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_exact_security_profile_set) ... ok
+test_agent_manifest_pins_the_audit_codex_profile (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_pins_the_audit_codex_profile) ... ok
+test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees) ... ok
+test_agent_manifest_rejects_invalid_or_missing_worker_kind (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_invalid_or_missing_worker_kind) ... ok
+test_agent_manifest_rejects_missing_audit_profile (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_audit_profile) ... ok
+test_agent_manifest_rejects_missing_security_profile (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_security_profile) ... ok
+test_agent_manifest_rejects_unknown_worker_profile (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_unknown_worker_profile) ... ok
+test_agent_manifest_rejects_wrong_security_codex_model (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_wrong_security_codex_model) ... ok
+test_agent_manifest_requires_fable_advisor_on_the_worker_profile (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_fable_advisor_on_the_worker_profile) ... ok
+test_agent_manifest_requires_readme_to_document_restart_worker (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_document_restart_worker) ... ok
+test_agent_manifest_requires_readme_to_state_the_worker_kind (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_state_the_worker_kind) ... ok
+test_agmsg_installer_requires_a_release_pin_and_its_tag (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_a_release_pin_and_its_tag) ... ok
+test_agmsg_installer_requires_the_full_tag_commit (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_full_tag_commit) ... ok
+test_agmsg_installer_requires_the_npm_bootstrap_integrity (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_npm_bootstrap_integrity) ... ok
+test_agmsg_ownership_accepts_the_installer_layout (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_accepts_the_installer_layout) ... ok
+test_agmsg_ownership_rejects_a_managed_claude_command (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_managed_claude_command) ... ok
+test_agmsg_ownership_rejects_a_vendored_skill_copy (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_vendored_skill_copy) ... ok
+test_agmsg_ownership_rejects_removing_installer_owned_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_removing_installer_owned_paths) ... ok
+test_agmsg_ownership_requires_retiring_the_symlink_farm (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_requires_retiring_the_symlink_farm) ... ok
+test_assets_accept_complete_declarations_and_rendered_versions (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_accept_complete_declarations_and_rendered_versions) ... ok
+test_assets_reject_a_malformed_render_entry (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_a_malformed_render_entry) ... ok
+test_assets_reject_each_incomplete_declaration (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_each_incomplete_declaration) ... ok
+test_assets_reject_one_assignment_rendered_from_two_fields (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_from_two_fields) ... ok
+test_assets_reject_one_assignment_rendered_through_a_symlink_alias (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_through_a_symlink_alias) ... ok
+test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts) ... ok
+test_assets_report_an_unrendered_declare_r_version (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_report_an_unrendered_declare_r_version) ... ok
+test_assets_scan_setup_sh_for_unrendered_versions (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_scan_setup_sh_for_unrendered_versions) ... ok
+test_claude_permissions_allow_must_list_non_empty_rules (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_permissions_allow_must_list_non_empty_rules) ... ok
+test_claude_sandbox_accepts_manifest_symmetric_settings (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_accepts_manifest_symmetric_settings) ... ok
+test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs) ... ok
+test_claude_sandbox_rejects_each_broken_rule (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_rejects_each_broken_rule) ... ok
+test_claude_sandbox_requires_extra_codex_writable_roots (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_requires_extra_codex_writable_roots) ... ok
+test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs) ... ok
+test_codex_modify_script_requires_executable_source (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_modify_script_requires_executable_source) ... ok
+test_codex_projects_accept_working_tree_placeholder (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_accept_working_tree_placeholder) ... ok
+test_codex_projects_reject_hard_coded_macos_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_hard_coded_macos_home) ... ok
+test_codex_projects_reject_missing_working_tree_placeholder (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_missing_working_tree_placeholder) ... ok
+test_codex_sandbox_workspace_write_accepts_matching_manifest (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_accepts_matching_manifest) ... ok
+test_codex_sandbox_workspace_write_must_match_manifest (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_must_match_manifest) ... ok
+test_codex_sandbox_workspace_write_requires_all_agmsg_roots (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_requires_all_agmsg_roots) ... ok
+test_hook_composition_accepts_managed_source_fixture (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_accepts_managed_source_fixture) ... ok
+test_hook_composition_pins_sessionstart_order (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_pins_sessionstart_order) ... ok
+test_hook_composition_rejects_duplicate_command (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_duplicate_command) ... ok
+test_hook_composition_rejects_sync_timeout_over_budget (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_sync_timeout_over_budget) ... ok
+test_hook_composition_requires_permgate_first (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_requires_permgate_first) ... ok
+test_manifest_home_paths_allow_chezmoi_home_dir (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_chezmoi_home_dir) ... ok
+test_manifest_home_paths_allow_flow_style_projects (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_flow_style_projects) ... ok
+test_manifest_home_paths_exempt_runtime_owned_projects (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_exempt_runtime_owned_projects) ... ok
+test_manifest_home_paths_only_exempt_the_projects_subtree (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_only_exempt_the_projects_subtree) ... ok
+test_manifest_home_paths_reject_hard_coded_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_home) ... ok
+test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
+test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
+test_permgate_policy_requires_a_schema_3_object (test_validate_agent_assets.ValidateAgentAssetsTest.test_permgate_policy_requires_a_schema_3_object) ... ok
+test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
+test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
+test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... ERROR: /tmp/validate-agent-assets-test-a7pb515a/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+ok
+test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
+test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
+test_secret_scan_checks_extensionless_executables (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_extensionless_executables) ... ok
+test_secret_scan_checks_utf16_bom_text (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_utf16_bom_text) ... ok
+test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries) ... ok
+test_secret_scan_reads_json_per_key_and_string_value (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_reads_json_per_key_and_string_value) ... ok
+test_secret_scan_rejects_placeholder_with_suffix (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_placeholder_with_suffix) ... ok
+test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset) ... ok
+test_checkout_does_not_persist_credentials_without_explicit_exemption (test_workflow_security.WorkflowSecurityTest.test_checkout_does_not_persist_credentials_without_explicit_exemption) ... ok
+test_checkout_rejects_duplicate_or_non_false_credential_settings (test_workflow_security.WorkflowSecurityTest.test_checkout_rejects_duplicate_or_non_false_credential_settings) ... ok
+test_checkout_setting_does_not_leak_from_the_next_step (test_workflow_security.WorkflowSecurityTest.test_checkout_setting_does_not_leak_from_the_next_step) ... ok
+test_external_actions_use_full_commit_shas (test_workflow_security.WorkflowSecurityTest.test_external_actions_use_full_commit_shas) ... ok
+test_quoted_unnamed_checkout_is_detected (test_workflow_security.WorkflowSecurityTest.test_quoted_unnamed_checkout_is_detected) ... ok
+test_unnamed_checkout_setting_does_not_leak_from_the_next_step (test_workflow_security.WorkflowSecurityTest.test_unnamed_checkout_setting_does_not_leak_from_the_next_step) ... ok
+test_workflows_have_exact_top_level_permissions (test_workflow_security.WorkflowSecurityTest.test_workflows_have_exact_top_level_permissions) ... ok
+test_workflows_have_no_job_level_permission_overrides (test_workflow_security.WorkflowSecurityTest.test_workflows_have_no_job_level_permission_overrides) ... ok
+
+----------------------------------------------------------------------
+Ran 787 tests in 179.425s
+
+OK
+```
+Exit code: 0.
+
+```text
+$ gh pr edit 258 --body-file /tmp/t97-pr-body.md
+https://github.com/mryfmo/dotfiles/pull/258
+```
+Exit 0. Description updated to all 787 unit tests passed, CI pending. Full change description remains aligned with the two-file diff.
+
+## Final-head CI watch
+
+```text
+$ gh pr checks 258 --watch --interval 30
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+changes	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458478694	
+private-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478688	
+private-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478781	
+private-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478885	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478827	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478878	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478850	
+validate	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797591/job/111458478655	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+private-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478688	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478827	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478878	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478850	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499618	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478781	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499569	
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458478694	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478885	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37209797591/job/111458478655	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499603	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499623	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+private-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478688	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478827	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478878	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478850	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499618	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478781	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499569	
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458478694	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478885	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37209797591/job/111458478655	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499603	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499623	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+private-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478688	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478827	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478878	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478850	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499618	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478781	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499569	
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458478694	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478885	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37209797591/job/111458478655	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499603	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499623	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458478694	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478688	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478781	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478827	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478878	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499618	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499569	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478885	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478850	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499623	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37209797591/job/111458478655	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499603	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458478694	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478688	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478781	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478827	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478878	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499618	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499569	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478885	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478850	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499623	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37209797591/job/111458478655	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499603	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458478694	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478688	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478781	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478827	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478878	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499618	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499569	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478885	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478850	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499623	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37209797591/job/111458478655	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499603	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458478694	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478688	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478781	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478827	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478878	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499618	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499569	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478885	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478850	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499623	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37209797591/job/111458478655	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499603	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458478694	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478688	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478781	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478878	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499618	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499569	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499623	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478885	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478850	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499603	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37209797591/job/111458478655	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478827	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458478694	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478688	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478781	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478885	
+test (ubuntu-24.04, server)	pass	4m22s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499603	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478878	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478850	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499618	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499569	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499623	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37209797591/job/111458478655	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478827	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458478694	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478688	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478781	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478885	
+test (ubuntu-24.04, server)	pass	4m22s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499603	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478878	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478850	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499618	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499569	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499623	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37209797591/job/111458478655	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478827	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458478694	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478688	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478781	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478885	
+test (ubuntu-24.04, server)	pass	4m22s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499603	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478878	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478850	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499618	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499569	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499623	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37209797591/job/111458478655	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478827	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458478694	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478688	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478781	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478885	
+test (ubuntu-24.04, server)	pass	4m22s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499603	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478878	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478850	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499618	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499569	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499623	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37209797591/job/111458478655	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478827	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458478694	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478688	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478781	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478885	
+public-bootstrap (ubuntu-24.04, server)	pass	6m17s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478850	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478878	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499618	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499569	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499623	
+test (ubuntu-24.04, server)	pass	4m22s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499603	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37209797591/job/111458478655	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478827	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458478694	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478688	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478781	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478885	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499623	
+public-bootstrap (ubuntu-24.04, server)	pass	6m17s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478850	
+test (ubuntu-24.04, server)	pass	4m22s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499603	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478878	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499618	
+test (ubuntu-24.04, client)	pass	6m50s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499569	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37209797591/job/111458478655	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478827	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458478694	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478688	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478781	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478885	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499623	
+public-bootstrap (ubuntu-24.04, server)	pass	6m17s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478850	
+test (ubuntu-24.04, server)	pass	4m22s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499603	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478878	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499618	
+test (ubuntu-24.04, client)	pass	6m50s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499569	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37209797591/job/111458478655	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478827	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458478694	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478688	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478781	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478885	
+public-bootstrap (ubuntu-24.04, server)	pass	6m17s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478850	
+test (ubuntu-24.04, server)	pass	4m22s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499603	
+test (ubuntu-26.04, client)	pass	7m52s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499623	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478878	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499618	
+test (ubuntu-24.04, client)	pass	6m50s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499569	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37209797591/job/111458478655	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478827	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458478694	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478688	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478781	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478885	
+public-bootstrap (ubuntu-24.04, server)	pass	6m17s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478850	
+test (ubuntu-24.04, server)	pass	4m22s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499603	
+test (ubuntu-26.04, client)	pass	7m52s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499623	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478878	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499618	
+test (ubuntu-24.04, client)	pass	6m50s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499569	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37209797591/job/111458478655	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478827	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458478694	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478688	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478781	
+test (ubuntu-24.04, server)	pass	4m22s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499603	
+test (ubuntu-26.04, client)	pass	7m52s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499623	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499618	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478885	
+public-bootstrap (ubuntu-24.04, client)	pass	8m46s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478878	
+public-bootstrap (ubuntu-24.04, server)	pass	6m17s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478850	
+test (ubuntu-24.04, client)	pass	6m50s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499569	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37209797591/job/111458478655	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478827	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458478694	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478688	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478781	
+test (ubuntu-24.04, server)	pass	4m22s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499603	
+test (ubuntu-26.04, client)	pass	7m52s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499623	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499618	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478885	
+public-bootstrap (ubuntu-24.04, client)	pass	8m46s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478878	
+public-bootstrap (ubuntu-24.04, server)	pass	6m17s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478850	
+test (ubuntu-24.04, client)	pass	6m50s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499569	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37209797591/job/111458478655	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478827	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458478694	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478688	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478781	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478885	
+public-bootstrap (ubuntu-24.04, client)	pass	8m46s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478878	
+public-bootstrap (ubuntu-24.04, server)	pass	6m17s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478850	
+test (macos-14, client)	pass	5m48s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499618	
+test (ubuntu-24.04, client)	pass	6m50s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499569	
+test (ubuntu-24.04, server)	pass	4m22s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499603	
+test (ubuntu-26.04, client)	pass	7m52s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499623	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37209797591/job/111458478655	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478827	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458478694	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478688	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478781	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478885	
+public-bootstrap (macos-14, client)	pass	8m46s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478827	
+public-bootstrap (ubuntu-24.04, client)	pass	8m46s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478878	
+public-bootstrap (ubuntu-24.04, server)	pass	6m17s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478850	
+test (macos-14, client)	pass	5m48s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499618	
+test (ubuntu-24.04, client)	pass	6m50s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499569	
+test (ubuntu-24.04, server)	pass	4m22s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499603	
+test (ubuntu-26.04, client)	pass	7m52s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499623	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37209797591/job/111458478655	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458478694	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478688	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478781	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478885	
+public-bootstrap (macos-14, client)	pass	8m46s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478827	
+public-bootstrap (ubuntu-24.04, client)	pass	8m46s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478878	
+public-bootstrap (ubuntu-24.04, server)	pass	6m17s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478850	
+test (macos-14, client)	pass	5m48s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499618	
+test (ubuntu-24.04, client)	pass	6m50s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499569	
+test (ubuntu-24.04, server)	pass	4m22s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499603	
+test (ubuntu-26.04, client)	pass	7m52s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499623	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37209797591/job/111458478655	
+```
+Exit code: 0.
+
+## Final CI checks
+
+```text
+$ gh pr checks 258
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458478694	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478688	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478781	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478885	
+public-bootstrap (macos-14, client)	pass	8m46s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478827	
+public-bootstrap (ubuntu-24.04, client)	pass	8m46s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478878	
+public-bootstrap (ubuntu-24.04, server)	pass	6m17s	https://github.com/mryfmo/dotfiles/actions/runs/37209797585/job/111458478850	
+test (macos-14, client)	pass	5m48s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499618	
+test (ubuntu-24.04, client)	pass	6m50s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499569	
+test (ubuntu-24.04, server)	pass	4m22s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499603	
+test (ubuntu-26.04, client)	pass	7m52s	https://github.com/mryfmo/dotfiles/actions/runs/37209797586/job/111458499623	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37209797591/job/111458478655	
+```
+Exit code: 0.
+
+## Final-head Bot feedback
+
+Paginated API snapshots; final head is 8ffa554738c6f8b524f33787332a31337e935122.
+
+```json
+[[{"id":5406686942,"node_id":"PRR_kwDOSMyAV88AAAABQkN-3g","user":{"login":"chatgpt-codex-connector[bot]","id":199175422,"node_id":"BOT_kgDOC98s_g","avatar_url":"https://avatars.githubusercontent.com/in/1144995?v=4","gravatar_id":"","url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D","html_url":"https://github.com/apps/chatgpt-codex-connector","followers_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/followers","following_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/following{/other_user}","gists_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/gists{/gist_id}","starred_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/subscriptions","organizations_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/orgs","repos_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/repos","events_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/events{/privacy}","received_events_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/received_events","type":"Bot","user_view_type":"public","site_admin":false},"body":"\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `8ffa554738`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>","state":"COMMENTED","html_url":"https://github.com/mryfmo/dotfiles/pull/258#pullrequestreview-5406686942","pull_request_url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258","author_association":"NONE","_links":{"html":{"href":"https://github.com/mryfmo/dotfiles/pull/258#pullrequestreview-5406686942"},"pull_request":{"href":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258"}},"submitted_at":"2026-10-04T14:38:11Z","commit_id":"8ffa554738c6f8b524f33787332a31337e935122"}]]
+```
+
+```json
+[[{"url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4178090986","pull_request_review_id":5406686942,"id":4178090986,"node_id":"PRRC_kwDOSMyAV875CJvq","diff_hunk":"@@ -167,7 +167,7 @@ AGMSG-PONG v1 task_id=<id> status=alive|blocked note=<short-note>\n 1. Read the full `AGMSG-TASK v1` message.\n 2. Switch to the `repo` and read `task_file` before editing or running validations. Create the task branch without touching the shared `.git/config`, which is read-only for a Codex seat by design (T64 writable roots): `git switch -c <branch> --no-track origin/main`, push with `git push origin <branch>` (no `-u`), and open the PR with `gh pr create --head <branch>`. A Claude seat's sandbox can leave the same failed write behind, so it uses the same commands. A leftover `.git/config.lock` from a failed attempt is removed by the orchestrator.\n 3. Treat `allowed_files` as the edit boundary. If it says to see the task file, read that section and follow it exactly.\n-4. Do not perform any `forbidden_actions`. Complete every command inside the sandbox and allowlist; never escalate an action outside that boundary for approval. Fail it instead, send `AGMSG-PONG v1 status=blocked` with the exact command and the boundary it crosses, and wait for the orchestrator to re-task. Agent-to-agent permission approval is forbidden: only the human operator answers a permission prompt. A Claude Code auto-mode classifier denial (for example Self-Modification) is such a boundary: stop without a diff, send `AGMSG-PONG v1 status=blocked` naming the classifier reason, and never pursue the same outcome through another tool. Exception: GitHub calls (`git fetch`, `git push`, `gh`) are the one class of commands a Claude seat runs outside its sandbox, through the permission gate (the auto-mode classifier since T62). The sandbox's GitHub domain allowance does not make `gh`/`git push` work there yet; dotfiles-T97 investigates and fixes that, after which the exception ends. Two documented cases run outside the sandbox too: the task's main-checkout CompactionDB `memory add`, through the permission gate because that state directory is read-only from a worktree sandbox, and `agmsg-dispatch`, through `excludedCommands` (step 11). Every other out-of-sandbox action stays a blocked PONG. A Codex seat has in-sandbox network (T64) and never leaves its sandbox.\n+4. Do not perform any `forbidden_actions`. Complete every command inside the sandbox and allowlist; never escalate an action outside that boundary for approval. Fail it instead, send `AGMSG-PONG v1 status=blocked` with the exact command and the boundary it crosses, and wait for the orchestrator to re-task. Agent-to-agent permission approval is forbidden: only the human operator answers a permission prompt. A Claude Code auto-mode classifier denial (for example Self-Modification) is such a boundary: stop without a diff, send `AGMSG-PONG v1 status=blocked` naming the classifier reason, and never pursue the same outcome through another tool. Run `git fetch`/`push` and `gh` inside the sandbox first. On Linux, `gh` backed by the host keyring answers HTTP 401 there because AF_UNIX socket creation is denied and `allowUnixSockets` cannot grant a path; until dotfiles-T90 provisions a sandbox-readable worker credential, a Claude seat's `gh` calls are the one class of commands it runs outside the sandbox through the permission gate, and every other out-of-sandbox action stays a blocked PONG. Two documented cases run outside the sandbox too: the task's main-checkout CompactionDB `memory add`, through the permission gate because that state directory is read-only from a worktree sandbox, and `agmsg-dispatch`, through `excludedCommands` (step 11). Every other out-of-sandbox action stays a blocked PONG. A Codex seat has in-sandbox network (T64) and never leaves its sandbox.","path":"home/dot_agents/skills/agmsg-orchestration/SKILL.md","commit_id":"8ffa554738c6f8b524f33787332a31337e935122","original_commit_id":"8ffa554738c6f8b524f33787332a31337e935122","user":{"login":"chatgpt-codex-connector[bot]","id":199175422,"node_id":"BOT_kgDOC98s_g","avatar_url":"https://avatars.githubusercontent.com/in/1144995?v=4","gravatar_id":"","url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D","html_url":"https://github.com/apps/chatgpt-codex-connector","followers_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/followers","following_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/following{/other_user}","gists_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/gists{/gist_id}","starred_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/subscriptions","organizations_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/orgs","repos_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/repos","events_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/events{/privacy}","received_events_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/received_events","type":"Bot","user_view_type":"public","site_admin":false},"body":"**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Retain a fallback for linked-worktree Git operations**\n\nFor a Claude worker in the normal `.claude/worktrees/...` layout, `git fetch` writes fetched objects and remote refs in the shared Git common directory, outside the worktree. `executable_herdr-agents` grants those metadata roots only to Codex workers, while the managed Claude sandbox does not allow the common directory. This new instruction therefore makes a required fetch fail in the sandbox and then requires a blocked PONG because only `gh` may run outside it; a Claude task that needs a fresh `origin/main` can no longer proceed. Keep an explicitly permitted unsandboxed fallback for Git commands, or provision the corresponding Claude writable roots before requiring the in-sandbox attempt.\n\nUseful? React with 👍 / 👎.","created_at":"2026-10-04T14:38:11Z","updated_at":"2026-10-04T14:38:11Z","html_url":"https://github.com/mryfmo/dotfiles/pull/258#discussion_r4178090986","pull_request_url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258","_links":{"self":{"href":"https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4178090986"},"html":{"href":"https://github.com/mryfmo/dotfiles/pull/258#discussion_r4178090986"},"pull_request":{"href":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258"}},"reactions":{"url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4178090986/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":170,"original_line":170,"side":"RIGHT","author_association":"NONE","original_position":5,"position":5,"subject_type":"line"}]]
+```
+
+## Unresolved review thread snapshot
+
+```json
+{"data":{"repository":{"pullRequest":{"reviewThreads":{"nodes":[{"id":"PRRT_kwDOSMyAV86ozh63","isResolved":false,"path":"home/dot_agents/skills/agmsg-orchestration/SKILL.md","line":170,"comments":{"nodes":[{"databaseId":4178090986,"author":{"login":"chatgpt-codex-connector"},"body":"**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Retain a fallback for linked-worktree Git operations**\n\nFor a Claude worker in the normal `.claude/worktrees/...` layout, `git fetch` writes fetched objects and remote refs in the shared Git common directory, outside the worktree. `executable_herdr-agents` grants those metadata roots only to Codex workers, while the managed Claude sandbox does not allow the common directory. This new instruction therefore makes a required fetch fail in the sandbox and then requires a blocked PONG because only `gh` may run outside it; a Claude task that needs a fresh `origin/main` can no longer proceed. Keep an explicitly permitted unsandboxed fallback for Git commands, or provision the corresponding Claude writable roots before requiring the in-sandbox attempt.\n\nUseful? React with 👍 / 👎."}],"pageInfo":{"hasNextPage":false,"endCursor":"Y3Vyc29yOnYyOpK0MjAyNi0xMC0wNFQxNDozODoxMVrO-Qib6g=="}}}],"pageInfo":{"hasNextPage":false,"endCursor":"Y3Vyc29yOnYyOpK0MjAyNi0xMC0wNFQxNDozODoxMVrOqM4etw=="}}}}}}
+```
+
+The preceding raw API outputs came from these commands (all exit 0):
+
+```sh
+gh api --paginate --slurp repos/mryfmo/dotfiles/pulls/258/reviews
+gh api --paginate --slurp repos/mryfmo/dotfiles/pulls/258/comments
+gh api graphql --paginate -f query='query($endCursor: String) { repository(owner: "mryfmo", name: "dotfiles") { pullRequest(number: 258) { reviewThreads(first: 100, after: $endCursor) { nodes { id isResolved path line comments(first: 100) { nodes { databaseId author { login } body } pageInfo { hasNextPage endCursor } } } pageInfo { hasNextPage endCursor } } } } }'
+```
+
+The Codex review on the final head was already present on the first post-CI query, so the bounded wait ended immediately. The review is an actual review event, not a reaction. One P2, no P0/P1. All thread/comment pageInfo flags are false; no additional page of comments is missing.
+
+```text
+$ gh api repos/mryfmo/dotfiles/commits/main --jq .sha
+04bce61b47b15d6f748abdce05bfdc5a8943bd98
+$ gh api repos/mryfmo/dotfiles/pulls/258 --jq '.mergeable_state'
+blocked
+$ gh pr edit 258 --body-file /tmp/t97-pr-body.md
+https://github.com/mryfmo/dotfiles/pull/258
+```
+All exit 0. Base remains current. The PR is blocked with one unresolved review thread, not failed CI; worker does not resolve threads. Description now records complete local/CI validation and the proposed disposition.
+
+## Follow-up scratch Claude sandbox mount inspection
+
+Same normal-settings express launcher as earlier, exit 0. Read-only checks only; no settings/credential overrides and no write probes. The following captures exact tool inputs/results:
+Tool call: Bash
+```json
+{"command":"git rev-parse --path-format=absolute --git-common-dir --git-dir","description":"Report git common directory and git directory paths"}
+```
+Tool result (is_error=false):
+```text
+/home/moriya/Workspace/dotfiles/.git
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e
+```
+Tool call: Bash
+```json
+{"command":"awk '$5 ~ /^\\/home\\/moriya\\/Workspace\\/dotfiles/ {print $5, $6}' /proc/self/mountinfo","description":"Show mount points under dotfiles with their flags"}
+```
+Tool result (is_error=false):
+```text
+/home/moriya/Workspace/dotfiles/.git/objects ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/objects/.git ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/objects/.agents ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/objects/.codex ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/objects/.aws ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/refs ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/refs/.git ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/refs/.agents ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/refs/.codex ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/refs/.aws ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/logs ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/logs/.git ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/logs/.agents ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/logs/.codex ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/logs/.aws ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.git ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.agents ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.codex ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.aws ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e rw,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.git ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.git ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.agents ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.codex ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.aws ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/settings.json ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/settings.local.json ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/skills ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/hooks ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/.cc-writes ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/launch.json ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/workflows ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/routines ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/output-styles ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/scheduled_tasks.json ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/loop.md ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.mcp.json ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/commands ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.claude/agents ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.gitconfig ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.gitmodules ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.bashrc ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.bash_profile ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.zshrc ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.zprofile ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.profile ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.ripgreprc ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.vscode ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e/.idea ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.git ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.agents ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.codex ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.aws ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.git ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.agents ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.codex ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.aws ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.git ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.agents ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.codex ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.aws ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/orchestrator-review ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-d ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-b ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/env-converge-T10 ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-c ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-sec ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/objects rw,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/objects/.git ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/objects/.agents ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/objects/.codex ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/objects/.aws ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/refs rw,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/refs/.git ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/refs/.agents ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/refs/.codex ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/refs/.aws ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/logs rw,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/logs/.git ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/logs/.agents ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/logs/.codex ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/logs/.aws ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e rw,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.git ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.agents ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.codex ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/.aws ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/config.worktree ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e/commondir ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/hooks ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/config ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/config.lock ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/config.worktree ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/orchestrator-review/config.worktree ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/orchestrator-review/commondir ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-d/config.worktree ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-d/commondir ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-b/config.worktree ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-b/commondir ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/env-converge-T10/config.worktree ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/env-converge-T10/commondir ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-c/config.worktree ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-c/commondir ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-sec/config.worktree ro,nosuid,nodev,relatime
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-sec/commondir ro,nosuid,nodev,relatime
+```
+Tool call: Bash
+```json
+{"command":"for path in /home/moriya/Workspace/dotfiles/.git/objects /home/moriya/Workspace/dotfiles/.git/refs /home/moriya/Workspace/dotfiles/.git/worktrees/worker-e; do if test -w \"$path\"; then printf '%s writable\\n' \"$path\"; else printf '%s not-writable\\n' \"$path\"; fi; done","description":"Check write access to git and worktree paths"}
+```
+Tool result (is_error=false):
+```text
+/home/moriya/Workspace/dotfiles/.git/objects writable
+/home/moriya/Workspace/dotfiles/.git/refs writable
+/home/moriya/Workspace/dotfiles/.git/worktrees/worker-e writable
+```
+
+Independent reviewer t97_evidence_review re-assessed the P2 against this runtime evidence. Final rw mounts and writable-access checks contradict the finding's static-config inference in the tested Claude 2.1.288 environment. No new-object fetch was performed: this evidence establishes effective write grants, not all possible future git operations.
+
+Proposed disposition for unresolved thread PRRT_kwDOSMyAV86ozh63, comment 4178090986:
+`not-applicable: Claude 2.1.288 runtime mountinfo shows shared Git objects, refs, logs and worker-e metadata mounted writable; test -w confirms access. The finding infers effective permissions solely from launcher/config entries, contradicting observed runtime grants. Shared Git config remains read-only; the branch workflow uses --no-track.`
+
+## Final evidence validation
+
+UV_CACHE_DIR=/tmp/t97-uv-cache
+
+```text
+$ make validate-agent-assets
+uv run --with pyyaml scripts/validate-agent-assets.py
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T69-protocol-docs-unification-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/acceptance/dotfiles-T76-ineffective-settings-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/autoskill/runs/dotfiles-T76-ineffective-settings-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/learning/dotfiles-T76-ineffective-settings-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/reports/dotfiles-T76-ineffective-settings-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/sandboxes/dotfiles-T76-ineffective-settings-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-4656f19.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-4656f19.md.last.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-6b060ac.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-6b060ac.md.last.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-d9bbd80.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T69-protocol-docs-unification-a01-audit-d9bbd80.md.last.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-audit-d5856e2.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-audit-d5856e2.md.last.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T72-bootstrap-ci-pins-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T76-ineffective-settings-a01-audit-f805ee3.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T76-ineffective-settings-a01-crit.json
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T76-ineffective-settings-a01-pr-feedback.json
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T76-ineffective-settings-a01-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles: .orchestration/validation/dotfiles-T76-ineffective-settings-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/autoskill/runs/dotfiles-T97-claude-sandbox-github-calls-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/learning/dotfiles-T97-claude-sandbox-github-calls-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/reports/dotfiles-T97-claude-sandbox-github-calls-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/sandboxes/dotfiles-T97-claude-sandbox-github-calls-a01.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01-worker-crit.json
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01-worker-review-receipt.md
+WARN: regime-boundary: untracked .orchestration file in /home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e: .orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01.md
+WARN: regime-boundary: additional worker workspace still open: dotfiles worker worker-d (herdr-agents --remove-worker)
+WARN: regime-boundary: additional worker tab still open in dotfiles: dotfiles:codex-security-dot-a007 (herdr-agents --remove-worker)
+agent asset validation ok
+```
+Exit code: 0.
+
+```text
+$ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01-worker-review-receipt.md make require-crit-review
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+```
+Exit code: 0.
+
+```text
+$ git status --short
+?? .orchestration/autoskill/runs/dotfiles-T97-claude-sandbox-github-calls-a01.md
+?? .orchestration/learning/dotfiles-T97-claude-sandbox-github-calls-a01.md
+?? .orchestration/reports/dotfiles-T97-claude-sandbox-github-calls-a01.md
+?? .orchestration/sandboxes/dotfiles-T97-claude-sandbox-github-calls-a01.md
+?? .orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01-worker-crit.json
+?? .orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01-worker-review-receipt.md
+?? .orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01.md
+$ git rev-parse HEAD
+8ffa554738c6f8b524f33787332a31337e935122
+$ gh api repos/mryfmo/dotfiles/commits/main --jq .sha
+04bce61b47b15d6f748abdce05bfdc5a8943bd98
+```
+All exit 0. Product tree clean; seven explicitly permitted task artifacts are left for orchestrator transfer. No base update was necessary and final head did not move after CI/Bot review.
+
+## Acceptance revise round 1
+
+```text
+$ sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
+db5c98cf7004ab5bcba5e8fdb2bce81d608e420307f6a27ee9b393cbbe4dc1c0  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
+```
+Exit 0. Requested exact two-file correction: exception includes gh-backed git push; duplicate blocked-PONG clause removed from SKILL only. Historical first-head outputs above remain preserved. Public fetch stays inside sandbox. No runtime code/config changed.
+
+Focused docs tests used direct exit-status capture rather than the task's illustrative tail pipeline, so a failing unittest could not be masked by tail/echo. UV_CACHE_DIR=/tmp/t97-uv-cache.
+
+```text
+$ uv run python -m unittest tests.unit.test_agmsg_orchestration_docs -v
+test_docs_no_longer_name_codex_review_commit (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_docs_no_longer_name_codex_review_commit) ... ok
+test_rule_and_skill_share_the_audit_gate_and_bot_wait_invariants (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_rule_and_skill_share_the_audit_gate_and_bot_wait_invariants) ... ok
+test_rule_and_skill_share_the_parallel_execution_and_routing_invariants (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_rule_and_skill_share_the_parallel_execution_and_routing_invariants) ... ok
+test_rule_and_skill_share_the_registration_and_delivery_invariants (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_rule_and_skill_share_the_registration_and_delivery_invariants) ... ok
+test_rule_drops_the_worker_network_escalation (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_rule_drops_the_worker_network_escalation) ... ok
+test_skill_drops_the_pane_status_gate_and_raw_pane_wakes (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_skill_drops_the_pane_status_gate_and_raw_pane_wakes) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.001s
+
+OK
+```
+Exit 0.
+
+```text
+$ git diff --check
+$ prettier --check home/dot_agents/skills/agmsg-orchestration/SKILL.md home/dot_config/claude/rules/agmsg-orchestration.md
+Checking formatting...
+All matched files use Prettier code style!
+$ git diff --stat
+ home/dot_agents/skills/agmsg-orchestration/SKILL.md | 2 +-
+ home/dot_config/claude/rules/agmsg-orchestration.md | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+$ gh api repos/mryfmo/dotfiles/commits/main --jq .sha
+04bce61b47b15d6f748abdce05bfdc5a8943bd98
+$ crit status --json
+{
+  "branch": "docs/claude-sandbox-gh-keyring-limit",
+  "daemon": {
+    "running": false
+  },
+  "review_file": "/home/moriya/.crit/reviews/2e99b3cd23cf/review.json",
+  "review_file_exists": false,
+  "sessions": [],
+  "vcs": "git"
+}
+$ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01-worker-review-receipt.md make require-crit-review
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+$ git add home/dot_agents/skills/agmsg-orchestration/SKILL.md home/dot_config/claude/rules/agmsg-orchestration.md
+$ git commit -m 'docs(agents): retain gh-backed push exception'
+[docs/claude-sandbox-gh-keyring-limit 68e19ef7] docs(agents): retain gh-backed push exception
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+$ git rev-parse HEAD
+68e19ef775d5906e49de0a75d214a0a4a5f3f909
+$ git push origin docs/claude-sandbox-gh-keyring-limit
+To github.com:mryfmo/dotfiles.git
+   8ffa5547..68e19ef7  docs/claude-sandbox-gh-keyring-limit -> docs/claude-sandbox-gh-keyring-limit
+```
+All commands in this block exited 0. Independent revision review approved the exact two-file correction; its resolved record was appended to worker JSON and the receipt updated/read before the gate. One commit contains both requested product edits. Final PR description is rewritten around the full gh plus HTTPS-push residual, with checks accurately marked pending until complete.
+
+```text
+$ gh pr edit 258 --body-file /tmp/t97-pr-body.md
+https://github.com/mryfmo/dotfiles/pull/258
+$ gh pr view 258 --json headRefOid,baseRefOid,files,url
+{"baseRefOid":"04bce61b47b15d6f748abdce05bfdc5a8943bd98","files":[{"path":"home/dot_agents/skills/agmsg-orchestration/SKILL.md","additions":1,"deletions":1,"changeType":"MODIFIED"},{"path":"home/dot_config/claude/rules/agmsg-orchestration.md","additions":1,"deletions":1,"changeType":"MODIFIED"}],"headRefOid":"68e19ef775d5906e49de0a75d214a0a4a5f3f909","url":"https://github.com/mryfmo/dotfiles/pull/258"}
+```
+Exit 0 for both. One new commit, no base change.
+
+## Revision-head CI watch
+
+```text
+$ gh pr checks 258 --watch --interval 30
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898377	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898392	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898367	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925964	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925992	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898305	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462926036	
+private-bootstrap (ubuntu-24.04, client)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898155	
+private-bootstrap (ubuntu-24.04, server)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898445	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925905	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462898257	
+validate	pass	29s	https://github.com/mryfmo/dotfiles/actions/runs/37211304650/job/111462898172	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898377	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898392	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898367	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925964	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925992	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898305	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462926036	
+private-bootstrap (ubuntu-24.04, client)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898155	
+private-bootstrap (ubuntu-24.04, server)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898445	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925905	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462898257	
+validate	pass	29s	https://github.com/mryfmo/dotfiles/actions/runs/37211304650/job/111462898172	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898377	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898392	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898367	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925964	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925992	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898305	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462926036	
+private-bootstrap (ubuntu-24.04, client)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898155	
+private-bootstrap (ubuntu-24.04, server)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898445	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925905	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462898257	
+validate	pass	29s	https://github.com/mryfmo/dotfiles/actions/runs/37211304650/job/111462898172	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898377	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898392	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898367	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925964	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925992	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898305	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462926036	
+private-bootstrap (ubuntu-24.04, client)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898155	
+private-bootstrap (ubuntu-24.04, server)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898445	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925905	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462898257	
+validate	pass	29s	https://github.com/mryfmo/dotfiles/actions/runs/37211304650/job/111462898172	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898377	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898392	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898367	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925964	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925992	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898305	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462926036	
+private-bootstrap (ubuntu-24.04, client)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898155	
+private-bootstrap (ubuntu-24.04, server)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898445	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925905	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462898257	
+validate	pass	29s	https://github.com/mryfmo/dotfiles/actions/runs/37211304650/job/111462898172	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898377	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898392	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898367	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925964	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925992	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898305	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462926036	
+private-bootstrap (ubuntu-24.04, client)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898155	
+private-bootstrap (ubuntu-24.04, server)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898445	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925905	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462898257	
+validate	pass	29s	https://github.com/mryfmo/dotfiles/actions/runs/37211304650/job/111462898172	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898377	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898392	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898367	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925964	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925992	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898305	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462926036	
+private-bootstrap (ubuntu-24.04, client)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898155	
+private-bootstrap (ubuntu-24.04, server)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898445	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925905	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462898257	
+validate	pass	29s	https://github.com/mryfmo/dotfiles/actions/runs/37211304650/job/111462898172	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898377	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898392	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898367	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925964	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925992	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898305	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462926036	
+private-bootstrap (ubuntu-24.04, client)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898155	
+private-bootstrap (ubuntu-24.04, server)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898445	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925905	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462898257	
+validate	pass	29s	https://github.com/mryfmo/dotfiles/actions/runs/37211304650/job/111462898172	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898377	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898392	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898367	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925964	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925992	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898305	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462926036	
+private-bootstrap (ubuntu-24.04, client)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898155	
+private-bootstrap (ubuntu-24.04, server)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898445	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925905	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462898257	
+validate	pass	29s	https://github.com/mryfmo/dotfiles/actions/runs/37211304650/job/111462898172	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898377	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898392	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898367	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925964	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898305	
+test (ubuntu-24.04, server)	pass	4m58s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925992	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462926036	
+private-bootstrap (ubuntu-24.04, client)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898155	
+private-bootstrap (ubuntu-24.04, server)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898445	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925905	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462898257	
+validate	pass	29s	https://github.com/mryfmo/dotfiles/actions/runs/37211304650/job/111462898172	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898377	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898392	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898367	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925964	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898305	
+test (ubuntu-24.04, server)	pass	4m58s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925992	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462926036	
+private-bootstrap (ubuntu-24.04, client)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898155	
+private-bootstrap (ubuntu-24.04, server)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898445	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925905	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462898257	
+validate	pass	29s	https://github.com/mryfmo/dotfiles/actions/runs/37211304650/job/111462898172	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898377	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898392	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898367	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925964	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898305	
+private-bootstrap (ubuntu-24.04, client)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898155	
+private-bootstrap (ubuntu-24.04, server)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898445	
+test (macos-14, client)	pass	5m47s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462926036	
+test (ubuntu-24.04, server)	pass	4m58s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925992	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925905	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462898257	
+validate	pass	29s	https://github.com/mryfmo/dotfiles/actions/runs/37211304650/job/111462898172	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898377	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898392	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898367	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925964	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898305	
+private-bootstrap (ubuntu-24.04, client)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898155	
+private-bootstrap (ubuntu-24.04, server)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898445	
+test (macos-14, client)	pass	5m47s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462926036	
+test (ubuntu-24.04, server)	pass	4m58s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925992	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925905	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462898257	
+validate	pass	29s	https://github.com/mryfmo/dotfiles/actions/runs/37211304650/job/111462898172	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462898257	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898305	
+private-bootstrap (ubuntu-24.04, client)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898155	
+private-bootstrap (ubuntu-24.04, server)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898445	
+public-bootstrap (ubuntu-24.04, server)	pass	7m4s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898367	
+test (macos-14, client)	pass	5m47s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462926036	
+test (ubuntu-24.04, client)	pass	7m3s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925964	
+test (ubuntu-24.04, server)	pass	4m58s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925992	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898377	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898392	
+test (ubuntu-26.04, client)	pass	6m59s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925905	
+validate	pass	29s	https://github.com/mryfmo/dotfiles/actions/runs/37211304650/job/111462898172	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462898257	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898305	
+private-bootstrap (ubuntu-24.04, client)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898155	
+private-bootstrap (ubuntu-24.04, server)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898445	
+public-bootstrap (ubuntu-24.04, server)	pass	7m4s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898367	
+test (macos-14, client)	pass	5m47s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462926036	
+test (ubuntu-24.04, client)	pass	7m3s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925964	
+test (ubuntu-24.04, server)	pass	4m58s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925992	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898377	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898392	
+test (ubuntu-26.04, client)	pass	6m59s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925905	
+validate	pass	29s	https://github.com/mryfmo/dotfiles/actions/runs/37211304650/job/111462898172	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462898257	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898305	
+private-bootstrap (ubuntu-24.04, client)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898155	
+private-bootstrap (ubuntu-24.04, server)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898445	
+public-bootstrap (macos-14, client)	pass	7m55s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898377	
+public-bootstrap (ubuntu-24.04, client)	pass	8m2s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898392	
+public-bootstrap (ubuntu-24.04, server)	pass	7m4s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898367	
+test (macos-14, client)	pass	5m47s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462926036	
+test (ubuntu-24.04, client)	pass	7m3s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925964	
+test (ubuntu-24.04, server)	pass	4m58s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925992	
+test (ubuntu-26.04, client)	pass	6m59s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925905	
+validate	pass	29s	https://github.com/mryfmo/dotfiles/actions/runs/37211304650/job/111462898172	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462898257	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898305	
+private-bootstrap (ubuntu-24.04, client)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898155	
+private-bootstrap (ubuntu-24.04, server)	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898445	
+public-bootstrap (macos-14, client)	pass	7m55s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898377	
+public-bootstrap (ubuntu-24.04, client)	pass	8m2s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898392	
+public-bootstrap (ubuntu-24.04, server)	pass	7m4s	https://github.com/mryfmo/dotfiles/actions/runs/37211304639/job/111462898367	
+test (macos-14, client)	pass	5m47s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462926036	
+test (ubuntu-24.04, client)	pass	7m3s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925964	
+test (ubuntu-24.04, server)	pass	4m58s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925992	
+test (ubuntu-26.04, client)	pass	6m59s	https://github.com/mryfmo/dotfiles/actions/runs/37211304644/job/111462925905	
+validate	pass	29s	https://github.com/mryfmo/dotfiles/actions/runs/37211304650/job/111462898172	
+```
+Exit 0. All new-head CI checks pass; CodeRabbit's automatic review is skipped, which is not treated as a Codex review.
+
+## Revise round 1 first revision head Bot wait and base advance
+
+Head: 68e19ef775d5906e49de0a75d214a0a4a5f3f909.
+
+```text
+2026-10-04T15:08:33Z
+[]
+[]
+2026-10-04T15:09:04Z
+[]
+[]
+2026-10-04T15:09:35Z
+[]
+[]
+2026-10-04T15:10:06Z
+[]
+[]
+2026-10-04T15:10:37Z
+[]
+[]
+2026-10-04T15:11:08Z
+[]
+[]
+2026-10-04T15:11:40Z
+[]
+[]
+2026-10-04T15:12:11Z
+[]
+[]
+2026-10-04T15:12:42Z
+[]
+[]
+2026-10-04T15:13:13Z
+[]
+[]
+2026-10-04T15:13:44Z
+[]
+[]
+2026-10-04T15:14:15Z
+[]
+[]
+2026-10-04T15:14:46Z
+[]
+[]
+2026-10-04T15:15:17Z
+[]
+[]
+2026-10-04T15:15:48Z
+[]
+[]
+2026-10-04T15:16:19Z
+[]
+[]
+2026-10-04T15:16:50Z
+[]
+[]
+2026-10-04T15:17:21Z
+[]
+[]
+2026-10-04T15:17:52Z
+[]
+[]
+2026-10-04T15:18:23Z
+[]
+[]
+2026-10-04T15:18:54Z
+[]
+[]
+2026-10-04T15:19:25Z
+[]
+[]
+2026-10-04T15:19:56Z
+[]
+[]
+2026-10-04T15:20:27Z
+[]
+[]
+2026-10-04T15:20:59Z
+[]
+[]
+2026-10-04T15:21:30Z
+[]
+[]
+2026-10-04T15:22:01Z
+[]
+[]
+2026-10-04T15:22:32Z
+[]
+[]
+2026-10-04T15:23:03Z
+[]
+[]
+2026-10-04T15:23:34Z
+[]
+[]
+bot: none (15-minute bounded wait elapsed)
+```
+
+Final mergeable_state was `behind`: main advanced to 40993f206adf8068ebc2d85d3fb049f017fc37cb. This completed wait belongs only to the old head. `gh pr update-branch 258` succeeded; `git fetch origin` and `git merge --ff-only origin/docs/claude-sandbox-gh-keyring-limit` succeeded. Updated head: b8f293ef608a1ff48b36b44a55004d81484dc8cf. Product diff remains exactly two documentation files. New CI and final-head Bot wait pending.
+
+## Updated head b8f293ef local checks and CI
+
+Command: `UV_CACHE_DIR=/tmp/t97-uv-cache uv run python -m unittest tests.unit.test_agmsg_orchestration_docs -v`
+
+```text
+test_docs_no_longer_name_codex_review_commit (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_docs_no_longer_name_codex_review_commit) ... ok
+test_rule_and_skill_share_the_audit_gate_and_bot_wait_invariants (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_rule_and_skill_share_the_audit_gate_and_bot_wait_invariants) ... ok
+test_rule_and_skill_share_the_parallel_execution_and_routing_invariants (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_rule_and_skill_share_the_parallel_execution_and_routing_invariants) ... ok
+test_rule_and_skill_share_the_registration_and_delivery_invariants (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_rule_and_skill_share_the_registration_and_delivery_invariants) ... ok
+test_rule_drops_the_worker_network_escalation (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_rule_drops_the_worker_network_escalation) ... ok
+test_skill_drops_the_pane_status_gate_and_raw_pane_wakes (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_skill_drops_the_pane_status_gate_and_raw_pane_wakes) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.001s
+
+OK
+```
+Exit: 0.
+
+Command: `AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01-worker-review-receipt.md make require-crit-review`
+
+```text
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+```
+Exit: 0.
+
+Command: `gh pr checks 258 --watch --interval 30`
+
+```text
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467902203	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902352	
+private-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902180	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902419	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925595	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925512	
+validate	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043494/job/111467902217	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902361	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902409	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902328	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925552	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925560	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467902203	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902180	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902352	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902419	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902409	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925595	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925552	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902361	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37213043494/job/111467902217	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902328	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925512	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925560	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467902203	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902180	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902352	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902419	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902409	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925595	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925552	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902361	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37213043494/job/111467902217	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902328	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925512	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925560	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467902203	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902180	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902352	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902419	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902409	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925595	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925552	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902361	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37213043494/job/111467902217	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902328	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925512	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925560	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467902203	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902180	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902352	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902419	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902409	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925595	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925552	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902361	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37213043494/job/111467902217	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902328	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925512	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925560	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467902203	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902180	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902352	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902419	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902409	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925595	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925552	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902361	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37213043494/job/111467902217	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902328	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925512	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925560	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467902203	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902180	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902352	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902419	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902409	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925595	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925552	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902361	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37213043494/job/111467902217	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902328	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925512	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925560	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467902203	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902180	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902352	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902419	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902409	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925595	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925552	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902361	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37213043494/job/111467902217	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902328	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925512	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925560	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467902203	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902180	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902352	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902419	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902409	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925595	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925552	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902361	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37213043494/job/111467902217	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902328	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925512	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925560	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467902203	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902180	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902352	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902419	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902409	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925595	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925552	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902361	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37213043494/job/111467902217	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902328	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925512	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925560	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467902203	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902180	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902352	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902419	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925595	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925552	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902361	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902409	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37213043494/job/111467902217	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902328	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925560	
+test (ubuntu-24.04, server)	pass	4m45s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925512	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467902203	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902180	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902352	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902419	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925595	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925552	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902361	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902409	
+public-bootstrap (ubuntu-24.04, server)	pass	5m37s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902328	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37213043494/job/111467902217	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925560	
+test (ubuntu-24.04, server)	pass	4m45s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925512	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467902203	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902180	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902352	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902419	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925595	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925552	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902361	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902409	
+public-bootstrap (ubuntu-24.04, server)	pass	5m37s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902328	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37213043494/job/111467902217	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925560	
+test (ubuntu-24.04, server)	pass	4m45s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925512	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467902203	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902180	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902352	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902419	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925595	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925552	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902361	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902409	
+public-bootstrap (ubuntu-24.04, server)	pass	5m37s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902328	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37213043494/job/111467902217	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925560	
+test (ubuntu-24.04, server)	pass	4m45s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925512	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467902203	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902180	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902352	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902419	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925552	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902361	
+test (macos-14, client)	pass	6m37s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925595	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902409	
+public-bootstrap (ubuntu-24.04, server)	pass	5m37s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902328	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37213043494/job/111467902217	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925560	
+test (ubuntu-24.04, server)	pass	4m45s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925512	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467902203	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902180	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902352	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902361	
+public-bootstrap (ubuntu-24.04, server)	pass	5m37s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902328	
+test (macos-14, client)	pass	6m37s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925595	
+test (ubuntu-24.04, client)	pass	7m40s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925552	
+test (ubuntu-24.04, server)	pass	4m45s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925512	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37213043494/job/111467902217	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902419	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902409	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925560	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467902203	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902180	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902352	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902361	
+public-bootstrap (ubuntu-24.04, server)	pass	5m37s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902328	
+test (macos-14, client)	pass	6m37s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925595	
+test (ubuntu-24.04, client)	pass	7m40s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925552	
+test (ubuntu-24.04, server)	pass	4m45s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925512	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37213043494/job/111467902217	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902419	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902409	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925560	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467902203	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902180	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902352	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902361	
+public-bootstrap (ubuntu-24.04, client)	pass	8m49s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902409	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902419	
+public-bootstrap (ubuntu-24.04, server)	pass	5m37s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902328	
+test (macos-14, client)	pass	6m37s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925595	
+test (ubuntu-24.04, client)	pass	7m40s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925552	
+test (ubuntu-24.04, server)	pass	4m45s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925512	
+test (ubuntu-26.04, client)	pass	8m13s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925560	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37213043494/job/111467902217	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467902203	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902180	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902352	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902361	
+public-bootstrap (macos-14, client)	pass	8m57s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902419	
+public-bootstrap (ubuntu-24.04, client)	pass	8m49s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902409	
+public-bootstrap (ubuntu-24.04, server)	pass	5m37s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902328	
+test (macos-14, client)	pass	6m37s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925595	
+test (ubuntu-24.04, client)	pass	7m40s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925552	
+test (ubuntu-24.04, server)	pass	4m45s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925512	
+test (ubuntu-26.04, client)	pass	8m13s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925560	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37213043494/job/111467902217	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	6s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467902203	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902180	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902352	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902361	
+public-bootstrap (macos-14, client)	pass	8m57s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902419	
+public-bootstrap (ubuntu-24.04, client)	pass	8m49s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902409	
+public-bootstrap (ubuntu-24.04, server)	pass	5m37s	https://github.com/mryfmo/dotfiles/actions/runs/37213043515/job/111467902328	
+test (macos-14, client)	pass	6m37s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925595	
+test (ubuntu-24.04, client)	pass	7m40s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925552	
+test (ubuntu-24.04, server)	pass	4m45s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925512	
+test (ubuntu-26.04, client)	pass	8m13s	https://github.com/mryfmo/dotfiles/actions/runs/37213043479/job/111467925560	
+validate	pass	26s	https://github.com/mryfmo/dotfiles/actions/runs/37213043494/job/111467902217	
+```
+Exit: 0.
+
+
+## b8f293ef bounded Bot wait complete, second main advance
+
+```text
+2026-10-04T15:37:38Z
+[]
+[]
+2026-10-04T15:38:09Z
+[]
+[]
+2026-10-04T15:38:40Z
+[]
+[]
+2026-10-04T15:39:11Z
+[]
+[]
+2026-10-04T15:39:42Z
+[]
+[]
+2026-10-04T15:40:14Z
+[]
+[]
+2026-10-04T15:40:45Z
+[]
+[]
+2026-10-04T15:41:16Z
+[]
+[]
+2026-10-04T15:41:47Z
+[]
+[]
+2026-10-04T15:42:18Z
+[]
+[]
+2026-10-04T15:42:49Z
+[]
+[]
+2026-10-04T15:43:20Z
+[]
+[]
+2026-10-04T15:43:51Z
+[]
+[]
+2026-10-04T15:44:23Z
+[]
+[]
+2026-10-04T15:44:54Z
+[]
+[]
+2026-10-04T15:45:25Z
+[]
+[]
+2026-10-04T15:45:56Z
+[]
+[]
+2026-10-04T15:46:27Z
+[]
+[]
+2026-10-04T15:46:58Z
+[]
+[]
+2026-10-04T15:47:29Z
+[]
+[]
+2026-10-04T15:48:00Z
+[]
+[]
+2026-10-04T15:48:31Z
+[]
+[]
+2026-10-04T15:49:02Z
+[]
+[]
+2026-10-04T15:49:33Z
+[]
+[]
+2026-10-04T15:50:04Z
+[]
+[]
+2026-10-04T15:50:35Z
+[]
+[]
+2026-10-04T15:51:07Z
+[]
+[]
+2026-10-04T15:51:38Z
+[]
+[]
+2026-10-04T15:52:09Z
+[]
+[]
+2026-10-04T15:52:40Z
+[]
+[]
+bot: none (15-minute bounded wait elapsed)
+```
+Exit: 0.
+
+Final thread snapshot:
+```json
+{"data":{"repository":{"pullRequest":{"reviewThreads":{"nodes":[{"id":"PRRT_kwDOSMyAV86ozh63","isResolved":true,"path":"home/dot_agents/skills/agmsg-orchestration/SKILL.md","line":null,"comments":{"nodes":[{"databaseId":4178090986,"author":{"login":"chatgpt-codex-connector"},"body":"**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Retain a fallback for linked-worktree Git operations**\n\nFor a Claude worker in the normal `.claude/worktrees/...` layout, `git fetch` writes fetched objects and remote refs in the shared Git common directory, outside the worktree. `executable_herdr-agents` grants those metadata roots only to Codex workers, while the managed Claude sandbox does not allow the common directory. This new instruction therefore makes a required fetch fail in the sandbox and then requires a blocked PONG because only `gh` may run outside it; a Claude task that needs a fresh `origin/main` can no longer proceed. Keep an explicitly permitted unsandboxed fallback for Git commands, or provision the corresponding Claude writable roots before requiring the in-sandbox attempt.\n\nUseful? React with 👍 / 👎."},{"databaseId":4178153646,"author":{"login":"moriya-fumio-thd"},"body":"not-applicable: Claude worker seats already fetch inside their sandbox in the nested-worktree layout (a005 recorded `git fetch`, branch, commit and a push as sandboxed in its T95 run; the Codex seat additionally holds the common-dir roots from herdr-agents), so the instruction does not turn a required fetch into a blocked PONG. The `git push` wording is being corrected in the next commit: pushes ask `gh` for credentials and therefore share the keyring exception."}],"pageInfo":{"hasNextPage":false,"endCursor":"Y3Vyc29yOnYyOpK0MjAyNi0xMC0wNFQxNDo1NzoyNFrO-QmQrg=="}}}],"pageInfo":{"hasNextPage":false,"endCursor":"Y3Vyc29yOnYyOpK0MjAyNi0xMC0wNFQxNDozODoxMVrOqM4etw=="}}}}}}```
+
+Final state and main:
+```text
+{"base":"40993f206adf8068ebc2d85d3fb049f017fc37cb","head":"b8f293ef608a1ff48b36b44a55004d81484dc8cf","mergeable_state":"unknown"}
+f6320f37d3835b37204584e00eb67d0bb41bf577
+```
+
+Main advanced again to f6320f37d3835b37204584e00eb67d0bb41bf577. gh pr update-branch 258 succeeded; local git fetch / merge --ff-only succeeded. New head: 5b6b0d9f89049eff0efbdc4699c425f711e58557. Only the two docs differ from main. CI/Bot checks restarting; orchestrator notified of repeated integration/wait race.
+
+## Round 1 addendum verified
+
+Command: `sha256sum /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md`
+
+```text
+dc1983079856e574371933204d87913ffbe9db23db70b1a50c4f71fbdd335c18  /home/moriya/Workspace/dotfiles/.orchestration/tasks/dotfiles-T97-claude-sandbox-github-calls-a01.md
+```
+
+The addendum explicitly says to send RESULT once 5b6b0d9f CI is green, with `bot=none-on-68e19ef7`; no repeated wait is required on update-branch-only heads. Main integration is held by the orchestrator for PR258. No Bot review is claimed on 5b6b0d9f.
+
+## Final 5b6b0d9f CI and new Bot P2
+
+Command: `gh pr checks 258 --watch --interval 30`
+
+```text
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703816	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703736	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703834	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733173	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703810	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733213	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733187	
+private-bootstrap (ubuntu-24.04, client)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703763	
+private-bootstrap (ubuntu-24.04, server)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703621	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733185	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472703770	
+validate	pass	28s	https://github.com/mryfmo/dotfiles/actions/runs/37214690599/job/111472703710	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703816	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703736	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703834	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733173	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703810	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733213	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733187	
+private-bootstrap (ubuntu-24.04, client)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703763	
+private-bootstrap (ubuntu-24.04, server)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703621	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733185	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472703770	
+validate	pass	28s	https://github.com/mryfmo/dotfiles/actions/runs/37214690599/job/111472703710	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703816	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703736	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703834	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733173	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703810	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733213	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733187	
+private-bootstrap (ubuntu-24.04, client)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703763	
+private-bootstrap (ubuntu-24.04, server)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703621	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733185	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472703770	
+validate	pass	28s	https://github.com/mryfmo/dotfiles/actions/runs/37214690599/job/111472703710	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703816	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703736	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703834	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733173	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703810	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733213	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733187	
+private-bootstrap (ubuntu-24.04, client)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703763	
+private-bootstrap (ubuntu-24.04, server)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703621	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733185	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472703770	
+validate	pass	28s	https://github.com/mryfmo/dotfiles/actions/runs/37214690599/job/111472703710	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703816	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703736	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703834	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733173	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703810	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733213	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733187	
+private-bootstrap (ubuntu-24.04, client)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703763	
+private-bootstrap (ubuntu-24.04, server)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703621	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733185	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472703770	
+validate	pass	28s	https://github.com/mryfmo/dotfiles/actions/runs/37214690599/job/111472703710	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703816	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703736	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703834	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733173	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703810	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733213	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733187	
+private-bootstrap (ubuntu-24.04, client)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703763	
+private-bootstrap (ubuntu-24.04, server)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703621	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733185	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472703770	
+validate	pass	28s	https://github.com/mryfmo/dotfiles/actions/runs/37214690599/job/111472703710	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703816	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703736	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703834	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733173	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703810	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733213	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733187	
+private-bootstrap (ubuntu-24.04, client)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703763	
+private-bootstrap (ubuntu-24.04, server)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703621	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733185	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472703770	
+validate	pass	28s	https://github.com/mryfmo/dotfiles/actions/runs/37214690599/job/111472703710	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703816	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703736	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703834	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733173	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703810	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733213	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733187	
+private-bootstrap (ubuntu-24.04, client)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703763	
+private-bootstrap (ubuntu-24.04, server)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703621	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733185	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472703770	
+validate	pass	28s	https://github.com/mryfmo/dotfiles/actions/runs/37214690599/job/111472703710	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703816	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703736	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703834	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733173	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703810	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733213	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733187	
+private-bootstrap (ubuntu-24.04, client)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703763	
+private-bootstrap (ubuntu-24.04, server)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703621	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733185	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472703770	
+validate	pass	28s	https://github.com/mryfmo/dotfiles/actions/runs/37214690599/job/111472703710	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703816	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703736	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703834	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733173	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703810	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733213	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733187	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472703770	
+private-bootstrap (ubuntu-24.04, client)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703763	
+private-bootstrap (ubuntu-24.04, server)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703621	
+test (ubuntu-24.04, server)	pass	4m44s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733185	
+validate	pass	28s	https://github.com/mryfmo/dotfiles/actions/runs/37214690599/job/111472703710	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703816	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703736	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703834	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733173	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703810	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733213	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733187	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472703770	
+private-bootstrap (ubuntu-24.04, client)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703763	
+private-bootstrap (ubuntu-24.04, server)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703621	
+test (ubuntu-24.04, server)	pass	4m44s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733185	
+validate	pass	28s	https://github.com/mryfmo/dotfiles/actions/runs/37214690599/job/111472703710	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703816	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703736	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703834	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733173	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703810	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733213	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733187	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472703770	
+private-bootstrap (ubuntu-24.04, client)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703763	
+private-bootstrap (ubuntu-24.04, server)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703621	
+test (ubuntu-24.04, server)	pass	4m44s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733185	
+validate	pass	28s	https://github.com/mryfmo/dotfiles/actions/runs/37214690599/job/111472703710	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703816	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703736	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703834	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733173	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703810	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733213	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733187	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472703770	
+private-bootstrap (ubuntu-24.04, client)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703763	
+private-bootstrap (ubuntu-24.04, server)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703621	
+test (ubuntu-24.04, server)	pass	4m44s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733185	
+validate	pass	28s	https://github.com/mryfmo/dotfiles/actions/runs/37214690599/job/111472703710	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703816	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703736	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703834	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733173	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703810	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733187	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472703770	
+private-bootstrap (ubuntu-24.04, client)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703763	
+private-bootstrap (ubuntu-24.04, server)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703621	
+test (macos-14, client)	pass	6m41s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733213	
+test (ubuntu-24.04, server)	pass	4m44s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733185	
+validate	pass	28s	https://github.com/mryfmo/dotfiles/actions/runs/37214690599/job/111472703710	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472703770	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703810	
+private-bootstrap (ubuntu-24.04, client)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703763	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733187	
+private-bootstrap (ubuntu-24.04, server)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703621	
+public-bootstrap (macos-14, client)	pass	7m24s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703816	
+public-bootstrap (ubuntu-24.04, client)	pass	7m16s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703736	
+public-bootstrap (ubuntu-24.04, server)	pass	7m9s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703834	
+test (macos-14, client)	pass	6m41s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733213	
+test (ubuntu-24.04, client)	pass	7m16s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733173	
+test (ubuntu-24.04, server)	pass	4m44s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733185	
+validate	pass	28s	https://github.com/mryfmo/dotfiles/actions/runs/37214690599/job/111472703710	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472703770	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703810	
+private-bootstrap (ubuntu-24.04, client)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703763	
+private-bootstrap (ubuntu-24.04, server)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703621	
+public-bootstrap (macos-14, client)	pass	7m24s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703816	
+public-bootstrap (ubuntu-24.04, client)	pass	7m16s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703736	
+public-bootstrap (ubuntu-24.04, server)	pass	7m9s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703834	
+test (macos-14, client)	pass	6m41s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733213	
+test (ubuntu-24.04, client)	pass	7m16s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733173	
+test (ubuntu-24.04, server)	pass	4m44s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733185	
+test (ubuntu-26.04, client)	pass	7m52s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733187	
+validate	pass	28s	https://github.com/mryfmo/dotfiles/actions/runs/37214690599/job/111472703710	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472703770	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703810	
+private-bootstrap (ubuntu-24.04, client)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703763	
+private-bootstrap (ubuntu-24.04, server)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703621	
+public-bootstrap (macos-14, client)	pass	7m24s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703816	
+public-bootstrap (ubuntu-24.04, client)	pass	7m16s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703736	
+public-bootstrap (ubuntu-24.04, server)	pass	7m9s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703834	
+test (macos-14, client)	pass	6m41s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733213	
+test (ubuntu-24.04, client)	pass	7m16s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733173	
+test (ubuntu-24.04, server)	pass	4m44s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733185	
+test (ubuntu-26.04, client)	pass	7m52s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733187	
+validate	pass	28s	https://github.com/mryfmo/dotfiles/actions/runs/37214690599/job/111472703710	
+```
+Exit: 0.
+
+Final head/base/state:
+```json
+{"base":"f6320f37d3835b37204584e00eb67d0bb41bf577","head":"5b6b0d9f89049eff0efbdc4699c425f711e58557","mergeable_state":"blocked"}
+```
+
+Review and thread raw evidence:
+
+```json
+[[{"id":5406686942,"node_id":"PRR_kwDOSMyAV88AAAABQkN-3g","user":{"login":"chatgpt-codex-connector[bot]","id":199175422,"node_id":"BOT_kgDOC98s_g","avatar_url":"https://avatars.githubusercontent.com/in/1144995?v=4","gravatar_id":"","url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D","html_url":"https://github.com/apps/chatgpt-codex-connector","followers_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/followers","following_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/following{/other_user}","gists_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/gists{/gist_id}","starred_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/subscriptions","organizations_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/orgs","repos_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/repos","events_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/events{/privacy}","received_events_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/received_events","type":"Bot","user_view_type":"public","site_admin":false},"body":"\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `8ffa554738`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>","state":"COMMENTED","html_url":"https://github.com/mryfmo/dotfiles/pull/258#pullrequestreview-5406686942","pull_request_url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258","author_association":"NONE","_links":{"html":{"href":"https://github.com/mryfmo/dotfiles/pull/258#pullrequestreview-5406686942"},"pull_request":{"href":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258"}},"submitted_at":"2026-10-04T14:38:11Z","commit_id":"8ffa554738c6f8b524f33787332a31337e935122"},{"id":5406761609,"node_id":"PRR_kwDOSMyAV88AAAABQkSiiQ","user":{"login":"moriya-fumio-thd","id":319443150,"node_id":"U_kgDOEwpQzg","avatar_url":"https://avatars.githubusercontent.com/u/319443150?v=4","gravatar_id":"","url":"https://api.github.com/users/moriya-fumio-thd","html_url":"https://github.com/moriya-fumio-thd","followers_url":"https://api.github.com/users/moriya-fumio-thd/followers","following_url":"https://api.github.com/users/moriya-fumio-thd/following{/other_user}","gists_url":"https://api.github.com/users/moriya-fumio-thd/gists{/gist_id}","starred_url":"https://api.github.com/users/moriya-fumio-thd/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/moriya-fumio-thd/subscriptions","organizations_url":"https://api.github.com/users/moriya-fumio-thd/orgs","repos_url":"https://api.github.com/users/moriya-fumio-thd/repos","events_url":"https://api.github.com/users/moriya-fumio-thd/events{/privacy}","received_events_url":"https://api.github.com/users/moriya-fumio-thd/received_events","type":"User","user_view_type":"public","site_admin":false},"body":"","state":"COMMENTED","html_url":"https://github.com/mryfmo/dotfiles/pull/258#pullrequestreview-5406761609","pull_request_url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258","author_association":"COLLABORATOR","_links":{"html":{"href":"https://github.com/mryfmo/dotfiles/pull/258#pullrequestreview-5406761609"},"pull_request":{"href":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258"}},"submitted_at":"2026-10-04T14:57:24Z","commit_id":"8ffa554738c6f8b524f33787332a31337e935122"},{"id":5407013778,"node_id":"PRR_kwDOSMyAV88AAAABQkh7kg","user":{"login":"chatgpt-codex-connector[bot]","id":199175422,"node_id":"BOT_kgDOC98s_g","avatar_url":"https://avatars.githubusercontent.com/in/1144995?v=4","gravatar_id":"","url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D","html_url":"https://github.com/apps/chatgpt-codex-connector","followers_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/followers","following_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/following{/other_user}","gists_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/gists{/gist_id}","starred_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/subscriptions","organizations_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/orgs","repos_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/repos","events_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/events{/privacy}","received_events_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/received_events","type":"Bot","user_view_type":"public","site_admin":false},"body":"\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `5b6b0d9f89`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>","state":"COMMENTED","html_url":"https://github.com/mryfmo/dotfiles/pull/258#pullrequestreview-5407013778","pull_request_url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258","author_association":"NONE","_links":{"html":{"href":"https://github.com/mryfmo/dotfiles/pull/258#pullrequestreview-5407013778"},"pull_request":{"href":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258"}},"submitted_at":"2026-10-04T15:56:13Z","commit_id":"5b6b0d9f89049eff0efbdc4699c425f711e58557"}]]```
+
+```json
+[[{"url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4178090986","pull_request_review_id":5406686942,"id":4178090986,"node_id":"PRRC_kwDOSMyAV875CJvq","diff_hunk":"@@ -167,7 +167,7 @@ AGMSG-PONG v1 task_id=<id> status=alive|blocked note=<short-note>\n 1. Read the full `AGMSG-TASK v1` message.\n 2. Switch to the `repo` and read `task_file` before editing or running validations. Create the task branch without touching the shared `.git/config`, which is read-only for a Codex seat by design (T64 writable roots): `git switch -c <branch> --no-track origin/main`, push with `git push origin <branch>` (no `-u`), and open the PR with `gh pr create --head <branch>`. A Claude seat's sandbox can leave the same failed write behind, so it uses the same commands. A leftover `.git/config.lock` from a failed attempt is removed by the orchestrator.\n 3. Treat `allowed_files` as the edit boundary. If it says to see the task file, read that section and follow it exactly.\n-4. Do not perform any `forbidden_actions`. Complete every command inside the sandbox and allowlist; never escalate an action outside that boundary for approval. Fail it instead, send `AGMSG-PONG v1 status=blocked` with the exact command and the boundary it crosses, and wait for the orchestrator to re-task. Agent-to-agent permission approval is forbidden: only the human operator answers a permission prompt. A Claude Code auto-mode classifier denial (for example Self-Modification) is such a boundary: stop without a diff, send `AGMSG-PONG v1 status=blocked` naming the classifier reason, and never pursue the same outcome through another tool. Exception: GitHub calls (`git fetch`, `git push`, `gh`) are the one class of commands a Claude seat runs outside its sandbox, through the permission gate (the auto-mode classifier since T62). The sandbox's GitHub domain allowance does not make `gh`/`git push` work there yet; dotfiles-T97 investigates and fixes that, after which the exception ends. Two documented cases run outside the sandbox too: the task's main-checkout CompactionDB `memory add`, through the permission gate because that state directory is read-only from a worktree sandbox, and `agmsg-dispatch`, through `excludedCommands` (step 11). Every other out-of-sandbox action stays a blocked PONG. A Codex seat has in-sandbox network (T64) and never leaves its sandbox.\n+4. Do not perform any `forbidden_actions`. Complete every command inside the sandbox and allowlist; never escalate an action outside that boundary for approval. Fail it instead, send `AGMSG-PONG v1 status=blocked` with the exact command and the boundary it crosses, and wait for the orchestrator to re-task. Agent-to-agent permission approval is forbidden: only the human operator answers a permission prompt. A Claude Code auto-mode classifier denial (for example Self-Modification) is such a boundary: stop without a diff, send `AGMSG-PONG v1 status=blocked` naming the classifier reason, and never pursue the same outcome through another tool. Run `git fetch`/`push` and `gh` inside the sandbox first. On Linux, `gh` backed by the host keyring answers HTTP 401 there because AF_UNIX socket creation is denied and `allowUnixSockets` cannot grant a path; until dotfiles-T90 provisions a sandbox-readable worker credential, a Claude seat's `gh` calls are the one class of commands it runs outside the sandbox through the permission gate, and every other out-of-sandbox action stays a blocked PONG. Two documented cases run outside the sandbox too: the task's main-checkout CompactionDB `memory add`, through the permission gate because that state directory is read-only from a worktree sandbox, and `agmsg-dispatch`, through `excludedCommands` (step 11). Every other out-of-sandbox action stays a blocked PONG. A Codex seat has in-sandbox network (T64) and never leaves its sandbox.","path":"home/dot_agents/skills/agmsg-orchestration/SKILL.md","commit_id":"8ffa554738c6f8b524f33787332a31337e935122","original_commit_id":"8ffa554738c6f8b524f33787332a31337e935122","user":{"login":"chatgpt-codex-connector[bot]","id":199175422,"node_id":"BOT_kgDOC98s_g","avatar_url":"https://avatars.githubusercontent.com/in/1144995?v=4","gravatar_id":"","url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D","html_url":"https://github.com/apps/chatgpt-codex-connector","followers_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/followers","following_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/following{/other_user}","gists_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/gists{/gist_id}","starred_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/subscriptions","organizations_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/orgs","repos_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/repos","events_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/events{/privacy}","received_events_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/received_events","type":"Bot","user_view_type":"public","site_admin":false},"body":"**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Retain a fallback for linked-worktree Git operations**\n\nFor a Claude worker in the normal `.claude/worktrees/...` layout, `git fetch` writes fetched objects and remote refs in the shared Git common directory, outside the worktree. `executable_herdr-agents` grants those metadata roots only to Codex workers, while the managed Claude sandbox does not allow the common directory. This new instruction therefore makes a required fetch fail in the sandbox and then requires a blocked PONG because only `gh` may run outside it; a Claude task that needs a fresh `origin/main` can no longer proceed. Keep an explicitly permitted unsandboxed fallback for Git commands, or provision the corresponding Claude writable roots before requiring the in-sandbox attempt.\n\nUseful? React with 👍 / 👎.","created_at":"2026-10-04T14:38:11Z","updated_at":"2026-10-04T14:38:11Z","html_url":"https://github.com/mryfmo/dotfiles/pull/258#discussion_r4178090986","pull_request_url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258","_links":{"self":{"href":"https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4178090986"},"html":{"href":"https://github.com/mryfmo/dotfiles/pull/258#discussion_r4178090986"},"pull_request":{"href":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258"}},"reactions":{"url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4178090986/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":null,"original_line":170,"side":"RIGHT","author_association":"NONE","original_position":5,"position":1,"subject_type":"line"},{"url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4178153646","pull_request_review_id":5406761609,"id":4178153646,"node_id":"PRRC_kwDOSMyAV875CZCu","diff_hunk":"@@ -167,7 +167,7 @@ AGMSG-PONG v1 task_id=<id> status=alive|blocked note=<short-note>\n 1. Read the full `AGMSG-TASK v1` message.\n 2. Switch to the `repo` and read `task_file` before editing or running validations. Create the task branch without touching the shared `.git/config`, which is read-only for a Codex seat by design (T64 writable roots): `git switch -c <branch> --no-track origin/main`, push with `git push origin <branch>` (no `-u`), and open the PR with `gh pr create --head <branch>`. A Claude seat's sandbox can leave the same failed write behind, so it uses the same commands. A leftover `.git/config.lock` from a failed attempt is removed by the orchestrator.\n 3. Treat `allowed_files` as the edit boundary. If it says to see the task file, read that section and follow it exactly.\n-4. Do not perform any `forbidden_actions`. Complete every command inside the sandbox and allowlist; never escalate an action outside that boundary for approval. Fail it instead, send `AGMSG-PONG v1 status=blocked` with the exact command and the boundary it crosses, and wait for the orchestrator to re-task. Agent-to-agent permission approval is forbidden: only the human operator answers a permission prompt. A Claude Code auto-mode classifier denial (for example Self-Modification) is such a boundary: stop without a diff, send `AGMSG-PONG v1 status=blocked` naming the classifier reason, and never pursue the same outcome through another tool. Exception: GitHub calls (`git fetch`, `git push`, `gh`) are the one class of commands a Claude seat runs outside its sandbox, through the permission gate (the auto-mode classifier since T62). The sandbox's GitHub domain allowance does not make `gh`/`git push` work there yet; dotfiles-T97 investigates and fixes that, after which the exception ends. Two documented cases run outside the sandbox too: the task's main-checkout CompactionDB `memory add`, through the permission gate because that state directory is read-only from a worktree sandbox, and `agmsg-dispatch`, through `excludedCommands` (step 11). Every other out-of-sandbox action stays a blocked PONG. A Codex seat has in-sandbox network (T64) and never leaves its sandbox.\n+4. Do not perform any `forbidden_actions`. Complete every command inside the sandbox and allowlist; never escalate an action outside that boundary for approval. Fail it instead, send `AGMSG-PONG v1 status=blocked` with the exact command and the boundary it crosses, and wait for the orchestrator to re-task. Agent-to-agent permission approval is forbidden: only the human operator answers a permission prompt. A Claude Code auto-mode classifier denial (for example Self-Modification) is such a boundary: stop without a diff, send `AGMSG-PONG v1 status=blocked` naming the classifier reason, and never pursue the same outcome through another tool. Run `git fetch`/`push` and `gh` inside the sandbox first. On Linux, `gh` backed by the host keyring answers HTTP 401 there because AF_UNIX socket creation is denied and `allowUnixSockets` cannot grant a path; until dotfiles-T90 provisions a sandbox-readable worker credential, a Claude seat's `gh` calls are the one class of commands it runs outside the sandbox through the permission gate, and every other out-of-sandbox action stays a blocked PONG. Two documented cases run outside the sandbox too: the task's main-checkout CompactionDB `memory add`, through the permission gate because that state directory is read-only from a worktree sandbox, and `agmsg-dispatch`, through `excludedCommands` (step 11). Every other out-of-sandbox action stays a blocked PONG. A Codex seat has in-sandbox network (T64) and never leaves its sandbox.","path":"home/dot_agents/skills/agmsg-orchestration/SKILL.md","commit_id":"8ffa554738c6f8b524f33787332a31337e935122","original_commit_id":"8ffa554738c6f8b524f33787332a31337e935122","user":{"login":"moriya-fumio-thd","id":319443150,"node_id":"U_kgDOEwpQzg","avatar_url":"https://avatars.githubusercontent.com/u/319443150?v=4","gravatar_id":"","url":"https://api.github.com/users/moriya-fumio-thd","html_url":"https://github.com/moriya-fumio-thd","followers_url":"https://api.github.com/users/moriya-fumio-thd/followers","following_url":"https://api.github.com/users/moriya-fumio-thd/following{/other_user}","gists_url":"https://api.github.com/users/moriya-fumio-thd/gists{/gist_id}","starred_url":"https://api.github.com/users/moriya-fumio-thd/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/moriya-fumio-thd/subscriptions","organizations_url":"https://api.github.com/users/moriya-fumio-thd/orgs","repos_url":"https://api.github.com/users/moriya-fumio-thd/repos","events_url":"https://api.github.com/users/moriya-fumio-thd/events{/privacy}","received_events_url":"https://api.github.com/users/moriya-fumio-thd/received_events","type":"User","user_view_type":"public","site_admin":false},"body":"not-applicable: Claude worker seats already fetch inside their sandbox in the nested-worktree layout (a005 recorded `git fetch`, branch, commit and a push as sandboxed in its T95 run; the Codex seat additionally holds the common-dir roots from herdr-agents), so the instruction does not turn a required fetch into a blocked PONG. The `git push` wording is being corrected in the next commit: pushes ask `gh` for credentials and therefore share the keyring exception.","created_at":"2026-10-04T14:57:24Z","updated_at":"2026-10-04T14:57:24Z","html_url":"https://github.com/mryfmo/dotfiles/pull/258#discussion_r4178153646","pull_request_url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258","_links":{"self":{"href":"https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4178153646"},"html":{"href":"https://github.com/mryfmo/dotfiles/pull/258#discussion_r4178153646"},"pull_request":{"href":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258"}},"reactions":{"url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4178153646/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":null,"original_line":170,"side":"RIGHT","in_reply_to_id":4178090986,"author_association":"COLLABORATOR","original_position":5,"position":1,"subject_type":"line"},{"url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4178339453","pull_request_review_id":5407013778,"id":4178339453,"node_id":"PRRC_kwDOSMyAV875DGZ9","diff_hunk":"@@ -167,7 +167,7 @@ AGMSG-PONG v1 task_id=<id> status=alive|blocked note=<short-note>\n 1. Read the full `AGMSG-TASK v1` message.\n 2. Switch to the `repo` and read `task_file` before editing or running validations. Create the task branch without touching the shared `.git/config`, which is read-only for a Codex seat by design (T64 writable roots): `git switch -c <branch> --no-track origin/main`, push with `git push origin <branch>` (no `-u`), and open the PR with `gh pr create --head <branch>`. A Claude seat's sandbox can leave the same failed write behind, so it uses the same commands. A leftover `.git/config.lock` from a failed attempt is removed by the orchestrator.\n 3. Treat `allowed_files` as the edit boundary. If it says to see the task file, read that section and follow it exactly.\n-4. Do not perform any `forbidden_actions`. Complete every command inside the sandbox and allowlist; never escalate an action outside that boundary for approval. Fail it instead, send `AGMSG-PONG v1 status=blocked` with the exact command and the boundary it crosses, and wait for the orchestrator to re-task. Agent-to-agent permission approval is forbidden: only the human operator answers a permission prompt. A Claude Code auto-mode classifier denial (for example Self-Modification) is such a boundary: stop without a diff, send `AGMSG-PONG v1 status=blocked` naming the classifier reason, and never pursue the same outcome through another tool. Exception: GitHub calls (`git fetch`, `git push`, `gh`) are the one class of commands a Claude seat runs outside its sandbox, through the permission gate (the auto-mode classifier since T62). The sandbox's GitHub domain allowance does not make `gh`/`git push` work there yet; dotfiles-T97 investigates and fixes that, after which the exception ends. Two documented cases run outside the sandbox too: the task's main-checkout CompactionDB `memory add`, through the permission gate because that state directory is read-only from a worktree sandbox, and `agmsg-dispatch`, through `excludedCommands` (step 11). Every other out-of-sandbox action stays a blocked PONG. A Codex seat has in-sandbox network (T64) and never leaves its sandbox.\n+4. Do not perform any `forbidden_actions`. Complete every command inside the sandbox and allowlist; never escalate an action outside that boundary for approval. Fail it instead, send `AGMSG-PONG v1 status=blocked` with the exact command and the boundary it crosses, and wait for the orchestrator to re-task. Agent-to-agent permission approval is forbidden: only the human operator answers a permission prompt. A Claude Code auto-mode classifier denial (for example Self-Modification) is such a boundary: stop without a diff, send `AGMSG-PONG v1 status=blocked` naming the classifier reason, and never pursue the same outcome through another tool. Run `git fetch`/`push` and `gh` inside the sandbox first. On Linux, `gh` backed by the host keyring answers HTTP 401 there because AF_UNIX socket creation is denied and `allowUnixSockets` cannot grant a path; until dotfiles-T90 provisions a sandbox-readable worker credential, a Claude seat's `gh` calls and `git push` (whose credential helper is `gh`) are the one class of commands it runs outside the sandbox through the permission gate. Two documented cases run outside the sandbox too: the task's main-checkout CompactionDB `memory add`, through the permission gate because that state directory is read-only from a worktree sandbox, and `agmsg-dispatch`, through `excludedCommands` (step 11). Every other out-of-sandbox action stays a blocked PONG. A Codex seat has in-sandbox network (T64) and never leaves its sandbox.","path":"home/dot_agents/skills/agmsg-orchestration/SKILL.md","commit_id":"5b6b0d9f89049eff0efbdc4699c425f711e58557","original_commit_id":"5b6b0d9f89049eff0efbdc4699c425f711e58557","user":{"login":"chatgpt-codex-connector[bot]","id":199175422,"node_id":"BOT_kgDOC98s_g","avatar_url":"https://avatars.githubusercontent.com/in/1144995?v=4","gravatar_id":"","url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D","html_url":"https://github.com/apps/chatgpt-codex-connector","followers_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/followers","following_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/following{/other_user}","gists_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/gists{/gist_id}","starred_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/subscriptions","organizations_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/orgs","repos_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/repos","events_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/events{/privacy}","received_events_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/received_events","type":"Bot","user_view_type":"public","site_admin":false},"body":"**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Restore the fallback for private HTTPS fetches**\n\nFor a Claude task in a private GitHub repository whose `origin` is HTTPS, this removes the usable fetch path: `home/dot_config/git/config.tmpl:25-26` configures `credential.helper = !gh auth git-credential`, while its `pushInsteadOf` rule affects only pushes. Git documents that `pushInsteadOf` rewrites the URL that “will be pushed to,” so `git fetch` still invokes the same `gh`/host-keyring flow this change says returns HTTP 401; the new policy then requires it to remain sandboxed and blocks every other unsandboxed action. A worker that needs a fresh `origin/main` will therefore stop with a PONG. Permit an authenticated fetch retry outside the sandbox or provision the credential first. [git-config documentation](https://git-scm.com/docs/git-config#Documentation/git-config.txt-urlltbasegtpushInsteadOf)\n\nAGENTS.md reference: [AGENTS.md:L78-L79](https://github.com/mryfmo/dotfiles/blob/5b6b0d9f89049eff0efbdc4699c425f711e58557/AGENTS.md#L78-L79)\n\nUseful? React with 👍 / 👎.","created_at":"2026-10-04T15:56:13Z","updated_at":"2026-10-04T15:56:13Z","html_url":"https://github.com/mryfmo/dotfiles/pull/258#discussion_r4178339453","pull_request_url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258","_links":{"self":{"href":"https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4178339453"},"html":{"href":"https://github.com/mryfmo/dotfiles/pull/258#discussion_r4178339453"},"pull_request":{"href":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258"}},"reactions":{"url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4178339453/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":170,"original_line":170,"side":"RIGHT","author_association":"NONE","original_position":5,"position":5,"subject_type":"line"}]]```
+
+```json
+{"data":{"repository":{"pullRequest":{"reviewThreads":{"nodes":[{"id":"PRRT_kwDOSMyAV86ozh63","isResolved":true,"path":"home/dot_agents/skills/agmsg-orchestration/SKILL.md","line":null,"comments":{"nodes":[{"databaseId":4178090986,"author":{"login":"chatgpt-codex-connector"},"body":"**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Retain a fallback for linked-worktree Git operations**\n\nFor a Claude worker in the normal `.claude/worktrees/...` layout, `git fetch` writes fetched objects and remote refs in the shared Git common directory, outside the worktree. `executable_herdr-agents` grants those metadata roots only to Codex workers, while the managed Claude sandbox does not allow the common directory. This new instruction therefore makes a required fetch fail in the sandbox and then requires a blocked PONG because only `gh` may run outside it; a Claude task that needs a fresh `origin/main` can no longer proceed. Keep an explicitly permitted unsandboxed fallback for Git commands, or provision the corresponding Claude writable roots before requiring the in-sandbox attempt.\n\nUseful? React with 👍 / 👎."},{"databaseId":4178153646,"author":{"login":"moriya-fumio-thd"},"body":"not-applicable: Claude worker seats already fetch inside their sandbox in the nested-worktree layout (a005 recorded `git fetch`, branch, commit and a push as sandboxed in its T95 run; the Codex seat additionally holds the common-dir roots from herdr-agents), so the instruction does not turn a required fetch into a blocked PONG. The `git push` wording is being corrected in the next commit: pushes ask `gh` for credentials and therefore share the keyring exception."}],"pageInfo":{"hasNextPage":false,"endCursor":"Y3Vyc29yOnYyOpK0MjAyNi0xMC0wNFQxNDo1NzoyNFrO-QmQrg=="}}},{"id":"PRRT_kwDOSMyAV86o0JBE","isResolved":false,"path":"home/dot_agents/skills/agmsg-orchestration/SKILL.md","line":170,"comments":{"nodes":[{"databaseId":4178339453,"author":{"login":"chatgpt-codex-connector"},"body":"**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Restore the fallback for private HTTPS fetches**\n\nFor a Claude task in a private GitHub repository whose `origin` is HTTPS, this removes the usable fetch path: `home/dot_config/git/config.tmpl:25-26` configures `credential.helper = !gh auth git-credential`, while its `pushInsteadOf` rule affects only pushes. Git documents that `pushInsteadOf` rewrites the URL that “will be pushed to,” so `git fetch` still invokes the same `gh`/host-keyring flow this change says returns HTTP 401; the new policy then requires it to remain sandboxed and blocks every other unsandboxed action. A worker that needs a fresh `origin/main` will therefore stop with a PONG. Permit an authenticated fetch retry outside the sandbox or provision the credential first. [git-config documentation](https://git-scm.com/docs/git-config#Documentation/git-config.txt-urlltbasegtpushInsteadOf)\n\nAGENTS.md reference: [AGENTS.md:L78-L79](https://github.com/mryfmo/dotfiles/blob/5b6b0d9f89049eff0efbdc4699c425f711e58557/AGENTS.md#L78-L79)\n\nUseful? React with 👍 / 👎."}],"pageInfo":{"hasNextPage":false,"endCursor":"Y3Vyc29yOnYyOpK0MjAyNi0xMC0wNFQxNTo1NjoxM1rO-QxmfQ=="}}}],"pageInfo":{"hasNextPage":false,"endCursor":"Y3Vyc29yOnYyOpK0MjAyNi0xMC0wNFQxNTo1NjoxM1rOqNCQRA=="}}}}}}```
+
+Independent reviewer t97_evidence_review confirms new P2 comment 4178339453 is valid (high confidence): gh credential helper covers private HTTPS fetch, pushInsteadOf does not alter fetch, installed rules have no public-only scope. Public fetch and writable metadata evidence cannot justify not-applicable. Verdict: incorrect. No thread resolved; exact prescribed wording needs orchestrator scope revision.
+
+## Completion after orchestrator scope disposition
+
+Task SHA256: b8c92fbcaf7aa91e01acda3eba7a767d06fdb3a802f70879341a37809386e862. Round 1 addendum 2 directs no text change and immediate RESULT on 5b6b0d9f. Private HTTPS fetch remains technically affected; the orchestrator excludes private remotes from this regime, not a worker claim that the issue was fixed.
+
+Command: `gh pr checks 258`
+
+```text
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472703770	
+private-bootstrap (macos-14, client)	pass	8s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703810	
+private-bootstrap (ubuntu-24.04, client)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703763	
+private-bootstrap (ubuntu-24.04, server)	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703621	
+public-bootstrap (macos-14, client)	pass	7m24s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703816	
+public-bootstrap (ubuntu-24.04, client)	pass	7m16s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703736	
+public-bootstrap (ubuntu-24.04, server)	pass	7m9s	https://github.com/mryfmo/dotfiles/actions/runs/37214690588/job/111472703834	
+test (macos-14, client)	pass	6m41s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733213	
+test (ubuntu-24.04, client)	pass	7m16s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733173	
+test (ubuntu-24.04, server)	pass	4m44s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733185	
+test (ubuntu-26.04, client)	pass	7m52s	https://github.com/mryfmo/dotfiles/actions/runs/37214690597/job/111472733187	
+validate	pass	28s	https://github.com/mryfmo/dotfiles/actions/runs/37214690599/job/111472703710	
+```
+Exit: 0.
+
+Command: `gh api repos/mryfmo/dotfiles/pulls/258 --jq '{head:.head.sha,base:.base.sha,mergeable_state}'`
+
+```text
+{"base":"f6320f37d3835b37204584e00eb67d0bb41bf577","head":"5b6b0d9f89049eff0efbdc4699c425f711e58557","mergeable_state":"clean"}
+```
+Exit: 0.
+
+Command: `gh api graphql --paginate (reviewThreads and nested comments; all pageInfo.hasNextPage false)`
+
+```text
+{"data":{"repository":{"pullRequest":{"reviewThreads":{"nodes":[{"id":"PRRT_kwDOSMyAV86ozh63","isResolved":true,"path":"home/dot_agents/skills/agmsg-orchestration/SKILL.md","line":null,"comments":{"nodes":[{"databaseId":4178090986,"author":{"login":"chatgpt-codex-connector"},"body":"**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Retain a fallback for linked-worktree Git operations**\n\nFor a Claude worker in the normal `.claude/worktrees/...` layout, `git fetch` writes fetched objects and remote refs in the shared Git common directory, outside the worktree. `executable_herdr-agents` grants those metadata roots only to Codex workers, while the managed Claude sandbox does not allow the common directory. This new instruction therefore makes a required fetch fail in the sandbox and then requires a blocked PONG because only `gh` may run outside it; a Claude task that needs a fresh `origin/main` can no longer proceed. Keep an explicitly permitted unsandboxed fallback for Git commands, or provision the corresponding Claude writable roots before requiring the in-sandbox attempt.\n\nUseful? React with 👍 / 👎."},{"databaseId":4178153646,"author":{"login":"moriya-fumio-thd"},"body":"not-applicable: Claude worker seats already fetch inside their sandbox in the nested-worktree layout (a005 recorded `git fetch`, branch, commit and a push as sandboxed in its T95 run; the Codex seat additionally holds the common-dir roots from herdr-agents), so the instruction does not turn a required fetch into a blocked PONG. The `git push` wording is being corrected in the next commit: pushes ask `gh` for credentials and therefore share the keyring exception."}],"pageInfo":{"hasNextPage":false,"endCursor":"Y3Vyc29yOnYyOpK0MjAyNi0xMC0wNFQxNDo1NzoyNFrO-QmQrg=="}}},{"id":"PRRT_kwDOSMyAV86o0JBE","isResolved":true,"path":"home/dot_agents/skills/agmsg-orchestration/SKILL.md","line":170,"comments":{"nodes":[{"databaseId":4178339453,"author":{"login":"chatgpt-codex-connector"},"body":"**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Restore the fallback for private HTTPS fetches**\n\nFor a Claude task in a private GitHub repository whose `origin` is HTTPS, this removes the usable fetch path: `home/dot_config/git/config.tmpl:25-26` configures `credential.helper = !gh auth git-credential`, while its `pushInsteadOf` rule affects only pushes. Git documents that `pushInsteadOf` rewrites the URL that “will be pushed to,” so `git fetch` still invokes the same `gh`/host-keyring flow this change says returns HTTP 401; the new policy then requires it to remain sandboxed and blocks every other unsandboxed action. A worker that needs a fresh `origin/main` will therefore stop with a PONG. Permit an authenticated fetch retry outside the sandbox or provision the credential first. [git-config documentation](https://git-scm.com/docs/git-config#Documentation/git-config.txt-urlltbasegtpushInsteadOf)\n\nAGENTS.md reference: [AGENTS.md:L78-L79](https://github.com/mryfmo/dotfiles/blob/5b6b0d9f89049eff0efbdc4699c425f711e58557/AGENTS.md#L78-L79)\n\nUseful? React with 👍 / 👎."},{"databaseId":4178361536,"author":{"login":"moriya-fumio-thd"},"body":"not-applicable: the Worker Playbook describes the seats of this regime, whose repository (mryfmo/dotfiles) is public, so a worker's `git fetch` needs no credential and runs inside the sandbox (observed on Claude seats in T72, T76 and T95). A private remote is not something a worker seat here fetches; the private chezmoi source is operator-managed. When a private remote enters the regime, its fetch joins the same keyring exception that `gh` and `git push` already carry, which T90's sandbox-readable credential closes for all three."}],"pageInfo":{"hasNextPage":false,"endCursor":"Y3Vyc29yOnYyOpK0MjAyNi0xMC0wNFQxNjowMzoxM1rO-Qy8wA=="}}}],"pageInfo":{"hasNextPage":false,"endCursor":"Y3Vyc29yOnYyOpK0MjAyNi0xMC0wNFQxNTo1NjoxM1rOqNCQRA=="}}}}}}```
+Exit: 0.
+
+Command: `AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01-worker-review-receipt.md make require-crit-review`
+
+```text
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+```
+Exit: 0.
+
+Command: `gh pr edit 258 --body-file /tmp/t97-pr-body-final.md`
+
+```text
+https://github.com/mryfmo/dotfiles/pull/258
+```
+Exit: 0. The PR description distinguishes initial 787-test validation, six docs tests, final-head CI, bounded diff-head Bot wait and the actual later final-head review.
+
+## Revise round 2 — authenticated fetch correction
+
+Verified task SHA256: 8364021c54a3b749b687e8c68f7152602302c69f2321871c66008b2a102f0a2a. Prior public-repository scope dismissal is superseded: globally installed docs must cover authenticated fetch. Exactly the prescribed phrase replaced once in each of the two files; sandbox-first and adjacent restrictions preserved.
+
+Command: `UV_CACHE_DIR=/tmp/t97-uv-cache uv run python -m unittest tests.unit.test_agmsg_orchestration_docs -v (before edit)`
+
+```text
+test_docs_no_longer_name_codex_review_commit (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_docs_no_longer_name_codex_review_commit) ... ok
+test_rule_and_skill_share_the_audit_gate_and_bot_wait_invariants (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_rule_and_skill_share_the_audit_gate_and_bot_wait_invariants) ... ok
+test_rule_and_skill_share_the_parallel_execution_and_routing_invariants (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_rule_and_skill_share_the_parallel_execution_and_routing_invariants) ... ok
+test_rule_and_skill_share_the_registration_and_delivery_invariants (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_rule_and_skill_share_the_registration_and_delivery_invariants) ... ok
+test_rule_drops_the_worker_network_escalation (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_rule_drops_the_worker_network_escalation) ... ok
+test_skill_drops_the_pane_status_gate_and_raw_pane_wakes (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_skill_drops_the_pane_status_gate_and_raw_pane_wakes) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.001s
+
+OK
+```
+Exit: 0.
+
+Command: `UV_CACHE_DIR=/tmp/t97-uv-cache uv run python -m unittest tests.unit.test_agmsg_orchestration_docs -v (after edit)`
+
+```text
+test_docs_no_longer_name_codex_review_commit (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_docs_no_longer_name_codex_review_commit) ... ok
+test_rule_and_skill_share_the_audit_gate_and_bot_wait_invariants (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_rule_and_skill_share_the_audit_gate_and_bot_wait_invariants) ... ok
+test_rule_and_skill_share_the_parallel_execution_and_routing_invariants (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_rule_and_skill_share_the_parallel_execution_and_routing_invariants) ... ok
+test_rule_and_skill_share_the_registration_and_delivery_invariants (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_rule_and_skill_share_the_registration_and_delivery_invariants) ... ok
+test_rule_drops_the_worker_network_escalation (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_rule_drops_the_worker_network_escalation) ... ok
+test_skill_drops_the_pane_status_gate_and_raw_pane_wakes (tests.unit.test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_skill_drops_the_pane_status_gate_and_raw_pane_wakes) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.001s
+
+OK
+```
+Exit: 0.
+
+Command: `prettier --check home/dot_agents/skills/agmsg-orchestration/SKILL.md home/dot_config/claude/rules/agmsg-orchestration.md`
+
+```text
+Checking formatting...
+All matched files use Prettier code style!
+```
+Exit: 0.
+
+Command: `git diff -- home/dot_agents/skills/agmsg-orchestration/SKILL.md home/dot_config/claude/rules/agmsg-orchestration.md`
+
+```text
+diff --git a/home/dot_agents/skills/agmsg-orchestration/SKILL.md b/home/dot_agents/skills/agmsg-orchestration/SKILL.md
+index 4adcfca2..c3fb5e76 100644
+--- a/home/dot_agents/skills/agmsg-orchestration/SKILL.md
++++ b/home/dot_agents/skills/agmsg-orchestration/SKILL.md
+@@ -167,7 +167,7 @@ AGMSG-PONG v1 task_id=<id> status=alive|blocked note=<short-note>
+ 1. Read the full `AGMSG-TASK v1` message.
+ 2. Switch to the `repo` and read `task_file` before editing or running validations. Create the task branch without touching the shared `.git/config`, which is read-only for a Codex seat by design (T64 writable roots): `git switch -c <branch> --no-track origin/main`, push with `git push origin <branch>` (no `-u`), and open the PR with `gh pr create --head <branch>`. A Claude seat's sandbox can leave the same failed write behind, so it uses the same commands. A leftover `.git/config.lock` from a failed attempt is removed by the orchestrator.
+ 3. Treat `allowed_files` as the edit boundary. If it says to see the task file, read that section and follow it exactly.
+-4. Do not perform any `forbidden_actions`. Complete every command inside the sandbox and allowlist; never escalate an action outside that boundary for approval. Fail it instead, send `AGMSG-PONG v1 status=blocked` with the exact command and the boundary it crosses, and wait for the orchestrator to re-task. Agent-to-agent permission approval is forbidden: only the human operator answers a permission prompt. A Claude Code auto-mode classifier denial (for example Self-Modification) is such a boundary: stop without a diff, send `AGMSG-PONG v1 status=blocked` naming the classifier reason, and never pursue the same outcome through another tool. Run `git fetch`/`push` and `gh` inside the sandbox first. On Linux, `gh` backed by the host keyring answers HTTP 401 there because AF_UNIX socket creation is denied and `allowUnixSockets` cannot grant a path; until dotfiles-T90 provisions a sandbox-readable worker credential, a Claude seat's `gh` calls and `git push` (whose credential helper is `gh`) are the one class of commands it runs outside the sandbox through the permission gate. Two documented cases run outside the sandbox too: the task's main-checkout CompactionDB `memory add`, through the permission gate because that state directory is read-only from a worktree sandbox, and `agmsg-dispatch`, through `excludedCommands` (step 11). Every other out-of-sandbox action stays a blocked PONG. A Codex seat has in-sandbox network (T64) and never leaves its sandbox.
++4. Do not perform any `forbidden_actions`. Complete every command inside the sandbox and allowlist; never escalate an action outside that boundary for approval. Fail it instead, send `AGMSG-PONG v1 status=blocked` with the exact command and the boundary it crosses, and wait for the orchestrator to re-task. Agent-to-agent permission approval is forbidden: only the human operator answers a permission prompt. A Claude Code auto-mode classifier denial (for example Self-Modification) is such a boundary: stop without a diff, send `AGMSG-PONG v1 status=blocked` naming the classifier reason, and never pursue the same outcome through another tool. Run `git fetch`/`push` and `gh` inside the sandbox first. On Linux, `gh` backed by the host keyring answers HTTP 401 there because AF_UNIX socket creation is denied and `allowUnixSockets` cannot grant a path; until dotfiles-T90 provisions a sandbox-readable worker credential, a Claude seat's `gh` calls, `git push` and any authenticated `git fetch` (a private HTTPS remote; the credential helper is `gh`) are the one class of commands it runs outside the sandbox through the permission gate. Two documented cases run outside the sandbox too: the task's main-checkout CompactionDB `memory add`, through the permission gate because that state directory is read-only from a worktree sandbox, and `agmsg-dispatch`, through `excludedCommands` (step 11). Every other out-of-sandbox action stays a blocked PONG. A Codex seat has in-sandbox network (T64) and never leaves its sandbox.
+ 5. Write artifacts to the exact expected paths. Do not invent alternate paths.
+ 6. Put the verbatim output of every validation command in `expected_validation_file`; every identifier your report claims to have created must appear in that output.
+ 7. Put the isolation status or fallback rationale in `expected_sandbox_file`.
+diff --git a/home/dot_config/claude/rules/agmsg-orchestration.md b/home/dot_config/claude/rules/agmsg-orchestration.md
+index 71adb883..50ee06fc 100644
+--- a/home/dot_config/claude/rules/agmsg-orchestration.md
++++ b/home/dot_config/claude/rules/agmsg-orchestration.md
+@@ -13,7 +13,7 @@
+ - The orchestrator never pushes a repository change to `main` directly. `main` is protected by the GitHub ruleset "main integration gate": a pull request is required, review threads must be resolved, the seven required checks must pass under the strict up-to-date policy, and `main` cannot be deleted or rewound. The `.orchestration` boundary commit goes on a fresh branch from `origin/main`, `orchestration/boundary-<YYYY-MM-DD>` (suffix `-2`, `-3`, … for another boundary the same day, since merged branches are kept), opens as a PR, and is merged with `gh pr merge --squash --auto`: the `changes` job skips the test matrix for an `.orchestration`-only diff, and the ruleset accepts the resulting `skipped` required checks. An acceptance merge happens only on GitHub with `gh pr merge --squash`; a local merge followed by a push is no longer a path.
+ - Run independent tasks in parallel: tasks with no dependency and pairwise-disjoint `allowed_files` are dispatched concurrently to worker worktrees seated with `herdr-agents --add-worker`, up to three workers in total (the resident pair worker counts), with the rest queued. Tasks whose code files overlap run sequentially; shared prose files (README, SKILL) may be edited concurrently in non-overlapping sections, the later PR merges the new base in with `gh pr update-branch`, and a real conflict blocks only the later PR. A freed worker is re-tasked immediately; acceptance follows RESULT arrival order, and audits queue on the single audit tab.
+ - Route by seat capability: a seat never edits the source of its own execution boundary, so a change is routed by the boundary it touches. A change that touches only Claude's boundary goes to a Codex seat: the `claude.permissions`, `claude.sandbox` and `claude.hooks` blocks of `home/dot_agents/agent-config.yaml` (including excludedCommands, allowUnsandboxedCommands, writable roots, network and the PermissionRequest hook), the Claude-rendering parts of `scripts/generate-agent-configs.py`, the rendered `home/.chezmoitemplates/claude-settings-managed.json`, and `home/dot_claude/modify_private_settings.json`. A change that touches only Codex's boundary goes to a Claude seat: `codex.sandbox_workspace_write`, `codex.approval_policy`, the Codex-rendering parts of the renderer, and `home/.chezmoitemplates/codex-config-managed.toml`. A change that touches both, or a shared source the orchestrator cannot split (such as `codex.sandbox_workspace_write.writable_roots`, which also renders into Claude's `allowWrite`), goes to the operator. The orchestrator decides the kind from the diff the task will produce and records it in the task file. The Claude Code auto-mode classifier also refuses a Claude-boundary task on a Claude seat as Self-Modification. A task that edits permgate (`home/dot_agents/permgate-policy.yaml`, `home/dot_local/bin/common/executable_permgate`), the PermissionRequest hook of both seats, goes to the operator; a Codex `security`-profile worker reviews the change before the orchestrator accepts it, per the model-selection rule. A Claude worker that hits that refusal stops without a diff and sends `AGMSG-PONG v1 status=blocked` naming the classifier reason; it never works around it.
+-- Worker commands complete inside the sandbox and allowlist. An action outside that boundary is never escalated for approval: the worker fails it, sends `AGMSG-PONG v1 status=blocked` with the exact command and boundary, and the orchestrator re-tasks. Agent-to-agent permission approval is forbidden; only the human operator answers a permission prompt. Run `git fetch`/`push` and `gh` inside the sandbox first. On Linux, `gh` backed by the host keyring answers HTTP 401 there because AF_UNIX socket creation is denied and `allowUnixSockets` cannot grant a path; until dotfiles-T90 provisions a sandbox-readable worker credential, a Claude seat's `gh` calls and `git push` (whose credential helper is `gh`) are the one class of commands it runs outside the sandbox through the permission gate, and every other out-of-sandbox action stays a blocked PONG.
++- Worker commands complete inside the sandbox and allowlist. An action outside that boundary is never escalated for approval: the worker fails it, sends `AGMSG-PONG v1 status=blocked` with the exact command and boundary, and the orchestrator re-tasks. Agent-to-agent permission approval is forbidden; only the human operator answers a permission prompt. Run `git fetch`/`push` and `gh` inside the sandbox first. On Linux, `gh` backed by the host keyring answers HTTP 401 there because AF_UNIX socket creation is denied and `allowUnixSockets` cannot grant a path; until dotfiles-T90 provisions a sandbox-readable worker credential, a Claude seat's `gh` calls, `git push` and any authenticated `git fetch` (a private HTTPS remote; the credential helper is `gh`) are the one class of commands it runs outside the sandbox through the permission gate, and every other out-of-sandbox action stays a blocked PONG.
+ - Register every worker identity at its worktree path with `AGMSG_RESOLVE_PROJECT=0 join.sh <team> <name> <type> <worktree>` and target `delivery.sh set` at that path; upstream project resolution (#92) otherwise rewrites a worktree path to the main checkout. Wake a herdr-agents worker pane with `agmsg-dispatch` until worker seating writes placement records; use `poke.sh --body-file` only for spawn-seated members and `send.sh --body-file` for pane-less ones. Never retry a `poke.sh` exit 13 as `send.sh`.
+ - Worker panes run in their worktree (manifest `worker_worktree`, seated by `herdr-agents`), so turn delivery reaches them directly through the worktree's Stop hook; upstream skips Monitor for `.claude/worktrees/*` sessions (#367). The interim milestone `inbox.sh` rule is retired for a worktree-seated worker; it still applies to a worker acting under a worktree-registered identity from a main-path pane, which runs `~/.agents/skills/agmsg/scripts/inbox.sh <team> <identity>` at each milestone until `herdr-agents --restart-worker` re-seats it.
+ - A codex worker in a nested worktree gets `<common>/objects`, `<common>/refs`, `<common>/logs` and `<common>/worktrees/<name>` (`<common>` from `git -C <worktree> rev-parse --git-common-dir`) as writable roots from `herdr-agents` (`-c sandbox_workspace_write.writable_roots`, with the configured agmsg roots kept first), so local git operations need no escalation. The common dir itself, `config`, `hooks`, `info`, `HEAD` and `packed-refs` stay read-only. The worker seat runs with `--ask-for-approval never` and in-sandbox network, so a GitHub fetch or push works inside the sandbox and no escalation exists for a worker; an out-of-sandbox or forbidden action fails and is reported as `AGMSG-PONG v1 status=blocked`.
+```
+Exit: 0.
+
+Command: `git diff --check`
+Output: empty; exit 0. Existing docs tests were run before/after; no redundant prose-mirroring test added.
+
+## Round 2 CI first-attempt network failure and targeted retry
+
+Ubuntu24 client job111476070040 failed in tests/install/ubuntu/client/ghostty.bats:38. add-apt-repository failed while reading the Launchpad API with http.client.IncompleteRead(80249 bytes). This is outside the two documentation phrases; retrying exactly the failed job at unchanged efe6735e.
+
+Initial gh run view log retrieval attempted its default read-only ~/.cache/gh and failed; repeated with XDG_CACHE_HOME=/tmp/t97-gh-cache for tool cache writes.
+
+Command: `XDG_CACHE_HOME=/tmp/t97-gh-cache gh run view 37215840356 --job 111476070040 --log-failed`
+
+```text
+test (ubuntu-24.04, client)	Run unit test	﻿2026-10-04T16:15:23.2098627Z ##[group]Run if [ "${OS}" == "macos-14" ]; then
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2099032Z ^[[36;1mif [ "${OS}" == "macos-14" ]; then^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2099437Z ^[[36;1m  # Bats uses its own tracing internals on macOS, and bashcov can^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2099950Z ^[[36;1m  # misread those records as coverage trace entries. Keep macOS in^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2100449Z ^[[36;1m  # the test matrix for platform validation, but collect Codecov^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2100928Z ^[[36;1m  # reports from the Ubuntu jobs where bashcov parses Bats output^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2101306Z ^[[36;1m  # reliably.^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2101541Z ^[[36;1m  ./scripts/run_unit_test.sh^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2101802Z ^[[36;1m  exit 0^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2102001Z ^[[36;1mfi^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2102181Z ^[[36;1m^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2102380Z ^[[36;1m# Shared bashcov defaults:^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2102723Z ^[[36;1m# - `--skip-uncovered`: limit report to executed files.^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2103149Z ^[[36;1m# - `--root .`: normalize paths relative to repository root.^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2103565Z ^[[36;1mbashcov_args=(--skip-uncovered --root .)^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2103864Z ^[[36;1m^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2104161Z ^[[36;1m# Use a unique command name per matrix job so SimpleCov keeps each^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2104623Z ^[[36;1m# session separated before Codecov merges by flag/name.^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2105033Z ^[[36;1mBASHCOV_COMMAND_NAME="unit-test-${OS}-${SYSTEM}" \^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2105551Z ^[[36;1m  ruby ./scripts/run_bashcov_unit_test.rb "${bashcov_args[@]}" -- ./scripts/run_unit_test.sh^[[0m
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2168079Z shell: /usr/bin/bash -e {0}
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2168345Z env:
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2168539Z   OS: ubuntu-24.04
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2168749Z   SYSTEM: client
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2168964Z   CODECOV_FLAGS: ubuntu-24.04-client
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2169282Z   CODECOV_NAME: codecov-dotfiles-ubuntu-24.04-client
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2172015Z   GITHUB_TOKEN: ***
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2172278Z   FILES_TEST_CHEZMOI: /usr/local/bin/chezmoi
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2172595Z   DOTFILES_MISE_VERSION: 2026.9.14
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2172852Z   MISE_LOG_LEVEL: info
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2175421Z   MISE_GITHUB_TOKEN: ***
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2175741Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/dotfiles/dotfiles
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2176264Z   MISE_YES: 1
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2176546Z   UV_PYTHON_INSTALL_DIR: /home/runner/work/_temp/uv-python-dir
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2177016Z   FILES_TEST_HOME: /home/runner/work/_temp/dotfiles-files-ubuntu-24.04-client
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2177759Z   FILES_TEST_SOURCE: /home/runner/work/_temp/dotfiles-public-source-ubuntu-24.04-client
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2178462Z   FILES_TEST_CONFIG: /home/runner/work/_temp/dotfiles-files-ubuntu-24.04-client/.config/chezmoi/chezmoi.yaml
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:23.2178967Z ##[endgroup]
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:24.5495296Z 1..3
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:24.7103503Z ok 1 [ubuntu-client] representative manifest
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:24.8764431Z ok 2 [ubuntu-client] second apply is idempotent and preserves an unmanaged sentinel
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:24.9256754Z ok 3 [ubuntu-client] manifest assertion rejects a removed required target
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:26.0562043Z 1..90
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:26.2270318Z ok 1 [common] check_machine_ssh_key reports found when the public key exists
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:26.2723845Z ok 2 [common] check_machine_ssh_key warns and suggests provision-machine-key when missing
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:26.3278545Z ok 3 [common] check_crit_cli reports the pinned version and origin when installed
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:26.3725881Z ok 4 [common] check_crit_cli is not applicable and not a failure when absent
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:26.4346384Z ok 5 [common] check_crit_cli warns instead of aborting when --version fails
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:26.4945329Z ok 6 [common] check_agmsg reports the installed version against the pin
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:26.5494570Z ok 7 [common] check_agmsg warns when the installed version does not match the pin
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:26.5989500Z ok 8 [common] check_agmsg is not applicable and not a failure when absent
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:26.7092078Z ok 9 [common] install_chezmoi_private returns success when chezmoi init succeeds
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:26.7502076Z ok 10 [common] install_chezmoi_private continues when chezmoi init fails
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:26.7896957Z ok 11 [common] script enables xtrace when DOTFILES_DEBUG is set
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:26.9659757Z ok 12 [common] decrypt_age_private_key continues when passphrase decrypt fails
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:27.0454763Z ok 13 [common] decrypt_age_private_key installs age identity through a temporary file
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:27.1182420Z ok 14 [common] decrypt_age_private_key skips passphrase prompt without a tty
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:27.1814531Z ok 15 [common] usePrivate=false renders an empty gate with no decrypt function
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:27.2844987Z ok 16 [common] usePrivate=true or missing renders the decrypt function
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:27.3939139Z ok 17 [common] gh_extensions installs extensions when authenticated
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:27.4340965Z ok 18 [common] gh_extensions skips login and extensions when unauthenticated
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:27.4764470Z ok 19 [common] gh_extensions keeps installed extensions unchanged
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:27.9570179Z ok 20 [common] Makefile exposes the public lifecycle targets
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:27.9972433Z ok 21 [common] Makefile keeps apply as a compatibility alias
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:28.1198553Z ok 22 [common] update pulls a clean main branch tracking origin/main first
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:28.2409109Z ok 23 [common] update skips pull for tracked changes and prints the manual command
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:28.3534856Z ok 24 [common] update reports unmerged files before the dirty notice
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:28.4660245Z ok 25 [common] update reloads a running Herdr server exactly once
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:28.5862144Z ok 26 [common] update installs statusline tools after applies and before agent assets
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:28.6898018Z ok 27 [common] update stops before agent assets and Herdr when statusline install fails
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:28.7914055Z ok 28 [common] update stops before npm tools when Node install fails
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:28.9008457Z ok 29 [common] update skips a Herdr server that is not running
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:28.9725616Z ok 30 [common] update skips reload when Herdr is absent
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:29.0790437Z ok 31 [common] update skips reload when Herdr status fails
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:29.4878743Z ok 32 [common] update skips reload for missing or unknown Herdr server status
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:29.5978705Z ok 33 [common] update propagates Herdr reload failure
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:29.7108210Z ok 34 [common] update tolerates a Herdr protocol mismatch and explains recovery
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:29.8662371Z ok 35 [common] update does not reload after apply or asset failure
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:29.9185008Z ok 36 [common] Makefile treats private chezmoi as optional during update
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:29.9654664Z ok 37 [common] Makefile maps SYSTEM=1 upgrade to system package upgrades
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:30.0128505Z ok 38 [common] Makefile does not treat SYSTEM=0 as a system package upgrade request
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:30.0577186Z ok 39 [common] Makefile init runs only the public chezmoi init
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:30.1029859Z ok 40 [common] Makefile does not expose a separate upgrade-system target
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:30.1476006Z ok 41 [common] setup.sh does not upgrade installed tools during bootstrap
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:30.1847081Z ok 42 [common] explicit tool lifecycle scripts are present
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:30.2258494Z ok 43 [common] doctor requires the OS-aware mise listing
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:30.2879492Z ok 44 [common] upgrade lifecycle refreshes mise itself before mise-managed tools
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:30.3478515Z ok 45 [common] mise tool lifecycle isolates Git config and continues after individual tool failures
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:30.3953894Z ok 46 [common] Homebrew upgrade filters forbidden formulae without installed-dependent side effects
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:30.4809225Z ok 47 [common] agent CLI lifecycle installs npm latest into mise packages and removes node-global shadows before asset commands
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:30.6234180Z ok 48 [common] agent asset lifecycle installs Crit integrations for Claude Code and Codex
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:30.6890804Z ok 49 [common] agent asset lifecycle installs Ponytail integrations for Claude Code and Codex
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:30.7726683Z ok 50 [common] agent asset lifecycle installs Understand-Anything integrations for Claude Code and Codex
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:30.8420671Z ok 51 [common] agent asset lifecycle installs pinned zenbu-labs terminal tools
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:30.9080004Z ok 52 [common] agent asset lifecycle renders model profiles and permgate hooks
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:30.9594086Z ok 53 [common] README documents setup update doctor and upgrade lifecycle
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:31.0168637Z ok 54 [common] README documents agent permission asset lifecycle
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:31.0823953Z ok 55 [common] chezmoi source-path handoff resolves the repository root
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:32.7588270Z ok 56 [common] mise
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:32.8018516Z ok 57 [common] mise pin includes the Linux arm64 aqua bin-path fix
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:32.8669204Z ok 58 [common] run_mise_install vets exact npm tools before the seven-day batch
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:32.9159765Z ok 59 [common] run_mise_install stops when config trust fails
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:32.9652678Z ok 60 [common] run_mise_install stops when statusline install fails
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:33.0149936Z ok 61 [common] run_mise_install stops when node install fails
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:33.0645424Z ok 62 [common] run_mise_install stops when agent CLI install fails
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:33.1137194Z ok 63 [common] run_mise_install returns the seven-day batch failure
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:33.1635105Z ok 64 [common] blocc is only installed on Linux x64
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:33.2139979Z ok 65 [common] herdr is installed by mise on Linux and macOS
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:33.2925117Z ok 66 [common] mise rejects another artifact checksum
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:33.4228600Z ok 67 [common] private_layer_enabled defaults to true when usePrivate is absent
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:33.4673774Z ok 68 [common] private_layer_enabled honors an explicit usePrivate=false
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:33.5228102Z ok 69 [common] private_layer_enabled honors an explicit usePrivate=true
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:33.5660166Z ok 70 [common] private_layer_enabled defaults to true when chezmoi is unavailable
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:33.6120453Z ok 71 [common] check_private_chezmoi reports not applicable when usePrivate is false
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:33.7294493Z ok 72 [common] provision-machine-key displays an existing key without regenerating it
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:33.7980972Z ok 73 [common] provision-machine-key generates a non-interactive key when missing
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:34.1810078Z ok 74 [common] chezmoi config accepts Linux roles and defaults macOS to client
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:34.2812427Z ok 75 [common] chezmoi config defaults name and usePrivate in CI without prompting
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:34.3473822Z ok 76 [common] chezmoi config honors explicit name and usePrivate even in CI
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:34.3823061Z ok 77 [common] Sheldon language plugin preserves an existing LANG
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:34.5331092Z ok 78 [common] chezmoi config rejects invalid roles before rendering YAML
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:34.5789551Z ok 79 [common] setup.sh keeps macOS sudo alive without Keychain password storage
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:34.6425356Z ok 80 [common] setup.sh updates an existing chezmoi source before applying
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:34.6804299Z ok 81 [common] setup.sh uses built-in Git only when external Git is unavailable
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:34.7362094Z ok 82 [common] setup.sh installs Homebrew non-interactively and continues from its prefix
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:34.8273865Z ok 83 [common] setup.sh fetches with curl first, falls back to wget, and fails without either
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:34.8758978Z ok 84 [common] setup.sh does not execute partial installer output from a failed fetch
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:34.9563683Z ok 85 [common] checksum verification fails closed for corrupt or missing digests
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:34.9970735Z ok 86 [common] setup.sh previews and applies without force
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:35.0357116Z ok 87 [common] setup.sh lets chezmoi choose sourceDir instead of cloning into cwd
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:35.1898081Z ok 88 [common] setup.sh entrypoint still runs under bash -c snippets
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:36.4910528Z ok 89 [common] wget-only Linux bootstrap previews safely and propagates failures
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:36.6472088Z ok 90 [common] setup.sh resolves Homebrew fallback prefixes behaviorally
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:36.6644049Z 
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:36.6644415Z The following warnings were encountered during tests:
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:36.6656051Z BW02: Using flags on `run` requires at least BATS_VERSION=1.5.0. Use `bats_require_minimum_version 1.5.0` to fix this message.
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:36.6657253Z       (from function `bats_warn_minimum_guaranteed_version' in file /usr/lib/bats-core/warnings.bash, line 32,
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:36.6658517Z        from function `run' in file /usr/lib/bats-core/test_functions.bash, line 351,
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:36.6659460Z        in test file tests/install/common/lifecycle.bats, line 337)
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:36.9230622Z 1..16
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:37.0662505Z ok 1 [ubuntu-common] PACKAGES for dependencies
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:37.1259859Z ok 2 [ubuntu-common] install_apt_packages installs only absent packages after update
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:37.1772560Z ok 3 [ubuntu-common] install_apt_packages exits early when nothing is missing
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:37.3598946Z ok 4 [ubuntu-common] run_apt_get bootstraps sudo when missing
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:37.4128361Z ok 5 [ubuntu-common] install_apt_packages skips apt when all packages are installed
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:37.4745335Z ok 6 [ubuntu-common] install_apt_packages distinguishes absent and partial package states
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:37.5166386Z ok 7 [ubuntu-common] install_apt_packages propagates fatal dpkg-query errors
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:37.5819079Z ok 8 [ubuntu-common] uninstall_apt_packages excludes sudo and git
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:37.6221954Z ok 9 [ubuntu-common] script enables xtrace when DOTFILES_DEBUG is set
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:37.7627296Z ok 10 [ubuntu-common] install_apt_packages returns early in current shell when all packages are installed
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:37.8658626Z ok 11 [ubuntu-common] setup_locale generates only missing required locales
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:37.9213888Z ok 12 [ubuntu-common] setup_locale runs for both Ubuntu roles
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:52.4550306Z ok 13 [ubuntu-common] PACKAGES for ssh
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:52.9298878Z ok 14 [ubuntu-common] install_github_host_key adds the pinned key once
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:57.1353363Z ok 15 [ubuntu-common] ssh
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:57.5914686Z ok 16 [ubuntu-common] uninstall_openssh issues apt remove
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:57.9085840Z 1..22
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:58.0322231Z ok 1 [ubuntu-client] default shell changes to zsh only once
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:58.0744036Z ok 2 [ubuntu-client] default shell is a no-op when zsh is current
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:15:58.1083182Z ok 3 [ubuntu-client] default shell runs only for Ubuntu clients
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:11.0651065Z ok 4 [ubuntu-client] docker
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:11.5350290Z ok 5 [ubuntu-client] setup_repository replaces an existing keyring non-interactively
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:11.8985048Z ok 6 [ubuntu-client] PACKAGES for ghostty
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:12.1955193Z ok 7 [ubuntu-client] DEPENDENCY_PACKAGES for ghostty
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.7889283Z not ok 8 [ubuntu-client] ghostty
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.7904403Z # (in test file tests/install/ubuntu/client/ghostty.bats, line 38)
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.7926197Z #   `DOTFILES_DEBUG=1 bash "${SCRIPT_PATH}"' failed
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.7936519Z # Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.7958380Z # Hit:6 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.7988409Z # Hit:7 https://download.docker.com/linux/ubuntu noble InRelease
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8018385Z # Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8019344Z # Hit:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8020318Z # Hit:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8021343Z # Hit:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8022124Z # Reading package lists...
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8023002Z # Reading package lists...
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8023511Z # Building dependency tree...
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8024034Z # Reading state information...
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8024768Z # software-properties-common is already the newest version (0.99.49.4).
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8025702Z # 0 upgraded, 0 newly installed, 0 to remove and 25 not upgraded.
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8026370Z # Traceback (most recent call last):
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8027060Z #   File "/usr/lib/python3.12/http/client.py", line 584, in _get_chunk_left
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8028174Z #     chunk_left = self._read_next_chunk_size()
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8028739Z #                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8029444Z #   File "/usr/lib/python3.12/http/client.py", line 551, in _read_next_chunk_size
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8030168Z #     return int(line, 16)
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8030569Z #            ^^^^^^^^^^^^^
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8031067Z # ValueError: invalid literal for int() with base 16: b''
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8031657Z #
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8032172Z # During handling of the above exception, another exception occurred:
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8032814Z #
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8033154Z # Traceback (most recent call last):
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8033808Z #   File "/usr/lib/python3.12/http/client.py", line 600, in _read_chunked
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8034580Z #     while (chunk_left := self._get_chunk_left()) is not None:
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8035183Z #                          ^^^^^^^^^^^^^^^^^^^^^^
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8035849Z #   File "/usr/lib/python3.12/http/client.py", line 586, in _get_chunk_left
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8036534Z #     raise IncompleteRead(b'')
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8037087Z # http.client.IncompleteRead: IncompleteRead(0 bytes read)
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8037873Z #
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8038362Z # The above exception was the direct cause of the following exception:
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8039002Z #
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8039348Z # Traceback (most recent call last):
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8039938Z #   File "/usr/bin/add-apt-repository", line 452, in <module>
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8040571Z #     sys.exit(0 if addaptrepo.main() else 1)
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8041070Z #                   ^^^^^^^^^^^^^^^^^
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8041602Z #   File "/usr/bin/add-apt-repository", line 435, in main
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8042520Z #     shortcut = handler(source, **shortcut_params)
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8043067Z #                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8043956Z #   File "/usr/lib/python3/dist-packages/softwareproperties/shortcuts.py", line 40, in shortcut_handler
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8044895Z #     return handler(shortcut, **kwargs)
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8045373Z #            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8046136Z #   File "/usr/lib/python3/dist-packages/softwareproperties/ppa.py", line 89, in __init__
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8046977Z #     if self.lpppa.publish_debug_symbols:
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8058749Z #        ^^^^^^^^^^
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8059489Z #   File "/usr/lib/python3/dist-packages/softwareproperties/ppa.py", line 133, in lpppa
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8060441Z #     self._lpppa = self.lpteam.getPPAByName(name=self.ppaname)
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8061060Z #                   ^^^^^^^^^^^
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8061796Z #   File "/usr/lib/python3/dist-packages/softwareproperties/ppa.py", line 120, in lpteam
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8062635Z #     self._lpteam = self.lp.people(self.teamname)
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8063175Z #                    ^^^^^^^
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8063855Z #   File "/usr/lib/python3/dist-packages/softwareproperties/ppa.py", line 111, in lp
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8064804Z #     self._lp = login_func("%s.%s" % (self.__module__, self.__class__.__name__),
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8065546Z #                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8066470Z #   File "/usr/lib/python3/dist-packages/launchpadlib/launchpad.py", line 494, in login_anonymously
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8067344Z #     return cls(
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8067928Z #            ^^^^
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8068841Z #   File "/usr/lib/python3/dist-packages/launchpadlib/launchpad.py", line 230, in __init__
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8069673Z #     super(Launchpad, self).__init__(
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8070494Z #   File "/usr/lib/python3/dist-packages/lazr/restfulclient/resource.py", line 511, in __init__
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8071493Z #     self._wadl = self._browser.get_wadl_application(self._root_uri)
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8072175Z #                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8073134Z #   File "/usr/lib/python3/dist-packages/lazr/restfulclient/_browser.py", line 502, in get_wadl_application
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8074196Z #     response, content = self._request(url, media_type=wadl_type)
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8074842Z #                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8075687Z #   File "/usr/lib/python3/dist-packages/lazr/restfulclient/_browser.py", line 441, in _request
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8076590Z #     response, content = self._request_and_retry(
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8077163Z #                         ^^^^^^^^^^^^^^^^^^^^^^^^
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8088511Z #   File "/usr/lib/python3/dist-packages/lazr/restfulclient/_browser.py", line 400, in _request_and_retry
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8090160Z #     response, content = self._connection.request(
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8090986Z #                         ^^^^^^^^^^^^^^^^^^^^^^^^^
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8091943Z #   File "/usr/lib/python3/dist-packages/httplib2/__init__.py", line 1700, in request
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8092949Z #     (response, new_content) = self._request(
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8093669Z #                               ^^^^^^^^^^^^^^
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8094632Z #   File "/usr/lib/python3/dist-packages/launchpadlib/launchpad.py", line 144, in _request
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8095829Z #     response, content = super(LaunchpadOAuthAwareHttp, self)._request(
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8111808Z #                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8112911Z #   File "/usr/lib/python3/dist-packages/lazr/restfulclient/_browser.py", line 204, in _request
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8114056Z #     return super(RestfulHttp, self)._request(
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8114832Z #            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8116063Z #   File "/usr/lib/python3/dist-packages/httplib2/__init__.py", line 1452, in _request
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8117286Z #     (response, content) = self._conn_request(conn, request_uri, method, body, headers)
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8118567Z #                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8119646Z #   File "/usr/lib/python3/dist-packages/httplib2/__init__.py", line 1433, in _conn_request
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8120651Z #     content = response.read()
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8121278Z #               ^^^^^^^^^^^^^^^
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8121998Z #   File "/usr/lib/python3.12/http/client.py", line 478, in read
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8122820Z #     return self._read_chunked(amt)
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8123491Z #            ^^^^^^^^^^^^^^^^^^^^^^^
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8124287Z #   File "/usr/lib/python3.12/http/client.py", line 612, in _read_chunked
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8125197Z #     raise IncompleteRead(b''.join(value)) from exc
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.8126173Z # http.client.IncompleteRead: IncompleteRead(80249 bytes read)
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.9311359Z ok 9 [ubuntu-client] main is a no-op without gsettings on PATH
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:44.9787102Z ok 10 [ubuntu-client] main is a no-op headless even when gsettings exists
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:45.0208034Z ok 11 [ubuntu-client] gset skips a key whose schema is not writable
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:45.0671992Z ok 12 [ubuntu-client] gset applies a key whose schema is writable
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:16:45.1182870Z ok 13 [ubuntu-client] main applies every ported default when gsettings is available and writable
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:17:46.9633355Z ok 14 [ubuntu-client] PACKAGES for misc
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:39.0759577Z ok 15 [ubuntu-client] misc
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:39.5216055Z ok 16 [ubuntu-client] install_chromium is a no-op when snap is unavailable
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:48.9531197Z ok 17 [ubuntu-client] tailscale
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:49.4550382Z ok 18 [ubuntu-client] setup_repository writes a codename-scoped keyring and sources entry
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:49.5898991Z ok 19 [ubuntu-client] zed_artifact selects the pinned checksum for the current architecture
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:49.6429195Z ok 20 [ubuntu-client] zed_artifact rejects an unsupported architecture
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:49.7263455Z ok 21 [ubuntu-client] main downloads, verifies, and links zed when not already installed
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:49.7899356Z ok 22 [ubuntu-client] main is a no-op when the pinned version is already installed
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:49.9666847Z Stopped processing SimpleCov as a previous error not related to SimpleCov has been detected
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:49.9673694Z Run completed using bashcov 3.3.0 with Bash 5.2, Ruby 3.2.3, and SimpleCov 0.22.0
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:49.9674956Z Coverage report generated for unit-test-ubuntu-24.04-client to /home/runner/work/dotfiles/dotfiles/coverage.
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:49.9675637Z Line Coverage: 54.79% (309 / 564)
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:49.9676323Z Coverage report generated for unit-test-ubuntu-24.04-client to /home/runner/work/dotfiles/dotfiles/coverage/coverage.xml.
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:49.9677044Z Line Coverage: 54.79% (309 / 564)
+test (ubuntu-24.04, client)	Run unit test	2026-10-04T16:18:49.9733147Z ##[error]Process completed with exit code 1.
+```
+Exit: 0 (log retrieval).
+
+Command: `gh run rerun 37215840356 --job 111476070040`
+Output empty; exit 0. Retry pending. No local bats run or product code change.
+
+## Ubuntu26 first attempt: same external failure
+
+The first-attempt Ubuntu26 client job111476070122 also failed Ghostty setup at add-apt-repository / Launchpad IncompleteRead(79833 bytes). gh run view while retry in progress could not retrieve it; the jobs log API succeeded after explicitly allowing escape bytes to a temporary file. Terminal ANSI sequences were removed for the following readable log; content is otherwise preserved.
+
+Command: `gh api --allow-escape-sequences repos/mryfmo/dotfiles/actions/jobs/111476070122/logs`
+
+```text
+﻿2026-10-04T16:11:32.9499535Z Current runner version: '2.337.0'
+2026-10-04T16:11:32.9516335Z ##[group]Runner Image Provisioner
+2026-10-04T16:11:32.9516845Z Hosted Compute Agent
+2026-10-04T16:11:32.9517177Z Version: 20260901.588
+2026-10-04T16:11:32.9517655Z Commit: f88ec8081b781fac6c440065ac7ff9e710ce3d0b
+2026-10-04T16:11:32.9518150Z Build Date: 2026-09-01T19:56:44Z
+2026-10-04T16:11:32.9518646Z Worker ID: {00a456a2-a9ae-4b1a-bab7-d1c65d7defd4}
+2026-10-04T16:11:32.9519124Z Azure Region: westus3
+2026-10-04T16:11:32.9519462Z ##[endgroup]
+2026-10-04T16:11:32.9520269Z ##[group]Operating System
+2026-10-04T16:11:32.9520644Z Ubuntu
+2026-10-04T16:11:32.9520986Z 26.04.1
+2026-10-04T16:11:32.9521288Z LTS
+2026-10-04T16:11:32.9521582Z ##[endgroup]
+2026-10-04T16:11:32.9521973Z ##[group]Runner Image
+2026-10-04T16:11:32.9522494Z Image: ubuntu-26.04
+2026-10-04T16:11:32.9522893Z Version: 20260927.149.1
+2026-10-04T16:11:32.9523624Z Included Software: https://github.com/actions/runner-images/blob/ubuntu26/20260927.149/images/ubuntu/Ubuntu2604-Readme.md
+2026-10-04T16:11:32.9524534Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu26%2F20260927.149
+2026-10-04T16:11:32.9525073Z ##[endgroup]
+2026-10-04T16:11:32.9525722Z ##[group]GITHUB_TOKEN Permissions
+2026-10-04T16:11:32.9526963Z Contents: read
+2026-10-04T16:11:32.9527346Z Metadata: read
+2026-10-04T16:11:32.9527669Z ##[endgroup]
+2026-10-04T16:11:32.9528923Z Secret source: Actions
+2026-10-04T16:11:32.9529442Z Cache mode: write
+2026-10-04T16:11:32.9529852Z Prepare workflow directory
+2026-10-04T16:11:32.9839164Z Prepare all required actions
+2026-10-04T16:11:32.9870031Z Getting action download info
+2026-10-04T16:11:33.2994743Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-10-04T16:11:33.3843256Z Download action repository 'jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c' (SHA:c2a87611a18de5b3828c5652fe268e992400cb5c)
+2026-10-04T16:11:34.1896319Z Download action repository 'astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7' (SHA:c18668ad3cf93ea998bef934396af7bb5c839dc7)
+2026-10-04T16:11:35.0253417Z Download action repository 'codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5' (SHA:303a32d7a59b442fa8d48b6a1cc6825c09c847a5)
+2026-10-04T16:11:35.4259623Z Getting action download info
+2026-10-04T16:11:35.5569131Z Download action repository 'actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd' (SHA:ed597411d8f924073f98dfc5c65a23a2325f34cd)
+2026-10-04T16:11:36.2247547Z Complete job name: test (ubuntu-26.04, client)
+2026-10-04T16:11:36.2654777Z ##[group]Run git config --global init.defaultBranch main
+2026-10-04T16:11:36.2655068Z git config --global init.defaultBranch main
+2026-10-04T16:11:36.2904608Z shell: /usr/bin/bash -e {0}
+2026-10-04T16:11:36.2905047Z env:
+2026-10-04T16:11:36.2905169Z   OS: ubuntu-26.04
+2026-10-04T16:11:36.2905296Z   SYSTEM: client
+2026-10-04T16:11:36.2905426Z   CODECOV_FLAGS: ubuntu-26.04-client
+2026-10-04T16:11:36.2905616Z   CODECOV_NAME: codecov-dotfiles-ubuntu-26.04-client
+2026-10-04T16:11:36.2907278Z   GITHUB_TOKEN: ***
+2026-10-04T16:11:36.2907412Z ##[endgroup]
+2026-10-04T16:11:36.3253701Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-10-04T16:11:36.3253931Z with:
+2026-10-04T16:11:36.3254070Z   persist-credentials: false
+2026-10-04T16:11:36.3254227Z   repository: mryfmo/dotfiles
+2026-10-04T16:11:36.3255710Z   token: ***
+2026-10-04T16:11:36.3255831Z   ssh-strict: true
+2026-10-04T16:11:36.3255959Z   ssh-user: git
+2026-10-04T16:11:36.3256080Z   clean: true
+2026-10-04T16:11:36.3256214Z   sparse-checkout-cone-mode: true
+2026-10-04T16:11:36.3256366Z   fetch-depth: 1
+2026-10-04T16:11:36.3256489Z   fetch-tags: false
+2026-10-04T16:11:36.3256614Z   show-progress: true
+2026-10-04T16:11:36.3256741Z   lfs: false
+2026-10-04T16:11:36.3256853Z   submodules: false
+2026-10-04T16:11:36.3256989Z   set-safe-directory: true
+2026-10-04T16:11:36.3257171Z   allow-unsafe-pr-checkout: false
+2026-10-04T16:11:36.3257319Z env:
+2026-10-04T16:11:36.3257608Z   OS: ubuntu-26.04
+2026-10-04T16:11:36.3257727Z   SYSTEM: client
+2026-10-04T16:11:36.3257877Z   CODECOV_FLAGS: ubuntu-26.04-client
+2026-10-04T16:11:36.3258058Z   CODECOV_NAME: codecov-dotfiles-ubuntu-26.04-client
+2026-10-04T16:11:36.3259651Z   GITHUB_TOKEN: ***
+2026-10-04T16:11:36.3259864Z ##[endgroup]
+2026-10-04T16:11:36.3922679Z Syncing repository: mryfmo/dotfiles
+2026-10-04T16:11:36.3923830Z ##[group]Getting Git version info
+2026-10-04T16:11:36.3924083Z Working directory is '/home/runner/work/dotfiles/dotfiles'
+2026-10-04T16:11:36.3924427Z [command]/usr/bin/git version
+2026-10-04T16:11:36.3948199Z git version 2.55.0
+2026-10-04T16:11:36.3967089Z ##[endgroup]
+2026-10-04T16:11:36.3972835Z Copying '/home/runner/.gitconfig' to '/home/runner/work/_temp/71811ba7-5082-4851-97cd-502d9e8d9138/.gitconfig'
+2026-10-04T16:11:36.4013230Z Temporarily overriding HOME='/home/runner/work/_temp/71811ba7-5082-4851-97cd-502d9e8d9138' before making global git config changes
+2026-10-04T16:11:36.4029330Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-04T16:11:36.4030262Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/dotfiles/dotfiles
+2026-10-04T16:11:36.4114608Z Deleting the contents of '/home/runner/work/dotfiles/dotfiles'
+2026-10-04T16:11:36.4117273Z ##[group]Determining repository object format
+2026-10-04T16:11:36.4118766Z ##[endgroup]
+2026-10-04T16:11:36.4119194Z ##[group]Initializing the repository
+2026-10-04T16:11:36.4123121Z [command]/usr/bin/git init /home/runner/work/dotfiles/dotfiles
+2026-10-04T16:11:36.4242508Z Initialized empty Git repository in /home/runner/work/dotfiles/dotfiles/.git/
+2026-10-04T16:11:36.4258034Z [command]/usr/bin/git remote add origin https://github.com/mryfmo/dotfiles
+2026-10-04T16:11:36.4521356Z ##[endgroup]
+2026-10-04T16:11:36.4521824Z ##[group]Disabling automatic garbage collection
+2026-10-04T16:11:36.4525226Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-04T16:11:36.4643387Z ##[endgroup]
+2026-10-04T16:11:36.4643784Z ##[group]Setting up auth
+2026-10-04T16:11:36.4644083Z Removing SSH command configuration
+2026-10-04T16:11:36.4648221Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-04T16:11:36.4676881Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-04T16:11:36.5004635Z Removing HTTP extra header
+2026-10-04T16:11:36.5007538Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-04T16:11:36.5032790Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-04T16:11:36.5248674Z Removing includeIf entries pointing to credentials config files
+2026-10-04T16:11:36.5251875Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-04T16:11:36.5277495Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-04T16:11:36.5488523Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-04T16:11:36.5815625Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/dotfiles/dotfiles/.git.path /home/runner/work/_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config
+2026-10-04T16:11:36.6340513Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/dotfiles/dotfiles/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config
+2026-10-04T16:11:36.7126446Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config
+2026-10-04T16:11:36.7617594Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config
+2026-10-04T16:11:36.8568629Z ##[endgroup]
+2026-10-04T16:11:36.8569324Z ##[group]Fetching the repository
+2026-10-04T16:11:36.8574427Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +d36630e7496af56fc7eed9f0900db85118c8626d:refs/remotes/pull/258/merge
+2026-10-04T16:11:38.0912434Z From https://github.com/mryfmo/dotfiles
+2026-10-04T16:11:38.0913408Z  * [new ref]         d36630e7496af56fc7eed9f0900db85118c8626d -> pull/258/merge
+2026-10-04T16:11:38.0921616Z ##[endgroup]
+2026-10-04T16:11:38.0921991Z ##[group]Determining the checkout info
+2026-10-04T16:11:38.0922833Z ##[endgroup]
+2026-10-04T16:11:38.0923245Z [command]/usr/bin/git sparse-checkout disable
+2026-10-04T16:11:38.1074563Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-04T16:11:38.1143984Z ##[group]Checking out the ref
+2026-10-04T16:11:38.1151897Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/258/merge
+2026-10-04T16:11:38.4715734Z Note: switching to 'refs/remotes/pull/258/merge'.
+2026-10-04T16:11:38.4716197Z 
+2026-10-04T16:11:38.4716537Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-10-04T16:11:38.4717121Z changes and commit them, and you can discard any commits you make in this
+2026-10-04T16:11:38.4717667Z state without impacting any branches by switching back to a branch.
+2026-10-04T16:11:38.4718031Z 
+2026-10-04T16:11:38.4718355Z If you want to create a new branch to retain commits you create, you may
+2026-10-04T16:11:38.4718859Z do so (now or later) by using -c with the switch command. Example:
+2026-10-04T16:11:38.4719202Z 
+2026-10-04T16:11:38.4719448Z   git switch -c <new-branch-name>
+2026-10-04T16:11:38.4719721Z 
+2026-10-04T16:11:38.4719932Z Or undo this operation with:
+2026-10-04T16:11:38.4720292Z 
+2026-10-04T16:11:38.4720530Z   git switch -
+2026-10-04T16:11:38.4720872Z 
+2026-10-04T16:11:38.4721206Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-10-04T16:11:38.4721697Z 
+2026-10-04T16:11:38.4722177Z HEAD is now at d36630e Merge efe6735e4542029b1357d27d1e47b63a57273ed4 into f6320f37d3835b37204584e00eb67d0bb41bf577
+2026-10-04T16:11:38.4751104Z ##[endgroup]
+2026-10-04T16:11:38.4797916Z [command]/usr/bin/git log -1 --format=%H
+2026-10-04T16:11:38.4823330Z d36630e7496af56fc7eed9f0900db85118c8626d
+2026-10-04T16:11:38.4831530Z ##[group]Removing auth
+2026-10-04T16:11:38.4831938Z Removing SSH command configuration
+2026-10-04T16:11:38.4834733Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-04T16:11:38.4861054Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-04T16:11:38.5089966Z Removing HTTP extra header
+2026-10-04T16:11:38.5090891Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-04T16:11:38.5118755Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-04T16:11:38.5354302Z Removing includeIf entries pointing to credentials config files
+2026-10-04T16:11:38.5356937Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-04T16:11:38.5379429Z includeif.gitdir:/home/runner/work/dotfiles/dotfiles/.git.path
+2026-10-04T16:11:38.5379932Z includeif.gitdir:/home/runner/work/dotfiles/dotfiles/.git/worktrees/*.path
+2026-10-04T16:11:38.5380315Z includeif.gitdir:/github/workspace/.git.path
+2026-10-04T16:11:38.5380597Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-10-04T16:11:38.5386512Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/dotfiles/dotfiles/.git.path
+2026-10-04T16:11:38.5407039Z /home/runner/work/_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config
+2026-10-04T16:11:38.5414207Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/dotfiles/dotfiles/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-cedc442e\-76bb\-472c\-8d85\-112d7bc854d2\.config
+2026-10-04T16:11:38.5734030Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/dotfiles/dotfiles/.git/worktrees/*.path
+2026-10-04T16:11:38.5759367Z /home/runner/work/_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config
+2026-10-04T16:11:38.5766375Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/dotfiles/dotfiles/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-cedc442e\-76bb\-472c\-8d85\-112d7bc854d2\.config
+2026-10-04T16:11:38.5923446Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-10-04T16:11:38.5944099Z /github/runner_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config
+2026-10-04T16:11:38.5949548Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-cedc442e\-76bb\-472c\-8d85\-112d7bc854d2\.config
+2026-10-04T16:11:38.6019072Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-10-04T16:11:38.6040061Z /github/runner_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config
+2026-10-04T16:11:38.6087148Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-cedc442e\-76bb\-472c\-8d85\-112d7bc854d2\.config
+2026-10-04T16:11:38.6215908Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-04T16:11:38.6448662Z Removing credentials config '/home/runner/work/_temp/git-credentials-cedc442e-76bb-472c-8d85-112d7bc854d2.config'
+2026-10-04T16:11:38.6449491Z ##[endgroup]
+2026-10-04T16:11:38.6565763Z ##[group]Run if [ "${OS}" == "macos-14" ]; then
+2026-10-04T16:11:38.6566101Z if [ "${OS}" == "macos-14" ]; then
+2026-10-04T16:11:38.6566343Z   # The macos-14 runner image ships third-party taps tapped but
+2026-10-04T16:11:38.6566607Z   # untrusted, and Homebrew warns on every `brew install` while one
+2026-10-04T16:11:38.6566864Z   # is present. The installs below come from homebrew/core, so
+2026-10-04T16:11:38.6567113Z   # resolve those taps with the brew installer's own CI handling
+2026-10-04T16:11:38.6567352Z   # rather than a second hard-coded copy of the tap list.
+2026-10-04T16:11:38.6567624Z   bash -c 'source install/macos/common/brew.sh; handle_ci_untrusted_taps'
+2026-10-04T16:11:38.6567840Z 
+2026-10-04T16:11:38.6568001Z   # `bashcov` on macOS must use Homebrew Bash (>=5) to avoid the
+2026-10-04T16:11:38.6568296Z   # system Bash 3.2 parser limitations that produced empty coverage.
+2026-10-04T16:11:38.6568547Z   # `gawk` is available for shell tooling used by the test suite.
+2026-10-04T16:11:38.6568786Z   brew install bash bats-core gawk parallel shellcheck
+2026-10-04T16:11:38.6568972Z 
+2026-10-04T16:11:38.6569099Z elif [[ "${OS}" == ubuntu-* ]]; then
+2026-10-04T16:11:38.6569298Z   # Ruby is required for bashcov/simplecov formatters.
+2026-10-04T16:11:38.6569587Z   sudo apt-get update && sudo apt-get install -y bats curl iproute2 parallel ruby shellcheck
+2026-10-04T16:11:38.6569835Z 
+2026-10-04T16:11:38.6569944Z else
+2026-10-04T16:11:38.6570095Z   echo "${OS} and ${SYSTEM} are not supported" >&2
+2026-10-04T16:11:38.6570278Z   exit 1
+2026-10-04T16:11:38.6570395Z fi
+2026-10-04T16:11:38.6570505Z 
+2026-10-04T16:11:38.6570865Z # `chezmoi` is installed so Bats can render chezmoi templates
+2026-10-04T16:11:38.6571162Z # behaviorally instead of grepping template syntax. Both platforms
+2026-10-04T16:11:38.6587630Z # take the pinned release that setup.sh bootstraps; the version
+2026-10-04T16:11:38.6588041Z # renders from assets.chezmoi-bootstrap in agent-config.yaml.
+2026-10-04T16:11:38.6588398Z source scripts/lib/installer-pins.sh
+2026-10-04T16:11:38.6588688Z case "$(uname -s)/$(uname -m)" in
+2026-10-04T16:11:38.6588981Z   Darwin/arm64) chezmoi_platform=darwin_arm64 ;;
+2026-10-04T16:11:38.6589317Z   Darwin/x86_64) chezmoi_platform=darwin_amd64 ;;
+2026-10-04T16:11:38.6589640Z   Linux/x86_64) chezmoi_platform=linux_amd64 ;;
+2026-10-04T16:11:38.6590018Z   *) echo "no chezmoi release for $(uname -s)/$(uname -m)" >&2; exit 1 ;;
+2026-10-04T16:11:38.6590366Z esac
+2026-10-04T16:11:38.6590693Z artifact="chezmoi_${CHEZMOI_BOOTSTRAP_PIN_VERSION}_${chezmoi_platform}.tar.gz"
+2026-10-04T16:11:38.6591316Z base_url="https://github.com/twpayne/chezmoi/releases/download/v${CHEZMOI_BOOTSTRAP_PIN_VERSION}"
+2026-10-04T16:11:38.6591819Z sha256_check=(sha256sum --check --strict)
+2026-10-04T16:11:38.6592241Z command -v sha256sum >/dev/null || sha256_check=(shasum -a 256 --check --strict)
+2026-10-04T16:11:38.6592953Z curl -fsSL "${base_url}/${artifact}" -o "${RUNNER_TEMP}/${artifact}"
+2026-10-04T16:11:38.6593444Z curl -fsSL "${base_url}/chezmoi_${CHEZMOI_BOOTSTRAP_PIN_VERSION}_checksums.txt" \
+2026-10-04T16:11:38.6593851Z   | grep "  ${artifact}$" \
+2026-10-04T16:11:38.6594139Z   | (cd "${RUNNER_TEMP}" && "${sha256_check[@]}")
+2026-10-04T16:11:38.6594509Z tar -xzf "${RUNNER_TEMP}/${artifact}" -C "${RUNNER_TEMP}" chezmoi
+2026-10-04T16:11:38.6594968Z sudo install -m 0755 "${RUNNER_TEMP}/chezmoi" /usr/local/bin/chezmoi
+2026-10-04T16:11:38.6595318Z 
+2026-10-04T16:11:38.6595547Z files_test_chezmoi="$(command -v chezmoi)"
+2026-10-04T16:11:38.6596077Z case "${files_test_chezmoi}" in
+2026-10-04T16:11:38.6596350Z   /*/mise/shims/*|"")
+2026-10-04T16:11:38.6596736Z     echo "Files test chezmoi must resolve outside mise shims: ${files_test_chezmoi:-missing}" >&2
+2026-10-04T16:11:38.6597127Z     exit 1
+2026-10-04T16:11:38.6597251Z     ;;
+2026-10-04T16:11:38.6597366Z   /*) ;;
+2026-10-04T16:11:38.6597482Z   *)
+2026-10-04T16:11:38.6597672Z     echo "Files test chezmoi must be an absolute path: ${files_test_chezmoi}" >&2
+2026-10-04T16:11:38.6597893Z     exit 1
+2026-10-04T16:11:38.6598013Z     ;;
+2026-10-04T16:11:38.6598126Z esac
+2026-10-04T16:11:38.6598250Z test -x "${files_test_chezmoi}"
+2026-10-04T16:11:38.6598472Z # A runner-provided chezmoi earlier on PATH must not shadow the pin.
+2026-10-04T16:11:38.6598768Z "${files_test_chezmoi}" --version | grep -F "v${CHEZMOI_BOOTSTRAP_PIN_VERSION}"
+2026-10-04T16:11:38.6599074Z printf 'FILES_TEST_CHEZMOI=%s\n' "${files_test_chezmoi}" >> "${GITHUB_ENV}"
+2026-10-04T16:11:38.6599293Z 
+2026-10-04T16:11:38.6599474Z # Install coverage tooling as user gems and expose gem bin dir on PATH
+2026-10-04T16:11:38.6599749Z # before installation so RubyGems can expose executables immediately.
+2026-10-04T16:11:38.6600000Z # `--no-document` keeps CI faster and deterministic.
+2026-10-04T16:11:38.6600236Z gem_bin_dir="$(ruby -r rubygems -e 'puts Gem.user_dir')/bin"
+2026-10-04T16:11:38.6600459Z echo "${gem_bin_dir}" >> "${GITHUB_PATH}"
+2026-10-04T16:11:38.6600643Z export PATH="${gem_bin_dir}:${PATH}"
+2026-10-04T16:11:38.6600856Z gem install --user-install --no-document bashcov --version 3.3.0
+2026-10-04T16:11:38.6601137Z gem install --user-install --no-document simplecov-cobertura --version 3.1.0
+2026-10-04T16:11:38.6650506Z shell: /usr/bin/bash -e {0}
+2026-10-04T16:11:38.6650656Z env:
+2026-10-04T16:11:38.6650778Z   OS: ubuntu-26.04
+2026-10-04T16:11:38.6650901Z   SYSTEM: client
+2026-10-04T16:11:38.6651032Z   CODECOV_FLAGS: ubuntu-26.04-client
+2026-10-04T16:11:38.6651214Z   CODECOV_NAME: codecov-dotfiles-ubuntu-26.04-client
+2026-10-04T16:11:38.6652935Z   GITHUB_TOKEN: ***
+2026-10-04T16:11:38.6653068Z ##[endgroup]
+2026-10-04T16:11:38.7320424Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2026-10-04T16:11:38.7579181Z Get:6 https://packages.microsoft.com/ubuntu/26.04/prod resolute InRelease [3964 B]
+2026-10-04T16:11:38.7710503Z Hit:2 http://azure.archive.ubuntu.com/ubuntu resolute InRelease
+2026-10-04T16:11:38.7732785Z Get:3 http://azure.archive.ubuntu.com/ubuntu resolute-updates InRelease [137 kB]
+2026-10-04T16:11:38.7776194Z Get:4 http://azure.archive.ubuntu.com/ubuntu resolute-backports InRelease [137 kB]
+2026-10-04T16:11:38.7853734Z Get:7 https://packages.microsoft.com/ubuntu/26.04/prod resolute/main armhf Packages [850 B]
+2026-10-04T16:11:38.8204724Z Get:18 https://packages.microsoft.com/ubuntu/26.04/prod resolute/main arm64 Packages [66.8 kB]
+2026-10-04T16:11:38.8427167Z Get:5 http://azure.archive.ubuntu.com/ubuntu resolute-security InRelease [137 kB]
+2026-10-04T16:11:38.8434528Z Get:19 https://packages.microsoft.com/ubuntu/26.04/prod resolute/main amd64 Packages [76.6 kB]
+2026-10-04T16:11:38.8456201Z Get:8 http://azure.archive.ubuntu.com/ubuntu resolute-updates/main amd64v3 Packages [718 kB]
+2026-10-04T16:11:38.8813014Z Get:9 http://azure.archive.ubuntu.com/ubuntu resolute-updates/main Translation-en [167 kB]
+2026-10-04T16:11:38.8937276Z Get:10 http://azure.archive.ubuntu.com/ubuntu resolute-updates/main amd64 Components [97.9 kB]
+2026-10-04T16:11:38.9263057Z Get:11 http://azure.archive.ubuntu.com/ubuntu resolute-updates/universe amd64v3 Packages [316 kB]
+2026-10-04T16:11:38.9332507Z Get:12 http://azure.archive.ubuntu.com/ubuntu resolute-updates/universe Translation-en [101 kB]
+2026-10-04T16:11:38.9626472Z Get:13 http://azure.archive.ubuntu.com/ubuntu resolute-updates/universe amd64 Components [201 kB]
+2026-10-04T16:11:38.9630652Z Get:14 http://azure.archive.ubuntu.com/ubuntu resolute-updates/restricted amd64v3 Packages [487 kB]
+2026-10-04T16:11:38.9720265Z Get:15 http://azure.archive.ubuntu.com/ubuntu resolute-updates/restricted Translation-en [97.7 kB]
+2026-10-04T16:11:38.9736539Z Get:16 http://azure.archive.ubuntu.com/ubuntu resolute-updates/multiverse amd64v3 Packages [11.9 kB]
+2026-10-04T16:11:38.9816844Z Get:17 http://azure.archive.ubuntu.com/ubuntu resolute-updates/multiverse Translation-en [3276 B]
+2026-10-04T16:11:39.0271626Z Get:20 http://azure.archive.ubuntu.com/ubuntu resolute-backports/universe amd64 Components [1060 B]
+2026-10-04T16:11:39.0317531Z Get:21 http://azure.archive.ubuntu.com/ubuntu resolute-security/main amd64v3 Packages [551 kB]
+2026-10-04T16:11:39.0413534Z Get:22 http://azure.archive.ubuntu.com/ubuntu resolute-security/main Translation-en [129 kB]
+2026-10-04T16:11:39.0441875Z Get:23 http://azure.archive.ubuntu.com/ubuntu resolute-security/main amd64 Components [46.7 kB]
+2026-10-04T16:11:39.0452949Z Get:24 http://azure.archive.ubuntu.com/ubuntu resolute-security/universe amd64v3 Packages [192 kB]
+2026-10-04T16:11:39.0511430Z Get:25 http://azure.archive.ubuntu.com/ubuntu resolute-security/universe Translation-en [60.4 kB]
+2026-10-04T16:11:39.0742141Z Get:26 http://azure.archive.ubuntu.com/ubuntu resolute-security/universe amd64 Components [55.5 kB]
+2026-10-04T16:11:39.0844672Z Get:27 http://azure.archive.ubuntu.com/ubuntu resolute-security/restricted amd64v3 Packages [447 kB]
+2026-10-04T16:11:39.0850549Z Get:28 http://azure.archive.ubuntu.com/ubuntu resolute-security/restricted Translation-en [89.7 kB]
+2026-10-04T16:11:42.1854927Z Fetched 4332 kB in 0s (10.5 MB/s)
+2026-10-04T16:11:42.6062274Z Reading package lists...
+2026-10-04T16:11:42.6349508Z Reading package lists...
+2026-10-04T16:11:42.7807067Z Building dependency tree...
+2026-10-04T16:11:42.7813619Z Reading state information...
+2026-10-04T16:11:42.8100483Z curl is already the newest version (8.18.0-1ubuntu2.7).
+2026-10-04T16:11:42.8100902Z iproute2 is already the newest version (6.19.0-1ubuntu1.1).
+2026-10-04T16:11:42.8101250Z parallel is already the newest version (20240222+ds-3).
+2026-10-04T16:11:42.8101565Z ruby is already the newest version (1:3.3build1).
+2026-10-04T16:11:42.8101855Z ruby set to manually installed.
+2026-10-04T16:11:42.8102124Z shellcheck is already the newest version (0.11.0-2).
+2026-10-04T16:11:42.8486903Z Solving dependencies...
+2026-10-04T16:11:42.9311903Z The following NEW packages will be installed:
+2026-10-04T16:11:42.9316361Z   bats
+2026-10-04T16:11:42.9489550Z 0 upgraded, 1 newly installed, 0 to remove and 25 not upgraded.
+2026-10-04T16:11:42.9489886Z Need to get 49.0 kB of archives.
+2026-10-04T16:11:42.9490093Z After this operation, 180 kB of additional disk space will be used.
+2026-10-04T16:11:42.9490330Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2026-10-04T16:11:43.0308504Z Get:2 http://azure.archive.ubuntu.com/ubuntu resolute/universe amd64v3 bats all 1.13.0-1 [49.0 kB]
+2026-10-04T16:11:43.2578486Z Fetched 49.0 kB in 0s (520 kB/s)
+2026-10-04T16:11:43.2743943Z Selecting previously unselected package bats.
+2026-10-04T16:11:43.2972929Z (Reading database ... 
+2026-10-04T16:11:43.2973188Z (Reading database ... 5%
+2026-10-04T16:11:43.2973340Z (Reading database ... 10%
+2026-10-04T16:11:43.2973747Z (Reading database ... 15%
+2026-10-04T16:11:43.2973890Z (Reading database ... 20%
+2026-10-04T16:11:43.2974031Z (Reading database ... 25%
+2026-10-04T16:11:43.2974224Z (Reading database ... 30%
+2026-10-04T16:11:43.2974359Z (Reading database ... 35%
+2026-10-04T16:11:43.2974515Z (Reading database ... 40%
+2026-10-04T16:11:43.2974764Z (Reading database ... 45%
+2026-10-04T16:11:43.2975018Z (Reading database ... 50%
+2026-10-04T16:11:43.3691510Z (Reading database ... 55%
+2026-10-04T16:11:43.4760171Z (Reading database ... 60%
+2026-10-04T16:11:43.6698498Z (Reading database ... 65%
+2026-10-04T16:11:43.8179316Z (Reading database ... 70%
+2026-10-04T16:11:44.0184991Z (Reading database ... 75%
+2026-10-04T16:11:44.1141177Z (Reading database ... 80%
+2026-10-04T16:11:44.2299421Z (Reading database ... 85%
+2026-10-04T16:11:44.3667981Z (Reading database ... 90%
+2026-10-04T16:11:44.5284792Z (Reading database ... 95%
+2026-10-04T16:11:44.5285113Z (Reading database ... 100%
+2026-10-04T16:11:44.5285438Z (Reading database ... 209820 files and directories currently installed.)
+2026-10-04T16:11:44.5321936Z Preparing to unpack .../archives/bats_1.13.0-1_all.deb ...
+2026-10-04T16:11:44.5342216Z Unpacking bats (1.13.0-1) ...
+2026-10-04T16:11:44.5906848Z Setting up bats (1.13.0-1) ...
+2026-10-04T16:11:44.5927133Z Processing triggers for man-db (2.13.1-1build1) ...
+2026-10-04T16:11:44.5943846Z Not building database; man-db/auto-update is not 'true'.
+2026-10-04T16:11:45.0162184Z 
+2026-10-04T16:11:45.0162881Z Running kernel seems to be up-to-date.
+2026-10-04T16:11:45.0163100Z 
+2026-10-04T16:11:45.0163227Z Restarting services...
+2026-10-04T16:11:45.0233606Z 
+2026-10-04T16:11:45.0234012Z Service restarts being deferred:
+2026-10-04T16:11:45.0236029Z  systemctl restart hosted-compute-agent.service
+2026-10-04T16:11:45.0236233Z 
+2026-10-04T16:11:45.0236727Z No containers need to be restarted.
+2026-10-04T16:11:45.0236889Z 
+2026-10-04T16:11:45.0236996Z No user sessions are running outdated binaries.
+2026-10-04T16:11:45.0237183Z 
+2026-10-04T16:11:45.0237364Z No VM guests are running outdated hypervisor (qemu) binaries on this host.
+2026-10-04T16:11:46.3451749Z chezmoi_2.70.4_linux_amd64.tar.gz: OK
+2026-10-04T16:11:46.5165288Z chezmoi version v2.70.4, commit 64583685c5eb36e10670bad076d5406a08baf751, built at 2026-05-19T22:47:23Z, built by goreleaser
+2026-10-04T16:11:48.0815020Z Successfully installed simplecov_json_formatter-0.1.4
+2026-10-04T16:11:48.0815489Z Successfully installed simplecov-html-0.13.2
+2026-10-04T16:11:48.0815855Z Successfully installed docile-1.4.1
+2026-10-04T16:11:48.0816173Z Successfully installed simplecov-0.22.0
+2026-10-04T16:11:48.0816847Z Successfully installed bashcov-3.3.0
+2026-10-04T16:11:48.0817145Z 5 gems installed
+2026-10-04T16:11:48.4324048Z Successfully installed simplecov-cobertura-3.1.0
+2026-10-04T16:11:48.4324485Z 1 gem installed
+2026-10-04T16:11:48.4401339Z ##[group]Run statusline_mise_dir="${RUNNER_TEMP}/statusline-mise"
+2026-10-04T16:11:48.4401627Z statusline_mise_dir="${RUNNER_TEMP}/statusline-mise"
+2026-10-04T16:11:48.4401840Z mkdir -p "${statusline_mise_dir}"
+2026-10-04T16:11:48.4402050Z cp home/dot_mise/config.toml "${statusline_mise_dir}/mise.toml"
+2026-10-04T16:11:48.4402574Z cp home/dot_mise/mise.lock "${statusline_mise_dir}/mise.lock"
+2026-10-04T16:11:48.4452120Z shell: /usr/bin/bash -e {0}
+2026-10-04T16:11:48.4452426Z env:
+2026-10-04T16:11:48.4452550Z   OS: ubuntu-26.04
+2026-10-04T16:11:48.4452676Z   SYSTEM: client
+2026-10-04T16:11:48.4452805Z   CODECOV_FLAGS: ubuntu-26.04-client
+2026-10-04T16:11:48.4452992Z   CODECOV_NAME: codecov-dotfiles-ubuntu-26.04-client
+2026-10-04T16:11:48.4454653Z   GITHUB_TOKEN: ***
+2026-10-04T16:11:48.4454793Z   FILES_TEST_CHEZMOI: /usr/local/bin/chezmoi
+2026-10-04T16:11:48.4454958Z ##[endgroup]
+2026-10-04T16:11:48.4587087Z ##[group]Run # MISE_VERSION renders from assets.mise in agent-config.yaml; the
+2026-10-04T16:11:48.4587392Z # MISE_VERSION renders from assets.mise in agent-config.yaml; the
+2026-10-04T16:11:48.4587664Z # variable stays outside MISE_*, which mise reads as its own settings.
+2026-10-04T16:11:48.4587954Z pin="$(sed -n 's/^readonly MISE_VERSION="v\(.*\)"$/\1/p' install/common/mise.sh)"
+2026-10-04T16:11:48.4588177Z test -n "${pin}"
+2026-10-04T16:11:48.4588356Z echo "DOTFILES_MISE_VERSION=${pin}" >> "${GITHUB_ENV}"
+2026-10-04T16:11:48.4629981Z shell: /usr/bin/bash -e {0}
+2026-10-04T16:11:48.4630121Z env:
+2026-10-04T16:11:48.4630234Z   OS: ubuntu-26.04
+2026-10-04T16:11:48.4630360Z   SYSTEM: client
+2026-10-04T16:11:48.4630488Z   CODECOV_FLAGS: ubuntu-26.04-client
+2026-10-04T16:11:48.4630685Z   CODECOV_NAME: codecov-dotfiles-ubuntu-26.04-client
+2026-10-04T16:11:48.4632261Z   GITHUB_TOKEN: ***
+2026-10-04T16:11:48.4632564Z   FILES_TEST_CHEZMOI: /usr/local/bin/chezmoi
+2026-10-04T16:11:48.4632729Z ##[endgroup]
+2026-10-04T16:11:48.4766223Z ##[group]Run jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
+2026-10-04T16:11:48.4766435Z with:
+2026-10-04T16:11:48.4766558Z   version: 2026.9.14
+2026-10-04T16:11:48.4766687Z   install: false
+2026-10-04T16:11:48.4766804Z   cache: true
+2026-10-04T16:11:48.4766923Z   bootstrap: false
+2026-10-04T16:11:48.4767042Z   cache_save: true
+2026-10-04T16:11:48.4767166Z   cache_key_prefix: mise-v1
+2026-10-04T16:11:48.4767310Z   experimental: false
+2026-10-04T16:11:48.4767441Z   log_level: info
+2026-10-04T16:11:48.4767559Z   reshim: false
+2026-10-04T16:11:48.4767679Z   add_shims_to_path: true
+2026-10-04T16:11:48.4769109Z   github_token: ***
+2026-10-04T16:11:48.4769243Z   fetch_from_github: true
+2026-10-04T16:11:48.4769389Z   env: true
+2026-10-04T16:11:48.4769505Z   export_path: true
+2026-10-04T16:11:48.4769625Z   wings_enabled: false
+2026-10-04T16:11:48.4769749Z env:
+2026-10-04T16:11:48.4769862Z   OS: ubuntu-26.04
+2026-10-04T16:11:48.4769983Z   SYSTEM: client
+2026-10-04T16:11:48.4770129Z   CODECOV_FLAGS: ubuntu-26.04-client
+2026-10-04T16:11:48.4770316Z   CODECOV_NAME: codecov-dotfiles-ubuntu-26.04-client
+2026-10-04T16:11:48.4771742Z   GITHUB_TOKEN: ***
+2026-10-04T16:11:48.4771882Z   FILES_TEST_CHEZMOI: /usr/local/bin/chezmoi
+2026-10-04T16:11:48.4772060Z   DOTFILES_MISE_VERSION: 2026.9.14
+2026-10-04T16:11:48.4772209Z ##[endgroup]
+2026-10-04T16:11:48.5589811Z ##[group]Restoring mise cache
+2026-10-04T16:11:48.5616853Z [command]/usr/bin/ldd --version
+2026-10-04T16:11:48.5666359Z ldd (Ubuntu GLIBC 2.43-2ubuntu2.4) 2.43
+2026-10-04T16:11:48.5666720Z Copyright (C) 2024 Free Software Foundation, Inc.
+2026-10-04T16:11:48.5667107Z This is free software; see the source for copying conditions.  There is NO
+2026-10-04T16:11:48.5667997Z warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+2026-10-04T16:11:48.5668404Z Written by Roland McGrath and Ulrich Drepper.
+2026-10-04T16:11:48.9976803Z mise cache not found for mise-v1-linux-x64-ubuntu26-2026.9.14-aca41a06b06b1926b1851d5cc99b334b706461340e1f12ab51c9200309f03596
+2026-10-04T16:11:48.9979473Z ##[group]Download mise@2026.9.14
+2026-10-04T16:11:48.9989273Z [command]/usr/local/bin/zstd --version
+2026-10-04T16:11:49.0018540Z *** Zstandard CLI (64-bit) v1.5.7, by Yann Collet ***
+2026-10-04T16:11:49.0027952Z [command]/usr/bin/tar --zstd --version
+2026-10-04T16:11:49.0054638Z tar (GNU tar) 1.35
+2026-10-04T16:11:49.0054814Z Copyright (C) 2023 Free Software Foundation, Inc.
+2026-10-04T16:11:49.0055212Z License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>.
+2026-10-04T16:11:49.0055652Z This is free software: you are free to change and redistribute it.
+2026-10-04T16:11:49.0056003Z There is NO WARRANTY, to the extent permitted by law.
+2026-10-04T16:11:49.0056221Z 
+2026-10-04T16:11:49.0056322Z Written by John Gilmore and Jay Fenlason.
+2026-10-04T16:11:49.0063761Z [command]/usr/bin/ldd --version
+2026-10-04T16:11:49.0092122Z ldd (Ubuntu GLIBC 2.43-2ubuntu2.4) 2.43
+2026-10-04T16:11:49.0092512Z Copyright (C) 2024 Free Software Foundation, Inc.
+2026-10-04T16:11:49.0092930Z This is free software; see the source for copying conditions.  There is NO
+2026-10-04T16:11:49.0093591Z warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+2026-10-04T16:11:49.0093838Z Written by Roland McGrath and Ulrich Drepper.
+2026-10-04T16:11:49.0103090Z Using curl to download mise
+2026-10-04T16:11:49.0108387Z [command]/usr/bin/curl -fsSL https://github.com/jdx/mise/releases/download/v2026.9.14/mise-v2026.9.14-linux-x64.tar.zst --output /tmp/mise-action-lTYAVg/mise-v2026.9.14-linux-x64.tar.zst
+2026-10-04T16:11:50.2929833Z Verified mise-v2026.9.14-linux-x64.tar.zst against signed checksums
+2026-10-04T16:11:50.2937490Z [command]/usr/bin/tar --zstd -xf /tmp/mise-action-lTYAVg/mise-v2026.9.14-linux-x64.tar.zst -C /tmp/mise-action-lTYAVg
+2026-10-04T16:11:50.4472787Z [command]/usr/bin/mv /tmp/mise-action-lTYAVg/mise/bin/mise /home/runner/.local/share/mise/bin/mise
+2026-10-04T16:11:50.5095117Z ##[group]Setting env vars
+2026-10-04T16:11:50.5095750Z Setting MISE_LOG_LEVEL=info
+2026-10-04T16:11:50.5098927Z Setting MISE_GITHUB_TOKEN=***
+2026-10-04T16:11:50.5099244Z Setting MISE_TRUSTED_CONFIG_PATHS=/home/runner/work/dotfiles/dotfiles
+2026-10-04T16:11:50.5099562Z Setting MISE_YES=1
+2026-10-04T16:11:50.5099793Z Adding /home/runner/.local/share/mise/shims to PATH
+2026-10-04T16:11:50.5100262Z ##[group]Running mise --version
+2026-10-04T16:11:50.5109167Z [command]/home/runner/.local/share/mise/bin/mise --version
+2026-10-04T16:11:50.5199219Z 2026.9.14 linux-x64 (2026-09-25)
+2026-10-04T16:11:50.5235394Z ##[endgroup]
+2026-10-04T16:11:50.5235769Z ##[group]Running mise ls
+2026-10-04T16:11:50.5243732Z [command]/home/runner/.local/share/mise/bin/mise ls
+2026-10-04T16:11:50.5354558Z ##[endgroup]
+2026-10-04T16:11:50.5356279Z ##[group]Exporting mise environment variables
+2026-10-04T16:11:50.5492237Z [command]/home/runner/.local/share/mise/bin/mise env --json
+2026-10-04T16:11:50.5596484Z {
+2026-10-04T16:11:50.5597292Z   "PATH": "/home/runner/.local/share/mise/shims:/home/runner/.local/share/mise/bin:/home/runner/.local/share/gem/ruby/3.3.0/bin:/snap/bin:/home/runner/.local/bin:/opt/pipx_bin:/home/runner/.cargo/bin:/home/runner/.config/composer/vendor/bin:/usr/local/.ghcup/bin:/home/runner/.dotnet/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games"
+2026-10-04T16:11:50.5598055Z }
+2026-10-04T16:11:50.5608586Z ##[endgroup]
+2026-10-04T16:11:50.5751370Z ##[group]Run mise trust --yes "${RUNNER_TEMP}/statusline-mise/mise.toml"
+2026-10-04T16:11:50.5751674Z mise trust --yes "${RUNNER_TEMP}/statusline-mise/mise.toml"
+2026-10-04T16:11:50.5751934Z mise -C "${RUNNER_TEMP}/statusline-mise" install --locked node
+2026-10-04T16:11:50.5752206Z # Every version comes from the same exact config (no literal here).
+2026-10-04T16:11:50.5752850Z mise -C "${RUNNER_TEMP}/statusline-mise" install --locked npm:ccstatusline npm:ccusage
+2026-10-04T16:11:50.5753173Z mise -C "${RUNNER_TEMP}/statusline-mise" install --locked ruff npm:prettier
+2026-10-04T16:11:50.5801451Z shell: /usr/bin/bash -e {0}
+2026-10-04T16:11:50.5801597Z env:
+2026-10-04T16:11:50.5801719Z   OS: ubuntu-26.04
+2026-10-04T16:11:50.5801842Z   SYSTEM: client
+2026-10-04T16:11:50.5801973Z   CODECOV_FLAGS: ubuntu-26.04-client
+2026-10-04T16:11:50.5802161Z   CODECOV_NAME: codecov-dotfiles-ubuntu-26.04-client
+2026-10-04T16:11:50.5803975Z   GITHUB_TOKEN: ***
+2026-10-04T16:11:50.5804122Z   FILES_TEST_CHEZMOI: /usr/local/bin/chezmoi
+2026-10-04T16:11:50.5804297Z   DOTFILES_MISE_VERSION: 2026.9.14
+2026-10-04T16:11:50.5804448Z   MISE_LOG_LEVEL: info
+2026-10-04T16:11:50.5806365Z   MISE_GITHUB_TOKEN: ***
+2026-10-04T16:11:50.5806545Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/dotfiles/dotfiles
+2026-10-04T16:11:50.5806748Z   MISE_YES: 1
+2026-10-04T16:11:50.5806870Z ##[endgroup]
+2026-10-04T16:11:50.5927215Z mise trusted ~/work/_temp/statusline-mise
+2026-10-04T16:11:50.6040862Z mise by @jdx – installing 1 tool
+2026-10-04T16:11:52.2067683Z mise node@26.10.0 v26.10.0
+2026-10-04T16:11:52.2744914Z mise node@26.10.0 11.19.1
+2026-10-04T16:11:52.4439327Z mise ✓ node@26.10.0  1.8s  node-v26.10.0-linux-x64.tar.gz
+2026-10-04T16:11:52.4457111Z mise ████████████████ 1/1 · installed 1 tool in 1.8s
+2026-10-04T16:11:52.4718450Z mise by @jdx – installing 2 tools
+2026-10-04T16:11:52.8534990Z mise npm:ccstatusline@2.2.30 added 1 package in 337ms
+2026-10-04T16:11:52.8663289Z mise npm:ccstatusline@2.2.30 Reshimming mise 26.10.0...
+2026-10-04T16:11:52.8825250Z mise ✓ npm:ccstatusline@2.2.30  409ms
+2026-10-04T16:11:53.2922508Z mise npm:ccusage@20.0.24 added 2 packages in 770ms
+2026-10-04T16:11:53.2923102Z mise npm:ccusage@20.0.24 1 package is looking for funding
+2026-10-04T16:11:53.2923575Z mise npm:ccusage@20.0.24   run `npm fund` for details
+2026-10-04T16:11:53.3082198Z mise npm:ccusage@20.0.24 Reshimming mise 26.10.0...
+2026-10-04T16:11:53.3243943Z mise ✓ npm:ccusage@20.0.24      851ms
+2026-10-04T16:11:53.3244518Z mise ████████████████ 2/2 · installed 2 tools in 852ms
+2026-10-04T16:11:53.3526146Z mise by @jdx – installing 2 tools
+2026-10-04T16:11:53.7655079Z mise npm:prettier@3.9.9 added 1 package in 364ms
+2026-10-04T16:11:53.7657085Z mise npm:prettier@3.9.9 1 package is looking for funding
+2026-10-04T16:11:53.7657620Z mise npm:prettier@3.9.9   run `npm fund` for details
+2026-10-04T16:11:53.7768865Z mise npm:prettier@3.9.9 Reshimming mise 26.10.0...
+2026-10-04T16:11:53.8214256Z mise ✓ npm:prettier@3.9.9  467ms
+2026-10-04T16:11:53.9093732Z mise ✓ ruff@0.16.10        556ms  ruff-x86_64-unknown-linux-gnu.tar.gz
+2026-10-04T16:11:53.9094274Z mise ████████████████ 2/2 · installed 2 tools in 556ms
+2026-10-04T16:11:53.9320581Z ##[group]Run set -euo pipefail
+2026-10-04T16:11:53.9320807Z set -euo pipefail
+2026-10-04T16:11:53.9320939Z 
+2026-10-04T16:11:53.9321101Z statusline_mise_dir="${RUNNER_TEMP}/statusline-mise"
+2026-10-04T16:11:53.9321369Z ccstatusline_bin="$(mise -C "${statusline_mise_dir}" which ccstatusline)"
+2026-10-04T16:11:53.9321646Z ccusage_bin="$(mise -C "${statusline_mise_dir}" which ccusage)"
+2026-10-04T16:11:53.9321919Z ccstatusline_root="$(mise -C "${statusline_mise_dir}" where npm:ccstatusline)"
+2026-10-04T16:11:53.9322559Z ccusage_root="$(mise -C "${statusline_mise_dir}" where npm:ccusage)"
+2026-10-04T16:11:53.9322888Z # Run both tools on the node pinned in mise.lock. Without this, their
+2026-10-04T16:11:53.9323148Z # `#!/usr/bin/env node` falls through the mise shim to the image's
+2026-10-04T16:11:53.9323411Z # system node, which nothing has read yet: on the ubuntu-26.04 image
+2026-10-04T16:11:53.9323708Z # that cold first read of /usr/local/bin/node alone took 0.6 s to over
+2026-10-04T16:11:53.9323968Z # 5 s (fincore: 0 resident pages before the run), which tripped the
+2026-10-04T16:11:53.9324176Z # 5-second limit (T59).
+2026-10-04T16:11:53.9324371Z node_bin_dir="$(mise -C "${statusline_mise_dir}" where node)/bin"
+2026-10-04T16:11:53.9324614Z case "$(PATH="${node_bin_dir}:${PATH}" command -v node)" in
+2026-10-04T16:11:53.9324815Z   "${node_bin_dir}/node") ;;
+2026-10-04T16:11:53.9325028Z   *) echo "node did not resolve from mise's pinned install" >&2; exit 1 ;;
+2026-10-04T16:11:53.9325242Z esac
+2026-10-04T16:11:53.9325356Z 
+2026-10-04T16:11:53.9325474Z case "${ccstatusline_bin}" in
+2026-10-04T16:11:53.9325634Z   "${ccstatusline_root}"/*) ;;
+2026-10-04T16:11:53.9325866Z   *) echo "ccstatusline did not resolve from mise's exact install" >&2; exit 1 ;;
+2026-10-04T16:11:53.9326094Z esac
+2026-10-04T16:11:53.9326214Z case "${ccusage_bin}" in
+2026-10-04T16:11:53.9326363Z   "${ccusage_root}"/*) ;;
+2026-10-04T16:11:53.9326573Z   *) echo "ccusage did not resolve from mise's exact install" >&2; exit 1 ;;
+2026-10-04T16:11:53.9326781Z esac
+2026-10-04T16:11:53.9326892Z 
+2026-10-04T16:11:53.9327043Z smoke_home="${RUNNER_TEMP}/statusline-smoke-home"
+2026-10-04T16:11:53.9327233Z mkdir -p "${smoke_home}"
+2026-10-04T16:11:53.9327374Z smoke=(
+2026-10-04T16:11:53.9327501Z   /usr/bin/env
+2026-10-04T16:11:53.9327639Z   "HOME=${smoke_home}"
+2026-10-04T16:11:53.9327797Z   "PATH=${node_bin_dir}:${PATH}"
+2026-10-04T16:11:53.9328000Z   "HTTP_PROXY=http://127.0.0.1:1"
+2026-10-04T16:11:53.9328171Z   "HTTPS_PROXY=http://127.0.0.1:1"
+2026-10-04T16:11:53.9328329Z   NO_PROXY=
+2026-10-04T16:11:53.9328497Z   python3 scripts/check-statusline-tools.py
+2026-10-04T16:11:53.9328695Z   --ccstatusline "${ccstatusline_bin}"
+2026-10-04T16:11:53.9328871Z   --ccusage "${ccusage_bin}"
+2026-10-04T16:11:53.9329011Z )
+2026-10-04T16:11:53.9329114Z 
+2026-10-04T16:11:53.9329231Z if [[ "${OS}" == ubuntu-* ]]; then
+2026-10-04T16:11:53.9329425Z   sudo unshare --net -- sh -c 'test -z "$(ip route show)"'
+2026-10-04T16:11:53.9329632Z   sudo unshare --net -- "${smoke[@]}"
+2026-10-04T16:11:53.9329809Z elif [ "${OS}" = "macos-14" ]; then
+2026-10-04T16:11:53.9330018Z   sandbox_profile='(version 1)(allow default)(deny network*)'
+2026-10-04T16:11:53.9330255Z   if /usr/bin/sandbox-exec -p "${sandbox_profile}" \
+2026-10-04T16:11:53.9330515Z     python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0))'; then
+2026-10-04T16:11:53.9330799Z     echo "macOS network-denial oracle unexpectedly bound a socket" >&2
+2026-10-04T16:11:53.9331143Z     exit 1
+2026-10-04T16:11:53.9331266Z   fi
+2026-10-04T16:11:53.9331427Z   /usr/bin/sandbox-exec -p "${sandbox_profile}" "${smoke[@]}"
+2026-10-04T16:11:53.9331616Z else
+2026-10-04T16:11:53.9331747Z   echo "${OS} is not supported" >&2
+2026-10-04T16:11:53.9331905Z   exit 1
+2026-10-04T16:11:53.9332026Z fi
+2026-10-04T16:11:53.9383221Z shell: /usr/bin/bash -e {0}
+2026-10-04T16:11:53.9383377Z env:
+2026-10-04T16:11:53.9383490Z   OS: ubuntu-26.04
+2026-10-04T16:11:53.9383613Z   SYSTEM: client
+2026-10-04T16:11:53.9383877Z   CODECOV_FLAGS: ubuntu-26.04-client
+2026-10-04T16:11:53.9384060Z   CODECOV_NAME: codecov-dotfiles-ubuntu-26.04-client
+2026-10-04T16:11:53.9385707Z   GITHUB_TOKEN: ***
+2026-10-04T16:11:53.9385849Z   FILES_TEST_CHEZMOI: /usr/local/bin/chezmoi
+2026-10-04T16:11:53.9386021Z   DOTFILES_MISE_VERSION: 2026.9.14
+2026-10-04T16:11:53.9386163Z   MISE_LOG_LEVEL: info
+2026-10-04T16:11:53.9387559Z   MISE_GITHUB_TOKEN: ***
+2026-10-04T16:11:53.9387740Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/dotfiles/dotfiles
+2026-10-04T16:11:53.9387931Z   MISE_YES: 1
+2026-10-04T16:11:53.9388048Z ##[endgroup]
+2026-10-04T16:11:54.5749695Z ##[group]Run # shfmt is version-pinned via mise: brew/apt ship divergent versions
+2026-10-04T16:11:54.5750034Z # shfmt is version-pinned via mise: brew/apt ship divergent versions
+2026-10-04T16:11:54.5750310Z # (3.14 changed heredoc-in-if formatting) and unpinned runners disagree.
+2026-10-04T16:11:54.5750641Z git ls-files -- ':(glob)install/**/*.sh' ':(glob)scripts/**/*.sh' | xargs mise x shfmt@3.14.1 -- shfmt -i 4 -sr -d
+2026-10-04T16:11:54.5797883Z shell: /usr/bin/bash -e {0}
+2026-10-04T16:11:54.5798031Z env:
+2026-10-04T16:11:54.5798142Z   OS: ubuntu-26.04
+2026-10-04T16:11:54.5798264Z   SYSTEM: client
+2026-10-04T16:11:54.5798389Z   CODECOV_FLAGS: ubuntu-26.04-client
+2026-10-04T16:11:54.5798569Z   CODECOV_NAME: codecov-dotfiles-ubuntu-26.04-client
+2026-10-04T16:11:54.5800074Z   GITHUB_TOKEN: ***
+2026-10-04T16:11:54.5800212Z   FILES_TEST_CHEZMOI: /usr/local/bin/chezmoi
+2026-10-04T16:11:54.5800379Z   DOTFILES_MISE_VERSION: 2026.9.14
+2026-10-04T16:11:54.5800555Z   MISE_LOG_LEVEL: info
+2026-10-04T16:11:54.5801908Z   MISE_GITHUB_TOKEN: ***
+2026-10-04T16:11:54.5802080Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/dotfiles/dotfiles
+2026-10-04T16:11:54.5802267Z   MISE_YES: 1
+2026-10-04T16:11:54.5802524Z ##[endgroup]
+2026-10-04T16:11:55.3867998Z mise by @jdx – installing 1 tool
+2026-10-04T16:11:55.9785047Z mise ✓ shfmt@3.14.1  591ms  shfmt_v3.14.1_linux_amd64
+2026-10-04T16:11:55.9793222Z mise ████████████████ 1/1 · installed 1 tool in 591ms
+2026-10-04T16:11:55.9960796Z ##[group]Run # ruff and prettier are pinned in home/dot_mise/config.toml and mise.lock.
+2026-10-04T16:11:55.9961133Z # ruff and prettier are pinned in home/dot_mise/config.toml and mise.lock.
+2026-10-04T16:11:55.9961405Z # mise -C resolves those pins and changes directory, so each check
+2026-10-04T16:11:55.9961678Z # returns to the repository, where ruff.toml and .prettierignore apply.
+2026-10-04T16:11:55.9961935Z # --config makes the root ruff.toml govern every file, so its
+2026-10-04T16:11:55.9962195Z # exclusions also cover vendor/compactiondb, which has its own pyproject.
+2026-10-04T16:11:55.9962703Z mise -C "${RUNNER_TEMP}/statusline-mise" x ruff -- \
+2026-10-04T16:11:55.9963018Z   sh -c 'cd "${GITHUB_WORKSPACE}" && git ls-files -z "*.py" | xargs -0 ruff format --config ruff.toml --check'
+2026-10-04T16:11:55.9963351Z mise -C "${RUNNER_TEMP}/statusline-mise" x node npm:prettier -- \
+2026-10-04T16:11:55.9963654Z   sh -c 'cd "${GITHUB_WORKSPACE}" && git ls-files -z "*.md" | xargs -0 prettier --check'
+2026-10-04T16:11:56.0009576Z shell: /usr/bin/bash -e {0}
+2026-10-04T16:11:56.0009713Z env:
+2026-10-04T16:11:56.0009823Z   OS: ubuntu-26.04
+2026-10-04T16:11:56.0009941Z   SYSTEM: client
+2026-10-04T16:11:56.0010065Z   CODECOV_FLAGS: ubuntu-26.04-client
+2026-10-04T16:11:56.0010239Z   CODECOV_NAME: codecov-dotfiles-ubuntu-26.04-client
+2026-10-04T16:11:56.0011825Z   GITHUB_TOKEN: ***
+2026-10-04T16:11:56.0011969Z   FILES_TEST_CHEZMOI: /usr/local/bin/chezmoi
+2026-10-04T16:11:56.0012135Z   DOTFILES_MISE_VERSION: 2026.9.14
+2026-10-04T16:11:56.0012403Z   MISE_LOG_LEVEL: info
+2026-10-04T16:11:56.0013812Z   MISE_GITHUB_TOKEN: ***
+2026-10-04T16:11:56.0013986Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/dotfiles/dotfiles
+2026-10-04T16:11:56.0014319Z   MISE_YES: 1
+2026-10-04T16:11:56.0014434Z ##[endgroup]
+2026-10-04T16:11:56.0418420Z 41 files already formatted
+2026-10-04T16:11:56.1243016Z Checking formatting...
+2026-10-04T16:11:57.2704263Z All matched files use Prettier code style!
+2026-10-04T16:11:57.2907744Z ##[group]Run git ls-files -z 'setup.sh' 'install/*.sh' 'install/**/*.sh' 'scripts/*.sh' | xargs -0 shellcheck -x
+2026-10-04T16:11:57.2908175Z git ls-files -z 'setup.sh' 'install/*.sh' 'install/**/*.sh' 'scripts/*.sh' | xargs -0 shellcheck -x
+2026-10-04T16:11:57.2956623Z shell: /usr/bin/bash -e {0}
+2026-10-04T16:11:57.2956839Z env:
+2026-10-04T16:11:57.2957020Z   OS: ubuntu-26.04
+2026-10-04T16:11:57.2957315Z   SYSTEM: client
+2026-10-04T16:11:57.2957546Z   CODECOV_FLAGS: ubuntu-26.04-client
+2026-10-04T16:11:57.2957821Z   CODECOV_NAME: codecov-dotfiles-ubuntu-26.04-client
+2026-10-04T16:11:57.2959467Z   GITHUB_TOKEN: ***
+2026-10-04T16:11:57.2982139Z   FILES_TEST_CHEZMOI: /usr/local/bin/chezmoi
+2026-10-04T16:11:57.2982525Z   DOTFILES_MISE_VERSION: 2026.9.14
+2026-10-04T16:11:57.2982779Z   MISE_LOG_LEVEL: info
+2026-10-04T16:11:57.2985523Z   MISE_GITHUB_TOKEN: ***
+2026-10-04T16:11:57.2985828Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/dotfiles/dotfiles
+2026-10-04T16:11:57.2986184Z   MISE_YES: 1
+2026-10-04T16:11:57.2986375Z ##[endgroup]
+2026-10-04T16:11:59.8515018Z ##[group]Run astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
+2026-10-04T16:11:59.8515249Z with:
+2026-10-04T16:11:59.8515377Z   enable-cache: false
+2026-10-04T16:11:59.8515512Z   activate-environment: false
+2026-10-04T16:11:59.8515652Z   no-project: false
+2026-10-04T16:11:59.8515811Z   working-directory: /home/runner/work/dotfiles/dotfiles
+2026-10-04T16:11:59.8517436Z   github-token: ***
+2026-10-04T16:11:59.8517739Z   cache-dependency-glob: **/*requirements*.txt
+**/*requirements*.in
+**/*constraints*.txt
+**/*constraints*.in
+**/pyproject.toml
+**/uv.lock
+**/*.py.lock
+
+2026-10-04T16:11:59.8518071Z   restore-cache: true
+2026-10-04T16:11:59.8518192Z   save-cache: auto
+2026-10-04T16:11:59.8518325Z   prune-cache: false
+2026-10-04T16:11:59.8518475Z   cache-python: false
+2026-10-04T16:11:59.8518659Z   ignore-nothing-to-cache: false
+2026-10-04T16:11:59.8518813Z   ignore-empty-workdir: false
+2026-10-04T16:11:59.8518971Z   download-from-astral-mirror: true
+2026-10-04T16:11:59.8519167Z   add-problem-matchers: true
+2026-10-04T16:11:59.8519300Z   quiet: false
+2026-10-04T16:11:59.8519423Z   resolution-strategy: highest
+2026-10-04T16:11:59.8519559Z env:
+2026-10-04T16:11:59.8519664Z   OS: ubuntu-26.04
+2026-10-04T16:11:59.8519778Z   SYSTEM: client
+2026-10-04T16:11:59.8519925Z   CODECOV_FLAGS: ubuntu-26.04-client
+2026-10-04T16:11:59.8520105Z   CODECOV_NAME: codecov-dotfiles-ubuntu-26.04-client
+2026-10-04T16:11:59.8521665Z   GITHUB_TOKEN: ***
+2026-10-04T16:11:59.8521798Z   FILES_TEST_CHEZMOI: /usr/local/bin/chezmoi
+2026-10-04T16:11:59.8521961Z   DOTFILES_MISE_VERSION: 2026.9.14
+2026-10-04T16:11:59.8522108Z   MISE_LOG_LEVEL: info
+2026-10-04T16:11:59.8523710Z   MISE_GITHUB_TOKEN: ***
+2026-10-04T16:11:59.8523889Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/dotfiles/dotfiles
+2026-10-04T16:11:59.8524079Z   MISE_YES: 1
+2026-10-04T16:11:59.8524195Z ##[endgroup]
+2026-10-04T16:11:59.9736207Z Trying to find version for uv in: /home/runner/work/dotfiles/dotfiles/uv.toml
+2026-10-04T16:11:59.9737034Z Could not find file: /home/runner/work/dotfiles/dotfiles/uv.toml
+2026-10-04T16:11:59.9737680Z Trying to find version for uv in: /home/runner/work/dotfiles/dotfiles/pyproject.toml
+2026-10-04T16:11:59.9738162Z Could not find file: /home/runner/work/dotfiles/dotfiles/pyproject.toml
+2026-10-04T16:11:59.9738640Z Could not determine uv version from uv.toml or pyproject.toml. Falling back to latest.
+2026-10-04T16:11:59.9739588Z Fetching manifest data from https://raw.githubusercontent.com/astral-sh/versions/main/v1/uv.ndjson ...
+2026-10-04T16:12:00.0316173Z Downloading uv from "https://releases.astral.sh/github/uv/releases/download/0.12.23/uv-x86_64-unknown-linux-gnu.tar.gz" ...
+2026-10-04T16:12:00.2243836Z [command]/usr/bin/tar xz --warning=no-unknown-keyword --overwrite -C /home/runner/work/_temp/69fefad3-5699-4253-b442-a46384c805a4 -f /home/runner/work/_temp/abd984c7-9960-4a2b-b113-95d7c918fc73
+2026-10-04T16:12:00.5928969Z Added /home/runner/.local/bin to the path
+2026-10-04T16:12:00.5930576Z Added /opt/hostedtoolcache/uv/0.12.23/x86_64 to the path
+2026-10-04T16:12:00.5931329Z Set UV_PYTHON_INSTALL_DIR to /home/runner/work/_temp/uv-python-dir
+2026-10-04T16:12:00.5931572Z Added /home/runner/work/_temp/uv-python-dir to the path
+2026-10-04T16:12:00.5950331Z Successfully installed uv version 0.12.23
+2026-10-04T16:12:00.7509042Z ##[group]Run if [[ "${OS}" == ubuntu-* ]]; then
+2026-10-04T16:12:00.7509270Z if [[ "${OS}" == ubuntu-* ]]; then
+2026-10-04T16:12:00.7509470Z   sudo apt-get update && sudo apt-get install -y jq zsh
+2026-10-04T16:12:00.7509671Z elif [ "${OS}" == "macos-14" ]; then
+2026-10-04T16:12:00.7509859Z   command -v jq > /dev/null 2>&1 || brew install jq
+2026-10-04T16:12:00.7510084Z   command -v zsh > /dev/null 2>&1 || brew install zsh
+2026-10-04T16:12:00.7510260Z fi
+2026-10-04T16:12:00.7510371Z 
+2026-10-04T16:12:00.7510483Z make unit-test
+2026-10-04T16:12:00.7557811Z shell: /usr/bin/bash -e {0}
+2026-10-04T16:12:00.7557953Z env:
+2026-10-04T16:12:00.7558064Z   OS: ubuntu-26.04
+2026-10-04T16:12:00.7558179Z   SYSTEM: client
+2026-10-04T16:12:00.7558302Z   CODECOV_FLAGS: ubuntu-26.04-client
+2026-10-04T16:12:00.7558483Z   CODECOV_NAME: codecov-dotfiles-ubuntu-26.04-client
+2026-10-04T16:12:00.7560172Z   GITHUB_TOKEN: ***
+2026-10-04T16:12:00.7560311Z   FILES_TEST_CHEZMOI: /usr/local/bin/chezmoi
+2026-10-04T16:12:00.7560483Z   DOTFILES_MISE_VERSION: 2026.9.14
+2026-10-04T16:12:00.7560628Z   MISE_LOG_LEVEL: info
+2026-10-04T16:12:00.7562013Z   MISE_GITHUB_TOKEN: ***
+2026-10-04T16:12:00.7562186Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/dotfiles/dotfiles
+2026-10-04T16:12:00.7562559Z   MISE_YES: 1
+2026-10-04T16:12:00.7562794Z   UV_PYTHON_INSTALL_DIR: /home/runner/work/_temp/uv-python-dir
+2026-10-04T16:12:00.7563079Z ##[endgroup]
+2026-10-04T16:12:00.8072128Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2026-10-04T16:12:00.8424854Z Hit:6 https://packages.microsoft.com/ubuntu/26.04/prod resolute InRelease
+2026-10-04T16:12:00.8425700Z Hit:2 http://azure.archive.ubuntu.com/ubuntu resolute InRelease
+2026-10-04T16:12:00.8509668Z Hit:3 http://azure.archive.ubuntu.com/ubuntu resolute-updates InRelease
+2026-10-04T16:12:00.8519410Z Hit:4 http://azure.archive.ubuntu.com/ubuntu resolute-backports InRelease
+2026-10-04T16:12:00.8526044Z Hit:5 http://azure.archive.ubuntu.com/ubuntu resolute-security InRelease
+2026-10-04T16:12:01.3766625Z Reading package lists...
+2026-10-04T16:12:01.4025247Z Reading package lists...
+2026-10-04T16:12:01.5009484Z Building dependency tree...
+2026-10-04T16:12:01.5014982Z Reading state information...
+2026-10-04T16:12:01.5240690Z jq is already the newest version (1.8.1-4ubuntu2).
+2026-10-04T16:12:01.5617469Z Solving dependencies...
+2026-10-04T16:12:01.6273144Z Suggested packages:
+2026-10-04T16:12:01.6273340Z   zsh-doc
+2026-10-04T16:12:01.6392412Z The following NEW packages will be installed:
+2026-10-04T16:12:01.6392655Z   zsh zsh-common
+2026-10-04T16:12:01.6549851Z 0 upgraded, 2 newly installed, 0 to remove and 25 not upgraded.
+2026-10-04T16:12:01.6550218Z Need to get 4988 kB of archives.
+2026-10-04T16:12:01.6550526Z After this operation, 19.1 MB of additional disk space will be used.
+2026-10-04T16:12:01.6550828Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2026-10-04T16:12:01.7348282Z Get:2 http://azure.archive.ubuntu.com/ubuntu resolute/main amd64v3 zsh-common all 5.9-8ubuntu3 [4168 kB]
+2026-10-04T16:12:01.9648996Z Get:3 http://azure.archive.ubuntu.com/ubuntu resolute/main amd64v3 zsh amd64 5.9-8ubuntu3 [820 kB]
+2026-10-04T16:12:02.2728645Z Fetched 4988 kB in 0s (13.3 MB/s)
+2026-10-04T16:12:03.2234377Z Selecting previously unselected package zsh-common.
+2026-10-04T16:12:03.2274829Z (Reading database ... 
+2026-10-04T16:12:03.2275476Z (Reading database ... 5%
+2026-10-04T16:12:03.2275926Z (Reading database ... 10%
+2026-10-04T16:12:03.2276489Z (Reading database ... 15%
+2026-10-04T16:12:03.2277564Z (Reading database ... 20%
+2026-10-04T16:12:03.2278093Z (Reading database ... 25%
+2026-10-04T16:12:03.2278317Z (Reading database ... 30%
+2026-10-04T16:12:03.2278506Z (Reading database ... 35%
+2026-10-04T16:12:03.2278666Z (Reading database ... 40%
+2026-10-04T16:12:03.2278856Z (Reading database ... 45%
+2026-10-04T16:12:03.2279013Z (Reading database ... 50%
+2026-10-04T16:12:03.2367749Z (Reading database ... 55%
+2026-10-04T16:12:03.2380129Z (Reading database ... 60%
+2026-10-04T16:12:03.2400006Z (Reading database ... 65%
+2026-10-04T16:12:03.2411355Z (Reading database ... 70%
+2026-10-04T16:12:03.2424794Z (Reading database ... 75%
+2026-10-04T16:12:03.2456871Z (Reading database ... 80%
+2026-10-04T16:12:03.2571917Z (Reading database ... 85%
+2026-10-04T16:12:03.2588977Z (Reading database ... 90%
+2026-10-04T16:12:03.2767987Z (Reading database ... 95%
+2026-10-04T16:12:03.2768211Z (Reading database ... 100%
+2026-10-04T16:12:03.2768414Z (Reading database ... 209849 files and directories currently installed.)
+2026-10-04T16:12:03.2802086Z Preparing to unpack .../zsh-common_5.9-8ubuntu3_all.deb ...
+2026-10-04T16:12:03.2898270Z Unpacking zsh-common (5.9-8ubuntu3) ...
+2026-10-04T16:12:04.4766127Z Selecting previously unselected package zsh.
+2026-10-04T16:12:04.4876919Z Preparing to unpack .../zsh_5.9-8ubuntu3_amd64v3.deb ...
+2026-10-04T16:12:04.4950993Z Unpacking zsh (5.9-8ubuntu3) ...
+2026-10-04T16:12:04.5540890Z Setting up zsh-common (5.9-8ubuntu3) ...
+2026-10-04T16:12:04.5752165Z Setting up zsh (5.9-8ubuntu3) ...
+2026-10-04T16:12:04.5837579Z Processing triggers for debianutils (5.23.2build1) ...
+2026-10-04T16:12:07.2949702Z Processing triggers for man-db (2.13.1-1build1) ...
+2026-10-04T16:12:07.2963790Z Not building database; man-db/auto-update is not 'true'.
+2026-10-04T16:12:07.6638263Z 
+2026-10-04T16:12:07.6638842Z Running kernel seems to be up-to-date.
+2026-10-04T16:12:07.6639112Z 
+2026-10-04T16:12:07.6639199Z Restarting services...
+2026-10-04T16:12:07.6705236Z 
+2026-10-04T16:12:07.6705541Z Service restarts being deferred:
+2026-10-04T16:12:07.6705843Z  systemctl restart hosted-compute-agent.service
+2026-10-04T16:12:07.6706041Z 
+2026-10-04T16:12:07.6706575Z No containers need to be restarted.
+2026-10-04T16:12:07.6706722Z 
+2026-10-04T16:12:07.6706811Z No user sessions are running outdated binaries.
+2026-10-04T16:12:07.6706936Z 
+2026-10-04T16:12:07.6707049Z No VM guests are running outdated hypervisor (qemu) binaries on this host.
+2026-10-04T16:12:08.3150308Z uv run python -m unittest discover -s tests/unit -v
+2026-10-04T16:12:08.6928065Z test_bounded_scan_finishes_under_wall_limit (test_agent_session_staleness.AgentSessionStalenessTest.test_bounded_scan_finishes_under_wall_limit) ... ok
+2026-10-04T16:12:08.7285321Z test_check_is_silent_when_assets_predate_session (test_agent_session_staleness.AgentSessionStalenessTest.test_check_is_silent_when_assets_predate_session) ... ok
+2026-10-04T16:12:08.7630074Z test_check_reports_new_versions_and_mtimes_deduplicated_by_root (test_agent_session_staleness.AgentSessionStalenessTest.test_check_reports_new_versions_and_mtimes_deduplicated_by_root) ... ok
+2026-10-04T16:12:08.7678085Z test_doctor_delegates_session_staleness_to_installed_script (test_agent_session_staleness.AgentSessionStalenessTest.test_doctor_delegates_session_staleness_to_installed_script) ... ok
+2026-10-04T16:12:08.7901724Z test_hook_first_call_writes_private_baseline_and_is_silent (test_agent_session_staleness.AgentSessionStalenessTest.test_hook_first_call_writes_private_baseline_and_is_silent) ... ok
+2026-10-04T16:12:08.8569757Z test_hook_missing_or_garbage_stdin_is_silent_success (test_agent_session_staleness.AgentSessionStalenessTest.test_hook_missing_or_garbage_stdin_is_silent_success) ... ok
+2026-10-04T16:12:08.8791261Z test_hook_prunes_state_files_older_than_seven_days (test_agent_session_staleness.AgentSessionStalenessTest.test_hook_prunes_state_files_older_than_seven_days) ... ok
+2026-10-04T16:12:08.9575069Z test_hook_second_call_detects_asset_updated_after_baseline (test_agent_session_staleness.AgentSessionStalenessTest.test_hook_second_call_detects_asset_updated_after_baseline) ... ok
+2026-10-04T16:12:08.9601301Z test_internal_failure_is_silent_success_with_one_stderr_line (test_agent_session_staleness.AgentSessionStalenessTest.test_internal_failure_is_silent_success_with_one_stderr_line) ... ok
+2026-10-04T16:12:08.9845466Z test_no_arguments_prints_ten_recent_updates (test_agent_session_staleness.AgentSessionStalenessTest.test_no_arguments_prints_ten_recent_updates) ... ok
+2026-10-04T16:12:09.0197961Z test_runtime_state_and_sqlite_files_are_excluded (test_agent_session_staleness.AgentSessionStalenessTest.test_runtime_state_and_sqlite_files_are_excluded) ... ok
+2026-10-04T16:12:09.0696993Z test_ceiling_directories_do_not_hide_the_seat (test_agent_stop_gate.AgentStopGateTest.test_ceiling_directories_do_not_hide_the_seat) ... ok
+2026-10-04T16:12:09.1126039Z test_character_device_placeholder_is_skipped (test_agent_stop_gate.AgentStopGateTest.test_character_device_placeholder_is_skipped) ... ok
+2026-10-04T16:12:09.1369739Z test_checkout_outside_any_seat_passes (test_agent_stop_gate.AgentStopGateTest.test_checkout_outside_any_seat_passes) ... ok
+2026-10-04T16:12:09.1800845Z test_clean_orchestrator_passes (test_agent_stop_gate.AgentStopGateTest.test_clean_orchestrator_passes) ... ok
+2026-10-04T16:12:09.2339418Z test_every_team_of_the_identity_is_checked (test_agent_stop_gate.AgentStopGateTest.test_every_team_of_the_identity_is_checked) ... ok
+2026-10-04T16:12:09.2755277Z test_failing_git_status_blocks (test_agent_stop_gate.AgentStopGateTest.test_failing_git_status_blocks) ... ok
+2026-10-04T16:12:09.3357159Z test_failing_identity_lookup_blocks_once (test_agent_stop_gate.AgentStopGateTest.test_failing_identity_lookup_blocks_once) ... ok
+2026-10-04T16:12:09.3867617Z test_inherited_alternate_index_does_not_hide_a_staged_change (test_agent_stop_gate.AgentStopGateTest.test_inherited_alternate_index_does_not_hide_a_staged_change) ... ok
+2026-10-04T16:12:09.4329738Z test_inherited_git_dir_does_not_hide_the_seat (test_agent_stop_gate.AgentStopGateTest.test_inherited_git_dir_does_not_hide_the_seat) ... ok
+2026-10-04T16:12:09.5069766Z test_injected_git_config_does_not_hide_untracked_files (test_agent_stop_gate.AgentStopGateTest.test_injected_git_config_does_not_hide_untracked_files) ... ok
+2026-10-04T16:12:09.5561740Z test_json_escaped_cwd_resolves (test_agent_stop_gate.AgentStopGateTest.test_json_escaped_cwd_resolves) ... ok
+2026-10-04T16:12:09.5855710Z test_missing_agmsg_install_passes (test_agent_stop_gate.AgentStopGateTest.test_missing_agmsg_install_passes) ... ok
+2026-10-04T16:12:09.6558110Z test_mountinfo_cannot_be_redirected_through_the_environment (test_agent_stop_gate.AgentStopGateTest.test_mountinfo_cannot_be_redirected_through_the_environment) ... ok
+2026-10-04T16:12:09.7217866Z test_null_device_of_another_filesystem_is_not_a_placeholder (test_agent_stop_gate.AgentStopGateTest.test_null_device_of_another_filesystem_is_not_a_placeholder) ... ok
+2026-10-04T16:12:09.7681708Z test_orchestrator_acceptance_to_another_member_keeps_the_result_open (test_agent_stop_gate.AgentStopGateTest.test_orchestrator_acceptance_to_another_member_keeps_the_result_open) ... ok
+2026-10-04T16:12:09.8260750Z test_project_dir_anchors_the_seat_after_a_cd (test_agent_stop_gate.AgentStopGateTest.test_project_dir_anchors_the_seat_after_a_cd) ... ok
+2026-10-04T16:12:09.8693952Z test_read_only_bind_of_another_empty_file_is_not_a_placeholder (test_agent_stop_gate.AgentStopGateTest.test_read_only_bind_of_another_empty_file_is_not_a_placeholder) ... ok
+2026-10-04T16:12:09.9125465Z test_read_write_mount_is_not_a_placeholder (test_agent_stop_gate.AgentStopGateTest.test_read_write_mount_is_not_a_placeholder) ... ok
+2026-10-04T16:12:09.9596156Z test_result_then_acceptance_passes (test_agent_stop_gate.AgentStopGateTest.test_result_then_acceptance_passes) ... ok
+2026-10-04T16:12:10.0063003Z test_result_then_revision_task_passes (test_agent_stop_gate.AgentStopGateTest.test_result_then_revision_task_passes) ... ok
+2026-10-04T16:12:10.0526660Z test_result_without_acceptance_blocks (test_agent_stop_gate.AgentStopGateTest.test_result_without_acceptance_blocks) ... ok
+2026-10-04T16:12:10.0960718Z test_same_named_file_bound_from_elsewhere_is_not_a_placeholder (test_agent_stop_gate.AgentStopGateTest.test_same_named_file_bound_from_elsewhere_is_not_a_placeholder) ... ok
+2026-10-04T16:12:10.1709349Z test_sandbox_placeholders_are_skipped (test_agent_stop_gate.AgentStopGateTest.test_sandbox_placeholders_are_skipped) ... ok
+2026-10-04T16:12:10.2152118Z test_sandbox_placeholders_on_a_separate_filesystem_are_skipped (test_agent_stop_gate.AgentStopGateTest.test_sandbox_placeholders_on_a_separate_filesystem_are_skipped) ... ok
+2026-10-04T16:12:10.2679436Z test_separate_git_dir_main_worktree_is_a_seat (test_agent_stop_gate.AgentStopGateTest.test_separate_git_dir_main_worktree_is_a_seat) ... ok
+2026-10-04T16:12:13.3081378Z test_slow_store_blocks_within_the_budget (test_agent_stop_gate.AgentStopGateTest.test_slow_store_blocks_within_the_budget) ... ok
+2026-10-04T16:12:16.3489026Z test_slow_store_blocks_within_the_budget_with_gtimeout_only (test_agent_stop_gate.AgentStopGateTest.test_slow_store_blocks_within_the_budget_with_gtimeout_only) ... ok
+2026-10-04T16:12:19.3909070Z test_slow_store_blocks_within_the_budget_without_timeout (test_agent_stop_gate.AgentStopGateTest.test_slow_store_blocks_within_the_budget_without_timeout) ... ok
+2026-10-04T16:12:19.4351720Z test_solo_unsuffixed_worker_is_gated (test_agent_stop_gate.AgentStopGateTest.test_solo_unsuffixed_worker_is_gated) ... ok
+2026-10-04T16:12:19.5134968Z test_sqlite_store_off_the_current_schema_is_not_initialized (test_agent_stop_gate.AgentStopGateTest.test_sqlite_store_off_the_current_schema_is_not_initialized) ... ok
+2026-10-04T16:12:19.5922394Z test_staged_rename_out_of_orchestration_blocks (test_agent_stop_gate.AgentStopGateTest.test_staged_rename_out_of_orchestration_blocks) ... ok
+2026-10-04T16:12:19.6587554Z test_stop_hook_active_skips_only_the_dirty_tree_check (test_agent_stop_gate.AgentStopGateTest.test_stop_hook_active_skips_only_the_dirty_tree_check) ... ok
+2026-10-04T16:12:19.7282809Z test_unreadable_store_blocks_once (test_agent_stop_gate.AgentStopGateTest.test_unreadable_store_blocks_once) ... ok
+2026-10-04T16:12:19.7710284Z test_untracked_file_outside_orchestration_blocks (test_agent_stop_gate.AgentStopGateTest.test_untracked_file_outside_orchestration_blocks) ... ok
+2026-10-04T16:12:19.8144119Z test_untracked_symlink_to_a_mount_point_is_not_a_placeholder (test_agent_stop_gate.AgentStopGateTest.test_untracked_symlink_to_a_mount_point_is_not_a_placeholder) ... ok
+2026-10-04T16:12:19.8574880Z test_untrusted_filenames_are_quoted (test_agent_stop_gate.AgentStopGateTest.test_untrusted_filenames_are_quoted) ... ok
+2026-10-04T16:12:19.8998064Z test_user_bind_mount_of_a_real_file_is_not_a_placeholder (test_agent_stop_gate.AgentStopGateTest.test_user_bind_mount_of_a_real_file_is_not_a_placeholder) ... ok
+2026-10-04T16:12:19.9417472Z test_whole_filesystem_bind_is_not_a_placeholder (test_agent_stop_gate.AgentStopGateTest.test_whole_filesystem_bind_is_not_a_placeholder) ... ok
+2026-10-04T16:12:19.9836380Z test_worker_after_result_passes (test_agent_stop_gate.AgentStopGateTest.test_worker_after_result_passes) ... ok
+2026-10-04T16:12:20.0267154Z test_worker_alive_pong_keeps_the_task_open (test_agent_stop_gate.AgentStopGateTest.test_worker_alive_pong_keeps_the_task_open) ... ok
+2026-10-04T16:12:20.0690442Z test_worker_blocked_pong_closes_the_task (test_agent_stop_gate.AgentStopGateTest.test_worker_blocked_pong_closes_the_task) ... ok
+2026-10-04T16:12:20.1406065Z test_worker_result_to_another_member_keeps_the_task_open (test_agent_stop_gate.AgentStopGateTest.test_worker_result_to_another_member_keeps_the_task_open) ... ok
+2026-10-04T16:12:20.1827980Z test_worker_revise_acceptance_reopens_the_task (test_agent_stop_gate.AgentStopGateTest.test_worker_revise_acceptance_reopens_the_task) ... ok
+2026-10-04T16:12:20.2555335Z test_worker_task_closed_by_a_non_revise_acceptance (test_agent_stop_gate.AgentStopGateTest.test_worker_task_closed_by_a_non_revise_acceptance) ... ok
+2026-10-04T16:12:20.2993188Z test_worker_task_newer_than_result_blocks (test_agent_stop_gate.AgentStopGateTest.test_worker_task_newer_than_result_blocks) ... ok
+2026-10-04T16:12:20.3437070Z test_worker_tracks_each_task_id (test_agent_stop_gate.AgentStopGateTest.test_worker_tracks_each_task_id) ... ok
+2026-10-04T16:12:20.3764698Z test_default_store_uses_shared_helper (test_agmsg_dispatch.AgmsgDispatchTest.test_default_store_uses_shared_helper) ... ok
+2026-10-04T16:12:20.4032252Z test_idle_wakes_once_and_reads (test_agmsg_dispatch.AgmsgDispatchTest.test_idle_wakes_once_and_reads) ... ok
+2026-10-04T16:12:20.4058018Z test_invalid_timeout_does_not_send (test_agmsg_dispatch.AgmsgDispatchTest.test_invalid_timeout_does_not_send) ... ok
+2026-10-04T16:12:20.4173180Z test_missing_pane_inserts_nothing (test_agmsg_dispatch.AgmsgDispatchTest.test_missing_pane_inserts_nothing) ... ok
+2026-10-04T16:12:20.4251799Z test_rejects_identifiers_outside_the_strict_grammar (test_agmsg_dispatch.AgmsgDispatchTest.test_rejects_identifiers_outside_the_strict_grammar) ... ok
+2026-10-04T16:12:21.4618847Z test_retry_does_not_wake_newly_working_pane (test_agmsg_dispatch.AgmsgDispatchTest.test_retry_does_not_wake_newly_working_pane) ... ok
+2026-10-04T16:12:23.5070314Z test_timeout_is_one_shared_budget (test_agmsg_dispatch.AgmsgDispatchTest.test_timeout_is_one_shared_budget) ... ok
+2026-10-04T16:12:24.5458247Z test_unread_retries_once_then_fails (test_agmsg_dispatch.AgmsgDispatchTest.test_unread_retries_once_then_fails) ... ok
+2026-10-04T16:12:24.5688870Z test_wake_failure_identifies_sent_message (test_agmsg_dispatch.AgmsgDispatchTest.test_wake_failure_identifies_sent_message) ... ok
+2026-10-04T16:12:24.6019274Z test_worker_becoming_idle_after_send_is_woken (test_agmsg_dispatch.AgmsgDispatchTest.test_worker_becoming_idle_after_send_is_woken) ... ok
+2026-10-04T16:12:24.6256345Z test_working_does_not_wake (test_agmsg_dispatch.AgmsgDispatchTest.test_working_does_not_wake) ... ok
+2026-10-04T16:12:25.6597455Z test_working_unread_never_wakes (test_agmsg_dispatch.AgmsgDispatchTest.test_working_unread_never_wakes) ... ok
+2026-10-04T16:12:25.6602455Z test_docs_no_longer_name_codex_review_commit (test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_docs_no_longer_name_codex_review_commit) ... ok
+2026-10-04T16:12:25.6604498Z test_rule_and_skill_share_the_audit_gate_and_bot_wait_invariants (test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_rule_and_skill_share_the_audit_gate_and_bot_wait_invariants) ... ok
+2026-10-04T16:12:25.6606680Z test_rule_and_skill_share_the_parallel_execution_and_routing_invariants (test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_rule_and_skill_share_the_parallel_execution_and_routing_invariants) ... ok
+2026-10-04T16:12:25.6609003Z test_rule_and_skill_share_the_registration_and_delivery_invariants (test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_rule_and_skill_share_the_registration_and_delivery_invariants) ... ok
+2026-10-04T16:12:25.6609816Z test_rule_drops_the_worker_network_escalation (test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_rule_drops_the_worker_network_escalation) ... ok
+2026-10-04T16:12:25.6610524Z test_skill_drops_the_pane_status_gate_and_raw_pane_wakes (test_agmsg_orchestration_docs.AgmsgOrchestrationDocsParityTest.test_skill_drops_the_pane_status_gate_and_raw_pane_wakes) ... ok
+2026-10-04T16:12:25.6654768Z test_doctor_fails_when_bwrap_is_missing_with_codex (test_apparmor_userns.AppArmorUsernsTest.test_doctor_fails_when_bwrap_is_missing_with_codex) ... ok
+2026-10-04T16:12:25.6750134Z test_doctor_fails_when_the_bwrap_probe_fails (test_apparmor_userns.AppArmorUsernsTest.test_doctor_fails_when_the_bwrap_probe_fails) ... ok
+2026-10-04T16:12:25.6786562Z test_doctor_is_not_applicable_without_the_restriction (test_apparmor_userns.AppArmorUsernsTest.test_doctor_is_not_applicable_without_the_restriction) ... ok
+2026-10-04T16:12:25.6833297Z test_doctor_passes_when_the_bwrap_probe_succeeds (test_apparmor_userns.AppArmorUsernsTest.test_doctor_passes_when_the_bwrap_probe_succeeds) ... ok
+2026-10-04T16:12:25.6870626Z test_doctor_warns_optionally_when_codex_is_missing (test_apparmor_userns.AppArmorUsernsTest.test_doctor_warns_optionally_when_codex_is_missing) ... ok
+2026-10-04T16:12:25.7029344Z test_installer_copies_and_reloads_the_profile_with_sudo (test_apparmor_userns.AppArmorUsernsTest.test_installer_copies_and_reloads_the_profile_with_sudo) ... ok
+2026-10-04T16:12:25.7109777Z test_installer_fails_when_loading_the_profile_fails (test_apparmor_userns.AppArmorUsernsTest.test_installer_fails_when_loading_the_profile_fails) ... ok
+2026-10-04T16:12:25.7222004Z test_installer_is_a_no_op_when_the_host_does_not_need_the_profile (test_apparmor_userns.AppArmorUsernsTest.test_installer_is_a_no_op_when_the_host_does_not_need_the_profile) ... ok
+2026-10-04T16:12:25.7270008Z test_installer_leaves_the_profile_pending_without_cached_sudo (test_apparmor_userns.AppArmorUsernsTest.test_installer_leaves_the_profile_pending_without_cached_sudo) ... ok
+2026-10-04T16:12:25.7670632Z test_wrapper_re_renders_when_prerequisites_change (test_apparmor_userns.AppArmorUsernsTest.test_wrapper_re_renders_when_prerequisites_change) ... ok
+2026-10-04T16:12:25.7913078Z test_chezmoi_rendered_updater_uses_exported_source_root (test_asset_manifest.AssetManifestTest.test_chezmoi_rendered_updater_uses_exported_source_root) ... ok
+2026-10-04T16:12:25.8116139Z test_chezmoi_rendered_updater_uses_inlined_manifest_library (test_asset_manifest.AssetManifestTest.test_chezmoi_rendered_updater_uses_inlined_manifest_library) ... ok
+2026-10-04T16:12:25.8246662Z test_chezmoi_wrapper_renders_shebang_and_source_root (test_asset_manifest.AssetManifestTest.test_chezmoi_wrapper_renders_shebang_and_source_root) ... ok
+2026-10-04T16:12:25.8587435Z test_failed_atomic_commit_leaves_previous_manifest_intact (test_asset_manifest.AssetManifestTest.test_failed_atomic_commit_leaves_previous_manifest_intact) ... ok
+2026-10-04T16:12:25.9053926Z test_records_schema_two_steps_and_replaces_one_whole_entry (test_asset_manifest.AssetManifestTest.test_records_schema_two_steps_and_replaces_one_whole_entry) ... ok
+2026-10-04T16:12:25.9100896Z test_rendered_updater_fails_when_no_source_root_is_valid (test_asset_manifest.AssetManifestTest.test_rendered_updater_fails_when_no_source_root_is_valid) ... ok
+2026-10-04T16:12:25.9817943Z test_same_run_mise_repairs_preserve_both_identity_steps (test_asset_manifest.AssetManifestTest.test_same_run_mise_repairs_preserve_both_identity_steps) ... ok
+2026-10-04T16:12:26.0336459Z test_two_real_install_steps_record_under_fake_home (test_asset_manifest.AssetManifestTest.test_two_real_install_steps_record_under_fake_home) ... ok
+2026-10-04T16:12:26.0436026Z test_unwritable_destination_warns_once_without_failing (test_asset_manifest.AssetManifestTest.test_unwritable_destination_warns_once_without_failing) ... ok
+2026-10-04T16:12:26.0519010Z test_updater_direct_source_resolves_repository_root (test_asset_manifest.AssetManifestTest.test_updater_direct_source_resolves_repository_root) ... ok
+2026-10-04T16:12:26.0521398Z test_updater_has_one_recording_call_for_each_install_step (test_asset_manifest.AssetManifestTest.test_updater_has_one_recording_call_for_each_install_step) ... ok
+2026-10-04T16:12:26.0549260Z test_exit_zero_install_with_expected_fake_binary_passes_postcondition (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_exit_zero_install_with_expected_fake_binary_passes_postcondition) ... ok
+2026-10-04T16:12:26.0575886Z test_exit_zero_install_with_wrong_version_fails_postcondition (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_exit_zero_install_with_wrong_version_fails_postcondition) ... ok
+2026-10-04T16:12:26.0592626Z test_exit_zero_partial_install_without_binary_fails_postcondition (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_exit_zero_partial_install_without_binary_fails_postcondition) ... ok
+2026-10-04T16:12:26.0786440Z test_gpgv_failure_preserves_existing_aws_and_skips_unzip (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_gpgv_failure_preserves_existing_aws_and_skips_unzip) ... ok
+2026-10-04T16:12:26.1292184Z test_key_metadata_failures_stop_before_dearmor_and_gpgv (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_key_metadata_failures_stop_before_dearmor_and_gpgv) ... ok
+2026-10-04T16:12:26.1351078Z test_linux_urls_are_versioned_and_unknown_architecture_fails (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_linux_urls_are_versioned_and_unknown_architecture_fails) ... ok
+2026-10-04T16:12:26.1378230Z test_platform_package_managers_and_wrapper_own_aws_cli (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_platform_package_managers_and_wrapper_own_aws_cli) ... ok
+2026-10-04T16:12:26.1899521Z test_repository_key_has_expected_current_fingerprint (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_repository_key_has_expected_current_fingerprint) ... ok
+2026-10-04T16:12:26.2416420Z test_verified_archive_runs_installer_with_user_local_update_arguments (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_verified_archive_runs_installer_with_user_local_update_arguments) ... ok
+2026-10-04T16:12:26.2721733Z test_wrong_staged_version_preserves_existing_aws_and_skips_installer (test_aws_cli_acquisition.AwsCliAcquisitionTest.test_wrong_staged_version_preserves_existing_aws_and_skips_installer) ... ok
+2026-10-04T16:12:26.2783097Z test_agmsg_runtime_paths_are_ignored_on_both_sides (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_runtime_paths_are_ignored_on_both_sides) ... ok
+2026-10-04T16:12:26.2830353Z test_agmsg_separate_store_prefix_is_ignored (test_check_agent_runtime.CheckAgentRuntimeTest.test_agmsg_separate_store_prefix_is_ignored) ... ok
+2026-10-04T16:12:26.2870680Z test_asset_repair_invokes_only_the_detected_step (test_check_agent_runtime.CheckAgentRuntimeTest.test_asset_repair_invokes_only_the_detected_step) ... ok
+2026-10-04T16:12:26.2919423Z test_check_includes_ua_core_warnings (test_check_agent_runtime.CheckAgentRuntimeTest.test_check_includes_ua_core_warnings) ... ok
+2026-10-04T16:12:26.2962024Z test_check_uses_same_modified_for_codex_profiles (test_check_agent_runtime.CheckAgentRuntimeTest.test_check_uses_same_modified_for_codex_profiles) ... ok
+2026-10-04T16:12:26.3003506Z test_chezmoi_drift_status_failure_is_warning (test_check_agent_runtime.CheckAgentRuntimeTest.test_chezmoi_drift_status_failure_is_warning) ... ok
+2026-10-04T16:12:26.3046013Z test_chezmoi_drift_warnings_classify_status_and_mode_only (test_check_agent_runtime.CheckAgentRuntimeTest.test_chezmoi_drift_warnings_classify_status_and_mode_only) ... ok
+2026-10-04T16:12:26.3090868Z test_compare_claude_skills_ignores_cowork_synced_subtree (test_check_agent_runtime.CheckAgentRuntimeTest.test_compare_claude_skills_ignores_cowork_synced_subtree) ... ok
+2026-10-04T16:12:26.3135141Z test_content_drift_still_fails (test_check_agent_runtime.CheckAgentRuntimeTest.test_content_drift_still_fails) ... ok
+2026-10-04T16:12:26.3178735Z test_crit_codex_skills_are_not_orphans (test_check_agent_runtime.CheckAgentRuntimeTest.test_crit_codex_skills_are_not_orphans) ... ok
+2026-10-04T16:12:26.3238025Z test_deleted_shared_skill_file_repair_converges (test_check_agent_runtime.CheckAgentRuntimeTest.test_deleted_shared_skill_file_repair_converges) ... ok
+2026-10-04T16:12:26.3278987Z test_every_generated_chezmoi_repair_action_is_forced (test_check_agent_runtime.CheckAgentRuntimeTest.test_every_generated_chezmoi_repair_action_is_forced) ... ok
+2026-10-04T16:12:26.3323475Z test_executable_prefix_is_compared_against_deployed_name (test_check_agent_runtime.CheckAgentRuntimeTest.test_executable_prefix_is_compared_against_deployed_name) ... ok
+2026-10-04T16:12:26.3367798Z test_executable_prefix_requires_deployed_execute_bit (test_check_agent_runtime.CheckAgentRuntimeTest.test_executable_prefix_requires_deployed_execute_bit) ... ok
+2026-10-04T16:12:26.3409810Z test_execute_repair_calls_each_mapped_command_once (test_check_agent_runtime.CheckAgentRuntimeTest.test_execute_repair_calls_each_mapped_command_once) ... ok
+2026-10-04T16:12:26.3458896Z test_ignored_paths_suppress_receipt_linked_tree_entries (test_check_agent_runtime.CheckAgentRuntimeTest.test_ignored_paths_suppress_receipt_linked_tree_entries) ... ok
+2026-10-04T16:12:26.3502500Z test_installed_manifest_integrity_reasons (test_check_agent_runtime.CheckAgentRuntimeTest.test_installed_manifest_integrity_reasons) ... ok
+2026-10-04T16:12:26.3548914Z test_installer_owned_agmsg_skill_and_backups_are_not_orphans (test_check_agent_runtime.CheckAgentRuntimeTest.test_installer_owned_agmsg_skill_and_backups_are_not_orphans) ... ok
+2026-10-04T16:12:26.3593104Z test_invalid_manifest_is_one_error_and_skips_dependent_checks (test_check_agent_runtime.CheckAgentRuntimeTest.test_invalid_manifest_is_one_error_and_skips_dependent_checks) ... ok
+2026-10-04T16:12:26.3951888Z test_json_modifier_accepts_cosmetic_reserialization (test_check_agent_runtime.CheckAgentRuntimeTest.test_json_modifier_accepts_cosmetic_reserialization) ... ok
+2026-10-04T16:12:26.4159280Z test_json_modifier_rejects_real_value_drift (test_check_agent_runtime.CheckAgentRuntimeTest.test_json_modifier_rejects_real_value_drift) ... ok
+2026-10-04T16:12:26.4212585Z test_managed_top_level_extra_still_fails_with_unmanaged_warning_mode (test_check_agent_runtime.CheckAgentRuntimeTest.test_managed_top_level_extra_still_fails_with_unmanaged_warning_mode) ... ok
+2026-10-04T16:12:26.4265382Z test_manifest_drift_requires_recorded_step_with_missing_path (test_check_agent_runtime.CheckAgentRuntimeTest.test_manifest_drift_requires_recorded_step_with_missing_path) ... ok
+2026-10-04T16:12:26.4299918Z test_missing_crit_asset_is_repairable (test_check_agent_runtime.CheckAgentRuntimeTest.test_missing_crit_asset_is_repairable) ... ok
+2026-10-04T16:12:26.4341315Z test_missing_terminal_browser_receipt_is_harmless (test_check_agent_runtime.CheckAgentRuntimeTest.test_missing_terminal_browser_receipt_is_harmless) ... ok
+2026-10-04T16:12:26.4392591Z test_only_exact_agmsg_root_legacy_database_names_are_ignored (test_check_agent_runtime.CheckAgentRuntimeTest.test_only_exact_agmsg_root_legacy_database_names_are_ignored) ... ok
+2026-10-04T16:12:26.4454228Z test_orchestrator_seat_lock_is_quiet_for_a_composite_id_or_no_live_session (test_check_agent_runtime.CheckAgentRuntimeTest.test_orchestrator_seat_lock_is_quiet_for_a_composite_id_or_no_live_session) ... ok
+2026-10-04T16:12:26.4507510Z test_orchestrator_seat_lock_warns_on_a_bare_session_id (test_check_agent_runtime.CheckAgentRuntimeTest.test_orchestrator_seat_lock_warns_on_a_bare_session_id) ... ok
+2026-10-04T16:12:26.4557790Z test_orphan_detection_classifies_accounted_stale_and_orphan (test_check_agent_runtime.CheckAgentRuntimeTest.test_orphan_detection_classifies_accounted_stale_and_orphan) ... ok
+2026-10-04T16:12:26.4598870Z test_parameterized_mise_step_uses_key_identity (test_check_agent_runtime.CheckAgentRuntimeTest.test_parameterized_mise_step_uses_key_identity) ... ok
+2026-10-04T16:12:26.4643736Z test_private_prefix_is_compared_against_deployed_name (test_check_agent_runtime.CheckAgentRuntimeTest.test_private_prefix_is_compared_against_deployed_name) ... ok
+2026-10-04T16:12:26.4686071Z test_repair_actions_map_only_detected_file_drift (test_check_agent_runtime.CheckAgentRuntimeTest.test_repair_actions_map_only_detected_file_drift) ... ok
+2026-10-04T16:12:26.4732773Z test_repair_mode_converges_once_and_reports_each_action (test_check_agent_runtime.CheckAgentRuntimeTest.test_repair_mode_converges_once_and_reports_each_action) ... ok
+2026-10-04T16:12:26.4778700Z test_repair_mode_fails_after_one_non_convergent_round (test_check_agent_runtime.CheckAgentRuntimeTest.test_repair_mode_fails_after_one_non_convergent_round) ... ok
+2026-10-04T16:12:26.4824322Z test_repair_mode_never_acts_on_stale_or_orphan_warnings (test_check_agent_runtime.CheckAgentRuntimeTest.test_repair_mode_never_acts_on_stale_or_orphan_warnings) ... ok
+2026-10-04T16:12:26.4869797Z test_repair_unset_is_byte_identical_and_never_mutates (test_check_agent_runtime.CheckAgentRuntimeTest.test_repair_unset_is_byte_identical_and_never_mutates) ... ok
+2026-10-04T16:12:26.4989140Z test_sourced_asset_repair_runs_no_main_or_sibling_step (test_check_agent_runtime.CheckAgentRuntimeTest.test_sourced_asset_repair_runs_no_main_or_sibling_step) ... <frozen importlib._bootstrap>:491: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410add4dd50>
+2026-10-04T16:12:26.4990219Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:12:26.4990982Z <frozen importlib._bootstrap>:491: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410add4e890>
+2026-10-04T16:12:26.4991541Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:12:26.4992107Z <frozen importlib._bootstrap>:491: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410ad10c6d0>
+2026-10-04T16:12:26.4992810Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:12:26.4993386Z <frozen importlib._bootstrap>:491: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410ad10c7c0>
+2026-10-04T16:12:26.4993953Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:12:26.4994520Z <frozen importlib._bootstrap>:491: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410ad10c8b0>
+2026-10-04T16:12:26.4995083Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:12:26.4995648Z <frozen importlib._bootstrap>:491: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410ad10c9a0>
+2026-10-04T16:12:26.4996229Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:12:26.4996795Z <frozen importlib._bootstrap>:491: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410ad10ca90>
+2026-10-04T16:12:26.4997357Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:12:26.4997916Z <frozen importlib._bootstrap>:491: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410ad10cb80>
+2026-10-04T16:12:26.4998481Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:12:26.4999015Z <frozen importlib._bootstrap>:491: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410ad10cc70>
+2026-10-04T16:12:26.4999356Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:12:26.4999696Z <frozen importlib._bootstrap>:491: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410ad10cd60>
+2026-10-04T16:12:26.5000047Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:12:26.5000388Z <frozen importlib._bootstrap>:491: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410ad10ce50>
+2026-10-04T16:12:26.5000735Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:12:26.5001073Z <frozen importlib._bootstrap>:491: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410ad10cf40>
+2026-10-04T16:12:26.5001418Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:12:26.5001764Z <frozen importlib._bootstrap>:491: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410ad10d030>
+2026-10-04T16:12:26.5002108Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:12:26.5002611Z <frozen importlib._bootstrap>:491: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410ad10d120>
+2026-10-04T16:12:26.5002957Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:12:26.5003296Z <frozen importlib._bootstrap>:491: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410ad10d210>
+2026-10-04T16:12:26.5003637Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:12:26.5003978Z <frozen importlib._bootstrap>:491: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410ad10d300>
+2026-10-04T16:12:26.5004442Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:12:26.5004783Z <frozen importlib._bootstrap>:491: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410ad10d3f0>
+2026-10-04T16:12:26.5005123Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:12:26.5005463Z <frozen importlib._bootstrap>:491: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410ad10d4e0>
+2026-10-04T16:12:26.5005889Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:12:26.5006235Z <frozen importlib._bootstrap>:491: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410add4ea70>
+2026-10-04T16:12:26.5006585Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:12:26.5049150Z ok
+2026-10-04T16:12:26.5099826Z test_terminal_browser_receipt_links_are_not_orphans (test_check_agent_runtime.CheckAgentRuntimeTest.test_terminal_browser_receipt_links_are_not_orphans) ... ok
+2026-10-04T16:12:26.5145910Z test_ua_core_is_quiet_when_dist_is_fresh_or_no_clone_exists (test_check_agent_runtime.CheckAgentRuntimeTest.test_ua_core_is_quiet_when_dist_is_fresh_or_no_clone_exists) ... ok
+2026-10-04T16:12:26.5190155Z test_ua_core_warns_when_dist_is_older_than_src (test_check_agent_runtime.CheckAgentRuntimeTest.test_ua_core_warns_when_dist_is_older_than_src) ... ok
+2026-10-04T16:12:26.5235002Z test_ua_core_warns_when_dist_is_older_than_the_root_lockfile (test_check_agent_runtime.CheckAgentRuntimeTest.test_ua_core_warns_when_dist_is_older_than_the_root_lockfile) ... ok
+2026-10-04T16:12:26.5278037Z test_ua_core_warns_when_the_codex_clone_has_no_built_dist (test_check_agent_runtime.CheckAgentRuntimeTest.test_ua_core_warns_when_the_codex_clone_has_no_built_dist) ... ok
+2026-10-04T16:12:26.5324864Z test_unexpected_non_runtime_file_still_fails (test_check_agent_runtime.CheckAgentRuntimeTest.test_unexpected_non_runtime_file_still_fails) ... ok
+2026-10-04T16:12:26.5371726Z test_unmanaged_top_level_skill_dir_warns (test_check_agent_runtime.CheckAgentRuntimeTest.test_unmanaged_top_level_skill_dir_warns) ... ok
+2026-10-04T16:12:26.5494636Z test_apply_removes_the_symlink_farm_and_keeps_installer_owned_paths (test_chezmoiremove_agmsg.ChezmoiRemoveAgmsgTest.test_apply_removes_the_symlink_farm_and_keeps_installer_owned_paths) ... ok
+2026-10-04T16:12:26.5540478Z test_retired_targets_are_listed_and_have_no_source (test_chezmoiremove_agmsg.ChezmoiRemoveRetiredShellFilesTest.test_retired_targets_are_listed_and_have_no_source) ... ok
+2026-10-04T16:12:26.5833211Z test_current_only_key_is_preserved (test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_only_key_is_preserved) ... ok
+2026-10-04T16:12:26.5833802Z test_current_session_start_order_is_preserved (test_claude_settings_merge.ClaudeSettingsMergeTest.test_current_session_start_order_is_preserved)
+2026-10-04T16:12:26.6126550Z Order is preserved; a stale bare herdr-agents command still migrates. ... ok
+2026-10-04T16:12:26.6431377Z test_desired_current_output_is_byte_identical (test_claude_settings_merge.ClaudeSettingsMergeTest.test_desired_current_output_is_byte_identical) ... ok
+2026-10-04T16:12:26.6719504Z test_empty_stdin_outputs_managed (test_claude_settings_merge.ClaudeSettingsMergeTest.test_empty_stdin_outputs_managed) ... ok
+2026-10-04T16:12:26.7004923Z test_enabled_plugins_are_preserved_from_current (test_claude_settings_merge.ClaudeSettingsMergeTest.test_enabled_plugins_are_preserved_from_current) ... ok
+2026-10-04T16:12:26.7296780Z test_invalid_json_outputs_managed (test_claude_settings_merge.ClaudeSettingsMergeTest.test_invalid_json_outputs_managed) ... ok
+2026-10-04T16:12:26.7587513Z test_managed_hook_object_key_order_is_preserved (test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_hook_object_key_order_is_preserved) ... ok
+2026-10-04T16:12:26.7881566Z test_managed_permgate_replaces_stale_current_ccgate_hook (test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_permgate_replaces_stale_current_ccgate_hook) ... ok
+2026-10-04T16:12:26.7883353Z test_managed_session_start_replacement_keeps_hook_order (test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_session_start_replacement_keeps_hook_order)
+2026-10-04T16:12:26.8175808Z Replacing a managed entry must not reorder SessionStart. ... ok
+2026-10-04T16:12:26.8176614Z test_managed_session_start_replaces_stale_hard_coded_home_hook (test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_session_start_replaces_stale_hard_coded_home_hook)
+2026-10-04T16:12:26.8475699Z Upgrade path: a machine that received the old hard-coded managed hook. ... ok
+2026-10-04T16:12:26.8769753Z test_managed_wins_for_managed_key (test_claude_settings_merge.ClaudeSettingsMergeTest.test_managed_wins_for_managed_key) ... ok
+2026-10-04T16:12:26.9367460Z test_merge_is_idempotent (test_claude_settings_merge.ClaudeSettingsMergeTest.test_merge_is_idempotent) ... ok
+2026-10-04T16:12:26.9659009Z test_permission_merge_preserves_custom_hook_in_mixed_entry (test_claude_settings_merge.ClaudeSettingsMergeTest.test_permission_merge_preserves_custom_hook_in_mixed_entry) ... ok
+2026-10-04T16:12:26.9949083Z test_permission_merge_preserves_unrelated_current_hooks (test_claude_settings_merge.ClaudeSettingsMergeTest.test_permission_merge_preserves_unrelated_current_hooks) ... ok
+2026-10-04T16:12:27.0528877Z test_real_template_preserves_herdr_matcher_and_converges (test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_template_preserves_herdr_matcher_and_converges) ... ok
+2026-10-04T16:12:27.0815594Z test_real_value_change_is_redumped (test_claude_settings_merge.ClaudeSettingsMergeTest.test_real_value_change_is_redumped) ... ok
+2026-10-04T16:12:27.1099382Z test_reordered_but_equal_current_is_byte_identical (test_claude_settings_merge.ClaudeSettingsMergeTest.test_reordered_but_equal_current_is_byte_identical) ... ok
+2026-10-04T16:12:27.1378634Z test_runtime_enabled_plugins_survive_a_managed_file_without_the_key (test_claude_settings_merge.ClaudeSettingsMergeTest.test_runtime_enabled_plugins_survive_a_managed_file_without_the_key) ... ok
+2026-10-04T16:12:27.1651529Z test_trailing_newline (test_claude_settings_merge.ClaudeSettingsMergeTest.test_trailing_newline) ... ok
+2026-10-04T16:12:27.1853083Z test_current_only_runtime_tables_keep_current_group_order (test_codex_config_merge.CodexConfigMergeTest.test_current_only_runtime_tables_keep_current_group_order) ... ok
+2026-10-04T16:12:27.2057082Z test_fresh_machine_outputs_managed_baseline (test_codex_config_merge.CodexConfigMergeTest.test_fresh_machine_outputs_managed_baseline) ... ok
+2026-10-04T16:12:27.2256091Z test_managed_permgate_replaces_stale_private_ccgate_hook (test_codex_config_merge.CodexConfigMergeTest.test_managed_permgate_replaces_stale_private_ccgate_hook) ... ok
+2026-10-04T16:12:27.2453212Z test_managed_templates_are_rendered_before_merge (test_codex_config_merge.CodexConfigMergeTest.test_managed_templates_are_rendered_before_merge) ... ok
+2026-10-04T16:12:27.2649791Z test_managed_wins_for_managed_keys (test_codex_config_merge.CodexConfigMergeTest.test_managed_wins_for_managed_keys) ... ok
+2026-10-04T16:12:27.2846699Z test_repeated_runtime_tables_are_preserved_in_order (test_codex_config_merge.CodexConfigMergeTest.test_repeated_runtime_tables_are_preserved_in_order) ... ok
+2026-10-04T16:12:27.3044597Z test_retired_disabled_mcp_servers_are_purged_and_enabled_ones_kept (test_codex_config_merge.CodexConfigMergeTest.test_retired_disabled_mcp_servers_are_purged_and_enabled_ones_kept) ... ok
+2026-10-04T16:12:27.3240787Z test_runtime_tables_are_preserved (test_codex_config_merge.CodexConfigMergeTest.test_runtime_tables_are_preserved) ... ok
+2026-10-04T16:12:27.3440821Z test_runtime_tables_seed_from_managed_when_absent (test_codex_config_merge.CodexConfigMergeTest.test_runtime_tables_seed_from_managed_when_absent) ... ok
+2026-10-04T16:12:27.3636155Z test_unknown_current_tables_are_preserved (test_codex_config_merge.CodexConfigMergeTest.test_unknown_current_tables_are_preserved) ... ok
+2026-10-04T16:12:27.3832094Z test_working_tree_placeholder_falls_back_to_source_dir_parent (test_codex_config_merge.CodexConfigMergeTest.test_working_tree_placeholder_falls_back_to_source_dir_parent) ... ok
+2026-10-04T16:12:27.4026575Z test_working_tree_placeholder_prefers_env_override (test_codex_config_merge.CodexConfigMergeTest.test_working_tree_placeholder_prefers_env_override) ... ok
+2026-10-04T16:12:27.4035714Z test_rules_are_forbidden_only_and_cover_the_declared_prefixes (test_codex_execpolicy.CodexExecpolicyTest.test_rules_are_forbidden_only_and_cover_the_declared_prefixes) ... ok
+2026-10-04T16:12:27.4246651Z test_missing_trusted_runtime_is_silent (test_contextdb_codex_notify.ContextdbCodexNotifyTest.test_missing_trusted_runtime_is_silent) ... ok
+2026-10-04T16:12:27.4458813Z test_non_opted_project_is_silent_even_with_trusted_runtime (test_contextdb_codex_notify.ContextdbCodexNotifyTest.test_non_opted_project_is_silent_even_with_trusted_runtime) ... ok
+2026-10-04T16:12:27.4833878Z test_project_cli_is_data_only_and_trusted_cli_gets_explicit_root (test_contextdb_codex_notify.ContextdbCodexNotifyTest.test_project_cli_is_data_only_and_trusted_cli_gets_explicit_root) ... ok
+2026-10-04T16:12:27.4835032Z test_coverage_gems_are_compatible_and_exact (test_files_fixture.FilesFixtureTest.test_coverage_gems_are_compatible_and_exact) ... ok
+2026-10-04T16:12:27.4835936Z test_fixture_uses_chezmoi_binary_outside_mise_shims (test_files_fixture.FilesFixtureTest.test_fixture_uses_chezmoi_binary_outside_mise_shims) ... ok
+2026-10-04T16:12:27.4837090Z test_legacy_file_workflows_initialize_required_fixture_paths (test_files_fixture.FilesFixtureTest.test_legacy_file_workflows_initialize_required_fixture_paths) ... ok
+2026-10-04T16:12:27.5066898Z test_a_missing_formatter_is_reported_without_a_traceback (test_format_edited_files_hook.FormatEditedFilesHookTest.test_a_missing_formatter_is_reported_without_a_traceback) ... ok
+2026-10-04T16:12:27.5359704Z test_formatters_run_from_the_edited_files_repository_root (test_format_edited_files_hook.FormatEditedFilesHookTest.test_formatters_run_from_the_edited_files_repository_root) ... ok
+2026-10-04T16:12:27.5477603Z test_a_declare_r_assignment_must_appear_exactly_once (test_generate_agent_configs.GenerateAgentConfigsTest.test_a_declare_r_assignment_must_appear_exactly_once) ... ok
+2026-10-04T16:12:27.5526385Z test_a_list_render_writes_one_pin_into_several_files_and_declare_r (test_generate_agent_configs.GenerateAgentConfigsTest.test_a_list_render_writes_one_pin_into_several_files_and_declare_r) ... ok
+2026-10-04T16:12:27.5567139Z test_absent_worker_profile_renders_no_env_line (test_generate_agent_configs.GenerateAgentConfigsTest.test_absent_worker_profile_renders_no_env_line) ... ok
+2026-10-04T16:12:27.5606765Z test_absent_worker_worktree_renders_no_env_line (test_generate_agent_configs.GenerateAgentConfigsTest.test_absent_worker_worktree_renders_no_env_line) ... ok
+2026-10-04T16:12:27.5647055Z test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map (test_generate_agent_configs.GenerateAgentConfigsTest.test_an_empty_mcp_server_map_renders_no_tables_and_an_empty_claude_map) ... ok
+2026-10-04T16:12:27.5689907Z test_asset_constant_must_be_assigned_exactly_once (test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constant_must_be_assigned_exactly_once) ... ok
+2026-10-04T16:12:27.5732102Z test_asset_constants_render_into_their_files (test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_constants_render_into_their_files) ... ok
+2026-10-04T16:12:27.5773923Z test_asset_pin_must_be_a_plain_value (test_generate_agent_configs.GenerateAgentConfigsTest.test_asset_pin_must_be_a_plain_value) ... ok
+2026-10-04T16:12:27.6189907Z test_audit_profile_renders_read_only_sandbox_override (test_generate_agent_configs.GenerateAgentConfigsTest.test_audit_profile_renders_read_only_sandbox_override) ... ok
+2026-10-04T16:12:27.6268711Z test_bootstrap_pins_render_into_setup_and_their_installers (test_generate_agent_configs.GenerateAgentConfigsTest.test_bootstrap_pins_render_into_setup_and_their_installers) ... ok
+2026-10-04T16:12:27.6322461Z test_check_reports_asset_render_drift (test_generate_agent_configs.GenerateAgentConfigsTest.test_check_reports_asset_render_drift) ... ok
+2026-10-04T16:12:27.6363285Z test_claude_deny_rules_use_edit_for_file_mutations (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_deny_rules_use_edit_for_file_mutations) ... ok
+2026-10-04T16:12:27.6403637Z test_claude_sandbox_renders_optional_socket_and_extra_write_keys (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_sandbox_renders_optional_socket_and_extra_write_keys) ... ok
+2026-10-04T16:12:27.6443804Z test_claude_settings_render_interactive_advisor_only_when_set (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_render_interactive_advisor_only_when_set) ... ok
+2026-10-04T16:12:27.6483990Z test_claude_settings_render_the_format_hook_from_its_path (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_render_the_format_hook_from_its_path) ... ok
+2026-10-04T16:12:27.6523505Z test_claude_settings_renders_session_start_hooks (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_renders_session_start_hooks) ... ok
+2026-10-04T16:12:27.6563181Z test_claude_settings_use_interactive_profile_with_permgate (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_settings_use_interactive_profile_with_permgate) ... ok
+2026-10-04T16:12:27.6605886Z test_claude_skill_symlink_outputs_strip_executable_target_prefix (test_generate_agent_configs.GenerateAgentConfigsTest.test_claude_skill_symlink_outputs_strip_executable_target_prefix) ... ok
+2026-10-04T16:12:27.6645365Z test_codex_config_renders_permgate_permission_request (test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_permgate_permission_request) ... ok
+2026-10-04T16:12:27.6685412Z test_codex_config_renders_working_tree_project_key (test_generate_agent_configs.GenerateAgentConfigsTest.test_codex_config_renders_working_tree_project_key) ... ok
+2026-10-04T16:12:27.6728952Z test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot (test_generate_agent_configs.GenerateAgentConfigsTest.test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot) ... ok
+2026-10-04T16:12:27.6769634Z test_expected_outputs_uses_codex_baseline_path (test_generate_agent_configs.GenerateAgentConfigsTest.test_expected_outputs_uses_codex_baseline_path) ... ok
+2026-10-04T16:12:27.6809249Z test_managed_claude_sandbox_excludes_agmsg_dispatch (test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_claude_sandbox_excludes_agmsg_dispatch) ... ok
+2026-10-04T16:12:27.6851257Z test_managed_codex_path_includes_installed_common_bin (test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_codex_path_includes_installed_common_bin) ... ok
+2026-10-04T16:12:27.6896022Z test_managed_hooks_use_installed_permgate_paths (test_generate_agent_configs.GenerateAgentConfigsTest.test_managed_hooks_use_installed_permgate_paths) ... ok
+2026-10-04T16:12:27.6935807Z test_manifest_keeps_model_ids_only_in_profiles (test_generate_agent_configs.GenerateAgentConfigsTest.test_manifest_keeps_model_ids_only_in_profiles) ... ok
+2026-10-04T16:12:27.6974979Z test_model_profiles_env_renders_claude_advisor_only_when_set (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_claude_advisor_only_when_set) ... ok
+2026-10-04T16:12:27.7013710Z test_model_profiles_env_renders_worker_kind (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_kind) ... ok
+2026-10-04T16:12:27.7052714Z test_model_profiles_env_renders_worker_profile (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_profile) ... ok
+2026-10-04T16:12:27.7092907Z test_model_profiles_env_renders_worker_worktree (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_env_renders_worker_worktree) ... ok
+2026-10-04T16:12:27.7131630Z test_model_profiles_reject_incomplete_or_unsafe_entries (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_incomplete_or_unsafe_entries) ... ERROR: model profile standard is missing codex
+2026-10-04T16:12:27.7133197Z ERROR: model profile standard.claude.model must be a launcher-safe string
+2026-10-04T16:12:27.7133637Z ERROR: model_profiles must define the express profile
+2026-10-04T16:12:27.7133938Z ok
+2026-10-04T16:12:27.7171825Z test_model_profiles_reject_invalid_sandbox_mode (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_invalid_sandbox_mode) ... ok
+2026-10-04T16:12:27.7211008Z test_model_profiles_reject_unsafe_advisor (test_generate_agent_configs.GenerateAgentConfigsTest.test_model_profiles_reject_unsafe_advisor) ... ERROR: model profile standard.claude.advisor must be a launcher-safe string
+2026-10-04T16:12:27.7211881Z ok
+2026-10-04T16:12:27.7451061Z test_profile_modify_scripts_are_byte_idempotent_with_runtime_state (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_byte_idempotent_with_runtime_state) ... ok
+2026-10-04T16:12:27.7703857Z test_profile_modify_scripts_are_quiet_for_matching_hook_trust (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_are_quiet_for_matching_hook_trust) ... ok
+2026-10-04T16:12:27.7951216Z test_profile_modify_scripts_preserve_repeated_runtime_tables (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_repeated_runtime_tables) ... ok
+2026-10-04T16:12:27.8194241Z test_profile_modify_scripts_preserve_runtime_state (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_preserve_runtime_state) ... ok
+2026-10-04T16:12:27.8444176Z test_profile_modify_scripts_seed_base_hook_trust (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_seed_base_hook_trust) ... ok
+2026-10-04T16:12:27.8693701Z test_profile_modify_scripts_warn_on_hook_trust_divergence (test_generate_agent_configs.GenerateAgentConfigsTest.test_profile_modify_scripts_warn_on_hook_trust_divergence) ... ok
+2026-10-04T16:12:27.8774297Z test_repository_marketplace_is_a_runtime_owned_seed (test_generate_agent_configs.GenerateAgentConfigsTest.test_repository_marketplace_is_a_runtime_owned_seed) ... ok
+2026-10-04T16:12:27.9019735Z test_security_profile_renders_launcher_and_expanded_notify (test_generate_agent_configs.GenerateAgentConfigsTest.test_security_profile_renders_launcher_and_expanded_notify) ... ok
+2026-10-04T16:12:27.9071120Z test_set_asset_field_rejects_unknown_targets_and_unsafe_values (test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rejects_unknown_targets_and_unsafe_values) ... ok
+2026-10-04T16:12:27.9113196Z test_set_asset_field_rewrites_only_the_named_scalar (test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_field_rewrites_only_the_named_scalar) ... ok
+2026-10-04T16:12:27.9157592Z test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid (test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_leaves_files_untouched_when_an_assignment_is_invalid) ... ok
+2026-10-04T16:12:27.9197591Z test_set_asset_refuses_fields_other_than_pins_and_checksums (test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_refuses_fields_other_than_pins_and_checksums) ... ok
+2026-10-04T16:12:27.9240641Z test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string (test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_rejects_a_value_that_does_not_parse_back_as_a_string) ... ok
+2026-10-04T16:12:27.9283625Z test_set_asset_reports_an_unparsable_manifest_without_a_traceback (test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_reports_an_unparsable_manifest_without_a_traceback) ... ok
+2026-10-04T16:12:27.9328552Z test_set_asset_updates_the_manifest_and_renders_its_pins (test_generate_agent_configs.GenerateAgentConfigsTest.test_set_asset_updates_the_manifest_and_renders_its_pins) ... ok
+2026-10-04T16:12:27.9367991Z test_unknown_interactive_profile_fails (test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_interactive_profile_fails) ... ERROR: interactive_profile must name a model profile: 'missing'
+2026-10-04T16:12:27.9369210Z ok
+2026-10-04T16:12:27.9408075Z test_unknown_worker_kind_fails (test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_kind_fails) ... ERROR: worker_kind must be one of ('codex', 'claude'): 'banana'
+2026-10-04T16:12:27.9408801Z ok
+2026-10-04T16:12:27.9447942Z test_unknown_worker_profile_fails (test_generate_agent_configs.GenerateAgentConfigsTest.test_unknown_worker_profile_fails) ... ERROR: worker_profile must name a model profile: 'missing'
+2026-10-04T16:12:27.9448384Z ok
+2026-10-04T16:12:27.9487808Z test_worker_kind_defaults_to_codex (test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_kind_defaults_to_codex) ... ok
+2026-10-04T16:12:27.9527013Z test_worker_worktree_outside_claude_worktrees_fails (test_generate_agent_configs.GenerateAgentConfigsTest.test_worker_worktree_outside_claude_worktrees_fails) ... ERROR: worker_worktree must be a relative path under .claude/worktrees/: 'worker-c'
+2026-10-04T16:12:27.9528633Z ERROR: worker_worktree must be a relative path under .claude/worktrees/: '/abs/.claude/worktrees/x'
+2026-10-04T16:12:27.9529205Z ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/..'
+2026-10-04T16:12:27.9529728Z ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/a/b'
+2026-10-04T16:12:27.9530179Z ERROR: worker_worktree must be a relative path under .claude/worktrees/: '.claude/worktrees/$(x)'
+2026-10-04T16:12:27.9530423Z ok
+2026-10-04T16:12:28.0033057Z test_a_real_directory_of_that_name_stays_visible (test_gitignore_sandbox_placeholders.SandboxPlaceholderIgnoreTest.test_a_real_directory_of_that_name_stays_visible) ... ok
+2026-10-04T16:12:28.0074893Z test_claude_settings_stay_visible (test_gitignore_sandbox_placeholders.SandboxPlaceholderIgnoreTest.test_claude_settings_stay_visible) ... ok
+2026-10-04T16:12:28.0111738Z test_empty_placeholder_files_on_disk_leave_status_clean (test_gitignore_sandbox_placeholders.SandboxPlaceholderIgnoreTest.test_empty_placeholder_files_on_disk_leave_status_clean) ... ok
+2026-10-04T16:12:28.0517713Z test_every_placeholder_is_ignored_at_the_root_only (test_gitignore_sandbox_placeholders.SandboxPlaceholderIgnoreTest.test_every_placeholder_is_ignored_at_the_root_only) ... ok
+2026-10-04T16:12:28.3222785Z test_add_worker_accepts_a_claude_trust_dialog_while_spawn_waits (test_herdr_agents.HerdrAgentsTest.test_add_worker_accepts_a_claude_trust_dialog_while_spawn_waits) ... ok
+2026-10-04T16:12:28.4926078Z test_add_worker_derives_the_default_herdr_socket_for_spawn (test_herdr_agents.HerdrAgentsTest.test_add_worker_derives_the_default_herdr_socket_for_spawn) ... ok
+2026-10-04T16:12:28.7255865Z test_add_worker_emits_no_override_for_an_unparseable_codex_config (test_herdr_agents.HerdrAgentsTest.test_add_worker_emits_no_override_for_an_unparseable_codex_config) ... ok
+2026-10-04T16:12:28.8871458Z test_add_worker_exits_zero_when_a_timed_out_spawn_still_links (test_herdr_agents.HerdrAgentsTest.test_add_worker_exits_zero_when_a_timed_out_spawn_still_links) ... ok
+2026-10-04T16:12:29.0684619Z test_add_worker_keeps_the_configured_roots_from_an_indented_multi_line_array (test_herdr_agents.HerdrAgentsTest.test_add_worker_keeps_the_configured_roots_from_an_indented_multi_line_array) ... ok
+2026-10-04T16:12:29.2253697Z test_add_worker_linkage_failure_prints_the_invocation_and_the_query (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_failure_prints_the_invocation_and_the_query) ... ok
+2026-10-04T16:12:29.4022832Z test_add_worker_linkage_falls_back_to_the_legacy_record_without_the_resolver (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_falls_back_to_the_legacy_record_without_the_resolver) ... ok
+2026-10-04T16:12:29.5721021Z test_add_worker_linkage_ignores_a_delayed_pong_for_another_ping (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_ignores_a_delayed_pong_for_another_ping) ... ok
+2026-10-04T16:12:29.7489802Z test_add_worker_linkage_ignores_a_placement_record_for_a_pane_gone_from_the_workspace (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_ignores_a_placement_record_for_a_pane_gone_from_the_workspace) ... ok
+2026-10-04T16:12:29.9323357Z test_add_worker_linkage_ignores_a_placement_record_for_a_pane_that_predates_this_spawn (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_ignores_a_placement_record_for_a_pane_that_predates_this_spawn) ... ok
+2026-10-04T16:12:30.1083500Z test_add_worker_linkage_ignores_a_placement_record_from_another_workspace (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_ignores_a_placement_record_from_another_workspace) ... ok
+2026-10-04T16:12:30.2835980Z test_add_worker_linkage_ignores_a_pong_older_than_this_ping (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_ignores_a_pong_older_than_this_ping) ... ok
+2026-10-04T16:12:30.4590855Z test_add_worker_linkage_reads_a_leading_zero_wait_as_decimal (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_reads_a_leading_zero_wait_as_decimal) ... ok
+2026-10-04T16:12:30.6244193Z test_add_worker_linkage_refuses_a_placement_conflict (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_refuses_a_placement_conflict) ... ok
+2026-10-04T16:12:30.7637105Z test_add_worker_linkage_refuses_several_orchestrator_identities (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_refuses_several_orchestrator_identities) ... ok
+2026-10-04T16:12:30.9379574Z test_add_worker_linkage_resolves_an_id_keyed_placement_record (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_resolves_an_id_keyed_placement_record) ... ok
+2026-10-04T16:13:01.1841817Z test_add_worker_linkage_survives_a_non_numeric_pong_wait (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_survives_a_non_numeric_pong_wait) ... ok
+2026-10-04T16:13:01.3843661Z test_add_worker_linkage_uses_the_spawn_placement_record_not_team_sh (test_herdr_agents.HerdrAgentsTest.test_add_worker_linkage_uses_the_spawn_placement_record_not_team_sh) ... ok
+2026-10-04T16:13:01.5993960Z test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options (test_herdr_agents.HerdrAgentsTest.test_add_worker_passes_codex_profile_and_sandbox_through_spawn_options) ... ok
+2026-10-04T16:13:01.6720915Z test_add_worker_refuses_an_undefined_profile_before_any_change (test_herdr_agents.HerdrAgentsTest.test_add_worker_refuses_an_undefined_profile_before_any_change) ... ok
+2026-10-04T16:13:01.6867806Z test_add_worker_refuses_before_any_change_when_no_herdr_socket_is_found (test_herdr_agents.HerdrAgentsTest.test_add_worker_refuses_before_any_change_when_no_herdr_socket_is_found) ... ok
+2026-10-04T16:13:01.7234469Z test_add_worker_rejects_a_worktree_outside_claude_worktrees (test_herdr_agents.HerdrAgentsTest.test_add_worker_rejects_a_worktree_outside_claude_worktrees) ... ok
+2026-10-04T16:13:03.4081007Z test_add_worker_reports_a_failed_claude_spawn_without_a_trust_dialog (test_herdr_agents.HerdrAgentsTest.test_add_worker_reports_a_failed_claude_spawn_without_a_trust_dialog) ... ok
+2026-10-04T16:13:03.5891657Z test_add_worker_reports_a_failed_spawn (test_herdr_agents.HerdrAgentsTest.test_add_worker_reports_a_failed_spawn) ... ok
+2026-10-04T16:13:03.7892107Z test_add_worker_reports_linkage_ok_after_a_ready_spawn (test_herdr_agents.HerdrAgentsTest.test_add_worker_reports_linkage_ok_after_a_ready_spawn) ... ok
+2026-10-04T16:13:03.9660270Z test_add_worker_reports_linkage_unreached_after_a_failed_spawn (test_herdr_agents.HerdrAgentsTest.test_add_worker_reports_linkage_unreached_after_a_failed_spawn) ... ok
+2026-10-04T16:13:04.1836120Z test_add_worker_reports_shallow_metadata_as_not_granted (test_herdr_agents.HerdrAgentsTest.test_add_worker_reports_shallow_metadata_as_not_granted) ... ok
+2026-10-04T16:13:04.2945135Z test_add_worker_reuses_a_seat_tab_in_the_pair_workspace (test_herdr_agents.HerdrAgentsTest.test_add_worker_reuses_a_seat_tab_in_the_pair_workspace) ... ok
+2026-10-04T16:13:04.4071462Z test_add_worker_reuses_a_seated_workspace (test_herdr_agents.HerdrAgentsTest.test_add_worker_reuses_a_seated_workspace) ... ok
+2026-10-04T16:13:04.6063568Z test_add_worker_seats_the_worker_in_a_tab_of_the_pair_workspace (test_herdr_agents.HerdrAgentsTest.test_add_worker_seats_the_worker_in_a_tab_of_the_pair_workspace) ... ok
+2026-10-04T16:13:04.8006832Z test_add_worker_spawns_the_seat_in_its_own_workspace_with_profile_args (test_herdr_agents.HerdrAgentsTest.test_add_worker_spawns_the_seat_in_its_own_workspace_with_profile_args) ... ok
+2026-10-04T16:13:06.4869587Z test_add_worker_succeeds_for_a_claude_worker_without_a_trust_dialog (test_herdr_agents.HerdrAgentsTest.test_add_worker_succeeds_for_a_claude_worker_without_a_trust_dialog) ... ok
+2026-10-04T16:13:06.7825783Z test_agent_name_taken_gives_up_after_bounded_wait (test_herdr_agents.HerdrAgentsTest.test_agent_name_taken_gives_up_after_bounded_wait) ... ok
+2026-10-04T16:13:06.8584082Z test_another_team_members_pane_is_not_a_second_worker (test_herdr_agents.HerdrAgentsTest.test_another_team_members_pane_is_not_a_second_worker) ... ok
+2026-10-04T16:13:06.9912655Z test_attach_bootstraps_agmsg_after_codex_reuse (test_herdr_agents.HerdrAgentsTest.test_attach_bootstraps_agmsg_after_codex_reuse) ... ok
+2026-10-04T16:13:07.3489896Z test_attach_bootstraps_agmsg_after_codex_start (test_herdr_agents.HerdrAgentsTest.test_attach_bootstraps_agmsg_after_codex_start) ... ok
+2026-10-04T16:13:07.6654193Z test_attach_builds_codex_right_of_current_claude_pane (test_herdr_agents.HerdrAgentsTest.test_attach_builds_codex_right_of_current_claude_pane) ... ok
+2026-10-04T16:13:07.7513993Z test_attach_complete_workspace_is_idempotent (test_herdr_agents.HerdrAgentsTest.test_attach_complete_workspace_is_idempotent) ... ok
+2026-10-04T16:13:07.8708425Z test_attach_completes_bootstrap_on_a_self_named_pair (test_herdr_agents.HerdrAgentsTest.test_attach_completes_bootstrap_on_a_self_named_pair) ... ok
+2026-10-04T16:13:07.9559956Z test_attach_correct_order_does_not_swap (test_herdr_agents.HerdrAgentsTest.test_attach_correct_order_does_not_swap) ... ok
+2026-10-04T16:13:08.0307331Z test_attach_does_not_restart_codex_agent_from_another_tab (test_herdr_agents.HerdrAgentsTest.test_attach_does_not_restart_codex_agent_from_another_tab) ... ok
+2026-10-04T16:13:08.1187726Z test_attach_equal_halves_does_not_resize (test_herdr_agents.HerdrAgentsTest.test_attach_equal_halves_does_not_resize) ... ok
+2026-10-04T16:13:08.1723206Z test_attach_from_the_self_named_worker_pane_exits_quietly (test_herdr_agents.HerdrAgentsTest.test_attach_from_the_self_named_worker_pane_exits_quietly) ... ok
+2026-10-04T16:13:08.2294626Z test_attach_from_the_worker_pane_does_not_relabel_it (test_herdr_agents.HerdrAgentsTest.test_attach_from_the_worker_pane_does_not_relabel_it) ... ok
+2026-10-04T16:13:08.2521760Z test_attach_from_the_worker_worktree_exits_quietly (test_herdr_agents.HerdrAgentsTest.test_attach_from_the_worker_worktree_exits_quietly) ... ok
+2026-10-04T16:13:08.6045534Z test_attach_ignores_agmsg_bootstrap_failure (test_herdr_agents.HerdrAgentsTest.test_attach_ignores_agmsg_bootstrap_failure) ... ok
+2026-10-04T16:13:08.7011815Z test_attach_ignores_extra_panes_on_other_tabs (test_herdr_agents.HerdrAgentsTest.test_attach_ignores_extra_panes_on_other_tabs) ... ok
+2026-10-04T16:13:08.8214342Z test_attach_leaves_a_self_named_pair_alone (test_herdr_agents.HerdrAgentsTest.test_attach_leaves_a_self_named_pair_alone) ... ok
+2026-10-04T16:13:08.8793152Z test_attach_legacy_files_pane_refuses_repair_without_layout_mutation (test_herdr_agents.HerdrAgentsTest.test_attach_legacy_files_pane_refuses_repair_without_layout_mutation) ... ok
+2026-10-04T16:13:09.1922491Z test_attach_lowercases_and_validates_derived_agent_name (test_herdr_agents.HerdrAgentsTest.test_attach_lowercases_and_validates_derived_agent_name) ... ok
+2026-10-04T16:13:09.1998067Z test_attach_noops_for_full_mode_managed_layout (test_herdr_agents.HerdrAgentsTest.test_attach_noops_for_full_mode_managed_layout) ... ok
+2026-10-04T16:13:09.4566985Z test_attach_ratio_repair_skips_unsafe_layouts (test_herdr_agents.HerdrAgentsTest.test_attach_ratio_repair_skips_unsafe_layouts) ... ok
+2026-10-04T16:13:09.4703468Z test_attach_rejects_invalid_derived_agent_name (test_herdr_agents.HerdrAgentsTest.test_attach_rejects_invalid_derived_agent_name) ... ok
+2026-10-04T16:13:09.8886025Z test_attach_repair_splits_the_missing_worker_pane_in_its_worktree (test_herdr_agents.HerdrAgentsTest.test_attach_repair_splits_the_missing_worker_pane_in_its_worktree) ... ok
+2026-10-04T16:13:09.9812264Z test_attach_repairs_codex_claude_order_with_one_swap (test_herdr_agents.HerdrAgentsTest.test_attach_repairs_codex_claude_order_with_one_swap) ... ok
+2026-10-04T16:13:10.0866558Z test_attach_repairs_skewed_widths_to_equal_halves (test_herdr_agents.HerdrAgentsTest.test_attach_repairs_skewed_widths_to_equal_halves) ... ok
+2026-10-04T16:13:10.4047049Z test_attach_reports_agmsg_skip_when_not_installed (test_herdr_agents.HerdrAgentsTest.test_attach_reports_agmsg_skip_when_not_installed) ... ok
+2026-10-04T16:13:10.5426664Z test_attach_skips_delivery_when_turn_hook_exists (test_herdr_agents.HerdrAgentsTest.test_attach_skips_delivery_when_turn_hook_exists) ... ok
+2026-10-04T16:13:10.6460474Z test_attach_warns_after_one_nonconverging_resize (test_herdr_agents.HerdrAgentsTest.test_attach_warns_after_one_nonconverging_resize) ... ok
+2026-10-04T16:13:10.7826618Z test_attach_warns_when_multiple_agmsg_identities_exist (test_herdr_agents.HerdrAgentsTest.test_attach_warns_when_multiple_agmsg_identities_exist) ... ok
+2026-10-04T16:13:10.8181360Z test_attach_without_herdr_environment_names_the_seated_worker (test_herdr_agents.HerdrAgentsTest.test_attach_without_herdr_environment_names_the_seated_worker) ... ok
+2026-10-04T16:13:10.8236133Z test_attach_without_herdr_environment_prints_the_bring_up_summary (test_herdr_agents.HerdrAgentsTest.test_attach_without_herdr_environment_prints_the_bring_up_summary) ... ok
+2026-10-04T16:13:10.8419453Z test_attach_without_herdr_environment_stays_quiet_in_the_worker_worktree (test_herdr_agents.HerdrAgentsTest.test_attach_without_herdr_environment_stays_quiet_in_the_worker_worktree) ... ok
+2026-10-04T16:13:11.1341640Z test_audit_accepts_a_dir_with_an_apostrophe_quoted_intact (test_herdr_agents.HerdrAgentsTest.test_audit_accepts_a_dir_with_an_apostrophe_quoted_intact) ... ok
+2026-10-04T16:13:11.7300940Z test_audit_creates_the_audit_tab_once_and_reuses_it (test_herdr_agents.HerdrAgentsTest.test_audit_creates_the_audit_tab_once_and_reuses_it) ... ok
+2026-10-04T16:13:11.7479887Z test_audit_exits_2_without_a_managed_workspace (test_herdr_agents.HerdrAgentsTest.test_audit_exits_2_without_a_managed_workspace) ... ok
+2026-10-04T16:13:12.0678683Z test_audit_fails_as_unmasked_when_masking_fails (test_herdr_agents.HerdrAgentsTest.test_audit_fails_as_unmasked_when_masking_fails) ... ok
+2026-10-04T16:13:23.1541766Z test_audit_falls_back_to_the_recent_unwrapped_prompt_without_process_info (test_herdr_agents.HerdrAgentsTest.test_audit_falls_back_to_the_recent_unwrapped_prompt_without_process_info) ... ok
+2026-10-04T16:13:23.4635087Z test_audit_finds_the_self_named_pair_workspace (test_herdr_agents.HerdrAgentsTest.test_audit_finds_the_self_named_pair_workspace) ... ok
+2026-10-04T16:13:26.9048734Z test_audit_gates_on_the_concluding_line_of_the_last_message (test_herdr_agents.HerdrAgentsTest.test_audit_gates_on_the_concluding_line_of_the_last_message) ... ok
+2026-10-04T16:13:27.1927509Z test_audit_marker_detection_reads_unwrapped_snapshots (test_herdr_agents.HerdrAgentsTest.test_audit_marker_detection_reads_unwrapped_snapshots) ... ok
+2026-10-04T16:13:27.5063874Z test_audit_masks_evidence_before_the_verdict_gate (test_herdr_agents.HerdrAgentsTest.test_audit_masks_evidence_before_the_verdict_gate) ... ok
+2026-10-04T16:13:27.8152758Z test_audit_masks_evidence_even_when_the_audit_exit_is_nonzero (test_herdr_agents.HerdrAgentsTest.test_audit_masks_evidence_even_when_the_audit_exit_is_nonzero) ... ok
+2026-10-04T16:13:28.0982742Z test_audit_nonzero_exit_marker_fails_the_helper (test_herdr_agents.HerdrAgentsTest.test_audit_nonzero_exit_marker_fails_the_helper) ... ok
+2026-10-04T16:13:28.3858633Z test_audit_pane_command_tees_evidence_and_waits_for_a_fresh_marker (test_herdr_agents.HerdrAgentsTest.test_audit_pane_command_tees_evidence_and_waits_for_a_fresh_marker) ... ok
+2026-10-04T16:13:28.6808693Z test_audit_quotes_a_non_ascii_out_path_under_the_c_locale (test_herdr_agents.HerdrAgentsTest.test_audit_quotes_a_non_ascii_out_path_under_the_c_locale) ... ok
+2026-10-04T16:13:28.9886395Z test_audit_quotes_the_last_message_path_for_a_non_ascii_out (test_herdr_agents.HerdrAgentsTest.test_audit_quotes_the_last_message_path_for_a_non_ascii_out) ... ok
+2026-10-04T16:13:39.5974606Z test_audit_refuses_a_busy_audit_pane (test_herdr_agents.HerdrAgentsTest.test_audit_refuses_a_busy_audit_pane) ... ok
+2026-10-04T16:13:40.2261933Z test_audit_refuses_a_tracked_masker_missing_from_the_tree (test_herdr_agents.HerdrAgentsTest.test_audit_refuses_a_tracked_masker_missing_from_the_tree) ... ok
+2026-10-04T16:13:40.8160213Z test_audit_refuses_an_uncommitted_or_untracked_masker (test_herdr_agents.HerdrAgentsTest.test_audit_refuses_an_uncommitted_or_untracked_masker) ... ok
+2026-10-04T16:13:41.1106298Z test_audit_refuses_the_masker_from_the_audited_commit (test_herdr_agents.HerdrAgentsTest.test_audit_refuses_the_masker_from_the_audited_commit) ... ok
+2026-10-04T16:13:41.1404159Z test_audit_rejects_unsafe_arguments_before_calling_herdr (test_herdr_agents.HerdrAgentsTest.test_audit_rejects_unsafe_arguments_before_calling_herdr) ... ok
+2026-10-04T16:13:41.4306018Z test_audit_runs_codex_exec_with_the_prompt_and_last_message_file (test_herdr_agents.HerdrAgentsTest.test_audit_runs_codex_exec_with_the_prompt_and_last_message_file) ... ok
+2026-10-04T16:13:41.7176996Z test_audit_runs_in_dir_even_when_the_reused_pane_moved (test_herdr_agents.HerdrAgentsTest.test_audit_runs_in_dir_even_when_the_reused_pane_moved) ... ok
+2026-10-04T16:13:42.0028784Z test_audit_skips_masking_without_a_repo_validator (test_herdr_agents.HerdrAgentsTest.test_audit_skips_masking_without_a_repo_validator) ... ok
+2026-10-04T16:13:42.1888458Z test_audit_tab_does_not_break_attach_order_and_ratio_repair (test_herdr_agents.HerdrAgentsTest.test_audit_tab_does_not_break_attach_order_and_ratio_repair) ... ok
+2026-10-04T16:13:42.2264261Z test_audit_tab_keeps_the_full_mode_duplicate_workspace_guard (test_herdr_agents.HerdrAgentsTest.test_audit_tab_keeps_the_full_mode_duplicate_workspace_guard) ... ok
+2026-10-04T16:13:42.5365856Z test_audit_task_inlines_the_task_inputs_and_the_merge_base_diff (test_herdr_agents.HerdrAgentsTest.test_audit_task_inlines_the_task_inputs_and_the_merge_base_diff) ... ok
+2026-10-04T16:13:42.8446162Z test_audit_task_names_a_txt_artifact_when_no_md_one_exists (test_herdr_agents.HerdrAgentsTest.test_audit_task_names_a_txt_artifact_when_no_md_one_exists) ... ok
+2026-10-04T16:13:43.1633876Z test_audit_task_names_only_the_task_file_when_no_artifact_exists (test_herdr_agents.HerdrAgentsTest.test_audit_task_names_only_the_task_file_when_no_artifact_exists) ... ok
+2026-10-04T16:13:43.1897284Z test_audit_task_refuses_a_missing_task_file_or_merge_base_before_herdr_work (test_herdr_agents.HerdrAgentsTest.test_audit_task_refuses_a_missing_task_file_or_merge_base_before_herdr_work) ... ok
+2026-10-04T16:13:43.7650066Z test_audit_trusts_a_shell_foreground_over_a_stale_visible_snapshot (test_herdr_agents.HerdrAgentsTest.test_audit_trusts_a_shell_foreground_over_a_stale_visible_snapshot) ... ok
+2026-10-04T16:13:44.0513580Z test_audit_uses_manifest_audit_codex_args (test_herdr_agents.HerdrAgentsTest.test_audit_uses_manifest_audit_codex_args) ... ok
+2026-10-04T16:13:47.2072764Z test_audit_verdict_gate_reads_only_the_final_codex_block (test_herdr_agents.HerdrAgentsTest.test_audit_verdict_gate_reads_only_the_final_codex_block) ... ok
+2026-10-04T16:13:58.1419375Z test_audit_waits_for_the_prompt_on_a_new_audit_tab (test_herdr_agents.HerdrAgentsTest.test_audit_waits_for_the_prompt_on_a_new_audit_tab) ... ok
+2026-10-04T16:13:58.1518172Z test_bare_herdr_in_ghostty_starts_plain_session (test_herdr_agents.HerdrAgentsTest.test_bare_herdr_in_ghostty_starts_plain_session) ... ok
+2026-10-04T16:13:58.1608877Z test_bare_herdr_outside_ghostty_uses_real_cli (test_herdr_agents.HerdrAgentsTest.test_bare_herdr_outside_ghostty_uses_real_cli) ... ok
+2026-10-04T16:13:58.1987870Z test_bootstrap_accepts_same_identity_in_multiple_teams (test_herdr_agents.HerdrAgentsTest.test_bootstrap_accepts_same_identity_in_multiple_teams) ... ok
+2026-10-04T16:13:58.3748161Z test_bootstrap_leaves_a_foreign_pre_push_hook_alone (test_herdr_agents.HerdrAgentsTest.test_bootstrap_leaves_a_foreign_pre_push_hook_alone) ... ok
+2026-10-04T16:13:58.4148068Z test_bootstrap_only_creates_missing_herdr_log_directory (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_creates_missing_herdr_log_directory) ... ok
+2026-10-04T16:13:58.4521310Z test_bootstrap_only_does_not_call_herdr_or_agents (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_does_not_call_herdr_or_agents) ... ok
+2026-10-04T16:13:58.4897623Z test_bootstrap_only_sets_claude_delivery_once_when_hook_is_missing (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_sets_claude_delivery_once_when_hook_is_missing) ... ok
+2026-10-04T16:13:58.5285237Z test_bootstrap_only_sets_each_missing_delivery_once (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_sets_each_missing_delivery_once) ... ok
+2026-10-04T16:13:58.5649569Z test_bootstrap_only_skips_all_delivery_when_both_hooks_exist (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_skips_all_delivery_when_both_hooks_exist) ... ok
+2026-10-04T16:13:58.5709764Z test_bootstrap_only_skips_home_without_agmsg_calls (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_skips_home_without_agmsg_calls) ... ok
+2026-10-04T16:13:58.6009748Z test_bootstrap_only_warns_for_missing_claude_identity_without_joining (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_warns_for_missing_claude_identity_without_joining) ... ok
+2026-10-04T16:13:58.6387647Z test_bootstrap_only_warns_for_multiple_claude_identities (test_herdr_agents.HerdrAgentsTest.test_bootstrap_only_warns_for_multiple_claude_identities) ... ok
+2026-10-04T16:13:58.7330113Z test_bootstrap_removes_its_retired_pre_push_stub (test_herdr_agents.HerdrAgentsTest.test_bootstrap_removes_its_retired_pre_push_stub) ... ok
+2026-10-04T16:13:58.7820324Z test_bootstrap_with_claude_worker_accepts_two_claude_identities (test_herdr_agents.HerdrAgentsTest.test_bootstrap_with_claude_worker_accepts_two_claude_identities) ... ok
+2026-10-04T16:13:58.8449193Z test_bootstrap_with_claude_worker_hints_at_a_missing_worker_identity (test_herdr_agents.HerdrAgentsTest.test_bootstrap_with_claude_worker_hints_at_a_missing_worker_identity) ... ok
+2026-10-04T16:13:58.8695272Z test_bootstrap_with_claude_worker_leaves_codex_hooks_alone (test_herdr_agents.HerdrAgentsTest.test_bootstrap_with_claude_worker_leaves_codex_hooks_alone) ... ok
+2026-10-04T16:13:59.3936143Z test_claude_agent_accepts_manifest_profile_arguments_for_e2e (test_herdr_agents.HerdrAgentsTest.test_claude_agent_accepts_manifest_profile_arguments_for_e2e) ... ok
+2026-10-04T16:13:59.7325696Z test_claude_repair_skips_just_restarted_codex_pane_without_agent_field (test_herdr_agents.HerdrAgentsTest.test_claude_repair_skips_just_restarted_codex_pane_without_agent_field) ... ok
+2026-10-04T16:13:59.7525547Z test_claude_settings_add_herdr_attach_session_hook (test_herdr_agents.HerdrAgentsTest.test_claude_settings_add_herdr_attach_session_hook) ... ok
+2026-10-04T16:13:59.8231660Z test_claude_worker_sharing_the_orchestrator_identity_is_refused (test_herdr_agents.HerdrAgentsTest.test_claude_worker_sharing_the_orchestrator_identity_is_refused) ... ok
+2026-10-04T16:14:00.3918079Z test_claude_worker_with_a_registered_worker_identity_proceeds (test_herdr_agents.HerdrAgentsTest.test_claude_worker_with_a_registered_worker_identity_proceeds) ... ok
+2026-10-04T16:14:00.9171074Z test_codex_profile_defaults_to_generated_interactive_profile (test_herdr_agents.HerdrAgentsTest.test_codex_profile_defaults_to_generated_interactive_profile) ... ok
+2026-10-04T16:14:01.4417079Z test_codex_profile_env_override_wins_over_generated_profile (test_herdr_agents.HerdrAgentsTest.test_codex_profile_env_override_wins_over_generated_profile) ... ok
+2026-10-04T16:14:02.0092982Z test_codex_worker_is_not_subject_to_the_identity_guard (test_herdr_agents.HerdrAgentsTest.test_codex_worker_is_not_subject_to_the_identity_guard) ... ok
+2026-10-04T16:14:02.3355562Z test_existing_legacy_files_pane_is_not_reused_for_claude_or_split_again (test_herdr_agents.HerdrAgentsTest.test_existing_legacy_files_pane_is_not_reused_for_claude_or_split_again) ... ok
+2026-10-04T16:14:02.4415731Z test_existing_two_pane_workspace_repairs_skewed_widths (test_herdr_agents.HerdrAgentsTest.test_existing_two_pane_workspace_repairs_skewed_widths) ... ok
+2026-10-04T16:14:02.5336063Z test_existing_workspace_matches_canonical_macos_workdir (test_herdr_agents.HerdrAgentsTest.test_existing_workspace_matches_canonical_macos_workdir) ... ok
+2026-10-04T16:14:02.8549482Z test_existing_workspace_restarts_missing_claude_in_empty_pane (test_herdr_agents.HerdrAgentsTest.test_existing_workspace_restarts_missing_claude_in_empty_pane) ... ok
+2026-10-04T16:14:03.1746456Z test_existing_workspace_restarts_missing_codex_agent (test_herdr_agents.HerdrAgentsTest.test_existing_workspace_restarts_missing_codex_agent) ... ok
+2026-10-04T16:14:03.5267520Z test_existing_workspace_splits_when_missing_claude_has_no_empty_pane (test_herdr_agents.HerdrAgentsTest.test_existing_workspace_splits_when_missing_claude_has_no_empty_pane) ... ok
+2026-10-04T16:14:03.5998185Z test_existing_workspace_with_legacy_files_pane_focuses_without_mutation (test_herdr_agents.HerdrAgentsTest.test_existing_workspace_with_legacy_files_pane_focuses_without_mutation) ... ok
+2026-10-04T16:14:04.1758803Z test_explicit_worker_kind_and_profile_survive_seat_label_loading (test_herdr_agents.HerdrAgentsTest.test_explicit_worker_kind_and_profile_survive_seat_label_loading) ... ok
+2026-10-04T16:14:04.1766808Z test_file_viewer_plugin_config_sets_micro_editor (test_herdr_agents.HerdrAgentsTest.test_file_viewer_plugin_config_sets_micro_editor) ... ok
+2026-10-04T16:14:04.3081839Z test_full_and_restart_modes_refuse_duplicate_managed_workspaces (test_herdr_agents.HerdrAgentsTest.test_full_and_restart_modes_refuse_duplicate_managed_workspaces) ... ok
+2026-10-04T16:14:04.4529893Z test_full_mode_does_not_duplicate_a_solo_codex_worker_seat (test_herdr_agents.HerdrAgentsTest.test_full_mode_does_not_duplicate_a_solo_codex_worker_seat) ... ok
+2026-10-04T16:14:05.1119579Z test_full_mode_gives_a_codex_worker_its_worktree_git_metadata_roots (test_herdr_agents.HerdrAgentsTest.test_full_mode_gives_a_codex_worker_its_worktree_git_metadata_roots) ... ok
+2026-10-04T16:14:05.5643865Z test_full_mode_heal_moves_a_reused_empty_pane_into_the_worktree (test_herdr_agents.HerdrAgentsTest.test_full_mode_heal_moves_a_reused_empty_pane_into_the_worktree) ... ok
+2026-10-04T16:14:05.8892854Z test_full_mode_heal_never_starts_the_worker_in_an_exited_added_worker_pane (test_herdr_agents.HerdrAgentsTest.test_full_mode_heal_never_starts_the_worker_in_an_exited_added_worker_pane) ... ok
+2026-10-04T16:14:06.2124873Z test_full_mode_heal_never_starts_the_worker_in_the_audit_pane (test_herdr_agents.HerdrAgentsTest.test_full_mode_heal_never_starts_the_worker_in_the_audit_pane) ... ok
+2026-10-04T16:14:06.3521439Z test_full_mode_heals_nothing_in_a_healthy_self_named_pair (test_herdr_agents.HerdrAgentsTest.test_full_mode_heals_nothing_in_a_healthy_self_named_pair) ... ok
+2026-10-04T16:14:06.7084960Z test_full_mode_heals_the_orchestrator_beside_a_live_added_claude_worker (test_herdr_agents.HerdrAgentsTest.test_full_mode_heals_the_orchestrator_beside_a_live_added_claude_worker) ... ok
+2026-10-04T16:14:07.1045932Z test_full_mode_reuses_agentless_worker_pane_in_attach_labeled_workspace (test_herdr_agents.HerdrAgentsTest.test_full_mode_reuses_agentless_worker_pane_in_attach_labeled_workspace) ... ok
+2026-10-04T16:14:07.6290037Z test_full_mode_skips_agmsg_bootstrap_for_home (test_herdr_agents.HerdrAgentsTest.test_full_mode_skips_agmsg_bootstrap_for_home) ... ok
+2026-10-04T16:14:08.2838251Z test_full_mode_splits_the_worker_pane_in_its_worktree (test_herdr_agents.HerdrAgentsTest.test_full_mode_splits_the_worker_pane_in_its_worktree) ... ok
+2026-10-04T16:14:08.2846362Z test_ghostty_config_does_not_auto_start_herdr_session (test_herdr_agents.HerdrAgentsTest.test_ghostty_config_does_not_auto_start_herdr_session) ... ok
+2026-10-04T16:14:10.0829197Z test_ghostty_herdr_starts_plain_workspace (test_herdr_agents.HerdrAgentsTest.test_ghostty_herdr_starts_plain_workspace) ... ok
+2026-10-04T16:14:10.0848873Z test_herdr_prefix_alt_a_runs_helper_from_active_pane (test_herdr_agents.HerdrAgentsTest.test_herdr_prefix_alt_a_runs_helper_from_active_pane) ... ok
+2026-10-04T16:14:10.0872123Z test_herdr_prefix_f_opens_file_viewer_popup (test_herdr_agents.HerdrAgentsTest.test_herdr_prefix_f_opens_file_viewer_popup) ... ok
+2026-10-04T16:14:10.0887085Z test_herdr_session_does_not_prebuild_agent_layout (test_herdr_agents.HerdrAgentsTest.test_herdr_session_does_not_prebuild_agent_layout) ... ok
+2026-10-04T16:14:10.0981686Z test_herdr_session_execs_herdr_without_prebuilding_agents (test_herdr_agents.HerdrAgentsTest.test_herdr_session_execs_herdr_without_prebuilding_agents) ... ok
+2026-10-04T16:14:10.1012011Z test_herdr_session_passes_syntax_check (test_herdr_agents.HerdrAgentsTest.test_herdr_session_passes_syntax_check) ... ok
+2026-10-04T16:14:10.1094565Z test_herdr_session_rejects_arguments (test_herdr_agents.HerdrAgentsTest.test_herdr_session_rejects_arguments) ... ok
+2026-10-04T16:14:10.1206888Z test_herdr_with_args_in_ghostty_uses_real_cli (test_herdr_agents.HerdrAgentsTest.test_herdr_with_args_in_ghostty_uses_real_cli) ... ok
+2026-10-04T16:14:10.1294376Z test_interactive_ghostty_shell_attaches_plain_session (test_herdr_agents.HerdrAgentsTest.test_interactive_ghostty_shell_attaches_plain_session) ... ok
+2026-10-04T16:14:10.1349394Z test_make_update_and_upgrade_include_agmsg_bootstrap (test_herdr_agents.HerdrAgentsTest.test_make_update_and_upgrade_include_agmsg_bootstrap) ... ok
+2026-10-04T16:14:10.6762723Z test_mixed_legacy_and_seat_labels_are_one_pair (test_herdr_agents.HerdrAgentsTest.test_mixed_legacy_and_seat_labels_are_one_pair) ... ok
+2026-10-04T16:14:11.4275745Z test_new_pane_waits_for_shell_and_retries_agent_start_once_on_timeout (test_herdr_agents.HerdrAgentsTest.test_new_pane_waits_for_shell_and_retries_agent_start_once_on_timeout) ... ok
+2026-10-04T16:14:11.9577733Z test_orchestrator_pane_appends_claude_args_after_profile_args (test_herdr_agents.HerdrAgentsTest.test_orchestrator_pane_appends_claude_args_after_profile_args) ... ok
+2026-10-04T16:14:12.5855142Z test_orchestrator_pane_start_claims_the_seat_with_the_composite_id (test_herdr_agents.HerdrAgentsTest.test_orchestrator_pane_start_claims_the_seat_with_the_composite_id) ... ok
+2026-10-04T16:14:15.2190043Z test_orchestrator_pane_start_without_a_session_claims_nothing (test_herdr_agents.HerdrAgentsTest.test_orchestrator_pane_start_without_a_session_claims_nothing) ... ok
+2026-10-04T16:14:15.7505763Z test_orchestrator_pane_uses_interactive_profile_args (test_herdr_agents.HerdrAgentsTest.test_orchestrator_pane_uses_interactive_profile_args) ... ok
+2026-10-04T16:14:16.2742963Z test_pane_creation_propagates_explicit_fpath (test_herdr_agents.HerdrAgentsTest.test_pane_creation_propagates_explicit_fpath) ... ok
+2026-10-04T16:14:16.4215463Z test_regime_boundary_check_counts_names_across_runtime_types_at_an_active_seat (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_counts_names_across_runtime_types_at_an_active_seat) ... ok
+2026-10-04T16:14:16.5448366Z test_regime_boundary_check_finds_worker_workspaces_from_a_worktree (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_finds_worker_workspaces_from_a_worktree) ... ok
+2026-10-04T16:14:16.6906287Z test_regime_boundary_check_flags_empty_seats_only (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_flags_empty_seats_only) ... ok
+2026-10-04T16:14:16.7557702Z test_regime_boundary_check_gives_the_seat_lock_check_the_main_checkout (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_gives_the_seat_lock_check_the_main_checkout) ... ok
+2026-10-04T16:14:16.8773969Z test_regime_boundary_check_reports_an_added_worker_tab_in_the_pair_workspace (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_reports_an_added_worker_tab_in_the_pair_workspace) ... ok
+2026-10-04T16:14:16.9986386Z test_regime_boundary_check_scans_every_worktree_for_untracked_evidence (test_herdr_agents.HerdrAgentsTest.test_regime_boundary_check_scans_every_worktree_for_untracked_evidence) ... ok
+2026-10-04T16:14:17.5306899Z test_registered_agent_not_ready_waits_for_idle_without_duplicate_start (test_herdr_agents.HerdrAgentsTest.test_registered_agent_not_ready_waits_for_idle_without_duplicate_start) ... ok
+2026-10-04T16:14:17.6184306Z test_remove_worker_cleans_up_a_codex_seat_without_a_placement_record (test_herdr_agents.HerdrAgentsTest.test_remove_worker_cleans_up_a_codex_seat_without_a_placement_record) ... ok
+2026-10-04T16:14:17.7231202Z test_remove_worker_closes_only_its_tab_in_the_pair_workspace (test_herdr_agents.HerdrAgentsTest.test_remove_worker_closes_only_its_tab_in_the_pair_workspace) ... ok
+2026-10-04T16:14:17.8224582Z test_remove_worker_despawns_then_turns_delivery_off_leaves_and_closes (test_herdr_agents.HerdrAgentsTest.test_remove_worker_despawns_then_turns_delivery_off_leaves_and_closes) ... ok
+2026-10-04T16:14:17.9268525Z test_remove_worker_force_retries_a_failed_graceful_despawn (test_herdr_agents.HerdrAgentsTest.test_remove_worker_force_retries_a_failed_graceful_despawn) ... ok
+2026-10-04T16:14:18.0257717Z test_remove_worker_force_skips_the_forced_despawn_when_graceful_succeeds (test_herdr_agents.HerdrAgentsTest.test_remove_worker_force_skips_the_forced_despawn_when_graceful_succeeds) ... ok
+2026-10-04T16:14:18.1322691Z test_remove_worker_forces_despawn_when_graceful_reports_needs_force (test_herdr_agents.HerdrAgentsTest.test_remove_worker_forces_despawn_when_graceful_reports_needs_force) ... ok
+2026-10-04T16:14:18.2387143Z test_remove_worker_keeps_a_worker_tab_that_holds_another_running_agent (test_herdr_agents.HerdrAgentsTest.test_remove_worker_keeps_a_worker_tab_that_holds_another_running_agent) ... ok
+2026-10-04T16:14:18.3027053Z test_remove_worker_refuses_a_dirty_worktree_without_force (test_herdr_agents.HerdrAgentsTest.test_remove_worker_refuses_a_dirty_worktree_without_force) ... ok
+2026-10-04T16:14:18.3816897Z test_remove_worker_stops_when_a_graceful_despawn_fails (test_herdr_agents.HerdrAgentsTest.test_remove_worker_stops_when_a_graceful_despawn_fails) ... ok
+2026-10-04T16:14:18.4738675Z test_remove_worker_stops_when_the_forced_retry_also_fails (test_herdr_agents.HerdrAgentsTest.test_remove_worker_stops_when_the_forced_retry_also_fails) ... ok
+2026-10-04T16:14:19.1968249Z test_restart_worker_confirms_the_exit_dialog_once (test_herdr_agents.HerdrAgentsTest.test_restart_worker_confirms_the_exit_dialog_once) ... ok
+2026-10-04T16:14:19.2457765Z test_restart_worker_exits_2_without_a_managed_workspace (test_herdr_agents.HerdrAgentsTest.test_restart_worker_exits_2_without_a_managed_workspace) ... ok
+2026-10-04T16:14:19.7748138Z test_restart_worker_finds_a_solo_codex_worker_seat (test_herdr_agents.HerdrAgentsTest.test_restart_worker_finds_a_solo_codex_worker_seat) ... ok
+2026-10-04T16:14:20.3153370Z test_restart_worker_finds_the_worker_by_its_seat_label (test_herdr_agents.HerdrAgentsTest.test_restart_worker_finds_the_worker_by_its_seat_label) ... ok
+2026-10-04T16:14:20.3608149Z test_restart_worker_never_treats_the_audit_pane_as_the_worker (test_herdr_agents.HerdrAgentsTest.test_restart_worker_never_treats_the_audit_pane_as_the_worker) ... ok
+2026-10-04T16:14:20.9078859Z test_restart_worker_passes_manifest_advisor_args_to_claude_worker (test_herdr_agents.HerdrAgentsTest.test_restart_worker_passes_manifest_advisor_args_to_claude_worker) ... ok
+2026-10-04T16:14:22.1558151Z test_restart_worker_refuses_to_start_outside_the_seat_when_the_pane_hangs (test_herdr_agents.HerdrAgentsTest.test_restart_worker_refuses_to_start_outside_the_seat_when_the_pane_hangs) ... ok
+2026-10-04T16:14:22.2462102Z test_restart_worker_refuses_unmanaged_extra_panes (test_herdr_agents.HerdrAgentsTest.test_restart_worker_refuses_unmanaged_extra_panes) ... ok
+2026-10-04T16:14:23.4599012Z test_restart_worker_refuses_when_the_pane_never_reaches_a_shell (test_herdr_agents.HerdrAgentsTest.test_restart_worker_refuses_when_the_pane_never_reaches_a_shell) ... ok
+2026-10-04T16:14:24.0115872Z test_restart_worker_relaunches_the_worker_in_its_existing_pane (test_herdr_agents.HerdrAgentsTest.test_restart_worker_relaunches_the_worker_in_its_existing_pane) ... ok
+2026-10-04T16:14:24.5725844Z test_restart_worker_repairs_a_legacy_orchestrator_label_on_the_worker_pane (test_herdr_agents.HerdrAgentsTest.test_restart_worker_repairs_a_legacy_orchestrator_label_on_the_worker_pane) ... ok
+2026-10-04T16:14:25.4348936Z test_restart_worker_reseats_a_main_path_worker_into_its_worktree (test_herdr_agents.HerdrAgentsTest.test_restart_worker_reseats_a_main_path_worker_into_its_worktree) ... ok
+2026-10-04T16:14:26.0487602Z test_restart_worker_waits_for_stale_registration_then_retries_once (test_herdr_agents.HerdrAgentsTest.test_restart_worker_waits_for_stale_registration_then_retries_once) ... ok
+2026-10-04T16:14:26.1129264Z test_seat_claim_fails_when_a_later_team_is_held_by_another_session (test_herdr_agents.HerdrAgentsTest.test_seat_claim_fails_when_a_later_team_is_held_by_another_session) ... ok
+2026-10-04T16:14:26.1661286Z test_seat_claim_held_by_another_session_fails_without_release (test_herdr_agents.HerdrAgentsTest.test_seat_claim_held_by_another_session_fails_without_release) ... ok
+2026-10-04T16:14:26.1732660Z test_seat_claim_keeps_a_same_session_composite_lock_of_a_live_claude (test_herdr_agents.HerdrAgentsTest.test_seat_claim_keeps_a_same_session_composite_lock_of_a_live_claude) ... coreutils: unknown program 'claude'
+2026-10-04T16:14:26.2334824Z ok
+2026-10-04T16:14:26.2902059Z test_seat_claim_replaces_a_same_session_bare_lock (test_herdr_agents.HerdrAgentsTest.test_seat_claim_replaces_a_same_session_bare_lock) ... ok
+2026-10-04T16:14:26.3568878Z test_seat_claim_replaces_a_same_session_composite_lock_of_a_dead_pid (test_herdr_agents.HerdrAgentsTest.test_seat_claim_replaces_a_same_session_composite_lock_of_a_dead_pid) ... ok
+2026-10-04T16:14:26.4244352Z test_seat_claim_replaces_a_same_session_composite_lock_of_a_recycled_pid (test_herdr_agents.HerdrAgentsTest.test_seat_claim_replaces_a_same_session_composite_lock_of_a_recycled_pid) ... ok
+2026-10-04T16:14:26.4953857Z test_seat_claim_replaces_same_session_bare_locks_in_every_team (test_herdr_agents.HerdrAgentsTest.test_seat_claim_replaces_same_session_bare_locks_in_every_team) ... ok
+2026-10-04T16:14:32.5008711Z test_session_start_attach_bounds_a_trickling_hook_payload (test_herdr_agents.HerdrAgentsTest.test_session_start_attach_bounds_a_trickling_hook_payload) ... ok
+2026-10-04T16:14:32.5474190Z test_session_start_attach_claims_the_seat_in_a_managed_pane (test_herdr_agents.HerdrAgentsTest.test_session_start_attach_claims_the_seat_in_a_managed_pane) ... ok
+2026-10-04T16:14:35.5513978Z test_session_start_attach_claims_when_the_hook_keeps_stdin_open (test_herdr_agents.HerdrAgentsTest.test_session_start_attach_claims_when_the_hook_keeps_stdin_open) ... ok
+2026-10-04T16:14:35.5911635Z test_session_start_attach_prints_no_directive_for_a_pane_that_is_not_the_orchestrator (test_herdr_agents.HerdrAgentsTest.test_session_start_attach_prints_no_directive_for_a_pane_that_is_not_the_orchestrator) ... ok
+2026-10-04T16:14:35.6880779Z test_session_start_attach_prints_the_regime_directive_with_a_worker_seat (test_herdr_agents.HerdrAgentsTest.test_session_start_attach_prints_the_regime_directive_with_a_worker_seat) ... ok
+2026-10-04T16:14:35.7402898Z test_session_start_attach_reads_the_hook_payload_and_herdr_pid (test_herdr_agents.HerdrAgentsTest.test_session_start_attach_reads_the_hook_payload_and_herdr_pid) ... ok
+2026-10-04T16:14:35.7797361Z test_session_start_attach_skips_a_pane_that_is_not_the_orchestrator (test_herdr_agents.HerdrAgentsTest.test_session_start_attach_skips_a_pane_that_is_not_the_orchestrator) ... ok
+2026-10-04T16:14:36.3239962Z test_start_keeps_node_global_without_mise_tool_install (test_herdr_agents.HerdrAgentsTest.test_start_keeps_node_global_without_mise_tool_install) ... ok
+2026-10-04T16:14:36.8670638Z test_start_removes_node_global_agent_clis_shadowing_mise (test_herdr_agents.HerdrAgentsTest.test_start_removes_node_global_agent_clis_shadowing_mise) ... ok
+2026-10-04T16:14:37.4036618Z test_start_skips_node_global_removal_without_stray (test_herdr_agents.HerdrAgentsTest.test_start_skips_node_global_removal_without_stray) ... ok
+2026-10-04T16:14:37.9307142Z test_successful_agent_start_does_not_poll_agent_list (test_herdr_agents.HerdrAgentsTest.test_successful_agent_start_does_not_poll_agent_list) ... ok
+2026-10-04T16:14:37.9896394Z test_two_self_named_pair_workspaces_still_refuse (test_herdr_agents.HerdrAgentsTest.test_two_self_named_pair_workspaces_still_refuse) ... ok
+2026-10-04T16:14:38.5155746Z test_uses_initial_workspace_pane_for_claude_and_splits_codex_right (test_herdr_agents.HerdrAgentsTest.test_uses_initial_workspace_pane_for_claude_and_splits_codex_right) ... ok
+2026-10-04T16:14:39.1007401Z test_worker_kind_claude_accepts_a_workspace_trust_dialog (test_herdr_agents.HerdrAgentsTest.test_worker_kind_claude_accepts_a_workspace_trust_dialog) ... ok
+2026-10-04T16:14:39.6788165Z test_worker_kind_claude_appends_extra_worker_args (test_herdr_agents.HerdrAgentsTest.test_worker_kind_claude_appends_extra_worker_args) ... ok
+2026-10-04T16:14:40.2561757Z test_worker_kind_claude_does_not_require_codex (test_herdr_agents.HerdrAgentsTest.test_worker_kind_claude_does_not_require_codex) ... ok
+2026-10-04T16:14:40.8370916Z test_worker_kind_claude_skips_send_keys_without_a_trust_dialog (test_herdr_agents.HerdrAgentsTest.test_worker_kind_claude_skips_send_keys_without_a_trust_dialog) ... ok
+2026-10-04T16:14:41.4170638Z test_worker_kind_claude_starts_a_claude_worker_pane_with_profile_args (test_herdr_agents.HerdrAgentsTest.test_worker_kind_claude_starts_a_claude_worker_pane_with_profile_args) ... ok
+2026-10-04T16:14:41.9939211Z test_worker_kind_claude_starts_with_no_resolved_args (test_herdr_agents.HerdrAgentsTest.test_worker_kind_claude_starts_with_no_resolved_args) ... ok
+2026-10-04T16:14:42.5734150Z test_worker_kind_defaults_to_generated_env_fragment (test_herdr_agents.HerdrAgentsTest.test_worker_kind_defaults_to_generated_env_fragment) ... ok
+2026-10-04T16:14:43.1026233Z test_worker_kind_env_override_wins_over_generated_env_fragment (test_herdr_agents.HerdrAgentsTest.test_worker_kind_env_override_wins_over_generated_env_fragment) ... ok
+2026-10-04T16:14:43.1077168Z test_worker_kind_rejects_an_unknown_value (test_herdr_agents.HerdrAgentsTest.test_worker_kind_rejects_an_unknown_value) ... ok
+2026-10-04T16:14:43.6383834Z test_worker_profile_defaults_to_generated_worker_profile (test_herdr_agents.HerdrAgentsTest.test_worker_profile_defaults_to_generated_worker_profile) ... ok
+2026-10-04T16:14:44.1707337Z test_worker_profile_env_override_wins_over_generated_worker_profile (test_herdr_agents.HerdrAgentsTest.test_worker_profile_env_override_wins_over_generated_worker_profile) ... ok
+2026-10-04T16:14:44.6982572Z test_worker_profile_env_takes_priority_over_deprecated_codex_alias (test_herdr_agents.HerdrAgentsTest.test_worker_profile_env_takes_priority_over_deprecated_codex_alias) ... ok
+2026-10-04T16:14:44.8122596Z test_worker_seat_ambiguity_leaves_no_worktree_behind (test_herdr_agents.HerdrAgentsTest.test_worker_seat_ambiguity_leaves_no_worktree_behind) ... ok
+2026-10-04T16:14:45.3398301Z test_worker_seat_is_skipped_in_a_non_git_directory (test_herdr_agents.HerdrAgentsTest.test_worker_seat_is_skipped_in_a_non_git_directory) ... ok
+2026-10-04T16:14:45.3851262Z test_worker_seat_is_skipped_in_an_unregistered_repository (test_herdr_agents.HerdrAgentsTest.test_worker_seat_is_skipped_in_an_unregistered_repository) ... ok
+2026-10-04T16:14:45.4422756Z test_worker_seat_is_skipped_outside_a_git_main_checkout (test_herdr_agents.HerdrAgentsTest.test_worker_seat_is_skipped_outside_a_git_main_checkout) ... ok
+2026-10-04T16:14:45.5039171Z test_worker_seat_label_comes_from_the_worker_worktree_registration (test_herdr_agents.HerdrAgentsTest.test_worker_seat_label_comes_from_the_worker_worktree_registration) ... ok
+2026-10-04T16:14:45.6033228Z test_worker_seat_refuses_a_path_that_is_not_a_worktree (test_herdr_agents.HerdrAgentsTest.test_worker_seat_refuses_a_path_that_is_not_a_worktree) ... ok
+2026-10-04T16:14:45.7167346Z test_worker_seat_refuses_an_ambiguous_orchestrator_identity (test_herdr_agents.HerdrAgentsTest.test_worker_seat_refuses_an_ambiguous_orchestrator_identity) ... ok
+2026-10-04T16:14:46.5159170Z test_worker_seat_reuses_the_identity_and_hook_already_at_the_worktree (test_herdr_agents.HerdrAgentsTest.test_worker_seat_reuses_the_identity_and_hook_already_at_the_worktree) ... ok
+2026-10-04T16:14:46.5244693Z test_yazi_edit_opener_prefers_zed_with_editor_fallback (test_herdr_agents.HerdrAgentsTest.test_yazi_edit_opener_prefers_zed_with_editor_fallback) ... ok
+2026-10-04T16:14:46.5251867Z test_zprofile_adds_common_bin_to_login_shell_path (test_herdr_agents.HerdrAgentsTest.test_zprofile_adds_common_bin_to_login_shell_path) ... ok
+2026-10-04T16:14:46.5482502Z test_allow_pattern_rejects_shell_chaining (test_permgate.PermgateTest.test_allow_pattern_rejects_shell_chaining) ... ok
+2026-10-04T16:14:46.5709612Z test_apply_patch_is_never_deterministically_allowed (test_permgate.PermgateTest.test_apply_patch_is_never_deterministically_allowed) ... ok
+2026-10-04T16:14:46.6390831Z test_bash_credentials_fall_through_without_logging_them (test_permgate.PermgateTest.test_bash_credentials_fall_through_without_logging_them) ... ok
+2026-10-04T16:14:46.7807987Z test_claude_and_codex_hook_outputs_match_golden_bytes (test_permgate.PermgateTest.test_claude_and_codex_hook_outputs_match_golden_bytes) ... ok
+2026-10-04T16:14:46.8041321Z test_git_diff_output_option_is_never_automatically_allowed (test_permgate.PermgateTest.test_git_diff_output_option_is_never_automatically_allowed) ... ok
+2026-10-04T16:14:46.8493646Z test_invalid_policy_fields_fail_closed (test_permgate.PermgateTest.test_invalid_policy_fields_fail_closed) ... ok
+2026-10-04T16:14:46.9405057Z test_invalid_policy_returns_ask_and_logs_config_error (test_permgate.PermgateTest.test_invalid_policy_returns_ask_and_logs_config_error) ... ok
+2026-10-04T16:14:46.9867250Z test_layer_one_allows_documented_claude_and_codex_contracts (test_permgate.PermgateTest.test_layer_one_allows_documented_claude_and_codex_contracts) ... ok
+2026-10-04T16:14:47.0315981Z test_layer_one_deny_uses_both_hook_output_schemas (test_permgate.PermgateTest.test_layer_one_deny_uses_both_hook_output_schemas) ... ok
+2026-10-04T16:14:47.0540020Z test_log_shape_redacts_command_and_output (test_permgate.PermgateTest.test_log_shape_redacts_command_and_output) ... ok
+2026-10-04T16:14:47.3454454Z test_mutating_or_executable_read_options_fall_through (test_permgate.PermgateTest.test_mutating_or_executable_read_options_fall_through) ... ok
+2026-10-04T16:14:47.3695638Z test_recursion_sentinel_is_a_complete_no_op (test_permgate.PermgateTest.test_recursion_sentinel_is_a_complete_no_op) ... ok
+2026-10-04T16:14:47.4185178Z test_repository_policy_allows_and_falls_through (test_permgate.PermgateTest.test_repository_policy_allows_and_falls_through) ... ok
+2026-10-04T16:14:47.4671574Z test_script_named_version_is_not_a_version_check (test_permgate.PermgateTest.test_script_named_version_is_not_a_version_check) ... ok
+2026-10-04T16:14:47.4903890Z test_structured_secret_is_redacted_from_the_summary (test_permgate.PermgateTest.test_structured_secret_is_redacted_from_the_summary) ... ok
+2026-10-04T16:14:47.6238754Z test_unconstrained_native_reads_fall_through (test_permgate.PermgateTest.test_unconstrained_native_reads_fall_through) ... ok
+2026-10-04T16:14:47.6465283Z test_undecided_request_falls_through_to_the_native_prompt (test_permgate.PermgateTest.test_undecided_request_falls_through_to_the_native_prompt) ... ok
+2026-10-04T16:14:47.6486592Z test_annotations_keep_every_level_even_on_passing_checks (test_pr_feedback.PrFeedbackTest.test_annotations_keep_every_level_even_on_passing_checks) ... ok
+2026-10-04T16:14:47.6502151Z test_bots_are_detected_from_type_login_or_app (test_pr_feedback.PrFeedbackTest.test_bots_are_detected_from_type_login_or_app) ... ok
+2026-10-04T16:14:47.6516306Z test_collects_every_feedback_source_for_the_head (test_pr_feedback.PrFeedbackTest.test_collects_every_feedback_source_for_the_head) ... ok
+2026-10-04T16:14:47.6530457Z test_collects_the_github_base_with_the_head (test_pr_feedback.PrFeedbackTest.test_collects_the_github_base_with_the_head) ... ok
+2026-10-04T16:14:47.6544765Z test_commit_status_keeps_the_latest_state_per_context (test_pr_feedback.PrFeedbackTest.test_commit_status_keeps_the_latest_state_per_context) ... ok
+2026-10-04T16:14:47.6559351Z test_every_item_carries_the_disposition_schema (test_pr_feedback.PrFeedbackTest.test_every_item_carries_the_disposition_schema) ... ok
+2026-10-04T16:14:47.6577566Z test_gh_never_receives_forced_colour (test_pr_feedback.PrFeedbackTest.test_gh_never_receives_forced_colour) ... ok
+2026-10-04T16:14:47.6594199Z test_graphql_strings_are_raw_and_only_integers_are_typed (test_pr_feedback.PrFeedbackTest.test_graphql_strings_are_raw_and_only_integers_are_typed) ... ok
+2026-10-04T16:14:47.6615211Z test_main_writes_the_document_to_json (test_pr_feedback.PrFeedbackTest.test_main_writes_the_document_to_json) ... ok
+2026-10-04T16:14:47.6629693Z test_only_non_passing_check_runs_become_items (test_pr_feedback.PrFeedbackTest.test_only_non_passing_check_runs_become_items) ... ok
+2026-10-04T16:14:47.6644182Z test_review_comments_carry_thread_resolution_across_pages (test_pr_feedback.PrFeedbackTest.test_review_comments_carry_thread_resolution_across_pages) ... ok
+2026-10-04T16:14:47.6658239Z test_thread_state_covers_comments_beyond_the_first_page (test_pr_feedback.PrFeedbackTest.test_thread_state_covers_comments_beyond_the_first_page) ... ok
+2026-10-04T16:14:47.6675116Z test_unauthenticated_gh_exits_non_zero (test_pr_feedback.PrFeedbackTest.test_unauthenticated_gh_exits_non_zero) ... ok
+2026-10-04T16:14:47.6679224Z test_rule_mirrors_and_skills_carry_the_same_requirements (test_pr_feedback.PrIntegrationRuleParityTest.test_rule_mirrors_and_skills_carry_the_same_requirements) ... ok
+2026-10-04T16:14:47.6680075Z test_rule_symlink_points_at_the_rule (test_pr_feedback.PrIntegrationRuleParityTest.test_rule_symlink_points_at_the_rule) ... ok
+2026-10-04T16:14:47.7942873Z test_bump_writes_only_the_five_pins_through_set_asset (test_release_asset_pins.ReleaseAssetPinsTest.test_bump_writes_only_the_five_pins_through_set_asset) ... ok
+2026-10-04T16:14:47.8058452Z test_window_never_moves_a_pin_backwards (test_release_asset_pins.ReleaseAssetPinsTest.test_window_never_moves_a_pin_backwards) ... ok
+2026-10-04T16:14:47.8103244Z test_window_rejects_an_unknown_current_pin (test_release_asset_pins.ReleaseAssetPinsTest.test_window_rejects_an_unknown_current_pin) ... ok
+2026-10-04T16:14:47.8248665Z test_window_skips_a_young_release_and_takes_an_older_one (test_release_asset_pins.ReleaseAssetPinsTest.test_window_skips_a_young_release_and_takes_an_older_one) ... ok
+2026-10-04T16:14:47.9637964Z test_all_paths_are_preflighted_before_any_deletion (test_remove_agent_asset.RemoveAgentAssetTest.test_all_paths_are_preflighted_before_any_deletion) ... ok
+2026-10-04T16:14:47.9809438Z test_brew_refuses_ambiguous_formula (test_remove_agent_asset.RemoveAgentAssetTest.test_brew_refuses_ambiguous_formula) ... ok
+2026-10-04T16:14:48.0077868Z test_brew_uses_uninstall_for_unambiguous_formula (test_remove_agent_asset.RemoveAgentAssetTest.test_brew_uses_uninstall_for_unambiguous_formula) ... ok
+2026-10-04T16:14:48.2966230Z test_crit_plugin_falls_back_to_data_path_but_not_config (test_remove_agent_asset.RemoveAgentAssetTest.test_crit_plugin_falls_back_to_data_path_but_not_config) ... ok
+2026-10-04T16:14:48.4486419Z test_default_and_explicit_dry_run_print_without_mutating (test_remove_agent_asset.RemoveAgentAssetTest.test_default_and_explicit_dry_run_print_without_mutating) ... ok
+2026-10-04T16:14:48.4829671Z test_integration_uses_verified_herdr_uninstall (test_remove_agent_asset.RemoveAgentAssetTest.test_integration_uses_verified_herdr_uninstall) ... ok
+2026-10-04T16:14:48.4948314Z test_invalid_manifest_is_rejected (test_remove_agent_asset.RemoveAgentAssetTest.test_invalid_manifest_is_rejected) ... ok
+2026-10-04T16:14:48.6553080Z test_parameterized_step_removal_preserves_sibling_identity (test_remove_agent_asset.RemoveAgentAssetTest.test_parameterized_step_removal_preserves_sibling_identity) ... ok
+2026-10-04T16:14:48.6987237Z test_plugin_uses_verified_claude_uninstall (test_remove_agent_asset.RemoveAgentAssetTest.test_plugin_uses_verified_claude_uninstall) ... ok
+2026-10-04T16:14:48.7147544Z test_plugin_uses_verified_codex_remove (test_remove_agent_asset.RemoveAgentAssetTest.test_plugin_uses_verified_codex_remove) ... ok
+2026-10-04T16:14:48.8010377Z test_recorded_symlink_is_removed_without_following_target (test_remove_agent_asset.RemoveAgentAssetTest.test_recorded_symlink_is_removed_without_following_target) ... ok
+2026-10-04T16:14:48.9113644Z test_tampered_manifest_outside_safe_roots_is_refused (test_remove_agent_asset.RemoveAgentAssetTest.test_tampered_manifest_outside_safe_roots_is_refused) ... ok
+2026-10-04T16:14:48.9200084Z test_unknown_step_lists_known_steps_without_guessing (test_remove_agent_asset.RemoveAgentAssetTest.test_unknown_step_lists_known_steps_without_guessing) ... ok
+2026-10-04T16:14:49.0052209Z test_yes_removes_only_recorded_path_and_preserves_other_steps (test_remove_agent_asset.RemoveAgentAssetTest.test_yes_removes_only_recorded_path_and_preserves_other_steps) ... ok
+2026-10-04T16:14:49.1597751Z test_advanced_base_cannot_delete_collector_to_trigger_head_fallback (test_require_crit_review.ReviewGuardTest.test_advanced_base_cannot_delete_collector_to_trigger_head_fallback) ... ok
+2026-10-04T16:14:49.3047855Z test_advanced_base_cannot_supply_an_untrusted_collector (test_require_crit_review.ReviewGuardTest.test_advanced_base_cannot_supply_an_untrusted_collector) ... ok
+2026-10-04T16:14:49.3705297Z test_agent_lifecycle_script_change_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_lifecycle_script_change_requires_review) ... ok
+2026-10-04T16:14:49.6493791Z test_agent_lifecycle_surfaces_require_review (test_require_crit_review.ReviewGuardTest.test_agent_lifecycle_surfaces_require_review) ... ok
+2026-10-04T16:14:49.7656031Z test_agent_lifecycle_tokens_require_review (test_require_crit_review.ReviewGuardTest.test_agent_lifecycle_tokens_require_review) ... ok
+2026-10-04T16:14:50.4628166Z test_agent_reviewer_rejects_empty_or_malformed_crit_data (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_rejects_empty_or_malformed_crit_data) ... ok
+2026-10-04T16:14:50.5274846Z test_agent_reviewer_rejects_invalid_review_outcome (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_rejects_invalid_review_outcome) ... ok
+2026-10-04T16:14:50.5922844Z test_agent_reviewer_with_command_string_source_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_command_string_source_still_requires_review) ... ok
+2026-10-04T16:14:50.6563015Z test_agent_reviewer_with_crit_data_satisfies_required_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_crit_data_satisfies_required_review) ... ok
+2026-10-04T16:14:50.7218906Z test_agent_reviewer_with_crit_reviewed_marker_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_crit_reviewed_marker_still_requires_review) ... ok
+2026-10-04T16:14:50.7858977Z test_agent_reviewer_with_external_crit_json_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_external_crit_json_still_requires_review) ... ok
+2026-10-04T16:14:50.8494721Z test_agent_reviewer_with_non_review_crit_json_object_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_non_review_crit_json_object_still_requires_review) ... ok
+2026-10-04T16:14:50.9143662Z test_agent_reviewer_with_resolved_line_comment_satisfies_required_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_resolved_line_comment_satisfies_required_review) ... ok
+2026-10-04T16:14:50.9794125Z test_agent_reviewer_with_unresolved_crit_json_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_reviewer_with_unresolved_crit_json_still_requires_review) ... ok
+2026-10-04T16:14:51.0428785Z test_agent_self_review_flag_evidence_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_self_review_flag_evidence_still_requires_review) ... ok
+2026-10-04T16:14:51.1053454Z test_agent_self_reviewer_evidence_still_requires_review (test_require_crit_review.ReviewGuardTest.test_agent_self_reviewer_evidence_still_requires_review) ... ok
+2026-10-04T16:14:51.6112464Z test_audit_must_name_head_and_live_under_validation (test_require_crit_review.ReviewGuardTest.test_audit_must_name_head_and_live_under_validation) ... ok
+2026-10-04T16:14:51.7363921Z test_base_accepts_a_correct_audit_of_head (test_require_crit_review.ReviewGuardTest.test_base_accepts_a_correct_audit_of_head) ... ok
+2026-10-04T16:14:51.9706626Z test_base_accepts_exact_and_advanced_base_with_unchanged_merge_base (test_require_crit_review.ReviewGuardTest.test_base_accepts_exact_and_advanced_base_with_unchanged_merge_base) ... ok
+2026-10-04T16:14:52.2233590Z test_base_fails_closed_when_github_metadata_is_unavailable (test_require_crit_review.ReviewGuardTest.test_base_fails_closed_when_github_metadata_is_unavailable) ... ok
+2026-10-04T16:14:52.3738089Z test_base_fails_closed_when_unresolvable_or_option_like (test_require_crit_review.ReviewGuardTest.test_base_fails_closed_when_unresolvable_or_option_like) ... ok
+2026-10-04T16:14:52.6285981Z test_base_rejects_forged_evidence_metadata (test_require_crit_review.ReviewGuardTest.test_base_rejects_forged_evidence_metadata) ... ok
+2026-10-04T16:14:52.9000403Z test_base_rejects_pr_commits_before_executing_their_collector (test_require_crit_review.ReviewGuardTest.test_base_rejects_pr_commits_before_executing_their_collector) ... ok
+2026-10-04T16:14:53.0972958Z test_base_rejects_side_branch_and_advanced_base_containing_pr_commits (test_require_crit_review.ReviewGuardTest.test_base_rejects_side_branch_and_advanced_base_containing_pr_commits) ... ok
+2026-10-04T16:14:53.2192569Z test_base_requires_audit_evidence_for_a_reviewed_change (test_require_crit_review.ReviewGuardTest.test_base_requires_audit_evidence_for_a_reviewed_change) ... ok
+2026-10-04T16:14:53.2748575Z test_base_requires_pr_feedback_evidence (test_require_crit_review.ReviewGuardTest.test_base_requires_pr_feedback_evidence) ... ok
+2026-10-04T16:14:53.4364015Z test_base_reviews_committed_branch_changes (test_require_crit_review.ReviewGuardTest.test_base_reviews_committed_branch_changes) ... ok
+2026-10-04T16:14:53.6873359Z test_blocked_or_missing_audit_verdict_fails (test_require_crit_review.ReviewGuardTest.test_blocked_or_missing_audit_verdict_fails) ... ok
+2026-10-04T16:14:53.7469520Z test_broad_diff_requires_review (test_require_crit_review.ReviewGuardTest.test_broad_diff_requires_review) ... ok
+2026-10-04T16:14:53.8675775Z test_broad_orchestration_only_pr_needs_no_audit (test_require_crit_review.ReviewGuardTest.test_broad_orchestration_only_pr_needs_no_audit) ... ok
+2026-10-04T16:14:54.2312116Z test_companion_must_be_this_audits_own_last_message (test_require_crit_review.ReviewGuardTest.test_companion_must_be_this_audits_own_last_message) ... ok
+2026-10-04T16:14:54.2805153Z test_explicit_disable_skips_guard (test_require_crit_review.ReviewGuardTest.test_explicit_disable_skips_guard) ... ok
+2026-10-04T16:14:54.3439562Z test_feedback_accepts_absolute_path_through_a_repository_parent_alias (test_require_crit_review.ReviewGuardTest.test_feedback_accepts_absolute_path_through_a_repository_parent_alias) ... ok
+2026-10-04T16:14:54.5378151Z test_feedback_cannot_hide_an_arbitrary_path_without_base (test_require_crit_review.ReviewGuardTest.test_feedback_cannot_hide_an_arbitrary_path_without_base) ... ok
+2026-10-04T16:14:54.6039479Z test_feedback_does_not_exclude_symlink_aliases_outside_validation (test_require_crit_review.ReviewGuardTest.test_feedback_does_not_exclude_symlink_aliases_outside_validation) ... ok
+2026-10-04T16:14:54.6613409Z test_feedback_path_itself_must_be_under_validation (test_require_crit_review.ReviewGuardTest.test_feedback_path_itself_must_be_under_validation) ... ok
+2026-10-04T16:14:54.7196589Z test_feedback_symlink_cannot_hide_a_file_outside_validation (test_require_crit_review.ReviewGuardTest.test_feedback_symlink_cannot_hide_a_file_outside_validation) ... ok
+2026-10-04T16:14:54.8487205Z test_fixed_commit_is_checked_against_github_base_not_an_older_side_parent (test_require_crit_review.ReviewGuardTest.test_fixed_commit_is_checked_against_github_base_not_an_older_side_parent) ... ok
+2026-10-04T16:14:54.9669630Z test_github_lookup_ignores_environment_repository_override (test_require_crit_review.ReviewGuardTest.test_github_lookup_ignores_environment_repository_override) ... ok
+2026-10-04T16:14:55.0492906Z test_github_lookup_rejects_evidence_from_another_repository (test_require_crit_review.ReviewGuardTest.test_github_lookup_rejects_evidence_from_another_repository) ... ok
+2026-10-04T16:14:55.1108853Z test_high_risk_markdown_change_requires_review (test_require_crit_review.ReviewGuardTest.test_high_risk_markdown_change_requires_review) ... ok
+2026-10-04T16:14:56.1103347Z test_incorrect_audit_needs_not_applicable_dispositions (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_needs_not_applicable_dispositions) ... ok
+2026-10-04T16:14:56.2318965Z test_incorrect_audit_without_findings_fails (test_require_crit_review.ReviewGuardTest.test_incorrect_audit_without_findings_fails) ... ok
+2026-10-04T16:14:56.2910852Z test_large_untracked_file_requires_broad_diff_review (test_require_crit_review.ReviewGuardTest.test_large_untracked_file_requires_broad_diff_review) ... ok
+2026-10-04T16:14:56.4955351Z test_missing_base_collector_falls_back_only_after_binding (test_require_crit_review.ReviewGuardTest.test_missing_base_collector_falls_back_only_after_binding) ... ok
+2026-10-04T16:14:56.5541415Z test_native_reviewed_environment_rejects_human_reviewer (test_require_crit_review.ReviewGuardTest.test_native_reviewed_environment_rejects_human_reviewer) ... ok
+2026-10-04T16:14:56.6155665Z test_native_reviewed_without_evidence_still_requires_review (test_require_crit_review.ReviewGuardTest.test_native_reviewed_without_evidence_still_requires_review) ... ok
+2026-10-04T16:14:56.6719500Z test_no_diff_does_not_require_review (test_require_crit_review.ReviewGuardTest.test_no_diff_does_not_require_review) ... ok
+2026-10-04T16:14:56.9763425Z test_older_base_must_not_be_on_the_head_first_parent_chain (test_require_crit_review.ReviewGuardTest.test_older_base_must_not_be_on_the_head_first_parent_chain) ... ok
+2026-10-04T16:14:57.0888663Z test_orchestration_only_pr_needs_no_audit (test_require_crit_review.ReviewGuardTest.test_orchestration_only_pr_needs_no_audit) ... ok
+2026-10-04T16:14:57.2047064Z test_pr_feedback_accepts_complete_evidence_without_a_bot_review (test_require_crit_review.ReviewGuardTest.test_pr_feedback_accepts_complete_evidence_without_a_bot_review) ... ok
+2026-10-04T16:14:57.3284659Z test_pr_feedback_accepts_complete_root_cause_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_accepts_complete_root_cause_dispositions) ... ok
+2026-10-04T16:14:58.2942837Z test_pr_feedback_bodies_are_compared_after_secret_masking (test_require_crit_review.ReviewGuardTest.test_pr_feedback_bodies_are_compared_after_secret_masking) ... ok
+2026-10-04T16:14:58.4067034Z test_pr_feedback_evidence_file_is_not_counted_as_a_change (test_require_crit_review.ReviewGuardTest.test_pr_feedback_evidence_file_is_not_counted_as_a_change) ... ok
+2026-10-04T16:14:58.5116286Z test_pr_feedback_fails_when_the_collector_cannot_run (test_require_crit_review.ReviewGuardTest.test_pr_feedback_fails_when_the_collector_cannot_run) ... ok
+2026-10-04T16:14:58.7317287Z test_pr_feedback_fixed_commit_must_be_in_the_pr_range (test_require_crit_review.ReviewGuardTest.test_pr_feedback_fixed_commit_must_be_in_the_pr_range) ... ok
+2026-10-04T16:14:59.1528395Z test_pr_feedback_matches_a_masked_path_but_not_an_edited_one (test_require_crit_review.ReviewGuardTest.test_pr_feedback_matches_a_masked_path_but_not_an_edited_one) ... ok
+2026-10-04T16:14:59.2561651Z test_pr_feedback_must_be_collected_for_the_current_head (test_require_crit_review.ReviewGuardTest.test_pr_feedback_must_be_collected_for_the_current_head) ... ok
+2026-10-04T16:14:59.4804879Z test_pr_feedback_must_cover_every_currently_collected_item (test_require_crit_review.ReviewGuardTest.test_pr_feedback_must_cover_every_currently_collected_item) ... ok
+2026-10-04T16:14:59.5384503Z test_pr_feedback_rejects_evidence_outside_the_repository (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_evidence_outside_the_repository) ... ok
+2026-10-04T16:15:00.1558153Z test_pr_feedback_rejects_incomplete_or_invalid_dispositions (test_require_crit_review.ReviewGuardTest.test_pr_feedback_rejects_incomplete_or_invalid_dispositions) ... ok
+2026-10-04T16:15:00.2684581Z test_pr_feedback_requires_the_github_head_to_match (test_require_crit_review.ReviewGuardTest.test_pr_feedback_requires_the_github_head_to_match) ... ok
+2026-10-04T16:15:00.3983029Z test_pr_feedback_uses_the_base_collector_not_the_prs_own (test_require_crit_review.ReviewGuardTest.test_pr_feedback_uses_the_base_collector_not_the_prs_own) ... ok
+2026-10-04T16:15:00.4641894Z test_pr_feedback_without_base_is_only_format_checked (test_require_crit_review.ReviewGuardTest.test_pr_feedback_without_base_is_only_format_checked) ... ok
+2026-10-04T16:15:00.5805938Z test_recollection_must_match_the_authenticated_repository (test_require_crit_review.ReviewGuardTest.test_recollection_must_match_the_authenticated_repository) ... ok
+2026-10-04T16:15:00.6486738Z test_reviewed_environment_satisfies_required_review (test_require_crit_review.ReviewGuardTest.test_reviewed_environment_satisfies_required_review) ... ok
+2026-10-04T16:15:00.7149657Z test_reviewed_with_blank_evidence_values_still_requires_review (test_require_crit_review.ReviewGuardTest.test_reviewed_with_blank_evidence_values_still_requires_review) ... ok
+2026-10-04T16:15:00.7783288Z test_reviewed_with_incomplete_evidence_still_requires_review (test_require_crit_review.ReviewGuardTest.test_reviewed_with_incomplete_evidence_still_requires_review) ... ok
+2026-10-04T16:15:00.8381939Z test_small_docs_only_change_does_not_require_review (test_require_crit_review.ReviewGuardTest.test_small_docs_only_change_does_not_require_review) ... ok
+2026-10-04T16:15:01.2339179Z test_verdict_comes_only_from_the_last_message_file (test_require_crit_review.ReviewGuardTest.test_verdict_comes_only_from_the_last_message_file) ... ok
+2026-10-04T16:15:02.8954340Z test_agent_asset_update_removes_node_global_shadows_before_agent_commands (test_runtime_health.RuntimeHealthTest.test_agent_asset_update_removes_node_global_shadows_before_agent_commands) ... ok
+2026-10-04T16:15:04.5186632Z test_agent_asset_update_repairs_broken_claude_with_npm_backend (test_runtime_health.RuntimeHealthTest.test_agent_asset_update_repairs_broken_claude_with_npm_backend) ... ok
+2026-10-04T16:15:04.5249216Z test_agent_asset_update_runs_gh_extension_ensure (test_runtime_health.RuntimeHealthTest.test_agent_asset_update_runs_gh_extension_ensure) ... ok
+2026-10-04T16:15:04.5527588Z test_agent_fanout_applies_profile_args_from_generated_fragment (test_runtime_health.RuntimeHealthTest.test_agent_fanout_applies_profile_args_from_generated_fragment) ... ok
+2026-10-04T16:15:04.5829525Z test_agent_fanout_preserves_caller_umask_for_child_agents (test_runtime_health.RuntimeHealthTest.test_agent_fanout_preserves_caller_umask_for_child_agents) ... ok
+2026-10-04T16:15:04.5915637Z test_agent_fanout_refuses_symlink_artifacts (test_runtime_health.RuntimeHealthTest.test_agent_fanout_refuses_symlink_artifacts) ... ok
+2026-10-04T16:15:04.6119809Z test_agent_fanout_restricts_preexisting_output_artifacts (test_runtime_health.RuntimeHealthTest.test_agent_fanout_restricts_preexisting_output_artifacts) ... ok
+2026-10-04T16:15:04.6123870Z test_agent_launchers_do_not_hardcode_model_ids (test_runtime_health.RuntimeHealthTest.test_agent_launchers_do_not_hardcode_model_ids) ... ok
+2026-10-04T16:15:04.6456431Z test_agent_runs_are_private_and_ignored (test_runtime_health.RuntimeHealthTest.test_agent_runs_are_private_and_ignored) ... ok
+2026-10-04T16:15:04.7856963Z test_agmsg_accepts_a_store_the_installer_creates_and_notes_run_changes (test_runtime_health.RuntimeHealthTest.test_agmsg_accepts_a_store_the_installer_creates_and_notes_run_changes) ... ok
+2026-10-04T16:15:04.8266972Z test_agmsg_already_pinned_skips_download (test_runtime_health.RuntimeHealthTest.test_agmsg_already_pinned_skips_download) ... ok
+2026-10-04T16:15:04.8824943Z test_agmsg_checksum_mismatch_fails_closed (test_runtime_health.RuntimeHealthTest.test_agmsg_checksum_mismatch_fails_closed) ... ok
+2026-10-04T16:15:04.9759051Z test_agmsg_fresh_install_populates_skill_and_records_manifest (test_runtime_health.RuntimeHealthTest.test_agmsg_fresh_install_populates_skill_and_records_manifest) ... ok
+2026-10-04T16:15:05.1129809Z test_agmsg_migrates_marker_less_legacy_dir_without_losing_live_state (test_runtime_health.RuntimeHealthTest.test_agmsg_migrates_marker_less_legacy_dir_without_losing_live_state) ... ok
+2026-10-04T16:15:05.2182097Z test_agmsg_migration_reports_an_installer_that_mutates_live_state (test_runtime_health.RuntimeHealthTest.test_agmsg_migration_reports_an_installer_that_mutates_live_state) ... ok
+2026-10-04T16:15:05.2685240Z test_agmsg_refuses_to_install_when_the_state_snapshot_is_empty (test_runtime_health.RuntimeHealthTest.test_agmsg_refuses_to_install_when_the_state_snapshot_is_empty) ... ok
+2026-10-04T16:15:05.3742195Z test_agmsg_refuses_to_install_without_tar (test_runtime_health.RuntimeHealthTest.test_agmsg_refuses_to_install_without_tar) ... ok
+2026-10-04T16:15:05.4663374Z test_agmsg_reports_an_installer_that_leaves_the_wrong_version (test_runtime_health.RuntimeHealthTest.test_agmsg_reports_an_installer_that_leaves_the_wrong_version) ... ok
+2026-10-04T16:15:05.5721758Z test_agmsg_update_aborts_when_install_corrupts_live_state (test_runtime_health.RuntimeHealthTest.test_agmsg_update_aborts_when_install_corrupts_live_state) ... ok
+2026-10-04T16:15:05.7067190Z test_agmsg_update_never_touches_teams_db_run (test_runtime_health.RuntimeHealthTest.test_agmsg_update_never_touches_teams_db_run) ... ok
+2026-10-04T16:15:05.8399318Z test_client_bashrc_treats_private_sources_as_optional (test_runtime_health.RuntimeHealthTest.test_client_bashrc_treats_private_sources_as_optional) ... ok
+2026-10-04T16:15:05.8536106Z test_codex_crit_normalizes_managed_marketplace_mode (test_runtime_health.RuntimeHealthTest.test_codex_crit_normalizes_managed_marketplace_mode) ... ok
+2026-10-04T16:15:05.8607125Z test_codex_superpowers_reports_login_step_when_curated_catalog_is_missing (test_runtime_health.RuntimeHealthTest.test_codex_superpowers_reports_login_step_when_curated_catalog_is_missing) ... ok
+2026-10-04T16:15:05.9014013Z test_darwin_crit_checksum_failure_preserves_existing_binary (test_runtime_health.RuntimeHealthTest.test_darwin_crit_checksum_failure_preserves_existing_binary) ... ok
+2026-10-04T16:15:05.9702208Z test_darwin_crit_install_is_pinned_atomic_and_recorded (test_runtime_health.RuntimeHealthTest.test_darwin_crit_install_is_pinned_atomic_and_recorded) ... ok
+2026-10-04T16:15:05.9787579Z test_doctor_reports_claude_sandbox_prerequisites (test_runtime_health.RuntimeHealthTest.test_doctor_reports_claude_sandbox_prerequisites) ... ok
+2026-10-04T16:15:06.4205482Z test_doctor_required_optional_and_healthy_statuses (test_runtime_health.RuntimeHealthTest.test_doctor_required_optional_and_healthy_statuses) ... ok
+2026-10-04T16:15:06.4602185Z test_linux_crit_checksum_failure_preserves_existing_binary (test_runtime_health.RuntimeHealthTest.test_linux_crit_checksum_failure_preserves_existing_binary) ... ok
+2026-10-04T16:15:06.4974629Z test_linux_crit_correct_version_is_download_free (test_runtime_health.RuntimeHealthTest.test_linux_crit_correct_version_is_download_free) ... ok
+2026-10-04T16:15:06.5361479Z test_linux_crit_failure_does_not_leak_cleanup_trap (test_runtime_health.RuntimeHealthTest.test_linux_crit_failure_does_not_leak_cleanup_trap) ... ok
+2026-10-04T16:15:06.6022876Z test_linux_crit_install_is_pinned_atomic_and_recorded (test_runtime_health.RuntimeHealthTest.test_linux_crit_install_is_pinned_atomic_and_recorded) ... ok
+2026-10-04T16:15:06.6406789Z test_linux_crit_prefers_pinned_target_over_older_path_binary (test_runtime_health.RuntimeHealthTest.test_linux_crit_prefers_pinned_target_over_older_path_binary) ... ok
+2026-10-04T16:15:06.7398305Z test_make_doctor_does_not_skip_runtime_check_when_deployed_root_is_missing (test_runtime_health.RuntimeHealthTest.test_make_doctor_does_not_skip_runtime_check_when_deployed_root_is_missing) ... ok
+2026-10-04T16:15:06.8382790Z test_make_doctor_passes_repair_variable_to_runtime_check (test_runtime_health.RuntimeHealthTest.test_make_doctor_passes_repair_variable_to_runtime_check) ... ok
+2026-10-04T16:15:07.0390986Z test_make_doctor_propagates_runtime_drift_after_tool_checks (test_runtime_health.RuntimeHealthTest.test_make_doctor_propagates_runtime_drift_after_tool_checks) ... ok
+2026-10-04T16:15:07.0581708Z test_make_update_pulls_clean_main_before_apply (test_runtime_health.RuntimeHealthTest.test_make_update_pulls_clean_main_before_apply) ... ok
+2026-10-04T16:15:07.0740499Z test_make_update_reports_unmerged_feature_branch_before_branch_notice (test_runtime_health.RuntimeHealthTest.test_make_update_reports_unmerged_feature_branch_before_branch_notice) ... ok
+2026-10-04T16:15:07.0899374Z test_make_update_reports_unmerged_index_before_dirty_notice (test_runtime_health.RuntimeHealthTest.test_make_update_reports_unmerged_index_before_dirty_notice) ... ok
+2026-10-04T16:15:07.1067895Z test_make_update_skips_dirty_main_with_manual_pull_notice (test_runtime_health.RuntimeHealthTest.test_make_update_skips_dirty_main_with_manual_pull_notice) ... ok
+2026-10-04T16:15:08.3115794Z test_upgrade_applies_mise_only_from_successful_canonical_checkout (test_runtime_health.RuntimeHealthTest.test_upgrade_applies_mise_only_from_successful_canonical_checkout) ... ok
+2026-10-04T16:15:08.5988822Z test_upgrade_bumps_terminal_and_crit_pins_from_fetched_artifacts (test_runtime_health.RuntimeHealthTest.test_upgrade_bumps_terminal_and_crit_pins_from_fetched_artifacts) ... ok
+2026-10-04T16:15:09.2154729Z test_upgrade_changes_checkout_not_live_mise_symlink_target (test_runtime_health.RuntimeHealthTest.test_upgrade_changes_checkout_not_live_mise_symlink_target) ... ok
+2026-10-04T16:15:09.5058747Z test_upgrade_github_extensions_are_warning_only (test_runtime_health.RuntimeHealthTest.test_upgrade_github_extensions_are_warning_only) ... ok
+2026-10-04T16:15:09.7966549Z test_upgrade_reports_ccr_adoption_gate_values (test_runtime_health.RuntimeHealthTest.test_upgrade_reports_ccr_adoption_gate_values) ... ok
+2026-10-04T16:15:12.9950161Z test_upgrade_required_failures_are_nonzero_and_independent (test_runtime_health.RuntimeHealthTest.test_upgrade_required_failures_are_nonzero_and_independent) ... ok
+2026-10-04T16:15:13.2866687Z test_upgrade_self_updates_mise_to_the_manifest_pin (test_runtime_health.RuntimeHealthTest.test_upgrade_self_updates_mise_to_the_manifest_pin) ... ok
+2026-10-04T16:15:13.3811523Z test_upgrade_skips_ccr_notice_when_gh_is_unavailable (test_runtime_health.RuntimeHealthTest.test_upgrade_skips_ccr_notice_when_gh_is_unavailable) ... ok
+2026-10-04T16:15:13.9754481Z test_upgrade_skips_unavailable_mise_self_update (test_runtime_health.RuntimeHealthTest.test_upgrade_skips_unavailable_mise_self_update) ... ok
+2026-10-04T16:15:13.9755119Z test_upgrade_uses_current_mise_node_after_runtime_replacement (test_runtime_health.RuntimeHealthTest.test_upgrade_uses_current_mise_node_after_runtime_replacement)
+2026-10-04T16:15:14.3515014Z Reject ambient npm after mise replaces the active Node runtime. ... ok
+2026-10-04T16:15:14.3516142Z test_ci_smokes_exact_tools_with_network_denied (test_statusline_tools.StatuslineToolsTest.test_ci_smokes_exact_tools_with_network_denied) ... ok
+2026-10-04T16:15:14.3548859Z test_direct_commands_use_offline_path_binaries (test_statusline_tools.StatuslineToolsTest.test_direct_commands_use_offline_path_binaries) ... ok
+2026-10-04T16:15:14.3549772Z test_generated_commands_are_direct_and_static (test_statusline_tools.StatuslineToolsTest.test_generated_commands_are_direct_and_static) ... ok
+2026-10-04T16:15:14.3575824Z test_mise_config_and_lock_pin_exact_npm_versions (test_statusline_tools.StatuslineToolsTest.test_mise_config_and_lock_pin_exact_npm_versions) ... ok
+2026-10-04T16:15:14.3591514Z test_missing_binary_fails_immediately (test_statusline_tools.StatuslineToolsTest.test_missing_binary_fails_immediately) ... ok
+2026-10-04T16:15:14.3593078Z test_binary_installers_replace_from_same_directory_stages (test_supply_chain_policy.SupplyChainPolicyTest.test_binary_installers_replace_from_same_directory_stages) ... ok
+2026-10-04T16:15:14.3606619Z test_executable_downloads_are_verified_and_not_piped_to_shell (test_supply_chain_policy.SupplyChainPolicyTest.test_executable_downloads_are_verified_and_not_piped_to_shell) ... ok
+2026-10-04T16:15:14.3759480Z test_external_checksum_failure_preserves_destination (test_supply_chain_policy.SupplyChainPolicyTest.test_external_checksum_failure_preserves_destination) ... ok
+2026-10-04T16:15:14.3899761Z test_externals_render_without_network_discovery (test_supply_chain_policy.SupplyChainPolicyTest.test_externals_render_without_network_discovery) ... ok
+2026-10-04T16:15:14.3900710Z test_externals_use_fixed_urls_and_checksums (test_supply_chain_policy.SupplyChainPolicyTest.test_externals_use_fixed_urls_and_checksums) ... ok
+2026-10-04T16:15:14.4138685Z test_installer_cleanup_preserves_failure_status (test_supply_chain_policy.SupplyChainPolicyTest.test_installer_cleanup_preserves_failure_status) ... ok
+2026-10-04T16:15:14.4887613Z test_installer_cleanup_survives_mock_function_returns (test_supply_chain_policy.SupplyChainPolicyTest.test_installer_cleanup_survives_mock_function_returns) ... ok
+2026-10-04T16:15:14.5029040Z test_mise_apply_replaces_live_symlinks_with_independent_copies (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_apply_replaces_live_symlinks_with_independent_copies) ... ok
+2026-10-04T16:15:14.5059508Z test_mise_lock_matches_config_and_supported_platforms (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_lock_matches_config_and_supported_platforms) ... ok
+2026-10-04T16:15:14.5082129Z test_mise_lock_url_entries_have_checksums (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_lock_url_entries_have_checksums) ... ok
+2026-10-04T16:15:14.5104504Z test_mise_main_preserves_install_failure (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_main_preserves_install_failure) ... ok
+2026-10-04T16:15:14.5129448Z test_mise_npm_backend_uses_npm_and_limits_lifecycle_scripts (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_npm_backend_uses_npm_and_limits_lifecycle_scripts) ... ok
+2026-10-04T16:15:14.5426283Z test_mise_versions_are_exact_and_locking_is_enforced (test_supply_chain_policy.SupplyChainPolicyTest.test_mise_versions_are_exact_and_locking_is_enforced) ... ok
+2026-10-04T16:15:14.5428501Z test_renovate_owns_dependency_update_notifications (test_supply_chain_policy.SupplyChainPolicyTest.test_renovate_owns_dependency_update_notifications) ... ok
+2026-10-04T16:15:14.5429512Z test_setup_ci_rejects_and_preserves_local_drift (test_supply_chain_policy.SupplyChainPolicyTest.test_setup_ci_rejects_and_preserves_local_drift) ... ok
+2026-10-04T16:15:14.5433993Z test_sheldon_git_sources_have_revisions (test_supply_chain_policy.SupplyChainPolicyTest.test_sheldon_git_sources_have_revisions) ... ok
+2026-10-04T16:15:14.5434714Z test_sheldon_uses_locked_crates_io_source (test_supply_chain_policy.SupplyChainPolicyTest.test_sheldon_uses_locked_crates_io_source) ... ok
+2026-10-04T16:15:14.6051424Z test_absent_path_without_old_ref_is_regression (test_ua_symbol_coverage.UaSymbolCoverageTest.test_absent_path_without_old_ref_is_regression) ... ok
+2026-10-04T16:15:14.6616551Z test_chmod_only_change_keeps_the_source_unchanged_note (test_ua_symbol_coverage.UaSymbolCoverageTest.test_chmod_only_change_keeps_the_source_unchanged_note) ... ok
+2026-10-04T16:15:14.7088724Z test_comment_lines_are_not_definitions (test_ua_symbol_coverage.UaSymbolCoverageTest.test_comment_lines_are_not_definitions) ... ok
+2026-10-04T16:15:14.8052006Z test_def_column_reads_the_new_graph_revision (test_ua_symbol_coverage.UaSymbolCoverageTest.test_def_column_reads_the_new_graph_revision) ... ok
+2026-10-04T16:15:14.8674735Z test_deleted_path_with_old_ref_is_explained (test_ua_symbol_coverage.UaSymbolCoverageTest.test_deleted_path_with_old_ref_is_explained) ... ok
+2026-10-04T16:15:14.9565088Z test_flags_unexplained_symbol_loss_only (test_ua_symbol_coverage.UaSymbolCoverageTest.test_flags_unexplained_symbol_loss_only) ... ok
+2026-10-04T16:15:15.0107623Z test_grammar_file_missing_from_graph_fails_in_covered_directories (test_ua_symbol_coverage.UaSymbolCoverageTest.test_grammar_file_missing_from_graph_fails_in_covered_directories) ... ok
+2026-10-04T16:15:15.0706402Z test_low_similarity_move_with_no_symbols_is_regression (test_ua_symbol_coverage.UaSymbolCoverageTest.test_low_similarity_move_with_no_symbols_is_regression) ... ok
+2026-10-04T16:15:15.1594721Z test_partial_deletion_in_changed_source_is_regression (test_ua_symbol_coverage.UaSymbolCoverageTest.test_partial_deletion_in_changed_source_is_regression) ... ok
+2026-10-04T16:15:15.2182206Z test_partially_covered_new_file_is_not_flagged (test_ua_symbol_coverage.UaSymbolCoverageTest.test_partially_covered_new_file_is_not_flagged) ... ok
+2026-10-04T16:15:15.2651882Z test_python_defs_inside_strings_do_not_count (test_ua_symbol_coverage.UaSymbolCoverageTest.test_python_defs_inside_strings_do_not_count) ... ok
+2026-10-04T16:15:15.3264552Z test_rename_dropping_symbols_is_regression (test_ua_symbol_coverage.UaSymbolCoverageTest.test_rename_dropping_symbols_is_regression) ... ok
+2026-10-04T16:15:15.3873588Z test_rename_preserving_symbols_is_ok (test_ua_symbol_coverage.UaSymbolCoverageTest.test_rename_preserving_symbols_is_ok) ... ok
+2026-10-04T16:15:15.4359420Z test_ruby_visibility_prefixed_defs_are_counted (test_ua_symbol_coverage.UaSymbolCoverageTest.test_ruby_visibility_prefixed_defs_are_counted) ... ok
+2026-10-04T16:15:15.4839250Z test_shell_names_with_punctuation_are_counted (test_ua_symbol_coverage.UaSymbolCoverageTest.test_shell_names_with_punctuation_are_counted) ... ok
+2026-10-04T16:15:15.5838551Z test_unchanged_source_loss_is_noted (test_ua_symbol_coverage.UaSymbolCoverageTest.test_unchanged_source_loss_is_noted) ... ok
+2026-10-04T16:15:15.6395822Z test_unreadable_candidate_fails_closed (test_ua_symbol_coverage.UaSymbolCoverageTest.test_unreadable_candidate_fails_closed) ... ok
+2026-10-04T16:15:15.7551231Z test_unresolvable_ref_fails_closed (test_ua_symbol_coverage.UaSymbolCoverageTest.test_unresolvable_ref_fails_closed) ... ok
+2026-10-04T16:15:15.8030037Z test_uv_run_script_shebang_is_python (test_ua_symbol_coverage.UaSymbolCoverageTest.test_uv_run_script_shebang_is_python) ... ok
+2026-10-04T16:15:15.8312954Z test_builds_in_the_clone_when_no_release_artifact_exists (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_builds_in_the_clone_when_no_release_artifact_exists) ... ok
+2026-10-04T16:15:15.8663228Z test_builds_missing_core_in_the_release_artifact_then_copies_it (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_builds_missing_core_in_the_release_artifact_then_copies_it) ... ok
+2026-10-04T16:15:15.9023059Z test_doctor_stale_warning_is_cleared_by_the_update_build (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_doctor_stale_warning_is_cleared_by_the_update_build) ... ok
+2026-10-04T16:15:15.9389501Z test_frozen_install_failure_falls_back_to_plain_install (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_frozen_install_failure_falls_back_to_plain_install) ... ok
+2026-10-04T16:15:15.9424701Z test_make_update_installs_the_pinned_pnpm (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_make_update_installs_the_pinned_pnpm) ... ok
+2026-10-04T16:15:15.9782105Z test_prefers_mise_exec_over_an_unbacked_pnpm_shim (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_prefers_mise_exec_over_an_unbacked_pnpm_shim) ... ok
+2026-10-04T16:15:16.0484477Z test_rebuilds_a_release_dist_older_than_its_sources (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_rebuilds_a_release_dist_older_than_its_sources) ... ok
+2026-10-04T16:15:16.0793697Z test_skips_the_build_when_the_release_artifact_already_has_dist (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_skips_the_build_when_the_release_artifact_already_has_dist) ... ok
+2026-10-04T16:15:16.1122655Z test_uses_mise_exec_when_pnpm_is_not_on_path (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_uses_mise_exec_when_pnpm_is_not_on_path) ... ok
+2026-10-04T16:15:16.1453956Z test_uses_path_pnpm_only_when_mise_is_absent (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_uses_path_pnpm_only_when_mise_is_absent) ... ok
+2026-10-04T16:15:16.1686433Z test_warns_and_continues_when_no_pnpm_is_resolvable (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_warns_and_continues_when_no_pnpm_is_resolvable) ... ok
+2026-10-04T16:15:16.1935952Z test_warns_and_continues_when_the_build_fails (test_update_agent_assets_ua_core.UnderstandAnythingCoreBuildTest.test_warns_and_continues_when_the_build_fails) ... ok
+2026-10-04T16:15:16.1961566Z test_candidate_is_no_when_another_claude_family_is_larger (test_usage_review.UsageReviewTests.test_candidate_is_no_when_another_claude_family_is_larger) ... ok
+2026-10-04T16:15:16.1980472Z test_malformed_latest_snapshot_warns_and_never_raises (test_usage_review.UsageReviewTests.test_malformed_latest_snapshot_warns_and_never_raises) ... ok
+2026-10-04T16:15:16.1998636Z test_report_computes_share_ratio_and_baseline_deltas (test_usage_review.UsageReviewTests.test_report_computes_share_ratio_and_baseline_deltas) ... ok
+2026-10-04T16:15:16.2017481Z test_report_emits_due_windows_and_matching_notes_suppress_them (test_usage_review.UsageReviewTests.test_report_emits_due_windows_and_matching_notes_suppress_them) ... ok
+2026-10-04T16:15:16.2118430Z test_snapshot_does_not_rewrite_existing_daily_file (test_usage_review.UsageReviewTests.test_snapshot_does_not_rewrite_existing_daily_file) ... ok
+2026-10-04T16:15:16.2533014Z test_a_masked_key_collision_fails_and_leaves_the_file_unchanged (test_validate_agent_assets.MaskSecretsModeTest.test_a_masked_key_collision_fails_and_leaves_the_file_unchanged) ... ok
+2026-10-04T16:15:16.2946121Z test_leaves_allowed_placeholders_the_scan_accepts (test_validate_agent_assets.MaskSecretsModeTest.test_leaves_allowed_placeholders_the_scan_accepts) ... ok
+2026-10-04T16:15:16.3398437Z test_masks_an_earlier_duplicate_member_so_the_scan_passes (test_validate_agent_assets.MaskSecretsModeTest.test_masks_an_earlier_duplicate_member_so_the_scan_passes) ... ok
+2026-10-04T16:15:16.3832227Z test_masks_every_match_in_place_and_reports_counts (test_validate_agent_assets.MaskSecretsModeTest.test_masks_every_match_in_place_and_reports_counts) ... ok
+2026-10-04T16:15:16.4261778Z test_masks_json_string_values_and_keeps_the_document_parseable (test_validate_agent_assets.MaskSecretsModeTest.test_masks_json_string_values_and_keeps_the_document_parseable) ... ok
+2026-10-04T16:15:16.4674978Z test_missing_file_exits_2_without_touching_others (test_validate_agent_assets.MaskSecretsModeTest.test_missing_file_exits_2_without_touching_others) ... ok
+2026-10-04T16:15:16.4685115Z test_a_key_after_json_escaped_whitespace_is_flagged (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_after_json_escaped_whitespace_is_flagged) ... ok
+2026-10-04T16:15:16.4690700Z test_a_key_prefix_inside_a_hyphenated_word_is_clean (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_key_prefix_inside_a_hyphenated_word_is_clean) ... ok
+2026-10-04T16:15:16.4951777Z test_a_long_hyphenated_run_scans_in_linear_time (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_long_hyphenated_run_scans_in_linear_time) ... ok
+2026-10-04T16:15:16.4957631Z test_a_real_key_prefix_is_still_flagged (test_validate_agent_assets.SecretPatternBoundaryTest.test_a_real_key_prefix_is_still_flagged) ... ok
+2026-10-04T16:15:16.4962838Z test_an_sk_key_body_needs_a_hyphen_free_run (test_validate_agent_assets.SecretPatternBoundaryTest.test_an_sk_key_body_needs_a_hyphen_free_run) ... ok
+2026-10-04T16:15:16.4968093Z test_masking_keeps_the_escape_before_the_key (test_validate_agent_assets.SecretPatternBoundaryTest.test_masking_keeps_the_escape_before_the_key) ... ok
+2026-10-04T16:15:16.4976173Z test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_a_worker_worktree_under_claude_worktrees) ... ok
+2026-10-04T16:15:16.4983482Z test_agent_manifest_accepts_exact_security_profile_set (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_accepts_exact_security_profile_set) ... ok
+2026-10-04T16:15:16.4992696Z test_agent_manifest_pins_the_audit_codex_profile (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_pins_the_audit_codex_profile) ... ok
+2026-10-04T16:15:16.5001873Z test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_a_worker_worktree_outside_claude_worktrees) ... ok
+2026-10-04T16:15:16.5009049Z test_agent_manifest_rejects_invalid_or_missing_worker_kind (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_invalid_or_missing_worker_kind) ... ok
+2026-10-04T16:15:16.5015495Z test_agent_manifest_rejects_missing_audit_profile (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_audit_profile) ... ok
+2026-10-04T16:15:16.5021598Z test_agent_manifest_rejects_missing_security_profile (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_missing_security_profile) ... ok
+2026-10-04T16:15:16.5028105Z test_agent_manifest_rejects_unknown_worker_profile (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_unknown_worker_profile) ... ok
+2026-10-04T16:15:16.5035577Z test_agent_manifest_rejects_wrong_security_codex_model (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_rejects_wrong_security_codex_model) ... ok
+2026-10-04T16:15:16.5042642Z test_agent_manifest_requires_fable_advisor_on_the_worker_profile (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_fable_advisor_on_the_worker_profile) ... ok
+2026-10-04T16:15:16.5049042Z test_agent_manifest_requires_readme_to_document_restart_worker (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_document_restart_worker) ... ok
+2026-10-04T16:15:16.5055443Z test_agent_manifest_requires_readme_to_state_the_worker_kind (test_validate_agent_assets.ValidateAgentAssetsTest.test_agent_manifest_requires_readme_to_state_the_worker_kind) ... ok
+2026-10-04T16:15:16.5062529Z test_agmsg_installer_requires_a_release_pin_and_its_tag (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_a_release_pin_and_its_tag) ... ok
+2026-10-04T16:15:16.5068905Z test_agmsg_installer_requires_the_full_tag_commit (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_full_tag_commit) ... ok
+2026-10-04T16:15:16.5075541Z test_agmsg_installer_requires_the_npm_bootstrap_integrity (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_installer_requires_the_npm_bootstrap_integrity) ... ok
+2026-10-04T16:15:16.5085944Z test_agmsg_ownership_accepts_the_installer_layout (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_accepts_the_installer_layout) ... ok
+2026-10-04T16:15:16.5095457Z test_agmsg_ownership_rejects_a_managed_claude_command (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_managed_claude_command) ... ok
+2026-10-04T16:15:16.5107011Z test_agmsg_ownership_rejects_a_vendored_skill_copy (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_a_vendored_skill_copy) ... ok
+2026-10-04T16:15:16.5120095Z test_agmsg_ownership_rejects_removing_installer_owned_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_rejects_removing_installer_owned_paths) ... ok
+2026-10-04T16:15:16.5127083Z test_agmsg_ownership_requires_retiring_the_symlink_farm (test_validate_agent_assets.ValidateAgentAssetsTest.test_agmsg_ownership_requires_retiring_the_symlink_farm) ... ok
+2026-10-04T16:15:16.5135451Z test_assets_accept_complete_declarations_and_rendered_versions (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_accept_complete_declarations_and_rendered_versions) ... ok
+2026-10-04T16:15:16.5142094Z test_assets_reject_a_malformed_render_entry (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_a_malformed_render_entry) ... ok
+2026-10-04T16:15:16.5151213Z test_assets_reject_each_incomplete_declaration (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_each_incomplete_declaration) ... ok
+2026-10-04T16:15:16.5160003Z test_assets_reject_one_assignment_rendered_from_two_fields (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_from_two_fields) ... ok
+2026-10-04T16:15:16.5167473Z test_assets_reject_one_assignment_rendered_through_a_symlink_alias (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_one_assignment_rendered_through_a_symlink_alias) ... ok
+2026-10-04T16:15:16.5192244Z test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_reject_unrendered_literal_versions_anywhere_in_install_or_scripts) ... ok
+2026-10-04T16:15:16.5203170Z test_assets_report_an_unrendered_declare_r_version (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_report_an_unrendered_declare_r_version) ... ok
+2026-10-04T16:15:16.5212812Z test_assets_scan_setup_sh_for_unrendered_versions (test_validate_agent_assets.ValidateAgentAssetsTest.test_assets_scan_setup_sh_for_unrendered_versions) ... ok
+2026-10-04T16:15:16.5220972Z test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_mcp_config_accepts_an_empty_map_and_rejects_a_non_mapping) ... ok
+2026-10-04T16:15:16.5227081Z test_claude_permissions_allow_must_list_non_empty_rules (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_permissions_allow_must_list_non_empty_rules) ... ok
+2026-10-04T16:15:16.5232801Z test_claude_sandbox_accepts_manifest_symmetric_settings (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_accepts_manifest_symmetric_settings) ... ok
+2026-10-04T16:15:16.5239155Z test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_extra_allow_write_must_be_absolute_or_home_paths_without_globs) ... ok
+2026-10-04T16:15:16.5245425Z test_claude_sandbox_rejects_each_broken_rule (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_rejects_each_broken_rule) ... ok
+2026-10-04T16:15:16.5251046Z test_claude_sandbox_requires_extra_codex_writable_roots (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_requires_extra_codex_writable_roots) ... ok
+2026-10-04T16:15:16.5257981Z test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs (test_validate_agent_assets.ValidateAgentAssetsTest.test_claude_sandbox_unix_sockets_must_be_absolute_or_home_paths_without_globs) ... ok
+2026-10-04T16:15:16.5264357Z test_codex_modify_script_requires_executable_source (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_modify_script_requires_executable_source) ... ok
+2026-10-04T16:15:16.5271724Z test_codex_projects_accept_working_tree_placeholder (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_accept_working_tree_placeholder) ... ok
+2026-10-04T16:15:16.5279058Z test_codex_projects_reject_hard_coded_macos_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_hard_coded_macos_home) ... ok
+2026-10-04T16:15:16.5286377Z test_codex_projects_reject_missing_working_tree_placeholder (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_projects_reject_missing_working_tree_placeholder) ... ok
+2026-10-04T16:15:16.5293605Z test_codex_sandbox_workspace_write_accepts_matching_manifest (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_accepts_matching_manifest) ... ok
+2026-10-04T16:15:16.5300265Z test_codex_sandbox_workspace_write_must_match_manifest (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_must_match_manifest) ... ok
+2026-10-04T16:15:16.5307624Z test_codex_sandbox_workspace_write_requires_all_agmsg_roots (test_validate_agent_assets.ValidateAgentAssetsTest.test_codex_sandbox_workspace_write_requires_all_agmsg_roots) ... ok
+2026-10-04T16:15:16.5319589Z test_hook_composition_accepts_managed_source_fixture (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_accepts_managed_source_fixture) ... ok
+2026-10-04T16:15:16.5332508Z test_hook_composition_pins_sessionstart_order (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_pins_sessionstart_order) ... ok
+2026-10-04T16:15:16.5345112Z test_hook_composition_rejects_duplicate_command (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_duplicate_command) ... ok
+2026-10-04T16:15:16.5357548Z test_hook_composition_rejects_sync_timeout_over_budget (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_rejects_sync_timeout_over_budget) ... ok
+2026-10-04T16:15:16.5370005Z test_hook_composition_requires_permgate_first (test_validate_agent_assets.ValidateAgentAssetsTest.test_hook_composition_requires_permgate_first) ... ok
+2026-10-04T16:15:16.5376516Z test_manifest_home_paths_allow_chezmoi_home_dir (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_chezmoi_home_dir) ... ok
+2026-10-04T16:15:16.5382765Z test_manifest_home_paths_allow_flow_style_projects (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_allow_flow_style_projects) ... ok
+2026-10-04T16:15:16.5388940Z test_manifest_home_paths_exempt_runtime_owned_projects (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_exempt_runtime_owned_projects) ... ok
+2026-10-04T16:15:16.5395343Z test_manifest_home_paths_only_exempt_the_projects_subtree (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_only_exempt_the_projects_subtree) ... ok
+2026-10-04T16:15:16.5401336Z test_manifest_home_paths_reject_hard_coded_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_home) ... ok
+2026-10-04T16:15:16.5407662Z test_manifest_home_paths_reject_hard_coded_linux_home (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_hard_coded_linux_home) ... ok
+2026-10-04T16:15:16.5413916Z test_manifest_home_paths_reject_non_codex_projects_mapping (test_validate_agent_assets.ValidateAgentAssetsTest.test_manifest_home_paths_reject_non_codex_projects_mapping) ... ok
+2026-10-04T16:15:16.5421534Z test_permgate_policy_requires_a_schema_3_object (test_validate_agent_assets.ValidateAgentAssetsTest.test_permgate_policy_requires_a_schema_3_object) ... ok
+2026-10-04T16:15:16.5448322Z test_recursive_scans_skip_nested_git_trees_only (test_validate_agent_assets.ValidateAgentAssetsTest.test_recursive_scans_skip_nested_git_trees_only) ... ok
+2026-10-04T16:15:16.5454870Z test_repo_claude_settings_accept_portable_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_accept_portable_interpreter) ... ok
+2026-10-04T16:15:16.5513974Z test_repo_claude_settings_reject_machine_specific_interpreter (test_validate_agent_assets.ValidateAgentAssetsTest.test_repo_claude_settings_reject_machine_specific_interpreter) ... <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acb5ec50>
+2026-10-04T16:15:16.5515293Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5515938Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf77f10>
+2026-10-04T16:15:16.5517006Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5517636Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf77e20>
+2026-10-04T16:15:16.5518260Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5518831Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf77d30>
+2026-10-04T16:15:16.5519673Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5520235Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf77b50>
+2026-10-04T16:15:16.5520817Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5521380Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf77a60>
+2026-10-04T16:15:16.5521951Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5522668Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf77880>
+2026-10-04T16:15:16.5523238Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5523804Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf77790>
+2026-10-04T16:15:16.5524371Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5524941Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf776a0>
+2026-10-04T16:15:16.5525510Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5526091Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf775b0>
+2026-10-04T16:15:16.5526675Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5527314Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf774c0>
+2026-10-04T16:15:16.5527931Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5528527Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf773d0>
+2026-10-04T16:15:16.5529166Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5529719Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf772e0>
+2026-10-04T16:15:16.5530292Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5530881Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf771f0>
+2026-10-04T16:15:16.5531467Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5532058Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf77100>
+2026-10-04T16:15:16.5532771Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5533353Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf77010>
+2026-10-04T16:15:16.5533935Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5534525Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf76e30>
+2026-10-04T16:15:16.5535109Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5535689Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf76d40>
+2026-10-04T16:15:16.5536423Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5537011Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf76c50>
+2026-10-04T16:15:16.5537599Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5538311Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf76b60>
+2026-10-04T16:15:16.5538904Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5539482Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf76a70>
+2026-10-04T16:15:16.5540039Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5540612Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf76980>
+2026-10-04T16:15:16.5541206Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5541783Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf76890>
+2026-10-04T16:15:16.5542511Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5543090Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf767a0>
+2026-10-04T16:15:16.5543684Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5544261Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf766b0>
+2026-10-04T16:15:16.5544845Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5545442Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf765c0>
+2026-10-04T16:15:16.5546024Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5546649Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf764d0>
+2026-10-04T16:15:16.5547233Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5547818Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf74e50>
+2026-10-04T16:15:16.5548399Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5549007Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf76020>
+2026-10-04T16:15:16.5549588Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5550174Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf763e0>
+2026-10-04T16:15:16.5550756Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5551343Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf762f0>
+2026-10-04T16:15:16.5551940Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5552628Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf76200>
+2026-10-04T16:15:16.5553217Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5553806Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf76110>
+2026-10-04T16:15:16.5554386Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5555109Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf757b0>
+2026-10-04T16:15:16.5555699Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5556283Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf75b70>
+2026-10-04T16:15:16.5556873Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5557587Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf756c0>
+2026-10-04T16:15:16.5558183Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5558770Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf755d0>
+2026-10-04T16:15:16.5559360Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5559962Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf754e0>
+2026-10-04T16:15:16.5560565Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5561156Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf753f0>
+2026-10-04T16:15:16.5561752Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5562472Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf75300>
+2026-10-04T16:15:16.5563065Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5563660Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf75210>
+2026-10-04T16:15:16.5564254Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5564857Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf75120>
+2026-10-04T16:15:16.5565450Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5566039Z <frozen importlib._bootstrap_external>:511: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7410acf75030>
+2026-10-04T16:15:16.5566640Z ResourceWarning: Enable tracemalloc to get the object allocation traceback
+2026-10-04T16:15:16.5597575Z ERROR: /tmp/validate-agent-assets-test-ublea34z/.claude/settings.json hook SessionEnd must not hard-code a machine-specific home path: /Users/mryfmo/.local/share/mise/installs/python/3.14.7/bin/python3.14
+2026-10-04T16:15:16.5598611Z ok
+2026-10-04T16:15:16.5609463Z test_secret_scan_allows_exact_placeholder_tokens (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_allows_exact_placeholder_tokens) ... ok
+2026-10-04T16:15:16.5618937Z test_secret_scan_checks_docs_paths (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_docs_paths) ... ok
+2026-10-04T16:15:16.5628456Z test_secret_scan_checks_extensionless_executables (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_extensionless_executables) ... ok
+2026-10-04T16:15:16.5637247Z test_secret_scan_checks_utf16_bom_text (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_checks_utf16_bom_text) ... ok
+2026-10-04T16:15:16.5647708Z test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_fails_a_nul_in_orchestration_text_and_skips_other_binaries) ... ok
+2026-10-04T16:15:16.5662519Z test_secret_scan_reads_json_per_key_and_string_value (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_reads_json_per_key_and_string_value) ... ok
+2026-10-04T16:15:16.5670039Z test_secret_scan_rejects_placeholder_with_suffix (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_placeholder_with_suffix) ... ok
+2026-10-04T16:15:16.5679099Z test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset (test_validate_agent_assets.ValidateAgentAssetsTest.test_secret_scan_rejects_utf16_orchestration_text_with_the_nul_offset) ... ok
+2026-10-04T16:15:16.5691340Z test_checkout_does_not_persist_credentials_without_explicit_exemption (test_workflow_security.WorkflowSecurityTest.test_checkout_does_not_persist_credentials_without_explicit_exemption) ... ok
+2026-10-04T16:15:16.5692536Z test_checkout_rejects_duplicate_or_non_false_credential_settings (test_workflow_security.WorkflowSecurityTest.test_checkout_rejects_duplicate_or_non_false_credential_settings) ... ok
+2026-10-04T16:15:16.5693159Z test_checkout_setting_does_not_leak_from_the_next_step (test_workflow_security.WorkflowSecurityTest.test_checkout_setting_does_not_leak_from_the_next_step) ... ok
+2026-10-04T16:15:16.5697150Z test_external_actions_use_full_commit_shas (test_workflow_security.WorkflowSecurityTest.test_external_actions_use_full_commit_shas) ... ok
+2026-10-04T16:15:16.5697820Z test_quoted_unnamed_checkout_is_detected (test_workflow_security.WorkflowSecurityTest.test_quoted_unnamed_checkout_is_detected) ... ok
+2026-10-04T16:15:16.5698382Z test_unnamed_checkout_setting_does_not_leak_from_the_next_step (test_workflow_security.WorkflowSecurityTest.test_unnamed_checkout_setting_does_not_leak_from_the_next_step) ... ok
+2026-10-04T16:15:16.5700673Z test_workflows_have_exact_top_level_permissions (test_workflow_security.WorkflowSecurityTest.test_workflows_have_exact_top_level_permissions) ... ok
+2026-10-04T16:15:16.5705131Z test_workflows_have_no_job_level_permission_overrides (test_workflow_security.WorkflowSecurityTest.test_workflows_have_no_job_level_permission_overrides) ... ok
+2026-10-04T16:15:16.5705539Z 
+2026-10-04T16:15:16.5705642Z ----------------------------------------------------------------------
+2026-10-04T16:15:16.5705854Z Ran 791 tests in 188.102s
+2026-10-04T16:15:16.5705951Z 
+2026-10-04T16:15:16.5706000Z OK
+2026-10-04T16:15:16.5994372Z ##[group]Run set -euo pipefail
+2026-10-04T16:15:16.5994586Z set -euo pipefail
+2026-10-04T16:15:16.5994718Z 
+2026-10-04T16:15:16.5994884Z files_test_home="${RUNNER_TEMP}/dotfiles-files-${OS}-${SYSTEM}"
+2026-10-04T16:15:16.5995163Z files_test_source="${RUNNER_TEMP}/dotfiles-public-source-${OS}-${SYSTEM}"
+2026-10-04T16:15:16.5995447Z files_test_config="${files_test_home}/.config/chezmoi/chezmoi.yaml"
+2026-10-04T16:15:16.5995679Z if [ -e "${files_test_source}" ]; then
+2026-10-04T16:15:16.5995891Z   echo "Fixture source already exists: ${files_test_source}" >&2
+2026-10-04T16:15:16.5996091Z   exit 1
+2026-10-04T16:15:16.5996208Z fi
+2026-10-04T16:15:16.5996364Z cp -R "${GITHUB_WORKSPACE}/home" "${files_test_source}"
+2026-10-04T16:15:16.5996595Z rm -f "${files_test_source}/.chezmoiexternal.yaml.tmpl"
+2026-10-04T16:15:16.5996876Z rm -rf "${files_test_source}/.chezmoitemplates/chezmoiexternal.d"
+2026-10-04T16:15:16.5997131Z mkdir -p "${files_test_home}" "$(dirname "${files_test_config}")"
+2026-10-04T16:15:16.5997409Z printf 'sourceDir: "%s"\ndata:\n  email: "ci@example.invalid"\n  system: "%s"\n' \
+2026-10-04T16:15:16.5997681Z   "${files_test_source}" "${SYSTEM}" > "${files_test_config}"
+2026-10-04T16:15:16.5997868Z 
+2026-10-04T16:15:16.5998052Z # Remove external definitions only from the fixture copy, then apply
+2026-10-04T16:15:16.5998327Z # everything else so role-specific ignores determine both boundaries.
+2026-10-04T16:15:16.5998587Z # Regenerate the full config from its managed template first so
+2026-10-04T16:15:16.5998835Z # subsequent `chezmoi diff` output contains only target drift.
+2026-10-04T16:15:16.5999075Z CI=true HOME="${files_test_home}" "${FILES_TEST_CHEZMOI}" \
+2026-10-04T16:15:16.5999409Z   --source "${files_test_source}" \
+2026-10-04T16:15:16.5999586Z   --destination "${files_test_home}" \
+2026-10-04T16:15:16.5999762Z   --config "${files_test_config}" \
+2026-10-04T16:15:16.5999911Z   init
+2026-10-04T16:15:16.6000063Z HOME="${files_test_home}" "${FILES_TEST_CHEZMOI}" \
+2026-10-04T16:15:16.6000253Z   --source "${files_test_source}" \
+2026-10-04T16:15:16.6000425Z   --destination "${files_test_home}" \
+2026-10-04T16:15:16.6000596Z   --config "${files_test_config}" \
+2026-10-04T16:15:16.6000758Z   --refresh-externals=never \
+2026-10-04T16:15:16.6000923Z   apply --exclude=scripts,externals
+2026-10-04T16:15:16.6001076Z {
+2026-10-04T16:15:16.6001225Z   printf 'FILES_TEST_HOME=%s\n' "${files_test_home}"
+2026-10-04T16:15:16.6001455Z   printf 'FILES_TEST_SOURCE=%s\n' "${files_test_source}"
+2026-10-04T16:15:16.6001674Z   printf 'FILES_TEST_CONFIG=%s\n' "${files_test_config}"
+2026-10-04T16:15:16.6001892Z } >> "${GITHUB_ENV}"
+2026-10-04T16:15:16.6050476Z shell: /usr/bin/bash -e {0}
+2026-10-04T16:15:16.6050632Z env:
+2026-10-04T16:15:16.6050748Z   OS: ubuntu-26.04
+2026-10-04T16:15:16.6050872Z   SYSTEM: client
+2026-10-04T16:15:16.6051005Z   CODECOV_FLAGS: ubuntu-26.04-client
+2026-10-04T16:15:16.6051191Z   CODECOV_NAME: codecov-dotfiles-ubuntu-26.04-client
+2026-10-04T16:15:16.6052910Z   GITHUB_TOKEN: ***
+2026-10-04T16:15:16.6053058Z   FILES_TEST_CHEZMOI: /usr/local/bin/chezmoi
+2026-10-04T16:15:16.6053232Z   DOTFILES_MISE_VERSION: 2026.9.14
+2026-10-04T16:15:16.6053381Z   MISE_LOG_LEVEL: info
+2026-10-04T16:15:16.6054925Z   MISE_GITHUB_TOKEN: ***
+2026-10-04T16:15:16.6055124Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/dotfiles/dotfiles
+2026-10-04T16:15:16.6055317Z   MISE_YES: 1
+2026-10-04T16:15:16.6055480Z   UV_PYTHON_INSTALL_DIR: /home/runner/work/_temp/uv-python-dir
+2026-10-04T16:15:16.6055673Z ##[endgroup]
+2026-10-04T16:15:16.9671495Z ##[group]Run if [ "${OS}" == "macos-14" ]; then
+2026-10-04T16:15:16.9671846Z if [ "${OS}" == "macos-14" ]; then
+2026-10-04T16:15:16.9672189Z   # Bats uses its own tracing internals on macOS, and bashcov can
+2026-10-04T16:15:16.9672779Z   # misread those records as coverage trace entries. Keep macOS in
+2026-10-04T16:15:16.9673210Z   # the test matrix for platform validation, but collect Codecov
+2026-10-04T16:15:16.9673624Z   # reports from the Ubuntu jobs where bashcov parses Bats output
+2026-10-04T16:15:16.9673963Z   # reliably.
+2026-10-04T16:15:16.9674182Z   ./scripts/run_unit_test.sh
+2026-10-04T16:15:16.9674420Z   exit 0
+2026-10-04T16:15:16.9674614Z fi
+2026-10-04T16:15:16.9674788Z 
+2026-10-04T16:15:16.9674977Z # Shared bashcov defaults:
+2026-10-04T16:15:16.9675286Z # - `--skip-uncovered`: limit report to executed files.
+2026-10-04T16:15:16.9675725Z # - `--root .`: normalize paths relative to repository root.
+2026-10-04T16:15:16.9676089Z bashcov_args=(--skip-uncovered --root .)
+2026-10-04T16:15:16.9676366Z 
+2026-10-04T16:15:16.9676644Z # Use a unique command name per matrix job so SimpleCov keeps each
+2026-10-04T16:15:16.9677041Z # session separated before Codecov merges by flag/name.
+2026-10-04T16:15:16.9677411Z BASHCOV_COMMAND_NAME="unit-test-${OS}-${SYSTEM}" \
+2026-10-04T16:15:16.9677878Z   ruby ./scripts/run_bashcov_unit_test.rb "${bashcov_args[@]}" -- ./scripts/run_unit_test.sh
+2026-10-04T16:15:16.9733526Z shell: /usr/bin/bash -e {0}
+2026-10-04T16:15:16.9733693Z env:
+2026-10-04T16:15:16.9733812Z   OS: ubuntu-26.04
+2026-10-04T16:15:16.9733937Z   SYSTEM: client
+2026-10-04T16:15:16.9734072Z   CODECOV_FLAGS: ubuntu-26.04-client
+2026-10-04T16:15:16.9734272Z   CODECOV_NAME: codecov-dotfiles-ubuntu-26.04-client
+2026-10-04T16:15:16.9736005Z   GITHUB_TOKEN: ***
+2026-10-04T16:15:16.9736165Z   FILES_TEST_CHEZMOI: /usr/local/bin/chezmoi
+2026-10-04T16:15:16.9736496Z   DOTFILES_MISE_VERSION: 2026.9.14
+2026-10-04T16:15:16.9736648Z   MISE_LOG_LEVEL: info
+2026-10-04T16:15:16.9738230Z   MISE_GITHUB_TOKEN: ***
+2026-10-04T16:15:16.9738406Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/dotfiles/dotfiles
+2026-10-04T16:15:16.9738607Z   MISE_YES: 1
+2026-10-04T16:15:16.9738771Z   UV_PYTHON_INSTALL_DIR: /home/runner/work/_temp/uv-python-dir
+2026-10-04T16:15:16.9739043Z   FILES_TEST_HOME: /home/runner/work/_temp/dotfiles-files-ubuntu-26.04-client
+2026-10-04T16:15:16.9739350Z   FILES_TEST_SOURCE: /home/runner/work/_temp/dotfiles-public-source-ubuntu-26.04-client
+2026-10-04T16:15:16.9739719Z   FILES_TEST_CONFIG: /home/runner/work/_temp/dotfiles-files-ubuntu-26.04-client/.config/chezmoi/chezmoi.yaml
+2026-10-04T16:15:16.9739997Z ##[endgroup]
+2026-10-04T16:15:17.8450117Z 1..3
+2026-10-04T16:15:17.9865863Z ok 1 [ubuntu-client] representative manifest
+2026-10-04T16:15:18.1046041Z ok 2 [ubuntu-client] second apply is idempotent and preserves an unmanaged sentinel
+2026-10-04T16:15:18.1423939Z ok 3 [ubuntu-client] manifest assertion rejects a removed required target
+2026-10-04T16:15:19.3163474Z 1..90
+2026-10-04T16:15:19.4156715Z ok 1 [common] check_machine_ssh_key reports found when the public key exists
+2026-10-04T16:15:19.4471619Z ok 2 [common] check_machine_ssh_key warns and suggests provision-machine-key when missing
+2026-10-04T16:15:19.4896405Z ok 3 [common] check_crit_cli reports the pinned version and origin when installed
+2026-10-04T16:15:19.5203509Z ok 4 [common] check_crit_cli is not applicable and not a failure when absent
+2026-10-04T16:15:19.5618706Z ok 5 [common] check_crit_cli warns instead of aborting when --version fails
+2026-10-04T16:15:19.6039261Z ok 6 [common] check_agmsg reports the installed version against the pin
+2026-10-04T16:15:19.6473652Z ok 7 [common] check_agmsg warns when the installed version does not match the pin
+2026-10-04T16:15:19.6829492Z ok 8 [common] check_agmsg is not applicable and not a failure when absent
+2026-10-04T16:15:19.7513360Z ok 9 [common] install_chezmoi_private returns success when chezmoi init succeeds
+2026-10-04T16:15:19.7828348Z ok 10 [common] install_chezmoi_private continues when chezmoi init fails
+2026-10-04T16:15:19.8107717Z ok 11 [common] script enables xtrace when DOTFILES_DEBUG is set
+2026-10-04T16:15:19.9116565Z ok 12 [common] decrypt_age_private_key continues when passphrase decrypt fails
+2026-10-04T16:15:19.9758487Z ok 13 [common] decrypt_age_private_key installs age identity through a temporary file
+2026-10-04T16:15:20.0262631Z ok 14 [common] decrypt_age_private_key skips passphrase prompt without a tty
+2026-10-04T16:15:20.0742593Z ok 15 [common] usePrivate=false renders an empty gate with no decrypt function
+2026-10-04T16:15:20.1531040Z ok 16 [common] usePrivate=true or missing renders the decrypt function
+2026-10-04T16:15:20.2172226Z ok 17 [common] gh_extensions installs extensions when authenticated
+2026-10-04T16:15:20.2478055Z ok 18 [common] gh_extensions skips login and extensions when unauthenticated
+2026-10-04T16:15:20.2814871Z ok 19 [common] gh_extensions keeps installed extensions unchanged
+2026-10-04T16:15:20.4575567Z ok 20 [common] Makefile exposes the public lifecycle targets
+2026-10-04T16:15:20.4888752Z ok 21 [common] Makefile keeps apply as a compatibility alias
+2026-10-04T16:15:20.6114771Z ok 22 [common] update pulls a clean main branch tracking origin/main first
+2026-10-04T16:15:20.7670166Z ok 23 [common] update skips pull for tracked changes and prints the manual command
+2026-10-04T16:15:20.8719960Z ok 24 [common] update reports unmerged files before the dirty notice
+2026-10-04T16:15:20.9830678Z ok 25 [common] update reloads a running Herdr server exactly once
+2026-10-04T16:15:21.0951402Z ok 26 [common] update installs statusline tools after applies and before agent assets
+2026-10-04T16:15:21.1900616Z ok 27 [common] update stops before agent assets and Herdr when statusline install fails
+2026-10-04T16:15:21.2893686Z ok 28 [common] update stops before npm tools when Node install fails
+2026-10-04T16:15:21.3922682Z ok 29 [common] update skips a Herdr server that is not running
+2026-10-04T16:15:21.4589192Z ok 30 [common] update skips reload when Herdr is absent
+2026-10-04T16:15:21.5578243Z ok 31 [common] update skips reload when Herdr status fails
+2026-10-04T16:15:21.9545321Z ok 32 [common] update skips reload for missing or unknown Herdr server status
+2026-10-04T16:15:22.0581099Z ok 33 [common] update propagates Herdr reload failure
+2026-10-04T16:15:22.1698177Z ok 34 [common] update tolerates a Herdr protocol mismatch and explains recovery
+2026-10-04T16:15:22.3260331Z ok 35 [common] update does not reload after apply or asset failure
+2026-10-04T16:15:22.3707672Z ok 36 [common] Makefile treats private chezmoi as optional during update
+2026-10-04T16:15:22.4072650Z ok 37 [common] Makefile maps SYSTEM=1 upgrade to system package upgrades
+2026-10-04T16:15:22.4444318Z ok 38 [common] Makefile does not treat SYSTEM=0 as a system package upgrade request
+2026-10-04T16:15:22.4789366Z ok 39 [common] Makefile init runs only the public chezmoi init
+2026-10-04T16:15:22.5127116Z ok 40 [common] Makefile does not expose a separate upgrade-system target
+2026-10-04T16:15:22.5468896Z ok 41 [common] setup.sh does not upgrade installed tools during bootstrap
+2026-10-04T16:15:22.5754640Z ok 42 [common] explicit tool lifecycle scripts are present
+2026-10-04T16:15:22.6073634Z ok 43 [common] doctor requires the OS-aware mise listing
+2026-10-04T16:15:22.6596403Z ok 44 [common] upgrade lifecycle refreshes mise itself before mise-managed tools
+2026-10-04T16:15:22.7092461Z ok 45 [common] mise tool lifecycle isolates Git config and continues after individual tool failures
+2026-10-04T16:15:22.7458881Z ok 46 [common] Homebrew upgrade filters forbidden formulae without installed-dependent side effects
+2026-10-04T16:15:22.8203568Z ok 47 [common] agent CLI lifecycle installs npm latest into mise packages and removes node-global shadows before asset commands
+2026-10-04T16:15:22.9168455Z ok 48 [common] agent asset lifecycle installs Crit integrations for Claude Code and Codex
+2026-10-04T16:15:22.9678459Z ok 49 [common] agent asset lifecycle installs Ponytail integrations for Claude Code and Codex
+2026-10-04T16:15:23.0332384Z ok 50 [common] agent asset lifecycle installs Understand-Anything integrations for Claude Code and Codex
+2026-10-04T16:15:23.0941555Z ok 51 [common] agent asset lifecycle installs pinned zenbu-labs terminal tools
+2026-10-04T16:15:23.1466500Z ok 52 [common] agent asset lifecycle renders model profiles and permgate hooks
+2026-10-04T16:15:23.1941069Z ok 53 [common] README documents setup update doctor and upgrade lifecycle
+2026-10-04T16:15:23.2384830Z ok 54 [common] README documents agent permission asset lifecycle
+2026-10-04T16:15:23.2905225Z ok 55 [common] chezmoi source-path handoff resolves the repository root
+2026-10-04T16:15:24.7668075Z ok 56 [common] mise
+2026-10-04T16:15:24.8017950Z ok 57 [common] mise pin includes the Linux arm64 aqua bin-path fix
+2026-10-04T16:15:24.8479622Z ok 58 [common] run_mise_install vets exact npm tools before the seven-day batch
+2026-10-04T16:15:24.8859806Z ok 59 [common] run_mise_install stops when config trust fails
+2026-10-04T16:15:24.9209678Z ok 60 [common] run_mise_install stops when statusline install fails
+2026-10-04T16:15:24.9560068Z ok 61 [common] run_mise_install stops when node install fails
+2026-10-04T16:15:24.9909341Z ok 62 [common] run_mise_install stops when agent CLI install fails
+2026-10-04T16:15:25.0254375Z ok 63 [common] run_mise_install returns the seven-day batch failure
+2026-10-04T16:15:25.0608599Z ok 64 [common] blocc is only installed on Linux x64
+2026-10-04T16:15:25.0960396Z ok 65 [common] herdr is installed by mise on Linux and macOS
+2026-10-04T16:15:25.1513505Z ok 66 [common] mise rejects another artifact checksum
+2026-10-04T16:15:25.2242855Z ok 67 [common] private_layer_enabled defaults to true when usePrivate is absent
+2026-10-04T16:15:25.2573837Z ok 68 [common] private_layer_enabled honors an explicit usePrivate=false
+2026-10-04T16:15:25.3061815Z ok 69 [common] private_layer_enabled honors an explicit usePrivate=true
+2026-10-04T16:15:25.3371921Z ok 70 [common] private_layer_enabled defaults to true when chezmoi is unavailable
+2026-10-04T16:15:25.3654218Z ok 71 [common] check_private_chezmoi reports not applicable when usePrivate is false
+2026-10-04T16:15:25.4365762Z ok 72 [common] provision-machine-key displays an existing key without regenerating it
+2026-10-04T16:15:25.4940641Z ok 73 [common] provision-machine-key generates a non-interactive key when missing
+2026-10-04T16:15:25.6659541Z ok 74 [common] chezmoi config accepts Linux roles and defaults macOS to client
+2026-10-04T16:15:25.7338786Z ok 75 [common] chezmoi config defaults name and usePrivate in CI without prompting
+2026-10-04T16:15:25.7815255Z ok 76 [common] chezmoi config honors explicit name and usePrivate even in CI
+2026-10-04T16:15:25.8069261Z ok 77 [common] Sheldon language plugin preserves an existing LANG
+2026-10-04T16:15:25.9054988Z ok 78 [common] chezmoi config rejects invalid roles before rendering YAML
+2026-10-04T16:15:25.9379291Z ok 79 [common] setup.sh keeps macOS sudo alive without Keychain password storage
+2026-10-04T16:15:25.9846691Z ok 80 [common] setup.sh updates an existing chezmoi source before applying
+2026-10-04T16:15:26.0119219Z ok 81 [common] setup.sh uses built-in Git only when external Git is unavailable
+2026-10-04T16:15:26.0509088Z ok 82 [common] setup.sh installs Homebrew non-interactively and continues from its prefix
+2026-10-04T16:15:26.1138857Z ok 83 [common] setup.sh fetches with curl first, falls back to wget, and fails without either
+2026-10-04T16:15:26.1511748Z ok 84 [common] setup.sh does not execute partial installer output from a failed fetch
+2026-10-04T16:15:26.2082753Z ok 85 [common] checksum verification fails closed for corrupt or missing digests
+2026-10-04T16:15:26.2387292Z ok 86 [common] setup.sh previews and applies without force
+2026-10-04T16:15:26.2681968Z ok 87 [common] setup.sh lets chezmoi choose sourceDir instead of cloning into cwd
+2026-10-04T16:15:26.4207199Z ok 88 [common] setup.sh entrypoint still runs under bash -c snippets
+2026-10-04T16:15:27.6469333Z ok 89 [common] wget-only Linux bootstrap previews safely and propagates failures
+2026-10-04T16:15:27.7661234Z ok 90 [common] setup.sh resolves Homebrew fallback prefixes behaviorally
+2026-10-04T16:15:27.7789172Z 
+2026-10-04T16:15:27.7789801Z The following warnings were encountered during tests:
+2026-10-04T16:15:27.7811755Z BW02: Using flags on `run` requires at least BATS_VERSION=1.5.0. Use `bats_require_minimum_version 1.5.0` to fix this message.
+2026-10-04T16:15:27.7812605Z       (from function `bats_warn_minimum_guaranteed_version' in file /usr/lib/bats-core/warnings.bash, line 32,
+2026-10-04T16:15:27.7813169Z        from function `run' in file /usr/lib/bats-core/test_functions.bash, line 348,
+2026-10-04T16:15:27.7813602Z        in test file tests/install/common/lifecycle.bats, line 337)
+2026-10-04T16:15:28.0562551Z 1..16
+2026-10-04T16:15:28.1371653Z ok 1 [ubuntu-common] PACKAGES for dependencies
+2026-10-04T16:15:28.1779909Z ok 2 [ubuntu-common] install_apt_packages installs only absent packages after update
+2026-10-04T16:15:28.2123058Z ok 3 [ubuntu-common] install_apt_packages exits early when nothing is missing
+2026-10-04T16:15:28.2955338Z ok 4 [ubuntu-common] run_apt_get bootstraps sudo when missing
+2026-10-04T16:15:28.3375212Z ok 5 [ubuntu-common] install_apt_packages skips apt when all packages are installed
+2026-10-04T16:15:28.4103339Z ok 6 [ubuntu-common] install_apt_packages distinguishes absent and partial package states
+2026-10-04T16:15:28.4413835Z ok 7 [ubuntu-common] install_apt_packages propagates fatal dpkg-query errors
+2026-10-04T16:15:28.4841341Z ok 8 [ubuntu-common] uninstall_apt_packages excludes sudo and git
+2026-10-04T16:15:28.5143121Z ok 9 [ubuntu-common] script enables xtrace when DOTFILES_DEBUG is set
+2026-10-04T16:15:28.5941958Z ok 10 [ubuntu-common] install_apt_packages returns early in current shell when all packages are installed
+2026-10-04T16:15:28.6678009Z ok 11 [ubuntu-common] setup_locale generates only missing required locales
+2026-10-04T16:15:28.6973439Z ok 12 [ubuntu-common] setup_locale runs for both Ubuntu roles
+2026-10-04T16:15:50.6767797Z ok 13 [ubuntu-common] PACKAGES for ssh
+2026-10-04T16:15:51.0702479Z ok 14 [ubuntu-common] install_github_host_key adds the pinned key once
+2026-10-04T16:15:54.8609202Z ok 15 [ubuntu-common] ssh
+2026-10-04T16:15:55.2144057Z ok 16 [ubuntu-common] uninstall_openssh issues apt remove
+2026-10-04T16:15:55.5944383Z 1..22
+2026-10-04T16:15:55.6822231Z ok 1 [ubuntu-client] default shell changes to zsh only once
+2026-10-04T16:15:55.7151512Z ok 2 [ubuntu-client] default shell is a no-op when zsh is current
+2026-10-04T16:15:55.7399406Z ok 3 [ubuntu-client] default shell runs only for Ubuntu clients
+2026-10-04T16:16:08.8697784Z ok 4 [ubuntu-client] docker
+2026-10-04T16:16:09.2765827Z ok 5 [ubuntu-client] setup_repository replaces an existing keyring non-interactively
+2026-10-04T16:16:09.6897104Z ok 6 [ubuntu-client] PACKAGES for ghostty
+2026-10-04T16:16:10.0613806Z ok 7 [ubuntu-client] DEPENDENCY_PACKAGES for ghostty
+2026-10-04T16:16:59.1569695Z not ok 8 [ubuntu-client] ghostty
+2026-10-04T16:16:59.1583221Z # (in test file tests/install/ubuntu/client/ghostty.bats, line 38)
+2026-10-04T16:16:59.1614278Z #   `DOTFILES_DEBUG=1 bash "${SCRIPT_PATH}"' failed
+2026-10-04T16:16:59.1638762Z # Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2026-10-04T16:16:59.1639307Z # Hit:6 https://download.docker.com/linux/ubuntu resolute InRelease
+2026-10-04T16:16:59.1662700Z # Hit:7 https://packages.microsoft.com/ubuntu/26.04/prod resolute InRelease
+2026-10-04T16:16:59.1682928Z # Hit:2 http://azure.archive.ubuntu.com/ubuntu resolute InRelease
+2026-10-04T16:16:59.1683356Z # Hit:3 http://azure.archive.ubuntu.com/ubuntu resolute-updates InRelease
+2026-10-04T16:16:59.1683793Z # Hit:4 http://azure.archive.ubuntu.com/ubuntu resolute-backports InRelease
+2026-10-04T16:16:59.1684553Z # Hit:5 http://azure.archive.ubuntu.com/ubuntu resolute-security InRelease
+2026-10-04T16:16:59.1684921Z # Reading package lists...
+2026-10-04T16:16:59.1685143Z # Reading package lists...
+2026-10-04T16:16:59.1685365Z # Building dependency tree...
+2026-10-04T16:16:59.1685598Z # Reading state information...
+2026-10-04T16:16:59.1685915Z # software-properties-common is already the newest version (0.120.1).
+2026-10-04T16:16:59.1686253Z # Solving dependencies...
+2026-10-04T16:16:59.1686436Z # 0 upgraded, 0 newly installed, 0 to remove and 25 not upgraded.
+2026-10-04T16:16:59.1686679Z # Traceback (most recent call last):
+2026-10-04T16:16:59.1686900Z #   File "/usr/lib/python3.14/http/client.py", line 584, in _get_chunk_left
+2026-10-04T16:16:59.1687137Z #     chunk_left = self._read_next_chunk_size()
+2026-10-04T16:16:59.1687377Z #   File "/usr/lib/python3.14/http/client.py", line 551, in _read_next_chunk_size
+2026-10-04T16:16:59.1687602Z #     return int(line, 16)
+2026-10-04T16:16:59.1687775Z # ValueError: invalid literal for int() with base 16: b''
+2026-10-04T16:16:59.1687957Z #
+2026-10-04T16:16:59.1688133Z # During handling of the above exception, another exception occurred:
+2026-10-04T16:16:59.1688343Z #
+2026-10-04T16:16:59.1688462Z # Traceback (most recent call last):
+2026-10-04T16:16:59.1688669Z #   File "/usr/lib/python3.14/http/client.py", line 602, in _read_chunked
+2026-10-04T16:16:59.1688912Z #     while (chunk_left := self._get_chunk_left()) is not None:
+2026-10-04T16:16:59.1689110Z #                          ~~~~~~~~~~~~~~~~~~~~^^
+2026-10-04T16:16:59.1689320Z #   File "/usr/lib/python3.14/http/client.py", line 586, in _get_chunk_left
+2026-10-04T16:16:59.1689540Z #     raise IncompleteRead(b'')
+2026-10-04T16:16:59.1689729Z # http.client.IncompleteRead: IncompleteRead(0 bytes read)
+2026-10-04T16:16:59.1689916Z #
+2026-10-04T16:16:59.1690083Z # The above exception was the direct cause of the following exception:
+2026-10-04T16:16:59.1690284Z #
+2026-10-04T16:16:59.1690400Z # Traceback (most recent call last):
+2026-10-04T16:16:59.1690602Z #   File "/usr/bin/add-apt-repository", line 632, in <module>
+2026-10-04T16:16:59.1690937Z #     sys.exit(0 if addaptrepo.main() else 1)
+2026-10-04T16:16:59.1691103Z #                   ~~~~~~~~~~~~~~~^^
+2026-10-04T16:16:59.1691277Z #   File "/usr/bin/add-apt-repository", line 615, in main
+2026-10-04T16:16:59.1691481Z #     shortcut = handler(source, **shortcut_params)
+2026-10-04T16:16:59.1691776Z #   File "/usr/lib/python3/dist-packages/softwareproperties/shortcuts.py", line 40, in shortcut_handler
+2026-10-04T16:16:59.1692061Z #     return handler(shortcut, **kwargs)
+2026-10-04T16:16:59.1692482Z #   File "/usr/lib/python3/dist-packages/softwareproperties/ppa.py", line 89, in __init__
+2026-10-04T16:16:59.1692748Z #     if self.lpppa.publish_debug_symbols:
+2026-10-04T16:16:59.1692907Z #        ^^^^^^^^^^
+2026-10-04T16:16:59.1693111Z #   File "/usr/lib/python3/dist-packages/softwareproperties/ppa.py", line 133, in lpppa
+2026-10-04T16:16:59.1693395Z #     self._lpppa = self.lpteam.getPPAByName(name=self.ppaname)
+2026-10-04T16:16:59.1693595Z #                   ^^^^^^^^^^^
+2026-10-04T16:16:59.1693817Z #   File "/usr/lib/python3/dist-packages/softwareproperties/ppa.py", line 120, in lpteam
+2026-10-04T16:16:59.1694076Z #     self._lpteam = self.lp.people(self.teamname)
+2026-10-04T16:16:59.1694248Z #                    ^^^^^^^
+2026-10-04T16:16:59.1694459Z #   File "/usr/lib/python3/dist-packages/softwareproperties/ppa.py", line 111, in lp
+2026-10-04T16:16:59.1694754Z #     self._lp = login_func("%s.%s" % (self.__module__, self.__class__.__name__),
+2026-10-04T16:16:59.1694993Z #                ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-10-04T16:16:59.1695192Z #                           service_root='production',
+2026-10-04T16:16:59.1695368Z #                           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-10-04T16:16:59.1695534Z #                           version='devel')
+2026-10-04T16:16:59.1695689Z #                           ^^^^^^^^^^^^^^^^
+2026-10-04T16:16:59.1696051Z #   File "/usr/lib/python3/dist-packages/launchpadlib/launchpad.py", line 487, in login_anonymously
+2026-10-04T16:16:59.1696313Z #     return cls(
+2026-10-04T16:16:59.1696437Z #         credentials,
+2026-10-04T16:16:59.1696564Z #     ...<6 lines>...
+2026-10-04T16:16:59.1696692Z #         version=version,
+2026-10-04T16:16:59.1696827Z #     )
+2026-10-04T16:16:59.1697036Z #   File "/usr/lib/python3/dist-packages/launchpadlib/launchpad.py", line 223, in __init__
+2026-10-04T16:16:59.1697274Z #     super().__init__(
+2026-10-04T16:16:59.1697409Z #     ~~~~~~~~~~~~~~~~^
+2026-10-04T16:16:59.1697591Z #         credentials, service_root, cache, timeout, proxy_info, version
+2026-10-04T16:16:59.1697811Z #         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-10-04T16:16:59.1697973Z #     )
+2026-10-04T16:16:59.1698084Z #     ^
+2026-10-04T16:16:59.1698295Z #   File "/usr/lib/python3/dist-packages/lazr/restfulclient/resource.py", line 511, in __init__
+2026-10-04T16:16:59.1698591Z #     self._wadl = self._browser.get_wadl_application(self._root_uri)
+2026-10-04T16:16:59.1698816Z #                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+2026-10-04T16:16:59.1699108Z #   File "/usr/lib/python3/dist-packages/lazr/restfulclient/_browser.py", line 502, in get_wadl_application
+2026-10-04T16:16:59.1699429Z #     response, content = self._request(url, media_type=wadl_type)
+2026-10-04T16:16:59.1699641Z #                         ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-10-04T16:16:59.1699899Z #   File "/usr/lib/python3/dist-packages/lazr/restfulclient/_browser.py", line 441, in _request
+2026-10-04T16:16:59.1700164Z #     response, content = self._request_and_retry(
+2026-10-04T16:16:59.1700338Z #                         ~~~~~~~~~~~~~~~~~~~~~~~^
+2026-10-04T16:16:59.1700524Z #         str(url), method=method, body=data, headers=headers
+2026-10-04T16:16:59.1700722Z #         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-10-04T16:16:59.1700878Z #     )
+2026-10-04T16:16:59.1700983Z #     ^
+2026-10-04T16:16:59.1701208Z #   File "/usr/lib/python3/dist-packages/lazr/restfulclient/_browser.py", line 400, in _request_and_retry
+2026-10-04T16:16:59.1701583Z #     response, content = self._connection.request(
+2026-10-04T16:16:59.1701770Z #                         ~~~~~~~~~~~~~~~~~~~~~~~~^
+2026-10-04T16:16:59.1701953Z #         url, method=method, body=body, headers=headers
+2026-10-04T16:16:59.1702132Z #         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-10-04T16:16:59.1702416Z #     )
+2026-10-04T16:16:59.1702531Z #     ^
+2026-10-04T16:16:59.1702714Z #   File "/usr/lib/python3/dist-packages/httplib2/__init__.py", line 1720, in request
+2026-10-04T16:16:59.1702964Z #     (response, new_content) = self._request(
+2026-10-04T16:16:59.1703132Z #                               ~~~~~~~~~~~~~^
+2026-10-04T16:16:59.1703369Z #         conn, authority, uri, request_uri, method, body, headers, redirections, cachekey,
+2026-10-04T16:16:59.1703630Z #         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-10-04T16:16:59.1703806Z #     )
+2026-10-04T16:16:59.1703912Z #     ^
+2026-10-04T16:16:59.1704121Z #   File "/usr/lib/python3/dist-packages/launchpadlib/launchpad.py", line 139, in _request
+2026-10-04T16:16:59.1704379Z #     response, content = super()._request(*args)
+2026-10-04T16:16:59.1704554Z #                         ~~~~~~~~~~~~~~~~^^^^^^^
+2026-10-04T16:16:59.1704803Z #   File "/usr/lib/python3/dist-packages/lazr/restfulclient/_browser.py", line 204, in _request
+2026-10-04T16:16:59.1705066Z #     return super(RestfulHttp, self)._request(
+2026-10-04T16:16:59.1705245Z #            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+2026-10-04T16:16:59.1705396Z #         conn,
+2026-10-04T16:16:59.1705529Z #         ^^^^^
+2026-10-04T16:16:59.1705647Z #     ...<7 lines>...
+2026-10-04T16:16:59.1705777Z #         cachekey,
+2026-10-04T16:16:59.1705901Z #         ^^^^^^^^^
+2026-10-04T16:16:59.1706018Z #     )
+2026-10-04T16:16:59.1706125Z #     ^
+2026-10-04T16:16:59.1706310Z #   File "/usr/lib/python3/dist-packages/httplib2/__init__.py", line 1472, in _request
+2026-10-04T16:16:59.1706719Z #     (response, content) = self._conn_request(conn, request_uri, method, body, headers)
+2026-10-04T16:16:59.1706980Z #                           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-10-04T16:16:59.1707254Z #   File "/usr/lib/python3/dist-packages/httplib2/__init__.py", line 1453, in _conn_request
+2026-10-04T16:16:59.1707499Z #     content = response.read()
+2026-10-04T16:16:59.1707685Z #   File "/usr/lib/python3.14/http/client.py", line 478, in read
+2026-10-04T16:16:59.1707883Z #     return self._read_chunked(amt)
+2026-10-04T16:16:59.1708035Z #            ~~~~~~~~~~~~~~~~~~^^^^^
+2026-10-04T16:16:59.1708237Z #   File "/usr/lib/python3.14/http/client.py", line 614, in _read_chunked
+2026-10-04T16:16:59.1708467Z #     raise IncompleteRead(b''.join(value)) from exc
+2026-10-04T16:16:59.1708691Z # http.client.IncompleteRead: IncompleteRead(79833 bytes read)
+2026-10-04T16:16:59.2404114Z ok 9 [ubuntu-client] main is a no-op without gsettings on PATH
+2026-10-04T16:16:59.2770750Z ok 10 [ubuntu-client] main is a no-op headless even when gsettings exists
+2026-10-04T16:16:59.3063819Z ok 11 [ubuntu-client] gset skips a key whose schema is not writable
+2026-10-04T16:16:59.3433502Z ok 12 [ubuntu-client] gset applies a key whose schema is writable
+2026-10-04T16:16:59.3864828Z ok 13 [ubuntu-client] main applies every ported default when gsettings is available and writable
+2026-10-04T16:18:06.4520062Z ok 14 [ubuntu-client] PACKAGES for misc
+2026-10-04T16:19:00.4673947Z ok 15 [ubuntu-client] misc
+2026-10-04T16:19:00.7772254Z ok 16 [ubuntu-client] install_chromium is a no-op when snap is unavailable
+2026-10-04T16:19:04.3917448Z ##[error]The operation was canceled.
+2026-10-04T16:19:04.3989510Z Post job cleanup.
+2026-10-04T16:19:04.4610889Z [command]/usr/bin/git version
+2026-10-04T16:19:04.4645148Z git version 2.55.0
+2026-10-04T16:19:04.4673885Z Copying '/home/runner/.gitconfig' to '/home/runner/work/_temp/98c6ab17-1fe5-4a7c-bf4c-df8e77ad753f/.gitconfig'
+2026-10-04T16:19:04.4680985Z Temporarily overriding HOME='/home/runner/work/_temp/98c6ab17-1fe5-4a7c-bf4c-df8e77ad753f' before making global git config changes
+2026-10-04T16:19:04.4681976Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-04T16:19:04.4686202Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/dotfiles/dotfiles
+2026-10-04T16:19:04.4721529Z Removing SSH command configuration
+2026-10-04T16:19:04.4726318Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-04T16:19:04.4767491Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-04T16:19:04.5080783Z Removing HTTP extra header
+2026-10-04T16:19:04.5087742Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-04T16:19:04.5125837Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-04T16:19:04.5404899Z Removing includeIf entries pointing to credentials config files
+2026-10-04T16:19:04.5410614Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-04T16:19:04.5439554Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-04T16:19:04.5793537Z Cleaning up orphan processes
+2026-10-04T16:19:04.6027972Z Terminate orphan process: pid (44026) (ruby)
+2026-10-04T16:19:04.6056882Z Terminate orphan process: pid (44030) (bash)
+2026-10-04T16:19:04.6093719Z Terminate orphan process: pid (54008) (bash)
+2026-10-04T16:19:04.6123615Z Terminate orphan process: pid (54023) (bash)
+2026-10-04T16:19:04.6147825Z Terminate orphan process: pid (54024) (bash)
+2026-10-04T16:19:04.6170476Z Terminate orphan process: pid (54025) (bash)
+2026-10-04T16:19:04.6259942Z Terminate orphan process: pid (61904) (bash)
+2026-10-04T16:19:04.6290613Z Terminate orphan process: pid (61910) (bash)
+2026-10-04T16:19:04.6322630Z Terminate orphan process: pid (61913) (bash)
+```
+Exit: 0.
+
+Attempts to rerun job111477602946 and original111476070122 while Ubuntu24 rerun was active returned cannot-be-rerun (exit1). Waiting for the active attempt before rerunning the remaining failed job.
+
+## Targeted retry progression
+
+Ubuntu24 client retry job111477601886 passed (7m17s) on unchanged efe6735e. Attempt2 overall was cancelled because Ubuntu26 was not rerun. After completion, `gh run rerun 37215840356 --job 111477602946` succeeded (empty output, exit0) and starts the remaining Ubuntu26 retry. Both earlier rerun refusals were while attempt2 remained active. No test suppression or source changes.
+
+## Round 2 final validation — efe6735e
+
+Both failed Ubuntu client jobs passed targeted retry on unchanged efe6735e; first-attempt failures were external Launchpad HTTP reads during Ghostty setup. Current CI all green.
+
+Command: `AGENT_REVIEWED=1 REVIEW_EVIDENCE=.orchestration/validation/dotfiles-T97-claude-sandbox-github-calls-a01-worker-review-receipt.md make require-crit-review`
+
+```text
+Review requirement satisfied by AGENT_REVIEWED=1 with REVIEW_EVIDENCE.
+```
+Exit: 0.
+
+Command: `gh pr checks 258 --watch --interval 30 (continuous watch including targeted retries)`
+
+```text
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+changes	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476047247	
+private-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+validate	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070093	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070040	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070064	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070122	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476047247	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070093	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070040	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070064	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070122	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476047247	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070093	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070040	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070064	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070122	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476047247	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070093	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070040	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070064	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070122	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476047247	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070093	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070040	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070064	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070122	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476047247	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070093	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070040	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070064	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070122	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476047247	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070093	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070040	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070064	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070122	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476047247	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070093	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070040	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070064	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070122	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476047247	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070093	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070040	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+test (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070064	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070122	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476047247	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070093	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070040	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070064	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070122	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476047247	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070093	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070040	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070064	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070122	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476047247	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070093	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070040	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070064	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070122	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476047247	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070040	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070093	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070064	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070122	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476047247	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476047247	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070064	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070040	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070093	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070122	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+test (ubuntu-24.04, client)	fail	7m20s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070040	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476047247	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070064	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070093	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070122	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+test (ubuntu-24.04, client)	fail	7m20s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070040	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476047247	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070064	
+public-bootstrap (macos-14, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070093	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+test (ubuntu-26.04, client)	fail	7m34s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111476070122	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601909	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601886	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602197	
+test (ubuntu-26.04, client)	fail	7m34s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602946	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602566	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601909	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+public-bootstrap (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601886	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602197	
+test (ubuntu-26.04, client)	fail	7m34s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602946	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602566	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601909	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601886	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602197	
+test (ubuntu-26.04, client)	fail	7m34s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602946	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602566	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601909	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601886	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602197	
+test (ubuntu-26.04, client)	fail	7m34s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602946	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602566	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601909	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601886	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602197	
+test (ubuntu-26.04, client)	fail	7m34s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602946	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602566	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601909	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601886	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602197	
+test (ubuntu-26.04, client)	fail	7m34s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602946	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602566	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601909	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601886	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602197	
+test (ubuntu-26.04, client)	fail	7m34s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602946	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602566	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601909	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601886	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602197	
+test (ubuntu-26.04, client)	fail	7m34s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602946	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602566	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601909	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601886	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602197	
+test (ubuntu-26.04, client)	fail	7m34s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602946	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602566	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601909	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601886	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602197	
+test (ubuntu-26.04, client)	fail	7m34s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602946	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602566	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601909	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601886	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602197	
+test (ubuntu-26.04, client)	fail	7m34s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602946	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602566	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601909	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601886	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602197	
+test (ubuntu-26.04, client)	fail	7m34s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602946	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602566	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601909	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601886	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602197	
+test (ubuntu-26.04, client)	fail	7m34s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602946	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602566	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601909	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601886	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602197	
+test (ubuntu-26.04, client)	fail	7m34s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602946	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602566	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601909	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477601886	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602197	
+test (ubuntu-26.04, client)	fail	7m34s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602946	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111477602566	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478970920	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971076	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971717	
+test (ubuntu-24.04, client)	pass	7m17s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971623	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971076	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478989941	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478970920	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971717	
+test (ubuntu-24.04, client)	pass	7m17s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971623	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971076	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478989941	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478970920	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971717	
+test (ubuntu-24.04, client)	pass	7m17s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971623	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971076	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478989941	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478970920	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971717	
+test (ubuntu-24.04, client)	pass	7m17s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971623	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971076	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478989941	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478970920	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971717	
+test (ubuntu-24.04, client)	pass	7m17s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971623	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971076	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478989941	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478970920	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971717	
+test (ubuntu-24.04, client)	pass	7m17s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971623	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971076	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478989941	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478970920	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971717	
+test (ubuntu-24.04, client)	pass	7m17s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971623	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971076	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478989941	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478970920	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971717	
+test (ubuntu-24.04, client)	pass	7m17s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971623	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971076	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478989941	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478970920	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971717	
+test (ubuntu-24.04, client)	pass	7m17s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971623	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971076	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478989941	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478970920	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971717	
+test (ubuntu-24.04, client)	pass	7m17s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971623	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971076	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478989941	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478970920	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971717	
+test (ubuntu-24.04, client)	pass	7m17s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971623	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971076	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478989941	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478970920	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971717	
+test (ubuntu-24.04, client)	pass	7m17s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971623	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971076	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478989941	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478970920	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971717	
+test (ubuntu-24.04, client)	pass	7m17s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971623	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+Refreshing checks status every 30 seconds. Press Ctrl+C to quit.
+
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971076	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478989941	
+test (ubuntu-26.04, client)	pending	0	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478970920	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971717	
+test (ubuntu-24.04, client)	pass	7m17s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971623	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971076	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971717	
+test (ubuntu-24.04, client)	pass	7m17s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971623	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478989941	
+test (ubuntu-26.04, client)	pass	7m10s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478970920	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971076	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971717	
+test (ubuntu-24.04, client)	pass	7m17s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971623	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478989941	
+test (ubuntu-26.04, client)	pass	7m10s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478970920	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+```
+Exit: 0.
+
+Command: `gh pr checks 258`
+
+```text
+CodeRabbit	pass	0		Review skipped: automatic reviews are disabled
+changes	pass	5s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971076	
+private-bootstrap (macos-14, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047505	
+private-bootstrap (ubuntu-24.04, client)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047521	
+private-bootstrap (ubuntu-24.04, server)	pass	7s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047417	
+public-bootstrap (macos-14, client)	pass	8m21s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047504	
+public-bootstrap (ubuntu-24.04, client)	pass	9m18s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047576	
+public-bootstrap (ubuntu-24.04, server)	pass	6m38s	https://github.com/mryfmo/dotfiles/actions/runs/37215840359/job/111476047536	
+test (macos-14, client)	pass	5m57s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971717	
+test (ubuntu-24.04, client)	pass	7m17s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478971623	
+test (ubuntu-24.04, server)	pass	4m53s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478989941	
+test (ubuntu-26.04, client)	pass	7m10s	https://github.com/mryfmo/dotfiles/actions/runs/37215840356/job/111478970920	
+validate	pass	27s	https://github.com/mryfmo/dotfiles/actions/runs/37215840361/job/111476047329	
+```
+Exit: 0.
+
+Command: `gh api repos/mryfmo/dotfiles/pulls/258 --jq '{head:.head.sha,base:.base.sha,mergeable_state}'`
+
+```text
+{"base":"f6320f37d3835b37204584e00eb67d0bb41bf577","head":"efe6735e4542029b1357d27d1e47b63a57273ed4","mergeable_state":"clean"}
+```
+Exit: 0.
+
+Command: `gh api repos/mryfmo/dotfiles/commits/main --jq .sha`
+
+```text
+f6320f37d3835b37204584e00eb67d0bb41bf577
+```
+Exit: 0.
+
+Command: `gh api --paginate --slurp repos/mryfmo/dotfiles/pulls/258/reviews`
+
+```text
+[[{"id":5406686942,"node_id":"PRR_kwDOSMyAV88AAAABQkN-3g","user":{"login":"chatgpt-codex-connector[bot]","id":199175422,"node_id":"BOT_kgDOC98s_g","avatar_url":"https://avatars.githubusercontent.com/in/1144995?v=4","gravatar_id":"","url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D","html_url":"https://github.com/apps/chatgpt-codex-connector","followers_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/followers","following_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/following{/other_user}","gists_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/gists{/gist_id}","starred_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/subscriptions","organizations_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/orgs","repos_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/repos","events_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/events{/privacy}","received_events_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/received_events","type":"Bot","user_view_type":"public","site_admin":false},"body":"\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `8ffa554738`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>","state":"COMMENTED","html_url":"https://github.com/mryfmo/dotfiles/pull/258#pullrequestreview-5406686942","pull_request_url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258","author_association":"NONE","_links":{"html":{"href":"https://github.com/mryfmo/dotfiles/pull/258#pullrequestreview-5406686942"},"pull_request":{"href":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258"}},"submitted_at":"2026-10-04T14:38:11Z","commit_id":"8ffa554738c6f8b524f33787332a31337e935122"},{"id":5406761609,"node_id":"PRR_kwDOSMyAV88AAAABQkSiiQ","user":{"login":"moriya-fumio-thd","id":319443150,"node_id":"U_kgDOEwpQzg","avatar_url":"https://avatars.githubusercontent.com/u/319443150?v=4","gravatar_id":"","url":"https://api.github.com/users/moriya-fumio-thd","html_url":"https://github.com/moriya-fumio-thd","followers_url":"https://api.github.com/users/moriya-fumio-thd/followers","following_url":"https://api.github.com/users/moriya-fumio-thd/following{/other_user}","gists_url":"https://api.github.com/users/moriya-fumio-thd/gists{/gist_id}","starred_url":"https://api.github.com/users/moriya-fumio-thd/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/moriya-fumio-thd/subscriptions","organizations_url":"https://api.github.com/users/moriya-fumio-thd/orgs","repos_url":"https://api.github.com/users/moriya-fumio-thd/repos","events_url":"https://api.github.com/users/moriya-fumio-thd/events{/privacy}","received_events_url":"https://api.github.com/users/moriya-fumio-thd/received_events","type":"User","user_view_type":"public","site_admin":false},"body":"","state":"COMMENTED","html_url":"https://github.com/mryfmo/dotfiles/pull/258#pullrequestreview-5406761609","pull_request_url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258","author_association":"COLLABORATOR","_links":{"html":{"href":"https://github.com/mryfmo/dotfiles/pull/258#pullrequestreview-5406761609"},"pull_request":{"href":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258"}},"submitted_at":"2026-10-04T14:57:24Z","commit_id":"8ffa554738c6f8b524f33787332a31337e935122"},{"id":5407013778,"node_id":"PRR_kwDOSMyAV88AAAABQkh7kg","user":{"login":"chatgpt-codex-connector[bot]","id":199175422,"node_id":"BOT_kgDOC98s_g","avatar_url":"https://avatars.githubusercontent.com/in/1144995?v=4","gravatar_id":"","url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D","html_url":"https://github.com/apps/chatgpt-codex-connector","followers_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/followers","following_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/following{/other_user}","gists_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/gists{/gist_id}","starred_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/subscriptions","organizations_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/orgs","repos_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/repos","events_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/events{/privacy}","received_events_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/received_events","type":"Bot","user_view_type":"public","site_admin":false},"body":"\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `5b6b0d9f89`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\nCodex has been enabled to automatically review pull requests in this repo. Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nWhen you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like \"@codex address that feedback\".\n            \n</details>","state":"COMMENTED","html_url":"https://github.com/mryfmo/dotfiles/pull/258#pullrequestreview-5407013778","pull_request_url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258","author_association":"NONE","_links":{"html":{"href":"https://github.com/mryfmo/dotfiles/pull/258#pullrequestreview-5407013778"},"pull_request":{"href":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258"}},"submitted_at":"2026-10-04T15:56:13Z","commit_id":"5b6b0d9f89049eff0efbdc4699c425f711e58557"},{"id":5407053604,"node_id":"PRR_kwDOSMyAV88AAAABQkkXJA","user":{"login":"moriya-fumio-thd","id":319443150,"node_id":"U_kgDOEwpQzg","avatar_url":"https://avatars.githubusercontent.com/u/319443150?v=4","gravatar_id":"","url":"https://api.github.com/users/moriya-fumio-thd","html_url":"https://github.com/moriya-fumio-thd","followers_url":"https://api.github.com/users/moriya-fumio-thd/followers","following_url":"https://api.github.com/users/moriya-fumio-thd/following{/other_user}","gists_url":"https://api.github.com/users/moriya-fumio-thd/gists{/gist_id}","starred_url":"https://api.github.com/users/moriya-fumio-thd/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/moriya-fumio-thd/subscriptions","organizations_url":"https://api.github.com/users/moriya-fumio-thd/orgs","repos_url":"https://api.github.com/users/moriya-fumio-thd/repos","events_url":"https://api.github.com/users/moriya-fumio-thd/events{/privacy}","received_events_url":"https://api.github.com/users/moriya-fumio-thd/received_events","type":"User","user_view_type":"public","site_admin":false},"body":"","state":"COMMENTED","html_url":"https://github.com/mryfmo/dotfiles/pull/258#pullrequestreview-5407053604","pull_request_url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258","author_association":"COLLABORATOR","_links":{"html":{"href":"https://github.com/mryfmo/dotfiles/pull/258#pullrequestreview-5407053604"},"pull_request":{"href":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258"}},"submitted_at":"2026-10-04T16:03:13Z","commit_id":"5b6b0d9f89049eff0efbdc4699c425f711e58557"}]]```
+Exit: 0.
+
+Command: `gh api --paginate --slurp repos/mryfmo/dotfiles/pulls/258/comments`
+
+```text
+[[{"url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4178090986","pull_request_review_id":5406686942,"id":4178090986,"node_id":"PRRC_kwDOSMyAV875CJvq","diff_hunk":"@@ -167,7 +167,7 @@ AGMSG-PONG v1 task_id=<id> status=alive|blocked note=<short-note>\n 1. Read the full `AGMSG-TASK v1` message.\n 2. Switch to the `repo` and read `task_file` before editing or running validations. Create the task branch without touching the shared `.git/config`, which is read-only for a Codex seat by design (T64 writable roots): `git switch -c <branch> --no-track origin/main`, push with `git push origin <branch>` (no `-u`), and open the PR with `gh pr create --head <branch>`. A Claude seat's sandbox can leave the same failed write behind, so it uses the same commands. A leftover `.git/config.lock` from a failed attempt is removed by the orchestrator.\n 3. Treat `allowed_files` as the edit boundary. If it says to see the task file, read that section and follow it exactly.\n-4. Do not perform any `forbidden_actions`. Complete every command inside the sandbox and allowlist; never escalate an action outside that boundary for approval. Fail it instead, send `AGMSG-PONG v1 status=blocked` with the exact command and the boundary it crosses, and wait for the orchestrator to re-task. Agent-to-agent permission approval is forbidden: only the human operator answers a permission prompt. A Claude Code auto-mode classifier denial (for example Self-Modification) is such a boundary: stop without a diff, send `AGMSG-PONG v1 status=blocked` naming the classifier reason, and never pursue the same outcome through another tool. Exception: GitHub calls (`git fetch`, `git push`, `gh`) are the one class of commands a Claude seat runs outside its sandbox, through the permission gate (the auto-mode classifier since T62). The sandbox's GitHub domain allowance does not make `gh`/`git push` work there yet; dotfiles-T97 investigates and fixes that, after which the exception ends. Two documented cases run outside the sandbox too: the task's main-checkout CompactionDB `memory add`, through the permission gate because that state directory is read-only from a worktree sandbox, and `agmsg-dispatch`, through `excludedCommands` (step 11). Every other out-of-sandbox action stays a blocked PONG. A Codex seat has in-sandbox network (T64) and never leaves its sandbox.\n+4. Do not perform any `forbidden_actions`. Complete every command inside the sandbox and allowlist; never escalate an action outside that boundary for approval. Fail it instead, send `AGMSG-PONG v1 status=blocked` with the exact command and the boundary it crosses, and wait for the orchestrator to re-task. Agent-to-agent permission approval is forbidden: only the human operator answers a permission prompt. A Claude Code auto-mode classifier denial (for example Self-Modification) is such a boundary: stop without a diff, send `AGMSG-PONG v1 status=blocked` naming the classifier reason, and never pursue the same outcome through another tool. Run `git fetch`/`push` and `gh` inside the sandbox first. On Linux, `gh` backed by the host keyring answers HTTP 401 there because AF_UNIX socket creation is denied and `allowUnixSockets` cannot grant a path; until dotfiles-T90 provisions a sandbox-readable worker credential, a Claude seat's `gh` calls are the one class of commands it runs outside the sandbox through the permission gate, and every other out-of-sandbox action stays a blocked PONG. Two documented cases run outside the sandbox too: the task's main-checkout CompactionDB `memory add`, through the permission gate because that state directory is read-only from a worktree sandbox, and `agmsg-dispatch`, through `excludedCommands` (step 11). Every other out-of-sandbox action stays a blocked PONG. A Codex seat has in-sandbox network (T64) and never leaves its sandbox.","path":"home/dot_agents/skills/agmsg-orchestration/SKILL.md","commit_id":"8ffa554738c6f8b524f33787332a31337e935122","original_commit_id":"8ffa554738c6f8b524f33787332a31337e935122","user":{"login":"chatgpt-codex-connector[bot]","id":199175422,"node_id":"BOT_kgDOC98s_g","avatar_url":"https://avatars.githubusercontent.com/in/1144995?v=4","gravatar_id":"","url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D","html_url":"https://github.com/apps/chatgpt-codex-connector","followers_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/followers","following_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/following{/other_user}","gists_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/gists{/gist_id}","starred_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/subscriptions","organizations_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/orgs","repos_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/repos","events_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/events{/privacy}","received_events_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/received_events","type":"Bot","user_view_type":"public","site_admin":false},"body":"**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Retain a fallback for linked-worktree Git operations**\n\nFor a Claude worker in the normal `.claude/worktrees/...` layout, `git fetch` writes fetched objects and remote refs in the shared Git common directory, outside the worktree. `executable_herdr-agents` grants those metadata roots only to Codex workers, while the managed Claude sandbox does not allow the common directory. This new instruction therefore makes a required fetch fail in the sandbox and then requires a blocked PONG because only `gh` may run outside it; a Claude task that needs a fresh `origin/main` can no longer proceed. Keep an explicitly permitted unsandboxed fallback for Git commands, or provision the corresponding Claude writable roots before requiring the in-sandbox attempt.\n\nUseful? React with 👍 / 👎.","created_at":"2026-10-04T14:38:11Z","updated_at":"2026-10-04T14:38:11Z","html_url":"https://github.com/mryfmo/dotfiles/pull/258#discussion_r4178090986","pull_request_url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258","_links":{"self":{"href":"https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4178090986"},"html":{"href":"https://github.com/mryfmo/dotfiles/pull/258#discussion_r4178090986"},"pull_request":{"href":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258"}},"reactions":{"url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4178090986/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":null,"original_line":170,"side":"RIGHT","author_association":"NONE","original_position":5,"position":1,"subject_type":"line"},{"url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4178153646","pull_request_review_id":5406761609,"id":4178153646,"node_id":"PRRC_kwDOSMyAV875CZCu","diff_hunk":"@@ -167,7 +167,7 @@ AGMSG-PONG v1 task_id=<id> status=alive|blocked note=<short-note>\n 1. Read the full `AGMSG-TASK v1` message.\n 2. Switch to the `repo` and read `task_file` before editing or running validations. Create the task branch without touching the shared `.git/config`, which is read-only for a Codex seat by design (T64 writable roots): `git switch -c <branch> --no-track origin/main`, push with `git push origin <branch>` (no `-u`), and open the PR with `gh pr create --head <branch>`. A Claude seat's sandbox can leave the same failed write behind, so it uses the same commands. A leftover `.git/config.lock` from a failed attempt is removed by the orchestrator.\n 3. Treat `allowed_files` as the edit boundary. If it says to see the task file, read that section and follow it exactly.\n-4. Do not perform any `forbidden_actions`. Complete every command inside the sandbox and allowlist; never escalate an action outside that boundary for approval. Fail it instead, send `AGMSG-PONG v1 status=blocked` with the exact command and the boundary it crosses, and wait for the orchestrator to re-task. Agent-to-agent permission approval is forbidden: only the human operator answers a permission prompt. A Claude Code auto-mode classifier denial (for example Self-Modification) is such a boundary: stop without a diff, send `AGMSG-PONG v1 status=blocked` naming the classifier reason, and never pursue the same outcome through another tool. Exception: GitHub calls (`git fetch`, `git push`, `gh`) are the one class of commands a Claude seat runs outside its sandbox, through the permission gate (the auto-mode classifier since T62). The sandbox's GitHub domain allowance does not make `gh`/`git push` work there yet; dotfiles-T97 investigates and fixes that, after which the exception ends. Two documented cases run outside the sandbox too: the task's main-checkout CompactionDB `memory add`, through the permission gate because that state directory is read-only from a worktree sandbox, and `agmsg-dispatch`, through `excludedCommands` (step 11). Every other out-of-sandbox action stays a blocked PONG. A Codex seat has in-sandbox network (T64) and never leaves its sandbox.\n+4. Do not perform any `forbidden_actions`. Complete every command inside the sandbox and allowlist; never escalate an action outside that boundary for approval. Fail it instead, send `AGMSG-PONG v1 status=blocked` with the exact command and the boundary it crosses, and wait for the orchestrator to re-task. Agent-to-agent permission approval is forbidden: only the human operator answers a permission prompt. A Claude Code auto-mode classifier denial (for example Self-Modification) is such a boundary: stop without a diff, send `AGMSG-PONG v1 status=blocked` naming the classifier reason, and never pursue the same outcome through another tool. Run `git fetch`/`push` and `gh` inside the sandbox first. On Linux, `gh` backed by the host keyring answers HTTP 401 there because AF_UNIX socket creation is denied and `allowUnixSockets` cannot grant a path; until dotfiles-T90 provisions a sandbox-readable worker credential, a Claude seat's `gh` calls are the one class of commands it runs outside the sandbox through the permission gate, and every other out-of-sandbox action stays a blocked PONG. Two documented cases run outside the sandbox too: the task's main-checkout CompactionDB `memory add`, through the permission gate because that state directory is read-only from a worktree sandbox, and `agmsg-dispatch`, through `excludedCommands` (step 11). Every other out-of-sandbox action stays a blocked PONG. A Codex seat has in-sandbox network (T64) and never leaves its sandbox.","path":"home/dot_agents/skills/agmsg-orchestration/SKILL.md","commit_id":"8ffa554738c6f8b524f33787332a31337e935122","original_commit_id":"8ffa554738c6f8b524f33787332a31337e935122","user":{"login":"moriya-fumio-thd","id":319443150,"node_id":"U_kgDOEwpQzg","avatar_url":"https://avatars.githubusercontent.com/u/319443150?v=4","gravatar_id":"","url":"https://api.github.com/users/moriya-fumio-thd","html_url":"https://github.com/moriya-fumio-thd","followers_url":"https://api.github.com/users/moriya-fumio-thd/followers","following_url":"https://api.github.com/users/moriya-fumio-thd/following{/other_user}","gists_url":"https://api.github.com/users/moriya-fumio-thd/gists{/gist_id}","starred_url":"https://api.github.com/users/moriya-fumio-thd/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/moriya-fumio-thd/subscriptions","organizations_url":"https://api.github.com/users/moriya-fumio-thd/orgs","repos_url":"https://api.github.com/users/moriya-fumio-thd/repos","events_url":"https://api.github.com/users/moriya-fumio-thd/events{/privacy}","received_events_url":"https://api.github.com/users/moriya-fumio-thd/received_events","type":"User","user_view_type":"public","site_admin":false},"body":"not-applicable: Claude worker seats already fetch inside their sandbox in the nested-worktree layout (a005 recorded `git fetch`, branch, commit and a push as sandboxed in its T95 run; the Codex seat additionally holds the common-dir roots from herdr-agents), so the instruction does not turn a required fetch into a blocked PONG. The `git push` wording is being corrected in the next commit: pushes ask `gh` for credentials and therefore share the keyring exception.","created_at":"2026-10-04T14:57:24Z","updated_at":"2026-10-04T14:57:24Z","html_url":"https://github.com/mryfmo/dotfiles/pull/258#discussion_r4178153646","pull_request_url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258","_links":{"self":{"href":"https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4178153646"},"html":{"href":"https://github.com/mryfmo/dotfiles/pull/258#discussion_r4178153646"},"pull_request":{"href":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258"}},"reactions":{"url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4178153646/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":null,"original_line":170,"side":"RIGHT","in_reply_to_id":4178090986,"author_association":"COLLABORATOR","original_position":5,"position":1,"subject_type":"line"},{"url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4178339453","pull_request_review_id":5407013778,"id":4178339453,"node_id":"PRRC_kwDOSMyAV875DGZ9","diff_hunk":"@@ -167,7 +167,7 @@ AGMSG-PONG v1 task_id=<id> status=alive|blocked note=<short-note>\n 1. Read the full `AGMSG-TASK v1` message.\n 2. Switch to the `repo` and read `task_file` before editing or running validations. Create the task branch without touching the shared `.git/config`, which is read-only for a Codex seat by design (T64 writable roots): `git switch -c <branch> --no-track origin/main`, push with `git push origin <branch>` (no `-u`), and open the PR with `gh pr create --head <branch>`. A Claude seat's sandbox can leave the same failed write behind, so it uses the same commands. A leftover `.git/config.lock` from a failed attempt is removed by the orchestrator.\n 3. Treat `allowed_files` as the edit boundary. If it says to see the task file, read that section and follow it exactly.\n-4. Do not perform any `forbidden_actions`. Complete every command inside the sandbox and allowlist; never escalate an action outside that boundary for approval. Fail it instead, send `AGMSG-PONG v1 status=blocked` with the exact command and the boundary it crosses, and wait for the orchestrator to re-task. Agent-to-agent permission approval is forbidden: only the human operator answers a permission prompt. A Claude Code auto-mode classifier denial (for example Self-Modification) is such a boundary: stop without a diff, send `AGMSG-PONG v1 status=blocked` naming the classifier reason, and never pursue the same outcome through another tool. Exception: GitHub calls (`git fetch`, `git push`, `gh`) are the one class of commands a Claude seat runs outside its sandbox, through the permission gate (the auto-mode classifier since T62). The sandbox's GitHub domain allowance does not make `gh`/`git push` work there yet; dotfiles-T97 investigates and fixes that, after which the exception ends. Two documented cases run outside the sandbox too: the task's main-checkout CompactionDB `memory add`, through the permission gate because that state directory is read-only from a worktree sandbox, and `agmsg-dispatch`, through `excludedCommands` (step 11). Every other out-of-sandbox action stays a blocked PONG. A Codex seat has in-sandbox network (T64) and never leaves its sandbox.\n+4. Do not perform any `forbidden_actions`. Complete every command inside the sandbox and allowlist; never escalate an action outside that boundary for approval. Fail it instead, send `AGMSG-PONG v1 status=blocked` with the exact command and the boundary it crosses, and wait for the orchestrator to re-task. Agent-to-agent permission approval is forbidden: only the human operator answers a permission prompt. A Claude Code auto-mode classifier denial (for example Self-Modification) is such a boundary: stop without a diff, send `AGMSG-PONG v1 status=blocked` naming the classifier reason, and never pursue the same outcome through another tool. Run `git fetch`/`push` and `gh` inside the sandbox first. On Linux, `gh` backed by the host keyring answers HTTP 401 there because AF_UNIX socket creation is denied and `allowUnixSockets` cannot grant a path; until dotfiles-T90 provisions a sandbox-readable worker credential, a Claude seat's `gh` calls and `git push` (whose credential helper is `gh`) are the one class of commands it runs outside the sandbox through the permission gate. Two documented cases run outside the sandbox too: the task's main-checkout CompactionDB `memory add`, through the permission gate because that state directory is read-only from a worktree sandbox, and `agmsg-dispatch`, through `excludedCommands` (step 11). Every other out-of-sandbox action stays a blocked PONG. A Codex seat has in-sandbox network (T64) and never leaves its sandbox.","path":"home/dot_agents/skills/agmsg-orchestration/SKILL.md","commit_id":"5b6b0d9f89049eff0efbdc4699c425f711e58557","original_commit_id":"5b6b0d9f89049eff0efbdc4699c425f711e58557","user":{"login":"chatgpt-codex-connector[bot]","id":199175422,"node_id":"BOT_kgDOC98s_g","avatar_url":"https://avatars.githubusercontent.com/in/1144995?v=4","gravatar_id":"","url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D","html_url":"https://github.com/apps/chatgpt-codex-connector","followers_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/followers","following_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/following{/other_user}","gists_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/gists{/gist_id}","starred_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/subscriptions","organizations_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/orgs","repos_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/repos","events_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/events{/privacy}","received_events_url":"https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/received_events","type":"Bot","user_view_type":"public","site_admin":false},"body":"**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Restore the fallback for private HTTPS fetches**\n\nFor a Claude task in a private GitHub repository whose `origin` is HTTPS, this removes the usable fetch path: `home/dot_config/git/config.tmpl:25-26` configures `credential.helper = !gh auth git-credential`, while its `pushInsteadOf` rule affects only pushes. Git documents that `pushInsteadOf` rewrites the URL that “will be pushed to,” so `git fetch` still invokes the same `gh`/host-keyring flow this change says returns HTTP 401; the new policy then requires it to remain sandboxed and blocks every other unsandboxed action. A worker that needs a fresh `origin/main` will therefore stop with a PONG. Permit an authenticated fetch retry outside the sandbox or provision the credential first. [git-config documentation](https://git-scm.com/docs/git-config#Documentation/git-config.txt-urlltbasegtpushInsteadOf)\n\nAGENTS.md reference: [AGENTS.md:L78-L79](https://github.com/mryfmo/dotfiles/blob/5b6b0d9f89049eff0efbdc4699c425f711e58557/AGENTS.md#L78-L79)\n\nUseful? React with 👍 / 👎.","created_at":"2026-10-04T15:56:13Z","updated_at":"2026-10-04T15:56:13Z","html_url":"https://github.com/mryfmo/dotfiles/pull/258#discussion_r4178339453","pull_request_url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258","_links":{"self":{"href":"https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4178339453"},"html":{"href":"https://github.com/mryfmo/dotfiles/pull/258#discussion_r4178339453"},"pull_request":{"href":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258"}},"reactions":{"url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4178339453/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":null,"original_line":170,"side":"RIGHT","author_association":"NONE","original_position":5,"position":1,"subject_type":"line"},{"url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4178361536","pull_request_review_id":5407053604,"id":4178361536,"node_id":"PRRC_kwDOSMyAV875DLzA","diff_hunk":"@@ -167,7 +167,7 @@ AGMSG-PONG v1 task_id=<id> status=alive|blocked note=<short-note>\n 1. Read the full `AGMSG-TASK v1` message.\n 2. Switch to the `repo` and read `task_file` before editing or running validations. Create the task branch without touching the shared `.git/config`, which is read-only for a Codex seat by design (T64 writable roots): `git switch -c <branch> --no-track origin/main`, push with `git push origin <branch>` (no `-u`), and open the PR with `gh pr create --head <branch>`. A Claude seat's sandbox can leave the same failed write behind, so it uses the same commands. A leftover `.git/config.lock` from a failed attempt is removed by the orchestrator.\n 3. Treat `allowed_files` as the edit boundary. If it says to see the task file, read that section and follow it exactly.\n-4. Do not perform any `forbidden_actions`. Complete every command inside the sandbox and allowlist; never escalate an action outside that boundary for approval. Fail it instead, send `AGMSG-PONG v1 status=blocked` with the exact command and the boundary it crosses, and wait for the orchestrator to re-task. Agent-to-agent permission approval is forbidden: only the human operator answers a permission prompt. A Claude Code auto-mode classifier denial (for example Self-Modification) is such a boundary: stop without a diff, send `AGMSG-PONG v1 status=blocked` naming the classifier reason, and never pursue the same outcome through another tool. Exception: GitHub calls (`git fetch`, `git push`, `gh`) are the one class of commands a Claude seat runs outside its sandbox, through the permission gate (the auto-mode classifier since T62). The sandbox's GitHub domain allowance does not make `gh`/`git push` work there yet; dotfiles-T97 investigates and fixes that, after which the exception ends. Two documented cases run outside the sandbox too: the task's main-checkout CompactionDB `memory add`, through the permission gate because that state directory is read-only from a worktree sandbox, and `agmsg-dispatch`, through `excludedCommands` (step 11). Every other out-of-sandbox action stays a blocked PONG. A Codex seat has in-sandbox network (T64) and never leaves its sandbox.\n+4. Do not perform any `forbidden_actions`. Complete every command inside the sandbox and allowlist; never escalate an action outside that boundary for approval. Fail it instead, send `AGMSG-PONG v1 status=blocked` with the exact command and the boundary it crosses, and wait for the orchestrator to re-task. Agent-to-agent permission approval is forbidden: only the human operator answers a permission prompt. A Claude Code auto-mode classifier denial (for example Self-Modification) is such a boundary: stop without a diff, send `AGMSG-PONG v1 status=blocked` naming the classifier reason, and never pursue the same outcome through another tool. Run `git fetch`/`push` and `gh` inside the sandbox first. On Linux, `gh` backed by the host keyring answers HTTP 401 there because AF_UNIX socket creation is denied and `allowUnixSockets` cannot grant a path; until dotfiles-T90 provisions a sandbox-readable worker credential, a Claude seat's `gh` calls and `git push` (whose credential helper is `gh`) are the one class of commands it runs outside the sandbox through the permission gate. Two documented cases run outside the sandbox too: the task's main-checkout CompactionDB `memory add`, through the permission gate because that state directory is read-only from a worktree sandbox, and `agmsg-dispatch`, through `excludedCommands` (step 11). Every other out-of-sandbox action stays a blocked PONG. A Codex seat has in-sandbox network (T64) and never leaves its sandbox.","path":"home/dot_agents/skills/agmsg-orchestration/SKILL.md","commit_id":"5b6b0d9f89049eff0efbdc4699c425f711e58557","original_commit_id":"5b6b0d9f89049eff0efbdc4699c425f711e58557","user":{"login":"moriya-fumio-thd","id":319443150,"node_id":"U_kgDOEwpQzg","avatar_url":"https://avatars.githubusercontent.com/u/319443150?v=4","gravatar_id":"","url":"https://api.github.com/users/moriya-fumio-thd","html_url":"https://github.com/moriya-fumio-thd","followers_url":"https://api.github.com/users/moriya-fumio-thd/followers","following_url":"https://api.github.com/users/moriya-fumio-thd/following{/other_user}","gists_url":"https://api.github.com/users/moriya-fumio-thd/gists{/gist_id}","starred_url":"https://api.github.com/users/moriya-fumio-thd/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/moriya-fumio-thd/subscriptions","organizations_url":"https://api.github.com/users/moriya-fumio-thd/orgs","repos_url":"https://api.github.com/users/moriya-fumio-thd/repos","events_url":"https://api.github.com/users/moriya-fumio-thd/events{/privacy}","received_events_url":"https://api.github.com/users/moriya-fumio-thd/received_events","type":"User","user_view_type":"public","site_admin":false},"body":"not-applicable: the Worker Playbook describes the seats of this regime, whose repository (mryfmo/dotfiles) is public, so a worker's `git fetch` needs no credential and runs inside the sandbox (observed on Claude seats in T72, T76 and T95). A private remote is not something a worker seat here fetches; the private chezmoi source is operator-managed. When a private remote enters the regime, its fetch joins the same keyring exception that `gh` and `git push` already carry, which T90's sandbox-readable credential closes for all three.","created_at":"2026-10-04T16:03:13Z","updated_at":"2026-10-04T16:03:13Z","html_url":"https://github.com/mryfmo/dotfiles/pull/258#discussion_r4178361536","pull_request_url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258","_links":{"self":{"href":"https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4178361536"},"html":{"href":"https://github.com/mryfmo/dotfiles/pull/258#discussion_r4178361536"},"pull_request":{"href":"https://api.github.com/repos/mryfmo/dotfiles/pulls/258"}},"reactions":{"url":"https://api.github.com/repos/mryfmo/dotfiles/pulls/comments/4178361536/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":null,"original_line":170,"side":"RIGHT","in_reply_to_id":4178339453,"author_association":"COLLABORATOR","original_position":5,"position":1,"subject_type":"line"}]]```
+Exit: 0.
+
+Command: `gh api graphql --paginate (reviewThreads; all pageInfo.hasNextPage false)`
+
+```text
+{"data":{"repository":{"pullRequest":{"reviewThreads":{"nodes":[{"id":"PRRT_kwDOSMyAV86ozh63","isResolved":true,"path":"home/dot_agents/skills/agmsg-orchestration/SKILL.md","line":null,"comments":{"nodes":[{"databaseId":4178090986,"author":{"login":"chatgpt-codex-connector"},"body":"**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Retain a fallback for linked-worktree Git operations**\n\nFor a Claude worker in the normal `.claude/worktrees/...` layout, `git fetch` writes fetched objects and remote refs in the shared Git common directory, outside the worktree. `executable_herdr-agents` grants those metadata roots only to Codex workers, while the managed Claude sandbox does not allow the common directory. This new instruction therefore makes a required fetch fail in the sandbox and then requires a blocked PONG because only `gh` may run outside it; a Claude task that needs a fresh `origin/main` can no longer proceed. Keep an explicitly permitted unsandboxed fallback for Git commands, or provision the corresponding Claude writable roots before requiring the in-sandbox attempt.\n\nUseful? React with 👍 / 👎."},{"databaseId":4178153646,"author":{"login":"moriya-fumio-thd"},"body":"not-applicable: Claude worker seats already fetch inside their sandbox in the nested-worktree layout (a005 recorded `git fetch`, branch, commit and a push as sandboxed in its T95 run; the Codex seat additionally holds the common-dir roots from herdr-agents), so the instruction does not turn a required fetch into a blocked PONG. The `git push` wording is being corrected in the next commit: pushes ask `gh` for credentials and therefore share the keyring exception."}],"pageInfo":{"hasNextPage":false,"endCursor":"Y3Vyc29yOnYyOpK0MjAyNi0xMC0wNFQxNDo1NzoyNFrO-QmQrg=="}}},{"id":"PRRT_kwDOSMyAV86o0JBE","isResolved":true,"path":"home/dot_agents/skills/agmsg-orchestration/SKILL.md","line":null,"comments":{"nodes":[{"databaseId":4178339453,"author":{"login":"chatgpt-codex-connector"},"body":"**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Restore the fallback for private HTTPS fetches**\n\nFor a Claude task in a private GitHub repository whose `origin` is HTTPS, this removes the usable fetch path: `home/dot_config/git/config.tmpl:25-26` configures `credential.helper = !gh auth git-credential`, while its `pushInsteadOf` rule affects only pushes. Git documents that `pushInsteadOf` rewrites the URL that “will be pushed to,” so `git fetch` still invokes the same `gh`/host-keyring flow this change says returns HTTP 401; the new policy then requires it to remain sandboxed and blocks every other unsandboxed action. A worker that needs a fresh `origin/main` will therefore stop with a PONG. Permit an authenticated fetch retry outside the sandbox or provision the credential first. [git-config documentation](https://git-scm.com/docs/git-config#Documentation/git-config.txt-urlltbasegtpushInsteadOf)\n\nAGENTS.md reference: [AGENTS.md:L78-L79](https://github.com/mryfmo/dotfiles/blob/5b6b0d9f89049eff0efbdc4699c425f711e58557/AGENTS.md#L78-L79)\n\nUseful? React with 👍 / 👎."},{"databaseId":4178361536,"author":{"login":"moriya-fumio-thd"},"body":"not-applicable: the Worker Playbook describes the seats of this regime, whose repository (mryfmo/dotfiles) is public, so a worker's `git fetch` needs no credential and runs inside the sandbox (observed on Claude seats in T72, T76 and T95). A private remote is not something a worker seat here fetches; the private chezmoi source is operator-managed. When a private remote enters the regime, its fetch joins the same keyring exception that `gh` and `git push` already carry, which T90's sandbox-readable credential closes for all three."}],"pageInfo":{"hasNextPage":false,"endCursor":"Y3Vyc29yOnYyOpK0MjAyNi0xMC0wNFQxNjowMzoxM1rO-Qy8wA=="}}}],"pageInfo":{"hasNextPage":false,"endCursor":"Y3Vyc29yOnYyOpK0MjAyNi0xMC0wNFQxNTo1NjoxM1rOqNCQRA=="}}}}}}```
+Exit: 0.
+
+Final-head reviews/comments filtered on commit_id/original_commit_id efe6735e are both empty. Existing private-fetch P2 is now fixed:efe6735e4542029b1357d27d1e47b63a57273ed4, superseding scope-only not-applicable. Both threads resolved by orchestrator; none unresolved. No new timed Bot wait per explicit round-2 instruction.

@@ -40,6 +40,7 @@ class AgmsgOrchestrationDocsParityTest(unittest.TestCase):
                 "home/dot_claude/modify_private_settings.json",
                 "`claude.sandbox`",
                 "home/dot_agents/permgate-policy.yaml",
+                "PermissionRequest hook of both seats, goes to the operator",
                 "AGMSG-PONG v1 status=blocked",
                 "--ask-for-approval never",
             ):

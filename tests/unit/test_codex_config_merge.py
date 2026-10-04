@@ -231,11 +231,19 @@ class CodexConfigMergeTest(unittest.TestCase):
         self.assertEqual(output, textwrap.dedent(managed).lstrip())
 
     def test_retired_disabled_mcp_servers_are_purged_and_enabled_ones_kept(self) -> None:
-        retired = ("filesystem_dotfiles", "github", "time", "sequential_thinking", "playwright")
+        retired = ("filesystem_dotfiles", "time", "sequential_thinking", "playwright")
         current = 'model = "gpt-5.6-sol"\n' + "".join(
             f'\n[mcp_servers.{name}]\ncommand = "npx"\nenabled = false\nrequired = false\n' for name in retired
         )
-        current += '\n[mcp_servers.context7]\nurl = "https://mcp.context7.com/mcp"\nenabled = true\n'
+        # A disabled retired parent takes its child table with it.
+        current += '\n[mcp_servers.github]\ncommand = "docker"\nenabled = false\n'
+        current += '\n[mcp_servers.github.env]\nGITHUB_TOOLSETS = "repos"\n'
+        # Enablement is read from the parsed field, not from text inside a string value.
+        current += (
+            '\n[mcp_servers.context7]\nurl = "https://mcp.context7.com/mcp"\nenabled = true\n'
+            'description = """\nenabled = false\n"""\n'
+        )
+        current += '\n[mcp_servers.context7.env]\nNOTE = "kept with its parent"\n'
         current += '\n[mcp_servers.private_server]\nurl = "https://example.com/mcp"\nenabled = false\n'
 
         output = self.merge('model = "gpt-5.6-sol"\n', current)
@@ -243,6 +251,8 @@ class CodexConfigMergeTest(unittest.TestCase):
         data = tomllib.loads(output)
         self.assertEqual(sorted(data["mcp_servers"]), ["context7", "private_server"])
         self.assertTrue(data["mcp_servers"]["context7"]["enabled"])
+        self.assertEqual(data["mcp_servers"]["context7"]["env"], {"NOTE": "kept with its parent"})
+        self.assertNotIn("GITHUB_TOOLSETS", output)
 
     def test_managed_permgate_replaces_stale_private_ccgate_hook(self) -> None:
         output = self.merge(

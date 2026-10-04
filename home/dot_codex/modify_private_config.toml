@@ -4,9 +4,13 @@
 from __future__ import annotations
 
 import os
-import re
 import sys
 from pathlib import Path
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python < 3.11 cannot read a chunk, so nothing is purged.
+    tomllib = None
 
 RUNTIME_PREFIXES = (
     "hooks.state",
@@ -17,7 +21,6 @@ RUNTIME_PREFIXES = (
 # T76 removed these never-enabled servers from the managed baseline; purge their last managed (disabled) copies.
 RETIRED_MCP_SERVERS = ("context7", "filesystem_dotfiles", "github", "time", "sequential_thinking", "playwright")
 RETIRED_MCP_TABLES = {f"mcp_servers.{server}" for server in RETIRED_MCP_SERVERS}
-DISABLED = re.compile(r"^\s*enabled\s*=\s*false\s*(?:#.*)?$", re.MULTILINE)
 
 def source_dir() -> Path:
     if os.environ.get("CHEZMOI_SOURCE_DIR"):
@@ -103,6 +106,17 @@ def runtime_prefix(name: str | None) -> str | None:
     return None
 
 
+def retired_and_disabled(name: str | None, chunk: str) -> bool:
+    """True for a retired MCP server table whose parsed `enabled` is false; an unreadable chunk is kept."""
+    if name not in RETIRED_MCP_TABLES or tomllib is None:
+        return False
+    try:
+        table = tomllib.loads(chunk)
+    except tomllib.TOMLDecodeError:
+        return False
+    return table["mcp_servers"][name.removeprefix("mcp_servers.")].get("enabled") is False
+
+
 def merge_config(managed: str, current: str) -> str:
     if not current.strip():
         return managed
@@ -124,6 +138,7 @@ def merge_config(managed: str, current: str) -> str:
             managed_by_runtime_prefix.setdefault(prefix, []).append((name, chunk))
 
     managed_names = {name for name, _ in managed_chunks if name is not None}
+    purged = {name for name, chunk in current_chunks if name not in managed_names and retired_and_disabled(name, chunk)}
     emitted_current: set[int] = set()
     emitted_runtime_prefixes: set[str] = set()
     output: list[str] = []
@@ -162,7 +177,8 @@ def merge_config(managed: str, current: str) -> str:
             emitted_runtime_prefixes.add(prefix)
             continue
         if name not in managed_names:
-            if name in RETIRED_MCP_TABLES and DISABLED.search(chunk):
+            # A purged retired server takes its child tables (env, http_headers, ...) with it.
+            if name in purged or any(name.startswith(f"{parent}.") for parent in purged):
                 continue
             output.append(chunk)
 

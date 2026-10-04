@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.0+dotfiles.8
+
+- Added `ingest --no-maintenance`: the event is normalised, spooled and committed, but the SessionEnd retention pass (expired-event pruning and error-log/quarantine cleanup) is skipped, so a caller with a short budget, such as Codex's 3-second `SessionEnd` hook, only records the event. Retention still runs on the explicit `prune` command and on Claude Code's own `SessionEnd` hook.
+
 ## 2.0.0+dotfiles.7
 
 - Normalised the Codex `notify` payload: an `agent-turn-complete` object without `hook_event_name` is recorded as a `Stop` hook (`turn_stop`) with `thread-id` as the session, `client` as the agent and `last-assistant-message` as `last_assistant_message`, instead of an `unknown` event; `thread-id` and `turn-id` derive a stable `event_uuid`, so a repeated delivery of one turn is stored once. Hook payloads are unchanged.

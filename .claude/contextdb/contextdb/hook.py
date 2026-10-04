@@ -17,6 +17,7 @@ def process_payload(
     *,
     project_root: str | None = None,
     ingested_from: str | None = None,
+    maintenance: bool = True,
 ) -> None:
     paths = project_paths(payload, project_root)
     try:
@@ -26,7 +27,9 @@ def process_payload(
         # Non-blocking lock: another hook may already be the single writer.
         # The durable spool remains the source of truth until a later drain succeeds.
         drain_spool(paths, config, blocking_lock=False)
-        if event.get("event_type") == "session_end":
+        # `ingest --no-maintenance` skips retention so a short-budget caller
+        # (Codex's 3-second SessionEnd hook) only records the event.
+        if maintenance and event.get("event_type") == "session_end":
             try:
                 from .storage import ContextStore
                 days = int(config.get("operations", {}).get("error_log_retention_days", 30))

@@ -77,6 +77,7 @@ class ContextdbCodexNotifyTest(unittest.TestCase):
                 "ingest",
                 "--ingested-from",
                 "codex",
+                "--no-maintenance",
             ],
         )
         self.assertEqual(Path(capture["cwd"]), self.project.resolve())
@@ -98,7 +99,7 @@ class ContextdbCodexNotifyTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stderr, "")
         capture = json.loads(self.capture.read_text(encoding="utf-8"))
-        self.assertEqual(capture["argv"][-3:], ["ingest", "--ingested-from", "codex"])
+        self.assertEqual(capture["argv"][-4:], ["ingest", "--ingested-from", "codex", "--no-maintenance"])
         self.assertEqual(json.loads(capture["input"]), {"cwd": str(self.project), **event})
 
     def test_argv_payload_wins_over_stdin(self) -> None:

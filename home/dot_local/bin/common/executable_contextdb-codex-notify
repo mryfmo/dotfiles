@@ -5,9 +5,11 @@
 # @description
 #   Codex `notify` passes the JSON payload as the first argument; Codex command
 #   hooks (PreCompact, PostCompact, SessionEnd) deliver it on stdin. Either way
-#   the payload is only ingested, never pruned or vacuumed, so the SessionEnd
-#   hook stays within Codex's 3-second limit. Failures print one stderr line
-#   and exit 0 so Codex is never blocked. Python runs isolated (`-I`), so a
+#   the payload is ingested with `--no-maintenance`, which skips the SessionEnd
+#   retention pass, and the CLI gets 2 seconds, so the SessionEnd hook returns
+#   within Codex's 3-second limit; retention stays on the explicit `prune`
+#   command and on Claude Code's own SessionEnd hook. Failures print one stderr
+#   line and exit 0 so Codex is never blocked. Python runs isolated (`-I`), so a
 #   module committed in the session's working directory (for example a
 #   `json.py` in an untrusted repository) cannot shadow the standard library.
 # @arg $1 string Optional JSON payload; read from stdin when absent.
@@ -47,12 +49,13 @@ try:
             "ingest",
             "--ingested-from",
             "codex",
+            "--no-maintenance",
         ],
         input=payload,
         text=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
-        timeout=5,
+        timeout=2,
         check=True,
         cwd=project_dir,
     )

@@ -998,6 +998,19 @@ class SecretPatternBoundaryTest(unittest.TestCase):
                 with self.subTest(text=text):
                     self.assertIsNotNone(pattern.search(text))
 
+    def test_masking_keeps_the_escape_before_the_key(self) -> None:
+        module = load_validator()
+        key = "s" + "k-" + "a1" * 12
+        for escape in ("\\n", "\\u000a", "\\U0000000A"):
+            text = '{"m": "x' + escape + key + '"}'
+            with self.subTest(escape=escape):
+                masked, count = module.mask_secret_matches(text)
+                self.assertEqual(count, 1)
+                self.assertEqual(masked, '{"m": "x' + escape + module.SECRET_MASK + '"}')
+                self.assertNotIn(key, masked)
+                if escape != "\\U0000000A":  # \U is a TOML escape, not JSON.
+                    json.loads(masked)
+
 
 class MaskSecretsModeTest(unittest.TestCase):
     """`--mask-secrets` rewrites SECRET_PATTERN matches in place (audit evidence)."""

@@ -24,9 +24,12 @@ ROOT = Path(__file__).resolve().parents[1]
 SECRET_PATTERN = re.compile(
     r"""(?ix)
     (
-        (?:(?<![A-Za-z0-9_])|(?<=\\)[A-Za-z0-9]{1,9}?)ghp_[A-Za-z0-9_]{20,}
-        | (?:(?<![A-Za-z0-9_])|(?<=\\)[A-Za-z0-9]{1,9}?)github_pat_[A-Za-z0-9_]{20,}
-        | (?:(?<![A-Za-z0-9_])|(?<=\\)[A-Za-z0-9]{1,9}?)sk-[A-Za-z0-9_-]{20,}
+        # A key prefix starts after a non-word character or the start, or right
+        # after an escape sequence (a backslash and 1-9 letters or digits: \n,
+        # \u000a, \U0000000A, \x0a); the zero-width lookbehinds keep the escape
+        # out of the match, so --mask-secrets leaves it intact.
+        (?:(?<![A-Za-z0-9_])|(?<=\\[A-Za-z0-9])|(?<=\\[A-Za-z0-9]{2})|(?<=\\[A-Za-z0-9]{3})|(?<=\\[A-Za-z0-9]{4})|(?<=\\[A-Za-z0-9]{5})|(?<=\\[A-Za-z0-9]{6})|(?<=\\[A-Za-z0-9]{7})|(?<=\\[A-Za-z0-9]{8})|(?<=\\[A-Za-z0-9]{9}))
+        (?:ghp_[A-Za-z0-9_]{20,} | github_pat_[A-Za-z0-9_]{20,} | sk-[A-Za-z0-9_-]{20,})
         | api[_-]?key\s*[:=]\s*["'][^"']+["']
         | password\s*=\s*["'][^"']+["']
         | secret\s*[:=]\s*["'][^"']+["']

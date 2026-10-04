@@ -970,42 +970,53 @@ review runs only when explicitly requested, and lets CodeRabbit request
 changes. No workflow posts review requests automatically.
 
 `main` is protected by the ruleset installed on 2026-10-03. The payload below
-adds one required approval and must be applied by the operator after the
-GitHub role setup below; committing it does not update GitHub. Change the ruleset with
-`gh api -X PUT repos/mryfmo/dotfiles/rulesets/<id>` (`gh api
-repos/mryfmo/dotfiles/rulesets` lists the id), never by disabling enforcement.
+is a **draft; do not apply it yet**. Adding one required approval alone lets a
+worker merge its own PR through the API after another account approves, and
+blocks orchestrator-authored `.orchestration` boundary PRs because GitHub
+refuses self-approval. **T90b** will design a `main` update restriction with the
+orchestrator account as the sole bypass actor in `pull_request` mode, together
+with the activation order. Committing this draft does not update GitHub.
 The repository merge settings are squash-only with auto-merge enabled, and
 `delete_branch_on_merge` stays off.
 
-```bash
-gh api -X POST repos/mryfmo/dotfiles/rulesets --input - <<'JSON'
+```json
 {
   "name": "main integration gate",
   "target": "branch",
   "enforcement": "active",
-  "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}},
+  "conditions": {
+    "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] }
+  },
   "rules": [
-    {"type": "deletion"},
-    {"type": "non_fast_forward"},
-    {"type": "pull_request", "parameters": {
-      "required_approving_review_count": 1,
-      "dismiss_stale_reviews_on_push": true,
-      "require_code_owner_review": false,
-      "require_last_push_approval": false,
-      "required_review_thread_resolution": true}},
-    {"type": "required_status_checks", "parameters": {
-      "strict_required_status_checks_policy": true,
-      "required_status_checks": [
-        {"context": "validate"},
-        {"context": "test (ubuntu-24.04, server)"},
-        {"context": "test (ubuntu-24.04, client)"},
-        {"context": "test (macos-14, client)"},
-        {"context": "public-bootstrap (ubuntu-24.04, server)"},
-        {"context": "public-bootstrap (ubuntu-24.04, client)"},
-        {"context": "public-bootstrap (macos-14, client)"}]}}
+    { "type": "deletion" },
+    { "type": "non_fast_forward" },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 1,
+        "dismiss_stale_reviews_on_push": true,
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": true
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": true,
+        "required_status_checks": [
+          { "context": "validate" },
+          { "context": "test (ubuntu-24.04, server)" },
+          { "context": "test (ubuntu-24.04, client)" },
+          { "context": "test (macos-14, client)" },
+          { "context": "public-bootstrap (ubuntu-24.04, server)" },
+          { "context": "public-bootstrap (ubuntu-24.04, client)" },
+          { "context": "public-bootstrap (macos-14, client)" }
+        ]
+      }
+    }
   ]
 }
-JSON
 ```
 
 GitHub roles are configured separately. Workers (Claude and Codex, in the
@@ -1046,22 +1057,19 @@ The HTTPS credential helper installed by `gh auth setup-git` inherits
 `GH_CONFIG_DIR`. SSH pushes use SSH keys instead; this repository's SSH
 `pushInsteadOf` rewrite must be avoided when testing worker HTTPS credentials,
 for example by setting an explicit HTTPS push URL in the test repository.
-Restart existing workers after deploying this launcher, then confirm their
-`gh api user --jq .login` returns the worker login.
-
-After both identities work, the operator applies the payload above with
-`gh api -X PUT repos/mryfmo/dotfiles/rulesets/<id> --input <payload.json>`.
-Keep stale-review dismissal enabled and last-push approval disabled. On a
-scratch PR authored by the worker, verify that author self-approval is refused
-and an attempted merge **before independent approval** is rejected as review
-required (expected HTTP 405); verify the actual response and bypass settings.
-The orchestrator then approves the final head and merges. These live checks
-require operator provisioning and are not performed by installation.
+The operator phase **stops after `make doctor` until T90b**. Do not apply the
+draft payload or raise the required approval count yet. T90b must specify the
+activation order, worker restart and login verification, and live checks that
+workers cannot push or merge `main` while the orchestrator can merge its own
+boundary PRs. Those checks require operator provisioning and are not performed
+by installation.
 
 The integration gate (`BASE=origin/main make require-crit-review`) activates
 its role check only when the worker `hosts.yml` exists and effective rules for
 `main` require at least one approval. Otherwise it prints a `notice:` naming
-the missing condition. Once the file exists, failed or malformed GitHub rule
+the missing condition. The role check remains inactive while the existing
+ruleset requires no approvals, including after credential setup alone. Once
+the file exists, failed or malformed GitHub rule
 queries fail closed. When active, the current login must differ from the PR
 author and its latest decisive review must approve the current head. Approve
 **before** collecting final feedback, so that approval is included in the

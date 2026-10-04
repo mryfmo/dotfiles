@@ -68,3 +68,63 @@ Final head d31dc32d: no Bot review between the ~11:24Z push and 11:39:34Z (step-
 CompactionDB: the exact command and UUID `784fed94-42f9-4daf-8f1c-5f1f2fa53214` are in the validation file.
 
 cost: n/a (the Claude Code runtime does not expose per-session token or cost figures to the worker)
+
+## Revise round 1 (task_rev 4ba1a66b…) and follow-ups
+
+The final head is `4656f19f2183467052aa010e741e4df73bc663d8`. CI: all 13 checks pass, and the branch is up to date with main 680b29b1. The Codex Bot gave no review of this head between the 12:32:49Z push and 12:48:29Z (`bot: none`, listing pasted).
+- **`126513d4`, round 1, P2.** The headless audit removes `<out>` and `<out>.last.md` first, runs under `set -o pipefail`, treats a nonzero codex exit as no audit (rerun), and masks only after a zero exit.
+- **`c2660469`.** main merged T93 (#251) through update-branch, so the SKILL no longer calls T93 pending. It says to mask the audit evidence and the PR-feedback JSON with `--mask-secrets` before committing them, and that the gate compares feedback bodies after the same masking.
+- **`4656f19f`, Codex review of 36086f48:**
+  - 4177560247 (P1): the headless masker runs from a trusted checkout and is refused, like herdr-agents does, when HEAD is the audited commit or the validator is missing, untracked or changed. A refused or failed masking fails the audit, so a PR can never run its own validator on the orchestrator.
+  - 4177560241: the headless prompt carries the pair form's task-level inputs (task file, worker artifacts, feedback JSON, head, merge-base PR diff) and asks for `[P0-P3]` findings plus one Verdict line.
+  - 4177560255: the step-15 queries match the final head, reviews by `commit_id` and findings by `original_commit_id`, because a comment's `commit_id` moves to the newest head (visible in the listing).
+- Update-branch merges `af305848` (main 2e2e1e09, #251) and `36086f48` (main 680b29b1, #255 boundary commit).
+- Local checks on 4656f19f: `make unit-test` 785 OK, `make validate-agent-assets` ok, the docs and herdr-agents tests OK, prettier clean.
+
+Proposed dispositions for the new threads:
+- 4177560241 → `fixed:4656f19f`
+- 4177560247 → `fixed:4656f19f`
+- 4177560255 → `fixed:4656f19f`
+- Earlier threads as in the table above.
+
+Reporting note: `executable_herdr-agents:2159` still prints "or run codex --profile audit review headless" when no managed workspace exists. T69 allowed only the one string at line 1133, so this second stale hint is left for a follow-up.
+
+## Revise round 2 (task_rev 40def5a7…)
+
+Fix commit `6b060ac4`; this is the final head. CI: all 13 checks pass, and the branch is up to date with main 680b29b1.
+1. **Facts in one place.** `AGENTS.md` (Audit), `README.md:292`, `model-selection.md:3` and gh-first-workflow step 8 now point to the SKILL's task-level audit bullet and Orchestrator Playbook step 10. GNU grep finds no `herdr-agents --audit` in them, except README:762, the existing helper reference section. gh-first-workflow keeps the sweep, disposition and gate tokens because `tests/unit/test_pr_feedback.py` (out of scope) pins them.
+2. **Evidence.** The "reordered" grep output came from this shell's `grep`, a function wrapping ugrep 7.8.4, which prints parallel matches out of operand order. Both checks are recaptured on the final head with `/usr/bin/grep` (GNU grep 3.11), and the earlier blocks are marked superseded.
+3. **Worker Playbook step 4** states the exception until dotfiles-T97: a Claude seat runs its GitHub calls (`git fetch`, `git push`, `gh`) outside its sandbox through the permission gate. Every other out-of-sandbox action stays a blocked PONG, and a Codex seat never leaves its sandbox.
+   - Deviation from the round text: it says GitHub calls are the *only* unsandboxed commands. In practice this task's main-checkout CompactionDB `memory add` also ran unsandboxed, because that state directory is read-only from a worktree sandbox, and `agmsg-dispatch` runs outside it via `excludedCommands`. Step 4 names both, so it states what happens.
+
+The Codex review of 6b060ac4 (13:11:05Z) raised P2 **4177767259**: `executable_herdr-agents:2159`, the no-workspace branch of `--audit`, still says "run codex --profile audit review headless". It is valid; I flagged the same string last round. T69 allows exactly one string in that file (line 1133), so it is not changed here. Proposed: allow that second string in this PR, rewording it to point to the SKILL's headless form, or hand it to a follow-up. Decision left to the orchestrator.
+
+## Round-2 addenda (task_rev e054a70f…, 1b6220c2…)
+
+The addenda arrived while round 2 was being pushed, so they are in a follow-up commit, `fdb938ad`, rather than the same one. That is the final head: CI all pass, up to date with main 680b29b1, and no Bot review on it within 15 minutes (`bot: none`, listing pasted).
+- **Step 4.** It uses the addendum's wording: GitHub calls are the one class of commands a Claude seat runs outside its sandbox, through the permission gate, because the sandbox's existing GitHub domain allowance (`claude.sandbox.network.allowedDomains`, pasted) does not make `gh`/`git push` work there yet. dotfiles-T97 ends the exception. It no longer claims the allowance is missing, and it keeps naming the main-checkout `memory add` and `agmsg-dispatch` as the two documented out-of-sandbox cases.
+- **Step 2.** A seat creates the branch with `git switch -c <branch> --no-track origin/main`, pushes with `git push origin <branch>` (no `-u`) and opens the PR with `gh pr create --head <branch>`, because the shared `.git/config` is read-only for a Codex seat. A Claude seat's sandbox produced the same `config.lock` failure in this session, so the sentence covers both. The orchestrator removes a leftover `.git/config.lock`.
+
+Thread 4177767259 (`herdr-agents:2159`) is still awaiting the orchestrator's scope decision.
+
+## Revise round 3 and round-3 addendum (task_rev e48f28cc…)
+
+Commits: `0b65a2ec` (round 3) and `d9bbd800` (formatting fix). The update-branch merge `29ea2528` brought in main 2ad504e3 (#256). The final head is `d9bbd800`: CI all pass, the branch is up to date with main 2ad504e3, and no Bot review or new Bot finding arrived on it within 15 minutes (`bot: none`; head-filtered listing pasted).
+
+- **Thread 4177767259 (in scope per the round-3 decision).**
+  - `executable_herdr-agents:2159`, the no-workspace path of `--audit`, now says "…or run the audit headless as the agmsg-orchestration SKILL task-level audit bullet shows ("codex <audit profile args> exec --sandbox read-only -C <repo> -o <out>.last.md <prompt>")."
+  - It is a string-only change, matching line 1133. The pin is `tests/unit/test_herdr_agents.py:5067`.
+  - Proposed disposition: `fixed:0b65a2ec`.
+- **Formatting slip.**
+  - The pin added in 0b65a2ec exceeded ruff's line limit. CI's "Check Python and Markdown formatting" step failed on 0b65a2ec and on 29ea2528.
+  - I had run the unit tests, but not `ruff format --check`, before pushing.
+  - `d9bbd800` is `ruff format` of that one line. The full ruff check is now part of the pasted final-head block.
+  - This makes two commits for round 3, not the one asked for.
+- **Addendum item 1 (evidence).** The validation file's round-3 section pastes each exact invocation with its output tail and `; echo "rc=$?"` on d9bbd800:
+  - the docs and herdr-agents modules with `-v`: 235 = 6 + 229, reconciled per module;
+  - prettier;
+  - ruff;
+  - `make unit-test`: 787 OK, with the same single skip;
+  - `make validate-agent-assets`: ok, exit status captured without a pipe.
+- **Addendum items 2 and 3.** No change: the gh-first-workflow step 8 literal stays, and the pr-feedback snapshot belongs to the orchestrator.
+- **task_rev.** The round-3 dispatch named an earlier task-file revision. The only addition since then is the "Round 3 addendum" section, and the current sha256 is e48f28cc… (pasted).

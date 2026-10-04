@@ -51,3 +51,23 @@ Live acceptance (operator, after merge and `make update`): `gwq list --json | jq
 3. Artifacts at the exact expected paths; validation with verbatim outputs, PR number, head SHA.
 4. CompactionDB `memory add --kind decision --scope project` with the `[memory:decision]` text from the main checkout; paste command and output.
 5. `AGMSG-RESULT v1` via `agmsg-dispatch dotfiles <your identity> claude-remediation-dot wT:p1 "<single line>"` (outside the sandbox). `cost:` line. max_turns=30.
+
+## Dispatch
+
+- 2026-10-04 22:50Z to `claude-standard-dot-a005` (worker-c, wT:p2) after its T72 acceptance (PR #256 merged as 2ad504e3; T71 merged as 65915b93). Branch from `origin/main` 2ad504e3 or later; keep the earlier branches untouched. Note that T72 (merged) added `assets.chezmoi-bootstrap` and the `setup.sh` scan to `scripts/validate-agent-assets.py`; T96 (queued, model_profiles only) and this task touch `agent-config.yaml` in disjoint sections.
+
+## Revise round 1 (orchestrator, 2026-10-04 23:45Z) — Codex P2 4177937781 is a real convergence gap
+
+The deletions on 526dd18b are accepted as they stand. The Bot finding stands too: `modify_private_config.toml` `merge_config` keeps every current-only table, so the six retired `[mcp_servers.*]` tables stay in `~/.codex/config.toml` on every machine that applied the parent revision (the orchestrator confirmed all six at lines 33-75 of its live file). Principle 9 says dead configuration is deleted, not carried, and the operator must not hand-edit two hosts, so purge them in the merge script:
+
+1. **Allowed files gain** `home/dot_codex/modify_private_config.toml` and `tests/unit/test_codex_config_merge.py` (routing: a Codex-only rendering source, so a Claude seat may edit it).
+2. In `modify_private_config.toml`, add a module constant `RETIRED_MCP_SERVERS = ("context7", "filesystem_dotfiles", "github", "time", "sequential_thinking", "playwright")` with a one-line comment naming T76, and in `merge_config` drop a current-only chunk whose table name is `mcp_servers.<retired>` **and** whose body contains an `enabled = false` assignment (the last managed state of all six); a table the operator re-enabled or re-added with `enabled = true` is kept as any other current-only table. Follow the existing stale-removal precedent (`test_managed_permgate_replaces_stale_private_ccgate_hook`); keep the diff to the constant plus the filter, no new helpers unless `split_chunks` already exposes what you need.
+3. Tests: one case where the six disabled retired tables disappear while a seventh unknown table and a retired name with `enabled = true` survive; the existing cases stay green.
+4. `make render-check`, `make validate-agent-assets`, `make unit-test` (verbatim), then `gh pr update-branch 257` (main is 04bce61b after T69) and CI on the new head; Bot wait per SKILL; reply nothing on the thread (the orchestrator replies `fixed:<sha>` and resolves it). One commit for the fix, then RESULT.
+
+## Revise round 2 (orchestrator, 2026-10-05 00:00Z) — task-level audit of f805ee3a is `incorrect` (2), both reproduced by the auditor
+
+1. **P1, orphaned sub-tables.** Purging `[mcp_servers.<retired>]` leaves its child tables (`[mcp_servers.<retired>.env]`, `.http_headers`, …) behind, and Codex then fails with `invalid transport`. When the parent chunk is dropped, drop every current-only chunk whose name starts with `mcp_servers.<retired>.` as well (and only then; a kept parent keeps its children).
+2. **P2, enablement by parsing, not regex.** `DISABLED.search(chunk)` also matches `enabled = false` inside a string value (for example an `env` entry). Decide with the parsed field instead: `tomllib.loads(chunk)` on the parent chunk and read `["mcp_servers"][name].get("enabled")`; treat a chunk that fails to parse as *kept* (never purge what you cannot read). Remove the `DISABLED` regex and the `re` import if nothing else uses them.
+3. Tests: extend the round-1 case (or add one) so a retired disabled parent **with** an `.env` child disappears together with the child, a retired parent with `enabled = true` and an `env` string containing the text `enabled = false` is kept, and a kept parent keeps its child.
+4. `make unit-test`, `make render-check`, `make validate-agent-assets` (verbatim), one commit, `gh pr update-branch 257` only if `main` moved, CI, Bot wait per SKILL, RESULT. Orchestrator replies on any new thread.

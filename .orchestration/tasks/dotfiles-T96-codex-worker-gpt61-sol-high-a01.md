@@ -45,3 +45,19 @@ gh api repos/mryfmo/dotfiles/pulls/<pr-number> --jq '.mergeable_state'
 3. Artifacts at the exact expected paths; validation with verbatim commands and raw output, PR number, head SHA.
 4. CompactionDB `memory add --kind decision --scope project` with the `[memory:decision]` text from the main checkout; paste the exact command and output.
 5. `AGMSG-RESULT v1 task_id=dotfiles-T96` via `agmsg-dispatch dotfiles <your identity> claude-remediation-dot wT:p1 "<single line>"`. `cost:` line. max_turns=20.
+
+## Dispatch
+
+- 2026-10-04 (queued for the first free Claude seat once PR #253 (T69) has merged, because both edit `home/dot_config/claude/rules/model-selection.md` line 3). Branch from the commit that merged #253 or later. Routing: model profiles are not an execution-boundary source, so a Claude seat is fine.
+- 2026-10-04 23:00Z: also wait for T76 (`chore/ineffective-settings`, a005, dispatched 13:44Z) to merge, because both edit `home/dot_agents/agent-config.yaml`, `scripts/validate-agent-assets.py` and `tests/unit/test_generate_agent_configs.py`; parallel tasks need pairwise-disjoint allowed_files (T88). Branch from the commit that merged T76 or later.
+- 2026-10-05 00:25Z dispatched to `claude-standard-dot-a006` (worker-d, wY:p2): T69 merged as 04bce61b, T76 as 40993f20. Branch from `origin/main` 40993f20 or later with `git switch -c <branch> --no-track origin/main`. Note T76 reshaped `agent-config.yaml` (no `mcp_servers` entries, no `enabledPlugins`) and `scripts/validate-agent-assets.py`; re-read the current line numbers before editing. The operator still has to supply Codex API-key auth for the gpt-6.1-sol worker seat; this task only changes the rendered profiles and pins.
+
+### PONG decision (orchestrator, 2026-10-05 00:30Z) — README sentence allowed
+
+- Allowed files gain `README.md`, limited to the auditor sentence at lines 289-290 (and any other line that states the audit profile's model or auth; `grep -n 'gpt-6.1-sol\|API-key auth' README.md`). Rewrite it to the new constellation (auditor `audit` = Codex gpt-6-astra high, read-only sandbox; worker `standard.codex` = gpt-6.1-sol high). Same class of change, same PR.
+- The auth clause: state only what the live probe proved. Paste the `codex --profile security exec …` probe (command and output) in the validation file; if gpt-6-astra answered under the ChatGPT login, drop the "requires Codex API-key auth" clause from README and from `model-selection.md` line 3; if the new worker model gpt-6.1-sol was not probed, say so in the report rather than asserting its auth path.
+- `ADH_PROFILE` (~74): correct, leave it (T79 removes it).
+
+### PONG decision 2 (orchestrator, 2026-10-05 00:35Z) — memory text
+
+Approved. Record the `[memory:decision]` with its last clause replaced by: "both Codex models answered under the ChatGPT login (probe 2026-10-05: `codex --profile audit exec` gpt-6.1-sol OK, `--profile security` gpt-6-astra OK), so neither seat needs Codex API-key auth; the 2026-10-01 rejection no longer reproduces." Paste both probe commands and outputs in the validation file. The task file's original clause is superseded by this decision.

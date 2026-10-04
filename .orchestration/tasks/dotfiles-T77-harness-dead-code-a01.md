@@ -47,3 +47,13 @@ gh api repos/mryfmo/dotfiles/pulls/<pr-number> --jq '.mergeable_state'
 3. Artifacts at the exact expected paths; validation with verbatim outputs, PR number, head SHA.
 4. CompactionDB `memory add --kind decision --scope project` with the `[memory:decision]` text from the main checkout; paste the exact command and output.
 5. `AGMSG-RESULT v1 task_id=dotfiles-T77` via `agmsg-dispatch dotfiles <your identity> claude-remediation-dot wT:p1 "<single line>"` (outside the sandbox). `cost:` line. max_turns=30.
+
+## Dispatch
+
+- 2026-10-05 01:00Z to `claude-standard-dot-a006` (worker-d, wY:p2) after its T96 acceptance (PR #259 merged as f6320f37; T70, T71, T72 and T76 are on `main`). Branch from `origin/main` f6320f37 or later with `git switch -c <branch> --no-track origin/main`.
+- **Routing (seat-capability rule):** item 5, `home/dot_claude/hooks/executable_enforce-uv.sh`, is a Claude PreToolUse hook, part of a Claude seat's own execution boundary, so a Claude seat must not edit it. Leave item 5 and its tests untouched and out of this PR; the orchestrator dispatches it as a Codex-seat follow-up (T77b) after T97. Drop the `enforce-uv.sh` clause from the `[memory:decision]` text you record. Everything else in the objective stays.
+- Re-read current line numbers before editing: T72 and T76 changed `scripts/validate-agent-assets.py`, T96 changed the audit-profile pin in it and `home/dot_agents/model-profiles.env` rendering. `make render-check` must stay clean (the `model-profiles.env` header edit goes through the generator if it is rendered).
+
+### PONG decision (orchestrator, 2026-10-05 01:15Z) — .chezmoiremove allowed
+
+Allowed files gain `home/.chezmoiremove`: add `.local/bin/common/herdr-session` and `.local/bin/common/agent-fanout` next to the existing retired entries (two lines), and `tests/unit/test_chezmoiremove_agmsg.py` only if it pins the entry list. Same PR, same commit series. `.gitignore:10` and the `plans/005-*` references stay out of scope as you noted; `enforce-uv.sh` stays excluded (T77b).

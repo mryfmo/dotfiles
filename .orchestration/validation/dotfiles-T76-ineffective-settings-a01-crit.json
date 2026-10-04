@@ -1,0 +1,8 @@
+[
+  {
+    "id": "dotfiles-T76-review-1",
+    "scope": "review",
+    "body": "Orchestrator adversarial review of PR #257 head 26a882ac (dotfiles-T76): enabledPlugins removed from manifest, generator and rendered Claude settings (runtime key survives the merge, test added); the six never-enabled MCP server definitions reduced to mcp_servers: {} with the Codex template rendering no tables and private_mcp.json.tmpl rendering an empty map; validator accepts an empty mapping and rejects a non-mapping; gwq [claude] queue tables deleted (no reader). Revise round 1 (Codex P2 4177937781, a real convergence gap): modify_private_config.toml gains RETIRED_MCP_SERVERS and merge_config drops a current-only [mcp_servers.<retired>] chunk carrying enabled = false (full table-name match, re-enabled tables kept), with a test; revise round 2 (task-level audit of f805ee3a, two reproduced findings): a purged retired parent takes its current-only child tables with it and enablement is read from tomllib.loads(chunk) instead of a regex (unparseable chunk kept), tests extended; the second Codex thread (keep customised disabled copies) is not applicable because managed tables were replaced wholesale on every apply. CI 13/13 green on 26a882ac (Codex Bot thumbs-up, no new thread), branch up to date with main 04bce61b, no .orchestration files in the PR.",
+    "resolved": true
+  }
+]

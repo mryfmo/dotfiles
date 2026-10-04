@@ -49,3 +49,12 @@ gh api repos/mryfmo/dotfiles/pulls/<pr-number> --jq '.mergeable_state'
 3. Artifacts at the exact expected paths; validation with verbatim outputs, PR number, head SHA.
 4. CompactionDB `memory add --kind decision --scope project` with the `[memory:decision]` text from the main checkout; paste the exact command and output.
 5. `AGMSG-RESULT v1 task_id=dotfiles-T78` via `agmsg-dispatch dotfiles <your identity> claude-remediation-dot wT:p1 "<single line>"` (outside the sandbox). `cost:` line. max_turns=30.
+
+## Dispatch
+
+- 2026-10-05 02:00Z to `claude-standard-dot-a006` (worker-d, wY:p2) after its T77 acceptance. T88 (#243), T69 (#253) and T97 (#258) are on `main`; branch from the commit that merged #258 or later with `git switch -c chore/dead-docs-adh --no-track origin/main`. The SKILL.md line numbers in item 3 predate T69/T97; locate the four passages by their quoted text. T90 (Codex seat, in flight) edits SKILL.md's Orchestrator Playbook step 10 only; your item-3 passages are elsewhere, so the later PR takes `gh pr update-branch`. `tests/unit/test_agmsg_orchestration_docs.py` may pin the Hermes phrases; adjust only those assertions.
+
+### PONG decision (orchestrator, 2026-10-05 02:15Z)
+
+1. `.prettierignore` joins allowed_files for the one `reviews/` line: drop it together with the `.coderabbit.yaml` exclusion (both become dead with the directory).
+2. `home/dot_config/codex/AGENTS.md`: delete the whole "セッション開始時の learn 確認" section (heading plus its three bullets) as the minimal coherent unit, as you proposed.

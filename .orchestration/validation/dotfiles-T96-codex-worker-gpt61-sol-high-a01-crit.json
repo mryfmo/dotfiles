@@ -1,0 +1,8 @@
+[
+  {
+    "id": "dotfiles-T96-review-1",
+    "scope": "review",
+    "body": "Orchestrator adversarial review of PR #259 head 3a060118 (dotfiles-T96): standard.codex moves from gpt-5.6-terra/medium to gpt-6.1-sol/high and audit.codex from gpt-6.1-sol/xhigh to gpt-6-astra/high (read-only sandbox kept) in agent-config.yaml; the rendered standard and audit profile sources follow (render-check clean); the validator's audit-profile pin and its comment follow; model-selection.md line 3 and the README auditor sentence state the operator's constellation (orchestrator fable-5.1 high, worker opus-5.5 high / gpt-6.1-sol high, auditor gpt-6-astra high) and drop the API-key clause on the strength of two live probes under the ChatGPT login (security -> gpt-6-astra OK, audit -> gpt-6.1-sol OK, validation lines 13-80 with JST mtimes and UTC equivalents); ADH_PROFILE untouched (T79). Tests updated in both suites. One Codex P2 thread (future-dated probe) is a JST/UTC date comparison, not applicable. CI 13/13 green, branch up to date with main 40993f20. Operator-side follow-up: make update in the canonical clone and herdr-agents --restart-worker to activate the new worker profile.",
+    "resolved": true
+  }
+]

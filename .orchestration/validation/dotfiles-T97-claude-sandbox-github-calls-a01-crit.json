@@ -1,0 +1,8 @@
+[
+  {
+    "id": "dotfiles-T97-review-1",
+    "scope": "review",
+    "body": "Orchestrator adversarial review of PR #258 head 391d2b4c (update-branch of the diff head efe6735e onto main 67451fc6 by the orchestrator) (dotfiles-T97, documentation-only residual of the Claude-sandbox GitHub investigation): the Worker Playbook step 4 and the rule's worker-commands bullet now state the finding (on Linux, gh backed by the host keyring answers HTTP 401 inside the sandbox because AF_UNIX socket creation is denied and allowUnixSockets cannot grant a path), keep git fetch inside the sandbox, carry the temporary exception for gh, git push and any authenticated git fetch against a private HTTPS remote (the credential helper is gh; revise round 2, efe6735e, after the task-level audit of 5b6b0d9f showed a globally installed rule cannot be scoped by this repository being public) through the permission gate until T90 provisions a sandbox-readable worker credential, and drop the duplicated blocked-PONG sentence (revise round 1, 68e19ef7). Two update-branch merges (b8f293ef, 5b6b0d9f) carry no diff. Two Codex threads dispositioned not-applicable and one (private HTTPS fetch) fixed in efe6735e by the orchestrator with Claude-seat evidence (T95 sandbox record) and the public-repository scope; CI green on every head; docs tests pass. The seven worker artifacts (five standard plus worker-crit.json and worker-review-receipt.md) were transferred from worker-e. Root cause fix is T90's scope.",
+    "resolved": true
+  }
+]

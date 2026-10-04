@@ -1,5 +1,8 @@
 # Nix-first architecture plan
 
+> **Note (2026-10-04):** the Nix flake was removed in #247; the commands and
+> paths below no longer apply.
+
 This document describes the intended direction for an optional Nix layer in this dotfiles repository. It is a plan, not the default bootstrap path.
 
 ## Current authority model

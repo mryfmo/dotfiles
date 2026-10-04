@@ -2,7 +2,6 @@
 vendor/
 .ua/
 .orchestration/
-reviews/
 .agents/
 .claude/
 references/

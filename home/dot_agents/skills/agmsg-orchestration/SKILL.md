@@ -1,6 +1,6 @@
 ---
 name: agmsg-orchestration
-description: Coordinate structured agmsg task orchestration between a Claude Code orchestrator and Codex workers. Use when Codex or Claude Code needs to run or supervise AGMSG-TASK / AGMSG-RESULT / AGMSG-ACCEPTANCE workflows, bootstrap workers in herdr panes, manage .orchestration artifacts, act as an agmsg worker, or document the flue-pi style orchestration protocol without installing the Hermes Agents runtime.
+description: Coordinate structured agmsg task orchestration between a Claude Code orchestrator and Codex workers. Use when Codex or Claude Code needs to run or supervise AGMSG-TASK / AGMSG-RESULT / AGMSG-ACCEPTANCE workflows, bootstrap workers in herdr panes, manage .orchestration artifacts, act as an agmsg worker, or document the flue-pi style orchestration protocol.
 ---
 
 # agmsg orchestration
@@ -13,7 +13,6 @@ Use this skill for structured multi-agent work where a Claude Code orchestrator 
 - Codex workers execute one assigned task: they read the task file, obey file and action constraints, write artifacts, and send the required result message.
 - `agmsg` is the message bus. Use only scripts under `~/.agents/skills/agmsg/scripts/`.
 - `herdr` panes are optional worker terminals; they are a launch surface, not the protocol.
-- This skill adopts only the Hermes Skill Subset ideas: `SKILL.md` structure, progressive disclosure, activation metadata, task/error/user-correction skill decisions, and separated candidate/promoted/rejected/merged registries. Do not introduce Hermes Agents runtime, memory, profiles, personalities, toolsets, plugins, UI, or automation framework.
 
 ## Regime activation and progress
 
@@ -208,10 +207,8 @@ form:
 - `.agents/worklog/codex/learn/<timestamp>_learn.md` records only reusable,
   validated knowledge that speeds a future decision. State what was learned
   and where it applies, update the plan's `Assumptions`, `Design`, or `Tests`
-  when relevant, and maintain `learn_index.md` whenever a learn file changes.
-  Each index entry is one line in
-  `- [title](filename) — summary-within-150-characters` form. A learn file must
-  contain `Date`, `Learnings`, and `Plan Updates`.
+  when relevant. A learn file must contain `Date`, `Learnings`, and
+  `Plan Updates`.
 
 Every plan, todo, and learn file starts with YAML frontmatter containing
 `type` (`plan`, `todo`, or `learn`), `id` (`YYYYMMDD_HHMMSS`), `owner` (for
@@ -233,6 +230,5 @@ for blocked work, `evidence` (path array), and `tags`.
 - Do not perform forbidden actions such as dependency changes, gate changes, product changes, promotion decisions, image builds, or LLM calls when listed.
 - Do not collapse candidate, promoted, rejected, and merged skill registry states into one directory.
 - Do not put secrets, raw logs with credentials, or unredacted AutoSkill inputs in artifacts.
-- Do not install Hermes Agents runtime for this protocol.
 - Do not wake workers with `pane send-text` + `send-keys Enter`; use `agmsg-dispatch`, `poke.sh --body-file`, or `send.sh --body-file` as step 6 selects, and verify `read_at` in messages.db.
 - Do not treat `AGMSG-ACCEPTANCE status=revise` as a new task unless it changes the task file or explicitly provides a next action.

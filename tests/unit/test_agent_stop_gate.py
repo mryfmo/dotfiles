@@ -422,9 +422,12 @@ class AgentStopGateTest(unittest.TestCase):
         self.assertNotIn("placeholders ignored", stderr)
 
     def test_untracked_symlink_to_a_mount_point_is_not_a_placeholder(self):
-        # "/" is a mount point everywhere, so following the link would skip it.
-        (self.main / "link").symlink_to("/")
-        stderr = self.assert_gate(self.main, 2, args=self.mountinfo([Path("/")]))
+        # The target looks exactly like a placeholder, so following the link would skip it.
+        target = self.home / "placeholder"
+        target.write_text("")
+        target.chmod(0o444)
+        (self.main / "link").symlink_to(target)
+        stderr = self.assert_gate(self.main, 2, args=self.mountinfo([target]))
         self.assertIn("link", stderr)
         self.assertNotIn("placeholders ignored", stderr)
 

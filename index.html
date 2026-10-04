@@ -2030,34 +2030,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="reference/install/macos/arm64/run/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    install/macos/arm64/run.sh
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -3611,12 +3583,12 @@
 </div>
 <div class="landing-stats">
 <div class="landing-stat">
-  <span class="landing-stat__value">64</span>
+  <span class="landing-stat__value">63</span>
   <span class="landing-stat__label">source docs</span>
   <span class="landing-stat__note">tracked shell assets</span>
 </div>
 <div class="landing-stat">
-  <span class="landing-stat__value">29</span>
+  <span class="landing-stat__value">28</span>
   <span class="landing-stat__label">install scripts</span>
   <span class="landing-stat__note">bootstrap and app setup</span>
 </div>
@@ -3686,7 +3658,7 @@ The site is rebuilt from tracked shell sources every time.
 The homepage stays curated, while the complete generated table of contents lives on its own page.
 
 - [Open the full catalog](catalog/)
-- **64** source reference pages are generated from tracked shell assets
+- **63** source reference pages are generated from tracked shell assets
 - **26** chezmoi wrappers are mapped back to their source scripts
 
 </div>
@@ -3724,16 +3696,16 @@ _26 mapped wrappers_
 
 Bootstrap and application setup flows stored under `install/**`.
 
-_29 documented entries_
+_28 documented entries_
 
 - [`install/common/chezmoi_private.sh`](reference/install/common/chezmoi_private.md): Bootstraps `mryfmo/dotfiles-private` using the dedicated source and config paths under the current user's home direct...
 - [`install/common/gh_extensions.sh`](reference/install/common/gh_extensions.md): Activates `mise` when available and installs the configured `gh` extensions only when GitHub CLI is already authentic...
 - [`install/common/mise.sh`](reference/install/common/mise.md): Downloads and verifies a pinned standalone `mise` release, then runs `mise install` against the repository tool defin...
 - [`install/common/sheldon.sh`](reference/install/common/sheldon.md): Builds the pinned crates.io release with its packaged Cargo.lock.
 - [`install/macos/arm64/prepare_arm64_system.sh`](reference/install/macos/arm64/prepare_arm64_system.md): Installs Rosetta on arm64 macOS machines when it is not already present.
-- [`install/macos/arm64/run.sh`](reference/install/macos/arm64/run.md): Emits the relative arm64 installer path consumed by the surrounding setup flow.
+- [`install/macos/common/brew.sh`](reference/install/macos/common/brew.md): Ensures Homebrew is installed on macOS, resolves untrusted runner-image taps on CI, and disables analytics for the lo...
 
-[23 more entries in the full catalog](catalog/)
+[22 more entries in the full catalog](catalog/)
 
 </div>
 <div class="landing-card" markdown="1">

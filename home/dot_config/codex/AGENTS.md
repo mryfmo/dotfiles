@@ -52,7 +52,7 @@
 - herdr-agents の作業役 pane の種類(`codex` / `claude`)も同じ manifest の `worker_kind` が正本で、`~/.agents/model-profiles.env` に生成されます。ad-hoc な `HERDR_AGENTS_WORKER_KIND` export ではなく manifest で変更してください。
 - 通常の実装・デバッグは `codex --profile standard`、読み取り・検索・抽出だけの作業は `--profile express`、独立レビューは `--profile review`、`/security-review`、permgate policy、redaction/secret handling、trust-boundary code の監査は `--profile security`、監査以外の横断設計・未知の障害だけ `--profile deep` を使ってください。難所が終わったら standard へ戻してください。
 - セッション途中でモデルを切り替えず、profile はセッション起動時に選んでください。
-- permgate は PermissionRequest を deterministic-first で評価し、不明・失敗時は Codex native の確認へ fail-closed します。Claude/Codex はそれぞれ既存認証の公式 CLI を使い、分類器へ渡すのは正規化済みaction metadataだけです。両providerを shadow のまま維持し、分類成功数・p50/p95・人手評価を満たしたproviderだけ有効化してください。
+- permgate は deterministic-only です。PermissionRequest は policy の deny/allow パターンだけで判定し、それ以外と失敗時は Codex native の確認へ fail-closed します。分類器モデルは使いません。
 
 ## Ponytail
 

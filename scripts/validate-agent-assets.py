@@ -987,30 +987,12 @@ def validate_model_profile_assets(manifest: dict[str, Any]) -> None:
     if not policy_path.exists() or not permgate_path.exists():
         fail("permgate policy and executable must exist")
     policy = json.loads(policy_path.read_text())
-    providers = policy.get("providers", {})
-    if set(providers) != {"claude", "codex"}:
-        fail("permgate must define claude and codex providers")
-    if any(provider.get("llm_enabled") is not False for provider in providers.values()):
-        fail("permgate providers must ship in shadow mode")
-    if not providers.get("claude", {}).get("model", "").startswith("claude-haiku-4-5-20"):
-        fail("permgate Claude provider must pin a dated Haiku model")
-    if providers.get("codex", {}).get("model") != "gpt-5.6-luna":
-        fail("permgate Codex provider must use the express Codex model")
-    if any(not 0 < provider.get("timeout_seconds", 0) <= 8 for provider in providers.values()):
-        fail("permgate provider timeouts must leave hook headroom")
-    if set(policy.get("classifier_actions", {})) != set(policy.get("categories", [])):
-        fail("permgate must bound every classifier category to explicit actions")
+    if set(policy) != {"schema_version", "allow_patterns", "deny_patterns"}:
+        fail("permgate policy must hold only schema_version, allow_patterns and deny_patterns")
     permgate_text = permgate_path.read_text()
     for token in (
         "--no-cache",
         "PERMGATE_INNER",
-        "PERMGATE_CODEX_COMMAND",
-        "--safe-mode",
-        "--tools",
-        "--disable-slash-commands",
-        "--ignore-user-config",
-        "--ignore-rules",
-        "classification_subject",
         "decisions.jsonl",
     ):
         if token not in permgate_text:

@@ -309,22 +309,13 @@ root; `make update` does not retry it. To remove it, run
 `sudo rm /etc/apparmor.d/bwrap-userns`.
 
 `permgate` handles Claude Code and Codex PermissionRequest hooks from the
-repo-owned policy at `~/.agents/permgate-policy.yaml`. Deterministic allow/deny
-patterns run first. Unknown, intrinsically read-only CLI actions use the
-originating agent's authenticated official CLI: `claude -p` for Claude Code
-and `codex exec` for Codex. Classifiers receive only normalized action
-metadata, never raw commands, arguments, patch bodies, or structured values.
-Unconstrained reads and searches remain native prompts because their hidden
-targets cannot be evaluated safely. Failures and unrecognized action/category
-pairs also fall through.
-
-Both providers ship in shadow mode (`llm_enabled: false`). Audit JSONL records
-the provider, normalized action, status, category, confidence, and would-be
-decision without payload values. Enable a provider only after reviewed
-outcomes and a five-run `permgate bench` show five successful classifications,
-p50 at or below 3 seconds, and p95 at or below 7 seconds. Writes such as
-`apply_patch` are never classifier-eligible. ccgate is fully removed; its
-historical metrics remain in the permgate policy provenance.
+repo-owned policy at `~/.agents/permgate-policy.yaml` and is deterministic
+only: deny patterns run first, then allow patterns for single, bounded
+commands. Every other request, including unconstrained reads and searches,
+writes such as `apply_patch`, and any policy or input failure, falls through
+to the agent's native prompt. permgate runs no classifier model. The audit
+JSONL records each decision with an input hash and a command summary, never
+payload values. ccgate is fully removed.
 
 The intended lifecycle is:
 

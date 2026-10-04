@@ -68,14 +68,6 @@ SESSIONSTART_EXPECTED_COMMAND_SUBSTRINGS = {
     "codex": (),
     "compactiondb": ("contextdb_hook.py", "contextdb_recover.py"),
 }
-ADH_PROFILE = {
-    "claude": {"model": "claude-fable-5-1", "effort": "high"},
-    "codex": {
-        "model": "gpt-6-astra",
-        "model_reasoning_effort": "xhigh",
-        "notify": ["{{ .chezmoi.homeDir }}/.local/bin/common/contextdb-codex-notify"],
-    },
-}
 
 
 def fail(message: str) -> None:
@@ -736,8 +728,8 @@ def validate_agent_manifest() -> dict[str, Any]:
     claude = manifest.get("claude", {})
     profiles = manifest.get("model_profiles", {})
     required_profiles = {"express", "standard", "review", "deep", "security", "audit"}
-    if not required_profiles <= set(profiles) or set(profiles) - required_profiles - {"adh"}:
-        fail(f"{manifest_path} must define the six base profiles and only the optional adh profile")
+    if set(profiles) != required_profiles:
+        fail(f"{manifest_path} must define the six base profiles and no others")
     # Operator decision (2026-09-29): security runs codex gpt-6-astra high under
     # ChatGPT login; gpt-daybreak-blue-latest needs API-key auth.
     security_codex = profiles["security"].get("codex", {})
@@ -815,14 +807,6 @@ def validate_agent_manifest() -> dict[str, Any]:
             if package in serialized:
                 fail(f"MCP server {name} uses deprecated {package}. {replacement}")
     return manifest
-
-
-def validate_adh_profile(manifest: dict[str, Any]) -> None:
-    if manifest.get("model_profiles", {}).get("adh") != ADH_PROFILE:
-        fail(
-            "model_profiles.adh must pin claude-fable-5-1/high and "
-            "gpt-6-astra/xhigh with contextdb notify and no fallback settings"
-        )
 
 
 def validate_mcp_parity(codex: dict[str, Any], claude: dict[str, Any], manifest: dict[str, Any]) -> None:
@@ -1454,7 +1438,6 @@ def report_regime_boundary() -> None:
 
 def main() -> None:
     manifest = validate_agent_manifest()
-    validate_adh_profile(manifest)
     validate_assets(manifest)
     validate_agmsg_is_installer_owned()
     validate_generated_agent_configs()

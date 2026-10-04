@@ -709,6 +709,15 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             self.module.validate_agent_manifest()
         self.assertIn("must define the six base profiles", stderr.getvalue())
 
+    def test_agent_manifest_rejects_the_retired_adh_profile(self) -> None:
+        manifest = self.write_valid_agent_manifest()
+        manifest["model_profiles"]["adh"] = manifest["model_profiles"]["deep"]
+
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_agent_manifest()
+        self.assertIn("must define the six base profiles and no others", stderr.getvalue())
+
     def test_agent_manifest_pins_the_audit_codex_profile(self) -> None:
         for key, wrong in (
             ("model", "gpt-5.6-sol"),

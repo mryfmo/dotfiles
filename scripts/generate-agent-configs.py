@@ -221,25 +221,30 @@ def set_asset_field(text: str, name: str, path: str, value: str) -> str:
 
 
 def render_asset_constants(manifest: dict[str, Any]) -> dict[Path, str]:
-    """Rewrite each asset's NAME="..." assignment in its render target file."""
+    """Rewrite each asset's NAME="..." assignments in its render target files.
+
+    `render:` is one {file, constants} mapping or a list of them, so one pin can
+    reach several files; `readonly` and `declare -r` assignments are rewritten.
+    """
     outputs: dict[Path, str] = {}
     for name, asset in manifest.get("assets", {}).items():
         render = asset.get("render")
         if not render:
             continue
-        path = ROOT / render["file"]
-        text = outputs.get(path)
-        if text is None:
-            text = path.read_text()
-        for constant, field in render["constants"].items():
-            pattern = re.compile(rf'^((?:readonly )?{re.escape(constant)}=)"[^"$`\\]*"$', re.M)
-            value = asset_field(asset, field)
-            if not PLAIN_PIN_VALUE.fullmatch(value):
-                fail(f"assets.{name}.{field} is not a plain pin value: {value!r}")
-            text, count = pattern.subn(lambda match: f'{match.group(1)}"{value}"', text)
-            if count != 1:
-                fail(f"{render['file']} must assign {constant} exactly once for assets.{name}")
-        outputs[path] = text
+        for entry in render if isinstance(render, list) else [render]:
+            path = ROOT / entry["file"]
+            text = outputs.get(path)
+            if text is None:
+                text = path.read_text()
+            for constant, field in entry["constants"].items():
+                pattern = re.compile(rf'^((?:readonly |declare -r )?{re.escape(constant)}=)"[^"$`\\]*"$', re.M)
+                value = asset_field(asset, field)
+                if not PLAIN_PIN_VALUE.fullmatch(value):
+                    fail(f"assets.{name}.{field} is not a plain pin value: {value!r}")
+                text, count = pattern.subn(lambda match: f'{match.group(1)}"{value}"', text)
+                if count != 1:
+                    fail(f"{entry['file']} must assign {constant} exactly once for assets.{name}")
+            outputs[path] = text
     return outputs
 
 

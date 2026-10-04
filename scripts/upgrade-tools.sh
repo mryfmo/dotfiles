@@ -580,14 +580,14 @@ function aws_cli_versions() {
 }
 
 #
-# @description Bump the mise, sheldon, starship, and aws-cli asset pins outside the 7-day window.
+# @description Bump the mise, sheldon, starship, aws-cli, and chezmoi-bootstrap asset pins outside the 7-day window.
 #   Their verify contracts (release-shasums, cargo-locked, release-sha256, gpg
 #   fingerprint) keep no per-version hash in the manifest, so only pins change.
 #   Writes through scripts/generate-agent-configs.py --set-asset, which renders
 #   each installer's version constant; review and commit that diff.
 #
 function bump_release_asset_pins() {
-    local repo_root cutoff mise_pin sheldon_pin starship_pin aws_pin
+    local repo_root cutoff mise_pin sheldon_pin starship_pin aws_pin chezmoi_pin
 
     section "release asset pins"
     repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -599,7 +599,10 @@ function bump_release_asset_pins() {
         ! starship_pin="$(github_release_versions starship/starship |
             pick_windowed_pin starship "$(asset_manifest_pin starship "${repo_root}")" "${cutoff}")" ||
         ! aws_pin="$(aws_cli_versions "$(asset_manifest_pin aws-cli "${repo_root}")" "${cutoff}" |
-            pick_windowed_pin aws-cli "$(asset_manifest_pin aws-cli "${repo_root}")" "${cutoff}")"; then
+            pick_windowed_pin aws-cli "$(asset_manifest_pin aws-cli "${repo_root}")" "${cutoff}")" ||
+        # chezmoi tags carry a v prefix; setup.sh pins the bare version.
+        ! chezmoi_pin="$(github_release_versions twpayne/chezmoi | sed 's/^v//' |
+            pick_windowed_pin chezmoi-bootstrap "$(asset_manifest_pin chezmoi-bootstrap "${repo_root}")" "${cutoff}")"; then
         printf 'warning: unable to resolve release asset pins; keeping current pins\n' >&2
         return 1
     fi
@@ -608,12 +611,13 @@ function bump_release_asset_pins() {
         --set-asset "mise.pin=${mise_pin}" \
         --set-asset "sheldon.pin=${sheldon_pin}" \
         --set-asset "starship.pin=${starship_pin}" \
-        --set-asset "aws-cli.pin=${aws_pin}"); then
+        --set-asset "aws-cli.pin=${aws_pin}" \
+        --set-asset "chezmoi-bootstrap.pin=${chezmoi_pin}"); then
         printf 'warning: unable to write the asset manifest pins; keeping current pins\n' >&2
         return 1
     fi
-    printf 'Pinned mise %s, sheldon %s, starship %s, and aws-cli %s; review and commit the assets and installer diff.\n' \
-        "${mise_pin}" "${sheldon_pin}" "${starship_pin}" "${aws_pin}"
+    printf 'Pinned mise %s, sheldon %s, starship %s, aws-cli %s, and chezmoi %s; review and commit the assets and installer diff.\n' \
+        "${mise_pin}" "${sheldon_pin}" "${starship_pin}" "${aws_pin}" "${chezmoi_pin}"
 }
 
 #

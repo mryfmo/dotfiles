@@ -89,7 +89,7 @@ class ReleaseAssetPinsTest(unittest.TestCase):
         path.write_text("#!/bin/bash\n" + textwrap.dedent(body))
         path.chmod(0o755)
 
-    def test_bump_writes_only_the_four_pins_through_set_asset(self) -> None:
+    def test_bump_writes_only_the_five_pins_through_set_asset(self) -> None:
         repo = self.temp_dir / "repo"
         (repo / "scripts").mkdir(parents=True)
         (repo / "home/dot_agents").mkdir(parents=True)
@@ -101,6 +101,7 @@ class ReleaseAssetPinsTest(unittest.TestCase):
             "  sheldon:\n    source: crates\n    pin: 0.8.5\n"
             "  starship:\n    source: github-release\n    pin: v1.25.1\n"
             "  aws-cli:\n    source: https-download\n    pin: 2.35.21\n"
+            "  chezmoi-bootstrap:\n    source: github-release\n    pin: 2.70.4\n"
         )
         bin_dir = self.temp_dir / "bin"
         bin_dir.mkdir()
@@ -139,6 +140,8 @@ class ReleaseAssetPinsTest(unittest.TestCase):
                     printf 'v2026.9.14\\t{days_ago(2)}\\nv2026.9.12\\t{days_ago(6)}\\nv2026.9.11\\t{days_ago(9)}\\n' ;;
                 repos/starship/starship/releases*)
                     printf 'v1.27.0\\t{days_ago(1)}\\nv1.26.0\\t{days_ago(90)}\\nv1.25.1\\t{days_ago(150)}\\n' ;;
+                repos/twpayne/chezmoi/releases*)
+                    printf 'v2.71.0\\t{days_ago(3)}\\nv2.70.6\\t{days_ago(12)}\\nv2.70.4\\t{days_ago(40)}\\n' ;;
                 repos/aws/aws-cli/tags*)
                     printf '2.37.4\\n2.36.0\\n2.35.21\\n2.35.20\\n' ;;
                 *) exit 1 ;;
@@ -181,6 +184,7 @@ class ReleaseAssetPinsTest(unittest.TestCase):
                 " --set-asset sheldon.pin=0.8.6"
                 " --set-asset starship.pin=v1.26.0"
                 " --set-asset aws-cli.pin=2.36.0"
+                " --set-asset chezmoi-bootstrap.pin=2.70.6"
             ],
             uv_calls,
         )
@@ -188,10 +192,11 @@ class ReleaseAssetPinsTest(unittest.TestCase):
         self.assertIn("skipping sheldon 0.9.0", result.stderr)
         self.assertIn("skipping starship v1.27.0", result.stderr)
         self.assertIn("skipping aws-cli 2.37.4", result.stderr)
+        self.assertIn("skipping chezmoi-bootstrap 2.71.0", result.stderr)
         # The AWS walk stops at the first version outside the window.
         self.assertNotIn("2.35.21.zip", log.read_text())
         self.assertIn(
-            "Pinned mise v2026.9.12, sheldon 0.8.6, starship v1.26.0, and aws-cli 2.36.0",
+            "Pinned mise v2026.9.12, sheldon 0.8.6, starship v1.26.0, aws-cli 2.36.0, and chezmoi 2.70.6",
             result.stdout,
         )
 

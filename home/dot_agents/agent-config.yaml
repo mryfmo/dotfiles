@@ -501,8 +501,22 @@ assets:
     install_path: Homebrew default prefix (/opt/homebrew or /usr/local)
     installer: install/macos/common/brew.sh
     render:
-      file: install/macos/common/brew.sh
-      constants: {HOMEBREW_INSTALL_COMMIT: pin, HOMEBREW_INSTALL_SHA256: sha256}
+      - file: install/macos/common/brew.sh
+        constants: {HOMEBREW_INSTALL_COMMIT: pin, HOMEBREW_INSTALL_SHA256: sha256}
+      - file: setup.sh
+        constants: {HOMEBREW_INSTALL_COMMIT: pin, HOMEBREW_INSTALL_SHA256: sha256}
+  chezmoi-bootstrap:
+    source: github-release
+    upstream: twpayne/chezmoi
+    pin: 2.70.4
+    verify: release-shasums
+    install_path: ~/.local/bin/chezmoi
+    installer: setup.sh#run_chezmoi
+    render:
+      - file: setup.sh
+        constants: {CHEZMOI_VERSION: pin}
+      - file: scripts/lib/installer-pins.sh
+        constants: {CHEZMOI_BOOTSTRAP_PIN_VERSION: pin}
   tode:
     source: installer-script
     upstream: https://tode.sh/install

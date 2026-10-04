@@ -137,28 +137,38 @@ jobs:
             # `bashcov` on macOS must use Homebrew Bash (>=5) to avoid the
             # system Bash 3.2 parser limitations that produced empty coverage.
             # `gawk` is available for shell tooling used by the test suite.
-            # `chezmoi` is installed so Bats can render chezmoi templates
-            # behaviorally instead of grepping template syntax.
-            brew install bash bats-core chezmoi gawk parallel shellcheck
+            brew install bash bats-core gawk parallel shellcheck
 
           elif [[ "${OS}" == ubuntu-* ]]; then
-            # Ruby is required for bashcov/simplecov formatters. Install chezmoi
-            # explicitly so template tests can verify rendered behavior.
+            # Ruby is required for bashcov/simplecov formatters.
             sudo apt-get update && sudo apt-get install -y bats curl iproute2 parallel ruby shellcheck
-            chezmoi_version=2.70.5
-            artifact="chezmoi_${chezmoi_version}_linux_amd64.tar.gz"
-            base_url="https://github.com/twpayne/chezmoi/releases/download/v${chezmoi_version}"
-            curl -fsSL "${base_url}/${artifact}" -o "${RUNNER_TEMP}/${artifact}"
-            curl -fsSL "${base_url}/chezmoi_${chezmoi_version}_checksums.txt" \
-              | grep "  ${artifact}$" \
-              | (cd "${RUNNER_TEMP}" && sha256sum --check --strict)
-            tar -xzf "${RUNNER_TEMP}/${artifact}" -C "${RUNNER_TEMP}" chezmoi
-            sudo install -m 0755 "${RUNNER_TEMP}/chezmoi" /usr/local/bin/chezmoi
 
           else
             echo "${OS} and ${SYSTEM} are not supported" >&2
             exit 1
           fi
+
+          # `chezmoi` is installed so Bats can render chezmoi templates
+          # behaviorally instead of grepping template syntax. Both platforms
+          # take the pinned release that setup.sh bootstraps; the version
+          # renders from assets.chezmoi-bootstrap in agent-config.yaml.
+          source scripts/lib/installer-pins.sh
+          case "$(uname -s)/$(uname -m)" in
+            Darwin/arm64) chezmoi_platform=darwin_arm64 ;;
+            Darwin/x86_64) chezmoi_platform=darwin_amd64 ;;
+            Linux/x86_64) chezmoi_platform=linux_amd64 ;;
+            *) echo "no chezmoi release for $(uname -s)/$(uname -m)" >&2; exit 1 ;;
+          esac
+          artifact="chezmoi_${CHEZMOI_BOOTSTRAP_PIN_VERSION}_${chezmoi_platform}.tar.gz"
+          base_url="https://github.com/twpayne/chezmoi/releases/download/v${CHEZMOI_BOOTSTRAP_PIN_VERSION}"
+          sha256_check=(sha256sum --check --strict)
+          command -v sha256sum >/dev/null || sha256_check=(shasum -a 256 --check --strict)
+          curl -fsSL "${base_url}/${artifact}" -o "${RUNNER_TEMP}/${artifact}"
+          curl -fsSL "${base_url}/chezmoi_${CHEZMOI_BOOTSTRAP_PIN_VERSION}_checksums.txt" \
+            | grep "  ${artifact}$" \
+            | (cd "${RUNNER_TEMP}" && "${sha256_check[@]}")
+          tar -xzf "${RUNNER_TEMP}/${artifact}" -C "${RUNNER_TEMP}" chezmoi
+          sudo install -m 0755 "${RUNNER_TEMP}/chezmoi" /usr/local/bin/chezmoi
 
           files_test_chezmoi="$(command -v chezmoi)"
           case "${files_test_chezmoi}" in
@@ -173,6 +183,8 @@ jobs:
               ;;
           esac
           test -x "${files_test_chezmoi}"
+          # A runner-provided chezmoi earlier on PATH must not shadow the pin.
+          "${files_test_chezmoi}" --version | grep -F "v${CHEZMOI_BOOTSTRAP_PIN_VERSION}"
           printf 'FILES_TEST_CHEZMOI=%s\n' "${files_test_chezmoi}" >> "${GITHUB_ENV}"
 
           # Install coverage tooling as user gems and expose gem bin dir on PATH
@@ -192,11 +204,20 @@ jobs:
           cp home/dot_mise/config.toml "${statusline_mise_dir}/mise.toml"
           cp home/dot_mise/mise.lock "${statusline_mise_dir}/mise.lock"
 
+      - name: Pin mise from install/common/mise.sh
+        if: ${{ needs.changes.outputs.should_test == 'true' }}
+        run: |
+          # MISE_VERSION renders from assets.mise in agent-config.yaml; the
+          # variable stays outside MISE_*, which mise reads as its own settings.
+          pin="$(sed -n 's/^readonly MISE_VERSION="v\(.*\)"$/\1/p' install/common/mise.sh)"
+          test -n "${pin}"
+          echo "DOTFILES_MISE_VERSION=${pin}" >> "${GITHUB_ENV}"
+
       - name: Setup mise for statusline smoke
         if: ${{ needs.changes.outputs.should_test == 'true' }}
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
         with:
-          version: 2026.9.12
+          version: ${{ env.DOTFILES_MISE_VERSION }}
           install: false
           cache: true
 

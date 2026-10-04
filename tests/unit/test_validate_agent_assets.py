@@ -465,6 +465,21 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.module.validate_assets(manifest)
         path.unlink()
 
+    def test_assets_scan_setup_sh_for_unrendered_versions(self) -> None:
+        self.write_text_file("setup.sh", 'declare -r CHEZMOI_VERSION="2.70.4"\n')
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+            self.module.validate_assets(self.asset_manifest())
+        self.assertIn("setup.sh hard-codes CHEZMOI_VERSION", stderr.getvalue())
+
+        manifest = self.asset_manifest()
+        manifest["assets"]["mise"]["render"] = [
+            manifest["assets"]["mise"]["render"],
+            {"file": "setup.sh", "constants": {"CHEZMOI_VERSION": "pin"}},
+        ]
+        self.write_text_file("install/common/mise.sh", 'readonly MISE_VERSION="v1"\n')
+        self.module.validate_assets(manifest)
+
     def test_assets_reject_a_malformed_render_entry(self) -> None:
         for render in (
             ["install/common/mise.sh"],

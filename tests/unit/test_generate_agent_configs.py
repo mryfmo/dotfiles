@@ -173,6 +173,51 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertEqual(outputs[bootstrap], '#!/usr/bin/env bash\ndeclare -r MISE_VERSION="v2026.9.12"\n')
         self.assertEqual(len(outputs), 3)
 
+    def test_bootstrap_pins_render_into_setup_and_their_installers(self) -> None:
+        manifest = self.write_asset_fixture()
+        bootstrap = self.temp_dir / "setup.sh"
+        bootstrap.write_text(
+            "#!/usr/bin/env bash\n"
+            'declare -r HOMEBREW_INSTALL_COMMIT="old"\n'
+            'declare -r HOMEBREW_INSTALL_SHA256="old"\n'
+            'declare -r CHEZMOI_VERSION="2.70.5"\n'
+        )
+        brew = self.temp_dir / "install/macos/common/brew.sh"
+        brew.parent.mkdir(parents=True)
+        brew.write_text('readonly HOMEBREW_INSTALL_COMMIT="old"\nreadonly HOMEBREW_INSTALL_SHA256="old"\n')
+        pins = self.temp_dir / "scripts/lib/installer-pins.sh"
+        pins.write_text(pins.read_text() + 'CHEZMOI_BOOTSTRAP_PIN_VERSION="2.70.5"\n')
+        homebrew = {"HOMEBREW_INSTALL_COMMIT": "pin", "HOMEBREW_INSTALL_SHA256": "sha256"}
+        manifest["assets"]["homebrew-installer"] = {
+            "pin": "c795",
+            "sha256": "9928",
+            "render": [
+                {"file": "install/macos/common/brew.sh", "constants": homebrew},
+                {"file": "setup.sh", "constants": homebrew},
+            ],
+        }
+        manifest["assets"]["chezmoi-bootstrap"] = {
+            "pin": "2.70.4",
+            "render": [
+                {"file": "setup.sh", "constants": {"CHEZMOI_VERSION": "pin"}},
+                {"file": "scripts/lib/installer-pins.sh", "constants": {"CHEZMOI_BOOTSTRAP_PIN_VERSION": "pin"}},
+            ],
+        }
+
+        outputs = self.module.render_asset_constants(manifest)
+
+        self.assertEqual(
+            outputs[bootstrap],
+            "#!/usr/bin/env bash\n"
+            'declare -r HOMEBREW_INSTALL_COMMIT="c795"\n'
+            'declare -r HOMEBREW_INSTALL_SHA256="9928"\n'
+            'declare -r CHEZMOI_VERSION="2.70.4"\n',
+        )
+        self.assertEqual(
+            outputs[brew], 'readonly HOMEBREW_INSTALL_COMMIT="c795"\nreadonly HOMEBREW_INSTALL_SHA256="9928"\n'
+        )
+        self.assertIn('CHEZMOI_BOOTSTRAP_PIN_VERSION="2.70.4"\n', outputs[pins])
+
     def test_entries_reaching_one_file_through_a_symlink_edit_one_snapshot(self) -> None:
         manifest = self.write_asset_fixture()
         pins = self.temp_dir / "scripts/lib/installer-pins.sh"

@@ -593,6 +593,23 @@ class ReviewGuardTest(unittest.TestCase):
                 if returncode:
                     self.assertIn("current feedback item(s) for PR #1", result.stdout)
 
+    def test_pr_feedback_matches_a_masked_path_but_not_an_edited_one(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        live = {"source": "review_comment", "level": "comment", "url": "https://x/r1", "body": "nit"}
+        live["path"] = "docs/ghp_" + "c" * 25 + ".md"
+        masker = ROOT / "scripts/validate-agent-assets.py"
+        for name, saved_path, mask_file, returncode in (
+            ("masked with --mask-secrets", live["path"], True, 0),
+            ("edited path", "docs/other.md", False, 1),
+        ):
+            with self.subTest(case=name):
+                feedback = self.write_feedback([{**live, "path": saved_path, "disposition": "not-applicable:a nit"}])
+                if mask_file:
+                    run([sys.executable, str(masker), "--mask-secrets", str(self.temp_dir / feedback)], self.temp_dir)
+                self.write_collected([live])
+                result = self.guard_base({"PR_FEEDBACK_EVIDENCE": feedback})
+                self.assertEqual(result.returncode, returncode, result.stdout)
+
     def test_pr_feedback_requires_the_github_head_to_match(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)
         feedback = self.write_feedback([])

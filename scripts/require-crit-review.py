@@ -442,17 +442,17 @@ def validator():
 
 
 def feedback_key(item: dict, masked: bool = False) -> tuple:
-    """Identify a feedback item; `masked` takes the body as `--mask-secrets` saves it.
+    """Identify a feedback item; `masked` takes its strings as `--mask-secrets` saves them.
 
-    A saved body may be verbatim or exactly that masked form, because masking
-    (`validate-agent-assets.py --mask-secrets`, which masks a JSON file's string
-    values) is the repository's documented way to keep evidence scannable, and
-    the url still identifies the item. Every other field stays byte-exact.
+    A saved item may be verbatim or exactly that masked form, because masking
+    (`validate-agent-assets.py --mask-secrets`, which masks every string value
+    of a JSON file) is the repository's documented way to keep evidence
+    scannable; an item with no key-shaped text masks to itself, byte for byte.
     """
-    body = item.get("body")
-    if masked and isinstance(body, str):
-        body = validator().mask_secret_matches(body)[0]
-    return (*(item.get(field) for field in ("source", "url", "level", "path", "line")), body)
+    values = (item.get(field) for field in ("source", "url", "level", "path", "line", "body"))
+    if not masked:
+        return tuple(values)
+    return tuple(validator().mask_secret_matches(value)[0] if isinstance(value, str) else value for value in values)
 
 
 def missing_feedback(collected: list, saved: list) -> Counter:

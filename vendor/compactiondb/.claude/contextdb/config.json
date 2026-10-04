@@ -14,7 +14,8 @@
     "capture_tool_response": true,
     "capture_file_contents": true,
     "skip_sensitive_files": true,
-    "raw_event_retention_days": 30
+    "raw_event_retention_days": 30,
+    "max_db_bytes": 536870912
   },
   "redaction": {
     "replacement": "[REDACTED:{kind}]",

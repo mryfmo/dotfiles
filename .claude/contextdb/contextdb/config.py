@@ -25,6 +25,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "capture_file_contents": True,
         "skip_sensitive_files": True,
         "raw_event_retention_days": 30,
+        "max_db_bytes": 512 * 1024 * 1024,
     },
     "redaction": {
         "replacement": "[REDACTED:{kind}]",
@@ -123,6 +124,7 @@ def validate_config(config: dict[str, Any]) -> dict[str, Any]:
     _require_int(config, "capture", "max_tool_output_chars", minimum=128)
     _require_int(config, "capture", "max_summary_chars", minimum=32)
     _require_int(config, "capture", "raw_event_retention_days", minimum=1)
+    _require_int(config, "capture", "max_db_bytes", minimum=1)
     _require_number(config, "memory", "auto_promote_min_confidence", minimum=0.0, maximum=1.0)
     _require_int(config, "memory", "block_summary_chars", minimum=128)
     _require_int(config, "memory", "recent_raw_count", minimum=0)

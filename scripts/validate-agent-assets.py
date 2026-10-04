@@ -1410,6 +1410,31 @@ def validate_no_obvious_secrets() -> None:
             fail(f"possible committed secret in {path.relative_to(ROOT)}")
 
 
+def validate_compactiondb_project_copy() -> None:
+    """The project's CompactionDB runtime and hook scripts must be byte-identical to the vendor tree."""
+    vendor = ROOT / "vendor/compactiondb/.claude"
+    if not vendor.is_dir():
+        return
+    project = ROOT / ".claude"
+    pairs: dict[str, tuple[Path | None, Path | None]] = {}
+    for base, files in (
+        (vendor, [*(vendor / "contextdb/contextdb").rglob("*"), *(vendor / "hooks").glob("contextdb_*.py")]),
+        (project, [*(project / "contextdb/contextdb").rglob("*"), *(project / "hooks").glob("contextdb_*.py")]),
+    ):
+        for path in files:
+            if not path.is_file() or "__pycache__" in path.parts:
+                continue
+            relative = str(path.relative_to(base))
+            vendor_path, project_path = pairs.get(relative, (None, None))
+            pairs[relative] = (path, project_path) if base == vendor else (vendor_path, path)
+    for relative, (vendor_path, project_path) in sorted(pairs.items()):
+        if vendor_path is None or project_path is None or vendor_path.read_bytes() != project_path.read_bytes():
+            fail(
+                f".claude/{relative} differs from vendor/compactiondb/.claude/{relative}; "
+                "refresh the project copy with vendor/compactiondb/install.py --project ."
+            )
+
+
 def validate_repo_claude_settings_portable() -> None:
     """Hook commands committed in the repo's own .claude/settings.json must not pin one machine's home."""
     settings_path = ROOT / ".claude/settings.json"
@@ -1447,6 +1472,7 @@ def main() -> None:
     validate_manifest_home_paths()
     validate_claude_settings(manifest)
     validate_repo_claude_settings_portable()
+    validate_compactiondb_project_copy()
     validate_codex_plugins()
     validate_codex_modify_script()
     codex = validate_codex_config(manifest)

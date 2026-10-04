@@ -1043,8 +1043,10 @@ class ContextStore:
                     (project_id, cutoff),
                 )
             ]
-        if not ids:
-            return 0
+        self._delete_event_ids(conn, ids)
+        return len(ids)
+
+    def _delete_event_ids(self, conn: sqlite3.Connection, ids: list[int]) -> None:
         # Keep each DELETE below conservative SQLite variable limits. The FTS
         # projection is deleted first because it has no trigger relationship to
         # the content table.
@@ -1056,7 +1058,64 @@ class ContextStore:
             if has_fts:
                 conn.execute(f"DELETE FROM events_fts WHERE rowid IN ({placeholders})", batch)
             conn.execute(f"DELETE FROM events WHERE id IN ({placeholders})", batch)
-        return len(ids)
+
+    @staticmethod
+    def _page_bytes(conn: sqlite3.Connection) -> tuple[int, int]:
+        """Return (in-use bytes, free-page bytes) of the main database file."""
+        page_size = int(conn.execute("PRAGMA page_size").fetchone()[0])
+        page_count = int(conn.execute("PRAGMA page_count").fetchone()[0])
+        freelist = int(conn.execute("PRAGMA freelist_count").fetchone()[0])
+        return (page_count - freelist) * page_size, freelist * page_size
+
+    def enforce_size_cap(self, conn: sqlite3.Connection, project_id: str, max_bytes: int) -> int:
+        """Delete this project's oldest events until the in-use pages fit max_bytes.
+
+        Unpromoted memory candidates go with their source events; durable
+        memories and promoted candidates are never deleted, so the cap can stay
+        exceeded once nothing else remains. Run only from the explicit prune
+        command, never from a hook.
+        """
+        removed = 0
+        unpromoted = "DELETE FROM memory_candidates WHERE project_id=? AND promoted_memory_uuid IS NULL"
+        # Earlier deletions (retention included) leave dead FTS segment pages that would
+        # otherwise count as in use, so merge the index before every measurement.
+        self.optimize_fts(conn)
+        if self._page_bytes(conn)[0] > max_bytes:
+            # Candidates whose source events retention already removed go before any newer event.
+            conn.execute(
+                f"{unpromoted} AND source_event_uuid NOT IN (SELECT event_uuid FROM events WHERE project_id=?)",
+                (project_id, project_id),
+            )
+        while self._page_bytes(conn)[0] > max_bytes:
+            rows = conn.execute(
+                "SELECT id, event_uuid FROM events WHERE project_id=? ORDER BY id LIMIT 100",
+                (project_id,),
+            ).fetchall()
+            if not rows:
+                break
+            uuids = [str(row[1]) for row in rows]
+            conn.execute(
+                f"{unpromoted} AND source_event_uuid IN ({','.join('?' for _ in uuids)})",
+                (project_id, *uuids),
+            )
+            self._delete_event_ids(conn, [int(row[0]) for row in rows])
+            removed += len(rows)
+            # ponytail: one FTS merge per batch of 100 rewrites the index each time; bounded by
+            # how far the ledger is over the cap, and prune is an explicit command.
+            self.optimize_fts(conn)
+        return removed
+
+    def optimize_fts(self, conn: sqlite3.Connection) -> None:
+        """Merge the FTS5 index so deleted rows release their segment pages."""
+        if self.fts_tokenizer(conn) != "none":
+            conn.execute("INSERT INTO events_fts(events_fts) VALUES('optimize')")
+
+    def vacuum_if_fragmented(self, conn: sqlite3.Connection, *, threshold_bytes: int, force: bool = False) -> bool:
+        """VACUUM when free pages exceed threshold_bytes (or when forced); outside any transaction."""
+        if not force and self._page_bytes(conn)[1] <= threshold_bytes:
+            return False
+        conn.execute("VACUUM")
+        return True
 
     def export_events(
         self,

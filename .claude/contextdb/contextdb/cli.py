@@ -17,6 +17,9 @@ from .spool import drain_spool, validate_ingestion_source
 from .storage import ContextStore
 from .util import atomic_write_text, canonical_json, one_line, pretty_json
 
+# prune VACUUMs when more than this many bytes of free pages remain.
+VACUUM_FREE_BYTES = 64 * 1024 * 1024
+
 
 def _add_scope(parser: argparse.ArgumentParser, *, default: str = "session") -> None:
     parser.add_argument("--session", help="exact Claude Code session_id")
@@ -340,10 +343,25 @@ def run(args: argparse.Namespace) -> int:
             return 0 if result["ok"] else 2
 
         elif args.command == "prune":
+            max_db_bytes = int(config["capture"]["max_db_bytes"])
             with conn:
                 removed = store.prune_expired(conn, project_id, days=args.days)
-            result = {"removed_events": removed, "days_override": args.days}
-            _print_json_or_lines(args, result, [f"removed_events={removed}"])
+                # enforce_size_cap merges the FTS index first, so retention's deletions are reclaimed too.
+                capped = store.enforce_size_cap(conn, project_id, max_db_bytes)
+            in_use, free = store._page_bytes(conn)
+            # VACUUM cannot run inside a transaction, so it follows the commit; it is forced whenever
+            # rows were deleted or the file itself is still over the cap.
+            force = removed > 0 or capped > 0 or in_use + free > max_db_bytes
+            vacuumed = store.vacuum_if_fragmented(conn, threshold_bytes=VACUUM_FREE_BYTES, force=force)
+            result = {
+                "removed_events": removed,
+                "days_override": args.days,
+                "size_cap_removed_events": capped,
+                "vacuumed": vacuumed,
+            }
+            _print_json_or_lines(
+                args, result, [f"removed_events={removed} size_cap_removed_events={capped} vacuumed={vacuumed}"]
+            )
 
         elif args.command == "export":
             session = _resolve_session(store, conn, args.session, args.scope)

@@ -245,6 +245,127 @@ class StorageTests(unittest.TestCase):
         finally:
             conn.close()
 
+    def _bulk_events(self, conn, count: int) -> None:
+        with conn:
+            for i in range(count):
+                event = normalize_hook_payload(
+                    {
+                        "hook_event_name": "UserPromptSubmit",
+                        "session_id": "bulk",
+                        "cwd": str(self.p.root),
+                        "prompt": f"event {i} " + "x" * 2000,
+                    },
+                    self.p.paths,
+                    self.p.config,
+                )
+                self.p.store.insert_event(conn, event, ingested_from="test")
+
+    def test_size_cap_deletes_the_oldest_events_until_the_pages_fit(self) -> None:
+        conn = self.p.store.connect()
+        try:
+            self._bulk_events(conn, 200)
+            used, _ = self.p.store._page_bytes(conn)
+            first, last = conn.execute("SELECT MIN(id), MAX(id) FROM events").fetchone()
+            with conn:
+                removed = self.p.store.enforce_size_cap(conn, self.p.paths.project_id, used - 1)
+            self.assertEqual(100, removed)  # one batch of the oldest events brings the pages under the cap
+            self.assertLess(self.p.store._page_bytes(conn)[0], used)
+            remaining = conn.execute("SELECT MIN(id), MAX(id) FROM events").fetchone()
+            self.assertGreater(remaining[0], first)
+            self.assertEqual(last, remaining[1])
+            with conn:
+                self.assertEqual(0, self.p.store.enforce_size_cap(conn, self.p.paths.project_id, used))
+        finally:
+            conn.close()
+
+    def test_size_cap_under_fts_keeps_events_that_fit(self) -> None:
+        conn = self.p.store.connect()
+        try:
+            with conn:
+                for i in range(400):
+                    event = normalize_hook_payload(
+                        {
+                            "hook_event_name": "UserPromptSubmit",
+                            "session_id": "fts",
+                            "cwd": str(self.p.root),
+                            "prompt": " ".join(f"word{i}x{j}" for j in range(150)),
+                        },
+                        self.p.paths,
+                        self.p.config,
+                    )
+                    self.p.store.insert_event(conn, event, ingested_from="test")
+                if self.p.store.fts_tokenizer(conn) != "none":
+                    conn.execute("INSERT INTO events_fts(events_fts) VALUES('optimize')")
+            full, _ = self.p.store._page_bytes(conn)
+            cap = full * 6 // 10
+            with conn:
+                removed = self.p.store.enforce_size_cap(conn, self.p.paths.project_id, cap)
+            remaining = int(conn.execute("SELECT COUNT(*) FROM events").fetchone()[0])
+            self.assertGreater(remaining, 0)  # dead FTS pages no longer force deleting everything
+            self.assertEqual(400, removed + remaining)
+            self.assertLessEqual(self.p.store._page_bytes(conn)[0], cap)
+        finally:
+            conn.close()
+
+    def test_size_cap_reclaims_orphaned_candidates_before_any_newer_event(self) -> None:
+        conn = self.p.store.connect()
+        try:
+            with conn:
+                for i in range(200):
+                    event = normalize_hook_payload(
+                        {
+                            "hook_event_name": "Stop",
+                            "session_id": "old",
+                            "cwd": str(self.p.root),
+                            "last_assistant_message": f"task {i} completed. " + "y" * 1500,
+                        },
+                        self.p.paths,
+                        self.p.config,
+                    )
+                    self.p.store.insert_event(conn, event, ingested_from="test")
+                conn.execute("UPDATE events SET ts_utc='2000-01-01T00:00:00.000Z'")
+                self.p.store.prune_expired(conn, self.p.paths.project_id, days=0)
+            self.assertEqual(0, int(conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]))
+            self.assertEqual(200, int(conn.execute("SELECT COUNT(*) FROM memory_candidates").fetchone()[0]))
+            self._bulk_events(conn, 10)
+            with conn:
+                self.p.store.optimize_fts(conn)  # measure as enforce_size_cap does
+            used, _ = self.p.store._page_bytes(conn)
+            with conn:
+                removed = self.p.store.enforce_size_cap(conn, self.p.paths.project_id, used - 1)
+            self.assertEqual(0, removed)
+            self.assertEqual(10, int(conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]))
+            self.assertEqual(0, int(conn.execute("SELECT COUNT(*) FROM memory_candidates").fetchone()[0]))
+        finally:
+            conn.close()
+
+    def test_capping_every_event_returns_the_fts_pages(self) -> None:
+        conn = self.p.store.connect()
+        try:
+            fresh, _ = self.p.store._page_bytes(conn)
+            self._bulk_events(conn, 200)
+            with conn:
+                self.p.store.enforce_size_cap(conn, self.p.paths.project_id, 1)
+            self.p.store.vacuum_if_fragmented(conn, threshold_bytes=0, force=True)
+            self.assertLessEqual(self.p.store._page_bytes(conn)[0], fresh)
+        finally:
+            conn.close()
+
+    def test_vacuum_runs_only_over_the_free_page_threshold_or_when_forced(self) -> None:
+        conn = self.p.store.connect()
+        try:
+            self._bulk_events(conn, 200)
+            with conn:
+                self.p.store.prune_expired(conn, self.p.paths.project_id, days=-1)
+            free = self.p.store._page_bytes(conn)[1]
+            self.assertGreater(free, 0)
+            self.assertFalse(self.p.store.vacuum_if_fragmented(conn, threshold_bytes=free))
+            self.assertTrue(self.p.store.vacuum_if_fragmented(conn, threshold_bytes=free - 1))
+            self.assertEqual(0, self.p.store._page_bytes(conn)[1])
+            self.assertTrue(self.p.store.vacuum_if_fragmented(conn, threshold_bytes=free, force=True))
+        finally:
+            conn.close()
+
     def test_prune_removes_raw_event_but_keeps_memory(self) -> None:
         self.p.event(
             {

@@ -289,7 +289,7 @@ author tasks, review results, and own acceptance. The worker uses the
 task at a time. The auditor uses the `audit` profile (Codex `gpt-6.1-sol`,
 xhigh reasoning effort, read-only sandbox; the audit lane requires Codex
 API-key authentication, because the ChatGPT-login account rejects the model)
-for independent `codex --profile audit review --commit <sha>` audits. The responsibility
+for one independent task-level audit of each final head, run as the agmsg-orchestration SKILL's task-level audit bullet describes. The responsibility
 boundaries live in `home/dot_config/claude/rules/model-selection.md`,
 `home/dot_config/claude/rules/agmsg-orchestration.md`, and the `## Audit`
 section of `AGENTS.md`.
@@ -345,6 +345,8 @@ AGENT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/review/<id>.md make requi
 CRIT_REVIEWED=1 REVIEW_EVIDENCE=.agents/worklog/codex/review/<id>.md make require-crit-review
 # Only use this explicit escape hatch when the user disables review.
 CRIT_REVIEW=off make require-crit-review
+# PR integration adds BASE, PR_FEEDBACK_EVIDENCE and AUDIT_EVIDENCE in the order of the
+# agmsg-orchestration SKILL's Orchestrator Playbook step 10 (see below).
 
 # Then upgrade installed tools using the applied mise and agent settings.
 make upgrade
@@ -556,7 +558,7 @@ worker's workspace-trust dialog during spawn's readiness wait, and takes
 `--ready-timeout <seconds>`), confirms the worker's placement in
 `team.sh <team> --json`, sends `AGMSG-PING` with `poke.sh --body-file`, and
 dispatches no task before the `AGMSG-PONG`. The auditor runs headless
-(`codex --profile audit review --commit <sha>`), and a sandboxed pane-less
+(the headless form in the agmsg-orchestration SKILL's task-level audit bullet), and a sandboxed pane-less
 session has no Monitor watch, so RESULTs arrive by turn delivery.
 
 The workspace layout stays centralized in `herdr-agents`, which is also bound
@@ -947,8 +949,12 @@ gh pr comment <pr> --body '@coderabbitai full review'
 # check-run annotation (notice/warning/failure), and commit statuses.
 python3 scripts/pr-feedback.py <pr> --json .orchestration/validation/<task>-pr-feedback.json
 # Fill every item's disposition with fixed:<commit> or not-applicable:<reason>,
-# then run the integration guard against the base branch.
+# run the task-level audit of the head, write the acceptance record, then run
+# the integration guard against the base branch (agmsg-orchestration SKILL step 10).
+# For a `Verdict: incorrect` audit, also pass the acceptance record that
+# dispositions each finding: AUDIT_DISPOSITIONS=.orchestration/acceptance/<task>.md
 BASE=origin/main PR_FEEDBACK_EVIDENCE=.orchestration/validation/<task>-pr-feedback.json \
+  AUDIT_EVIDENCE=.orchestration/validation/<task>-audit-<sha7>.md \
   make require-crit-review
 ```
 

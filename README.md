@@ -809,6 +809,14 @@ worker pane is never relabeled as the orchestrator. To tear down a stray
 duplicate workspace, `/exit` each of its agents with
 `herdr agent prompt <pane> "/exit"`, then run `herdr workspace close <id>`.
 
+When `HERDR_AGENTS_ORCHESTRATOR_KIND` (manifest `orchestrator_kind`, default
+`claude`) is `codex`, full mode, `--attach` and `--restart-worker` exit 2 with
+`herdr-agents: orchestrator_kind=codex: use codex-orchestrate` before touching
+Herdr, while the worker, audit and bootstrap modes keep working.
+`herdr-agents --directive` prints the `agmsg-orchestration:` directive line for
+a regime repository, and nothing elsewhere, without a Herdr server, so a Codex
+orchestrator's first turn can carry it.
+
 `herdr-agents --audit <sha> [--task ID] [--out PATH] [--timeout SECONDS] [DIR]` makes the
 orchestrator's Codex audit visible: it runs
 `codex <MODEL_PROFILE_AUDIT_CODEX_ARGS> exec --sandbox read-only -C DIR -o PATH.last.md '<prompt>'`

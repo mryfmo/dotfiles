@@ -362,6 +362,48 @@ class AgentStopGateTest(unittest.TestCase):
             (bindir / "gtimeout").chmod(0o755)
         return str(bindir)
 
+    def make_placeholders(self):
+        """0-byte, read-only untracked files like the sandbox's bind-mounted placeholders."""
+        paths = [self.main / ".zshrc", self.main / ".claude/agents"]
+        for path in paths:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("")
+            path.chmod(0o444)
+        return paths
+
+    def mountinfo(self, mounts):
+        """A mountinfo fixture: resolved paths (as the kernel lists them) in its octal escaping."""
+        encoded = [os.path.realpath(p).replace("\\", "\\134").replace(" ", "\\040") for p in mounts]
+        path = self.home / "mountinfo"
+        path.write_text(
+            "".join(f"{40 + i} 35 0:5 /null {p} ro,nosuid - devtmpfs udev rw\n" for i, p in enumerate(encoded))
+        )
+        return {"AGENT_STOP_GATE_MOUNTINFO": str(path)}
+
+    def test_sandbox_placeholders_are_skipped(self):
+        env = self.mountinfo(self.make_placeholders())
+        self.assertEqual(self.assert_gate(self.main, 0, env=env), "")
+        (self.main / "junk.txt").write_text("x")
+        stderr = self.assert_gate(self.main, 2, env=env)
+        self.assertIn("junk.txt", stderr)
+        self.assertNotIn(".zshrc", stderr)
+        self.assertNotIn(".claude/agents", stderr)
+        self.assertIn("sandbox placeholders ignored: 2", stderr)
+
+    def test_user_bind_mount_of_a_real_file_is_not_a_placeholder(self):
+        env_file = self.main / ".env"
+        env_file.write_text("SECRET=1\n")
+        stderr = self.assert_gate(self.main, 2, env=self.mountinfo([env_file]))
+        self.assertIn(".env", stderr)
+        self.assertNotIn("placeholders ignored", stderr)
+
+    def test_untracked_symlink_to_a_mount_point_is_not_a_placeholder(self):
+        # "/" is a mount point everywhere, so following the link would skip it.
+        (self.main / "link").symlink_to("/")
+        stderr = self.assert_gate(self.main, 2, env=self.mountinfo([Path("/")]))
+        self.assertIn("link", stderr)
+        self.assertNotIn("placeholders ignored", stderr)
+
     def assert_slow_store_blocks_within_the_budget(self, env=None):
         self.history(row("orch", "worker-a001", "AGMSG-TASK v1 task_id=T5 repo=/r"))
         (self.home / "store-slow").write_text("")

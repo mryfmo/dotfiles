@@ -25,6 +25,13 @@
 #   one private mktemp file under TMPDIR, removed before it returns. Without an
 #   agmsg install it passes; a failing identity lookup or an unreadable store blocks
 #   unless `stop_hook_active` is true.
+#
+#   An untracked empty read-only regular file that is a mount point in the
+#   hook's own namespace is a Claude Code sandbox placeholder (a 0-byte bind
+#   mount over a protected path), not a change, and is skipped. Mount points
+#   are read once from field 5 of /proc/self/mountinfo and matched exactly, so
+#   no symlink is followed (AGENT_STOP_GATE_MOUNTINFO overrides that file, for
+#   tests only).
 # @option --read-history <team> Internal: print one team's history rows (the gate runs itself this way under timeout).
 # @exitcode 0 Nothing is pending, or the checkout is not an agmsg seat.
 # @exitcode 2 Work is pending; one reason line per violation on stderr.
@@ -107,8 +114,26 @@ fi
 [[ -e ${scripts}/identities.sh ]] || exit 0
 reasons=()
 
+placeholders=0
 if [[ ${seat} == orchestrator && ${active} == false ]]; then
     exempt() { [[ $1 == .orchestration/* || $1 == .agents/worklog/* ]]; }
+    # A real untracked file is never a mount point; a sandbox placeholder is.
+    # The mount table is read once (one awk, however many untracked paths) and
+    # compared as text in mountinfo's own octal escaping of \, space, tab and
+    # newline. No /proc (macOS) means no mounts, which is right: the macOS
+    # sandbox creates no placeholders.
+    mounts=$'\n'"$(awk '{ print $5 }' "${AGENT_STOP_GATE_MOUNTINFO:-/proc/self/mountinfo}" 2> /dev/null)"$'\n'
+    # Only Claude's kind of mount counts: an empty, read-only regular file. A
+    # user's own bind mount of a real file (say a nonempty .env) is reported.
+    placeholder() {
+        [[ -f ${top}/$1 && ! -s ${top}/$1 && ! -w ${top}/$1 ]] || return 1
+        local mount="${top}/$1"
+        mount="${mount//\\/\\134}"
+        mount="${mount// /\\040}"
+        mount="${mount//$'\t'/\\011}"
+        mount="${mount//$'\n'/\\012}"
+        [[ ${mounts} == *$'\n'"${mount}"$'\n'* ]]
+    }
     # -z rows are `XY <path>`; a rename or copy row is followed by its source
     # path, and it is exempt only when both endpoints are. A trailing `rc=<n>`
     # record carries git's exit status (a real row has a space at offset 2).
@@ -123,6 +148,10 @@ if [[ ${seat} == orchestrator && ${active} == false ]]; then
         from=""
         [[ ${xy} == *[RC]* ]] && IFS= read -r -d '' from
         if exempt "${path}" && { [[ -z ${from} ]] || exempt "${from}"; }; then
+            continue
+        fi
+        if [[ ${xy} == '??' ]] && placeholder "${path}"; then
+            placeholders=$((placeholders + 1))
             continue
         fi
         # Paths are repository data on their way to Claude (stderr of an exit 2
@@ -145,6 +174,7 @@ fi
 
 block() {
     printf 'agent-stop-gate: %s\n' "${reasons[@]}" >&2
+    [[ ${placeholders} -eq 0 ]] || printf 'agent-stop-gate: sandbox placeholders ignored: %s\n' "${placeholders}" >&2
     exit 2
 }
 

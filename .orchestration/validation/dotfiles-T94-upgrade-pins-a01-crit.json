@@ -1,0 +1,12 @@
+[
+  {
+    "scope": "review",
+    "id": "r_t94_01",
+    "start_line": 0,
+    "end_line": 0,
+    "body": "Review-scope approval: dotfiles-T94-upgrade-pins-a01 at PR #250 head 6f5c776c (one commit on main f32f33a0; 6 files, +18/-18). Orchestrator compared the PR diff with the saved `make upgrade` patch taken from the canonical clone: the 36 changed lines are identical (mise v2026.9.13 → v2026.9.14, aws-cli 2.37.3 → 2.37.4, crit v0.21.0 → v0.21.1 with four sha256 values, claude-code 2.1.287 → 2.1.288, pnpm 12.6.0 → 12.7.0 in the manifest, mise config/lock, the two rendered installers and installer-pins.sh). render-check exit 0, no test pinned an old value, the crit checksums match upstream, CI green (16 checks), Codex Bot thumbs-up with no thread, mergeable CLEAN.",
+    "resolved": true,
+    "author": "claude-code",
+    "replies": [{"id": "r_t94_01_r1", "body": "Resolved: approval recorded after a line-by-line comparison with the saved patch.", "author": "claude-code"}]
+  }
+]

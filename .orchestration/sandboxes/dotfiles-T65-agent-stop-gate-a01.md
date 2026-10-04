@@ -1,0 +1,9 @@
+# Sandbox record: dotfiles-T65-agent-stop-gate-a01
+
+- Worker: `claude-standard-dot-a007` (Claude Code, `standard` profile), seated by `herdr-agents --add-worker` in herdr pane `wZ:p2`.
+- Isolation: own git worktree `/home/moriya/Workspace/dotfiles/.claude/worktrees/worker-e`, branch `feat/agent-stop-gate` from `origin/main` (c6de5156). Repository edits stayed in that worktree; only the five T65 artifacts were written to the main checkout's `.orchestration/`.
+- Bash ran in the Claude Code bubblewrap sandbox by default. These commands ran unsandboxed: `actas-claim.sh` (composite seat lock), `agmsg-dispatch` (PONG/RESULT), `git push`, `gh pr create` / `gh pr checks` / `gh api` (no network inside the sandbox), the CompactionDB `memory add` in the main checkout (outside the writable roots), and read-only `git status` probes.
+- Sandbox artefacts seen, not created or removed by this task:
+  - `/home/moriya/Workspace/dotfiles/.git/config.lock`: a 0-byte read-only file (07:54) that blocks git config writes from the sandbox. Because of it, `git switch -c` could not record upstream tracking. The branch was created with `--no-track` and pushed without `-u`. The lock was left in place because `.git` is shared.
+  - Worktree `worker-e`: 0-byte read-only placeholders created at session start (07:55): `.bashrc`, `.bash_profile`, `.profile`, `.zshrc`, `.zprofile`, `.gitconfig`, `.gitmodules`, `.ripgreprc`, `.mcp.json`, `.idea`, `.vscode`, `.claude/{agents,commands,launch.json,loop.md,output-styles,routines,skills,workflows}`. They show as untracked in `git status`, so only the three task files were staged by name. The auditor's clean-tree check will see them.
+- The new hook went live in this session: the worktree `.claude/settings.json` change is picked up by Claude Code's settings watcher, so this seat's own Stop is gated until the RESULT is sent.

@@ -120,20 +120,42 @@ class AppArmorUsernsTest(unittest.TestCase):
                 self.assertEqual(0, result.returncode, result.stderr)
                 self.assertEqual(
                     [
-                        f"sudo install -m 0644 {source} {self.profile_target}",
-                        f"sudo apparmor_parser -r {self.profile_target}",
+                        "sudo -n true",
+                        f"sudo -n install -m 0644 {source} {self.profile_target}",
+                        f"sudo -n apparmor_parser -r {self.profile_target}",
                     ],
                     self.calls(),
                 )
                 self.assertIn("Loaded AppArmor profile bwrap-userns", result.stdout)
 
+    def sudo_failing_unless(self, allowed: str) -> None:
+        path = self.bin / "sudo"
+        path.write_text(f'#!/bin/bash\necho "sudo $*" >> "{self.log}"\n[ "$*" = "{allowed}" ]\n')
+        path.chmod(0o755)
+
+    def test_installer_leaves_the_profile_pending_without_cached_sudo(self) -> None:
+        self.fake("apparmor_parser")
+        self.sudo_failing_unless("-n never")
+        result = self.run_installer(self.env("1", self.fake("bwrap")))
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(["sudo -n true"], self.calls())
+        self.assertIn(
+            "pending: run 'sudo -v && bash install/ubuntu/common/apparmor_userns.sh'",
+            result.stderr,
+        )
+        self.assertNotIn("Loaded AppArmor profile", result.stdout)
+
     def test_installer_fails_when_loading_the_profile_fails(self) -> None:
         self.fake("apparmor_parser")
-        self.fake("sudo", exit_code=1)
+        self.sudo_failing_unless("-n true")
         result = self.run_installer(self.env("1", self.fake("bwrap")))
 
         self.assertNotEqual(0, result.returncode)
-        self.assertEqual([f"sudo install -m 0644 {PROFILE} {self.profile_target}"], self.calls())
+        self.assertEqual(
+            ["sudo -n true", f"sudo -n install -m 0644 {PROFILE} {self.profile_target}"],
+            self.calls(),
+        )
         self.assertNotIn("Loaded AppArmor profile", result.stdout)
 
     def test_doctor_is_not_applicable_without_the_restriction(self) -> None:
@@ -162,7 +184,11 @@ class AppArmorUsernsTest(unittest.TestCase):
         self.fake("codex")
         bwrap = self.fake("bwrap", exit_code=1)
         for label, installed, message in (
-            ("profile missing", False, "is missing, so sandboxed codex runs fail"),
+            (
+                "profile missing",
+                False,
+                "is missing, so sandboxed codex runs fail (sudo -v && bash install/ubuntu/common/apparmor_userns.sh)",
+            ),
             ("profile not loaded", True, "exists but is not effective"),
         ):
             with self.subTest(label):

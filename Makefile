@@ -42,6 +42,11 @@ init:
 
 .PHONY: update
 # run_once hashes let update converge committed scripts without advancing tool pins.
+# Operator phase (interactive, once per machine): ./setup.sh (chezmoi init prompts,
+# age passphrase, sudo keepalive, macOS CLT read, Ubuntu chsh, SSH/gh/codex logins,
+# run_once_* scripts), plus `sudo -v` right before `make update` when the pulled
+# diff touches install/** or .chezmoiscripts/**.
+# Unattended `make update`: never prompts.
 update:
 	@branch="$$(git branch --show-current 2>/dev/null || true)"; \
 	upstream="$$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true)"; \
@@ -75,15 +80,11 @@ update:
 		echo "Herdr command not found; skipping config reload."; \
 		exit 0; \
 	fi; \
-	if ! herdr_status="$$(herdr status server --json)"; then \
-		echo "Failed to read Herdr server status." >&2; \
-		exit 1; \
-	fi; \
-	if ! server_status="$$(printf '%s\n' "$$herdr_status" | jq -er '\
+	if ! herdr_status="$$(herdr status server --json)" || \
+		! server_status="$$(printf '%s\n' "$$herdr_status" | jq -er '\
 		if type == "object" and (.status | type == "string") \
 		then .status else error("invalid Herdr server status") end')"; then \
-		echo "Ambiguous or missing Herdr server status." >&2; \
-		exit 1; \
+		server_status=unreachable; \
 	fi; \
 	case "$$server_status" in \
 		running) \
@@ -97,7 +98,7 @@ update:
 				esac; \
 			fi ;; \
 		not_running) echo "Herdr server is not running; skipping config reload." ;; \
-		*) echo "Unknown or missing Herdr server status: $${server_status:-<missing>}" >&2; exit 1 ;; \
+		*) echo "Herdr server unreachable; skipping config reload." >&2 ;; \
 	esac
 	$(MAKE) agmsg-bootstrap
 

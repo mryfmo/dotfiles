@@ -51,12 +51,20 @@ function skip_reason() {
 
 #
 # @description Copy the profile into place and (re)load it; both steps are idempotent.
+#   Never prompts: without cached sudo credentials it leaves the profile pending.
+# @exitcode 0 Profile loaded, or left pending without cached sudo credentials.
+# @stderr Pending notice with the manual remedy when sudo would prompt.
 #
 function install_profile() {
     local source
+    sudo -n true 2> /dev/null || {
+        echo "apparmor bwrap-userns profile pending: run 'sudo -v && bash install/ubuntu/common/apparmor_userns.sh'" >&2
+        return 0
+    }
     source="$(profile_source)"
-    sudo install -m 0644 "${source}" "${PROFILE_TARGET}"
-    sudo apparmor_parser -r "${PROFILE_TARGET}"
+    sudo -n install -m 0644 "${source}" "${PROFILE_TARGET}"
+    sudo -n apparmor_parser -r "${PROFILE_TARGET}"
+    printf 'Loaded AppArmor profile bwrap-userns from %s.\n' "${PROFILE_TARGET}"
 }
 
 #
@@ -70,7 +78,6 @@ function main() {
         return 0
     fi
     install_profile
-    printf 'Loaded AppArmor profile bwrap-userns from %s.\n' "${PROFILE_TARGET}"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

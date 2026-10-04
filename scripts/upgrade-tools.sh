@@ -164,6 +164,7 @@ function upgrade_homebrew() {
 function upgrade_mise_self() {
     local mise_executable
     local mise_prefix
+    local mise_pin
 
     has_command mise || return 1
     mise_executable="$(type -P mise)" || return 1
@@ -176,7 +177,9 @@ function upgrade_mise_self() {
         return 0
     fi
 
-    mise self-update --yes
+    mise_pin="$(asset_manifest_pin mise "${repo_root}")" || return 1
+    # mise prepends "v" to VERSION itself (src/cli/self_update.rs), so pass the bare pin.
+    mise self-update --yes "${mise_pin#v}"
 }
 
 #

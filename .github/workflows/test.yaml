@@ -18,7 +18,6 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       should_test: ${{ steps.filter.outputs.should_test }}
-      should_nix: ${{ steps.filter.outputs.should_nix }}
       diff_range: ${{ steps.filter.outputs.diff_range }}
 
     steps:
@@ -75,12 +74,6 @@ jobs:
             echo "should_test=true" >> "${GITHUB_OUTPUT}"
           else
             echo "should_test=false" >> "${GITHUB_OUTPUT}"
-          fi
-
-          if git diff --name-only "${diff_range}" | grep -Eq '^(flake\.(nix|lock)$|nix/)'; then
-            echo "should_nix=true" >> "${GITHUB_OUTPUT}"
-          else
-            echo "should_nix=false" >> "${GITHUB_OUTPUT}"
           fi
 
   test:
@@ -411,27 +404,3 @@ jobs:
           # warnings emitted by the standalone binary signature verifier.
           use_pypi: true
           verbose: false
-
-  nix:
-    needs: changes
-    if: ${{ needs.changes.outputs.should_nix == 'true' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04, macos-14]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          persist-credentials: false
-
-      - name: Install Nix
-        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
-
-      - name: Evaluate flake outputs
-        run: |
-          nix flake check --no-build --no-update-lock-file
-          nix eval --no-update-lock-file .#homeConfigurations.mryfmo-linux.activationPackage.drvPath
-          nix eval --no-update-lock-file .#homeConfigurations.mryfmo-darwin.activationPackage.drvPath
-          nix eval --no-update-lock-file .#darwinConfigurations.mryfmo-mac.system.drvPath

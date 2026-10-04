@@ -156,7 +156,26 @@ def encode_detail(value: dict[str, Any], max_chars: int) -> tuple[dict[str, Any]
         per_field = max(24, int(per_field * 0.72))
 
 
+def _codex_notify_as_hook(payload: dict[str, Any]) -> dict[str, Any]:
+    """Map a Codex `notify` agent-turn-complete payload onto the Stop hook shape.
+
+    Codex passes `type`, `thread-id`, `turn-id`, `cwd`, `input-messages` and
+    `last-assistant-message`; `client` names the caller when present. Any other
+    payload, including every hook payload, is returned unchanged.
+    """
+    if payload.get("hook_event_name") or payload.get("type") != "agent-turn-complete":
+        return payload
+    return {
+        **payload,
+        "hook_event_name": "Stop",
+        "session_id": payload.get("thread-id"),
+        "agent_id": payload.get("client"),
+        "last_assistant_message": payload.get("last-assistant-message"),
+    }
+
+
 def normalize_hook_payload(payload: dict[str, Any], paths: ProjectPaths, config: dict[str, Any]) -> dict[str, Any]:
+    payload = _codex_notify_as_hook(payload)
     now = utc_now()
     hook_name = str(payload.get("hook_event_name") or "Unknown")
     event_type = _EVENT_MAP.get(hook_name, hook_name.casefold())

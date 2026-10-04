@@ -1043,8 +1043,10 @@ class ContextStore:
                     (project_id, cutoff),
                 )
             ]
-        if not ids:
-            return 0
+        self._delete_event_ids(conn, ids)
+        return len(ids)
+
+    def _delete_event_ids(self, conn: sqlite3.Connection, ids: list[int]) -> None:
         # Keep each DELETE below conservative SQLite variable limits. The FTS
         # projection is deleted first because it has no trigger relationship to
         # the content table.
@@ -1056,7 +1058,43 @@ class ContextStore:
             if has_fts:
                 conn.execute(f"DELETE FROM events_fts WHERE rowid IN ({placeholders})", batch)
             conn.execute(f"DELETE FROM events WHERE id IN ({placeholders})", batch)
-        return len(ids)
+
+    @staticmethod
+    def _page_bytes(conn: sqlite3.Connection) -> tuple[int, int]:
+        """Return (in-use bytes, free-page bytes) of the main database file."""
+        page_size = int(conn.execute("PRAGMA page_size").fetchone()[0])
+        page_count = int(conn.execute("PRAGMA page_count").fetchone()[0])
+        freelist = int(conn.execute("PRAGMA freelist_count").fetchone()[0])
+        return (page_count - freelist) * page_size, freelist * page_size
+
+    def enforce_size_cap(self, conn: sqlite3.Connection, project_id: str, max_bytes: int) -> int:
+        """Delete this project's oldest events until the in-use pages fit max_bytes.
+
+        Durable memories are never deleted, so the cap can stay exceeded once no
+        events remain. Run only from the explicit prune command, never from a hook.
+        """
+        removed = 0
+        while self._page_bytes(conn)[0] > max_bytes:
+            ids = [
+                int(row[0])
+                for row in conn.execute(
+                    # ponytail: fixed batches can overshoot the cap by up to 99 events; fine at ledger scale.
+                    "SELECT id FROM events WHERE project_id=? ORDER BY id LIMIT 100",
+                    (project_id,),
+                )
+            ]
+            if not ids:
+                break
+            self._delete_event_ids(conn, ids)
+            removed += len(ids)
+        return removed
+
+    def vacuum_if_fragmented(self, conn: sqlite3.Connection, *, threshold_bytes: int, force: bool = False) -> bool:
+        """VACUUM when free pages exceed threshold_bytes (or when forced); outside any transaction."""
+        if not force and self._page_bytes(conn)[1] <= threshold_bytes:
+            return False
+        conn.execute("VACUUM")
+        return True
 
     def export_events(
         self,

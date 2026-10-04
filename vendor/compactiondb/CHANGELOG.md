@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0+dotfiles.7
+
+- Normalised the Codex `notify` payload: an `agent-turn-complete` object without `hook_event_name` is recorded as a `Stop` hook (`turn_stop`) with `thread-id` as the session, `client` as the agent and `last-assistant-message` as `last_assistant_message`, instead of an `unknown` event. Hook payloads are unchanged.
+- Bounded the ledger on the explicit `prune` command only: a new `capture.max_db_bytes` setting (default 512 MiB) deletes the oldest events in batches of 100 until the in-use pages fit, and `prune` runs `VACUUM` afterwards or whenever free pages exceed 64 MiB. The SessionEnd hook still only deletes expired events and never vacuums.
+- Added a `make manifest` target that regenerates `MANIFEST.sha256` from the tracked files.
+
 ## 2.0.0+dotfiles.6
 
 - Defaulted the hook interpreter stored in `.claude/settings.json` to the bare `python3` command (PATH lookup at hook time) instead of the installing machine's `sys.executable`, so settings committed from one machine keep working on another. `--python` still accepts an explicit path. Verified on Ubuntu: Claude Code resolves the bare command via PATH, and the hooks run under both the system and mise interpreters.

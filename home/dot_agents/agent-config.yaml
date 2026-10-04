@@ -454,7 +454,7 @@ assets:
   compactiondb:
     source: vendored
     upstream: unknown
-    pin: 2.0.0+dotfiles.6
+    pin: 2.0.0+dotfiles.7
     verify: manifest-sha256
     manifest: vendor/compactiondb/MANIFEST.sha256
     note: local-fork-vendored-under-vendor/compactiondb

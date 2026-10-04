@@ -74,6 +74,51 @@ class CliTests(unittest.TestCase):
             conn.close()
         self.assertEqual("codex", row["ingested_from"])
 
+    def test_ingest_normalizes_a_codex_notify_payload(self) -> None:
+        source = self.p.root / "codex-notify.json"
+        source.write_text(
+            json.dumps(
+                {
+                    "type": "agent-turn-complete",
+                    "thread-id": "codex-thread-2",
+                    "turn-id": "turn-1",
+                    "cwd": str(self.p.root),
+                    "client": "codex-tui",
+                    "input-messages": ["rename the helper"],
+                    "last-assistant-message": "renamed",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        code, out, err = self.invoke(["ingest", str(source), "--ingested-from", "codex"])
+
+        self.assertEqual(0, code, err)
+        conn = self.p.store.connect()
+        try:
+            row = conn.execute(
+                "SELECT hook_event_name, event_type, agent_id, detail_json FROM events WHERE session_id='codex-thread-2'"
+            ).fetchone()
+        finally:
+            conn.close()
+        self.assertEqual(("Stop", "turn_stop", "codex-tui"), (row["hook_event_name"], row["event_type"], row["agent_id"]))
+        self.assertEqual("renamed", json.loads(row["detail_json"])["last_assistant_message"])
+
+    def test_prune_enforces_the_size_cap_and_vacuums(self) -> None:
+        self.p.event({"hook_event_name": "UserPromptSubmit", "session_id": "s1", "prompt": "[memory:decision] Keep it."})
+        config = json.loads(self.p.paths.config_path.read_text(encoding="utf-8"))
+        config["capture"]["max_db_bytes"] = 1
+        self.p.paths.config_path.write_text(json.dumps(config), encoding="utf-8")
+
+        code, out, err = self.invoke(["--json", "prune"])
+
+        self.assertEqual(0, code, err)
+        result = json.loads(out)
+        self.assertEqual(3, result["size_cap_removed_events"])
+        self.assertTrue(result["vacuumed"])
+        self.assertEqual(0, self.p.count("events"))
+        self.assertEqual(1, self.p.count("memories"))
+
     def test_ingest_rejects_invalid_source(self) -> None:
         code, out, err = self.invoke(["ingest", "missing.json", "--ingested-from", "Codex!"])
 

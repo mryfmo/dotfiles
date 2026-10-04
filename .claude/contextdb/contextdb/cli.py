@@ -17,6 +17,9 @@ from .spool import drain_spool, validate_ingestion_source
 from .storage import ContextStore
 from .util import atomic_write_text, canonical_json, one_line, pretty_json
 
+# prune VACUUMs when more than this many bytes of free pages remain.
+VACUUM_FREE_BYTES = 64 * 1024 * 1024
+
 
 def _add_scope(parser: argparse.ArgumentParser, *, default: str = "session") -> None:
     parser.add_argument("--session", help="exact Claude Code session_id")
@@ -340,10 +343,21 @@ def run(args: argparse.Namespace) -> int:
             return 0 if result["ok"] else 2
 
         elif args.command == "prune":
+            max_db_bytes = int(config["capture"]["max_db_bytes"])
             with conn:
                 removed = store.prune_expired(conn, project_id, days=args.days)
-            result = {"removed_events": removed, "days_override": args.days}
-            _print_json_or_lines(args, result, [f"removed_events={removed}"])
+                capped = store.enforce_size_cap(conn, project_id, max_db_bytes)
+            # VACUUM cannot run inside a transaction, so it follows the commit.
+            vacuumed = store.vacuum_if_fragmented(conn, threshold_bytes=VACUUM_FREE_BYTES, force=capped > 0)
+            result = {
+                "removed_events": removed,
+                "days_override": args.days,
+                "size_cap_removed_events": capped,
+                "vacuumed": vacuumed,
+            }
+            _print_json_or_lines(
+                args, result, [f"removed_events={removed} size_cap_removed_events={capped} vacuumed={vacuumed}"]
+            )
 
         elif args.command == "export":
             session = _resolve_session(store, conn, args.session, args.scope)

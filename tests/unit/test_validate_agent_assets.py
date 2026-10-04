@@ -1130,6 +1130,34 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                     self.module.validate_no_obvious_secrets()
 
+    def test_compactiondb_project_copy_must_match_the_vendor_tree(self) -> None:
+        files = {"contextdb/contextdb/storage.py": "store\n", "hooks/contextdb_cli.py": "cli\n"}
+        for relative, text in files.items():
+            self.write_text_file(f"vendor/compactiondb/.claude/{relative}", text)
+            self.write_text_file(f".claude/{relative}", text)
+        self.module.validate_compactiondb_project_copy()
+
+        for name, path, text in (
+            ("edited project file", ".claude/contextdb/contextdb/storage.py", "edited\n"),
+            ("missing project hook", ".claude/hooks/contextdb_cli.py", None),
+            ("project-only file", ".claude/contextdb/contextdb/extra.py", "extra\n"),
+        ):
+            with self.subTest(case=name):
+                target = self.temp_dir / path
+                original = target.read_bytes() if target.exists() else None
+                if text is None:
+                    target.unlink()
+                else:
+                    target.write_text(text)
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_compactiondb_project_copy()
+                self.assertIn(f"{path} differs from vendor/compactiondb/{path}", stderr.getvalue())
+                if original is None:
+                    target.unlink()
+                else:
+                    target.write_bytes(original)
+
     def test_secret_scan_checks_utf16_bom_text(self) -> None:
         path = self.temp_dir / "docs/reference/leaky-utf16.md"
         path.parent.mkdir(parents=True, exist_ok=True)

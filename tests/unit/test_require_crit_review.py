@@ -408,9 +408,9 @@ class ReviewGuardTest(unittest.TestCase):
         }
         return run([sys.executable, str(GUARD), "--base", base], self.temp_dir, {**defaults, **(env or {})})
 
-    def test_github_identity_gate_activation_and_current_head_approval(self) -> None:
+    def role_gate_fixture(self, path: str = "docs/change.md") -> tuple[dict, dict, Path]:
         run(["git", "branch", "-M", "main"], self.temp_dir)
-        self.commit_on_branch("docs/change.md")
+        self.commit_on_branch(path)
         evidence = self.write_feedback([])
         role_home = self.collected_dir / "role-home"
         hosts = role_home / ".config/gh-worker/hosts.yml"
@@ -428,7 +428,7 @@ class ReviewGuardTest(unittest.TestCase):
         fake.write_text(old.replace("import json, os, sys\n", "import json, os, sys\n" + dispatch))
         env = {"PR_FEEDBACK_EVIDENCE": evidence, "ROLE_RESPONSES": str(responses)}
         head = self.head_commit()
-        rule = {"type": "pull_request", "parameters": {"required_approving_review_count": 1}}
+        rule = {"type": "pull_request", "ruleset_id": 42, "parameters": {"required_approving_review_count": 1}}
         review = {
             "id": 1,
             "user": {"login": "merger"},
@@ -438,11 +438,21 @@ class ReviewGuardTest(unittest.TestCase):
         }
         data = {
             "repos/mryfmo/dotfiles/rules/branches/main": [[rule]],
-            "user": {"login": "merger"},
+            "user": {"login": "merger", "id": 100},
+            "repos/mryfmo/dotfiles/rulesets/42": {
+                "bypass_actors": [{"actor_type": "User", "actor_id": 100, "bypass_mode": "pull_request"}]
+            },
             "repos/mryfmo/dotfiles/pulls/1": {"user": {"login": "worker"}, "head": {"sha": head}},
             "repos/mryfmo/dotfiles/pulls/1/reviews": [[review]],
         }
         responses.write_text(json.dumps(data))
+        return env, data, responses
+
+    def test_github_identity_gate_activation_and_current_head_approval(self) -> None:
+        env, data, responses = self.role_gate_fixture()
+        hosts = self.collected_dir / "role-home/.config/gh-worker/hosts.yml"
+        rule = data["repos/mryfmo/dotfiles/rules/branches/main"][0][0]
+        review = data["repos/mryfmo/dotfiles/pulls/1/reviews"][0][0]
         absent = self.guard_base(env)
         self.assertEqual(0, absent.returncode, absent.stdout)
         self.assertIn("notice:", absent.stdout)
@@ -469,13 +479,117 @@ class ReviewGuardTest(unittest.TestCase):
             with self.subTest(label=label):
                 data["repos/mryfmo/dotfiles/rules/branches/main"] = rules
                 data["repos/mryfmo/dotfiles/pulls/1/reviews"] = reviews
-                data["user"] = {"login": login}
+                data["user"] = {"login": login, "id": 100}
                 responses.write_text(json.dumps(data))
                 result = self.guard_base(env)
                 self.assertEqual(expected, result.returncode, result.stdout + result.stderr)
         del data["repos/mryfmo/dotfiles/rules/branches/main"]
         responses.write_text(json.dumps(data))
         self.assertNotEqual(0, self.guard_base(env).returncode)
+
+    def test_role_gate_update_activation_and_boundary_authorship(self) -> None:
+        for rule_type in ("update", "pull_request"):
+            for path in (".orchestration/reports/boundary.md", "docs/change.md"):
+                with self.subTest(rule_type=rule_type, path=path):
+                    self.tearDown()
+                    self.setUp()
+                    env, data, responses = self.role_gate_fixture(path)
+                    (self.collected_dir / "role-home/.config/gh-worker/hosts.yml").touch()
+                    rule = {"type": rule_type, "ruleset_id": 42, "parameters": {"required_approving_review_count": 1}}
+                    data["repos/mryfmo/dotfiles/rules/branches/main"] = [[rule]]
+                    for author, approved in (("worker", False), ("worker", True), ("MERGER", False)):
+                        with self.subTest(author=author, approved=approved):
+                            data["repos/mryfmo/dotfiles/pulls/1"]["user"]["login"] = author
+                            review = {
+                                "id": 1,
+                                "user": {"login": "merger"},
+                                "state": "APPROVED",
+                                "commit_id": self.head_commit(),
+                                "submitted_at": "2026-10-04T12:00:00Z",
+                            }
+                            data["repos/mryfmo/dotfiles/pulls/1/reviews"] = [[review]] if approved else [[]]
+                            responses.write_text(json.dumps(data))
+                            expected = approved or (author == "MERGER" and path.startswith(".orchestration/"))
+                            result = self.guard_base(env)
+                            self.assertEqual(0 if expected else 1, result.returncode, result.stdout + result.stderr)
+
+    def test_role_gate_requires_exact_sole_pr_bypass_actor(self) -> None:
+        env, data, responses = self.role_gate_fixture(".orchestration/reports/boundary.md")
+        (self.collected_dir / "role-home/.config/gh-worker/hosts.yml").touch()
+        actor = {"actor_type": "User", "actor_id": 100, "bypass_mode": "pull_request"}
+        for author in ("worker", "merger"):
+            for actors in (
+                [],
+                [actor, {**actor, "actor_id": 200}],
+                [{**actor, "actor_id": 200}],
+                [{**actor, "actor_type": "Team"}],
+                [{**actor, "bypass_mode": "always"}],
+                [{**actor, "actor_id": "100"}],
+                None,
+            ):
+                with self.subTest(author=author, actors=actors):
+                    data["repos/mryfmo/dotfiles/pulls/1"]["user"]["login"] = author
+                    data["repos/mryfmo/dotfiles/rulesets/42"] = {"bypass_actors": actors}
+                    responses.write_text(json.dumps(data))
+                    result = self.guard_base(env)
+                    self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+
+    def test_role_gate_combined_rulesets_and_unverifiable_metadata(self) -> None:
+        env, data, responses = self.role_gate_fixture(".orchestration/reports/boundary.md")
+        (self.collected_dir / "role-home/.config/gh-worker/hosts.yml").touch()
+        data["repos/mryfmo/dotfiles/pulls/1"]["user"]["login"] = "merger"
+        approval = data["repos/mryfmo/dotfiles/rules/branches/main"][0][0]
+        integrity = {"type": "pull_request", "ruleset_id": 43, "parameters": {"required_approving_review_count": 0}}
+        update = {"type": "update", "ruleset_id": 42}
+        actor = {"actor_type": "User", "actor_id": 100, "bypass_mode": "pull_request"}
+        for label, rules, details, expected in (
+            ("combined", [integrity, update, approval], {"bypass_actors": []}, 0),
+            ("another matching restriction", [update, {**approval, "ruleset_id": 43}], {"bypass_actors": [actor]}, 0),
+            ("another mismatching restriction", [update, {**approval, "ruleset_id": 43}], {"bypass_actors": []}, 1),
+            ("missing rule ID", [{"type": "update"}], {}, 1),
+            ("missing actor metadata", [{**update, "ruleset_id": 43}], {}, 1),
+            ("unreadable ruleset", [{**update, "ruleset_id": 44}], {}, 1),
+        ):
+            with self.subTest(label=label):
+                data["repos/mryfmo/dotfiles/rules/branches/main"] = [rules]
+                data["repos/mryfmo/dotfiles/rulesets/43"] = details
+                responses.write_text(json.dumps(data))
+                result = self.guard_base(env)
+                self.assertEqual(expected, result.returncode, result.stdout + result.stderr)
+
+    def test_role_gate_boundary_rejects_cross_boundary_rename_and_empty_diff(self) -> None:
+        for change in ("rename", "empty"):
+            with self.subTest(change=change):
+                self.tearDown()
+                self.setUp()
+                path = ".orchestration/reports/boundary.md"
+                env, data, responses = self.role_gate_fixture(path)
+                (self.collected_dir / "role-home/.config/gh-worker/hosts.yml").touch()
+                if change == "rename":
+                    run(["git", "mv", "README.md", ".orchestration/README.md"], self.temp_dir)
+                else:
+                    run(["git", "rm", path], self.temp_dir)
+                run(["git", "commit", "-m", change], self.temp_dir)
+                env["PR_FEEDBACK_EVIDENCE"] = self.write_feedback([])
+                data["repos/mryfmo/dotfiles/pulls/1"] = {
+                    "user": {"login": "merger"},
+                    "head": {"sha": self.head_commit()},
+                }
+                responses.write_text(json.dumps(data))
+                result = self.guard_base(env)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+
+    def test_role_gate_boundary_exemption_checks_complete_committed_diff(self) -> None:
+        env, data, responses = self.role_gate_fixture(".orchestration/reports/boundary.md")
+        (self.collected_dir / "role-home/.config/gh-worker/hosts.yml").touch()
+        self.write_review_file(".agents/worklog/tracked.md", "tracked outside orchestration\n")
+        run(["git", "add", ".agents/worklog/tracked.md"], self.temp_dir)
+        run(["git", "commit", "-m", "outside boundary"], self.temp_dir)
+        env["PR_FEEDBACK_EVIDENCE"] = self.write_feedback([])
+        data["repos/mryfmo/dotfiles/pulls/1"] = {"user": {"login": "merger"}, "head": {"sha": self.head_commit()}}
+        responses.write_text(json.dumps(data))
+        result = self.guard_base(env)
+        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
 
     def test_base_reviews_committed_branch_changes(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)

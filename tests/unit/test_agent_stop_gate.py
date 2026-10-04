@@ -77,9 +77,9 @@ class AgentStopGateTest(unittest.TestCase):
     def history(self, *rows, team="dotfiles"):
         (self.home / f"history-{team}.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
 
-    def run_gate(self, cwd, active=False, env=None):
+    def run_gate(self, cwd, active=False, env=None, args=()):
         return subprocess.run(
-            ["bash", str(SCRIPT)],
+            ["bash", str(SCRIPT), *args],
             input=json.dumps({"stop_hook_active": active, "cwd": str(cwd), "session_id": "s"}),
             capture_output=True,
             check=False,
@@ -93,8 +93,8 @@ class AgentStopGateTest(unittest.TestCase):
             timeout=10,
         )
 
-    def assert_gate(self, cwd, code, active=False, env=None):
-        result = self.run_gate(cwd, active, env)
+    def assert_gate(self, cwd, code, active=False, env=None, args=()):
+        result = self.run_gate(cwd, active, env, args)
         self.assertEqual(result.returncode, code, result.stderr)
         return result.stderr
 
@@ -361,6 +361,116 @@ class AgentStopGateTest(unittest.TestCase):
             (bindir / "gtimeout").write_text(f'#!/bin/sh\nexec {shutil.which("timeout")} "$@"\n')
             (bindir / "gtimeout").chmod(0o755)
         return str(bindir)
+
+    def make_placeholders(self):
+        """0-byte, read-only untracked files like the sandbox's bind-mounted placeholders."""
+        paths = [self.main / ".zshrc", self.main / ".claude/agents"]
+        for path in paths:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("")
+            path.chmod(0o444)
+        return paths
+
+    def mountinfo(self, mounts, options="ro,nosuid", root=None, separate_fs=False, dev="0:5"):
+        """`--mountinfo <fixture>` args: filesystem-root mounts, then the given mounts.
+
+        Paths are resolved directories (as the kernel lists them) in mountinfo's octal escaping.
+        Device 0:5 is the root filesystem at /, 0:6 a separate filesystem at the first path
+        component (say /home), 0:7 the devtmpfs at /dev, and 0:9 another devtmpfs at /other-dev.
+        """
+        resolved = [os.path.join(os.path.realpath(Path(p).parent), Path(p).name) for p in mounts]
+        encoded = [p.replace("\\", "\\134").replace(" ", "\\040") for p in resolved]
+        first = "/" + encoded[0].split("/")[1] if encoded else "/home"
+        lines = [
+            "20 1 0:5 / / rw - ext4 /dev/root rw",
+            f"21 20 0:6 / {first} rw - ext4 /dev/home rw",
+            "22 20 0:7 / /dev rw - devtmpfs udev rw",
+            "23 20 0:9 / /other-dev rw - devtmpfs other rw",
+        ]
+        for i, p in enumerate(encoded):
+            mount_dev = "0:6" if separate_fs else dev
+            mount_root = root or (self.fs_relative(p) if separate_fs else p)
+            lines.append(f"{40 + i} 20 {mount_dev} {mount_root} {p} {options} - ext4 /dev/x rw")
+        path = self.home / "mountinfo"
+        path.write_text("".join(f"{line}\n" for line in lines))
+        return ["--mountinfo", str(path)]
+
+    @staticmethod
+    def fs_relative(path):
+        """The root as mountinfo shows it when the first path component (say /home) is its own filesystem."""
+        return "/" + path.split("/", 2)[2]
+
+    def test_sandbox_placeholders_on_a_separate_filesystem_are_skipped(self):
+        args = self.mountinfo(self.make_placeholders(), separate_fs=True)
+        self.assertEqual(self.assert_gate(self.main, 0, args=args), "")
+
+    def test_whole_filesystem_bind_is_not_a_placeholder(self):
+        stderr = self.assert_gate(self.main, 2, args=self.mountinfo(self.make_placeholders(), root="/"))
+        self.assertIn(".zshrc", stderr)
+        self.assertNotIn("placeholders ignored", stderr)
+
+    def test_sandbox_placeholders_are_skipped(self):
+        args = self.mountinfo(self.make_placeholders())
+        self.assertEqual(self.assert_gate(self.main, 0, args=args), "")
+        (self.main / "junk.txt").write_text("x")
+        stderr = self.assert_gate(self.main, 2, args=args)
+        self.assertIn("junk.txt", stderr)
+        self.assertNotIn(".zshrc", stderr)
+        self.assertNotIn(".claude/agents", stderr)
+        self.assertIn("sandbox placeholders ignored: 2", stderr)
+
+    def test_user_bind_mount_of_a_real_file_is_not_a_placeholder(self):
+        env_file = self.main / ".env"
+        env_file.write_text("SECRET=1\n")
+        stderr = self.assert_gate(self.main, 2, args=self.mountinfo([env_file]))
+        self.assertIn(".env", stderr)
+        self.assertNotIn("placeholders ignored", stderr)
+
+    def test_read_write_mount_is_not_a_placeholder(self):
+        # Decided by the mount's own options, not by -w, which root always passes.
+        stderr = self.assert_gate(self.main, 2, args=self.mountinfo(self.make_placeholders(), options="rw,relatime"))
+        self.assertIn(".zshrc", stderr)
+        self.assertNotIn("placeholders ignored", stderr)
+
+    def test_character_device_placeholder_is_skipped(self):
+        # Stands in for a /dev/null mask: the mount point is a character device.
+        mask = self.main / ".gitconfig"
+        mask.symlink_to("/dev/null")
+        self.assertEqual(self.assert_gate(self.main, 0, args=self.mountinfo([mask], root="/null", dev="0:7")), "")
+
+    def test_mountinfo_cannot_be_redirected_through_the_environment(self):
+        fixture = self.mountinfo(self.make_placeholders())[1]
+        stderr = self.assert_gate(self.main, 2, env={"AGENT_STOP_GATE_MOUNTINFO": fixture})
+        self.assertIn(".zshrc", stderr)
+
+    def test_read_only_bind_of_another_empty_file_is_not_a_placeholder(self):
+        # Same shape as a placeholder except the root: it was bound from elsewhere.
+        stderr = self.assert_gate(self.main, 2, args=self.mountinfo(self.make_placeholders(), root="/srv/empty.env"))
+        self.assertIn(".zshrc", stderr)
+        self.assertNotIn("placeholders ignored", stderr)
+
+    def test_same_named_file_bound_from_elsewhere_is_not_a_placeholder(self):
+        # Root /.zshrc on the root filesystem is a suffix of <repo>/.zshrc but not the same path.
+        zshrc = self.make_placeholders()[0]
+        stderr = self.assert_gate(self.main, 2, args=self.mountinfo([zshrc], root="/.zshrc"))
+        self.assertIn(".zshrc", stderr)
+        self.assertNotIn("placeholders ignored", stderr)
+
+    def test_null_device_of_another_filesystem_is_not_a_placeholder(self):
+        mask = self.main / ".gitconfig"
+        mask.symlink_to("/dev/null")
+        stderr = self.assert_gate(self.main, 2, args=self.mountinfo([mask], root="/null", dev="0:9"))
+        self.assertIn(".gitconfig", stderr)
+
+    def test_untracked_symlink_to_a_mount_point_is_not_a_placeholder(self):
+        # The target looks exactly like a placeholder, so following the link would skip it.
+        target = self.home / "placeholder"
+        target.write_text("")
+        target.chmod(0o444)
+        (self.main / "link").symlink_to(target)
+        stderr = self.assert_gate(self.main, 2, args=self.mountinfo([target]))
+        self.assertIn("link", stderr)
+        self.assertNotIn("placeholders ignored", stderr)
 
     def assert_slow_store_blocks_within_the_budget(self, env=None):
         self.history(row("orch", "worker-a001", "AGMSG-TASK v1 task_id=T5 repo=/r"))

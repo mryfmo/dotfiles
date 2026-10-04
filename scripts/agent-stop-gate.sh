@@ -25,7 +25,15 @@
 #   one private mktemp file under TMPDIR, removed before it returns. Without an
 #   agmsg install it passes; a failing identity lookup or an unreadable store blocks
 #   unless `stop_hook_active` is true.
+#
+#   An untracked path that is a read-only mount point in the hook's own
+#   namespace and is either an empty regular file bound onto itself or a
+#   character device bound from /dev/null is a Claude Code sandbox
+#   placeholder, not a change, and is skipped. Mounts are read once from
+#   fields 3-6 of /proc/self/mountinfo (a root is joined onto its source
+#   filesystem's mount point) and matched exactly, so no symlink is followed.
 # @option --read-history <team> Internal: print one team's history rows (the gate runs itself this way under timeout).
+# @option --mountinfo <file> Test only: read mount points from <file>. The Stop hook passes no arguments, so its inherited environment cannot redirect the table.
 # @exitcode 0 Nothing is pending, or the checkout is not an agmsg seat.
 # @exitcode 2 Work is pending; one reason line per violation on stderr.
 # @example
@@ -60,6 +68,10 @@ read_history() {
 if [[ ${1:-} == --read-history ]]; then
     read_history "$2"
     exit
+fi
+mountinfo=/proc/self/mountinfo
+if [[ ${1:-} == --mountinfo ]]; then
+    mountinfo="$2"
 fi
 
 # GNU timeout, or Homebrew coreutils' gtimeout on macOS; empty when neither.
@@ -107,8 +119,47 @@ fi
 [[ -e ${scripts}/identities.sh ]] || exit 0
 reasons=()
 
+placeholders=0
 if [[ ${seat} == orchestrator && ${active} == false ]]; then
     exempt() { [[ $1 == .orchestration/* || $1 == .agents/worklog/* ]]; }
+    # A real untracked file is never a mount point; a sandbox placeholder is.
+    # The mount table is read once (one awk, however many untracked paths) and
+    # compared as text in mountinfo's own octal escaping of \, space, tab and
+    # newline. No /proc (macOS) means no mounts, which is right: the macOS
+    # sandbox creates no placeholders.
+    # Only Claude's kind of mount counts, and only read-only (mountinfo field
+    # 6, not `-w`, which root always passes): an `S` self-bind of an empty
+    # regular file, or an `N` bind of /dev/null over a character device. A
+    # mount's root (field 4) is relative to its source filesystem, so it is
+    # joined onto the mount point of that filesystem's own root mount (same
+    # device, field 3, root `/`; the first pass): a self-bind joins to its own
+    # mount point and a /dev/null mask joins to /dev/null. Anything else (a
+    # user's bind of another file, a same-named file from elsewhere, a `null`
+    # device of another filesystem) is reported.
+    mounts=$'\n'"$(awk 'NR == FNR { if ($4 == "/") fsroot[$3] = fsroot[$3] SUBSEP $5; next }
+        $6 ~ /^ro(,|$)/ && ($3 in fsroot) {
+            n = split(substr(fsroot[$3], 2), roots, SUBSEP)
+            for (i = 1; i <= n; i++) {
+                path = (roots[i] == "/" ? "" : roots[i]) $4
+                if (path == $5) print "S" $5
+                if (path == "/dev/null") print "N" $5
+            }
+        }' "${mountinfo}" "${mountinfo}" 2> /dev/null)"$'\n'
+    placeholder() {
+        local kind mount="${top}/$1"
+        if [[ -c ${mount} ]]; then
+            kind=N
+        elif [[ -f ${mount} && ! -s ${mount} ]]; then
+            kind=S
+        else
+            return 1
+        fi
+        mount="${mount//\\/\\134}"
+        mount="${mount// /\\040}"
+        mount="${mount//$'\t'/\\011}"
+        mount="${mount//$'\n'/\\012}"
+        [[ ${mounts} == *$'\n'"${kind}${mount}"$'\n'* ]]
+    }
     # -z rows are `XY <path>`; a rename or copy row is followed by its source
     # path, and it is exempt only when both endpoints are. A trailing `rc=<n>`
     # record carries git's exit status (a real row has a space at offset 2).
@@ -123,6 +174,10 @@ if [[ ${seat} == orchestrator && ${active} == false ]]; then
         from=""
         [[ ${xy} == *[RC]* ]] && IFS= read -r -d '' from
         if exempt "${path}" && { [[ -z ${from} ]] || exempt "${from}"; }; then
+            continue
+        fi
+        if [[ ${xy} == '??' ]] && placeholder "${path}"; then
+            placeholders=$((placeholders + 1))
             continue
         fi
         # Paths are repository data on their way to Claude (stderr of an exit 2
@@ -145,6 +200,7 @@ fi
 
 block() {
     printf 'agent-stop-gate: %s\n' "${reasons[@]}" >&2
+    [[ ${placeholders} -eq 0 ]] || printf 'agent-stop-gate: sandbox placeholders ignored: %s\n' "${placeholders}" >&2
     exit 2
 }
 

@@ -202,6 +202,68 @@ function check_apparmor_userns() {
     ((required_failures += 1))
 }
 
+# @description Verify distinct authenticated GitHub roles and private worker file storage.
+#   Missing provisioning is optional; an existing worker directory must be valid.
+function check_github_identities() {
+    local WORKER_GH_CONFIG_DIR="${HOME}/.config/gh-worker" worker_dir
+    # shellcheck source=/dev/null
+    [[ ! -f ${HOME}/.agents/model-profiles.env ]] || source "${HOME}/.agents/model-profiles.env"
+    worker_dir="${WORKER_GH_CONFIG_DIR/#\~/$HOME}"
+    if [[ ! -e ${worker_dir} ]]; then
+        warn_optional "worker GitHub config missing: ${worker_dir}; provision with GH_CONFIG_DIR=<worker-dir> gh auth login --insecure-storage (README operator phase)"
+        return 0
+    fi
+    if ! python3 - "${worker_dir}" << 'PYTHON'
+import json
+import os
+from pathlib import Path
+import stat
+import subprocess
+import sys
+
+worker = Path(sys.argv[1])
+default = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "gh"
+
+def fail(message):
+    sys.exit("required failed: GitHub roles: " + message)
+
+try:
+    hosts = worker / "hosts.yml"
+    metadata = hosts.lstat()
+    if worker.resolve() == default.resolve():
+        fail("worker and orchestrator configuration directories must differ")
+    if not stat.S_ISREG(metadata.st_mode) or stat.S_IMODE(metadata.st_mode) != 0o600 or metadata.st_uid != os.getuid():
+        fail("worker hosts.yml must be a user-owned regular file with mode 0600")
+    env = {k: v for k, v in os.environ.items() if k not in {
+        "GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN", "GH_DEBUG", "DEBUG",
+    }}
+    env["GH_CONFIG_DIR"] = str(worker)
+    status = subprocess.run(["gh", "auth", "status", "--active", "--hostname", "github.com", "--json", "hosts"],
+                            env=env, capture_output=True, text=True)
+    if status.returncode:
+        fail("worker authentication failed; run the operator login step")
+    accounts = json.loads(status.stdout)["hosts"]["github.com"]
+    active = [a for a in accounts if a.get("active") and a.get("state") == "success"]
+    if len(active) != 1 or Path(active[0].get("tokenSource", "")).resolve() != hosts.resolve():
+        fail("worker requires an authenticated file-stored token in hosts.yml (--insecure-storage)")
+    worker_login = active[0]["login"]
+    env["GH_CONFIG_DIR"] = str(default)
+    current = subprocess.run(["gh", "api", "--hostname", "github.com", "user", "--jq", ".login"],
+                             env=env, capture_output=True, text=True)
+    login = current.stdout.strip()
+    if current.returncode or not login:
+        fail("orchestrator authentication failed")
+    if login.casefold() == worker_login.casefold():
+        fail("worker and orchestrator authenticate as the same login")
+    print(f"found:   GitHub roles -> orchestrator={login}, worker={worker_login} (owned 0600 file storage)")
+except (OSError, ValueError, KeyError, TypeError, AttributeError):
+    fail("could not verify worker file storage and authenticated logins")
+PYTHON
+    then
+        ((required_failures += 1))
+    fi
+}
+
 #
 # @description Print the current GitHub CLI extension state when gh is installed.
 #
@@ -293,6 +355,9 @@ function main() {
 
     section "Claude Code sandbox"
     check_claude_sandbox
+
+    section "GitHub role identities"
+    check_github_identities
 
     section "GitHub CLI extensions"
     check_gh_extensions

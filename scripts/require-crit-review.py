@@ -8,9 +8,11 @@ import importlib.util
 import json
 import os
 import re
+import shlex
 import subprocess
 import tempfile
 from collections import Counter
+from datetime import datetime
 from functools import cache
 import sys
 from pathlib import Path
@@ -544,6 +546,82 @@ def pr_base_errors(root: Path, evidence: dict, pr: int, head: str, base: str) ->
     ]
 
 
+def github_identity_errors(root: Path, evidence: dict, head: str) -> list[str]:
+    """Require distinct author/approver after file provisioning and enforced rules activate it."""
+    worker_dir = "~/.config/gh-worker"
+    profiles = Path.home() / ".agents/model-profiles.env"
+    try:
+        if profiles.is_file():
+            for line in profiles.read_text().splitlines():
+                if line.startswith("WORKER_GH_CONFIG_DIR="):
+                    values = shlex.split(line.split("=", 1)[1])
+                    if len(values) != 1:
+                        raise ValueError("invalid worker config path")
+                    worker_dir = values[0]
+        if not (Path(worker_dir).expanduser() / "hosts.yml").exists():
+            print("notice: GitHub role gate inactive: worker hosts.yml missing; complete README operator provisioning")
+            return []
+        env = {k: v for k, v in os.environ.items() if k not in {"GH_REPO", "GH_HOST", "GH_DEBUG", "DEBUG"}}
+
+        def api(endpoint: str, paginate: bool = False):
+            command = ["gh", "api", endpoint, "--hostname", "github.com"]
+            if paginate:
+                command += ["--paginate", "--slurp"]
+            result = subprocess.run(command, cwd=root, env=env, capture_output=True, text=True)
+            if result.returncode:
+                raise ValueError("GitHub API verification failed")
+            data = json.loads(result.stdout)
+            if paginate:
+                if not isinstance(data, list) or not all(isinstance(page, list) for page in data):
+                    raise ValueError("invalid paginated response")
+                data = [item for page in data for item in page]
+            return data
+
+        repo = evidence["repo"]
+        rules = api(f"repos/{repo}/rules/branches/main", True)
+        if not all(isinstance(rule, dict) and isinstance(rule.get("type"), str) for rule in rules):
+            raise ValueError("invalid rules response")
+        counts = [
+            rule["parameters"]["required_approving_review_count"] for rule in rules if rule["type"] == "pull_request"
+        ]
+        if not all(isinstance(n, int) and not isinstance(n, bool) and n >= 0 for n in counts):
+            raise ValueError("invalid approval requirement")
+        if not any(n >= 1 for n in counts):
+            print("notice: GitHub role gate inactive: main has no enforced required approval; apply README ruleset")
+            return []
+        current = api("user")["login"]
+        pr = api(f"repos/{repo}/pulls/{evidence['pr']}")
+        author = pr["user"]["login"]
+        if not all(isinstance(login, str) and login for login in (current, author)) or pr["head"]["sha"] != head:
+            raise ValueError("invalid identity or stale PR head")
+        if current.casefold() == author.casefold():
+            return ["GitHub role gate: PR author cannot approve/integrate their own PR; use the orchestrator login"]
+        reviews = api(f"repos/{repo}/pulls/{evidence['pr']}/reviews", True)
+        decisive = [
+            r
+            for r in reviews
+            if r["user"]["login"].casefold() == current.casefold()
+            and r["state"] in {"APPROVED", "CHANGES_REQUESTED", "DISMISSED"}
+        ]
+
+        def decision_order(review):
+            submitted = datetime.fromisoformat(review["submitted_at"].replace("Z", "+00:00"))
+            if submitted.tzinfo is None or type(review["id"]) is not int:
+                raise ValueError("invalid review submission metadata")
+            return submitted, review["id"]
+
+        latest = max(decisive, key=decision_order, default=None)
+        if not latest or latest["state"] != "APPROVED" or latest.get("commit_id") != head:
+            return [
+                "GitHub role gate: current orchestrator login must approve the current head with gh pr review --approve"
+            ]
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return [
+            "GitHub role gate: could not verify provisioning, effective rules or current-head approval; refusing integration"
+        ]
+    return []
+
+
 def collected_feedback_errors(root: Path, evidence: dict, head: str, base: str) -> list[str]:
     """Re-collect the PR's feedback and require every current item in the evidence.
 
@@ -558,6 +636,8 @@ def collected_feedback_errors(root: Path, evidence: dict, head: str, base: str) 
     if not isinstance(pr, int) or isinstance(pr, bool) or pr <= 0:
         return [f"{PR_FEEDBACK_ENV} must name its pull request number in `pr`"]
     errors = pr_base_errors(root, evidence, pr, head, base)
+    if not errors:
+        errors = github_identity_errors(root, evidence, head)
     if errors:
         return errors
     with tempfile.TemporaryDirectory() as temporary:

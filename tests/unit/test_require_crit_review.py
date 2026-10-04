@@ -401,11 +401,81 @@ class ReviewGuardTest(unittest.TestCase):
     def guard_base(self, env: dict[str, str] | None = None, base: str = "main") -> subprocess.CompletedProcess[str]:
         defaults = {
             "CRIT_REVIEW": "",
+            "HOME": str(self.collected_dir / "role-home"),
             "FAKE_COLLECTED": str(self.collected),
             "FAKE_PR_METADATA": str(self.metadata),
             "PATH": f"{self.collected_dir}{os.pathsep}{os.environ['PATH']}",
         }
         return run([sys.executable, str(GUARD), "--base", base], self.temp_dir, {**defaults, **(env or {})})
+
+    def test_github_identity_gate_activation_and_current_head_approval(self) -> None:
+        run(["git", "branch", "-M", "main"], self.temp_dir)
+        self.commit_on_branch("docs/change.md")
+        evidence = self.write_feedback([])
+        role_home = self.collected_dir / "role-home"
+        hosts = role_home / ".config/gh-worker/hosts.yml"
+        hosts.parent.mkdir(parents=True)
+        responses = self.collected_dir / "role-responses.json"
+        fake = self.collected_dir / "gh"
+        old = fake.read_text()
+        dispatch = (
+            "if sys.argv[1:2] == ['api']:\n"
+            "    data = json.load(open(os.environ['ROLE_RESPONSES']))\n"
+            "    endpoint = sys.argv[2]\n"
+            "    if endpoint not in data: sys.exit(8)\n"
+            "    print(json.dumps(data[endpoint])); sys.exit(0)\n"
+        )
+        fake.write_text(old.replace("import json, os, sys\n", "import json, os, sys\n" + dispatch))
+        env = {"PR_FEEDBACK_EVIDENCE": evidence, "ROLE_RESPONSES": str(responses)}
+        head = self.head_commit()
+        rule = {"type": "pull_request", "parameters": {"required_approving_review_count": 1}}
+        review = {
+            "id": 1,
+            "user": {"login": "merger"},
+            "state": "APPROVED",
+            "commit_id": head,
+            "submitted_at": "2026-10-04T12:00:00Z",
+        }
+        data = {
+            "repos/mryfmo/dotfiles/rules/branches/main": [[rule]],
+            "user": {"login": "merger"},
+            "repos/mryfmo/dotfiles/pulls/1": {"user": {"login": "worker"}, "head": {"sha": head}},
+            "repos/mryfmo/dotfiles/pulls/1/reviews": [[review]],
+        }
+        responses.write_text(json.dumps(data))
+        absent = self.guard_base(env)
+        self.assertEqual(0, absent.returncode, absent.stdout)
+        self.assertIn("notice:", absent.stdout)
+        hosts.touch()
+        for label, rules, reviews, login, expected in (
+            ("no rules", [[]], [[review]], "merger", 0),
+            ("active", [[rule]], [[review]], "merger", 0),
+            ("self approval", [[rule]], [[review]], "WORKER", 1),
+            ("no approval", [[rule]], [[]], "merger", 1),
+            ("stale", [[rule]], [[{**review, "commit_id": "a" * 40}]], "merger", 1),
+            (
+                "later-submitted-change-request",
+                [[rule]],
+                [
+                    [{**review, "id": 10}],
+                    [{**review, "state": "CHANGES_REQUESTED", "submitted_at": "2026-10-04T13:00:00Z"}],
+                ],
+                "merger",
+                1,
+            ),
+            ("dismissed", [[rule]], [[review], [{**review, "id": 2, "state": "DISMISSED"}]], "merger", 1),
+            ("comment after approval", [[rule]], [[review], [{**review, "id": 2, "state": "COMMENTED"}]], "merger", 0),
+        ):
+            with self.subTest(label=label):
+                data["repos/mryfmo/dotfiles/rules/branches/main"] = rules
+                data["repos/mryfmo/dotfiles/pulls/1/reviews"] = reviews
+                data["user"] = {"login": login}
+                responses.write_text(json.dumps(data))
+                result = self.guard_base(env)
+                self.assertEqual(expected, result.returncode, result.stdout + result.stderr)
+        del data["repos/mryfmo/dotfiles/rules/branches/main"]
+        responses.write_text(json.dumps(data))
+        self.assertNotEqual(0, self.guard_base(env).returncode)
 
     def test_base_reviews_committed_branch_changes(self) -> None:
         run(["git", "branch", "-M", "main"], self.temp_dir)

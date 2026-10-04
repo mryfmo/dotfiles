@@ -566,6 +566,25 @@ def orchestration_path_error(root: Path, path: Path, env: str, directory: str) -
     return None
 
 
+def final_codex_block(transcript: str) -> str:
+    """Port of herdr-agents' fallback: text after the last line that is exactly `codex`,
+    skipping the `tokens used` footer and a bare count right after it."""
+    final: list[str] = []
+    found = footer = False
+    for line in transcript.splitlines():
+        if line == "codex":
+            final, found, footer = [], True, False
+        elif line == "tokens used":
+            footer = True
+        elif footer and re.fullmatch(r"[0-9,]+", line):
+            footer = False
+        else:
+            footer = False
+            if found:
+                final.append(line)
+    return "\n".join(final)
+
+
 def audit_errors(root: Path, head: str, task: str) -> list[str]:
     """Require the task-level audit of HEAD for task: `correct`, or `incorrect` with every finding not-applicable."""
     evidence = os.environ.get(AUDIT_ENV, "").strip()
@@ -591,10 +610,16 @@ def audit_errors(root: Path, head: str, task: str) -> list[str]:
             return [f"{AUDIT_ENV} audits {match.group('sha')}, not HEAD {head}; audit the final head"]
     if not path.is_file():
         return [f"{AUDIT_ENV} file does not exist: {path}"]
-    # Same verdict source as herdr-agents: the codex last-message file when it has content.
+    # Same verdict source as herdr-agents: the codex last-message file when it has content,
+    # else only the transcript's final codex block, never repository text quoted before it.
     last = path.with_name(f"{path.name}.last.md")
-    source = last if last.is_file() and last.read_text().strip() else path
-    text = source.read_text()
+    if last.is_file() and last.read_text().strip():
+        last_error = orchestration_path_error(root, last, AUDIT_ENV, "validation")
+        if last_error:
+            return [f"{last_error} (its companion {last.name})"]
+        source, text = last, last.read_text()
+    else:
+        source, text = path, final_codex_block(path.read_text())
     lines = [line for line in text.splitlines() if line.strip()]
     match = AUDIT_VERDICT.fullmatch(lines[-1]) if lines else None
     verdict = match.group(1) if match else "missing"

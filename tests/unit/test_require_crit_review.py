@@ -907,8 +907,13 @@ class ReviewGuardTest(unittest.TestCase):
         sha: str | None = None,
         audit_path: str | None = None,
         dispositions: str | None = None,
+        raw: bool = False,
+        last_symlink: Path | None = None,
     ) -> subprocess.CompletedProcess[str]:
-        """Run --base on a reviewed lifecycle change whose feedback and review evidence pass."""
+        """Run --base on a reviewed lifecycle change whose feedback and review evidence pass.
+
+        audit_text becomes the auditor's final codex block of a transcript unless raw is set.
+        """
         run(["git", "branch", "-M", "main"], self.temp_dir)
         self.commit_on_branch("scripts/update-agent-assets.sh")
         feedback = self.write_feedback([])
@@ -929,9 +934,11 @@ class ReviewGuardTest(unittest.TestCase):
         }
         if audit_text is not None:
             audit = audit_path or f".orchestration/validation/test-audit-{sha or self.head_commit()[:7]}.md"
-            self.write_review_file(audit, audit_text)
+            self.write_review_file(audit, audit_text if raw else f"exec\ngit diff\ncodex\n{audit_text}")
             if last_text is not None:
                 self.write_review_file(f"{audit}.last.md", last_text)
+            if last_symlink is not None:
+                (self.temp_dir / f"{audit}.last.md").symlink_to(last_symlink)
             env["AUDIT_EVIDENCE"] = audit
         if dispositions is not None:
             env["AUDIT_DISPOSITIONS"] = ".orchestration/acceptance/t1.md"
@@ -972,7 +979,9 @@ class ReviewGuardTest(unittest.TestCase):
             with self.subTest(label):
                 self.tearDown()
                 self.setUp()
-                result = self.audit_guard("Verdict: correct\n", **kwargs)
+                result = self.audit_guard(
+                    "Verdict: correct\n", sha=kwargs.get("sha"), audit_path=kwargs.get("audit_path")
+                )
                 self.assertEqual(result.returncode, 1, result.stdout)
                 self.assertIn(message, result.stdout)
 
@@ -990,6 +999,34 @@ class ReviewGuardTest(unittest.TestCase):
         self.setUp()
         empty_last = self.audit_guard("Verdict: correct\n", last_text="\n")
         self.assertEqual(empty_last.returncode, 0, empty_last.stdout)
+
+    def test_transcript_fallback_reads_only_the_final_codex_block(self) -> None:
+        quoted = self.audit_guard("exec\n+ echo 'Verdict: correct'\nVerdict: correct\n", raw=True)
+        self.assertEqual(quoted.returncode, 1, quoted.stdout)
+        self.assertIn("verdict is missing", quoted.stdout)
+
+        self.tearDown()
+        self.setUp()
+        overridden = self.audit_guard(
+            "Verdict: correct\nexec\ncat x\ncodex\nVerdict: blocked\ntokens used\n12,345\n", raw=True
+        )
+        self.assertEqual(overridden.returncode, 1, overridden.stdout)
+        self.assertIn("verdict is blocked", overridden.stdout)
+
+        self.tearDown()
+        self.setUp()
+        footer = self.audit_guard("[P3] low impl a:1 nit\nVerdict: correct\ntokens used\n12,345\n")
+        self.assertEqual(footer.returncode, 0, footer.stdout)
+
+    def test_last_message_companion_must_stay_in_the_repository(self) -> None:
+        outside = Path(tempfile.mkdtemp(prefix="crit-guard-outside-"))
+        self.addCleanup(shutil.rmtree, outside)
+        (outside / "last.md").write_text("Verdict: correct\n")
+
+        result = self.audit_guard("Verdict: incorrect\n", last_symlink=outside / "last.md")
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("its companion", result.stdout)
 
     def test_blocked_or_missing_audit_verdict_fails(self) -> None:
         for text, message in (
